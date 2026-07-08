@@ -5272,13 +5272,16 @@ class TypedDictData:
     # If False, the type definition referenced a placeholder
     ready: bool
 
-    bases: list[tuple[TypeInfo, dict[str, mypy.types.Type]]]
+    # Each entry is a base TypeInfo together with its field types and PEP 728
+    # extra_items pseudo-item type (or None), both mapped through the base's
+    # type arguments.
+    bases: list[tuple[TypeInfo, dict[str, mypy.types.Type], mypy.types.Type | None]]
     field_sources: dict[str, TypedDictFieldSource]
 
     def __init__(
         self,
         ready: bool,
-        bases: list[tuple[TypeInfo, dict[str, mypy.types.Type]]],
+        bases: list[tuple[TypeInfo, dict[str, mypy.types.Type], mypy.types.Type | None]],
         field_sources: dict[str, TypedDictFieldSource],
     ) -> None:
         self.ready = ready

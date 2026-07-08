@@ -662,15 +662,18 @@ class TypeJoinVisitor(TypeVisitor[ProperType]):
                         readonly_keys.add(item_name)
 
             fallback = self.s.create_anonymous_fallback()
-            # TODO: generalize to a proper pseudo-item join once non-Never
-            # extra_items types are supported (PEP 728).
-            is_closed = self.s.is_closed and t.is_closed
+            # Join the PEP 728 pseudo-items like any other item. A None result
+            # leaves the join implicitly open.
+            extra_items, _, extra_items_readonly = self.resolve_typeddict_item(
+                "extra_items", self.s.extra_item(), t.extra_item()
+            )
             return TypedDictType(
                 items,
                 required_keys,
                 readonly_keys,
                 fallback,
-                extra_items=UninhabitedType() if is_closed else None,
+                extra_items=extra_items,
+                extra_items_readonly=extra_items_readonly if extra_items is not None else False,
             )
         elif isinstance(self.s, Instance):
             return join_types(self.s, t.fallback)

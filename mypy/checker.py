@@ -3229,7 +3229,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
         data = defn.info.typeddict_data
         if data is None or not data.ready:
             return
-        for base, base_items in data.bases:
+        for base, base_items, base_extra_items in data.bases:
             assert base.typeddict_type
             for field_name, base_type in base_items.items():
                 field_type = td.items[field_name]
@@ -3259,6 +3259,47 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                                 f"with a mutually compatible type",
                                 source.ctx,
                             )
+            if base_extra_items is None:
+                continue
+            base_extra_readonly = base.typeddict_type.extra_items_readonly
+            if not isinstance(get_proper_type(base_extra_items), UninhabitedType):
+                # Fields not known to the base must be compatible with its extra_items
+                # pseudo-item, like any other item redeclaration. (For a closed base,
+                # semantic analysis already rejected such fields.)
+                for field_name, field_type in td.items.items():
+                    if field_name in base_items:
+                        continue
+                    if base_extra_readonly:
+                        is_compatible = is_subtype(field_type, base_extra_items)
+                    else:
+                        is_compatible = is_equivalent(field_type, base_extra_items)
+                    if is_compatible:
+                        continue
+                    source = data.field_sources[field_name]
+                    if source.base is None:
+                        self.fail(
+                            f'Type of field "{field_name}" incompatible with "extra_items" '
+                            f'of base class "{base.name}"',
+                            source.ctx,
+                        )
+                    else:
+                        self.fail(
+                            f'Type of field "{field_name}" from base class '
+                            f'"{source.base.name}" incompatible with "extra_items" of base '
+                            f'class "{base.name}"',
+                            source.ctx,
+                        )
+            if td.extra_items is not None:
+                # The resolved pseudo-item must be compatible with each base pseudo-item.
+                if base_extra_readonly:
+                    is_compatible = is_subtype(td.extra_items, base_extra_items)
+                else:
+                    is_compatible = is_equivalent(td.extra_items, base_extra_items)
+                if not is_compatible:
+                    self.fail(
+                        f'Definition of "extra_items" incompatible with base class "{base.name}"',
+                        defn,
+                    )
 
     def visit_import_from(self, node: ImportFrom) -> None:
         for name, _ in node.names:

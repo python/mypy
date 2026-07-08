@@ -1162,7 +1162,25 @@ class TypeMeetVisitor(TypeVisitor[ProperType]):
 
     def visit_typeddict_type(self, t: TypedDictType) -> ProperType:
         if isinstance(self.s, TypedDictType):
-            is_closed = self.s.is_closed or t.is_closed
+            # Meet the PEP 728 pseudo-items first, like any other item. As with
+            # named items, incompatible mutable pseudo-items make the meet
+            # uninhabited.
+            s_extra = self.s.extra_item()
+            t_extra = t.extra_item()
+            extra_items: Type | None
+            extra_items_readonly = False
+            if s_extra.typ is None and t_extra.typ is None:
+                extra_items = None
+            else:
+                extra_meet, extra_items_readonly = self.resolve_typeddict_item_type(
+                    "extra_items", s_extra, t_extra
+                )
+                if extra_meet is None:
+                    return self.default(self.s)
+                extra_items = extra_meet
+            is_closed = extra_items is not None and isinstance(
+                get_proper_type(extra_items), UninhabitedType
+            )
             items: dict[str, Type] = {}
             readonly_keys: set[str] = set()
             for name, s_item, t_item in self.s.zipall(t):
@@ -1186,14 +1204,13 @@ class TypeMeetVisitor(TypeVisitor[ProperType]):
 
             fallback = self.s.create_anonymous_fallback()
             required_keys = self.s.required_keys | t.required_keys
-            # TODO: generalize to a proper pseudo-item meet once non-Never
-            # extra_items types are supported (PEP 728).
             return TypedDictType(
                 items,
                 required_keys,
                 readonly_keys,
                 fallback,
-                extra_items=UninhabitedType() if is_closed else None,
+                extra_items=extra_items,
+                extra_items_readonly=extra_items_readonly,
             )
         elif isinstance(self.s, Instance) and is_subtype(t, self.s):
             return t

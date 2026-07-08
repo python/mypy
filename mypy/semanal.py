@@ -2248,8 +2248,15 @@ class SemanticAnalyzer(
         return None
 
     def analyze_class_keywords(self, defn: ClassDef) -> None:
-        for value in defn.keywords.values():
-            value.accept(self)
+        for key, value in defn.keywords.items():
+            if key == "extra_items":
+                # The value of a PEP 728 TypedDict "extra_items" argument is a type
+                # expression, and may validly reference type variables; it is analyzed
+                # as a type in the TypedDict analyzer.
+                with self.allow_unbound_tvars_set():
+                    value.accept(self)
+            else:
+                value.accept(self)
 
     def enter_class(self, info: TypeInfo) -> None:
         # Remember previous active class

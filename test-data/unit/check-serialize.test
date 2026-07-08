@@ -1106,6 +1106,26 @@ main:2: note: Revealed type is "TypedDict('m.D', {'x': builtins.int, 'y': builti
 -- Modules
 --
 
+
+[case testSerializeExtraItemsTypedDict]
+from m import d, r
+reveal_type(d)
+reveal_type(r)
+[file m.py]
+from typing import ReadOnly, TypedDict
+D = TypedDict('D', {'x': int}, extra_items=int)
+R = TypedDict('R', {'x': int}, extra_items=ReadOnly[str])
+d: D
+r: R
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+[out1]
+main:2: note: Revealed type is "TypedDict('m.D', {'x': builtins.int}, extra_items=builtins.int)"
+main:3: note: Revealed type is "TypedDict('m.R', {'x': builtins.int}, extra_items=ReadOnly[builtins.str])"
+[out2]
+main:2: note: Revealed type is "TypedDict('m.D', {'x': builtins.int}, extra_items=builtins.int)"
+main:3: note: Revealed type is "TypedDict('m.R', {'x': builtins.int}, extra_items=ReadOnly[builtins.str])"
+
 [case testSerializeImport]
 import b
 b.c.f()

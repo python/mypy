@@ -3231,8 +3231,12 @@ class TypedDictType(ProperType):
             return TypedDictItem(
                 item_type, item_name in self.required_keys, item_name in self.readonly_keys
             )
+        return self.extra_item()
+
+    def extra_item(self) -> TypedDictItem:
+        """The PEP 728 pseudo-item describing the keys not in `items`."""
         if self.extra_items is not None:
-            # The PEP 728 pseudo-item: extra items are always non-required.
+            # Extra items are always non-required.
             return TypedDictItem(self.extra_items, False, self.extra_items_readonly)
         # Default-open TypedDicts implicitly allow NotRequired[ReadOnly[object]] items.
         return TypedDictItem(None, False, True)

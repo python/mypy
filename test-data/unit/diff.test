@@ -694,6 +694,29 @@ p = Point(dict(x=42, y=1337))
 __main__.Point
 __main__.p
 
+
+[case testTypedDictExtraItems]
+from typing import ReadOnly, TypedDict
+class Point(TypedDict, extra_items=int):
+    x: int
+class Point2(TypedDict, extra_items=int):
+    x: int
+class Point3(TypedDict, extra_items=int):
+    x: int
+[file next.py]
+from typing import ReadOnly, TypedDict
+class Point(TypedDict, extra_items=str):
+    x: int
+class Point2(TypedDict, extra_items=ReadOnly[int]):
+    x: int
+class Point3(TypedDict, extra_items=int):
+    x: int
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+[out]
+__main__.Point
+__main__.Point2
+
 [case testTypeAliasSimple]
 A = int
 B = int

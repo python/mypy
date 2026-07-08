@@ -939,9 +939,38 @@ class SubtypeVisitor(TypeVisitor[bool]):
             if left == right:
                 return True  # Fast path
 
-            # A closed type must remain closed
-            if right.is_closed and not left.is_closed:
-                return False
+            # Compare the PEP 728 pseudo-items, covering the keys named on
+            # neither side. (Keys named on only one side are covered by the
+            # zipall() loops below, which fall back to the pseudo-item.)
+            r_extra = right.extra_item()
+            if r_extra.typ is not None:
+                l_extra = left.extra_item()
+                if r_extra.readonly:
+                    # Read-only pseudo-items behave covariantly. A missing
+                    # pseudo-item is implicitly ReadOnly[object].
+                    l_extra_type = (
+                        l_extra.typ
+                        if l_extra.typ is not None
+                        else Instance(left.fallback.type.mro[-1], [])
+                    )
+                    if not self._is_subtype(l_extra_type, r_extra.typ):
+                        return False
+                else:
+                    # A mutable pseudo-item must remain mutable and equivalent,
+                    # like any other mutable item. This subsumes "a closed type
+                    # must remain closed" (closed == extra_items=Never).
+                    if l_extra.typ is None or l_extra.readonly:
+                        return False
+                    if self.proper_subtype:
+                        if not is_same_type(l_extra.typ, r_extra.typ):
+                            return False
+                    elif not is_equivalent(
+                        l_extra.typ,
+                        r_extra.typ,
+                        ignore_type_params=self.subtype_context.ignore_type_params,
+                        options=self.options,
+                    ):
+                        return False
 
             # Perform fast key-based checks before recursing into value types
             for name, l, r in left.zipall(right):

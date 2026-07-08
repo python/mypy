@@ -3822,6 +3822,30 @@ def bar(x: C) -> int:
 ==
 b.py:4: error: TypedDict "A" has no key "b"
 
+
+[case testTypedDictUpdateExtraItems]
+import b
+[file a.py]
+from typing import TypedDict
+class A(TypedDict, extra_items=int):
+  a: int
+[file a.py.2]
+from typing import TypedDict
+class A(TypedDict, extra_items=str):
+  a: int
+[file b.py]
+from typing import TypedDict
+from a import A
+class B(TypedDict, extra_items=int):
+  a: int
+def foo(x: A) -> None:
+    y: B = x
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+[out]
+==
+b.py:6: error: Incompatible types in assignment (expression has type "A", variable has type "B")
+
 [case testBasicAliasUpdate]
 import b
 [file a.py]

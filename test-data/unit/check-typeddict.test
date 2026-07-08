@@ -6126,3 +6126,294 @@ class Callback(Model):
     def __init__(self, **kwargs: Unpack[_CallbackInit]) -> None: ...
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
+
+# Extra items
+# See https://peps.python.org/pep-0728/
+
+[case testTypedDictExtraItemsClassAndFunctionalSyntax]
+from typing import ReadOnly, TypedDict
+class Movie(TypedDict, extra_items=bool):
+    name: str
+m: Movie
+reveal_type(m)  # N: Revealed type is "TypedDict('__main__.Movie', {'name': builtins.str}, extra_items=builtins.bool)"
+MovieF = TypedDict('MovieF', {'name': str}, extra_items=bool)
+mf: MovieF
+reveal_type(mf)  # N: Revealed type is "TypedDict('__main__.MovieF', {'name': builtins.str}, extra_items=builtins.bool)"
+class MovieRO(TypedDict, extra_items=ReadOnly[int]):
+    name: str
+mr: MovieRO
+reveal_type(mr)  # N: Revealed type is "TypedDict('__main__.MovieRO', {'name': builtins.str}, extra_items=ReadOnly[builtins.int])"
+class MovieNone(TypedDict, extra_items=None):
+    name: str
+mn: MovieNone
+reveal_type(mn)  # N: Revealed type is "TypedDict('__main__.MovieNone', {'name': builtins.str}, extra_items=None)"
+class MovieTotal(TypedDict, total=False, extra_items=bool):
+    name: str
+mt: MovieTotal
+reveal_type(mt)  # N: Revealed type is "TypedDict('__main__.MovieTotal', {'name'?: builtins.str}, extra_items=builtins.bool)"
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictExtraItemsCannotBeUsedWithClosed]
+from typing import TypedDict
+class Movie(TypedDict, closed=True, extra_items=int):  # E: Cannot use "closed" and "extra_items" in the same TypedDict definition
+    name: str
+MovieF = TypedDict('MovieF', {'name': str}, closed=True, extra_items=int)  # E: Cannot use "closed" and "extra_items" in the same TypedDict definition
+m: Movie
+mf: MovieF
+# extra_items wins for error recovery:
+reveal_type(m)  # N: Revealed type is "TypedDict('__main__.Movie', {'name': builtins.str}, extra_items=builtins.int)"
+reveal_type(mf)  # N: Revealed type is "TypedDict('__main__.MovieF', {'name': builtins.str}, extra_items=builtins.int)"
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictExtraItemsInvalidArgument]
+from typing import NotRequired, Required, TypedDict
+class A(TypedDict, extra_items=Required[int]):  # E: "Required[]" is not allowed in "extra_items"
+    x: int
+class B(TypedDict, extra_items=NotRequired[int]):  # E: "NotRequired[]" is not allowed in "extra_items"
+    x: int
+C = TypedDict('C', {'x': int}, extra_items=Required[str])  # E: "Required[]" is not allowed in "extra_items"
+D = TypedDict('D', {'x': int}, extra_items=[str])  # E: Bracketed expression "[...]" is not valid as a type  # N: Did you mean "List[...]"?
+E = TypedDict('E', {'x': int}, extra_items=int, extra_items=str)  # E: Repeated keyword argument "extra_items" for "TypedDict"
+F = TypedDict('F', {'x': int}, extra_items=lambda: 0)  # E: Invalid "extra_items" argument
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictExtraItemsSubclassingInherited]
+from typing import ReadOnly, TypedDict
+class MovieBase(TypedDict, extra_items=ReadOnly[int]):
+    name: str
+class Movie(MovieBase):
+    year: int
+m: Movie
+reveal_type(m)  # N: Revealed type is "TypedDict('__main__.Movie', {'name': builtins.str, 'year': builtins.int}, extra_items=ReadOnly[builtins.int])"
+class MovieChild(Movie):
+    pass
+mc: MovieChild
+reveal_type(mc)  # N: Revealed type is "TypedDict('__main__.MovieChild', {'name': builtins.str, 'year': builtins.int}, extra_items=ReadOnly[builtins.int])"
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictExtraItemsSubclassingMutable]
+from typing import NotRequired, TypedDict
+class MovieBase(TypedDict, extra_items=int):
+    name: str
+class MovieRequiredYear(MovieBase):
+    year: int  # E: Field "year" must be non-required, since "extra_items" of base class "MovieBase" is not read-only
+class MovieWrongType(MovieBase):
+    year: NotRequired[str]  # E: Type of field "year" incompatible with "extra_items" of base class "MovieBase"
+class MovieWithYear(MovieBase):
+    year: NotRequired[int]
+m: MovieWithYear
+reveal_type(m)  # N: Revealed type is "TypedDict('__main__.MovieWithYear', {'name': builtins.str, 'year'?: builtins.int}, extra_items=builtins.int)"
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictExtraItemsSubclassingReadOnly]
+from typing import ReadOnly, TypedDict
+from typing_extensions import Never
+class BookBase(TypedDict, extra_items=ReadOnly[str]):
+    title: str
+class Book(BookBase, extra_items=str):  # OK, narrowing a read-only pseudo-item
+    year: str
+class BookBadField(BookBase):
+    year: int  # E: Type of field "year" incompatible with "extra_items" of base class "BookBase"
+class BookBadExtra(BookBase, extra_items=int):  # E: Definition of "extra_items" incompatible with base class "BookBase"
+    pass
+class BookClosed(BookBase, closed=True):
+    pass
+bc: BookClosed
+reveal_type(bc)  # N: Revealed type is "TypedDict('__main__.BookClosed', {'title': builtins.str}, closed=True)"
+class BookNever(BookBase, extra_items=Never):
+    pass
+bn: BookNever
+reveal_type(bn)  # N: Revealed type is "TypedDict('__main__.BookNever', {'title': builtins.str}, closed=True)"
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictExtraItemsRedeclare]
+from typing import ReadOnly, TypedDict
+class Parent(TypedDict, extra_items=int):
+    pass
+class ChildSame(Parent, extra_items=int):  # OK, evolution-compatible redeclaration
+    pass
+class ChildOther(Parent, extra_items=str):  # E: Definition of "extra_items" incompatible with base class "Parent"
+    pass
+class ChildReadOnly(Parent, extra_items=ReadOnly[int]):  # E: Cannot redeclare mutable "extra_items" of base class "Parent" as read-only
+    pass
+class ChildClosed(Parent, closed=True):  # E: Definition of "extra_items" incompatible with base class "Parent"
+    pass
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictExtraItemsSubclassingClosedFalse]
+from typing import TypedDict
+class MovieBase(TypedDict, extra_items=int):
+    name: str
+class MovieOpen(MovieBase, closed=False):  # E: Open TypedDict class cannot subclass TypedDict class "MovieBase" with "extra_items"
+    pass
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictExtraItemsMultipleInheritance]
+from typing import NotRequired, ReadOnly, TypedDict
+class A(TypedDict, extra_items=int):
+    a: NotRequired[int]
+class B(TypedDict, extra_items=int):
+    b: NotRequired[int]
+class AB(A, B):
+    pass
+ab: AB
+reveal_type(ab)  # N: Revealed type is "TypedDict('__main__.AB', {'b'?: builtins.int, 'a'?: builtins.int}, extra_items=builtins.int)"
+class C(TypedDict, extra_items=str):
+    c: NotRequired[str]
+class AC(A, C):  # E: Type of field "c" from base class "C" incompatible with "extra_items" of base class "A" \
+                 # E: Type of field "a" from base class "A" incompatible with "extra_items" of base class "C" \
+                 # E: Definition of "extra_items" incompatible with base class "C"
+    pass
+class RO(TypedDict, extra_items=ReadOnly[object]):
+    r: NotRequired[int]
+class ARO(A, RO):  # OK, mutable int pseudo-item satisfies ReadOnly[object]
+    pass
+aro: ARO
+reveal_type(aro)  # N: Revealed type is "TypedDict('__main__.ARO', {'r'?: builtins.int, 'a'?: builtins.int}, extra_items=builtins.int)"
+# With mutable extra_items, fields of one base must satisfy the pseudo-item of the other:
+class D(TypedDict, extra_items=int):
+    d: str
+class AD(A, D):  # E: Field "d" from base class "D" must be non-required, since "extra_items" of base class "A" is not read-only \
+                 # E: Type of field "d" from base class "D" incompatible with "extra_items" of base class "A"
+    pass
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictExtraItemsSubtyping]
+from typing import TypedDict
+class MovieExtraInt(TypedDict, extra_items=int):
+    name: str
+class MovieExtraIntAlso(TypedDict, extra_items=int):
+    name: str
+class MovieExtraStr(TypedDict, extra_items=str):
+    name: str
+class MovieNotClosed(TypedDict):
+    name: str
+class MovieClosed(TypedDict, closed=True):
+    name: str
+def f(
+    extra_int: MovieExtraInt,
+    extra_int2: MovieExtraIntAlso,
+    extra_str: MovieExtraStr,
+    not_closed: MovieNotClosed,
+    closed: MovieClosed,
+) -> None:
+    a: MovieExtraInt = extra_int2
+    b: MovieExtraInt = extra_str  # E: Incompatible types in assignment (expression has type "MovieExtraStr", variable has type "MovieExtraInt")
+    c: MovieExtraStr = extra_int  # E: Incompatible types in assignment (expression has type "MovieExtraInt", variable has type "MovieExtraStr")
+    d: MovieExtraInt = not_closed  # E: Incompatible types in assignment (expression has type "MovieNotClosed", variable has type "MovieExtraInt")
+    e: MovieNotClosed = extra_int
+    g: MovieExtraInt = closed  # E: Incompatible types in assignment (expression has type "MovieClosed", variable has type "MovieExtraInt")
+    h: MovieClosed = extra_int  # E: Incompatible types in assignment (expression has type "MovieExtraInt", variable has type "MovieClosed")
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictExtraItemsSubtypingReadOnly]
+from typing import NotRequired, ReadOnly, TypedDict
+class Movie(TypedDict, extra_items=ReadOnly[object]):
+    name: str
+class MovieDetails(TypedDict, extra_items=int):
+    name: str
+    year: NotRequired[int]
+class MovieNotClosed(TypedDict):
+    name: str
+class MovieClosed(TypedDict, closed=True):
+    name: str
+def f(details: MovieDetails, not_closed: MovieNotClosed, closed: MovieClosed) -> None:
+    a: Movie = details  # OK, 'int' is assignable to ReadOnly[object]
+    b: Movie = not_closed  # OK, implicit pseudo-item is ReadOnly[object]
+    c: Movie = closed
+class MovieStrInt(TypedDict, extra_items=ReadOnly[str]):
+    name: str
+def g(details: MovieDetails) -> None:
+    m: MovieStrInt = details  # E: Incompatible types in assignment (expression has type "MovieDetails", variable has type "MovieStrInt")
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictExtraItemsSubtypingRequiredness]
+from typing import NotRequired, TypedDict
+class Movie(TypedDict, extra_items=int):
+    name: str
+class MovieWithYear(TypedDict, extra_items=int):
+    name: str
+    year: int
+def f(with_year: MovieWithYear) -> None:
+    # 'year' is required in MovieWithYear but must be non-required to match
+    # the mutable pseudo-item of Movie
+    movie: Movie = with_year  # E: Incompatible types in assignment (expression has type "MovieWithYear", variable has type "Movie")
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictExtraItemsGeneric]
+from typing import Generic, ReadOnly, TypeVar, TypedDict
+T = TypeVar('T')
+class TD(TypedDict, Generic[T], extra_items=ReadOnly[T]):
+    name: str
+def f(x: TD[int]) -> None:
+    reveal_type(x)  # N: Revealed type is "TypedDict('__main__.TD', {'name': builtins.str}, extra_items=ReadOnly[builtins.int])"
+TDF = TypedDict('TDF', {'name': str}, extra_items=T)
+def g(y: TDF[str]) -> None:
+    reveal_type(y)  # N: Revealed type is "TypedDict('__main__.TDF', {'name': builtins.str}, extra_items=builtins.str)"
+class Child(TD[int]):
+    year: int
+def h(c: Child) -> None:
+    reveal_type(c)  # N: Revealed type is "TypedDict('__main__.Child', {'name': builtins.str, 'year': builtins.int}, extra_items=ReadOnly[builtins.int])"
+class BadChild(TD[str]):
+    year: int  # E: Type of field "year" incompatible with "extra_items" of base class "TD"
+def i(x: TD[int], y: TD[object]) -> None:
+    a: TD[object] = x  # OK, read-only pseudo-items are covariant
+    b: TD[int] = y  # E: Incompatible types in assignment (expression has type "TD[object]", variable has type "TD[int]")
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testJoinOfTypedDictsWithExtraItems]
+from typing import TypedDict
+class ExtraInt(TypedDict, extra_items=int):
+    name: str
+class ExtraIntAlso(TypedDict, extra_items=int):
+    name: str
+class ExtraStr(TypedDict, extra_items=str):
+    name: str
+class Closed(TypedDict, closed=True):
+    name: str
+class Open(TypedDict):
+    name: str
+def f(a: ExtraInt, b: ExtraIntAlso, c: ExtraStr, d: Closed, e: Open, flag: bool) -> None:
+    reveal_type(a if flag else b)  # N: Revealed type is "TypedDict('__main__.ExtraInt', {'name': builtins.str}, extra_items=builtins.int)"
+    reveal_type(a if flag else d)  # N: Revealed type is "TypedDict({'name': builtins.str}, extra_items=ReadOnly[builtins.int])"
+    reveal_type(a if flag else e)  # N: Revealed type is "TypedDict('__main__.Open', {'name': builtins.str})"
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testMeetOfTypedDictsWithExtraItems]
+from typing import Callable, TypedDict, TypeVar
+T = TypeVar('T')
+def meet(x: Callable[[T, T], None]) -> T: pass
+class ExtraInt(TypedDict, extra_items=int):
+    name: str
+class ExtraIntAlso(TypedDict, extra_items=int):
+    name: str
+class ExtraStr(TypedDict, extra_items=str):
+    name: str
+class Open(TypedDict):
+    name: str
+def fII(x: ExtraInt, y: ExtraIntAlso) -> None: pass
+def fIS(x: ExtraInt, y: ExtraStr) -> None: pass
+def fIO(x: ExtraInt, y: Open) -> None: pass
+if int():
+    reveal_type(meet(fII))  # N: Revealed type is "TypedDict('__main__.ExtraInt', {'name': builtins.str}, extra_items=builtins.int)"
+if int():
+    # Incompatible mutable pseudo-items make the meet uninhabited
+    reveal_type(meet(fIS))  # N: Revealed type is "Never"
+if int():
+    reveal_type(meet(fIO))  # N: Revealed type is "TypedDict('__main__.ExtraInt', {'name': builtins.str}, extra_items=builtins.int)"
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
