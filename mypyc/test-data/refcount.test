@@ -2415,7 +2415,7 @@ L0:
     r1 = C(r0)
     return r1
 
-[case testBorrowedFinalAttribute2]
+[case testBorrowedFinalAttribute2_withgil]
 from typing import Final
 
 class C:
@@ -2457,7 +2457,7 @@ L0:
     dec_ref r4
     return r6
 
-[case testBorrowedFinalAttribute3]
+[case testBorrowedFinalAttribute3_withgil]
 from typing import Final
 
 class C:
@@ -2840,7 +2840,7 @@ L2:
 L3:
     return r2
 
-[case testBorrowedFinalInListComprehension]
+[case testBorrowedFinalInListComprehension_withgil]
 from typing import Final
 
 class C:
@@ -2889,7 +2889,7 @@ L3:
 L4:
     return r1
 
-[case testBorrowedFinalInSetComprehension]
+[case testBorrowedFinalInSetComprehension_withgil]
 from typing import Final
 
 class C:
