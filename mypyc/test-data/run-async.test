@@ -2038,3 +2038,32 @@ async def test_async_comprehension_borrow() -> None:
 async def sleep(t: float) -> None: ...
 
 [typing fixtures/typing-full.pyi]
+
+[case testBorrowedFinalAttrAcrossAwaitAfterComprehension]
+import asyncio
+from typing import Final
+
+class C:
+    def __init__(self, s: str) -> None:
+        self.s: Final = s
+
+async def sink() -> str:
+    await asyncio.sleep(0)
+    return "z"
+
+async def f(c: C, xs: list[int]) -> str:
+    # A (sync) comprehension enters a nested borrow scope earlier in the same
+    # top-level expression. It must not clear the enclosing expression's suspend
+    # flag, or c.s (a final attr) gets borrowed across the await below, which
+    # produces invalid C (the borrow does not survive the suspension point).
+    return str([x for x in xs]) + (c.s + await sink())
+
+async def test_borrow_final_attr_across_await_after_comprehension() -> None:
+    for i in range(50):
+        c = C("v" + str(i))
+        assert await f(c, [1, 2, 3]) == "[1, 2, 3]" + "v" + str(i) + "z"
+
+[file asyncio/__init__.pyi]
+async def sleep(t: float) -> None: ...
+
+[typing fixtures/typing-full.pyi]
