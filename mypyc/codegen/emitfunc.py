@@ -570,7 +570,9 @@ class FunctionEmitterVisitor(OpVisitor[None]):
             attr_expr = self.get_attr_expr(obj, op, decl_cl)
             if op.is_init:
                 # The attribute is known to be previously undefined (NULL), so
-                # there is no old value to reclaim; a release store suffices.
+                # there is no old value to reclaim; a relaxed store suffices
+                # (self's later publication provides the release barrier -- see
+                # CPy_InitAttrRef).
                 self.emitter.emit_line(f"CPy_InitAttrRef((PyObject **)&{attr_expr}, {src});")
             else:
                 # Atomically swap in the new value and reclaim the old one.
