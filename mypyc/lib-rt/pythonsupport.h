@@ -56,10 +56,8 @@ extern "C" {
 // 'CPy_GetAttrRefSlow'. Splitting it this way keeps each call site's fast path
 // small enough to inline, which is measurably faster than letting the compiler
 // auto-out-line the whole helper (that merges every read site's branch history
-// into one shared copy and mispredicts). See
-// docs/design/free-threaded-attr-safety.md ("Experiment: inline only the reader
-// fast path"). It is only used in free-threaded builds; the default (GIL) build
-// keeps the plain load + incref generated inline by mypyc.
+// into one shared copy and mispredicts). It is only used in free-threaded builds;
+// the default (GIL) build keeps the plain load + incref generated inline by mypyc.
 PyObject *CPy_GetAttrRefSlow(PyObject *self, PyObject **field);
 
 static inline PyObject *CPy_GetAttrRef(PyObject *self, PyObject **field) {
@@ -88,8 +86,7 @@ static inline PyObject *CPy_GetAttrRef(PyObject *self, PyObject **field) {
 // reader reached 'self' through a synchronization edge (self's own publication)
 // that already ordered the construction stores before it, exactly as with
 // CPy_InitAttrRef's relaxed store. Relaxed keeps it TSan-clean at zero cost (plain
-// mov/ldr). See docs/design/free-threaded-attr-safety.md ("Optimization: Final
-// attributes skip the safe read path").
+// mov/ldr).
 static inline PyObject *CPy_GetAttrRefFinal(PyObject **field) {
     PyObject *v = (PyObject *)_Py_atomic_load_ptr_relaxed(field);
     if (v != NULL) {
@@ -157,8 +154,7 @@ static inline void CPy_SetAttrRef(PyObject **field, PyObject *value) {
 // is pure overhead here, ~+2.6ns per fresh store, and construction-heavy code
 // pays it on every attribute of every new object). The cost is moved off this hot
 // path onto CPy_GetAttrRef's cold slow path, which sets maybe-weakref lazily on
-// the first cross-thread read that needs it. See
-// docs/design/free-threaded-attr-safety.md ("Experiment: reader-side fallback").
+// the first cross-thread read that needs it.
 static inline void CPy_InitAttrRef(PyObject **field, PyObject *value) {
     _Py_atomic_store_ptr_relaxed(field, value);
 }
