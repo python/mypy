@@ -7,7 +7,8 @@ See the docstring of class LowLevelIRBuilder for more information.
 from __future__ import annotations
 
 import sys
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Iterator, Sequence
+from contextlib import contextmanager
 from typing import Final, TypeGuard, cast
 
 from mypy.argmap import map_actuals_to_formals
@@ -398,6 +399,18 @@ class LowLevelIRBuilder:
         if new_keep_alives:
             self.add(KeepAlive([entry.value for entry in new_keep_alives], line))
         self.keep_alives = [entry for entry in self.keep_alives if entry.seq < checkpoint]
+
+    @contextmanager
+    def borrow_region(self, line: int) -> Iterator[None]:
+        """Confine borrows created in this region: flush them when leaving it.
+
+        Keep-alives added inside the region (regardless of their duration scope)
+        are flushed on exit, so borrows can't leak past a lexical boundary such as
+        a conditional branch, an 'and'/'or' branch or a comprehension iteration.
+        """
+        checkpoint = self.keep_alive_checkpoint()
+        yield
+        self.flush_keep_alives_since(line, checkpoint)
 
     def add_keep_alive(self, value: Value, scope: int) -> None:
         self.keep_alives.append(PendingKeepAlive(value, scope, self.next_keep_alive_seq))
@@ -2156,22 +2169,20 @@ class LowLevelIRBuilder:
         # it is the right side if the left is false.
         true_body, false_body = (right_body, left_body) if op == "and" else (left_body, right_body)
 
-        left_checkpoint = self.keep_alive_checkpoint()
-        left_value = left()
-        self.add_bool_branch(left_value, true_body, false_body)
+        with self.borrow_region(line):
+            left_value = left()
+            self.add_bool_branch(left_value, true_body, false_body)
 
-        self.activate_block(left_body)
-        left_coerced = self.coerce(left_value, expr_type, line)
-        self.add(Assign(target, left_coerced, line))
-        self.flush_keep_alives_since(line, left_checkpoint)
+            self.activate_block(left_body)
+            left_coerced = self.coerce(left_value, expr_type, line)
+            self.add(Assign(target, left_coerced, line))
         self.goto(next_block)
 
         self.activate_block(right_body)
-        right_checkpoint = self.keep_alive_checkpoint()
-        right_value = right()
-        right_coerced = self.coerce(right_value, expr_type, line)
-        self.add(Assign(target, right_coerced, line))
-        self.flush_keep_alives_since(line, right_checkpoint)
+        with self.borrow_region(line):
+            right_value = right()
+            right_coerced = self.coerce(right_value, expr_type, line)
+            self.add(Assign(target, right_coerced, line))
         self.goto(next_block)
 
         self.activate_block(next_block)

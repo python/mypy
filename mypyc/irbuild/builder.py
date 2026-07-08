@@ -1439,15 +1439,20 @@ class IRBuilder:
 
     @contextmanager
     def enter_borrow_scope(self, line: int) -> Iterator[None]:
-        """Enter new borrow scope from which borrows can't leak to outer expressions."""
-        checkpoint = self.builder.keep_alive_checkpoint()
+        """Enter new borrow scope from which borrows can't leak to outer expressions.
+
+        This is a borrow region (see LowLevelIRBuilder.borrow_region) that also
+        resets the per-expression borrowing heuristic state, since the body forms
+        its own top-level expression context (e.g. a comprehension iteration or a
+        lambda body).
+        """
         old_expression_depth = self.expression_depth
         old_reassigned_in_expr = self.reassigned_in_expr
         old_expr_has_suspend = self.expr_has_suspend
         self.expression_depth = 0
         try:
-            yield
-            self.builder.flush_keep_alives_since(line, checkpoint)
+            with self.builder.borrow_region(line):
+                yield
         finally:
             self.expression_depth = old_expression_depth
             self.reassigned_in_expr = old_reassigned_in_expr
