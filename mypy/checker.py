@@ -6858,9 +6858,13 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                         for known_item in container_item_types:
                             # Match the should_coerce_literals logic from narrow_type_by_identity_equality
                             p_known_item = get_proper_type(known_item)
-                            if is_literal_type_like(p_known_item) or (
-                                isinstance(p_known_item, Instance) and p_known_item.type.is_enum
-                            ):
+                            if (
+                                is_literal_type_like(p_known_item)
+                                or (
+                                    isinstance(p_known_item, Instance)
+                                    and p_known_item.type.is_enum
+                                )
+                            ) and not has_custom_eq_checks(p_known_item):
                                 known_item = coerce_to_literal(known_item)
                             if_map, else_map = self.narrow_type_by_identity_equality(
                                 "==",
