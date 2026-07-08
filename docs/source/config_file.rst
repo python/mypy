@@ -837,10 +837,6 @@ section of the command line docs.
     the item is imported using from-as or is included in ``__all__``. Note that mypy
     treats stub files as if this is always disabled. For example:
 
-    Although this option is enabled by default, :confval:`strict` enables
-    :option:`mypy --no-implicit-reexport`. Set ``implicit_reexport = true``
-    explicitly if you want to keep implicit reexports when using strict mode.
-
     .. code-block:: python
 
        # This won't re-export the value
@@ -850,6 +846,10 @@ section of the command line docs.
        # This will also re-export bar
        from foo import bar
        __all__ = ['bar']
+
+    Although this option is enabled by default, :confval:`strict` enables
+    :option:`mypy --no-implicit-reexport`. Set ``implicit_reexport = true``
+    explicitly if you want to keep implicit reexports when using strict mode.
 
 .. confval:: strict_equality
 
