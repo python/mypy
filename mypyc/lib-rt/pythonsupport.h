@@ -97,26 +97,26 @@ static inline PyObject *CPy_GetAttrRefFinal(PyObject **field) {
 
 // Reclaim the previous value of a native attribute after it has been replaced.
 //
-// The fast path avoids QSBR deferral when the decref provably cannot free the
-// object: immortal objects are never freed, and an object owned by the current
-// thread with a local refcount > 1 stays at refcount >= 1 after a plain local
-// decrement, so no concurrent reader can ever observe a freed header. Only the
-// cases that could actually free (local refcount would reach zero, or the object
-// is owned by another thread) defer the decref via QSBR, which keeps the memory
-// valid until every thread has passed a quiescent point -- long enough for an
-// in-flight reader that loaded the old pointer to finish its try-incref.
+// CPy_GetAttrRef reads the field optimistically without holding any lock the
+// writer also takes, so a reader can load the old pointer and then dereference it
+// (in its try-incref / re-validation) after this store. The old value must
+// therefore stay alive until every thread has passed a quiescent point, which is
+// exactly what a QSBR-deferred decref guarantees. So all mortal old values are
+// reclaimed via _PyObject_XDecRefDelayed, matching CPython's own replace-a-slot
+// paths (e.g. _PyObject_SetDict / _PyObject_SetManagedDict).
+//
+// We deliberately do NOT take a "local refcount > 1, owned by this thread" fast
+// path: dropping the field's reference is not the only decref of the object, so a
+// non-freeing local decrement here does not prevent an unrelated reference holder
+// from driving the object to zero (a plain, non-deferred Py_DECREF -> _Py_Dealloc)
+// while an in-flight reader still holds the stale pointer -- a use-after-free that
+// only QSBR deferral closes. Immortal objects are never freed, so skipping their
+// decref entirely is safe and avoids queuing a no-op onto the delayed-free list.
 static inline void CPy_DecRefAttrOld(PyObject *op) {
     if (op == NULL) {
         return;
     }
-    uint32_t local = _Py_atomic_load_uint32_relaxed(&op->ob_ref_local);
-    if (local == _Py_IMMORTAL_REFCNT_LOCAL) {
-        return;
-    }
-    if (local > 1 && _Py_IsOwnedByCurrentThread(op)) {
-        // Same as Py_DECREF's owned-thread fast path: only this thread writes
-        // ob_ref_local, and the refcount stays >= 1, so this is race-free.
-        _Py_atomic_store_uint32_relaxed(&op->ob_ref_local, local - 1);
+    if (_Py_IsImmortal(op)) {
         return;
     }
     _PyObject_XDecRefDelayed(op);
