@@ -313,7 +313,7 @@ def transform_member_expr(builder: IRBuilder, expr: MemberExpr) -> Value:
 
     check_instance_attribute_access_through_class(builder, expr, typ)
 
-    is_final = builder.is_final_instance_attr_ref(expr)
+    is_final = builder.is_final_native_attr_ref(expr)
     scope = KEEP_ALIVE_SHORT_LIVED
     if (
         is_final

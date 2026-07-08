@@ -1641,14 +1641,6 @@ class IRBuilder:
                 return expr.name in ir.final_attributes
         return False
 
-    def is_final_instance_attr_ref(self, expr: MemberExpr) -> bool:
-        obj_rtype = self.node_type(expr.expr)
-        return (
-            isinstance(obj_rtype, RInstance)
-            and obj_rtype.class_ir.is_ext_class
-            and any(expr.name in ir.final_attributes for ir in obj_rtype.class_ir.mro)
-        )
-
     def root_is_reassigned(self, v: Value) -> bool:
         """Is the root local variable a borrow chain 'v' reads from reassigned this expression?
 
