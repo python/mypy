@@ -73,7 +73,7 @@ BITMAP_BITS: Final = 32
 KEEP_ALIVE_SHORT_LIVED: Final = 0
 # Keep value alive longer, up to until the current top-level expression has been fully
 # evaluated. This allows keeping alive values across function calls and arbitrary
-# computation.
+# computation. Note that some expressions (e.g. lambdas), restrict the scope of borrowing.
 KEEP_ALIVE_WHOLE_EXPRESSION: Final = 1
 
 # Runtime C library files that are always included (some ops may bring
