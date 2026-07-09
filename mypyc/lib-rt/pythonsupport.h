@@ -126,15 +126,21 @@ static inline void CPy_DecRefAttrOld(PyObject *op) {
 // stealing the reference to 'value' (which may be NULL to delete the attribute)
 // and safely reclaiming the previous value.
 //
-// SetMaybeWeakref is required for correctness, not just performance: it lets a
-// concurrent cross-thread reader's shared-refcount CAS in CPy_GetAttrRef succeed
-// instead of failing and spinning (see the "writer must set maybe-weakref"
-// requirement documented on CPython's _Py_XGetRef). The atomic exchange publishes
-// the new pointer and hands back the old one without a writer/writer race.
+// Memory safety does NOT depend on SetMaybeWeakref here, so (unlike an earlier
+// version) we do not call it. Two things keep this safe:
+//   - The old value is reclaimed via CPy_DecRefAttrOld, a QSBR-deferred decref, so
+//     it cannot be freed while an in-flight CPy_GetAttrRef still holds the stale
+//     pointer.
+//   - A concurrent cross-thread reader whose fast-path try-incref fails on an
+//     unflagged 'value' does not spin: CPy_GetAttrRef falls into its
+//     critical-section fallback (CPy_GetAttrRefSlow -> _Py_NewRefWithLock), which
+//     cannot fail and sets maybe-weakref lazily on that first read.
+// This mirrors CPy_InitAttrRef, which already omits SetMaybeWeakref for the same
+// reason. Setting the flag here would only be a possible performance tuning knob
+// (it keeps that first cross-thread reader on the lock-free path instead of the
+// fallback); it is not needed for correctness. The atomic exchange publishes the
+// new pointer and hands back the old one without a writer/writer race.
 static inline void CPy_SetAttrRef(PyObject **field, PyObject *value) {
-    if (value != NULL) {
-        _PyObject_SetMaybeWeakref(value);
-    }
     PyObject *old = (PyObject *)_Py_atomic_exchange_ptr(field, value);
     CPy_DecRefAttrOld(old);
 }
