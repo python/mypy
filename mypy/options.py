@@ -1,9 +1,9 @@
 from __future__ import annotations
 
+import os
 import pprint
 import re
 import sys
-import sysconfig
 from collections.abc import Callable
 from re import Pattern
 from typing import Any, Final
@@ -112,11 +112,11 @@ class Options:
         # then mypy does not search for PEP 561 packages.
         self.python_executable: str | None = sys.executable
 
-        # When cross compiling to emscripten, we need to rely on MACHDEP because
-        # sys.platform is the host build platform, not emscripten.
-        MACHDEP = sysconfig.get_config_var("MACHDEP")
-        if MACHDEP == "emscripten":
-            self.platform = MACHDEP
+        # When cross compiling to emscripten, sys.platform is the host build
+        # platform, not emscripten. Pyodide sets the PYODIDE environment variable
+        # at build time, so we use it to detect the emscripten target.
+        if "PYODIDE" in os.environ:
+            self.platform = "emscripten"
         else:
             self.platform = sys.platform
 
