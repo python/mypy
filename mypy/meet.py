@@ -1368,7 +1368,9 @@ def typed_dict_mapping_overlap(
     mutable_mapping = next(
         (base for base in other.type.mro if base.fullname == "typing.MutableMapping"), None
     )
-    if mutable_mapping is not None and typed.readonly_keys:
+    if mutable_mapping is not None and (
+        typed.readonly_keys or (typed.extra_items is not None and typed.extra_items_readonly)
+    ):
         return False
 
     mapping = next(base for base in other.type.mro if base.fullname == "typing.Mapping")
@@ -1390,5 +1392,11 @@ def typed_dict_mapping_overlap(
     else:
         if not overlapping(key_type, str_type):
             return False
-        non_required = set(typed.items.keys()) - typed.required_keys
-        return any(overlapping(typed.items[k], value_type) for k in non_required)
+        candidate_values = [typed.items[k] for k in typed.items.keys() - typed.required_keys]
+        extra_item = typed.extra_item()
+        if extra_item.typ is not None and not isinstance(
+            get_proper_type(extra_item.typ), UninhabitedType
+        ):
+            # The PEP 728 pseudo-item may also provide overlapping values.
+            candidate_values.append(extra_item.typ)
+        return any(overlapping(t, value_type) for t in candidate_values)

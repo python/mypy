@@ -6578,3 +6578,102 @@ def f(compat: SrcCompat, srcb: SrcBool, srcs: SrcStr, op: SrcOpen, cl: SrcClosed
     d5: Dest = {**op}  # E: Cannot unpack item that may contain incompatible extra keys into a TypedDict with "extra_items"
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictExtraItemsMappingAssignability]
+from typing import Mapping, TypedDict, Union
+
+class MovieExtraStr(TypedDict, extra_items=str):
+    name: str
+class MovieExtraInt(TypedDict, extra_items=int):
+    name: str
+class Closed(TypedDict, closed=True):
+    name: str
+    year: int
+class Open(TypedDict):
+    name: str
+
+def f(extra_str: MovieExtraStr, extra_int: MovieExtraInt, closed: Closed, open_td: Open) -> None:
+    a: Mapping[str, str] = extra_str
+    b: Mapping[str, int] = extra_int  # E: Incompatible types in assignment (expression has type "MovieExtraInt", variable has type "Mapping[str, int]")
+    c: Mapping[str, Union[int, str]] = extra_int
+    d: Mapping[str, Union[str, int]] = closed
+    e: Mapping[str, str] = open_td  # E: Incompatible types in assignment (expression has type "Open", variable has type "Mapping[str, str]")
+    g: Mapping[str, object] = open_td
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictExtraItemsDictAssignability]
+from typing import MutableMapping, NotRequired, ReadOnly, TypedDict
+
+class IntDict(TypedDict, extra_items=int):
+    pass
+class IntDictWithNum(IntDict):
+    num: NotRequired[int]
+class ReqDict(TypedDict, extra_items=int):
+    num: int
+class RODict(TypedDict, extra_items=ReadOnly[int]):
+    pass
+class Closed(TypedDict, closed=True):
+    pass
+
+def f(x: IntDict, n: IntDictWithNum, r: ReqDict, ro: RODict, c: Closed) -> None:
+    a: dict[str, int] = x
+    b: dict[str, int] = n
+    m: MutableMapping[str, int] = n
+    bad1: dict[str, object] = x  # E: Incompatible types in assignment (expression has type "IntDict", variable has type "dict[str, object]")
+    bad2: dict[str, int] = r  # E: Incompatible types in assignment (expression has type "ReqDict", variable has type "dict[str, int]")
+    bad3: dict[str, int] = ro  # E: Incompatible types in assignment (expression has type "RODict", variable has type "dict[str, int]")
+    bad4: dict[str, int] = c  # E: Incompatible types in assignment (expression has type "Closed", variable has type "dict[str, int]")
+
+def g(might_not_be_a_builtin_dict: dict[str, int]) -> None:
+    int_dict: IntDict = might_not_be_a_builtin_dict  # E: Incompatible types in assignment (expression has type "dict[str, int]", variable has type "IntDict")
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictExtraItemsValuesItems]
+from typing import TypedDict
+
+class MovieExtraInt(TypedDict, extra_items=int):
+    name: str
+class Closed(TypedDict, closed=True):
+    name: str
+    year: int
+class Open(TypedDict):
+    name: str
+
+def f(movie: MovieExtraInt, closed: Closed, open_td: Open) -> None:
+    reveal_type(movie.values())  # N: Revealed type is "typing.Iterable[builtins.str | builtins.int]"
+    reveal_type(movie.items())  # N: Revealed type is "typing._ItemsView[builtins.str, builtins.str | builtins.int]"
+    reveal_type(closed.values())  # N: Revealed type is "typing.Iterable[builtins.str | builtins.int]"
+    reveal_type(closed.items())  # N: Revealed type is "typing._ItemsView[builtins.str, builtins.str | builtins.int]"
+    reveal_type(open_td.values())  # N: Revealed type is "typing.Iterable[builtins.object]"
+    reveal_type(open_td.items())  # N: Revealed type is "typing._ItemsView[builtins.str, builtins.object]"
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictExtraItemsArbitraryStrKey]
+from typing import NotRequired, TypedDict
+
+class MovieExtraInt(TypedDict, extra_items=int):
+    name: str
+class Closed(TypedDict, closed=True):
+    name: str
+    year: int
+class Open(TypedDict):
+    name: str
+class IntDictWithNum(TypedDict, extra_items=int):
+    num: NotRequired[int]
+
+def f(movie: MovieExtraInt, closed: Closed, open_td: Open, d: IntDictWithNum, key: str) -> None:
+    reveal_type(movie[key])  # N: Revealed type is "builtins.str | builtins.int"
+    reveal_type(closed[key])  # N: Revealed type is "builtins.str | builtins.int"
+    open_td[key]  # E: TypedDict key must be a string literal; expected one of ("name")
+    # Writes with arbitrary keys need the TypedDict to behave like dict[str, VT]:
+    movie[key] = 1  # E: TypedDict key must be a string literal; expected one of ("name")
+    d[key] = 42
+    del d[key]
+    d.clear()
+    reveal_type(d.popitem())  # N: Revealed type is "tuple[builtins.str, builtins.int]"
+    movie.clear()  # E: "MovieExtraInt" has no attribute "clear"
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]

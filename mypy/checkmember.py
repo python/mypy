@@ -42,7 +42,7 @@ from mypy.nodes import (
     is_final_node,
 )
 from mypy.plugin import AttributeContext
-from mypy.subtypes import is_subtype
+from mypy.subtypes import is_subtype, typed_dict_dict_value_type
 from mypy.typeops import (
     bind_self,
     erase_to_bound,
@@ -1410,6 +1410,15 @@ def analyze_typeddict_access(
             fallback=mx.chk.named_type("builtins.function"),
             name=name,
         )
+    if typ.fallback.type.get(name) is None:
+        # The member is not defined on the TypedDict fallback. A TypedDict that
+        # behaves like dict[str, VT] additionally supports dict methods, e.g.
+        # clear() and popitem() (PEP 728).
+        value_type = typed_dict_dict_value_type(typ)
+        if value_type is not None:
+            str_type = mx.chk.named_type("builtins.str")
+            dict_type = mx.chk.named_generic_type("builtins.dict", [str_type, value_type])
+            return _analyze_member_access(name, dict_type, mx, None)
     return _analyze_member_access(name, typ.fallback, mx, override_info)
 
 

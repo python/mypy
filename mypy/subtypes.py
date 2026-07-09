@@ -290,6 +290,26 @@ def is_same_type(
     )
 
 
+def typed_dict_dict_value_type(typ: TypedDictType) -> Type | None:
+    """Return VT if a TypedDict behaves like dict[str, VT] (PEP 728), else None.
+
+    This holds if every item, including the extra_items pseudo-item, is
+    non-required, mutable, and consistent with the extra_items type. Such a
+    TypedDict additionally supports dict operations that are normally unsafe,
+    like clear() or __setitem__ with an arbitrary str key.
+    """
+    extra_item = typ.extra_item()
+    if extra_item.typ is None or extra_item.readonly:
+        return None
+    if isinstance(get_proper_type(extra_item.typ), UninhabitedType):
+        return None
+    if typ.required_keys or typ.readonly_keys:
+        return None
+    if not all(is_equivalent(item, extra_item.typ) for item in typ.items.values()):
+        return None
+    return extra_item.typ
+
+
 # This is a common entry point for subtyping checks (both proper and non-proper).
 # Never call this private function directly, use the public versions.
 def _is_subtype(
@@ -934,7 +954,60 @@ class SubtypeVisitor(TypeVisitor[bool]):
     def visit_typeddict_type(self, left: TypedDictType) -> bool:
         right = self.right
         if isinstance(right, Instance):
-            return self._is_subtype(left.fallback, right)
+            if self._is_subtype(left.fallback, right):
+                return True
+            if left.extra_items is None:
+                # A default-open TypedDict implicitly allows extra items of type
+                # ReadOnly[object], so the fallback (which derives from
+                # Mapping[str, object]) is already its most precise Mapping view.
+                return False
+            mapping_info = next(
+                (base for base in left.fallback.type.mro if base.fullname == "typing.Mapping"),
+                None,
+            )
+            if mapping_info is None:
+                return False
+            str_type = map_instance_to_supertype(left.fallback, mapping_info).args[0]
+            extra_item = left.extra_item()
+            assert extra_item.typ is not None
+            value_types = list(left.items.values())
+            if not isinstance(get_proper_type(extra_item.typ), UninhabitedType):
+                value_types.append(extra_item.typ)
+            # PEP 728: a TypedDict with closed=True or extra_items= set is
+            # assignable to Mapping[str, VT] when all of its value types are
+            # assignable to VT.
+            precise_mapping = Instance(mapping_info, [str_type, UnionType.make_union(value_types)])
+            if self._is_subtype(precise_mapping, right):
+                return True
+            # PEP 728: it is additionally assignable to dict[str, VT] (or
+            # MutableMapping[str, VT]) if every item, including the extra_items
+            # pseudo-item, is non-required, mutable, and consistent with VT.
+            if (
+                right.type.fullname not in ("builtins.dict", "typing.MutableMapping")
+                or len(right.args) != 2
+            ):
+                return False
+            if extra_item.readonly or isinstance(get_proper_type(extra_item.typ), UninhabitedType):
+                return False
+            if left.required_keys or left.readonly_keys:
+                return False
+
+            def consistent(l: Type, r: Type) -> bool:
+                if self.proper_subtype:
+                    return is_same_type(l, r)
+                return is_equivalent(
+                    l,
+                    r,
+                    ignore_type_params=self.subtype_context.ignore_type_params,
+                    options=self.options,
+                )
+
+            right_key, right_value = right.args
+            if not consistent(str_type, right_key):
+                return False
+            if not consistent(extra_item.typ, right_value):
+                return False
+            return all(consistent(t, right_value) for t in left.items.values())
         elif isinstance(right, TypedDictType):
             if left == right:
                 return True  # Fast path

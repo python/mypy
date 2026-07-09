@@ -127,6 +127,7 @@ from mypy.subtypes import (
     is_same_type,
     is_subtype,
     non_method_protocol_members,
+    typed_dict_dict_value_type,
 )
 from mypy.traverser import (
     all_name_and_member_expressions,
@@ -4879,6 +4880,9 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                 ):
                     key_names.append(key_type.value)
                 else:
+                    result = self.typeddict_arbitrary_str_key_item(td_type, typ, setitem)
+                    if result is not None:
+                        return result, set()
                     self.msg.typeddict_key_must_be_string_literal(td_type, index)
                     return AnyType(TypeOfAny.from_error), set()
 
@@ -4893,6 +4897,29 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                 return AnyType(TypeOfAny.from_error), set()
             value_types.append(item.typ)
         return make_simplified_union(value_types), set(key_names)
+
+    def typeddict_arbitrary_str_key_item(
+        self, td_type: TypedDictType, key_type: Type, setitem: bool
+    ) -> Type | None:
+        """Handle indexing a PEP 728 TypedDict with an arbitrary str key.
+
+        Reads are allowed on any TypedDict with closed=True or extra_items= set,
+        yielding the union of all value types. Writes are only allowed if the
+        TypedDict behaves like dict[str, VT]. Return None if the operation is
+        not allowed.
+        """
+        if td_type.extra_items is None:
+            return None
+        if not is_subtype(key_type, self.named_type("builtins.str")):
+            return None
+        if setitem:
+            return typed_dict_dict_value_type(td_type)
+        extra_item = td_type.extra_item()
+        assert extra_item.typ is not None
+        value_types = list(td_type.items.values())
+        if not isinstance(get_proper_type(extra_item.typ), UninhabitedType):
+            value_types.append(extra_item.typ)
+        return make_simplified_union(value_types)
 
     def visit_enum_index_expr(
         self, enum_type: TypeInfo, index: Expression, context: Context

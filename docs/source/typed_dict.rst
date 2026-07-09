@@ -425,6 +425,35 @@ arguments of that type when used with ``Unpack`` to type ``**kwargs``:
 
    g(name="No Country for Old Men", year=2007)  # OK
 
+Since all the value types of a TypedDict with ``extra_items`` (or
+``closed=True``) are known, it is assignable to ``Mapping[str, VT]``
+whenever they are all assignable to ``VT``, its ``values()`` and
+``items()`` methods return precisely typed views, and it can be indexed
+with an arbitrary ``str`` key:
+
+.. code-block:: python
+
+   def h(movie: MovieExtra, key: str) -> None:
+       m: Mapping[str, int | str] = movie  # OK
+       reveal_type(movie.items())  # Revealed type is "dict_items[str, str | int]"
+       reveal_type(movie[key])     # Revealed type is "str | int"
+
+Moreover, if every item is non-required, mutable, and consistent with
+``extra_items``, the TypedDict is assignable to ``dict[str, VT]`` and
+supports operations that would otherwise be unsafe on a TypedDict, such
+as ``clear()``, ``popitem()``, and assigning or deleting arbitrary
+``str`` keys:
+
+.. code-block:: python
+
+   class IntDict(TypedDict, extra_items=int):
+       pass
+
+   def counters(d: IntDict, key: str) -> None:
+       v: dict[str, int] = d  # OK
+       d[key] = 42            # OK
+       d.clear()              # OK
+
 Unions of TypedDicts
 --------------------
 

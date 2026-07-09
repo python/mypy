@@ -61,7 +61,7 @@ from mypy.plugins.singledispatch import (
     create_singledispatch_function_callback,
     singledispatch_register_callback,
 )
-from mypy.subtypes import is_subtype
+from mypy.subtypes import is_subtype, typed_dict_dict_value_type
 from mypy.typeops import is_literal_type_like, make_simplified_union
 from mypy.types import (
     TPDICT_FB_NAMES,
@@ -85,6 +85,9 @@ from mypy.types import (
 TD_SETDEFAULT_NAMES: Final = {n + ".setdefault" for n in TPDICT_FB_NAMES}
 TD_POP_NAMES: Final = {n + ".pop" for n in TPDICT_FB_NAMES}
 TD_DELITEM_NAMES: Final = {n + ".__delitem__" for n in TPDICT_FB_NAMES}
+# In some test fixtures values() is inherited from Mapping, like get().
+TD_VALUES_NAMES: Final = {n + ".values" for n in TPDICT_FB_NAMES} | {"typing.Mapping.values"}
+TD_ITEMS_NAMES: Final = {n + ".items" for n in TPDICT_FB_NAMES}
 
 TD_UPDATE_METHOD_NAMES: Final = (
     {n + ".update" for n in TPDICT_FB_NAMES}
@@ -155,6 +158,10 @@ class DefaultPlugin(Plugin):
             return typed_dict_pop_callback
         elif fullname in TD_DELITEM_NAMES:
             return typed_dict_delitem_callback
+        elif fullname in TD_VALUES_NAMES:
+            return typed_dict_values_callback
+        elif fullname in TD_ITEMS_NAMES:
+            return typed_dict_items_callback
         elif fullname == "_ctypes.Array.__getitem__":
             return array_getitem_callback
         elif fullname == "_ctypes.Array.__iter__":
@@ -483,6 +490,10 @@ def typed_dict_delitem_callback(ctx: MethodContext) -> Type:
         key_expr = ctx.args[0][0]
         keys = try_getting_str_literals(key_expr, ctx.arg_types[0][0])
         if keys is None:
+            if typed_dict_dict_value_type(ctx.type) is not None:
+                # Arbitrary str keys can be deleted from a TypedDict that
+                # behaves like dict[str, VT] (PEP 728).
+                return ctx.default_return_type
             ctx.api.fail(
                 message_registry.TYPEDDICT_KEY_MUST_BE_STRING_LITERAL,
                 key_expr,
@@ -501,6 +512,49 @@ def typed_dict_delitem_callback(ctx: MethodContext) -> Type:
                 # The key is unknown (default-open TypedDict) or provably
                 # absent (closed TypedDict).
                 ctx.api.msg.typeddict_key_not_found(ctx.type, key, key_expr)
+    return ctx.default_return_type
+
+
+def _typed_dict_value_union(td: TypedDictType) -> Type:
+    """The union of all value types of a closed or extra_items TypedDict (PEP 728)."""
+    value_types = list(td.items.values())
+    extra_item = td.extra_item()
+    assert extra_item.typ is not None
+    if not isinstance(get_proper_type(extra_item.typ), UninhabitedType):
+        value_types.append(extra_item.typ)
+    return make_simplified_union(value_types)
+
+
+def typed_dict_values_callback(ctx: MethodContext) -> Type:
+    """Infer a precise return type for TypedDict.values (PEP 728).
+
+    The values of a TypedDict with closed=True or extra_items= set are known
+    exactly, so the imprecise object value type can be replaced with their union.
+    """
+    if isinstance(ctx.type, TypedDictType) and ctx.type.extra_items is not None:
+        default = get_proper_type(ctx.default_return_type)
+        if isinstance(default, Instance) and default.args:
+            args = list(default.args)
+            args[-1] = _typed_dict_value_union(ctx.type)
+            return default.copy_modified(args=args)
+    return ctx.default_return_type
+
+
+def typed_dict_items_callback(ctx: MethodContext) -> Type:
+    """Infer a precise return type for TypedDict.items (PEP 728)."""
+    if isinstance(ctx.type, TypedDictType) and ctx.type.extra_items is not None:
+        default = get_proper_type(ctx.default_return_type)
+        if isinstance(default, Instance) and default.args:
+            value_type = _typed_dict_value_union(ctx.type)
+            args = list(default.args)
+            last = get_proper_type(args[-1])
+            if isinstance(last, TupleType) and len(last.items) == 2:
+                # e.g. Iterable[tuple[str, object]]
+                args[-1] = last.copy_modified(items=[last.items[0], value_type])
+            else:
+                # e.g. dict_items[str, object]
+                args[-1] = value_type
+            return default.copy_modified(args=args)
     return ctx.default_return_type
 
 
