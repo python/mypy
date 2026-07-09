@@ -3080,4 +3080,3 @@ L0:
     r5 = g(r4)
     dec_ref o
     return r5
-
