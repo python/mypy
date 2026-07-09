@@ -1007,9 +1007,11 @@ class SubtypeVisitor(TypeVisitor[bool]):
                     if r.typ is None:
                         check = True
                     elif l.typ is None:
-                        # Keys cannot be dropped in an open subtype
-                        # as this would implicitly widen the type constraint
-                        check = False
+                        # The key is missing in a default-open left, so its implicit
+                        # item is ReadOnly[NotRequired[object]] (PEP 728). Only a
+                        # top-typed item on the right can accommodate that.
+                        obj = Instance(left.fallback.type.mro[-1], [])
+                        check = self._is_subtype(obj, r.typ)
                     else:
                         check = self._is_subtype(l.typ, r.typ)
                 if not check:

@@ -6417,3 +6417,28 @@ if int():
     reveal_type(meet(fIO))  # N: Revealed type is "TypedDict('__main__.ExtraInt', {'name': builtins.str}, extra_items=builtins.int)"
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictSubtypingTopTypeReadOnlyKeyCanBeMissing]
+from typing import NotRequired, ReadOnly, TypedDict
+class A(TypedDict):
+    name: str
+    x: ReadOnly[NotRequired[object]]
+class ANonTop(TypedDict):
+    name: str
+    x: ReadOnly[NotRequired[int]]
+class AReq(TypedDict):
+    name: str
+    x: ReadOnly[object]
+class B(TypedDict):
+    name: str
+class BExtra(TypedDict, extra_items=int):
+    name: str
+def f(b: B, be: BExtra) -> None:
+    # PEP 728: an item that is read-only, not required, and of top value type
+    # does not require the corresponding key to be present in the subtype.
+    a: A = b
+    a2: A = be
+    bad: ANonTop = b  # E: Incompatible types in assignment (expression has type "B", variable has type "ANonTop")
+    bad2: AReq = b  # E: Incompatible types in assignment (expression has type "B", variable has type "AReq")
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
