@@ -4800,13 +4800,13 @@ class A(TypedDict, total=True):
 class B(TypedDict, total=False):
     key: ReadOnly[int]
 
-class C(B, A):
+class C(B, A):  # E: Field "key" is required in base class "A" but not in base class "B"
     pass
 class D(A, B):
     pass
 
 c: C
-reveal_type(c)  # N: Revealed type is "TypedDict('__main__.C', {'key'=: builtins.int})"
+reveal_type(c)  # N: Revealed type is "TypedDict('__main__.C', {'key'?=: builtins.int})"
 d: D
 reveal_type(d)  # N: Revealed type is "TypedDict('__main__.D', {'key'=: builtins.int})"
 [builtins fixtures/dict.pyi]
@@ -6747,5 +6747,36 @@ def test(ti: TDInt, ts: TDStr, tro: TDRO, tc: TDClosed, to: TDOpen) -> None:
     u(**ti)
     u(**ts)  # E: Argument 1 to "u" has incompatible type "**TDStr"; expected "int"
     u(**tc)
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictReadOnlyRedeclarationRequiredness]
+from typing import NotRequired, ReadOnly, Required, TypedDict
+
+class Base(TypedDict):
+    a: Required[int]
+    b: ReadOnly[NotRequired[int]]
+    c: ReadOnly[Required[int]]
+
+class MutableAsReadOnly(Base):
+    a: ReadOnly[int]  # E: Cannot redeclare mutable field "a" of base class "Base" as read-only
+
+class StrengthenReadOnly(Base):  # OK: a read-only item may be made required
+    b: ReadOnly[Required[int]]
+
+class WeakenReadOnly(Base):
+    c: ReadOnly[NotRequired[int]]  # E: Field "c" is required in base class "Base"
+
+class Left(TypedDict):
+    x: ReadOnly[NotRequired[int]]
+
+class Right(TypedDict):
+    x: ReadOnly[Required[int]]
+
+class Conflict(Left, Right):  # E: Field "x" is required in base class "Right" but not in base class "Left"
+    pass
+
+class Resolvable(Right, Left):  # OK: "Right" strengthens the item declared in "Left"
+    pass
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]

@@ -316,6 +316,7 @@ class TypedDictAnalyzer:
         field_name: str,
         source: FieldSource,
         is_required: bool,
+        is_readonly: bool,
         primary_source_base: TypeInfo | None,
         ctx: Context,
     ) -> None:
@@ -325,6 +326,12 @@ class TypedDictAnalyzer:
             if primary_source_base is None:
                 self.fail(
                     f'Field "{field_name}" is required in base class "{source.base.name}"', ctx
+                )
+            elif is_readonly:
+                self.fail(
+                    f'Field "{field_name}" is required in base class "{source.base.name}" but '
+                    f'not in base class "{primary_source_base.name}"',
+                    ctx,
                 )
             else:
                 self.fail(
@@ -483,13 +490,8 @@ class TypedDictAnalyzer:
                 base=primary_source.base, ctx=primary_source.ctx
             )
 
-            if primary_source.is_readonly:
-                # If the primary source is readonly, all sources are readonly
-                is_readonly = True
-                is_required = any(source.is_required for source in sources)
-            else:
-                is_readonly = False
-                is_required = primary_source.is_required
+            is_readonly = primary_source.is_readonly
+            is_required = primary_source.is_required
 
             if is_required:
                 required_keys.add(field_name)
@@ -498,8 +500,23 @@ class TypedDictAnalyzer:
 
             for source in sources:
                 if source is not primary_source:
+                    if is_readonly and not source.is_readonly:
+                        # Only reachable when the child redeclares a mutable base
+                        # field as read-only: a mutable base source would otherwise
+                        # have been selected as the primary source.
+                        assert source.base is not None
+                        self.fail(
+                            f'Cannot redeclare mutable field "{field_name}" of base class '
+                            f'"{source.base.name}" as read-only',
+                            primary_source.ctx,
+                        )
                     self.verify_requiredness_compatibility(
-                        field_name, source, is_required, primary_source.base, primary_source.ctx
+                        field_name,
+                        source,
+                        is_required,
+                        is_readonly,
+                        primary_source.base,
+                        primary_source.ctx,
                     )
             self.verify_field_against_extra_items(
                 field_name, is_required, extra_bases, primary_source.base, primary_source.ctx
