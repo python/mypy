@@ -3038,7 +3038,7 @@ class TypedDictType(ProperType):
         "extra_items",
         "extra_items_readonly",
         "fallback",
-        "extra_items_from",
+        "merged_from",
         "to_be_mutated",
     )
 
@@ -3049,7 +3049,9 @@ class TypedDictType(ProperType):
     extra_items_readonly: bool
     fallback: Instance
 
-    extra_items_from: list[ProperType]  # only used during semantic analysis
+    # TypedDicts merged in with ** in an inline TypedDict; only used during
+    # semantic analysis. Unrelated to the PEP 728 extra_items field above.
+    merged_from: list[ProperType]
     to_be_mutated: bool  # only used in a plugin for `.update`, `|=`, etc
 
     def __init__(
@@ -3073,7 +3075,7 @@ class TypedDictType(ProperType):
         self.fallback = fallback
         self.can_be_true = len(self.items) > 0
         self.can_be_false = len(self.required_keys) == 0
-        self.extra_items_from = []
+        self.merged_from = []
         self.to_be_mutated = False
 
     @property

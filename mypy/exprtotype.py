@@ -258,11 +258,11 @@ def expr_to_unanalyzed_type(
         if not expr.items:
             raise TypeTranslationError()
         items: dict[str, Type] = {}
-        extra_items_from = []
+        merged_from = []
         for item_name, value in expr.items:
             if not isinstance(item_name, StrExpr):
                 if item_name is None:
-                    extra_items_from.append(
+                    merged_from.append(
                         expr_to_unanalyzed_type(
                             value,
                             options,
@@ -279,7 +279,7 @@ def expr_to_unanalyzed_type(
         result = TypedDictType(
             items, set(), set(), Instance(MISSING_FALLBACK, ()), expr.line, expr.column
         )
-        result.extra_items_from = extra_items_from
+        result.merged_from = merged_from
         return result
     else:
         raise TypeTranslationError()

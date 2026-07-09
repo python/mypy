@@ -1101,6 +1101,7 @@ class ASTStubGenerator(BaseStubGenerator, mypy.traverser.TraverserVisitor):
         items: list[tuple[str, Expression]] = []
         total: Expression | None = None
         closed: Expression | None = None
+        extra_items: Expression | None = None
         if len(rvalue.args) > 1 and rvalue.arg_kinds[1] == ARG_POS:
             if not isinstance(rvalue.args[1], DictExpr):
                 self.annotate_as_incomplete(lvalue)
@@ -1115,6 +1116,8 @@ class ASTStubGenerator(BaseStubGenerator, mypy.traverser.TraverserVisitor):
                     total = arg
                 elif arg_name == "closed":
                     closed = arg
+                elif arg_name == "extra_items":
+                    extra_items = arg
                 else:
                     self.annotate_as_incomplete(lvalue)
                     return
@@ -1139,6 +1142,8 @@ class ASTStubGenerator(BaseStubGenerator, mypy.traverser.TraverserVisitor):
                 bases += f", total={total.accept(p)}"
             if closed is not None:
                 bases += f", closed={closed.accept(p)}"
+            if extra_items is not None:
+                bases += f", extra_items={extra_items.accept(p)}"
             class_def = f"{self._indent}class {lvalue.name}({bases}):"
             if len(items) == 0:
                 self.add(f"{class_def} ...\n")

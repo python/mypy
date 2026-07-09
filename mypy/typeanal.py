@@ -1395,7 +1395,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             extra_items_readonly = False
             required_keys = req_keys
             fallback = self.named_type("typing._TypedDict")
-            for typ in t.extra_items_from:
+            for typ in t.merged_from:
                 analyzed = self.analyze_type(typ)
                 p_analyzed = get_proper_type(analyzed)
                 if not isinstance(p_analyzed, TypedDictType):

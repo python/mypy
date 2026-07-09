@@ -2135,16 +2135,16 @@ class TypeConverter:
         if not n.keys:
             return self.invalid_type(n)
         items: dict[str, Type] = {}
-        extra_items_from = []
+        merged_from = []
         for item_name, value in zip(n.keys, n.values):
             if not isinstance(item_name, ast3.Constant) or not isinstance(item_name.value, str):
                 if item_name is None:
-                    extra_items_from.append(self.visit(value))
+                    merged_from.append(self.visit(value))
                     continue
                 return self.invalid_type(n)
             items[item_name.value] = self.visit(value)
         result = TypedDictType(items, set(), set(), _dummy_fallback, n.lineno, n.col_offset)
-        result.extra_items_from = extra_items_from
+        result.merged_from = merged_from
         return result
 
     # Attribute(expr value, identifier attr, expr_context ctx)
