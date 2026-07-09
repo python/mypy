@@ -6677,3 +6677,43 @@ def f(movie: MovieExtraInt, closed: Closed, open_td: Open, d: IntDictWithNum, ke
     movie.clear()  # E: "MovieExtraInt" has no attribute "clear"
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictExtraItemsRecursive]
+from typing import TypedDict
+
+class Tree(TypedDict, extra_items="Tree"):
+    name: str
+
+t: Tree = {"name": "root", "child": {"name": "leaf"}}
+t2: Tree = {"name": "root", "child": {"name": "leaf", "bad": 1}}  # E: Incompatible types (expression has type "int", extra TypedDict item "bad" has type "Tree")
+
+def f(t: Tree) -> None:
+    reveal_type(t["child"])  # N: Revealed type is "TypedDict('__main__.Tree', {'name': builtins.str}, extra_items=TypedDict('__main__.Tree', {'name': builtins.str}, extra_items=...))"
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictExtraItemsUnpackProtocolEquivalence]
+from typing import Protocol, TypedDict
+from typing_extensions import Unpack
+
+class MovieExtra(TypedDict, extra_items=int):
+    name: str
+
+class UnpackSig(Protocol):
+    def __call__(self, **kwargs: Unpack[MovieExtra]) -> None: ...
+class ExplicitSig(Protocol):
+    def __call__(self, *, name: str, **kwargs: int) -> None: ...
+class WrongSig(Protocol):
+    def __call__(self, *, name: str, **kwargs: str) -> None: ...
+
+def g(**kwargs: Unpack[MovieExtra]) -> None: ...
+def g_explicit(*, name: str, **kwargs: int) -> None: ...
+
+p1: ExplicitSig = g
+p2: UnpackSig = g_explicit
+p3: UnpackSig = g
+p4: ExplicitSig = g_explicit
+p5: WrongSig = g  # E: Incompatible types in assignment (expression has type "def g(**kwargs: Unpack[MovieExtra]) -> None", variable has type "WrongSig") \
+                  # N: "WrongSig.__call__" has type "def __call__(self, *, name: str, **kwargs: str) -> None"
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
