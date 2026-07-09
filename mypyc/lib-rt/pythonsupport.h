@@ -52,7 +52,7 @@ extern "C" {
 // Only the hot case is inlined here: an incref of a value owned by this thread or
 // immortal, via '_Py_TryIncrefFast' (no CAS, no loop). Everything colder --
 // '_Py_TryIncrefCompare's cross-thread shared-refcount CAS + pointer
-// re-validation, and the critical-section fallback -- lives out-of-line in
+// re-validation, and the _Py_NewRefWithLock fallback -- lives out-of-line in
 // 'CPy_GetAttrRefSlow'. Splitting it this way keeps each call site's fast path
 // small enough to inline, which is measurably faster than letting the compiler
 // auto-out-line the whole helper (that merges every read site's branch history
@@ -79,7 +79,7 @@ static inline PyObject *CPy_GetAttrRef(PyObject *self, PyObject **field) {
 // use-after-free race that CPy_GetAttrRef guards against cannot happen: the field
 // holds a strong reference for the object's whole lifetime, and any thread reading
 // it necessarily holds 'self', which keeps the value alive. So the try-incref +
-// pointer re-validation + critical-section fallback are all unnecessary here -- a
+// pointer re-validation + _Py_NewRefWithLock fallback are all unnecessary here -- a
 // plain load + Py_INCREF is safe. A cross-thread Py_INCREF is an unconditional
 // atomic add on ob_ref_shared, so (unlike CPy_GetAttrRef's try-incref) it needs no
 // maybe-weakref and has no slow path. The load is relaxed rather than acquire: the
@@ -133,8 +133,8 @@ static inline void CPy_DecRefAttrOld(PyObject *op) {
 //     pointer.
 //   - A concurrent cross-thread reader whose fast-path try-incref fails on an
 //     unflagged 'value' does not spin: CPy_GetAttrRef falls into its
-//     critical-section fallback (CPy_GetAttrRefSlow -> _Py_NewRefWithLock), which
-//     cannot fail and sets maybe-weakref lazily on that first read.
+//     _Py_NewRefWithLock fallback (CPy_GetAttrRefSlow), which cannot fail and
+//     sets maybe-weakref lazily on that first read.
 // This mirrors CPy_InitAttrRef, which already omits SetMaybeWeakref for the same
 // reason. Setting the flag here would only be a possible performance tuning knob
 // (it keeps that first cross-thread reader on the lock-free path instead of the
