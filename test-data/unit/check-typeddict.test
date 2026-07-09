@@ -6717,3 +6717,35 @@ p5: WrongSig = g  # E: Incompatible types in assignment (expression has type "de
                   # N: "WrongSig.__call__" has type "def __call__(self, *, name: str, **kwargs: str) -> None"
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictExtraItemsCallSiteStarStar]
+from typing import ReadOnly, TypedDict
+from typing_extensions import Unpack
+
+class TDInt(TypedDict, extra_items=int):
+    name: str
+class TDStr(TypedDict, extra_items=str):
+    name: str
+class TDRO(TypedDict, extra_items=ReadOnly[int]):
+    name: str
+class TDClosed(TypedDict, closed=True):
+    name: str
+class TDOpen(TypedDict):
+    name: str
+
+def f(*, name: str, **kwargs: int) -> None: ...
+def g(*, name: str) -> None: ...
+def u(**kwargs: Unpack[TDInt]) -> None: ...
+
+def test(ti: TDInt, ts: TDStr, tro: TDRO, tc: TDClosed, to: TDOpen) -> None:
+    f(**ti)
+    f(**ts)  # E: Argument 1 to "f" has incompatible type "**TDStr"; expected "int"
+    f(**tro)  # Reading read-only extra items is fine.
+    f(**tc)  # A closed TypedDict contributes no extra keys.
+    f(**to)  # The possible extra keys of a default-open TypedDict are not typed.
+    g(**ti)  # No **kwargs in the callee: the extra keys may all be absent.
+    u(**ti)
+    u(**ts)  # E: Argument 1 to "u" has incompatible type "**TDStr"; expected "int"
+    u(**tc)
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]

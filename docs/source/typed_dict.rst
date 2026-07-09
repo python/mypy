@@ -425,6 +425,17 @@ arguments of that type when used with ``Unpack`` to type ``**kwargs``:
 
    g(name="No Country for Old Men", year=2007)  # OK
 
+Conversely, when calling a function with ``**movie``, the extra items
+that ``movie`` may contain are checked against the function's
+``**kwargs`` type:
+
+.. code-block:: python
+
+   def plain(**kwargs: str) -> None: ...
+
+   def h(movie: MovieExtra) -> None:
+       plain(**movie)  # Error: incompatible type "**MovieExtra"; expected "str"
+
 Since all the value types of a TypedDict with ``extra_items`` (or
 ``closed=True``) are known, it is assignable to ``Mapping[str, VT]``
 whenever they are all assignable to ``VT``, its ``values()`` and

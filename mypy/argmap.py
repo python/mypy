@@ -91,6 +91,16 @@ def map_actuals_to_formals(
                         formal_to_actual[formal_names.index(name)].append(ai)
                     elif nodes.ARG_STAR2 in formal_kinds:
                         formal_to_actual[formal_kinds.index(nodes.ARG_STAR2)].append(ai)
+                if (
+                    actualt.extra_items is not None
+                    and not actualt.is_closed
+                    and nodes.ARG_STAR2 in formal_kinds
+                ):
+                    # The TypedDict may contain extra keys of the extra_items type
+                    # (PEP 728); map the pseudo-item to the callee's **kwargs so it
+                    # is checked as well. Without a **kwargs formal the extra keys
+                    # are ignored, like the possible extra keys of an open TypedDict.
+                    formal_to_actual[formal_kinds.index(nodes.ARG_STAR2)].append(ai)
             else:
                 # We don't exactly know which **kwargs are provided by the
                 # caller, so we'll defer until all the other unambiguous
@@ -248,7 +258,12 @@ class ArgTypeExpander:
                     assert formal_name is not None
                 else:
                     # Pick an arbitrary item if no specified keyword is expected.
-                    formal_name = (set(actual_type.items.keys()) - self.kwargs_used).pop()
+                    unused_names = set(actual_type.items.keys()) - self.kwargs_used
+                    if not unused_names and actual_type.extra_items is not None:
+                        # The named items are exhausted, so this mapping is for the
+                        # extra_items pseudo-item (PEP 728).
+                        return actual_type.extra_items
+                    formal_name = unused_names.pop()
                 self.kwargs_used.add(formal_name)
                 return actual_type.items[formal_name]
             elif isinstance(actual_type, Instance) and is_subtype(
