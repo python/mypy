@@ -1174,7 +1174,8 @@ def generate_getter(cl: ClassIR, attr: str, rtype: RType, emitter: Emitter) -> N
         #
         # Final attributes are never rebound (no setter), so there is no concurrent
         # writer to race with: a plain load + incref is safe. Use the cheaper
-        # CPy_GetAttrRefFinal, which skips the try-incref/re-validation machinery.
+        # CPy_GetAttrRefFinal, which skips the try-incref and _Py_NewRefWithLock
+        # slow path entirely (an unconditional Py_INCREF needs no maybe-weakref).
         # This getter is generated per defining class, so a direct membership test
         # matches the read-only getset table above (no need to walk the MRO).
         if attr in cl.final_attributes:

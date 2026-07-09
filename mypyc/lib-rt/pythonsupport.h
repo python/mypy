@@ -78,8 +78,8 @@ static inline PyObject *CPy_GetAttrRef(PyObject **field) {
 // use-after-free race that CPy_GetAttrRef guards against cannot happen: the field
 // holds a strong reference for the object's whole lifetime, and any thread reading
 // it necessarily holds 'self', which keeps the value alive. So the try-incref +
-// _Py_NewRefWithLock fallback are unnecessary here -- a
-// plain load + Py_INCREF is safe. A cross-thread Py_INCREF is an unconditional
+// _Py_NewRefWithLock fallback are unnecessary here -- a plain load + Py_INCREF is
+// safe. A cross-thread Py_INCREF is an unconditional
 // atomic add on ob_ref_shared, so (unlike CPy_GetAttrRef's try-incref) it needs no
 // maybe-weakref and has no slow path. The load is relaxed rather than acquire: the
 // reader reached 'self' through a synchronization edge (self's own publication)
@@ -99,8 +99,8 @@ static inline PyObject *CPy_GetAttrRefFinal(PyObject **field) {
 // CPy_GetAttrRef reads the field optimistically without holding any lock the
 // writer also takes, so a reader can load the old pointer and then try to take a
 // reference after this store. The old value must therefore stay alive until every
-// thread has passed a quiescent point, which is
-// exactly what a QSBR-deferred decref guarantees. So all mortal old values are
+// thread has passed a quiescent point, which is exactly what a QSBR-deferred
+// decref guarantees. So all mortal old values are
 // reclaimed via _PyObject_XDecRefDelayed, matching CPython's own replace-a-slot
 // paths (e.g. _PyObject_SetDict / _PyObject_SetManagedDict).
 //
