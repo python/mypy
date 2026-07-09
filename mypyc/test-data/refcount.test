@@ -2569,7 +2569,7 @@ def D.foo(self):
 L0:
     return 2
 
-[case testBorrowedFinalAttribute5]
+[case testBorrowedFinalAttribute5_64bit]
 from typing import Final
 from librt.vecs import vec
 from mypy_extensions import i64
