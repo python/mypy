@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Final
 
-from mypyc.common import IS_32_BIT_PLATFORM, PLATFORM_SIZE
+from mypyc.common import IS_32_BIT_PLATFORM, KEEP_ALIVE_SHORT_LIVED, PLATFORM_SIZE
 from mypyc.ir.ops import (
     ERR_MAGIC,
     Assign,
@@ -351,7 +351,7 @@ def vec_get_item_unsafe_lower(
     vtype = base.type
     item_addr = vec_item_ptr(builder, base, index)
     result = vec_load_mem_item(builder, item_addr, vtype.item_type, can_borrow=can_borrow)
-    builder.keep_alives.append(base)
+    builder.add_keep_alive(base, KEEP_ALIVE_SHORT_LIVED)
     return result
 
 

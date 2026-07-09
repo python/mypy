@@ -49,7 +49,7 @@ from mypy.nodes import (
     YieldExpr,
     YieldFromExpr,
 )
-from mypyc.common import TEMP_ATTR_NAME
+from mypyc.common import KEEP_ALIVE_SHORT_LIVED, KEEP_ALIVE_WHOLE_EXPRESSION, TEMP_ATTR_NAME
 from mypyc.ir.ops import (
     ERR_NEVER,
     NAMESPACE_MODULE,
@@ -86,7 +86,13 @@ from mypyc.ir.rtypes import (
     object_rprimitive,
 )
 from mypyc.irbuild.ast_helpers import is_borrow_friendly_expr, process_conditional
-from mypyc.irbuild.builder import IRBuilder, create_type_params, int_borrow_friendly_op
+from mypyc.irbuild.builder import (
+    IRBuilder,
+    create_type_params,
+    expr_has_suspend,
+    find_walrus_targets,
+    int_borrow_friendly_op,
+)
 from mypyc.irbuild.for_helpers import for_loop_helper
 from mypyc.irbuild.generator import add_raise_exception_blocks_to_generator_class
 from mypyc.irbuild.nonlocalcontrol import (
@@ -161,10 +167,17 @@ def transform_expression_stmt(builder: IRBuilder, stmt: ExpressionStmt) -> None:
     if isinstance(stmt.expr, StrExpr):
         # Docstring. Ignore
         return
-    # ExpressionStmts do not need to be coerced like other Expressions, so we shouldn't
-    # call builder.accept here.
+    # ExpressionStmts do not need to be coerced like other Expressions, so
+    # we shouldn't call builder.accept here.
+    builder.expression_depth += 1
+    builder.reassigned_in_expr = find_walrus_targets(stmt.expr)
+    builder.expr_has_suspend = expr_has_suspend(stmt.expr)
     stmt.expr.accept(builder.visitor)
-    builder.flush_keep_alives(stmt.line)
+    builder.expression_depth -= 1
+    builder.reassigned_in_expr = set()
+    builder.expr_has_suspend = False
+    builder.flush_keep_alives(stmt.line, scope=KEEP_ALIVE_SHORT_LIVED)
+    builder.flush_keep_alives(stmt.line, scope=KEEP_ALIVE_WHOLE_EXPRESSION)
 
 
 def transform_return_stmt(builder: IRBuilder, stmt: ReturnStmt) -> None:

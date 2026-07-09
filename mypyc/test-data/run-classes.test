@@ -6104,3 +6104,76 @@ base = sys.getrefcount(BIG)
 o.v = BIG
 o.v = BIG
 assert sys.getrefcount(BIG) == base, "reassignment leaked refs"
+
+[case testBorrowedFinalAttributeInLambdaAndNestedFunction]
+from typing import Final, Callable
+
+class Box:
+    def __init__(self, n: int) -> None:
+        self.n = n
+
+class C:
+    def __init__(self, b: Box) -> None:
+        self.b: Final = b
+
+def use(x: Box, y: Box) -> int:
+    return x.n + y.n
+
+def spend(x: Box) -> Box:
+    # Allocate a lot so a freed Box slot is likely to be reused, turning any
+    # use-after-free of a borrowed attribute into an observable wrong result.
+    junk = [Box(i) for i in range(100)]
+    return Box(x.n + junk[50].n - 50)
+
+def make_lambda() -> Callable[[], int]:
+    # The lambda body creates a C, borrows its final attribute, then calls
+    # spend() (which allocates heavily) before reading the borrow.
+    return lambda: use(C(Box(111)).b, spend(Box(0)))
+
+def make_nested() -> Callable[[], int]:
+    def inner() -> int:
+        return use(C(Box(111)).b, spend(Box(0)))
+    return inner
+
+def test_borrowed_final_attribute_in_lambda() -> None:
+    f = make_lambda()
+    for _ in range(1000):
+        assert f() == 111
+
+def test_borrowed_final_attribute_in_nested_function() -> None:
+    g = make_nested()
+    for _ in range(1000):
+        assert g() == 111
+
+[case testBorrowedFinalAttributeInComprehension]
+from typing import Final
+
+class Box:
+    def __init__(self, n: int) -> None:
+        self.n = n
+
+class C:
+    def __init__(self, b: Box) -> None:
+        self.b: Final = b
+
+def use(x: Box, y: Box) -> int:
+    return x.n + y.n
+
+def spend(x: Box) -> Box:
+    # Allocate a lot so a freed Box slot is likely to be reused, turning any
+    # use-after-free of a borrowed attribute into an observable wrong result.
+    junk = [Box(i) for i in range(100)]
+    return Box(x.n + junk[50].n - 50)
+
+def comp(ns: list[int]) -> list[int]:
+    # Each iteration allocates a fresh C, borrows its final attribute .b, then
+    # calls spend() (which allocates heavily) before reading the borrow. The
+    # borrow container must be kept alive for the current iteration only; if it
+    # is scoped to the whole (comprehension) expression, the refcount pass
+    # dec_refs an uninitialized temporary on the loop back-edge and leaks/uses
+    # freed memory.
+    return [use(C(Box(111)).b, spend(Box(i))) for i in ns]
+
+def test_borrowed_final_attribute_in_comprehension() -> None:
+    for _ in range(1000):
+        assert comp([1, 2, 3, 4, 5]) == [112, 113, 114, 115, 116]
