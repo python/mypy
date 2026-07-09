@@ -425,9 +425,7 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         if use_get_attr_ref and cl.is_final_attr(op.attr):
             self.emitter.emit_line(f"{dest} = CPy_GetAttrRefFinal((PyObject **)&{attr_expr});")
         elif use_get_attr_ref:
-            self.emitter.emit_line(
-                f"{dest} = CPy_GetAttrRef((PyObject *){obj}, (PyObject **)&{attr_expr});"
-            )
+            self.emitter.emit_line(f"{dest} = CPy_GetAttrRef((PyObject **)&{attr_expr});")
         else:
             self.emitter.emit_line(f"{dest} = {attr_expr};")
         return use_get_attr_ref

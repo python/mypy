@@ -24,7 +24,7 @@
 #endif
 
 #ifdef Py_GIL_DISABLED
-#include "internal/pycore_object.h"  // _Py_TryIncrefCompare
+#include "internal/pycore_object.h"  // _Py_TryIncrefFast, _Py_TryIncRefShared
 #endif
 
 #if CPY_3_12_FEATURES
@@ -40,27 +40,26 @@ extern "C" {
 
 #ifdef Py_GIL_DISABLED
 // Read a native attribute that is a single reference-counted 'PyObject *' field,
-// returning a new reference (or NULL if the field is NULL/undefined). 'self' is
-// the object owning the field, used only by the cold slow path below.
+// returning a new reference (or NULL if the field is NULL/undefined).
 //
 // On free-threaded builds a plain load followed by an incref races with a
 // concurrent setter that may decref the old value to zero and free it before the
-// incref runs (use-after-free). This mirrors CPython's '_Py_XGetRef':
-// optimistically incref, re-validating the pointer and backing out if a writer
-// changed it.
+// incref runs (use-after-free). CPy_SetAttrRef avoids that by reclaiming old
+// values through QSBR-delayed decref, so a value observed in the field remains
+// safe to touch while this reader is running.
 //
 // Only the hot case is inlined here: an incref of a value owned by this thread or
-// immortal, via '_Py_TryIncrefFast' (no CAS, no loop). Everything colder --
-// '_Py_TryIncrefCompare's cross-thread shared-refcount CAS + pointer
-// re-validation, and the _Py_NewRefWithLock fallback -- lives out-of-line in
-// 'CPy_GetAttrRefSlow'. Splitting it this way keeps each call site's fast path
-// small enough to inline, which is measurably faster than letting the compiler
-// auto-out-line the whole helper (that merges every read site's branch history
-// into one shared copy and mispredicts). It is only used in free-threaded builds;
-// the default (GIL) build keeps the plain load + incref generated inline by mypyc.
-PyObject *CPy_GetAttrRefSlow(PyObject *self, PyObject **field);
+// immortal, via '_Py_TryIncrefFast' (no CAS, no loop). Everything colder -- the
+// cross-thread shared-refcount CAS and the _Py_NewRefWithLock fallback -- lives
+// out-of-line in 'CPy_GetAttrRefSlow'. Splitting it this way keeps each call
+// site's fast path small enough to inline, which is measurably faster than
+// letting the compiler auto-out-line the whole helper (that merges every read
+// site's branch history into one shared copy and mispredicts). It is only used in
+// free-threaded builds; the default (GIL) build keeps the plain load + incref
+// generated inline by mypyc.
+PyObject *CPy_GetAttrRefSlow(PyObject *v);
 
-static inline PyObject *CPy_GetAttrRef(PyObject *self, PyObject **field) {
+static inline PyObject *CPy_GetAttrRef(PyObject **field) {
     PyObject *v = (PyObject *)_Py_atomic_load_ptr_acquire(field);
     if (v == NULL) {
         return NULL;
@@ -68,7 +67,7 @@ static inline PyObject *CPy_GetAttrRef(PyObject *self, PyObject **field) {
     if (_Py_TryIncrefFast(v)) {
         return v;
     }
-    return CPy_GetAttrRefSlow(self, field);
+    return CPy_GetAttrRefSlow(v);
 }
 
 // Read a native attribute that is a single reference-counted 'PyObject *' field
@@ -79,7 +78,7 @@ static inline PyObject *CPy_GetAttrRef(PyObject *self, PyObject **field) {
 // use-after-free race that CPy_GetAttrRef guards against cannot happen: the field
 // holds a strong reference for the object's whole lifetime, and any thread reading
 // it necessarily holds 'self', which keeps the value alive. So the try-incref +
-// pointer re-validation + _Py_NewRefWithLock fallback are all unnecessary here -- a
+// _Py_NewRefWithLock fallback are unnecessary here -- a
 // plain load + Py_INCREF is safe. A cross-thread Py_INCREF is an unconditional
 // atomic add on ob_ref_shared, so (unlike CPy_GetAttrRef's try-incref) it needs no
 // maybe-weakref and has no slow path. The load is relaxed rather than acquire: the
@@ -98,9 +97,9 @@ static inline PyObject *CPy_GetAttrRefFinal(PyObject **field) {
 // Reclaim the previous value of a native attribute after it has been replaced.
 //
 // CPy_GetAttrRef reads the field optimistically without holding any lock the
-// writer also takes, so a reader can load the old pointer and then dereference it
-// (in its try-incref / re-validation) after this store. The old value must
-// therefore stay alive until every thread has passed a quiescent point, which is
+// writer also takes, so a reader can load the old pointer and then try to take a
+// reference after this store. The old value must therefore stay alive until every
+// thread has passed a quiescent point, which is
 // exactly what a QSBR-deferred decref guarantees. So all mortal old values are
 // reclaimed via _PyObject_XDecRefDelayed, matching CPython's own replace-a-slot
 // paths (e.g. _PyObject_SetDict / _PyObject_SetManagedDict).

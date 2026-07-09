@@ -1180,7 +1180,7 @@ def generate_getter(cl: ClassIR, attr: str, rtype: RType, emitter: Emitter) -> N
         if attr in cl.final_attributes:
             getattr_ref = f"CPy_GetAttrRefFinal((PyObject **)&{attr_expr})"
         else:
-            getattr_ref = f"CPy_GetAttrRef((PyObject *)self, (PyObject **)&{attr_expr})"
+            getattr_ref = f"CPy_GetAttrRef((PyObject **)&{attr_expr})"
         emitter.emit_line(f"PyObject *retval = {getattr_ref};")
         emitter.emit_line("if (unlikely(retval == NULL)) {")
         emitter.emit_line("PyErr_SetString(PyExc_AttributeError,")
