@@ -9,6 +9,8 @@ threading primitives.
 Classes
 -------
 
+.. _librt-threading-lock:
+
 Lock
 ^^^^
 

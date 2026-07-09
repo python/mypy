@@ -265,25 +265,31 @@ also be modified.
 Free threading
 --------------
 
-Mypyc has basic support for free threading, but it doesn't provide the
-same memory safety guarantees as Python in compiled modules, since
-in current Python versions this would cause an unacceptable performance
-impact.
+Mypyc supports free threading, but it doesn't provide the exact
+memory safety guarantees as Python in compiled modules under
+free threading when there are race conditions.
 
-The exact details of the memory safety in the presence of data races
-are likely to evolve in the future. Currently, compiled code must
-ensure that proper synchronization is used to prevent data races. In
-particular, these operations require explicit synchronization, such as
-via ``threading.Lock``, if there is a possibility of data races
-(the list is not exhaustive):
+Additionally, optimized primitive operations in compiled code may have
+different atomicity properties compared to CPython. Use explicit
+synchronization if code depends on operations being atomic. This is
+already the recommended approach for normal Python code.
 
-* Reads or writes of non-final instance data attributes of native
-  classes.
-* List item access or iteration using a ``list`` static type (using
-  ``Sequence`` or ``MutableSequence`` as the type ensure correct
-  implicit synchronization).
-* Dict item access using a static ``dict`` type (using ``Mapping``
-  or ``MutableMapping`` ensures correct implicit synchronization).
+Currently, compiled code must ensure that proper synchronization is
+used to prevent data races involving non-final attributes in native
+classes, unless the attribute has a value type such as ``bool``,
+``float`` or ``i64``. You can use explicit
+synchronization, such as via
+:ref:`librt.threading.Lock <librt-threading-lock>` (or
+:py:class:`threading.Lock`, which is less efficient than
+``librt.threading.Lock``) if there is a possibility of such a data
+race.
+
+.. note::
+
+    We are working on improving memory safety in free-threading
+    builds of Python, and hope to make all normal Python features
+    memory safe, while providing more efficient but less safe
+    opt-in, non-standard features.
 
 As libraries often won't be able to control the concurrent access by
 user code, we recommend that modules document that multi-threaded
