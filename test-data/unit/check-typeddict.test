@@ -6175,8 +6175,15 @@ class B(TypedDict, extra_items=NotRequired[int]):  # E: "NotRequired[]" is not a
     x: int
 C = TypedDict('C', {'x': int}, extra_items=Required[str])  # E: "Required[]" is not allowed in "extra_items"
 D = TypedDict('D', {'x': int}, extra_items=[str])  # E: Bracketed expression "[...]" is not valid as a type  # N: Did you mean "List[...]"?
-E = TypedDict('E', {'x': int}, extra_items=int, extra_items=str)  # E: Repeated keyword argument "extra_items" for "TypedDict"
 F = TypedDict('F', {'x': int}, extra_items=lambda: 0)  # E: Invalid "extra_items" argument
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictExtraItemsRepeatedKeyword_no_parallel]
+# The native parser treats a repeated keyword argument as a blocking syntax
+# error, so this case is kept out of the parallel suite (which forces it on).
+from typing import TypedDict
+E = TypedDict('E', {'x': int}, extra_items=int, extra_items=str)  # E: Repeated keyword argument "extra_items" for "TypedDict"
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 
