@@ -8892,6 +8892,7 @@ def builtin_item_type(tp: Type) -> Type | None:
             "builtins.list",
             "builtins.tuple",
             "builtins.dict",
+            "builtins.frozendict",
             "builtins.set",
             "builtins.frozenset",
             "_collections_abc.dict_keys",
