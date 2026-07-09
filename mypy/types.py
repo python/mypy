@@ -3251,6 +3251,18 @@ class TypedDictType(ProperType):
         # Default-open TypedDicts implicitly allow NotRequired[ReadOnly[object]] items.
         return TypedDictItem(None, False, True)
 
+    def value_types_with_extra(self) -> list[Type]:
+        """All value types, including the non-Never extra_items pseudo-item (PEP 728).
+
+        Only meaningful for a TypedDict with closed=True or extra_items= set, whose
+        complete set of value types is statically known.
+        """
+        assert self.extra_items is not None
+        value_types: list[Type] = list(self.items.values())
+        if not self.is_closed:
+            value_types.append(self.extra_items)
+        return value_types
+
     def zipall(self, right: TypedDictType) -> Iterable[tuple[str, TypedDictItem, TypedDictItem]]:
         left = self
         for item_name in left.items:

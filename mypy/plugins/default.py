@@ -515,16 +515,6 @@ def typed_dict_delitem_callback(ctx: MethodContext) -> Type:
     return ctx.default_return_type
 
 
-def _typed_dict_value_union(td: TypedDictType) -> Type:
-    """The union of all value types of a closed or extra_items TypedDict (PEP 728)."""
-    value_types = list(td.items.values())
-    extra_item = td.extra_item()
-    assert extra_item.typ is not None
-    if not isinstance(get_proper_type(extra_item.typ), UninhabitedType):
-        value_types.append(extra_item.typ)
-    return make_simplified_union(value_types)
-
-
 def typed_dict_values_callback(ctx: MethodContext) -> Type:
     """Infer a precise return type for TypedDict.values (PEP 728).
 
@@ -535,7 +525,7 @@ def typed_dict_values_callback(ctx: MethodContext) -> Type:
         default = get_proper_type(ctx.default_return_type)
         if isinstance(default, Instance) and default.args:
             args = list(default.args)
-            args[-1] = _typed_dict_value_union(ctx.type)
+            args[-1] = make_simplified_union(ctx.type.value_types_with_extra())
             return default.copy_modified(args=args)
     return ctx.default_return_type
 
@@ -545,7 +535,7 @@ def typed_dict_items_callback(ctx: MethodContext) -> Type:
     if isinstance(ctx.type, TypedDictType) and ctx.type.extra_items is not None:
         default = get_proper_type(ctx.default_return_type)
         if isinstance(default, Instance) and default.args:
-            value_type = _typed_dict_value_union(ctx.type)
+            value_type = make_simplified_union(ctx.type.value_types_with_extra())
             args = list(default.args)
             last = get_proper_type(args[-1])
             if isinstance(last, TupleType) and len(last.items) == 2:

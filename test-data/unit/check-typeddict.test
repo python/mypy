@@ -6780,3 +6780,33 @@ class Resolvable(Right, Left):  # OK: "Right" strengthens the item declared in "
     pass
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictExtraItemsConstraintInference]
+from typing import Generic, NotRequired, TypedDict, TypeVar
+
+T = TypeVar("T")
+
+class G(TypedDict, Generic[T]):
+    x: NotRequired[T]
+
+class GE(TypedDict, Generic[T], extra_items=T):
+    pass
+
+class TDInt(TypedDict, extra_items=int):
+    pass
+
+class TDNamed(TypedDict, extra_items=int):
+    y: NotRequired[int]
+
+def f(g: G[T]) -> T:
+    return g["x"]
+
+def h(e: GE[T]) -> T:
+    return e["y"]
+
+def test(ti: TDInt, tn: TDNamed) -> None:
+    # The named key on one side is matched against the pseudo-item of the other.
+    reveal_type(f(ti))  # N: Revealed type is "builtins.int"
+    reveal_type(h(tn))  # N: Revealed type is "builtins.int"
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]

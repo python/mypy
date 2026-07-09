@@ -970,13 +970,12 @@ class SubtypeVisitor(TypeVisitor[bool]):
             str_type = map_instance_to_supertype(left.fallback, mapping_info).args[0]
             extra_item = left.extra_item()
             assert extra_item.typ is not None
-            value_types = list(left.items.values())
-            if not isinstance(get_proper_type(extra_item.typ), UninhabitedType):
-                value_types.append(extra_item.typ)
             # PEP 728: a TypedDict with closed=True or extra_items= set is
             # assignable to Mapping[str, VT] when all of its value types are
             # assignable to VT.
-            precise_mapping = Instance(mapping_info, [str_type, UnionType.make_union(value_types)])
+            precise_mapping = Instance(
+                mapping_info, [str_type, UnionType.make_union(left.value_types_with_extra())]
+            )
             if self._is_subtype(precise_mapping, right):
                 return True
             # PEP 728: it is additionally assignable to dict[str, VT] (or

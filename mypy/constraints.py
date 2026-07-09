@@ -1373,11 +1373,16 @@ class ConstraintBuilderVisitor(TypeVisitor[list[Constraint]]):
         actual = self.actual
         if isinstance(actual, TypedDictType):
             res: list[Constraint] = []
-            # NOTE: Non-matching keys are ignored. Compatibility is checked
-            #       elsewhere so this shouldn't be unsafe.
-            for item_name, template_item_type, actual_item_type in template.zip(actual):
-                res.extend(infer_constraints(template_item_type, actual_item_type, self.direction))
+            # NOTE: Compatibility is checked elsewhere so this shouldn't be unsafe.
+            # Keys named on only one side are matched against the other side's
+            # PEP 728 pseudo-item; a None item type means the key is untyped
+            # (missing in a default-open TypedDict), so nothing can be inferred.
+            for item_name, template_item, actual_item in template.zipall(actual):
+                if template_item.typ is None or actual_item.typ is None:
+                    continue
+                res.extend(infer_constraints(template_item.typ, actual_item.typ, self.direction))
             if template.extra_items is not None and actual.extra_items is not None:
+                # The pseudo-items themselves cover the keys named on neither side.
                 res.extend(
                     infer_constraints(template.extra_items, actual.extra_items, self.direction)
                 )

@@ -4914,12 +4914,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             return None
         if setitem:
             return typed_dict_dict_value_type(td_type)
-        extra_item = td_type.extra_item()
-        assert extra_item.typ is not None
-        value_types = list(td_type.items.values())
-        if not isinstance(get_proper_type(extra_item.typ), UninhabitedType):
-            value_types.append(extra_item.typ)
-        return make_simplified_union(value_types)
+        return make_simplified_union(td_type.value_types_with_extra())
 
     def visit_enum_index_expr(
         self, enum_type: TypeInfo, index: Expression, context: Context
