@@ -327,8 +327,8 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
         """Given a callable, extract all parameters that can be passed as `**kwargs`.
 
         If the function only accepts **kwargs, this will be a `dict[str, KwargsValueType]`.
-        Otherwise, this will be a `TypedDict` containing all explicit args and ignoring
-        `**kwargs` (until PEP 728 `extra_items` is supported). TypedDict entries will
+        Otherwise, this will be a `TypedDict` containing all explicit args, with any
+        `**kwargs` type mapped to `extra_items` (PEP 728). TypedDict entries will
         be required iff the corresponding argument is kw-only and has no default.
         """
         if repl.variables:
@@ -348,14 +348,14 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
                 kwargs[name] = type
         if not kwargs and extra_items is not None:
             return Instance(dict_type.type, [dict_type.args[0], extra_items])
-        # TODO: when PEP 728 `extra_items` is supported at use sites, pass the actual
-        # extra_items type below instead of only distinguishing closed from open.
+        # A callable without **kwargs accepts no extra keyword arguments, i.e. the
+        # TypedDict is closed; **kwargs of type T maps to extra_items=T (PEP 728).
         return TypedDictType(
             kwargs,
             required_names,
             set(),
             dict_type,
-            extra_items=UninhabitedType() if extra_items is None else None,
+            extra_items=extra_items if extra_items is not None else UninhabitedType(),
         )
 
     def visit_type_var_tuple(self, t: TypeVarTupleType) -> Type:

@@ -857,6 +857,13 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                     last_open_star_found,
                     code=codes.TYPEDDICT_ITEM,
                 )
+            elif callee.extra_items is not None:
+                self.chk.fail(
+                    "Cannot unpack item that may contain incompatible extra keys into a "
+                    'TypedDict with "extra_items"',
+                    last_open_star_found,
+                    code=codes.TYPEDDICT_ITEM,
+                )
             absent_keys = []
             for key in callee.items:
                 if key not in callee.required_keys and key not in result:
@@ -931,8 +938,26 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                 # If this key is not required at least in some item of a union
                 # it may not shadow previous item, so we need to type check both.
                 result[key].append(arg)
-        all_closed = all(t.is_closed for t in possible_tds)
-        return True, any_fallback or not all_closed
+        all_absorbed = all(self.star_source_absorbed(td, callee) for td in possible_tds)
+        return True, any_fallback or not all_absorbed
+
+    def star_source_absorbed(self, source: TypedDictType, callee: TypedDictType) -> bool:
+        """Can ** unpacking `source` add no undeclared or incompatible keys to `callee`?
+
+        Keys declared on `source` are checked individually elsewhere; this is about
+        the keys covered by its PEP 728 pseudo-item.
+        """
+        src_extra = source.extra_item()
+        if src_extra.typ is None:
+            # A default-open source may contain arbitrary extra keys.
+            return False
+        if isinstance(get_proper_type(src_extra.typ), UninhabitedType):
+            # A closed source contributes no undeclared keys.
+            return True
+        callee_extra = callee.extra_item()
+        if callee_extra.typ is None or callee.is_closed:
+            return False
+        return is_subtype(src_extra.typ, callee_extra.typ)
 
     def valid_unpack_fallback_item(self, typ: ProperType) -> bool:
         if isinstance(typ, AnyType):
@@ -952,7 +977,12 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             result = self.validate_typeddict_kwargs(kwargs=kwargs, callee=callee)
         if result is not None:
             validated_kwargs, _ = result
-            return callee.required_keys <= set(validated_kwargs.keys()) <= set(callee.items.keys())
+            keys = set(validated_kwargs.keys())
+            if not callee.required_keys <= keys:
+                return False
+            return keys <= set(callee.items.keys()) or (
+                callee.extra_items is not None and not callee.is_closed
+            )
         else:
             return False
 
@@ -993,13 +1023,22 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
     def typeddict_callable_from_context(
         self, callee: TypedDictType, variables: Sequence[TypeVarLikeType] | None = None
     ) -> CallableType:
+        arg_types = list(callee.items.values())
+        arg_kinds = [
+            ArgKind.ARG_NAMED if name in callee.required_keys else ArgKind.ARG_NAMED_OPT
+            for name in callee.items
+        ]
+        arg_names: list[str | None] = list(callee.items.keys())
+        if callee.extra_items is not None and not callee.is_closed:
+            # PEP 728: arbitrary extra keyword arguments of the extra_items type
+            # are accepted when constructing a TypedDict.
+            arg_types.append(callee.extra_items)
+            arg_kinds.append(ArgKind.ARG_STAR2)
+            arg_names.append(None)
         return CallableType(
-            list(callee.items.values()),
-            [
-                ArgKind.ARG_NAMED if name in callee.required_keys else ArgKind.ARG_NAMED_OPT
-                for name in callee.items
-            ],
-            list(callee.items.keys()),
+            arg_types,
+            arg_kinds,
+            arg_names,
             callee,
             self.named_type("builtins.type"),
             variables=variables,
@@ -1015,14 +1054,19 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         always_present_keys: set[str],
     ) -> Type:
         actual_keys = kwargs.keys()
+        extra_keys = actual_keys - callee.items.keys()
+        # PEP 728: a TypedDict with a non-Never extra_items pseudo-item accepts
+        # arbitrary extra keys, whose values are checked against it below.
+        allows_extra_keys = callee.extra_items is not None and not callee.is_closed
         if callee.to_be_mutated:
             assigned_readonly_keys = actual_keys & callee.readonly_keys
+            if allows_extra_keys and callee.extra_items_readonly:
+                assigned_readonly_keys |= extra_keys
             if assigned_readonly_keys:
                 self.msg.readonly_keys_mutated(assigned_readonly_keys, context=context)
-        if not (
-            callee.required_keys <= always_present_keys and actual_keys <= callee.items.keys()
-        ):
-            if not (actual_keys <= callee.items.keys()):
+        known_keys_only = actual_keys <= callee.items.keys() or allows_extra_keys
+        if not (callee.required_keys <= always_present_keys and known_keys_only):
+            if not known_keys_only:
                 self.msg.unexpected_typeddict_keys(
                     callee,
                     expected_keys=[
@@ -1096,6 +1140,19 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                             message_registry.INCOMPATIBLE_TYPES.value, code=codes.TYPEDDICT_ITEM
                         ),
                         lvalue_name=f'TypedDict item "{item_name}"',
+                        rvalue_name="expression",
+                    )
+        if allows_extra_keys and ret_type.extra_items is not None:
+            for item_name in extra_keys:
+                for item_value in kwargs[item_name]:
+                    self.chk.check_simple_assignment(
+                        lvalue_type=ret_type.extra_items,
+                        rvalue=item_value,
+                        context=item_value,
+                        msg=ErrorMessage(
+                            message_registry.INCOMPATIBLE_TYPES.value, code=codes.TYPEDDICT_ITEM
+                        ),
+                        lvalue_name=f'extra TypedDict item "{item_name}"',
                         rvalue_name="expression",
                     )
 
@@ -4827,12 +4884,14 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
 
         value_types = []
         for key_name in key_names:
-            value_type = td_type.items.get(key_name)
-            if value_type is None:
+            item = td_type.item(key_name)
+            if item.typ is None or isinstance(get_proper_type(item.typ), UninhabitedType):
+                # The key is unknown (default-open TypedDict) or provably absent
+                # (closed TypedDict). Extra keys of a TypedDict with extra_items
+                # have the pseudo-item type (PEP 728).
                 self.msg.typeddict_key_not_found(td_type, key_name, index, setitem)
                 return AnyType(TypeOfAny.from_error), set()
-            else:
-                value_types.append(value_type)
+            value_types.append(item.typ)
         return make_simplified_union(value_types), set(key_names)
 
     def visit_enum_index_expr(

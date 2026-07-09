@@ -2496,9 +2496,17 @@ class CallableType(FunctionLike):
             ArgKind.ARG_NAMED if name in last_type.required_keys else ArgKind.ARG_NAMED_OPT
             for name in last_type.items
         ]
+        extra_names: list[str | None] = list(last_type.items)
+        extra_types: list[Type] = list(last_type.items.values())
+        if last_type.extra_items is not None and not last_type.is_closed:
+            # PEP 728: **kwargs: Unpack[TD] with extra_items also accepts arbitrary
+            # keyword arguments of the extra_items type.
+            extra_kinds.append(ArgKind.ARG_STAR2)
+            extra_names.append(None)
+            extra_types.append(last_type.extra_items)
         new_arg_kinds = self.arg_kinds[:-1] + extra_kinds
-        new_arg_names = self.arg_names[:-1] + list(last_type.items)
-        new_arg_types = self.arg_types[:-1] + list(last_type.items.values())
+        new_arg_names = self.arg_names[:-1] + extra_names
+        new_arg_types = self.arg_types[:-1] + extra_types
         return NormalizedCallableType(
             self.copy_modified(
                 arg_kinds=new_arg_kinds,

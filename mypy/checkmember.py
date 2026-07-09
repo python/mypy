@@ -1382,6 +1382,9 @@ def analyze_typeddict_access(
                 typ, mx.context.index, setitem=True
             )
             assigned_readonly_keys = typ.readonly_keys & key_names
+            if typ.extra_items_readonly:
+                # Extra keys inherit the read-only qualifier of extra_items (PEP 728).
+                assigned_readonly_keys |= {k for k in key_names if k not in typ.items}
             if assigned_readonly_keys and not mx.suppress_errors:
                 mx.msg.readonly_keys_mutated(assigned_readonly_keys, context=mx.context)
         else:

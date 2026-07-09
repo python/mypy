@@ -76,6 +76,7 @@ from mypy.types import (
     TypedDictType,
     TypeOfAny,
     TypeVarType,
+    UninhabitedType,
     UnionType,
     get_proper_type,
     get_proper_types,
@@ -291,10 +292,16 @@ def typed_dict_get_callback(ctx: MethodContext) -> Type:
 
         output_types: list[Type] = []
         for key in keys:
-            value_type: Type | None = ctx.type.items.get(key)
+            item = ctx.type.item(key)
+            value_type: Type | None = item.typ
             if value_type is None:
-                if not ctx.type.is_closed:
-                    return ctx.default_return_type
+                # Nothing is known about the key in a default-open TypedDict.
+                return ctx.default_return_type
+            if (
+                isinstance(get_proper_type(value_type), UninhabitedType)
+                and key not in ctx.type.items
+            ):
+                # The key is provably absent (closed TypedDict).
                 output_types.append(default_type)
             elif key in ctx.type.required_keys:
                 output_types.append(value_type)
@@ -366,15 +373,19 @@ def typed_dict_pop_callback(ctx: MethodContext) -> Type:
 
         value_types = []
         for key in keys:
-            if key in ctx.type.required_keys or key in ctx.type.readonly_keys:
+            item = ctx.type.item(key)
+            if key in ctx.type.required_keys or (item.typ is not None and item.readonly):
                 ctx.api.msg.typeddict_key_cannot_be_deleted(ctx.type, key, key_expr)
 
-            value_type = ctx.type.items.get(key)
-            if value_type:
-                value_types.append(value_type)
-            else:
+            if item.typ is None or (
+                key not in ctx.type.items
+                and isinstance(get_proper_type(item.typ), UninhabitedType)
+            ):
+                # The key is unknown (default-open TypedDict) or provably
+                # absent (closed TypedDict).
                 ctx.api.msg.typeddict_key_not_found(ctx.type, key, key_expr)
                 return AnyType(TypeOfAny.from_error)
+            value_types.append(item.typ)
 
         if len(ctx.args[1]) == 0:
             return make_simplified_union(value_types)
@@ -425,6 +436,9 @@ def typed_dict_setdefault_callback(ctx: MethodContext) -> Type:
             return AnyType(TypeOfAny.from_error)
 
         assigned_readonly_keys = ctx.type.readonly_keys & set(keys)
+        if ctx.type.extra_items_readonly:
+            # Extra keys inherit the read-only qualifier of extra_items (PEP 728).
+            assigned_readonly_keys |= {k for k in keys if k not in ctx.type.items}
         if assigned_readonly_keys:
             ctx.api.msg.readonly_keys_mutated(assigned_readonly_keys, context=key_expr)
 
@@ -433,9 +447,13 @@ def typed_dict_setdefault_callback(ctx: MethodContext) -> Type:
 
         value_types = []
         for key in keys:
-            value_type = ctx.type.items.get(key)
+            item = ctx.type.item(key)
+            value_type = item.typ
 
-            if value_type is None:
+            if value_type is None or (
+                key not in ctx.type.items
+                and isinstance(get_proper_type(value_type), UninhabitedType)
+            ):
                 ctx.api.msg.typeddict_key_not_found(ctx.type, key, key_expr)
                 return AnyType(TypeOfAny.from_error)
 
@@ -473,9 +491,15 @@ def typed_dict_delitem_callback(ctx: MethodContext) -> Type:
             return AnyType(TypeOfAny.from_error)
 
         for key in keys:
-            if key in ctx.type.required_keys or key in ctx.type.readonly_keys:
+            item = ctx.type.item(key)
+            if key in ctx.type.required_keys or (item.typ is not None and item.readonly):
                 ctx.api.msg.typeddict_key_cannot_be_deleted(ctx.type, key, key_expr)
-            elif key not in ctx.type.items:
+            elif item.typ is None or (
+                key not in ctx.type.items
+                and isinstance(get_proper_type(item.typ), UninhabitedType)
+            ):
+                # The key is unknown (default-open TypedDict) or provably
+                # absent (closed TypedDict).
                 ctx.api.msg.typeddict_key_not_found(ctx.type, key, key_expr)
     return ctx.default_return_type
 

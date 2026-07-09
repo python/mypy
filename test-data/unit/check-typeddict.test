@@ -6442,3 +6442,139 @@ def f(b: B, be: BExtra) -> None:
     bad2: AReq = b  # E: Incompatible types in assignment (expression has type "B", variable has type "AReq")
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictExtraItemsConstruction]
+from typing import TypedDict, ReadOnly
+
+class Movie(TypedDict, extra_items=bool):
+    name: str
+a: Movie = {"name": "Blade Runner", "novel_adaptation": True}
+b: Movie = {"name": "Blade Runner", "year": 1982}  # E: Incompatible types (expression has type "int", extra TypedDict item "year" has type "bool")
+
+class ExtraMovie(TypedDict, extra_items=int):
+    name: str
+ExtraMovie(name="No Country for Old Men")
+ExtraMovie(name="No Country for Old Men", year=2007)
+ExtraMovie(name="No Country for Old Men", language="English")  # E: Incompatible types (expression has type "str", extra TypedDict item "language" has type "int")
+
+class ClosedMovie(TypedDict, closed=True):
+    name: str
+ClosedMovie(name="No Country for Old Men")
+ClosedMovie(name="No Country for Old Men", year=2007)  # E: Extra key "year" for TypedDict "ClosedMovie"
+
+class ROMovie(TypedDict, extra_items=ReadOnly[int]):
+    name: str
+# Constructing read-only extra items is allowed
+r: ROMovie = {"name": "x", "year": 1982}
+r2 = ROMovie(name="x", year=1982)
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictExtraItemsConstructionGenericInference]
+from typing import Generic, TypedDict, TypeVar
+T = TypeVar('T')
+class TD(TypedDict, Generic[T], extra_items=T):
+    name: str
+reveal_type(TD(name="x", extra=1))  # N: Revealed type is "TypedDict('__main__.TD', {'name': builtins.str}, extra_items=builtins.int)"
+reveal_type(TD(name="x", e1=1, e2="s"))  # N: Revealed type is "TypedDict('__main__.TD', {'name': builtins.str}, extra_items=builtins.object)"
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictExtraItemsGetItemSetItemDelItem]
+from typing import TypedDict, ReadOnly
+
+class Movie(TypedDict, extra_items=int):
+    name: str
+class ROMovie(TypedDict, extra_items=ReadOnly[int]):
+    name: str
+
+def f(m: Movie, r: ROMovie) -> None:
+    reveal_type(m["name"])  # N: Revealed type is "builtins.str"
+    reveal_type(m["year"])  # N: Revealed type is "builtins.int"
+    m["year"] = 1982
+    m["year"] = "x"  # E: Value of "year" has incompatible type "str"; expected "int"
+    del m["year"]
+    del m["name"]  # E: Key "name" of TypedDict "Movie" cannot be deleted
+    reveal_type(r["year"])  # N: Revealed type is "builtins.int"
+    r["year"] = 1982  # E: ReadOnly TypedDict key "year" TypedDict is mutated
+    del r["year"]  # E: Key "year" of TypedDict "ROMovie" cannot be deleted
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictExtraItemsMethods]
+from typing import TypedDict, ReadOnly
+
+class Movie(TypedDict, extra_items=int):
+    name: str
+class ROMovie(TypedDict, extra_items=ReadOnly[int]):
+    name: str
+class Closed(TypedDict, closed=True):
+    name: str
+
+def f(m: Movie, r: ROMovie, c: Closed) -> None:
+    reveal_type(m.get("year"))  # N: Revealed type is "builtins.int | None"
+    reveal_type(m.get("year", 0))  # N: Revealed type is "builtins.int"
+    reveal_type(c.get("year", 0))  # N: Revealed type is "Literal[0]?"
+    reveal_type(m.pop("year"))  # N: Revealed type is "builtins.int"
+    reveal_type(m.pop("year", 0))  # N: Revealed type is "builtins.int"
+    r.pop("year")  # E: Key "year" of TypedDict "ROMovie" cannot be deleted
+    c.pop("year")  # E: TypedDict "Closed" has no key "year"
+    reveal_type(m.setdefault("year", 0))  # N: Revealed type is "builtins.int"
+    m.setdefault("year", "x")  # E: Argument 2 to "setdefault" of "TypedDict" has incompatible type "str"; expected "int"
+    r.setdefault("year", 0)  # E: ReadOnly TypedDict key "year" TypedDict is mutated
+    m.update({"year": 1982})
+    m.update({"year": "x"})  # E: Incompatible types (expression has type "str", extra TypedDict item "year" has type "int")
+    r.update({"year": 1982})  # E: ReadOnly TypedDict key "year" TypedDict is mutated
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictExtraItemsUnpackKwargs]
+from typing import TypedDict
+from typing_extensions import Unpack
+
+class MovieNoExtra(TypedDict):
+    name: str
+class MovieExtra(TypedDict, extra_items=int):
+    name: str
+
+def f(**kwargs: Unpack[MovieNoExtra]) -> None: ...
+def g(**kwargs: Unpack[MovieExtra]) -> None: ...
+
+f(name="No Country for Old Men", year=2007)  # E: Unexpected keyword argument "year" for "f"
+g(name="No Country for Old Men", year=2007)
+g(name="No Country for Old Men", year="")  # E: Argument "year" to "g" has incompatible type "str"; expected "int"
+
+# Equivalent to an explicit signature with typed **kwargs:
+def g2(*, name: str, **kwargs: int) -> None: ...
+gv = g
+gv = g2
+g2v = g2
+g2v = g
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictExtraItemsUnpackStar]
+# flags: --extra-checks
+from typing import TypedDict
+
+class Dest(TypedDict, extra_items=int):
+    name: str
+class SrcCompat(TypedDict, extra_items=int):
+    name: str
+class SrcBool(TypedDict, extra_items=bool):
+    name: str
+class SrcStr(TypedDict, extra_items=str):
+    name: str
+class SrcOpen(TypedDict):
+    name: str
+class SrcClosed(TypedDict, closed=True):
+    name: str
+
+def f(compat: SrcCompat, srcb: SrcBool, srcs: SrcStr, op: SrcOpen, cl: SrcClosed) -> None:
+    d: Dest = {**compat}
+    d2: Dest = {**srcb}
+    d3: Dest = {**cl}
+    d4: Dest = {**srcs}  # E: Cannot unpack item that may contain incompatible extra keys into a TypedDict with "extra_items"
+    d5: Dest = {**op}  # E: Cannot unpack item that may contain incompatible extra keys into a TypedDict with "extra_items"
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]

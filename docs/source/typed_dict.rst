@@ -354,6 +354,77 @@ The ``closed`` keyword can also be used in class-based syntax:
    class HasOnlyName(TypedDict, closed=True):
        name: str
 
+Extra items
+-----------
+
+Instead of fully closing a TypedDict, you can use the ``extra_items``
+keyword, introduced to ``TypedDict`` in Python 3.15 (and available via
+``typing_extensions.TypedDict`` in older versions), to allow keys that
+are not known in advance, as long as their values have a specific type
+(:pep:`728`):
+
+.. code-block:: python
+
+   class Movie(TypedDict, extra_items=bool):
+       name: str
+
+   a: Movie = {"name": "Blade Runner", "novel_adaptation": True}  # OK
+   b: Movie = {
+       "name": "Blade Runner",
+       "year": 1982,  # Error: "int" is not assignable to "bool"
+   }
+
+Extra items are treated as non-required items with the declared value
+type, so they can be read, assigned, and deleted like any other
+non-required key:
+
+.. code-block:: python
+
+   def f(movie: Movie) -> None:
+       reveal_type(movie["name"])              # Revealed type is "str"
+       reveal_type(movie["novel_adaptation"])  # Revealed type is "bool"
+       movie["novel_adaptation"] = False  # OK
+       del movie["novel_adaptation"]  # OK
+
+The ``extra_items`` argument accepts the ``ReadOnly[]`` qualifier, in
+which case the extra items cannot be mutated, and behave covariantly
+during assignability checks; ``Required[]`` and ``NotRequired[]`` are
+not allowed. ``extra_items`` cannot be combined with ``closed`` in the
+same definition, because ``closed=True`` is equivalent to
+``extra_items=Never``.
+
+Like regular items, ``extra_items`` is inherited by subclasses, and can
+only be redeclared (with a narrower type) if it is read-only in the
+parent. Any field a subclass adds must be compatible with the parent's
+``extra_items``: assignable to it if it is read-only, non-required and
+equivalent to it otherwise:
+
+.. code-block:: python
+
+   class MovieBase(TypedDict, extra_items=int | None):
+       name: str
+
+   class MovieA(MovieBase):  # Error: "year" is required
+       year: int | None
+
+   class MovieB(MovieBase):  # OK
+       year: NotRequired[int | None]
+
+A TypedDict with ``extra_items`` also accepts arbitrary keyword
+arguments of that type when used with ``Unpack`` to type ``**kwargs``:
+
+.. code-block:: python
+
+   class MovieExtra(TypedDict, extra_items=int):
+       name: str
+
+   def g(**kwargs: Unpack[MovieExtra]) -> None: ...
+
+   # Equivalent to:
+   def g2(*, name: str, **kwargs: int) -> None: ...
+
+   g(name="No Country for Old Men", year=2007)  # OK
+
 Unions of TypedDicts
 --------------------
 
