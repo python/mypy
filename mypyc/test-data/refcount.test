@@ -2965,3 +2965,119 @@ L5:
 L6:
     dec_ref x
     goto L4
+
+[case testBorrowedFinalAttributeThroughCast]
+from typing import Final, cast
+
+class C:
+    def __init__(self, x: object) -> None:
+        self.x: Final = x
+
+def make() -> object:
+    return C(1)
+
+def g(a: object) -> object:
+    return a
+
+def h() -> object:
+    return g(cast(C, make()).x)
+[out]
+def C.__init__(self, x):
+    self :: __main__.C
+    x :: object
+L0:
+    inc_ref x
+    self.x = x
+    return 1
+def make():
+    r0 :: object
+    r1 :: __main__.C
+L0:
+    r0 = object 1
+    r1 = C(r0)
+    return r1
+def g(a):
+    a :: object
+L0:
+    inc_ref a
+    return a
+def h():
+    r0 :: object
+    r1 :: __main__.C
+    r2, r3 :: object
+L0:
+    r0 = make()
+    r1 = borrow cast(__main__.C, r0)
+    r2 = borrow r1.x
+    r3 = g(r2)
+    dec_ref r0
+    return r3
+
+[case testBorrowedFinalAttributeCastChain]
+from typing import Final, cast
+
+class Inner:
+    def __init__(self, x: object) -> None:
+        self.x: Final = x
+
+class Outer:
+    def __init__(self, inner: object) -> None:
+        self.inner: Final = inner
+
+def g(a: object) -> object:
+    return a
+
+def make() -> object:
+    return Outer(Inner(1))
+
+def h() -> object:
+    # cast( Inner, <cast(Outer, make()).inner> ).x
+    o = cast(Outer, make())
+    return g(cast(Inner, o.inner).x)
+[out]
+def Inner.__init__(self, x):
+    self :: __main__.Inner
+    x :: object
+L0:
+    inc_ref x
+    self.x = x
+    return 1
+def Outer.__init__(self, inner):
+    self :: __main__.Outer
+    inner :: object
+L0:
+    inc_ref inner
+    self.inner = inner
+    return 1
+def g(a):
+    a :: object
+L0:
+    inc_ref a
+    return a
+def make():
+    r0 :: object
+    r1 :: __main__.Inner
+    r2 :: __main__.Outer
+L0:
+    r0 = object 1
+    r1 = Inner(r0)
+    r2 = Outer(r1)
+    dec_ref r1
+    return r2
+def h():
+    r0 :: object
+    r1, o :: __main__.Outer
+    r2 :: object
+    r3 :: __main__.Inner
+    r4, r5 :: object
+L0:
+    r0 = make()
+    r1 = cast(__main__.Outer, r0)
+    o = r1
+    r2 = borrow o.inner
+    r3 = borrow cast(__main__.Inner, r2)
+    r4 = borrow r3.x
+    r5 = g(r4)
+    dec_ref o
+    return r5
+

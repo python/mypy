@@ -416,6 +416,21 @@ class LowLevelIRBuilder:
         self.keep_alives.append(PendingKeepAlive(value, scope, self.next_keep_alive_seq))
         self.next_keep_alive_seq += 1
 
+    def keep_borrow_source_alive(self, value: Value, borrow_scope: int) -> None:
+        """Ensure the source of borrowed value will be alive for given borrow scope.
+
+        A borrow keeps reading from 'value', so 'value' must stay valid for the
+        borrow's whole scope. When 'value' is itself a borrowed cast it holds no
+        reference of its own (and coerce() only kept its source alive short-term),
+        so we follow the cast to the underlying owned value and keep *that* alive
+        for the requested scope too. Otherwise, a longer-lived borrow through a cast
+        (e.g. a Final attribute read via cast(T, make())) could read freed memory.
+        """
+        self.add_keep_alive(value, borrow_scope)
+        while isinstance(value, Cast) and value.is_borrowed:
+            value = value.src
+            self.add_keep_alive(value, borrow_scope)
+
     def debug_print(self, toprint: str | Value) -> None:
         if isinstance(toprint, str):
             toprint = self.load_str(toprint)
@@ -874,7 +889,7 @@ class LowLevelIRBuilder:
             # For non-refcounted attribute types, the borrow might be
             # disabled even if requested, so don't check 'borrow'.
             if op.is_borrowed:
-                self.add_keep_alive(obj, borrow_scope)
+                self.keep_borrow_source_alive(obj, borrow_scope)
             return self.add(op)
         elif isinstance(obj.type, RUnion):
             return self.union_get_attr(obj, obj.type, attr, result_type, line)
