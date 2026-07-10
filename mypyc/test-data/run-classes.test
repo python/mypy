@@ -956,6 +956,40 @@ except Failure as e:
     assert e.x == 10
 heyo()
 
+[case testSubclassExceptionNoAttributeLeak]
+# Regression test: on Python <3.12, a mypyc-compiled Exception subclass with
+# instance attributes used to leak its __dict__ contents on every destruction
+# because BaseException's inherited dealloc/clear doesn't know about the extra
+# __dict__ slot mypyc appends at tp_dictoffset = sizeof(PyBaseExceptionObject).
+class LeakyErr(Exception):
+    def __init__(self, payload: object) -> None:
+        self.data = payload
+
+[file driver.py]
+import gc
+from native import LeakyErr
+
+class Payload:
+    live = 0
+    def __init__(self) -> None:
+        Payload.live += 1
+    def __del__(self) -> None:
+        Payload.live -= 1
+
+# Each iteration creates a fresh Payload, stashes it on a fresh LeakyErr, and
+# drops both. If the exception's __dict__ leaks, the Payload it references
+# survives — __del__ never runs and Payload.live grows without bound.
+for _ in range(1000):
+    LeakyErr(Payload())
+gc.collect()
+assert Payload.live == 0, f"leaked {Payload.live} payloads"
+
+# Sanity-check the normal raise/catch path still works and attrs are readable.
+try:
+    raise LeakyErr("hi")
+except LeakyErr as e:
+    assert e.data == "hi"
+
 [case testSubclassDict]
 from typing import Dict
 class WelpDict(Dict[str, int]):
@@ -3452,22 +3486,11 @@ def test_dict_subclass_dealloc() -> None:
     del d
 
 [file driver.py]
-import sys
-
 from native import events, test_dict_subclass_dealloc
 
 test_dict_subclass_dealloc()
 
-expected_events: list[str] = []
-
-# TODO: Fix when compiling for older python.
-# The user-defined __del__ method is currently only invoked when __dict__ is a managed dict
-# because calling __del__ in tp_clear on older python crashes.
-if sys.version_info >= (3, 12):
-    expected_events.append("deleting DictSubclass")
-expected_events.append("deleting Item")
-
-assert events == expected_events, events
+assert events == ["deleting DictSubclass", "deleting Item"], events
 
 [case testDel]
 class A:

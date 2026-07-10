@@ -1434,8 +1434,17 @@ class Emitter:
     def emit_base_tp_function_call(
         self, derived_cl: ClassIR, tp_func: str, args: str, *, prefix: str = ""
     ) -> None:
+        # Walk past intermediate heap types (Python or mypyc classes) to reach a
+        # static C-level ancestor. Calling a heap type's tp_dealloc/tp_traverse/
+        # tp_clear would dispatch through subtype_dealloc, which uses Py_TYPE(self)
+        # (still our subtype) and re-enters our own function — infinite recursion.
         type_obj = self.type_struct_name(derived_cl)
-        self.emit_line(f"{prefix}{type_obj}->tp_base->{tp_func}({args});")
+        base_var = f"_base_{tp_func}"
+        self.emit_line(f"PyTypeObject *{base_var} = {type_obj}->tp_base;")
+        self.emit_line(f"while ({base_var}->tp_flags & Py_TPFLAGS_HEAPTYPE) {{")
+        self.emit_line(f"    {base_var} = {base_var}->tp_base;")
+        self.emit_line("}")
+        self.emit_line(f"{prefix}{base_var}->{tp_func}({args});")
 
 
 def c_array_initializer(components: list[str], *, indented: bool = False) -> str:
