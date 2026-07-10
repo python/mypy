@@ -130,15 +130,18 @@ static inline void CPy_DecRefAttrOld(PyObject *op) {
 //   - The old value is reclaimed via CPy_DecRefAttrOld, a QSBR-deferred decref, so
 //     it cannot be freed while an in-flight CPy_GetAttrRef still holds the stale
 //     pointer.
-//   - A concurrent cross-thread reader whose fast-path try-incref fails on an
-//     unflagged 'value' does not spin: CPy_GetAttrRef falls into its
-//     _Py_NewRefWithLock fallback (CPy_GetAttrRefSlow), which cannot fail and
-//     sets maybe-weakref lazily on that first read.
+//   - A concurrent cross-thread reader whose inline fast-path try-incref fails on
+//     an unflagged 'value' still cannot fail and never blocks on this writer:
+//     CPy_GetAttrRef falls into CPy_GetAttrRefSlow, which is fully lock-free. It
+//     retries with a lock-free shared-refcount CAS (_Py_TryIncRefShared) and, only
+//     if that also fails, forces a reference via _Py_NewRefWithLock, which cannot
+//     fail and lazily sets maybe-weakref so later cross-thread reads take the CAS.
 // This mirrors CPy_InitAttrRef, which already omits SetMaybeWeakref for the same
 // reason. Setting the flag here would only be a possible performance tuning knob
-// (it keeps that first cross-thread reader on the lock-free path instead of the
-// fallback); it is not needed for correctness. The atomic exchange publishes the
-// new pointer and hands back the old one without a writer/writer race.
+// (it would let that first cross-thread reader succeed on the cheaper
+// _Py_TryIncRefShared CAS instead of falling through to _Py_NewRefWithLock); it is
+// not needed for correctness. The atomic exchange publishes the new pointer and
+// hands back the old one without a writer/writer race.
 static inline void CPy_SetAttrRef(PyObject **field, PyObject *value) {
     PyObject *old = (PyObject *)_Py_atomic_exchange_ptr(field, value);
     CPy_DecRefAttrOld(old);
