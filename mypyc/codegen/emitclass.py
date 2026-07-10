@@ -266,7 +266,18 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
         fields["tp_new"] = new_name
 
     managed_dict = has_managed_dict(cl, emitter)
-    if generate_full or managed_dict:
+    # On Python <3.12, mypyc adds a __dict__ slot at tp_dictoffset = sizeof(PyBaseExceptionObject)
+    # to Exception subclasses. BaseException_dealloc/clear only free the base's own dict field and
+    # know nothing about our extra slot, so its contents leak on every instance destruction. Emit
+    # our own tp_dealloc/tp_clear/tp_traverse so that extra dict is freed.
+    needs_exc_dict_cleanup = (
+        cl.builtin_base == "PyBaseExceptionObject"
+        and cl.has_dict
+        and not managed_dict
+        and emitter.capi_version < (3, 12)
+    )
+    generate_dealloc_slots = generate_full or managed_dict or needs_exc_dict_cleanup
+    if generate_dealloc_slots:
         fields["tp_dealloc"] = f"(destructor){name_prefix}_dealloc"
         if not cl.is_acyclic:
             fields["tp_traverse"] = f"(traverseproc){name_prefix}_traverse"
@@ -339,7 +350,7 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
     else:
         fields["tp_basicsize"] = base_size
 
-    if generate_full or managed_dict:
+    if generate_dealloc_slots:
         if not cl.is_acyclic:
             generate_traverse_for_class(cl, traverse_name, emitter)
             emit_line()
@@ -385,7 +396,11 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
     emit_line()
 
     flags = ["Py_TPFLAGS_DEFAULT", "Py_TPFLAGS_HEAPTYPE", "Py_TPFLAGS_BASETYPE"]
-    if (generate_full or managed_dict) and not cl.is_acyclic:
+    if generate_dealloc_slots and not cl.is_acyclic:
+        # Must be set explicitly: PyType_Ready only inherits Py_TPFLAGS_HAVE_GC from the base
+        # when it also inherits both tp_traverse and tp_dealloc. Once we supply our own we lose
+        # the inheritance, so any builtin_base subclass (e.g. Exception) that needs GC-aware
+        # allocation for its inherited tp_new must set this flag directly.
         flags.append("Py_TPFLAGS_HAVE_GC")
     if cl.has_method("__call__"):
         fields["tp_vectorcall_offset"] = "offsetof({}, vectorcall)".format(
@@ -884,13 +899,14 @@ def generate_traverse_for_class(cl: ClassIR, func_name: str, emitter: Emitter) -
         emitter.emit_line(f"rv = PyObject_VisitManagedDict({base_args});")
         emitter.emit_line("if (rv != 0) return rv;")
     elif cl.has_dict:
-        struct_name = cl.struct_name(emitter.names)
-        # __dict__ lives right after the struct and __weakref__ lives right after that
+        # __dict__ lives at tp_dictoffset (base_size) and __weakref__ right after that.
+        # For a builtin_base class, base_size is sizeof(builtin_base), not sizeof(struct).
+        base_size = f"sizeof({cl.builtin_base})" if cl.builtin_base else f"sizeof({cl.struct_name(emitter.names)})"
         emitter.emit_gc_visit(
-            f"*((PyObject **)((char *)self + sizeof({struct_name})))", object_rprimitive
+            f"*((PyObject **)((char *)self + {base_size}))", object_rprimitive
         )
         emitter.emit_gc_visit(
-            f"*((PyObject **)((char *)self + sizeof(PyObject *) + sizeof({struct_name})))",
+            f"*((PyObject **)((char *)self + sizeof(PyObject *) + {base_size}))",
             object_rprimitive,
         )
     emitter.emit_line("return rv;")
@@ -910,13 +926,14 @@ def generate_clear_for_class(cl: ClassIR, func_name: str, emitter: Emitter) -> N
     if has_managed_dict(cl, emitter):
         emitter.emit_line(f"PyObject_ClearManagedDict({base_args});")
     elif cl.has_dict:
-        struct_name = cl.struct_name(emitter.names)
-        # __dict__ lives right after the struct and __weakref__ lives right after that
+        # __dict__ lives at tp_dictoffset (base_size) and __weakref__ right after that.
+        # For a builtin_base class, base_size is sizeof(builtin_base), not sizeof(struct).
+        base_size = f"sizeof({cl.builtin_base})" if cl.builtin_base else f"sizeof({cl.struct_name(emitter.names)})"
         emitter.emit_gc_clear(
-            f"*((PyObject **)((char *)self + sizeof({struct_name})))", object_rprimitive
+            f"*((PyObject **)((char *)self + {base_size}))", object_rprimitive
         )
         emitter.emit_gc_clear(
-            f"*((PyObject **)((char *)self + sizeof(PyObject *) + sizeof({struct_name})))",
+            f"*((PyObject **)((char *)self + sizeof(PyObject *) + {base_size}))",
             object_rprimitive,
         )
     emitter.emit_line("return 0;")
