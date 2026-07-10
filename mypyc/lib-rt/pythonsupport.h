@@ -23,6 +23,10 @@
 #include "internal/pycore_setobject.h"  // _PySet_Update
 #endif
 
+#ifdef Py_GIL_DISABLED
+#include "internal/pycore_object.h"  // _Py_TryIncrefFast, _Py_TryIncRefShared
+#endif
+
 #if CPY_3_12_FEATURES
 #include "internal/pycore_frame.h"
 #endif
@@ -32,6 +36,136 @@ extern "C" {
 #endif
 #if 0
 } // why isn't emacs smart enough to not indent this
+#endif
+
+#ifdef Py_GIL_DISABLED
+// Read a native attribute that is a single reference-counted 'PyObject *' field,
+// returning a new reference (or NULL if the field is NULL/undefined).
+//
+// On free-threaded builds a plain load followed by an incref races with a
+// concurrent setter that may decref the old value to zero and free it before the
+// incref runs (use-after-free). CPy_SetAttrRef avoids that by reclaiming old
+// values through QSBR-delayed decref, so a value observed in the field remains
+// safe to touch while this reader is running.
+//
+// Only the hot case is inlined here: an incref of a value owned by this thread or
+// immortal, via '_Py_TryIncrefFast' (no CAS, no loop). Everything colder -- the
+// cross-thread shared-refcount CAS and the _Py_NewRefWithLock fallback -- lives
+// out-of-line in 'CPy_GetAttrRefSlow'. Splitting it this way keeps each call
+// site's fast path small enough to inline, which is measurably faster than
+// letting the compiler auto-out-line the whole helper (that merges every read
+// site's branch history into one shared copy and mispredicts). It is only used in
+// free-threaded builds; the default (GIL) build keeps the plain load + incref
+// generated inline by mypyc.
+PyObject *CPy_GetAttrRefSlow(PyObject *v);
+
+static inline PyObject *CPy_GetAttrRef(PyObject **field) {
+    PyObject *v = (PyObject *)_Py_atomic_load_ptr_acquire(field);
+    if (v == NULL) {
+        return NULL;
+    }
+    if (_Py_TryIncrefFast(v)) {
+        return v;
+    }
+    return CPy_GetAttrRefSlow(v);
+}
+
+// Read a native attribute that is a single reference-counted 'PyObject *' field
+// AND is Final (assigned once during construction, never rebound -- mypyc emits no
+// setter for it), returning a new reference (or NULL if undefined).
+//
+// A Final attribute has no concurrent writer after 'self' is published, so the
+// use-after-free race that CPy_GetAttrRef guards against cannot happen: the field
+// holds a strong reference for the object's whole lifetime, and any thread reading
+// it necessarily holds 'self', which keeps the value alive. So the try-incref +
+// _Py_NewRefWithLock fallback are unnecessary here -- a plain load + Py_INCREF is
+// safe. A cross-thread Py_INCREF is an unconditional
+// atomic add on ob_ref_shared, so (unlike CPy_GetAttrRef's try-incref) it needs no
+// maybe-weakref and has no slow path. The load is relaxed rather than acquire: the
+// reader reached 'self' through a synchronization edge (self's own publication)
+// that already ordered the construction stores before it, exactly as with
+// CPy_InitAttrRef's relaxed store. Relaxed keeps it TSan-clean at zero cost (plain
+// mov/ldr).
+static inline PyObject *CPy_GetAttrRefFinal(PyObject **field) {
+    PyObject *v = (PyObject *)_Py_atomic_load_ptr_relaxed(field);
+    if (v != NULL) {
+        Py_INCREF(v);
+    }
+    return v;
+}
+
+// Reclaim the previous value of a native attribute after it has been replaced.
+//
+// CPy_GetAttrRef reads the field optimistically without holding any lock the
+// writer also takes, so a reader can load the old pointer and then try to take a
+// reference after this store. The old value must therefore stay alive until every
+// thread has passed a quiescent point, which is exactly what a QSBR-deferred
+// decref guarantees. So all mortal old values are
+// reclaimed via _PyObject_XDecRefDelayed, matching CPython's own replace-a-slot
+// paths (e.g. _PyObject_SetDict / _PyObject_SetManagedDict).
+//
+// We deliberately do NOT take a "local refcount > 1, owned by this thread" fast
+// path: dropping the field's reference is not the only decref of the object, so a
+// non-freeing local decrement here does not prevent an unrelated reference holder
+// from driving the object to zero (a plain, non-deferred Py_DECREF -> _Py_Dealloc)
+// while an in-flight reader still holds the stale pointer -- a use-after-free that
+// only QSBR deferral closes. Immortal objects are never freed, so skipping their
+// decref entirely is safe and avoids queuing a no-op onto the delayed-free list.
+static inline void CPy_DecRefAttrOld(PyObject *op) {
+    if (op == NULL) {
+        return;
+    }
+    if (_Py_IsImmortal(op)) {
+        return;
+    }
+    _PyObject_XDecRefDelayed(op);
+}
+
+// Set a native attribute that is a single reference-counted 'PyObject *' field,
+// stealing the reference to 'value' (which may be NULL to delete the attribute)
+// and safely reclaiming the previous value.
+//
+// Memory safety does NOT depend on SetMaybeWeakref here, so (unlike an earlier
+// version) we do not call it. Two things keep this safe:
+//   - The old value is reclaimed via CPy_DecRefAttrOld, a QSBR-deferred decref, so
+//     it cannot be freed while an in-flight CPy_GetAttrRef still holds the stale
+//     pointer.
+//   - A concurrent cross-thread reader whose inline fast-path try-incref fails on
+//     an unflagged 'value' still cannot fail and never blocks on this writer:
+//     CPy_GetAttrRef falls into CPy_GetAttrRefSlow, which is fully lock-free. It
+//     retries with a lock-free shared-refcount CAS (_Py_TryIncRefShared) and, only
+//     if that also fails, forces a reference via _Py_NewRefWithLock, which cannot
+//     fail and lazily sets maybe-weakref so later cross-thread reads take the CAS.
+// This mirrors CPy_InitAttrRef, which already omits SetMaybeWeakref for the same
+// reason. Setting the flag here would only be a possible performance tuning knob
+// (it would let that first cross-thread reader succeed on the cheaper
+// _Py_TryIncRefShared CAS instead of falling through to _Py_NewRefWithLock); it is
+// not needed for correctness. The atomic exchange publishes the new pointer and
+// hands back the old one without a writer/writer race.
+static inline void CPy_SetAttrRef(PyObject **field, PyObject *value) {
+    PyObject *old = (PyObject *)_Py_atomic_exchange_ptr(field, value);
+    CPy_DecRefAttrOld(old);
+}
+
+// Initialize a native attribute that is known to be previously undefined (NULL),
+// stealing the reference to 'value'.
+//
+// Initializer stores only happen while 'self' is still thread-local (the
+// attribute-definedness analysis marks a SetAttr as an initializer only before
+// 'self' can leak -- see mypyc/analysis/attrdefined.py). So there is no old value
+// to reclaim, no competing writer, and the field store is not itself the
+// publication point: 'self' is published later (when it escapes __init__ or is
+// returned), and that publication carries the release barrier making all the
+// construction stores visible. A relaxed store therefore suffices.
+//
+// Unlike CPy_SetAttrRef, this deliberately does NOT call SetMaybeWeakref (its CAS
+// is pure overhead here, ~+2.6ns per fresh store, and construction-heavy code
+// pays it on every attribute of every new object). The cost is moved off this hot
+// path onto CPy_GetAttrRef's cold slow path, which sets maybe-weakref lazily on
+// the first cross-thread read that needs it.
+static inline void CPy_InitAttrRef(PyObject **field, PyObject *value) {
+    _Py_atomic_store_ptr_relaxed(field, value);
+}
 #endif
 
 PyObject* update_bases(PyObject *bases);
