@@ -266,15 +266,15 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
         fields["tp_new"] = new_name
 
     managed_dict = has_managed_dict(cl, emitter)
-    # On Python <3.12, Exception subclasses get an extra __dict__ slot that
-    # BaseException_dealloc knows nothing about. Emit our own so it gets freed.
-    needs_exc_dict_cleanup = (
-        cl.builtin_base == "PyBaseExceptionObject"
+    # On Python <3.12, subclasses of builtin types (Exception, dict) get an extra __dict__
+    # slot that the inherited base dealloc knows nothing about. Emit our own so it gets freed.
+    needs_builtin_dict_cleanup = (
+        cl.builtin_base is not None
         and cl.has_dict
         and not managed_dict
         and emitter.capi_version < (3, 12)
     )
-    generate_dealloc_slots = generate_full or managed_dict or needs_exc_dict_cleanup
+    generate_dealloc_slots = generate_full or managed_dict or needs_builtin_dict_cleanup
     if generate_dealloc_slots:
         fields["tp_dealloc"] = f"(destructor){name_prefix}_dealloc"
         if not cl.is_acyclic:

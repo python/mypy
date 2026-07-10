@@ -3465,22 +3465,11 @@ def test_dict_subclass_dealloc() -> None:
     del d
 
 [file driver.py]
-import sys
-
 from native import events, test_dict_subclass_dealloc
 
 test_dict_subclass_dealloc()
 
-expected_events: list[str] = []
-
-# TODO: Fix when compiling for older python.
-# The user-defined __del__ method is currently only invoked when __dict__ is a managed dict
-# because calling __del__ in tp_clear on older python crashes.
-if sys.version_info >= (3, 12):
-    expected_events.append("deleting DictSubclass")
-expected_events.append("deleting Item")
-
-assert events == expected_events, events
+assert events == ["deleting DictSubclass", "deleting Item"], events
 
 [case testDel]
 class A:
