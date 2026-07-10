@@ -2865,6 +2865,58 @@ def test_rebind_inherited_via_setattr() -> None:
     assert d.x == 1
     assert d.y == 2
 
+[case testFinalRefcountedAttributeRead]
+# Exercises reading Final reference-counted ('PyObject *') attributes, which on
+# free-threaded builds use a faster read path (CPy_GetAttrRefFinal) that skips the
+# concurrent-writer guard, since a Final attribute is never rebound.
+from typing import Final
+
+class C:
+    def __init__(self, s: str, items: list[int]) -> None:
+        self.s: Final = s
+        self.items: Final = items
+
+    def read_s(self) -> str:
+        return self.s
+
+    def read_items(self) -> list[int]:
+        return self.items
+
+    def chained_len(self) -> int:
+        # borrowed intermediate read of a Final attr, then a call on it
+        return len(self.items)
+
+class D(C):
+    def __init__(self, s: str, items: list[int], t: str) -> None:
+        super().__init__(s, items)
+        self.t: Final = t
+
+    def read_inherited(self) -> str:
+        return self.s
+
+def test_read_final_object_attrs() -> None:
+    c = C("hello", [1, 2, 3])
+    # Read via getter (property access) and via native method bodies.
+    assert c.s == "hello"
+    assert c.read_s() == "hello"
+    assert c.items == [1, 2, 3]
+    assert c.read_items() == [1, 2, 3]
+    assert c.chained_len() == 3
+    # Reading repeatedly must not corrupt the refcount / free the value.
+    for _ in range(1000):
+        assert c.read_s() == "hello"
+        assert c.read_items() == [1, 2, 3]
+    assert c.s == "hello"
+    assert c.read_items() is c.items
+
+def test_read_inherited_final_attr() -> None:
+    d = D("a", [4, 5], "b")
+    assert d.s == "a"
+    assert d.t == "b"
+    assert d.read_s() == "a"
+    assert d.read_inherited() == "a"
+    assert d.read_items() == [4, 5]
+
 [case testClassDerivedFromIntEnum]
 from enum import IntEnum, auto
 
