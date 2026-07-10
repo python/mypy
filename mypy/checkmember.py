@@ -47,7 +47,6 @@ from mypy.typeops import (
     bind_self,
     erase_to_bound,
     freeze_all_type_vars,
-    function_type,
     get_all_type_vars,
     make_simplified_union,
     supported_self_type,
@@ -360,7 +359,7 @@ def analyze_instance_member_access(
         if mx.is_lvalue and not mx.suppress_errors:
             mx.msg.cant_assign_to_method(mx.context)
         if not isinstance(method, OverloadedFuncDef):
-            signature = function_type(method, mx.named_type("builtins.function"))
+            signature = mx.chk.function_type(method)
         else:
             if method.type is None:
                 # Overloads may be not ready if they are decorated. Handle this in same
@@ -1325,7 +1324,7 @@ def analyze_class_attribute_access(
             return AnyType(TypeOfAny.from_error)
     else:
         assert isinstance(node.node, SYMBOL_FUNCBASE_TYPES)
-        typ = function_type(node.node, mx.named_type("builtins.function"))
+        typ = mx.chk.function_type(node.node)
         # Note: if we are accessing class method on class object, the cls argument is bound.
         # Annotated and/or explicit class methods go through other code paths above, for
         # unannotated implicit class methods we do this here.
@@ -1490,7 +1489,7 @@ def analyze_decorator_or_funcbase_access(
     """
     if isinstance(defn, Decorator):
         return analyze_var(name, defn.var, itype, mx)
-    typ = function_type(defn, mx.chk.named_type("builtins.function"))
+    typ = mx.chk.function_type(defn)
     if isinstance(defn, (FuncDef, OverloadedFuncDef)) and defn.is_trivial_self:
         return bind_self_fast(typ, mx.self_type)
     typ = check_self_arg(typ, mx.self_type, defn.is_class, mx.context, name, mx.msg)

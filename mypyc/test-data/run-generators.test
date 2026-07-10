@@ -944,3 +944,46 @@ from typing import Optional, Union
 def test_compiledGeneratorEmptyTuple() -> None:
     jobs: Generator[Optional[str], None, None] = (_ for _ in ())
     assert list(jobs) == []
+
+[case testBorrowedFinalAttrAcrossYield]
+from typing import Final, Generator
+
+class C:
+    def __init__(self, s: str) -> None:
+        self.s: Final = s
+
+def f(c: C) -> Generator[str, str, None]:
+    # c.s is a final attr; it must not be borrowed across the yield, which is
+    # a suspension point in the middle of the expression.
+    x = c.s + (yield "first")
+    yield x
+
+def test_borrow_across_yield() -> None:
+    for i in range(50):
+        c = C("value" + str(i))
+        g = f(c)
+        assert next(g) == "first"
+        assert g.send("world") == "value" + str(i) + "world"
+
+def yield_from_gen(c: C) -> Generator[str, str, str]:
+    r = yield "inner"
+    return c.s + r
+
+def g2(c: C) -> Generator[str, str, str]:
+    # Borrow a final attr across a yield from expression.
+    x = c.s + (yield from yield_from_gen(c))
+    return x
+
+def test_borrow_across_yield_from() -> None:
+    for i in range(50):
+        c = C("v" + str(i))
+        gen = g2(c)
+        assert next(gen) == "inner"
+        try:
+            gen.send("!")
+        except StopIteration as e:
+            assert e.value == "v" + str(i) + "v" + str(i) + "!", e.value
+        else:
+            assert False
+
+[typing fixtures/typing-full.pyi]

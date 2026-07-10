@@ -237,53 +237,87 @@ nested function calls, typically due to out-of-control recursion.
 Final values
 ------------
 
-Compiled code replaces a reference to an attribute declared ``Final`` with
-the value of the attribute computed at compile time. This is an example of
-:ref:`early binding <early-binding>`. Example::
+Mypy treats variables and attributes defined as ``Final`` specially.
+For instance attributes of native classes, mypyc prevents reassignment
+of these attributes.
+
+Mypyc replaces references to a variable or attribute declared ``Final``
+with the value of the attribute computed at compile time, when it can
+be determined during compilation. Example::
 
     MAX: Final = 100
 
     def limit_to_max(x: int) -> int:
-         if x > MAX:
-             return MAX
-         return x
+        if x > MAX:
+            return MAX
+        return x
 
 The two references to ``MAX`` don't involve any module namespace lookups,
 and are equivalent to this code::
 
     def limit_to_max(x: int) -> int:
-         if x > 100:
-             return 100
-         return x
+        if x > 100:
+            return 100
+        return x
 
 When run as interpreted, the first example will execute slower due to
-the extra namespace lookups. In interpreted code final attributes can
-also be modified.
+the extra namespace lookups.
+
+For a final class attribute or global variable whose value can't be
+determined during compilation, mypyc defines a hidden native variable
+that stores the value when the initialization assignment is evaluated.
+Redefining the attribute using ``setattr`` or direct namespace access
+has no effect for mypyc-compiled code (in the same compilation unit).
+
+Final global variables and class attributes are faster to read in
+compiled code, since they don't have to be looked up from a namespace
+dictionary. Thus using a ``Final`` object that holds mutable state in an
+attribute tends to be faster than a plain global variable in compiled code::
+
+    class Counter:
+        def __init__(self) -> None:
+            self.value = 0
+
+    x: Final = Counter()
+    y = 0
+
+    def inc() -> None:
+        # Faster: no Python namespace lookup
+        x.value += 1
+        # Slower: access through globals() namespace dictionary
+        global y
+        y += 1
 
 .. _free-threading:
 
 Free threading
 --------------
 
-Mypyc has basic support for free threading, but it doesn't provide the
-same memory safety guarantees as Python in compiled modules, since
-in current Python versions this would cause an unacceptable performance
-impact.
+Mypyc supports free threading, but it doesn't provide the exact
+memory safety guarantees as Python in compiled modules under
+free threading when there are race conditions.
 
-The exact details of the memory safety in the presence of data races
-are likely to evolve in the future. Currently, compiled code must
-ensure that proper synchronization is used to prevent data races. In
-particular, these operations require explicit synchronization, such as
-via ``threading.Lock``, if there is a possibility of data races
-(the list is not exhaustive):
+Additionally, optimized primitive operations in compiled code may have
+different atomicity properties compared to CPython. Use explicit
+synchronization if code depends on operations being atomic. This is
+already the recommended approach for normal Python code.
 
-* Reads or writes of non-final instance data attributes of native
-  classes.
-* List item access or iteration using a ``list`` static type (using
-  ``Sequence`` or ``MutableSequence`` as the type ensure correct
-  implicit synchronization).
-* Dict item access using a static ``dict`` type (using ``Mapping``
-  or ``MutableMapping`` ensures correct implicit synchronization).
+Currently, compiled code must ensure that proper synchronization is
+used to prevent data races involving non-final attributes in native
+classes, unless the attribute has a value type such as ``bool``,
+``float`` or ``i64``. You can use explicit
+synchronization, such as via
+:ref:`librt.threading.Lock <librt-threading-lock>` (or
+:py:class:`threading.Lock`, which is less efficient than
+``librt.threading.Lock``) if there is a possibility of such a data
+race.
+
+.. note::
+
+    We are working on improving memory safety in free-threading
+    builds of Python, and hope to make all normal Python features
+    memory safe, while providing more efficient but less safe
+    opt-in, non-standard features.
 
 As libraries often won't be able to control the concurrent access by
 user code, we recommend that modules document that multi-threaded

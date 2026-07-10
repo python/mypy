@@ -2366,3 +2366,717 @@ L0:
     r3 = CPyBytes_Concat(r2, c)
     dec_ref r2
     return r3
+
+[case testBorrowedFinalAttribute]
+from typing import Final
+
+class C:
+    def __init__(self, s: str) -> None:
+        self.s: Final = s
+
+def f(c: C, b: bool) -> str:
+    a = c.s if b else "x"
+    return a
+
+def g(c: C) -> C:
+    return C(c.s)
+[out]
+def C.__init__(self, s):
+    self :: __main__.C
+    s :: str
+L0:
+    inc_ref s
+    self.s = s
+    return 1
+def f(c, b):
+    c :: __main__.C
+    b :: bool
+    r0, r1, r2, a :: str
+L0:
+    if b goto L1 else goto L2 :: bool
+L1:
+    r0 = borrow c.s
+    inc_ref r0
+    r1 = r0
+    goto L3
+L2:
+    r2 = 'x'
+    inc_ref r2
+    r1 = r2
+L3:
+    a = r1
+    return a
+def g(c):
+    c :: __main__.C
+    r0 :: str
+    r1 :: __main__.C
+L0:
+    r0 = borrow c.s
+    r1 = C(r0)
+    return r1
+
+[case testBorrowedFinalAttribute2_withgil]
+from typing import Final
+
+class C:
+    def __init__(self, s: str) -> None:
+        self.s: Final = s
+
+def g(c: C, n: int) -> str:
+    a = [c]
+    return a[n].s + "a"
+[out]
+def C.__init__(self, s):
+    self :: __main__.C
+    s :: str
+L0:
+    inc_ref s
+    self.s = s
+    return 1
+def g(c, n):
+    c :: __main__.C
+    n :: int
+    r0 :: list
+    r1 :: ptr
+    a :: list
+    r2 :: object
+    r3 :: __main__.C
+    r4, r5, r6 :: str
+L0:
+    r0 = PyList_New(1)
+    r1 = list_items r0
+    inc_ref c
+    buf_init_item r1, 0, c
+    a = r0
+    r2 = CPyList_GetItemBorrow(a, n)
+    r3 = borrow cast(__main__.C, r2)
+    r4 = r3.s
+    dec_ref a
+    r5 = 'a'
+    r6 = PyUnicode_Concat(r4, r5)
+    dec_ref r4
+    return r6
+
+[case testBorrowedFinalAttribute3_withgil]
+from typing import Final
+
+class C:
+    def __init__(self, d: D) -> None:
+        self.d = d
+
+class CC:
+    def __init__(self, d: D) -> None:
+        self.d: Final = d
+
+class D:
+    def __init__(self, s: str) -> None:
+        self.f: Final = s
+
+def f() -> str:
+    c = C(D("x"))
+    return c.d.f + "a"
+
+def g(d: D) -> str:
+    c = CC(d)
+    return c.d.f + "a"
+[out]
+def C.__init__(self, d):
+    self :: __main__.C
+    d :: __main__.D
+L0:
+    inc_ref d
+    self.d = d
+    return 1
+def CC.__init__(self, d):
+    self :: __main__.CC
+    d :: __main__.D
+L0:
+    inc_ref d
+    self.d = d
+    return 1
+def D.__init__(self, s):
+    self :: __main__.D
+    s :: str
+L0:
+    inc_ref s
+    self.f = s
+    return 1
+def f():
+    r0 :: str
+    r1 :: __main__.D
+    r2, c :: __main__.C
+    r3 :: __main__.D
+    r4, r5, r6 :: str
+L0:
+    r0 = 'x'
+    r1 = D(r0)
+    r2 = C(r1)
+    dec_ref r1
+    c = r2
+    r3 = borrow c.d
+    r4 = r3.f
+    dec_ref c
+    r5 = 'a'
+    r6 = PyUnicode_Concat(r4, r5)
+    dec_ref r4
+    return r6
+def g(d):
+    d :: __main__.D
+    r0, c :: __main__.CC
+    r1 :: __main__.D
+    r2, r3, r4 :: str
+L0:
+    r0 = CC(d)
+    c = r0
+    r1 = borrow c.d
+    r2 = borrow r1.f
+    r3 = 'a'
+    r4 = PyUnicode_Concat(r2, r3)
+    dec_ref c
+    return r4
+
+[case testBorrowedFinalAttribute4]
+from typing import Final
+
+class C:
+    def __init__(self, d: D) -> None:
+        self.d: Final = d
+
+    def method(self) -> int:
+        return self.d.foo()
+
+class D:
+    def foo(self) -> int:
+        return 1
+[out]
+def C.__init__(self, d):
+    self :: __main__.C
+    d :: __main__.D
+L0:
+    inc_ref d
+    self.d = d
+    return 1
+def C.method(self):
+    self :: __main__.C
+    r0 :: __main__.D
+    r1 :: int
+L0:
+    r0 = borrow self.d
+    r1 = r0.foo()
+    return r1
+def D.foo(self):
+    self :: __main__.D
+L0:
+    return 2
+
+[case testBorrowedFinalAttribute5_64bit]
+from typing import Final
+from librt.vecs import vec
+from mypy_extensions import i64
+
+class C:
+    def __init__(self, s: str) -> None:
+        self.s: Final = s
+
+def g(c: C, n: i64) -> str:
+    a = vec[C]([c])
+    return a[n].s + "a"
+[out]
+def C.__init__(self, s):
+    self :: __main__.C
+    s :: str
+L0:
+    inc_ref s
+    self.s = s
+    return 1
+def g(c, n):
+    c :: __main__.C
+    n :: i64
+    r0 :: object
+    r1 :: ptr
+    r2 :: vec[__main__.C]
+    r3, r4 :: ptr
+    a :: vec[__main__.C]
+    r5 :: native_int
+    r6 :: bit
+    r7 :: i64
+    r8 :: bit
+    r9 :: bool
+    r10 :: i64
+    r11 :: __main__.C
+    r12, r13, r14 :: str
+L0:
+    r0 = __main__.C :: type
+    r1 = r0
+    r2 = VecTApi.alloc(1, 1, r1)
+    r3 = r2.items
+    inc_ref c
+    set_mem r3, c :: __main__.C*
+    r4 = r3 + 8
+    a = r2
+    r5 = a.len
+    r6 = n < r5 :: unsigned
+    if r6 goto L4 else goto L1 :: bool
+L1:
+    r7 = n + r5
+    r8 = r7 < r5 :: unsigned
+    if r8 goto L3 else goto L6 :: bool
+L2:
+    r9 = raise IndexError
+    unreachable
+L3:
+    r10 = r7
+    goto L5
+L4:
+    r10 = n
+L5:
+    r11 = vec_get_item_unsafe_borrow[__main__.C] a, r10
+    r12 = r11.s
+    dec_ref a
+    r13 = 'a'
+    r14 = PyUnicode_Concat(r12, r13)
+    dec_ref r12
+    return r14
+L6:
+    dec_ref a
+    goto L2
+
+[case testBorrowedFinalAttributeReassignViaWalrus]
+from typing import Final
+
+class C:
+    def __init__(self, s: str) -> None:
+        self.s: Final = s
+
+def f(c: C, d: C) -> str:
+    return c.s + (c := d).s
+[out]
+def C.__init__(self, s):
+    self :: __main__.C
+    s :: str
+L0:
+    inc_ref s
+    self.s = s
+    return 1
+def f(c, d):
+    c, d :: __main__.C
+    r0, r1, r2 :: str
+L0:
+    r0 = c.s
+    inc_ref d
+    c = d
+    dec_ref c
+    r1 = borrow d.s
+    r2 = PyUnicode_Concat(r0, r1)
+    dec_ref r0
+    return r2
+
+[case testBorrowedFinalAttributeConditionalMerge]
+from typing import Final
+
+class C:
+    def __init__(self, s: str) -> None:
+        self.s: Final = s
+
+def f(b: bool) -> str:
+    return (C("x").s if b else "y") + "z"
+[out]
+def C.__init__(self, s):
+    self :: __main__.C
+    s :: str
+L0:
+    inc_ref s
+    self.s = s
+    return 1
+def f(b):
+    b :: bool
+    r0 :: str
+    r1 :: __main__.C
+    r2, r3, r4, r5, r6 :: str
+L0:
+    if b goto L1 else goto L2 :: bool
+L1:
+    r0 = 'x'
+    r1 = C(r0)
+    r2 = borrow r1.s
+    inc_ref r2
+    r3 = r2
+    dec_ref r1
+    goto L3
+L2:
+    r4 = 'y'
+    inc_ref r4
+    r3 = r4
+L3:
+    r5 = 'z'
+    r6 = PyUnicode_Concat(r3, r5)
+    dec_ref r3
+    return r6
+
+[case testBorrowedFinalAttributeAndMerge]
+from typing import Final
+
+class C:
+    def __init__(self, s: str) -> None:
+        self.s: Final = s
+
+def f(s: str) -> str:
+    return (s and C("x").s) + "z"
+[out]
+def C.__init__(self, s):
+    self :: __main__.C
+    s :: str
+L0:
+    inc_ref s
+    self.s = s
+    return 1
+def f(s):
+    s :: str
+    r0 :: bit
+    r1, r2 :: str
+    r3 :: __main__.C
+    r4, r5, r6 :: str
+L0:
+    r0 = CPyStr_IsTrue(s)
+    if r0 goto L2 else goto L1 :: bool
+L1:
+    inc_ref s
+    r1 = s
+    goto L3
+L2:
+    r2 = 'x'
+    r3 = C(r2)
+    r4 = borrow r3.s
+    inc_ref r4
+    r1 = r4
+    dec_ref r3
+L3:
+    r5 = 'z'
+    r6 = PyUnicode_Concat(r1, r5)
+    dec_ref r1
+    return r6
+
+[case testBorrowedFinalAttributeOrMerge]
+from typing import Final
+
+class C:
+    def __init__(self, s: str) -> None:
+        self.s: Final = s
+
+def f(s: str) -> str:
+    return (s or C("x").s) + "z"
+[out]
+def C.__init__(self, s):
+    self :: __main__.C
+    s :: str
+L0:
+    inc_ref s
+    self.s = s
+    return 1
+def f(s):
+    s :: str
+    r0 :: bit
+    r1, r2 :: str
+    r3 :: __main__.C
+    r4, r5, r6 :: str
+L0:
+    r0 = CPyStr_IsTrue(s)
+    if r0 goto L1 else goto L2 :: bool
+L1:
+    inc_ref s
+    r1 = s
+    goto L3
+L2:
+    r2 = 'x'
+    r3 = C(r2)
+    r4 = borrow r3.s
+    inc_ref r4
+    r1 = r4
+    dec_ref r3
+L3:
+    r5 = 'z'
+    r6 = PyUnicode_Concat(r1, r5)
+    dec_ref r1
+    return r6
+
+[case testBorrowedFinalAttributeChainedComparisonMerge]
+from typing import Final
+
+class C:
+    def __init__(self, s: str) -> None:
+        self.s: Final = s
+
+def f(s: str) -> bool:
+    return s == "x" == C("x").s
+[out]
+def C.__init__(self, s):
+    self :: __main__.C
+    s :: str
+L0:
+    inc_ref s
+    self.s = s
+    return 1
+def f(s):
+    s, r0 :: str
+    r1, r2 :: bool
+    r3 :: str
+    r4 :: __main__.C
+    r5 :: str
+    r6 :: bool
+L0:
+    r0 = 'x'
+    r1 = CPyStr_EqualLiteral(s, r0, 1)
+    if r1 goto L2 else goto L1 :: bool
+L1:
+    r2 = r1
+    goto L3
+L2:
+    r3 = 'x'
+    r4 = C(r3)
+    r5 = borrow r4.s
+    r6 = CPyStr_EqualLiteral(r5, r0, 1)
+    r2 = r6
+    dec_ref r4
+L3:
+    return r2
+
+[case testBorrowedFinalInListComprehension_withgil]
+from typing import Final
+
+class C:
+    def __init__(self, s: str) -> None:
+        self.s: Final = s
+
+def f(a: list[C]) -> list[str]:
+    return [x.s for x in a]
+[out]
+def C.__init__(self, s):
+    self :: __main__.C
+    s :: str
+L0:
+    inc_ref s
+    self.s = s
+    return 1
+def f(a):
+    a :: list
+    r0 :: native_int
+    r1 :: list
+    r2, r3 :: native_int
+    r4 :: bit
+    r5 :: object
+    r6, x :: __main__.C
+    r7 :: str
+    r8 :: native_int
+L0:
+    r0 = var_object_size a
+    r1 = PyList_New(r0)
+    r2 = 0
+L1:
+    r3 = var_object_size a
+    r4 = r2 < r3 :: signed
+    if r4 goto L2 else goto L4 :: bool
+L2:
+    r5 = list_get_item_unsafe a, r2
+    r6 = cast(__main__.C, r5)
+    x = r6
+    r7 = x.s
+    dec_ref x
+    CPyList_SetItemUnsafe(r1, r2, r7)
+L3:
+    r8 = r2 + 1
+    r2 = r8
+    goto L1
+L4:
+    return r1
+
+[case testBorrowedFinalInSetComprehension_withgil]
+from typing import Final
+
+class C:
+    def __init__(self, d: D) -> None:
+        self.d: Final = d
+
+class D:
+    def __init__(self, s: str) -> None:
+        self.s: Final = s
+
+def use(s: str) -> bool:
+    return True
+
+def f(a: list[C]) -> set[C]:
+    return {x for x in a if use(x.d.s)}
+[out]
+def C.__init__(self, d):
+    self :: __main__.C
+    d :: __main__.D
+L0:
+    inc_ref d
+    self.d = d
+    return 1
+def D.__init__(self, s):
+    self :: __main__.D
+    s :: str
+L0:
+    inc_ref s
+    self.s = s
+    return 1
+def use(s):
+    s :: str
+L0:
+    return 1
+def f(a):
+    a :: list
+    r0 :: set
+    r1, r2 :: native_int
+    r3 :: bit
+    r4 :: object
+    r5, x :: __main__.C
+    r6 :: __main__.D
+    r7 :: str
+    r8 :: bool
+    r9 :: i32
+    r10 :: bit
+    r11 :: native_int
+L0:
+    r0 = PySet_New(0)
+    r1 = 0
+L1:
+    r2 = var_object_size a
+    r3 = r1 < r2 :: signed
+    if r3 goto L2 else goto L5 :: bool
+L2:
+    r4 = list_get_item_unsafe a, r1
+    r5 = cast(__main__.C, r4)
+    x = r5
+    r6 = borrow x.d
+    r7 = borrow r6.s
+    r8 = use(r7)
+    if r8 goto L3 else goto L6 :: bool
+L3:
+    r9 = PySet_Add(r0, x)
+    dec_ref x
+    r10 = r9 >= 0 :: signed
+L4:
+    r11 = r1 + 1
+    r1 = r11
+    goto L1
+L5:
+    return r0
+L6:
+    dec_ref x
+    goto L4
+
+[case testBorrowedFinalAttributeThroughCast]
+from typing import Final, cast
+
+class C:
+    def __init__(self, x: object) -> None:
+        self.x: Final = x
+
+def make() -> object:
+    return C(1)
+
+def g(a: object) -> object:
+    return a
+
+def h() -> object:
+    return g(cast(C, make()).x)
+[out]
+def C.__init__(self, x):
+    self :: __main__.C
+    x :: object
+L0:
+    inc_ref x
+    self.x = x
+    return 1
+def make():
+    r0 :: object
+    r1 :: __main__.C
+L0:
+    r0 = object 1
+    r1 = C(r0)
+    return r1
+def g(a):
+    a :: object
+L0:
+    inc_ref a
+    return a
+def h():
+    r0 :: object
+    r1 :: __main__.C
+    r2, r3 :: object
+L0:
+    r0 = make()
+    r1 = borrow cast(__main__.C, r0)
+    r2 = borrow r1.x
+    r3 = g(r2)
+    dec_ref r0
+    return r3
+
+[case testBorrowedFinalAttributeCastChain]
+from typing import Final, cast
+
+class Inner:
+    def __init__(self, x: object) -> None:
+        self.x: Final = x
+
+class Outer:
+    def __init__(self, inner: object) -> None:
+        self.inner: Final = inner
+
+def g(a: object) -> object:
+    return a
+
+def make() -> object:
+    return Outer(Inner(1))
+
+def h() -> object:
+    # cast( Inner, <cast(Outer, make()).inner> ).x
+    o = cast(Outer, make())
+    return g(cast(Inner, o.inner).x)
+[out]
+def Inner.__init__(self, x):
+    self :: __main__.Inner
+    x :: object
+L0:
+    inc_ref x
+    self.x = x
+    return 1
+def Outer.__init__(self, inner):
+    self :: __main__.Outer
+    inner :: object
+L0:
+    inc_ref inner
+    self.inner = inner
+    return 1
+def g(a):
+    a :: object
+L0:
+    inc_ref a
+    return a
+def make():
+    r0 :: object
+    r1 :: __main__.Inner
+    r2 :: __main__.Outer
+L0:
+    r0 = object 1
+    r1 = Inner(r0)
+    r2 = Outer(r1)
+    dec_ref r1
+    return r2
+def h():
+    r0 :: object
+    r1, o :: __main__.Outer
+    r2 :: object
+    r3 :: __main__.Inner
+    r4, r5 :: object
+L0:
+    r0 = make()
+    r1 = cast(__main__.Outer, r0)
+    o = r1
+    r2 = borrow o.inner
+    r3 = borrow cast(__main__.Inner, r2)
+    r4 = borrow r3.x
+    r5 = g(r4)
+    dec_ref o
+    return r5
