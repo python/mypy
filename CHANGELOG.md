@@ -67,7 +67,7 @@ Contributed by Alice (PR [21382](https://github.com/python/mypy/pull/21382)).
 Mypy now has complete support for type variable defaults as specified in PEP 696. This allows you to
 specify default values for type parameters in generic classes, functions, and type aliases.
 
-Traditional syntax (Python 3.11 and earlier):
+Traditional syntax (Python 3.12 and earlier):
 
 ```python
 T = TypeVar("T", default=int)  # This means that if no type is specified T = int
@@ -80,7 +80,7 @@ reveal_type(Box())                      # type is Box[int]
 reveal_type(Box(value="Hello World!"))  # type is Box[str]
 ```
 
-New syntax (Python 3.12+):
+New syntax (Python 3.13+):
 
 ```python
 class Box[T = int]:
