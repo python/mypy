@@ -2,6 +2,10 @@
 
 ## Next Release
 
+### Packaging changes
+
+- No longer provide mypyc-accelerated wheels for macOS x86_64 [mypyc-wheels #119](https://github.com/mypyc/mypy_mypyc-wheels/pull/119)
+
 ## Mypy 2.3
 
 We've just uploaded mypy 2.3.0 to the Python Package Index ([PyPI](https://pypi.org/project/mypy/)).
