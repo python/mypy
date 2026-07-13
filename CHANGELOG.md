@@ -2,6 +2,22 @@
 
 ## Next Release
 
+## Mypy 2.3
+
+We've just uploaded mypy 2.3.0 to the Python Package Index ([PyPI](https://pypi.org/project/mypy/)).
+Mypy is a static type checker for Python. This release includes new features, performance
+improvements and bug fixes. You can install it as follows:
+
+    python3 -m pip install -U mypy
+
+You can read the full documentation for this release on [Read the Docs](http://mypy.readthedocs.io).
+
+### The Upcoming Switch to the New Native Parser
+
+We are planning to enable the new native parser (`--native-parser`) by
+default soon. We recommend that you test the native parser in your projects and report
+any issues in the [mypy issue tracker](https://github.com/python/mypy/issues).
+
 ### Mypyc Free-threading Memory Safety
 
 Free-threaded Python builds that don't have the GIL require additional synchronization
@@ -53,6 +69,7 @@ Related changes:
 
 ### Mypyc Documentation Updates
 
+- Update documentation of race conditions under free threading (Jukka Lehtosalo, PR [21726](https://github.com/python/mypy/pull/21726))
 - Update mypyc free threading Python compatibility docs (Jukka Lehtosalo, PR [21711](https://github.com/python/mypy/pull/21711))
 - Document `librt.threading` (Jukka Lehtosalo, )
 - Document recent additions to `librt.strings`, such as `ispace` (Jukka Lehtosalo, PR [21696](https://github.com/python/mypy/pull/21696))
@@ -80,6 +97,18 @@ Related changes:
 - Fix star import dependencies in mypy daemon (Jukka Lehtosalo, PR [21673](https://github.com/python/mypy/pull/21673))
 - Fix skipped imports considered stale (Piotr Sawicki, PR [21639](https://github.com/python/mypy/pull/21639))
 - Support `.ff` files with `--cache-map` (Jukka Lehtosalo, PR [21633](https://github.com/python/mypy/pull/21633))
+
+### Typeshed Updates
+
+Please see [git log](https://github.com/python/typeshed/commits/main?after=f76037a1eb3923c67a8bc0e302ee9c016ffb3431+0&branch=main&path=stdlib) for full list of standard library typeshed stub changes.
+
+### Acknowledgements
+
+Thanks to all mypy contributors who contributed to this release:
+
+-
+
+I'd also like to thank my employer, Dropbox, for supporting mypy development.
 
 ## Mypy 2.2
 
