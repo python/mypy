@@ -2,6 +2,122 @@
 
 ## Next Release
 
+## Mypy 2.3
+
+We've just uploaded mypy 2.3.0 to the Python Package Index ([PyPI](https://pypi.org/project/mypy/)).
+Mypy is a static type checker for Python. This release includes new features, performance
+improvements and bug fixes. You can install it as follows:
+
+    python3 -m pip install -U mypy
+
+You can read the full documentation for this release on [Read the Docs](http://mypy.readthedocs.io).
+
+### The Upcoming Switch to the New Native Parser
+
+We are planning to enable the new native parser (`--native-parser`) by
+default soon. We recommend that you test the native parser in your projects and report
+any issues in the [mypy issue tracker](https://github.com/python/mypy/issues).
+
+### Mypyc Free-threading Memory Safety
+
+Free-threaded Python builds that don't have the GIL require additional synchronization
+primitives or lock-free algorithms to ensure memory safety when there are race conditions
+(for example, when a thread reads a list item while another thread writes the same list
+item concurrently). This release greatly improves memory safety of free threading.
+
+List operations are now memory-safe on free threaded Python builds, even in the presence of
+race conditions. This has some performance cost. For list-heavy workloads, using
+`librt.vecs.vec` instead of list is often significantly faster, but note that `vec` is not
+(and likely won't be) fully memory safe, and the user is expected to avoid race conditions.
+The newly introduced `librt.threading.Lock` helps with this. Using variable-length tuples
+can also be more efficient than lists, since tuples are immutable and don't require
+expensive synchronization to ensure memory safety.
+
+Instance attribute access is also (mostly) memory safe now on free-threaded builds in
+the presence of race conditions. We are planning to fix the remaining unsafe cases in a
+future release.
+
+Full list of changes:
+
+- Make attribute access memory safe on free-threaded builds (Jukka Lehtosalo, PR [21705](https://github.com/python/mypy/pull/21705))
+- Fix unsafe borrowing of instance attributes with free-threading (Jukka Lehtosalo, PR [21688](https://github.com/python/mypy/pull/21688))
+- Make list get/set item more memory safe on free-threaded builds (Jukka Lehtosalo, PR [21683](https://github.com/python/mypy/pull/21683))
+- Don't borrow list items on free-threaded builds (Jukka Lehtosalo, PR [21679](https://github.com/python/mypy/pull/21679))
+- Make multiple assignment from list memory-safe on free-threaded builds (Jukka Lehtosalo, PR [21684](https://github.com/python/mypy/pull/21684))
+- Make `for` loop over list memory-safe on free-threaded builds (Jukka Lehtosalo, PR [21686](https://github.com/python/mypy/pull/21686))
+- Fix memory safety of `list.count` on free-threaded builds (Jukka Lehtosalo, PR [21680](https://github.com/python/mypy/pull/21680))
+- Make `vec` creation from list memory safe on free-threaded builds (Jukka Lehtosalo, PR [21681](https://github.com/python/mypy/pull/21681))
+
+### librt.threading: Fast Native Lock Type
+
+Mypyc now supports `librt.threading.Lock`, which is a lock type optimized for use
+in compiled code. It can be 2x to 4x faster than `threading.Lock`.
+
+This feature was contributed by Jukka Lehtosalo (PR [21690](https://github.com/python/mypy/pull/21690), PR [21697](https://github.com/python/mypy/pull/21697)).
+
+### Mypyc: Read-only Final Instance Attributes
+
+Instance attributes of native classes declared as `Final` are now read-only at runtime.
+This enables additional optimizations, and it's now recommended to use `Final` for
+all performance-sensitive attributes when feasible.
+
+Related changes:
+
+- Make instance attribute read-only at runtime if `Final` (Jukka Lehtosalo, PR [21666](https://github.com/python/mypy/pull/21666))
+- Borrow final attributes more aggressively (Jukka Lehtosalo, PR [21702](https://github.com/python/mypy/pull/21702))
+- Improve documentation of `Final` in mypyc (Jukka Lehtosalo, PR [21713](https://github.com/python/mypy/pull/21713))
+
+### Mypyc Documentation Updates
+
+- Update documentation of race conditions under free threading (Jukka Lehtosalo, PR [21726](https://github.com/python/mypy/pull/21726))
+- Update mypyc free threading Python compatibility docs (Jukka Lehtosalo, PR [21711](https://github.com/python/mypy/pull/21711))
+- Document recent additions to `librt.strings`, such as `ispace` (Jukka Lehtosalo, PR [21696](https://github.com/python/mypy/pull/21696))
+
+### Miscellaneous Mypyc Improvements
+
+- Fix reference leak when setting unboxed refcounted attributes (Tom Bannink, PR [21657](https://github.com/python/mypy/pull/21657))
+- Fix function wrapper memory leak (Piotr Sawicki, PR [21654](https://github.com/python/mypy/pull/21654))
+- Fix handling of invalid codepoint values in `librt.strings` (Jukka Lehtosalo, PR [21634](https://github.com/python/mypy/pull/21634))
+- Fix non-deterministic ordering of spilled registers (Jukka Lehtosalo, PR [21632](https://github.com/python/mypy/pull/21632))
+- Fix non-deterministic compiler output due to frozensets (Jukka Lehtosalo, PR [21631](https://github.com/python/mypy/pull/21631))
+
+### Changes to Messages
+
+- Fix error code of note about unbound type variable (Jukka Lehtosalo, PR [21668](https://github.com/python/mypy/pull/21668))
+
+### Other Notable Fixes and Improvements
+
+- Use `PYODIDE` environment variable for Emscripten cross-compilation detection (Agriya Khetarpal, PR [21714](https://github.com/python/mypy/pull/21714))
+- Narrow for frozendict membership check (Shantanu, PR [21709](https://github.com/python/mypy/pull/21709))
+- Fix custom equality handling for membership narrowing in static containers (Shantanu, PR [21706](https://github.com/python/mypy/pull/21706))
+- Infer `Coroutine` for unannotated async functions (Jingchen Ye, PR [21651](https://github.com/python/mypy/pull/21651))
+- Fix variance inference issues caused by dataclass replace (Shantanu, PR [21694](https://github.com/python/mypy/pull/21694))
+- Fix regression in dataclass narrowing for Python >= 3.13 (ygale, PR [21675](https://github.com/python/mypy/pull/21675))
+- Fix star import dependencies in mypy daemon (Jukka Lehtosalo, PR [21673](https://github.com/python/mypy/pull/21673))
+- Fix skipped imports considered stale (Piotr Sawicki, PR [21639](https://github.com/python/mypy/pull/21639))
+- Support `.ff` files with `--cache-map` (Jukka Lehtosalo, PR [21633](https://github.com/python/mypy/pull/21633))
+
+### Typeshed Updates
+
+Please see [git log](https://github.com/python/typeshed/commits/main?after=f76037a1eb3923c67a8bc0e302ee9c016ffb3431+0&branch=main&path=stdlib) for full list of standard library typeshed stub changes.
+
+### Acknowledgements
+
+Thanks to all mypy contributors who contributed to this release:
+
+- Agriya Khetarpal
+- Ethan Sarp
+- Ivan Levkivskyi
+- Jingchen Ye
+- Jukka Lehtosalo
+- Piotr Sawicki
+- Shantanu
+- Tom Bannink
+- Viktor Szépe
+- ygale
+
+I'd also like to thank my employer, Dropbox, for supporting mypy development.
+
 ## Mypy 2.2
 
 We've just uploaded mypy 2.2.0 to the Python Package Index ([PyPI](https://pypi.org/project/mypy/)).
