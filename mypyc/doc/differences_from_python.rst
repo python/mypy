@@ -293,40 +293,26 @@ attribute tends to be faster than a plain global variable in compiled code::
 Free threading
 --------------
 
-Mypyc supports free threading, but it doesn't provide the exact
-memory safety guarantees as Python in compiled modules under
-free threading when there are race conditions.
+Mypyc supports free threading. However, optimized primitive operations in
+compiled code may have different atomicity properties compared to CPython.
+Use explicit synchronization if code depends on operations being atomic and
+race conditions are possible. This is already the recommended approach for
+normal Python code. You can often use :ref:`librt.threading.Lock <librt-threading-lock>`
+(or :py:class:`threading.Lock`, which is less efficient than
+``librt.threading.Lock``) to fix data races.
 
-Additionally, optimized primitive operations in compiled code may have
-different atomicity properties compared to CPython. Use explicit
-synchronization if code depends on operations being atomic. This is
-already the recommended approach for normal Python code.
-
-Currently, compiled code must ensure that proper synchronization is
-used to prevent data races involving non-final attributes in native
-classes, unless the attribute has a value type such as ``bool``,
-``float`` or ``i64``. You can use explicit
-synchronization, such as via
-:ref:`librt.threading.Lock <librt-threading-lock>` (or
-:py:class:`threading.Lock`, which is less efficient than
-``librt.threading.Lock``) if there is a possibility of such a data
-race.
+Since mypyc 2.3, the vast majority of operations are memory safe even if
+there are race conditions (unlike earlier mypyc releases). This includes
+list operations and access to native instance attributes (except for
+a few less common use cases that will be fixed in future releases).
 
 .. note::
 
-    We are working on improving memory safety in free-threading
-    builds of Python, and hope to make all normal Python features
-    memory safe, while providing more efficient but less safe
-    opt-in, non-standard features.
-
-As libraries often won't be able to control the concurrent access by
-user code, we recommend that modules document that multi-threaded
-access is only supported via public interfaces that ensure correct
-synchronization. Marking attributes as internal using an underscore
-attribute prefix is another possibility, but this is not enforced at
-runtime. Another option is to document that multithreaded access is
-not supported, or that particular objects should not be used from
-multiple threads concurrently.
+    Operations that aren't safe under race conditions in interpreted CPython
+    are not expected to be memory safe in compiled code either.
+    Some :ref:`librt <librt>` features are heavily optimized for performance and
+    don't guarantee memory safety when there are race conditions
+    (notably the :ref:`vec <librt-vecs>` type).
 
 It's always safe to perform read-only operations concurrently. Using
 objects with final attributes and tuple objects can help prevent
