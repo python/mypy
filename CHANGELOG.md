@@ -23,11 +23,11 @@ any issues in the [mypy issue tracker](https://github.com/python/mypy/issues).
 Free-threaded Python builds that don't have the GIL require additional synchronization
 primitives or lock-free algorithms to ensure memory safety when there are race conditions
 (for example, when a thread reads a list item while another thread writes the same list
-item concurrecntly). This release greatly improve memory safety of free threading.
+item concurrently). This release greatly improves memory safety of free threading.
 
 List operations are now memory-safe on free threaded Python builds, even in the presence of
 race conditions. This has some performance cost. For list-heavy workloads, using
-`librt.vecs.vec` instead list is often significantly faster, but note that `vec` is not
+`librt.vecs.vec` instead of list is often significantly faster, but note that `vec` is not
 (and likely won't be) fully memory safe, and the user is expected to avoid race conditions.
 The newly introduced `librt.threading.Lock` helps with this. Using variable-length tuples
 can also be more efficient than lists, since tuples are immutable and don't require
@@ -71,7 +71,6 @@ Related changes:
 
 - Update documentation of race conditions under free threading (Jukka Lehtosalo, PR [21726](https://github.com/python/mypy/pull/21726))
 - Update mypyc free threading Python compatibility docs (Jukka Lehtosalo, PR [21711](https://github.com/python/mypy/pull/21711))
-- Document `librt.threading` (Jukka Lehtosalo, )
 - Document recent additions to `librt.strings`, such as `ispace` (Jukka Lehtosalo, PR [21696](https://github.com/python/mypy/pull/21696))
 
 ### Miscellaneous Mypyc Improvements
