@@ -7,7 +7,8 @@ See the docstring of class LowLevelIRBuilder for more information.
 from __future__ import annotations
 
 import sys
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Iterator, Sequence
+from contextlib import contextmanager
 from typing import Final, TypeGuard, cast
 
 from mypy.argmap import map_actuals_to_formals
@@ -19,6 +20,7 @@ from mypyc.common import (
     FAST_ISINSTANCE_MAX_SUBCLASSES,
     FAST_PREFIX,
     IS_FREE_THREADED,
+    KEEP_ALIVE_SHORT_LIVED,
     MAX_LITERAL_SHORT_INT,
     MAX_SHORT_INT,
     MIN_LITERAL_SHORT_INT,
@@ -250,6 +252,15 @@ FIXED_WIDTH_INT_BINARY_OPS: Final = {
 BOOL_BINARY_OPS: Final = {"&", "&=", "|", "|=", "^", "^=", "==", "!=", "<", "<=", ">", ">="}
 
 
+class PendingKeepAlive:
+    __slots__ = ("value", "scope", "seq")
+
+    def __init__(self, value: Value, scope: int, seq: int) -> None:
+        self.value = value
+        self.scope = scope
+        self.seq = seq
+
+
 class LowLevelIRBuilder:
     """A "low-level" IR builder class.
 
@@ -276,7 +287,10 @@ class LowLevelIRBuilder:
         self.error_handlers: list[BasicBlock | None] = [None]
         # Values that we need to keep alive as long as we have borrowed
         # temporaries. Use flush_keep_alives() to mark the end of the live range.
-        self.keep_alives: list[Value] = []
+        # The second value is the scope/duration of keep alive (KEEP_ALIVE_* constant).
+        # Different values must be kept alive for different durations.
+        self.keep_alives: list[PendingKeepAlive] = []
+        self.next_keep_alive_seq = 0
 
     def set_module(self, module_name: str, module_path: str) -> None:
         """Set the name and path of the current module."""
@@ -367,10 +381,55 @@ class LowLevelIRBuilder:
         """
         return self.args[0]
 
-    def flush_keep_alives(self, line: int) -> None:
-        if self.keep_alives:
-            self.add(KeepAlive(self.keep_alives.copy(), line))
-            self.keep_alives = []
+    def flush_keep_alives(self, line: int, *, scope: int = KEEP_ALIVE_SHORT_LIVED) -> None:
+        if any(entry.scope == scope for entry in self.keep_alives):
+            self.add(
+                KeepAlive(
+                    [entry.value for entry in self.keep_alives if entry.scope == scope], line
+                )
+            )
+            self.keep_alives = [entry for entry in self.keep_alives if entry.scope != scope]
+
+    def keep_alive_checkpoint(self) -> int:
+        return self.next_keep_alive_seq
+
+    def flush_keep_alives_since(self, line: int, checkpoint: int) -> None:
+        """Flush keep-alives added after 'checkpoint' without touching earlier ones."""
+        new_keep_alives = [entry for entry in self.keep_alives if entry.seq >= checkpoint]
+        if new_keep_alives:
+            self.add(KeepAlive([entry.value for entry in new_keep_alives], line))
+        self.keep_alives = [entry for entry in self.keep_alives if entry.seq < checkpoint]
+
+    @contextmanager
+    def borrow_region(self, line: int) -> Iterator[None]:
+        """Confine borrows created in this region: flush them when leaving it.
+
+        Keep-alives added inside the region (regardless of their duration scope)
+        are flushed on exit, so borrows can't leak past a lexical boundary such as
+        a conditional branch, an 'and'/'or' branch or a comprehension iteration.
+        """
+        checkpoint = self.keep_alive_checkpoint()
+        yield
+        self.flush_keep_alives_since(line, checkpoint)
+
+    def add_keep_alive(self, value: Value, scope: int) -> None:
+        self.keep_alives.append(PendingKeepAlive(value, scope, self.next_keep_alive_seq))
+        self.next_keep_alive_seq += 1
+
+    def keep_borrow_source_alive(self, value: Value, borrow_scope: int) -> None:
+        """Ensure the source of borrowed value will be alive for given borrow scope.
+
+        A borrow keeps reading from 'value', so 'value' must stay valid for the
+        borrow's whole scope. When 'value' is itself a borrowed cast it holds no
+        reference of its own (and coerce() only kept its source alive short-term),
+        so we follow the cast to the underlying owned value and keep *that* alive
+        for the requested scope too. Otherwise, a longer-lived borrow through a cast
+        (e.g. a Final attribute read via cast(T, make())) could read freed memory.
+        """
+        self.add_keep_alive(value, borrow_scope)
+        while isinstance(value, Cast) and value.is_borrowed:
+            value = value.src
+            self.add_keep_alive(value, borrow_scope)
 
     def debug_print(self, toprint: str | Value) -> None:
         if isinstance(toprint, str):
@@ -400,7 +459,7 @@ class LowLevelIRBuilder:
             return self.add(Unbox(src, target_type, line))
         else:
             if can_borrow:
-                self.keep_alives.append(src)
+                self.add_keep_alive(src, KEEP_ALIVE_SHORT_LIVED)
             return self.add(Cast(src, target_type, line, borrow=can_borrow, unchecked=unchecked))
 
     def coerce(
@@ -805,19 +864,32 @@ class LowLevelIRBuilder:
     # Attribute access
 
     def get_attr(
-        self, obj: Value, attr: str, result_type: RType, line: int, *, borrow: bool = False
+        self,
+        obj: Value,
+        attr: str,
+        result_type: RType,
+        line: int,
+        *,
+        borrow: bool = False,
+        borrow_scope: int = KEEP_ALIVE_SHORT_LIVED,
     ) -> Value:
-        """Get a native or Python attribute of an object."""
+        """Get a native or Python attribute of an object.
+
+        If the result is borrowed, borrow_scope controls how long it stays valid
+        (a KEEP_ALIVE_* constant). The caller is responsible for choosing a scope
+        that is actually safe (e.g. downgrading to short-lived if the borrow root
+        may be rebound during the borrow's live range).
+        """
         if (
             isinstance(obj.type, RInstance)
             and obj.type.class_ir.is_ext_class
             and obj.type.class_ir.has_attr(attr)
         ):
-            op = GetAttr(obj, attr, line, borrow=borrow)
+            op = GetAttr(obj, attr, line, borrow=borrow, borrow_scope=borrow_scope)
             # For non-refcounted attribute types, the borrow might be
             # disabled even if requested, so don't check 'borrow'.
             if op.is_borrowed:
-                self.keep_alives.append(obj)
+                self.keep_borrow_source_alive(obj, borrow_scope)
             return self.add(op)
         elif isinstance(obj.type, RUnion):
             return self.union_get_attr(obj, obj.type, attr, result_type, line)
@@ -2112,18 +2184,20 @@ class LowLevelIRBuilder:
         # it is the right side if the left is false.
         true_body, false_body = (right_body, left_body) if op == "and" else (left_body, right_body)
 
-        left_value = left()
-        self.add_bool_branch(left_value, true_body, false_body)
+        with self.borrow_region(line):
+            left_value = left()
+            self.add_bool_branch(left_value, true_body, false_body)
 
-        self.activate_block(left_body)
-        left_coerced = self.coerce(left_value, expr_type, line)
-        self.add(Assign(target, left_coerced, line))
+            self.activate_block(left_body)
+            left_coerced = self.coerce(left_value, expr_type, line)
+            self.add(Assign(target, left_coerced, line))
         self.goto(next_block)
 
         self.activate_block(right_body)
-        right_value = right()
-        right_coerced = self.coerce(right_value, expr_type, line)
-        self.add(Assign(target, right_coerced, line))
+        with self.borrow_region(line):
+            right_value = right()
+            right_coerced = self.coerce(right_value, expr_type, line)
+            self.add(Assign(target, right_coerced, line))
         self.goto(next_block)
 
         self.activate_block(next_block)
@@ -2281,7 +2355,7 @@ class LowLevelIRBuilder:
             # immediately freed, at the risk of a dangling pointer.
             for arg in coerced:
                 if not isinstance(arg, (Integer, LoadLiteral)):
-                    self.keep_alives.append(arg)
+                    self.add_keep_alive(arg, KEEP_ALIVE_SHORT_LIVED)
         if desc.error_kind == ERR_NEG_INT:
             comp = ComparisonOp(target, Integer(0, desc.return_type, line), ComparisonOp.SGE, line)
             comp.error_kind = ERR_FALSE
@@ -2402,7 +2476,7 @@ class LowLevelIRBuilder:
             # immediately freed, at the risk of a dangling pointer.
             for arg in coerced:
                 if not isinstance(arg, (Integer, LoadLiteral)):
-                    self.keep_alives.append(arg)
+                    self.add_keep_alive(arg, KEEP_ALIVE_SHORT_LIVED)
         if desc.error_kind == ERR_NEG_INT:
             comp = ComparisonOp(target, Integer(0, desc.return_type, line), ComparisonOp.SGE, line)
             comp.error_kind = ERR_FALSE

@@ -1974,3 +1974,96 @@ async def async_iter(vals: list[int]) -> AsyncIterator[int]:
         yield v
 
 [typing fixtures/typing-full.pyi]
+
+[case testBorrowedFinalAttrAcrossAwait]
+from typing import Final
+from testutil import async_val
+
+class C:
+    def __init__(self, s: str) -> None:
+        self.s: Final = s
+
+async def f(c: C) -> str:
+    # c.s is a final attr; it must not be borrowed across the await, which is a
+    # suspension point in the middle of the expression.
+    return c.s + await async_val("hello")
+
+[file driver.py]
+from native import f, C
+from testutil import run_generator
+
+for i in range(50):
+    c = C("value" + str(i))
+    yields, val = run_generator(f(c), inputs=["world"])
+    assert yields == ("hello",), yields
+    assert val == "value" + str(i) + "world", repr(val)
+
+[case testBorrowedFinalAttrAcrossAsyncComprehension]
+import asyncio
+from typing import Final
+
+class C:
+    def __init__(self, s: str) -> None:
+        self.s: Final = s
+
+class AsyncRange:
+    def __init__(self, n: int) -> None:
+        self.n = n
+        self.i = 0
+
+    def __aiter__(self) -> "AsyncRange":
+        return self
+
+    async def __anext__(self) -> str:
+        if self.i >= self.n:
+            raise StopAsyncIteration
+        i = self.i
+        self.i += 1
+        # Suspend in the middle of iteration.
+        await asyncio.sleep(0)
+        return "item" + str(i)
+
+async def f(c: C) -> str:
+    # c.s is a final attr; it must not be borrowed across the async comprehension,
+    # which suspends via an implicit await on __anext__ that isn't represented as
+    # an AwaitExpr node in the AST.
+    return c.s + "".join([x async for x in AsyncRange(3)])
+
+async def test_async_comprehension_borrow() -> None:
+    for i in range(50):
+        c = C("value" + str(i))
+        assert await f(c) == "value" + str(i) + "item0item1item2"
+
+[file asyncio/__init__.pyi]
+async def sleep(t: float) -> None: ...
+
+[typing fixtures/typing-full.pyi]
+
+[case testBorrowedFinalAttrAcrossAwaitAfterComprehension]
+import asyncio
+from typing import Final
+
+class C:
+    def __init__(self, s: str) -> None:
+        self.s: Final = s
+
+async def sink() -> str:
+    await asyncio.sleep(0)
+    return "z"
+
+async def f(c: C, xs: list[int]) -> str:
+    # A (sync) comprehension enters a nested borrow scope earlier in the same
+    # top-level expression. It must not clear the enclosing expression's suspend
+    # flag, or c.s (a final attr) gets borrowed across the await below, which
+    # produces invalid C (the borrow does not survive the suspension point).
+    return str([x for x in xs]) + (c.s + await sink())
+
+async def test_borrow_final_attr_across_await_after_comprehension() -> None:
+    for i in range(50):
+        c = C("v" + str(i))
+        assert await f(c, [1, 2, 3]) == "[1, 2, 3]" + "v" + str(i) + "z"
+
+[file asyncio/__init__.pyi]
+async def sleep(t: float) -> None: ...
+
+[typing fixtures/typing-full.pyi]

@@ -293,7 +293,8 @@ def sequence_from_generator_preallocate_helper(
         target_op = empty_op_llbuilder(length, line)
 
         def set_item(item_index: Value) -> None:
-            e = builder.accept(gen.left_expr)
+            with builder.enter_borrow_scope(line):
+                e = builder.accept(gen.left_expr)
             set_item_op(target_op, item_index, e, line)
 
         for_loop_helper_with_index(
@@ -446,9 +447,10 @@ def comprehension_helper(
             remaining_loop_params: the parameters for any further nested loops; if it's empty
                 we'll instead evaluate the "gen_inner_stmts" function
         """
-        # Check conditions, in order, short circuiting them.
+        # Check conditions, in order, short-circuiting them.
         for cond in conds:
-            cond_val = builder.accept(cond)
+            with builder.enter_borrow_scope(line):
+                cond_val = builder.accept(cond)
             cont_block, rest_block = BasicBlock(), BasicBlock()
             # If the condition is true we'll skip the continue.
             builder.add_bool_branch(cond_val, rest_block, cont_block)
@@ -462,7 +464,8 @@ def comprehension_helper(
         else:
             # We finally reached the actual body of the generator.
             # Generate the IR for the inner loop body.
-            gen_inner_stmts()
+            with builder.enter_borrow_scope(line):
+                gen_inner_stmts()
 
     handle_loop(loop_params)
 

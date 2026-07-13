@@ -269,6 +269,22 @@ class ClassIR:
     def attr_type(self, name: str) -> RType:
         return self.attr_details(name)[0]
 
+    def is_final_attr(self, name: str) -> bool:
+        """Is the (possibly inherited) attribute Final, i.e. never rebound?
+
+        A Final attribute is read-only at runtime (it has no setter) and is assigned
+        exactly once during construction, so it can never be reassigned afterwards.
+        This makes it safe to borrow on free-threaded builds (no concurrent store can
+        invalidate a borrowed reference) and lets reads skip the concurrent-writer
+        guard. Returns False for properties and for attributes this class doesn't have.
+        """
+        for ir in self.mro:
+            if name in ir.attributes:
+                return name in ir.final_attributes
+            if name in ir.property_types:
+                return False
+        return False
+
     def method_decl(self, name: str) -> FuncDecl:
         for ir in self.mro:
             if name in ir.method_decls:
