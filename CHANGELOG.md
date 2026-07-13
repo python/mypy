@@ -106,7 +106,16 @@ Please see [git log](https://github.com/python/typeshed/commits/main?after=f7603
 
 Thanks to all mypy contributors who contributed to this release:
 
--
+- Agriya Khetarpal
+- Ethan Sarp
+- Ivan Levkivskyi
+- Jingchen Ye
+- Jukka Lehtosalo
+- Piotr Sawicki
+- Shantanu
+- Tom Bannink
+- Viktor Szépe
+- ygale
 
 I'd also like to thank my employer, Dropbox, for supporting mypy development.
 
