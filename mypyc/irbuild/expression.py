@@ -58,7 +58,12 @@ from mypy.types import (
     TypeType,
     get_proper_type,
 )
-from mypyc.common import MAX_SHORT_INT
+from mypyc.common import (
+    IS_FREE_THREADED,
+    KEEP_ALIVE_SHORT_LIVED,
+    KEEP_ALIVE_WHOLE_EXPRESSION,
+    MAX_SHORT_INT,
+)
 from mypyc.ir.class_ir import ClassIR
 from mypyc.ir.func_ir import FUNC_CLASSMETHOD, FUNC_STATICMETHOD
 from mypyc.ir.ops import (
@@ -66,11 +71,14 @@ from mypyc.ir.ops import (
     Assign,
     BasicBlock,
     CallC,
+    Cast,
     ComparisonOp,
+    GetAttr,
     Integer,
     LoadAddress,
     LoadLiteral,
     PrimitiveDescription,
+    PrimitiveOp,
     RaiseStandardError,
     Register,
     TupleGet,
@@ -93,9 +101,12 @@ from mypyc.ir.rtypes import (
     is_list_rprimitive,
     is_none_rprimitive,
     is_object_rprimitive,
+    is_str_rprimitive,
+    is_tagged,
     is_tuple_rprimitive,
     object_rprimitive,
     set_rprimitive,
+    short_int_rprimitive,
     vec_api_by_item_type,
 )
 from mypyc.irbuild.ast_helpers import is_borrow_friendly_expr, process_conditional
@@ -119,6 +130,7 @@ from mypyc.irbuild.specialize import (
     apply_dunder_specialization,
     apply_function_specialization,
     apply_method_specialization,
+    translate_getitem_with_bounds_check,
     translate_object_new,
     translate_object_setattr,
 )
@@ -136,9 +148,13 @@ from mypyc.primitives.dict_ops import dict_get_item_op, dict_new_op, exact_dict_
 from mypyc.primitives.generic_ops import iter_op, name_op
 from mypyc.primitives.list_ops import list_append_op, list_extend_op, list_slice_op
 from mypyc.primitives.misc_ops import ellipsis_op, get_module_dict_op, new_slice_op, type_op
-from mypyc.primitives.registry import builtin_names
 from mypyc.primitives.set_ops import set_add_op, set_in_op, set_update_op
-from mypyc.primitives.str_ops import str_slice_op
+from mypyc.primitives.str_ops import (
+    str_adjust_index_op,
+    str_get_item_unsafe_as_int_op,
+    str_range_check_op,
+    str_slice_op,
+)
 from mypyc.primitives.tuple_ops import list_tuple_op, tuple_slice_op
 
 # Name and attribute references
@@ -157,9 +173,8 @@ def transform_name_expr(builder: IRBuilder, expr: NameExpr) -> Value:
         )
         return builder.none(expr.line)
     fullname = expr.node.fullname
-    if fullname in builtin_names:
-        typ, src = builtin_names[fullname]
-        return builder.add(LoadAddress(typ, src, expr.line))
+    if builtin := builder.load_builtin(fullname, expr.line):
+        return builtin
     # special cases
     if fullname == "builtins.None":
         return builder.none(expr.line)
@@ -225,7 +240,11 @@ def transform_name_expr(builder: IRBuilder, expr: NameExpr) -> Value:
     # If we're evaluating a class body and this name is a ClassVar defined earlier
     # in the same class, load it from the class being built (type object for ext classes,
     # class dict for non-ext classes) instead of module globals.
-    if builder.class_body_obj is not None and expr.name in builder.class_body_classvars:
+    if (
+        builder.class_body_obj is not None
+        and isinstance(expr.node, Var)
+        and expr.node in builder.class_body_classvars
+    ):
         if builder.class_body_ir is not None and builder.class_body_ir.is_ext_class:
             return builder.py_get_attr(builder.class_body_obj, expr.name, expr.line)
         else:
@@ -241,7 +260,7 @@ def transform_member_expr(builder: IRBuilder, expr: MemberExpr) -> Value:
     if expr.fullname in ("typing.TYPE_CHECKING", "typing_extensions.TYPE_CHECKING"):
         return builder.false(expr.line)
 
-    # First check if this is maybe a final attribute.
+    # First check if this is maybe a final class/module attribute.
     final = builder.get_final_ref(expr)
     if final is not None:
         fullname, final_var, native = final
@@ -261,9 +280,16 @@ def transform_member_expr(builder: IRBuilder, expr: MemberExpr) -> Value:
     if isinstance(expr.node, MypyFile) and expr.node.fullname in builder.imports:
         return builder.load_module(expr.node.fullname)
 
-    can_borrow = builder.is_native_attr_ref(expr)
-    obj = builder.accept(expr.expr, can_borrow=can_borrow)
     rtype = builder.node_type(expr)
+    # Borrowing a native attribute read is unsafe on free-threaded builds, since another
+    # thread could concurrently reassign the attribute and free the old value. We still borrow
+    # in two cases:
+    #  - Native Final attributes are read-only at runtime, so they can never be reassigned.
+    #  - Vec-typed attributes require manual synchronization, so we borrow them liberally.
+    can_borrow = builder.is_native_attr_ref(expr) and (
+        not IS_FREE_THREADED or isinstance(rtype, RVec) or builder.is_final_native_attr_ref(expr)
+    )
+    obj = builder.accept(expr.expr, can_borrow=can_borrow)
 
     if (
         is_object_rprimitive(obj.type)
@@ -287,8 +313,43 @@ def transform_member_expr(builder: IRBuilder, expr: MemberExpr) -> Value:
 
     check_instance_attribute_access_through_class(builder, expr, typ)
 
-    borrow = can_borrow and builder.can_borrow
-    return builder.builder.get_attr(obj, expr.name, rtype, expr.line, borrow=borrow)
+    is_final = builder.is_final_native_attr_ref(expr)
+    scope = KEEP_ALIVE_SHORT_LIVED
+    if (
+        is_final
+        and builder.expression_depth > 1
+        and value_borrow_scope(builder, obj) >= KEEP_ALIVE_WHOLE_EXPRESSION
+        # Don't borrow across the whole expression if the borrow root can be
+        # rebound via a walrus assignment
+        and not builder.root_is_reassigned(obj)
+        # Don't borrow across a suspension point (await/yield/yield from), since
+        # the borrow would not survive the suspend (registers aren't spilled).
+        and not builder.expr_has_suspend
+    ):
+        scope = KEEP_ALIVE_WHOLE_EXPRESSION
+    borrow = (can_borrow and builder.can_borrow) or scope == KEEP_ALIVE_WHOLE_EXPRESSION
+    return builder.builder.get_attr(
+        obj, expr.name, rtype, expr.line, borrow=borrow, borrow_scope=scope
+    )
+
+
+def value_borrow_scope(builder: IRBuilder, v: Value) -> int:
+    """Compute how long an existing borrowed value can safely be kept alive.
+
+    Returns a KEEP_ALIVE_* constant (or a large value if 'v' is not borrowed and
+    thus has no borrowing constraint).
+    """
+    if isinstance(v, GetAttr) and v.is_borrowed:
+        return min(v.borrow_scope, value_borrow_scope(builder, v.obj))
+    elif isinstance(v, Cast) and v.is_borrowed:
+        # A cast just propagates the value (when successful), so the scope is
+        # determined by the source.
+        return value_borrow_scope(builder, v.src)
+    elif isinstance(v, (CallC, PrimitiveOp)) and v.is_borrowed:
+        # Values borrowed from a C function (e.g. a borrowed list/vec item) may be
+        # invalidated by arbitrary computation, so they are only short-lived.
+        return KEEP_ALIVE_SHORT_LIVED
+    return 999
 
 
 def check_instance_attribute_access_through_class(
@@ -762,8 +823,14 @@ def try_optimize_int_floor_divide(builder: IRBuilder, expr: OpExpr) -> OpExpr:
 def transform_index_expr(builder: IRBuilder, expr: IndexExpr) -> Value:
     index = expr.index
     base_type = builder.node_type(expr.base)
-    can_borrow = is_list_rprimitive(base_type) or isinstance(base_type, RVec)
-    can_borrow_base = can_borrow and is_borrow_friendly_expr(builder, index)
+    # We can borrow a list item safely only if GIL is enabled. The vec type is optimized for
+    # performance, so we'll do unsafe borrowing.
+    can_borrow = (is_list_rprimitive(base_type) and not IS_FREE_THREADED) or isinstance(
+        base_type, RVec
+    )
+    can_borrow_base = (
+        is_list_rprimitive(base_type) or isinstance(base_type, RVec)
+    ) and is_borrow_friendly_expr(builder, index)
 
     # Check for dunder specialization for non-slice indexing
     if not isinstance(index, SliceExpr):
@@ -785,7 +852,7 @@ def transform_index_expr(builder: IRBuilder, expr: IndexExpr) -> Value:
         if value:
             return value
 
-    index_reg = builder.accept(expr.index, can_borrow=can_borrow)
+    index_reg = builder.accept(expr.index, can_borrow=can_borrow or can_borrow_base)
     return builder.builder.get_item(
         base, index_reg, builder.node_type(expr), expr.line, can_borrow=builder.can_borrow
     )
@@ -851,15 +918,17 @@ def transform_conditional_expr(builder: IRBuilder, expr: ConditionalExpr) -> Val
     target = Register(expr_type)
 
     builder.activate_block(if_body)
-    true_value = builder.accept(expr.if_expr)
-    true_value = builder.coerce(true_value, expr_type, expr.line)
-    builder.add(Assign(target, true_value, expr.line))
+    with builder.builder.borrow_region(expr.line):
+        true_value = builder.accept(expr.if_expr)
+        true_value = builder.coerce(true_value, expr_type, expr.line)
+        builder.add(Assign(target, true_value, expr.line))
     builder.goto(next_block)
 
     builder.activate_block(else_body)
-    false_value = builder.accept(expr.else_expr)
-    false_value = builder.coerce(false_value, expr_type, expr.line)
-    builder.add(Assign(target, false_value, expr.line))
+    with builder.builder.borrow_region(expr.line):
+        false_value = builder.accept(expr.else_expr)
+        false_value = builder.coerce(false_value, expr_type, expr.line)
+        builder.add(Assign(target, false_value, expr.line))
     builder.goto(next_block)
 
     builder.activate_block(next_block)
@@ -920,6 +989,16 @@ def transform_comparison_expr(builder: IRBuilder, e: ComparisonExpr) -> Value:
             return result
 
     if len(e.operators) == 1:
+        # s[i] == 'x' / s[i] != 'x' (and the symmetric RHS) -> int compare of
+        # codepoints. Skips the per-iteration 1-char str allocation/lookup and
+        # generic str equality call.
+        if first_op in ("==", "!="):
+            result = try_specialize_str_index_compare(
+                builder, first_op, e.operands[0], e.operands[1], e.line
+            )
+            if result is not None:
+                return result
+
         # Special some common simple cases
         if first_op in ("is", "is not"):
             right_expr = e.operands[1]
@@ -960,6 +1039,50 @@ def transform_comparison_expr(builder: IRBuilder, e: ComparisonExpr) -> Value:
         )
 
     return go(0, builder.accept(e.operands[0]))
+
+
+def try_specialize_str_index_compare(
+    builder: IRBuilder, op: str, lhs: Expression, rhs: Expression, line: int
+) -> Value | None:
+    """Specialize `s[i] == 'x'` / `s[i] != 'x'` (and the symmetric form with
+    operands swapped) into an int compare of codepoints.
+
+    Returns None if the pattern doesn't match: the indexed base must be str,
+    the index must be an integer, and the literal must be a 1-character str.
+    Multi-character or empty literals fall through to the generic str compare
+    (which still returns False for them, matching today's behavior).
+    """
+    # Normalize so the IndexExpr is on the left.
+    if isinstance(rhs, IndexExpr) and not isinstance(lhs, IndexExpr):
+        tmp = lhs
+        lhs, rhs = rhs, tmp
+    # Shape: s[i] {==, !=} "x" where "x" is exactly one codepoint.
+    if (
+        not isinstance(lhs, IndexExpr)
+        or not isinstance(rhs, StrExpr)
+        or len(rhs.value) != 1
+        or not is_str_rprimitive(builder.node_type(lhs.base))
+    ):
+        return None
+    index_type = builder.node_type(lhs.index)
+    if not (is_tagged(index_type) or is_fixed_width_rtype(index_type)):
+        return None
+
+    # ord(s[i]) with bounds check; raises IndexError for out-of-range indices,
+    # matching the behavior of the generic s[i] path.
+    codepoint = translate_getitem_with_bounds_check(
+        builder,
+        lhs.base,
+        [lhs.index],
+        lhs,
+        str_adjust_index_op,
+        str_range_check_op,
+        str_get_item_unsafe_as_int_op,
+    )
+    if codepoint is None:
+        return None
+    literal_cp = Integer(ord(rhs.value), short_int_rprimitive, line)
+    return builder.binary_op(codepoint, literal_cp, op, line)
 
 
 def try_specialize_in_expr(

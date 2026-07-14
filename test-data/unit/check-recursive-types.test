@@ -748,8 +748,8 @@ tdb: TDB
 T = TypeVar("T")
 def f(x: T, y: T) -> T: ...
 # Join for recursive types is very basic, but just add tests that we don't crash.
-reveal_type(f(tda1, tda2))  # N: Revealed type is "TypedDict({'x': builtins.int, 'y': TypedDict('__main__.TDA1', {'x': builtins.int, 'y': ...})})"
-reveal_type(f(tda1, tdb))  # N: Revealed type is "TypedDict({})"
+reveal_type(f(tda1, tda2))  # N: Revealed type is "TypedDict({'x': builtins.int, 'y': TypedDict('__main__.TDA2', {'x': builtins.int, 'y': ...})})"
+reveal_type(f(tda1, tdb))  # N: Revealed type is "TypedDict({'x'=: builtins.object, 'y'=: builtins.object})"
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 

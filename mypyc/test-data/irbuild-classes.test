@@ -26,7 +26,7 @@ L0:
     a.x = 2; r0 = is_error
     return 1
 
-[case testUserClassInList]
+[case testUserClassInList_withgil]
 class C:
     x: int
 
@@ -103,7 +103,7 @@ L0:
     r0 = a.n
     return r0
 
-[case testOptionalMember]
+[case testOptionalMember_withgil]
 from typing import Optional
 class Node:
     next: Optional[Node]
@@ -1135,7 +1135,7 @@ class Ok2:
     __deletable__ = ['x']
     x: int
 
-[case testInvalidDeletableAttribute]
+[case testDeleteNonDeletableAttribute]
 class NotDeletable:
     __deletable__ = ['x']
     x: int
@@ -1146,6 +1146,7 @@ def g(o: NotDeletable) -> None:
     del o.y  # E: "y" cannot be deleted \
              # N: Using "__deletable__ = ['<attr>']" in the class body enables "del obj.<attr>"
 
+[case testInvalidDeletableAttribute]
 class Base:
     x: int
 
@@ -1238,7 +1239,7 @@ L0:
     __mypyc_self__.s = r0
     return 1
 
-[case testBorrowAttribute]
+[case testBorrowAttribute_withgil]
 def f(d: D) -> int:
     return d.c.x
 
@@ -1256,6 +1257,64 @@ L0:
     r1 = r0.x
     keep_alive d
     return r1
+
+[case testCannotBorrowAttribute_nogil]
+def f(d: D) -> int:
+    return d.c.x
+
+class C:
+    x: int
+class D:
+    c: C
+[out]
+def f(d):
+    d :: __main__.D
+    r0 :: __main__.C
+    r1 :: int
+L0:
+    r0 = d.c
+    r1 = r0.x
+    return r1
+
+[case testCanBorrowFinalAttribute_nogil]
+from typing import Final
+
+# On free-threaded builds native attribute reads are not borrowed (a concurrent
+# store could free the old value), EXCEPT Final attributes, which can't be rebound.
+# Here the intermediate 'd.c' is borrowed because 'c' is Final; contrast with
+# testCannotBorrowAttribute_nogil, where the non-Final 'c' is read owned. The
+# borrow decision uses the same ClassIR.is_final_attr predicate as codegen.
+def f(d: D) -> int:
+    return d.c.xf
+
+class C:
+    def __init__(self, xf: int) -> None:
+        self.xf: Final = xf
+class D:
+    def __init__(self, c: C) -> None:
+        self.c: Final = c
+[out]
+def f(d):
+    d :: __main__.D
+    r0 :: __main__.C
+    r1 :: int
+L0:
+    r0 = borrow d.c
+    r1 = r0.xf
+    keep_alive d
+    return r1
+def C.__init__(self, xf):
+    self :: __main__.C
+    xf :: int
+L0:
+    self.xf = xf
+    return 1
+def D.__init__(self, c):
+    self :: __main__.D
+    c :: __main__.C
+L0:
+    self.c = c
+    return 1
 
 [case testNoBorrowOverPropertyAccess]
 class C:
@@ -1286,7 +1345,7 @@ L0:
     r2 = r1.x
     return r2
 
-[case testBorrowResultOfCustomGetItemInIfStatement]
+[case testBorrowResultOfCustomGetItemInIfStatement_withgil]
 from typing import List
 
 class C:

@@ -40,7 +40,7 @@ L0:
     y = r3
     return 1
 
-[case testGenericAttrAndTypeApplication]
+[case testGenericAttrAndTypeApplication_withgil]
 from typing import TypeVar, Generic
 T = TypeVar('T')
 class C(Generic[T]):

@@ -92,7 +92,6 @@ AMBIGUOUS_SLICE_OF_VARIADIC_TUPLE: Final = ErrorMessage("Ambiguous slice of a va
 TOO_MANY_TARGETS_FOR_VARIADIC_UNPACK: Final = ErrorMessage(
     "Too many assignment targets for variadic unpack"
 )
-INVALID_SLICE_INDEX: Final = ErrorMessage("Slice index must be an integer, SupportsIndex or None")
 CANNOT_INFER_LAMBDA_TYPE: Final = ErrorMessage("Cannot infer type of lambda")
 CANNOT_ACCESS_INIT: Final = (
     'Accessing "__init__" on an instance is unsound, since instance.__init__ could be from'
@@ -181,6 +180,8 @@ BARE_GENERIC: Final = "Missing type arguments for generic type {}"
 IMPLICIT_GENERIC_ANY_BUILTIN: Final = (
     'Implicit generic "Any". Use "{}" and specify generic parameters'
 )
+NO_CYCLIC_DEFAULT: Final = "Cyclic type variable defaults are not supported"
+NO_DEFAULT_AFTER_TYPEVAR_TUPLE: Final = "A type variable with default cannot follow TypeVarTuple"
 INVALID_UNPACK: Final = "{} cannot be unpacked (must be tuple or TypeVarTuple)"
 INVALID_UNPACK_POSITION: Final = "Unpack is only valid in a variadic position"
 INVALID_PARAM_SPEC_LOCATION: Final = "Invalid location for ParamSpec {}"

@@ -1,6 +1,7 @@
+import sys
 from _typeshed import SupportsRead, SupportsWrite
 from collections.abc import Callable
-from typing import Any
+from typing import Any, Literal
 
 from .decoder import JSONDecodeError as JSONDecodeError, JSONDecoder as JSONDecoder
 from .encoder import JSONEncoder as JSONEncoder
@@ -36,26 +37,57 @@ def dump(
     sort_keys: bool = False,
     **kwds: Any,
 ) -> None: ...
-def loads(
-    s: str | bytes | bytearray,
-    *,
-    cls: type[JSONDecoder] | None = None,
-    object_hook: Callable[[dict[Any, Any]], Any] | None = None,
-    parse_float: Callable[[str], Any] | None = None,
-    parse_int: Callable[[str], Any] | None = None,
-    parse_constant: Callable[[str], Any] | None = None,
-    object_pairs_hook: Callable[[list[tuple[Any, Any]]], Any] | None = None,
-    **kwds: Any,
-) -> Any: ...
-def load(
-    fp: SupportsRead[str | bytes],
-    *,
-    cls: type[JSONDecoder] | None = None,
-    object_hook: Callable[[dict[Any, Any]], Any] | None = None,
-    parse_float: Callable[[str], Any] | None = None,
-    parse_int: Callable[[str], Any] | None = None,
-    parse_constant: Callable[[str], Any] | None = None,
-    object_pairs_hook: Callable[[list[tuple[Any, Any]]], Any] | None = None,
-    **kwds: Any,
-) -> Any: ...
-def detect_encoding(b: bytes | bytearray) -> str: ...  # undocumented
+
+if sys.version_info >= (3, 15):
+    def loads(
+        s: str | bytes | bytearray,
+        *,
+        cls: type[JSONDecoder] | None = None,
+        object_hook: Callable[[dict[Any, Any]], Any] | None = None,
+        parse_float: Callable[[str], Any] | None = None,
+        parse_int: Callable[[str], Any] | None = None,
+        parse_constant: Callable[[str], Any] | None = None,
+        object_pairs_hook: Callable[[list[tuple[Any, Any]]], Any] | None = None,
+        array_hook: Callable[[list[Any]], Any] | None = None,
+        **kwds: Any,
+    ) -> Any: ...
+    def load(
+        fp: SupportsRead[str | bytes],
+        *,
+        cls: type[JSONDecoder] | None = None,
+        object_hook: Callable[[dict[Any, Any]], Any] | None = None,
+        parse_float: Callable[[str], Any] | None = None,
+        parse_int: Callable[[str], Any] | None = None,
+        parse_constant: Callable[[str], Any] | None = None,
+        object_pairs_hook: Callable[[list[tuple[Any, Any]]], Any] | None = None,
+        array_hook: Callable[[list[Any]], Any] | None = None,
+        **kwds: Any,
+    ) -> Any: ...
+
+else:
+    def loads(
+        s: str | bytes | bytearray,
+        *,
+        cls: type[JSONDecoder] | None = None,
+        object_hook: Callable[[dict[Any, Any]], Any] | None = None,
+        parse_float: Callable[[str], Any] | None = None,
+        parse_int: Callable[[str], Any] | None = None,
+        parse_constant: Callable[[str], Any] | None = None,
+        object_pairs_hook: Callable[[list[tuple[Any, Any]]], Any] | None = None,
+        **kwds: Any,
+    ) -> Any: ...
+    def load(
+        fp: SupportsRead[str | bytes],
+        *,
+        cls: type[JSONDecoder] | None = None,
+        object_hook: Callable[[dict[Any, Any]], Any] | None = None,
+        parse_float: Callable[[str], Any] | None = None,
+        parse_int: Callable[[str], Any] | None = None,
+        parse_constant: Callable[[str], Any] | None = None,
+        object_pairs_hook: Callable[[list[tuple[Any, Any]]], Any] | None = None,
+        **kwds: Any,
+    ) -> Any: ...
+
+def detect_encoding(
+    b: bytes | bytearray,
+) -> Literal["utf-8", "utf-8-sig", "utf-16", "utf-16-be", "utf-16-le", "utf-32", "utf-32-be", "utf-32-le"]: ...  # undocumented

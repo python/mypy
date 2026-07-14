@@ -1052,6 +1052,9 @@ enabled by default starting from mypy 2.0.
     disables parallel checking. Automatic detection of the optimal number
     of workers is not supported yet.
 
+    This setting will override the ``MYPY_NUM_WORKERS`` environment
+    variable if it is set.
+
 Notes:
 
 * An import cycle is always processed as a whole by a worker process. Thus,

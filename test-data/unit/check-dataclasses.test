@@ -1252,6 +1252,26 @@ class Person:
 
 [builtins fixtures/dataclasses.pyi]
 
+[case testDataclassesFloatSerializationIncremental]
+import m
+[file m.py]
+from lib import MyDataClass
+[file m.py.2]
+from lib import MyDataClass
+
+reveal_type(MyDataClass.MY_CONSTANT)
+[file lib.py]
+from dataclasses import dataclass
+from typing import Final
+
+@dataclass(kw_only=True, repr=False)
+class MyDataClass:
+    MY_CONSTANT: Final = 1.234
+[builtins fixtures/dataclasses.pyi]
+[out]
+[out2]
+tmp/m.py:3: note: Revealed type is "Literal[1.234]?"
+
 [case testDataclassesDefaultsMroOtherFile]
 import a
 
@@ -2587,6 +2607,27 @@ class X(metaclass=DCMeta):
 class Y(X):
     a: int  # E: Covariant override of a mutable attribute (base class "X" defined the type as "int | None", expression has type "int")
 [builtins fixtures/tuple.pyi]
+
+
+[case testDunderReplaceDoesNotBlockPlainIssubclassNarrowing]
+# https://github.com/python/mypy/issues/21635
+# flags: --python-version 3.13
+from dataclasses import dataclass
+
+@dataclass
+class A: ...
+@dataclass
+class M: ...
+@dataclass
+class B(A): ...
+@dataclass
+class C(M, A): ...
+
+cls: type[A] = C
+if issubclass(cls, M):
+    reveal_type(cls)  # N: Revealed type is "type[__main__.<subclass of "__main__.A" and "__main__.M">]"
+    n: int = 'foo'  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+[builtins fixtures/isinstancelist.pyi]
 
 
 [case testFrozenWithFinal]

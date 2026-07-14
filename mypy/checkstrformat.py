@@ -587,7 +587,6 @@ class StringFormatterChecker:
             module=None,
             options=self.chk.options,
             errors=temp_errors,
-            file_exists=False,
             eager=True,
         )
         if temp_errors.is_errors():

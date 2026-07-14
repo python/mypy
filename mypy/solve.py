@@ -17,6 +17,7 @@ from mypy.types import (
     AnyType,
     Instance,
     NoneType,
+    Overloaded,
     Parameters,
     ParamSpecType,
     ProperType,
@@ -254,6 +255,9 @@ def _join_sorted_key(t: Type) -> int:
         return -2
     if isinstance(t, NoneType):
         return -1
+
+    if isinstance(t, Overloaded):
+        return 1
     return 0
 
 

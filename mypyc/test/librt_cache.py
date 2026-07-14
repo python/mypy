@@ -162,8 +162,15 @@ def get_librt_path(experimental: bool = True, opt_level: str = "0") -> str:
 
     os.makedirs(cache_root, exist_ok=True)
 
+    binary_suffix = ".pyd" if sys.platform == "win32" else ".so"
+
     with filelock.FileLock(lock_file, timeout=300):  # 5 min timeout
-        if os.path.exists(marker):
+        # Reuse the cache only if the build completed *and* the compiled
+        # binaries still exist. A repo-wide clean of .so/.pyd files can delete
+        # the cached binaries while leaving the marker behind.
+        if os.path.exists(marker) and any(
+            f.endswith(binary_suffix) for f in os.listdir(os.path.join(build_dir, "librt"))
+        ):
             return build_dir
 
         # Clean up any partial build

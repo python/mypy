@@ -49,6 +49,7 @@ from mypy.cache import (
     WriteBuffer,
     read_bool,
     read_bytes,
+    read_flags,
     read_int,
     read_int_list,
     read_int_opt,
@@ -61,6 +62,7 @@ from mypy.cache import (
     read_tag,
     write_bool,
     write_bytes,
+    write_flags,
     write_int,
     write_int_list,
     write_int_opt,
@@ -1068,7 +1070,11 @@ class FuncItem(FuncBase):
         return self.max_pos
 
     def is_dynamic(self) -> bool:
-        return self.type is None
+        return (
+            self.type is None
+            or isinstance(self.type, mypy.types.CallableType)
+            and self.type.implicit
+        )
 
 
 FUNCDEF_FLAGS: Final = FUNCITEM_FLAGS + [
@@ -3141,7 +3147,15 @@ class TypeVarLikeExpr(SymbolNode, Expression):
     Note that they are constructed by the semantic analyzer.
     """
 
-    __slots__ = ("_name", "_fullname", "upper_bound", "default", "variance", "is_new_style")
+    __slots__ = (
+        "_name",
+        "_fullname",
+        "upper_bound",
+        "default",
+        "variance",
+        "is_new_style",
+        "default_depends",
+    )
 
     _name: str
     _fullname: str
@@ -3156,6 +3170,9 @@ class TypeVarLikeExpr(SymbolNode, Expression):
     # TypeVar(..., contravariant=True) defines a contravariant type
     # variable.
     variance: int
+    # Record instances and type aliases that appear bare/implicit in the default value
+    # of this type variable. This is needed to detect recursive type variable defaults.
+    default_depends: set[TypeInfo | TypeAlias] | None
 
     def __init__(
         self,
@@ -3174,6 +3191,7 @@ class TypeVarLikeExpr(SymbolNode, Expression):
         self.default = default
         self.variance = variance
         self.is_new_style = is_new_style
+        self.default_depends = None
 
     @property
     def name(self) -> str:
@@ -3651,6 +3669,8 @@ class TypeInfo(SymbolNode):
         "is_type_check_only",
         "deprecated",
         "type_object_type",
+        "default_depends",
+        "typeddict_data",
     )
 
     _fullname: str  # Fully qualified name
@@ -3812,6 +3832,19 @@ class TypeInfo(SymbolNode):
     # appears in runtime context.
     type_object_type: mypy.types.FunctionLike | None
 
+    # Type variables whose defaults depend on defaults of type variables in other classes
+    # and type aliases. We keep track of this to safely handle situations like this one:
+    #     class C[T = D]: ...
+    #     class D[S = C]: ...
+    #     x: C
+    # Since we apply fix_instance() eagerly, inferring a precise type is quite tricky.
+    # Therefore, we infer the type of `x` as `C[D[Any]]` to avoid infinite recursion.
+    # Keys are type variable full names.
+    default_depends: dict[str, set[TypeAlias | TypeInfo]]
+
+    # If defn is TypedDictType, stores information needed for delayed validation of inheritance.
+    typeddict_data: TypedDictData | None
+
     FLAGS: Final = [
         "is_abstract",
         "is_enum",
@@ -3873,6 +3906,8 @@ class TypeInfo(SymbolNode):
         self.is_type_check_only = False
         self.deprecated = None
         self.type_object_type = None
+        self.default_depends = {}
+        self.typeddict_data = None
 
     def add_type_vars(self) -> None:
         self.has_type_var_tuple_type = False
@@ -4098,6 +4133,12 @@ class TypeInfo(SymbolNode):
             if cls.fullname == fullname:
                 return True
         return False
+
+    def get_base(self, fullname: str) -> TypeInfo:
+        for cls in self.mro:
+            if cls.fullname == fullname:
+                return cls
+        assert False, f"Missing base {fullname} for {self.fullname}"
 
     def direct_base_classes(self) -> list[TypeInfo]:
         """Return a direct base classes.
@@ -4538,6 +4579,7 @@ class TypeAlias(SymbolNode):
         "eager",
         "tvar_tuple_index",
         "python_3_12_type_alias",
+        "default_depends",
     )
 
     __match_args__ = ("name", "target", "alias_tvars", "no_args")
@@ -4570,6 +4612,8 @@ class TypeAlias(SymbolNode):
         self.eager = eager
         self.python_3_12_type_alias = python_3_12_type_alias
         self.tvar_tuple_index = None
+        # This plays the same role as TypeInfo.default_depends attribute.
+        self.default_depends: dict[str, set[TypeAlias | TypeInfo]] = {}
         for i, t in enumerate(alias_tvars):
             if isinstance(t, mypy.types.TypeVarTupleType):
                 self.tvar_tuple_index = i
@@ -4908,6 +4952,17 @@ class SymbolTableNode:
                 self.unfixed = False
         return self._node
 
+    def read_node_no_fixup(self) -> SymbolNode | None:
+        """Return the deserialized node without performing cross-reference fixup.
+
+        This is intended for introspection tools (such as mypy.exportjson) that read
+        cache files in isolation, where no node fixer is available.
+        """
+        if self._node is None and self._node_bytes:
+            self._node = read_symbol(ReadBuffer(self._node_bytes), self._node_tag)
+            self._node_bytes = b""
+        return self._node
+
     def copy(self) -> SymbolTableNode:
         new = SymbolTableNode(
             self.kind, self._node, self.module_public, self.implicit, self.module_hidden
@@ -5193,6 +5248,44 @@ class DataclassTransformSpec:
         return ret
 
 
+class TypedDictFieldSource:
+    """Source of a TypedDict field definition, used for forming error messages.
+
+    May be defined directly on the type, or on a base class.
+    """
+
+    __slots__ = ("base", "ctx")
+
+    base: TypeInfo | None
+    ctx: Context
+
+    def __init__(self, base: TypeInfo | None, ctx: Context) -> None:
+        self.base = base
+        self.ctx = ctx
+
+
+class TypedDictData:
+    """Stores information needed for delayed validation of TypedDict inheritance."""
+
+    __slots__ = ("ready", "bases", "field_sources")
+
+    # If False, the type definition referenced a placeholder
+    ready: bool
+
+    bases: list[tuple[TypeInfo, dict[str, mypy.types.Type]]]
+    field_sources: dict[str, TypedDictFieldSource]
+
+    def __init__(
+        self,
+        ready: bool,
+        bases: list[tuple[TypeInfo, dict[str, mypy.types.Type]]],
+        field_sources: dict[str, TypedDictFieldSource],
+    ) -> None:
+        self.ready = ready
+        self.bases = bases
+        self.field_sources = field_sources
+
+
 @trait
 class SplittingVisitor:
     # If True, process function definitions. If False, don't. This is used
@@ -5220,20 +5313,6 @@ def get_flags(node: Node, names: list[str]) -> list[str]:
 def set_flags(node: Node, flags: list[str]) -> None:
     for name in flags:
         setattr(node, name, True)
-
-
-def write_flags(data: WriteBuffer, flags: list[bool]) -> None:
-    assert len(flags) <= 26, "This many flags not supported yet"
-    packed = 0
-    for i, flag in enumerate(flags):
-        if flag:
-            packed |= 1 << i
-    write_int(data, packed)
-
-
-def read_flags(data: ReadBuffer, num_flags: int) -> list[bool]:
-    packed = read_int(data)
-    return [(packed & (1 << i)) != 0 for i in range(num_flags)]
 
 
 def get_member_expr_fullname(expr: MemberExpr) -> str | None:
@@ -5384,6 +5463,16 @@ def set_info(node: SymbolNode, info: TypeInfo) -> None:
             set_info(item, info)
         if node.impl:
             set_info(node.impl, info)
+
+
+def func_scoped_name(name: str, line: int) -> str:
+    """Mangled name to use when storing function-scoped symbols in global symbol tables."""
+    return f"{name}@{line}"
+
+
+def inline_base(name: str, index: int) -> str:
+    """Synthetic name to use when storing inlined base classes in symbol tables."""
+    return f"{name}@base{index + 1}"
 
 
 # See docstring for mypy/cache.py for reserved tag ranges.

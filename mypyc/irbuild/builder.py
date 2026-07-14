@@ -20,12 +20,17 @@ from mypy.nodes import (
     TYPE_VAR_KIND,
     TYPE_VAR_TUPLE_KIND,
     ArgKind,
+    AssignmentExpr,
+    AwaitExpr,
     CallExpr,
     Decorator,
+    DictionaryComprehension,
     Expression,
     FuncDef,
+    GeneratorExpr,
     IndexExpr,
     IntExpr,
+    LambdaExpr,
     Lvalue,
     MemberExpr,
     MypyFile,
@@ -41,7 +46,10 @@ from mypy.nodes import (
     TypeInfo,
     TypeParam,
     Var,
+    YieldExpr,
+    YieldFromExpr,
 )
+from mypy.traverser import TraverserVisitor
 from mypy.types import (
     AnyType,
     DeletedType,
@@ -62,6 +70,9 @@ from mypyc.common import (
     BITMAP_BITS,
     EXT_SUFFIX,
     GENERATOR_ATTRIBUTE_PREFIX,
+    IS_FREE_THREADED,
+    KEEP_ALIVE_SHORT_LIVED,
+    KEEP_ALIVE_WHOLE_EXPRESSION,
     MODULE_PREFIX,
     SELF_NAME,
     TEMP_ATTR_NAME,
@@ -79,6 +90,7 @@ from mypyc.ir.ops import (
     BasicBlock,
     Branch,
     Call,
+    Cast,
     ComparisonOp,
     GetAttr,
     InitStatic,
@@ -146,7 +158,12 @@ from mypyc.namegen import exported_name
 from mypyc.options import CompilerOptions
 from mypyc.primitives.dict_ops import dict_get_item_op, dict_set_item_op
 from mypyc.primitives.generic_ops import iter_op, next_op, py_setattr_op
-from mypyc.primitives.list_ops import list_get_item_unsafe_op, list_pop_last, to_list
+from mypyc.primitives.list_ops import (
+    list_get_item_int64_op,
+    list_get_item_unsafe_op,
+    list_pop_last,
+    to_list,
+)
 from mypyc.primitives.misc_ops import (
     check_unpack_count_op,
     get_module_dict_op,
@@ -251,11 +268,11 @@ class IRBuilder:
 
         self.visitor = visitor
 
-        # Class body context: tracks ClassVar names defined so far when processing
+        # Class body context: tracks ClassVars defined so far when processing
         # a class body, so that intra-class references (e.g. C = A | B where A is
         # a ClassVar defined earlier in the same class) can be resolved correctly.
         # Without this, mypyc looks up such names in module globals, which fails.
-        self.class_body_classvars: dict[str, None] = {}
+        self.class_body_classvars: dict[Var, None] = {}
         self.class_body_obj: Value | None = None
         self.class_body_ir: ClassIR | None = None
 
@@ -278,6 +295,20 @@ class IRBuilder:
         self.imports: dict[str, None] = {}
 
         self.can_borrow = False
+        self.expression_depth = 0
+        # Symbols (local vars) reassigned via a walrus expression within the current
+        # top-level expression. Used to avoid borrowing an attribute over the whole
+        # expression when the borrow root could be rebound (and thus freed) partway.
+        self.reassigned_in_expr: set[SymbolNode] = set()
+        # Whether the current top-level expression contains a suspension point
+        # (await, yield or yield from). A whole-expression borrow can't span such a
+        # point, since the borrowed value (and its root) live in registers that are
+        # not spilled into the generator environment across the suspend.
+        self.expr_has_suspend = False
+        # Saved expression state for enclosing functions (see enter()/leave()).
+        self.expression_depth_stack: list[int] = []
+        self.reassigned_in_expr_stack: list[set[SymbolNode]] = []
+        self.expr_has_suspend_stack: list[bool] = []
 
         # When set, load_globals_dict uses this module instead of self.module_name.
         # Used by generate_attr_defaults_init for cross-module inherited defaults.
@@ -309,6 +340,10 @@ class IRBuilder:
         """
         with self.catch_errors(node.line):
             if isinstance(node, Expression):
+                self.expression_depth += 1
+                if self.expression_depth == 1:
+                    self.reassigned_in_expr = find_walrus_targets(node)
+                    self.expr_has_suspend = expr_has_suspend(node)
                 old_can_borrow = self.can_borrow
                 self.can_borrow = can_borrow
                 try:
@@ -323,6 +358,11 @@ class IRBuilder:
                 self.can_borrow = old_can_borrow
                 if not can_borrow:
                     self.flush_keep_alives(node.line)
+                self.expression_depth -= 1
+                if self.expression_depth == 0:
+                    self.flush_keep_alives(node.line, scope=KEEP_ALIVE_WHOLE_EXPRESSION)
+                    self.reassigned_in_expr = set()
+                    self.expr_has_suspend = False
                 return res
             else:
                 try:
@@ -331,8 +371,8 @@ class IRBuilder:
                     pass
                 return None
 
-    def flush_keep_alives(self, line: int) -> None:
-        self.builder.flush_keep_alives(line)
+    def flush_keep_alives(self, line: int, *, scope: int = KEEP_ALIVE_SHORT_LIVED) -> None:
+        self.builder.flush_keep_alives(line, scope=scope)
 
     # Pass through methods for the most common low-level builder ops, for convenience.
 
@@ -893,7 +933,10 @@ class IRBuilder:
             index: Value
             if is_list_rprimitive(rvalue.type):
                 index = Integer(i, c_pyssize_t_rprimitive)
-                item_value = self.primitive_op(list_get_item_unsafe_op, [rvalue, index], line)
+                if not IS_FREE_THREADED:
+                    item_value = self.primitive_op(list_get_item_unsafe_op, [rvalue, index], line)
+                else:
+                    item_value = self.primitive_op(list_get_item_int64_op, [rvalue, index], line)
             elif is_tuple_rprimitive(rvalue.type):
                 index = Integer(i, c_pyssize_t_rprimitive)
                 item_value = self.call_c(tuple_get_item_unsafe_op, [rvalue, index], line)
@@ -1076,11 +1119,11 @@ class IRBuilder:
             items = target_type.items
             assert items, "This function does not support empty tuples"
             # Tuple might have elements of different types.
-            rtypes = set(map(self.mapper.type_to_rtype, items))
+            rtypes = list(dict.fromkeys(self.mapper.type_to_rtype(item) for item in items))
             if len(rtypes) == 1:
                 return rtypes.pop()
             else:
-                return RUnion.make_simplified_union(list(rtypes))
+                return RUnion.make_simplified_union(rtypes)
         assert False, target_type
 
     def get_dict_base_type(self, expr: Expression) -> list[Instance]:
@@ -1183,7 +1226,9 @@ class IRBuilder:
         return typ.is_named_tuple or typ.is_newtype or typ.typeddict_type is not None
 
     def get_final_ref(self, expr: MemberExpr) -> tuple[str, Var, bool] | None:
-        """Check if `expr` is a final attribute.
+        """Check if `expr` is a final class or module attribute.
+
+        Return False for instance attributes.
 
         This needs to be done differently for class and module attributes to
         correctly determine fully qualified name. Return a tuple that consists of
@@ -1332,6 +1377,15 @@ class IRBuilder:
         self.fn_info = fn_info
         self.fn_infos.append(self.fn_info)
         self.ret_types.append(ret_type)
+        # A function body is its own top-level expression context, even when the
+        # function (e.g. a lambda) is being generated in the middle of an outer
+        # expression. Save the outer expression state and start fresh.
+        self.expression_depth_stack.append(self.expression_depth)
+        self.reassigned_in_expr_stack.append(self.reassigned_in_expr)
+        self.expr_has_suspend_stack.append(self.expr_has_suspend)
+        self.expression_depth = 0
+        self.reassigned_in_expr = set()
+        self.expr_has_suspend = False
         if fn_info.is_generator:
             self.nonlocal_control.append(GeneratorNonlocalControl())
         else:
@@ -1345,6 +1399,9 @@ class IRBuilder:
         ret_type = self.ret_types.pop()
         fn_info = self.fn_infos.pop()
         self.nonlocal_control.pop()
+        self.expression_depth = self.expression_depth_stack.pop()
+        self.reassigned_in_expr = self.reassigned_in_expr_stack.pop()
+        self.expr_has_suspend = self.expr_has_suspend_stack.pop()
         self.builder = self.builders[-1]
         self.fn_info = self.fn_infos[-1]
         return builder.args, runtime_args, builder.blocks, ret_type, fn_info
@@ -1379,6 +1436,27 @@ class IRBuilder:
             self.nonlocal_control.pop()
             self.builder = self.builders[-1]
             self.fn_info = self.fn_infos[-1]
+
+    @contextmanager
+    def enter_borrow_scope(self, line: int) -> Iterator[None]:
+        """Enter new borrow scope from which borrows can't leak to outer expressions.
+
+        This is a borrow region (see LowLevelIRBuilder.borrow_region) that also
+        resets the per-expression borrowing heuristic state, since the body forms
+        its own top-level expression context (e.g. a comprehension iteration or a
+        lambda body).
+        """
+        old_expression_depth = self.expression_depth
+        old_reassigned_in_expr = self.reassigned_in_expr
+        old_expr_has_suspend = self.expr_has_suspend
+        self.expression_depth = 0
+        try:
+            with self.builder.borrow_region(line):
+                yield
+        finally:
+            self.expression_depth = old_expression_depth
+            self.reassigned_in_expr = old_reassigned_in_expr
+            self.expr_has_suspend = old_expr_has_suspend
 
     @contextmanager
     def enter_method(
@@ -1556,6 +1634,46 @@ class IRBuilder:
             and any(expr.name in ir.attributes for ir in obj_rtype.class_ir.mro)
         )
 
+    def is_final_native_attr_ref(self, expr: MemberExpr) -> bool:
+        """Is expr a direct reference to a Final native (struct) attribute of an instance?
+
+        A Final attribute is read-only at runtime (it has no setter), so it can never be
+        reassigned after construction. This makes it safe to borrow even on free-threaded
+        builds, since no concurrent store can invalidate the borrowed reference.
+        """
+        obj_rtype = self.node_type(expr.expr)
+        return (
+            isinstance(obj_rtype, RInstance)
+            and obj_rtype.class_ir.is_ext_class
+            and obj_rtype.class_ir.is_final_attr(expr.name)
+        )
+
+    def root_is_reassigned(self, v: Value) -> bool:
+        """Is the root local variable a borrow chain 'v' reads from reassigned this expression?
+
+        A whole-expression borrow of an attribute keeps the borrow root alive only
+        via the register holding it. If that register belongs to a local variable
+        that is rebound (via a walrus assignment) during the same top-level
+        expression, the old value may be freed while the borrow is still live.
+        """
+        if not self.reassigned_in_expr:
+            return False
+        # Peel borrowed links back to the root value the chain reads from.
+        while True:
+            if isinstance(v, GetAttr) and v.is_borrowed:
+                v = v.obj
+            elif isinstance(v, Cast) and v.is_borrowed:
+                v = v.src
+            else:
+                break
+        if not isinstance(v, Register):
+            return False
+        for symbol in self.reassigned_in_expr:
+            target = self.symtables[-1].get(symbol)
+            if isinstance(target, AssignmentTargetRegister) and target.register is v:
+                return True
+        return False
+
     def mark_block_unreachable(self) -> None:
         """Mark statements in the innermost block being processed as unreachable.
 
@@ -1602,6 +1720,9 @@ class IRBuilder:
                 obj.line,
             )
         )
+
+    def load_builtin(self, name: str, line: int) -> Value | None:
+        return self.builder.load_builtin(name, line)
 
 
 def gen_arg_defaults(builder: IRBuilder) -> None:
@@ -1665,6 +1786,78 @@ def get_call_target_fullname(ref: RefExpr) -> str:
         if isinstance(target, Instance):
             return target.type.fullname
     return ref.fullname
+
+
+class WalrusTargetCollector(TraverserVisitor):
+    """Collect the symbols assigned to by walrus expressions in a subtree."""
+
+    def __init__(self) -> None:
+        self.targets: set[SymbolNode] = set()
+
+    def visit_assignment_expr(self, o: AssignmentExpr) -> None:
+        if o.target.node is not None:
+            self.targets.add(o.target.node)
+        super().visit_assignment_expr(o)
+
+    def visit_lambda_expr(self, o: LambdaExpr) -> None:
+        # A lambda body forms its own expression context, so don't descend into it.
+        pass
+
+
+def find_walrus_targets(expr: Expression) -> set[SymbolNode]:
+    """Return the symbols reassigned via a walrus expression within 'expr'.
+
+    Walrus (':=') is the only way to rebind a variable in the middle of evaluating
+    an expression, so this is the complete set of in-expression reassignments.
+    """
+    collector = WalrusTargetCollector()
+    expr.accept(collector)
+    return collector.targets
+
+
+class SuspendDetector(TraverserVisitor):
+    """Detect await/yield/yield from expressions in a subtree."""
+
+    def __init__(self) -> None:
+        self.found = False
+
+    def visit_await_expr(self, o: AwaitExpr) -> None:
+        self.found = True
+
+    def visit_yield_expr(self, o: YieldExpr) -> None:
+        self.found = True
+
+    def visit_yield_from_expr(self, o: YieldFromExpr) -> None:
+        self.found = True
+
+    def visit_generator_expr(self, o: GeneratorExpr) -> None:
+        # An 'async for' clause suspends via an implicit await on __anext__ that
+        # isn't represented as an AwaitExpr node in the AST (list/set comprehensions
+        # delegate to a GeneratorExpr, so they are covered here too).
+        if any(o.is_async):
+            self.found = True
+        super().visit_generator_expr(o)
+
+    def visit_dictionary_comprehension(self, o: DictionaryComprehension) -> None:
+        if any(o.is_async):
+            self.found = True
+        super().visit_dictionary_comprehension(o)
+
+    def visit_lambda_expr(self, o: LambdaExpr) -> None:
+        # A lambda body forms its own function (and suspension) context.
+        pass
+
+
+def expr_has_suspend(expr: Expression) -> bool:
+    """Does evaluating 'expr' involve a suspension point (await/yield/yield from)?
+
+    A whole-expression borrow can't safely span a suspension point, since the
+    borrowed value and its borrow root are held in registers that aren't spilled
+    into the generator environment across the suspend.
+    """
+    detector = SuspendDetector()
+    expr.accept(detector)
+    return detector.found
 
 
 def create_type_params(

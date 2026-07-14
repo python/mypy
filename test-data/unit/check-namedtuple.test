@@ -132,6 +132,7 @@ main:5: error: Argument "rename" to "namedtuple" has incompatible type "str"; ex
 main:6: error: Unexpected keyword argument "unrecognized_arg" for "namedtuple"
 main:6: note: "namedtuple" defined in "collections"
 main:7: error: Too many positional arguments for "namedtuple"
+main:7: note: "namedtuple" defined in "collections"
 
 [case testNamedTupleDefaults]
 from collections import namedtuple

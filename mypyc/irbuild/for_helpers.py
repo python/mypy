@@ -28,6 +28,7 @@ from mypy.nodes import (
     Var,
 )
 from mypy.types import LiteralType, TupleType, get_proper_type, get_proper_types
+from mypyc.common import IS_FREE_THREADED
 from mypyc.ir.ops import (
     ERR_NEVER,
     BasicBlock,
@@ -36,8 +37,8 @@ from mypyc.ir.ops import (
     IntOp,
     LoadAddress,
     LoadErrorValue,
+    LoadGlobal,
     LoadLiteral,
-    LoadMem,
     MethodCall,
     RaiseStandardError,
     Register,
@@ -63,7 +64,6 @@ from mypyc.ir.rtypes import (
     is_tuple_rprimitive,
     object_pointer_rprimitive,
     object_rprimitive,
-    pointer_rprimitive,
     short_int_rprimitive,
 )
 from mypyc.irbuild.builder import IRBuilder
@@ -82,7 +82,12 @@ from mypyc.primitives.dict_ops import (
 )
 from mypyc.primitives.exc_ops import no_err_occurred_op, propagate_if_error_op
 from mypyc.primitives.generic_ops import aiter_op, anext_op, iter_op, next_op
-from mypyc.primitives.list_ops import list_append_op, list_get_item_unsafe_op, new_list_set_item_op
+from mypyc.primitives.list_ops import (
+    list_append_op,
+    list_get_item_int64_op,
+    list_get_item_unsafe_op,
+    new_list_set_item_op,
+)
 from mypyc.primitives.misc_ops import stop_async_iteration_op
 from mypyc.primitives.registry import CFunctionDescription
 from mypyc.primitives.set_ops import set_add_op
@@ -288,7 +293,8 @@ def sequence_from_generator_preallocate_helper(
         target_op = empty_op_llbuilder(length, line)
 
         def set_item(item_index: Value) -> None:
-            e = builder.accept(gen.left_expr)
+            with builder.enter_borrow_scope(line):
+                e = builder.accept(gen.left_expr)
             set_item_op(target_op, item_index, e, line)
 
         for_loop_helper_with_index(
@@ -441,9 +447,10 @@ def comprehension_helper(
             remaining_loop_params: the parameters for any further nested loops; if it's empty
                 we'll instead evaluate the "gen_inner_stmts" function
         """
-        # Check conditions, in order, short circuiting them.
+        # Check conditions, in order, short-circuiting them.
         for cond in conds:
-            cond_val = builder.accept(cond)
+            with builder.enter_borrow_scope(line):
+                cond_val = builder.accept(cond)
             cont_block, rest_block = BasicBlock(), BasicBlock()
             # If the condition is true we'll skip the continue.
             builder.add_bool_branch(cond_val, rest_block, cont_block)
@@ -457,7 +464,8 @@ def comprehension_helper(
         else:
             # We finally reached the actual body of the generator.
             # Generate the IR for the inner loop body.
-            gen_inner_stmts()
+            with builder.enter_borrow_scope(line):
+                gen_inner_stmts()
 
     handle_loop(loop_params)
 
@@ -828,8 +836,9 @@ class ForAsyncIterable(ForGenerator):
         line = self.line
 
         def except_match() -> Value:
-            addr = builder.add(LoadAddress(pointer_rprimitive, stop_async_iteration_op.src, line))
-            return builder.add(LoadMem(stop_async_iteration_op.type, addr, borrow=True))
+            return builder.add(
+                LoadGlobal(stop_async_iteration_op.type, stop_async_iteration_op.src, line)
+            )
 
         def try_body() -> None:
             awaitable = builder.call_c(anext_op, [builder.read(self.iter_target, line)], line)
@@ -866,7 +875,10 @@ def unsafe_index(builder: IRBuilder, target: Value, index: Value, line: int) -> 
     # since we want to use __getitem__ if we don't have an unsafe version,
     # so we just check manually.
     if is_list_rprimitive(target.type):
-        return builder.primitive_op(list_get_item_unsafe_op, [target, index], line)
+        if not IS_FREE_THREADED:
+            return builder.primitive_op(list_get_item_unsafe_op, [target, index], line)
+        else:
+            return builder.primitive_op(list_get_item_int64_op, [target, index], line)
     elif is_tuple_rprimitive(target.type):
         return builder.call_c(tuple_get_item_unsafe_op, [target, index], line)
     elif is_str_rprimitive(target.type):

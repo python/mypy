@@ -122,7 +122,7 @@ def expr_to_unanalyzed_type(
                 else:
                     base_fullname = expr.base.fullname
 
-                if base_fullname is not None and base_fullname in ANNOTATED_TYPE_NAMES:
+                if base_fullname is not None and base_fullname in ANNOTATED_TYPE_NAMES and args:
                     # TODO: this is not the optimal solution as we are basically getting rid
                     # of the Annotation definition and only returning the type information,
                     # losing all the annotations.

@@ -145,6 +145,8 @@ class ClassIR:
         )
         # Attributes defined in the class (not inherited)
         self.attributes: dict[str, RType] = {}
+        # Final attributes defined in the class (not inherited)
+        self.final_attributes: set[str] = set()
         # Deletable attributes
         self.deletable: list[str] = []
         # We populate method_types with the signatures of every method before
@@ -266,6 +268,22 @@ class ClassIR:
 
     def attr_type(self, name: str) -> RType:
         return self.attr_details(name)[0]
+
+    def is_final_attr(self, name: str) -> bool:
+        """Is the (possibly inherited) attribute Final, i.e. never rebound?
+
+        A Final attribute is read-only at runtime (it has no setter) and is assigned
+        exactly once during construction, so it can never be reassigned afterwards.
+        This makes it safe to borrow on free-threaded builds (no concurrent store can
+        invalidate a borrowed reference) and lets reads skip the concurrent-writer
+        guard. Returns False for properties and for attributes this class doesn't have.
+        """
+        for ir in self.mro:
+            if name in ir.attributes:
+                return name in ir.final_attributes
+            if name in ir.property_types:
+                return False
+        return False
 
     def method_decl(self, name: str) -> FuncDecl:
         for ir in self.mro:
@@ -396,6 +414,7 @@ class ClassIR:
             "ctor": self.ctor.serialize(),
             # We serialize dicts as lists to ensure order is preserved
             "attributes": [(k, t.serialize()) for k, t in self.attributes.items()],
+            "final_attributes": sorted(self.final_attributes),
             # We try to serialize a name reference, but if the decl isn't in methods
             # then we can't be sure that will work so we serialize the whole decl.
             "method_decls": [
@@ -456,6 +475,7 @@ class ClassIR:
         ir.builtin_base = data["builtin_base"]
         ir.ctor = FuncDecl.deserialize(data["ctor"], ctx)
         ir.attributes = {k: deserialize_type(t, ctx) for k, t in data["attributes"]}
+        ir.final_attributes = set(data["final_attributes"])
         ir.method_decls = {
             k: ctx.functions[v].decl if isinstance(v, str) else FuncDecl.deserialize(v, ctx)
             for k, v in data["method_decls"]

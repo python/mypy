@@ -3745,6 +3745,83 @@ b.py:4: error: ReadOnly TypedDict key "y" TypedDict is mutated
 ==
 b.py:3: error: ReadOnly TypedDict key "x" TypedDict is mutated
 
+[case testTypedDictUpdateClosed]
+import b
+[file a.py]
+from typing import TypedDict, Union
+class A(TypedDict):
+  a: int
+class B(TypedDict, closed=True):
+  b: int
+C = Union[A, B]
+[file a.py.2]
+from typing import TypedDict, Union
+class A(TypedDict, closed=True):
+  a: int
+class B(TypedDict):
+  b: int
+C = Union[A, B]
+[file a.py.3]
+from typing import TypedDict, Union
+class A(TypedDict, closed=True):
+  a: int
+class B(TypedDict, closed=True):
+  b: int
+C = Union[A, B]
+[file b.py]
+from a import C
+def foo(x: C) -> int:
+    if "b" in x:
+       return x["b"]
+    else:
+       return x["a"]
+def bar(x: C) -> int:
+    if "a" in x:
+       return x["a"]
+    else:
+       return x["b"]
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+[out]
+b.py:4: error: TypedDict "A" has no key "b"
+==
+b.py:9: error: TypedDict "B" has no key "a"
+==
+
+[case testTypedDictUpdateClosedPassingToFailing]
+import b
+[file a.py]
+from typing import TypedDict, Union
+class A(TypedDict, closed=True):
+  a: int
+class B(TypedDict, closed=True):
+  b: int
+C = Union[A, B]
+[file a.py.2]
+from typing import TypedDict, Union
+class A(TypedDict):
+  a: int
+class B(TypedDict, closed=True):
+  b: int
+C = Union[A, B]
+[file b.py]
+from a import C
+def foo(x: C) -> int:
+    if "b" in x:
+       return x["b"]
+    else:
+       return x["a"]
+def bar(x: C) -> int:
+    if "a" in x:
+       return x["a"]
+    else:
+       return x["b"]
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+[out]
+==
+b.py:4: error: TypedDict "A" has no key "b"
+
 [case testBasicAliasUpdate]
 import b
 [file a.py]
@@ -11762,3 +11839,134 @@ def bar() -> str: return "a"
 main:2: note: Revealed type is "None | builtins.int"
 ==
 main:2: note: Revealed type is "None | builtins.str"
+
+[case testStarExportedNameDeleted1]
+import pkg
+
+pkg.loads()
+
+[file pkg/__init__.pyi]
+from .sub import *
+
+[file pkg/sub.pyi]
+def loads() -> None: ...
+
+[file pkg/sub.pyi.2]
+[out]
+==
+main:3: error: "object" has no attribute "loads"
+
+[case testStarExportedNameDeleted2]
+import pkg
+
+pkg.C()
+
+[file pkg/__init__.pyi]
+from .sub import *
+
+[file pkg/sub.pyi]
+class C: pass
+
+[file pkg/sub.pyi.2]
+[out]
+==
+main:3: error: "object" has no attribute "C"
+
+[case testStarExportedNameDeleted3]
+from pkg import loads
+
+loads()
+
+[file pkg/__init__.pyi]
+from .sub import *
+
+[file pkg/sub.pyi]
+def loads() -> None: ...
+
+[file pkg/sub.pyi.2]
+[out]
+==
+main:1: error: Module "pkg" has no attribute "loads"
+
+[case testStarExportedNameDeleted4]
+from pkg import sub
+
+a = sub.x
+
+[file pkg/__init__.pyi]
+from .sub import *
+
+[file pkg/sub.pyi]
+x = 1
+
+[file pkg/sub.pyi.2]
+[out]
+==
+main:3: error: "object" has no attribute "x"
+
+[case testStarExportedNameDeleted5]
+from pkg import sub
+
+x: sub.N = 1
+
+[file pkg/__init__.pyi]
+from .sub import *
+
+[file pkg/sub.pyi]
+N = int
+
+[file pkg/sub.pyi.2]
+[out]
+==
+main:3: error: Name "sub.N" is not defined
+
+[case testStarExportedNameDeleted6]
+from pkg import *
+
+loads()
+
+[file pkg/__init__.pyi]
+from .sub import *
+
+[file pkg/sub.pyi]
+def loads() -> None: ...
+
+[file pkg/sub.pyi.2]
+[out]
+==
+main:3: error: Name "loads" is not defined
+
+[case testStarExportedNameDeleted7]
+from pkg import *
+
+C()
+
+[file pkg/__init__.pyi]
+from .sub import *
+
+[file pkg/sub.pyi]
+class C: pass
+
+[file pkg/sub.pyi.2]
+[out]
+==
+main:3: error: Name "C" is not defined
+
+[case testStarExportedNameDeleted8]
+from a import *
+
+C()
+
+[file a.py]
+from b import *
+
+[file b.py]
+from c import *
+
+[file c.py]
+class C: pass
+
+[file c.py.2]
+[out]
+==
+main:3: error: Name "C" is not defined

@@ -29,6 +29,8 @@ from mypyc.common import (
     BITMAP_BITS,
     BITMAP_TYPE,
     CPYFUNCTION_NAME,
+    IS_FREE_THREADED,
+    MYPYC_DEFAULTS_SETUP,
     NATIVE_PREFIX,
     PREFIX,
     REG_PREFIX,
@@ -42,7 +44,7 @@ from mypyc.ir.func_ir import (
     FuncIR,
     get_text_signature,
 )
-from mypyc.ir.rtypes import RTuple, RType, object_rprimitive
+from mypyc.ir.rtypes import RTuple, RType, is_simple_refcounted_pointer, object_rprimitive
 from mypyc.namegen import NameGenerator
 from mypyc.sametype import is_same_type
 
@@ -285,7 +287,7 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
 
     # If the class has a method to initialize default attribute
     # values, we need to call it during initialization.
-    defaults_fn = cl.get_method("__mypyc_defaults_setup")
+    defaults_fn = cl.get_method(MYPYC_DEFAULTS_SETUP)
 
     # If there is a __init__ method, we'll use it in the native constructor.
     init_fn = cl.get_method("__init__")
@@ -683,8 +685,8 @@ def emit_attr_defaults_func_call(defaults_fn: FuncIR, self_name: str, emitter: E
     The code returns NULL on a raised exception.
     """
     emitter.emit_lines(
-        "if ({}{}((PyObject *){}) == 0) {{".format(
-            NATIVE_PREFIX, defaults_fn.cname(emitter.names), self_name
+        "if ({}((PyObject *){}) == 0) {{".format(
+            emitter.native_function_call(defaults_fn.decl), self_name
         ),
         "Py_DECREF(self);",
         "return NULL;",
@@ -1064,12 +1066,14 @@ def generate_getseter_declarations(cl: ClassIR, emitter: Emitter) -> None:
                     getter_name(cl, attr, emitter.names), cl.struct_name(emitter.names)
                 )
             )
-            emitter.emit_line("static int")
-            emitter.emit_line(
-                "{}({} *self, PyObject *value, void *closure);".format(
-                    setter_name(cl, attr, emitter.names), cl.struct_name(emitter.names)
+            # Final attributes are read-only, so they have no setter.
+            if attr not in cl.final_attributes:
+                emitter.emit_line("static int")
+                emitter.emit_line(
+                    "{}({} *self, PyObject *value, void *closure);".format(
+                        setter_name(cl, attr, emitter.names), cl.struct_name(emitter.names)
+                    )
                 )
-            )
 
     for prop, (getter, setter) in cl.properties.items():
         if getter.decl.implicit:
@@ -1098,11 +1102,15 @@ def generate_getseters_table(cl: ClassIR, name: str, emitter: Emitter) -> None:
     if not cl.is_trait:
         for attr in cl.attributes:
             emitter.emit_line(f'{{"{attr}",')
-            emitter.emit_line(
-                " (getter){}, (setter){},".format(
-                    getter_name(cl, attr, emitter.names), setter_name(cl, attr, emitter.names)
+            if attr in cl.final_attributes:
+                # Final attributes are read-only, so emit a NULL setter.
+                emitter.emit_line(f" (getter){getter_name(cl, attr, emitter.names)}, NULL,")
+            else:
+                emitter.emit_line(
+                    " (getter){}, (setter){},".format(
+                        getter_name(cl, attr, emitter.names), setter_name(cl, attr, emitter.names)
+                    )
                 )
-            )
             emitter.emit_line(" NULL, NULL},")
     for prop, (getter, setter) in cl.properties.items():
         if getter.decl.implicit:
@@ -1128,8 +1136,10 @@ def generate_getseters(cl: ClassIR, emitter: Emitter) -> None:
     if not cl.is_trait:
         for i, (attr, rtype) in enumerate(cl.attributes.items()):
             generate_getter(cl, attr, rtype, emitter)
-            emitter.emit_line("")
-            generate_setter(cl, attr, rtype, emitter)
+            # Final attributes are read-only, so they have no setter.
+            if attr not in cl.final_attributes:
+                emitter.emit_line("")
+                generate_setter(cl, attr, rtype, emitter)
             if i < len(cl.attributes) - 1:
                 emitter.emit_line("")
     for prop, (getter, setter) in cl.properties.items():
@@ -1155,6 +1165,32 @@ def generate_getter(cl: ClassIR, attr: str, rtype: RType, emitter: Emitter) -> N
     )
     emitter.emit_line("{")
     attr_expr = f"self->{attr_field}"
+
+    if IS_FREE_THREADED and is_simple_refcounted_pointer(rtype):
+        # In free-threaded builds, load the attribute and take a new reference
+        # atomically to avoid a use-after-free race with a concurrent setter.
+        # CPy_GetAttrRef returns NULL if the attribute is undefined (NULL field),
+        # which is exactly the error/undefined value for a 'PyObject *' field.
+        #
+        # Final attributes are never rebound (no setter), so there is no concurrent
+        # writer to race with: a plain load + incref is safe. Use the cheaper
+        # CPy_GetAttrRefFinal, which skips the try-incref and _Py_NewRefWithLock
+        # slow path entirely (an unconditional Py_INCREF needs no maybe-weakref).
+        # This getter is generated per defining class, so a direct membership test
+        # matches the read-only getset table above (no need to walk the MRO).
+        if attr in cl.final_attributes:
+            getattr_ref = f"CPy_GetAttrRefFinal((PyObject **)&{attr_expr})"
+        else:
+            getattr_ref = f"CPy_GetAttrRef((PyObject **)&{attr_expr})"
+        emitter.emit_line(f"PyObject *retval = {getattr_ref};")
+        emitter.emit_line("if (unlikely(retval == NULL)) {")
+        emitter.emit_line("PyErr_SetString(PyExc_AttributeError,")
+        emitter.emit_line(f'    "attribute {repr(attr)} of {repr(cl.name)} undefined");')
+        emitter.emit_line("return NULL;")
+        emitter.emit_line("}")
+        emitter.emit_line("return retval;")
+        emitter.emit_line("}")
+        return
 
     # HACK: Don't consider refcounted values as always defined, since it's possible to
     #       access uninitialized values via 'gc.get_objects()'. Accessing non-refcounted
@@ -1193,6 +1229,30 @@ def generate_setter(cl: ClassIR, attr: str, rtype: RType, emitter: Emitter) -> N
         emitter.emit_line("return -1;")
         emitter.emit_line("}")
 
+    if IS_FREE_THREADED and is_simple_refcounted_pointer(rtype):
+        # In free-threaded builds, publish the new value atomically via
+        # CPy_SetAttrRef so a concurrent reader (see CPy_GetAttrRef) never sees a
+        # torn pointer or a freed old value. CPy_SetAttrRef steals its value and
+        # reclaims the old one, so we cast/type-check the incoming value, take a
+        # new reference (the setter only borrows 'value'), then hand it over.
+        # A NULL value deletes the attribute (reclaims the old value, stores NULL).
+        if deletable:
+            emitter.emit_line("if (value != NULL) {")
+        if is_same_type(rtype, object_rprimitive):
+            emitter.emit_line("PyObject *tmp = value;")
+        else:
+            emitter.emit_cast("value", "tmp", rtype, declare_dest=True)
+            emitter.emit_lines("if (!tmp)", "    return -1;")
+        emitter.emit_inc_ref("tmp", rtype)
+        emitter.emit_line(f"CPy_SetAttrRef((PyObject **)&self->{attr_field}, tmp);")
+        if deletable:
+            emitter.emit_line("} else {")
+            emitter.emit_line(f"CPy_SetAttrRef((PyObject **)&self->{attr_field}, NULL);")
+            emitter.emit_line("}")
+        emitter.emit_line("return 0;")
+        emitter.emit_line("}")
+        return
+
     # HACK: Don't consider refcounted values as always defined, since it's possible to
     #       access uninitialized values via 'gc.get_objects()'. Accessing non-refcounted
     #       values is benign.
@@ -1210,7 +1270,15 @@ def generate_setter(cl: ClassIR, attr: str, rtype: RType, emitter: Emitter) -> N
         emitter.emit_line("if (value != NULL) {")
 
     if rtype.is_unboxed:
-        emitter.emit_unbox("value", "tmp", rtype, error=ReturnHandler("-1"), declare_dest=True)
+        # Borrow the unboxed value: emit_inc_ref below takes the single owned
+        # reference, matching the borrowed-then-incref pattern of the other two
+        # branches. Without borrow=True, emit_unbox already creates a new
+        # reference for refcounted unboxed types (e.g. CPyTagged boxed ints,
+        # tuples with refcounted fields), so the emit_inc_ref would double the
+        # reference and leak the stored value on every set via this setter.
+        emitter.emit_unbox(
+            "value", "tmp", rtype, error=ReturnHandler("-1"), declare_dest=True, borrow=True
+        )
     elif is_same_type(rtype, object_rprimitive):
         emitter.emit_line("PyObject *tmp = value;")
     else:

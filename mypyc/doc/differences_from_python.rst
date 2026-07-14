@@ -237,28 +237,87 @@ nested function calls, typically due to out-of-control recursion.
 Final values
 ------------
 
-Compiled code replaces a reference to an attribute declared ``Final`` with
-the value of the attribute computed at compile time. This is an example of
-:ref:`early binding <early-binding>`. Example::
+Mypy treats variables and attributes defined as ``Final`` specially.
+For instance attributes of native classes, mypyc prevents reassignment
+of these attributes.
+
+Mypyc replaces references to a variable or attribute declared ``Final``
+with the value of the attribute computed at compile time, when it can
+be determined during compilation. Example::
 
     MAX: Final = 100
 
     def limit_to_max(x: int) -> int:
-         if x > MAX:
-             return MAX
-         return x
+        if x > MAX:
+            return MAX
+        return x
 
 The two references to ``MAX`` don't involve any module namespace lookups,
 and are equivalent to this code::
 
     def limit_to_max(x: int) -> int:
-         if x > 100:
-             return 100
-         return x
+        if x > 100:
+            return 100
+        return x
 
 When run as interpreted, the first example will execute slower due to
-the extra namespace lookups. In interpreted code final attributes can
-also be modified.
+the extra namespace lookups.
+
+For a final class attribute or global variable whose value can't be
+determined during compilation, mypyc defines a hidden native variable
+that stores the value when the initialization assignment is evaluated.
+Redefining the attribute using ``setattr`` or direct namespace access
+has no effect for mypyc-compiled code (in the same compilation unit).
+
+Final global variables and class attributes are faster to read in
+compiled code, since they don't have to be looked up from a namespace
+dictionary. Thus using a ``Final`` object that holds mutable state in an
+attribute tends to be faster than a plain global variable in compiled code::
+
+    class Counter:
+        def __init__(self) -> None:
+            self.value = 0
+
+    x: Final = Counter()
+    y = 0
+
+    def inc() -> None:
+        # Faster: no Python namespace lookup
+        x.value += 1
+        # Slower: access through globals() namespace dictionary
+        global y
+        y += 1
+
+.. _free-threading:
+
+Free threading
+--------------
+
+Mypyc supports free threading. However, optimized primitive operations in
+compiled code may have different atomicity properties compared to CPython.
+Use explicit synchronization if code depends on operations being atomic and
+race conditions are possible. This is already the recommended approach for
+normal Python code. You can often use :ref:`librt.threading.Lock <librt-threading-lock>`
+(or :py:class:`threading.Lock`, which is less efficient than
+``librt.threading.Lock``) to fix data races.
+
+Since mypyc 2.3, the vast majority of operations are memory safe even if
+there are race conditions (unlike earlier mypyc releases). This includes
+list operations and access to native instance attributes (except for
+a few less common use cases that will be fixed in future releases).
+
+.. note::
+
+    Operations that aren't safe under race conditions in interpreted CPython
+    are not expected to be memory safe in compiled code either.
+    Some :ref:`librt <librt>` features are heavily optimized for performance and
+    don't guarantee memory safety when there are race conditions
+    (notably the :ref:`vec <librt-vecs>` type).
+
+It's always safe to perform read-only operations concurrently. Using
+objects with final attributes and tuple objects can help prevent
+race conditions without introducing extra overhead from explicit
+synchronization operations.
 
 Unsupported features
 --------------------
@@ -284,10 +343,8 @@ Dunder methods
 Native classes **cannot** use these dunders. If defined, they will not
 work as expected.
 
-* ``__del__``
 * ``__index__``
-* ``__getattr__``, ``__getattribute__``
-* ``__setattr__``
+* ``__getattribute__``
 * ``__delattr__``
 
 Generator expressions
@@ -318,7 +375,6 @@ non-exhaustive list of what won't work:
 - Compiled methods aren't considered methods by ``inspect.ismethod``
 - ``inspect.signature`` chokes on compiled functions with default arguments that
   are not simple literals
-- ``inspect.iscoroutinefunction`` and ``asyncio.iscoroutinefunction`` will always return False for compiled functions, even those defined with `async def`
 
 Profiling hooks and tracing
 ***************************

@@ -1246,6 +1246,39 @@ import native
 
 [rechecked other_a]
 
+-- Test that importing a skipped module does not force rechecks.
+[case testIncrementalCompilationFollowImportsSkip]
+from other_dep import f
+assert f() == 1
+
+[file other_dep.py]
+import skipped
+
+def f() -> int:
+    return 1
+
+def g() -> int:
+    return 2
+
+# Files under "skipped" are not typechecked because of the "--follow_imports = skip" option.
+[file skipped/__init__.py]
+x = 1
+
+[file skipped/other_child.py]
+import skipped
+
+def child() -> int:
+    return 1
+
+[file native.py.2]
+from other_dep import g
+assert g() == 2
+
+[file driver.py]
+import native
+
+[rechecked native]
+
 [case testSeparateCompilationWithUndefinedAttribute]
 from other_a import A
 
@@ -1391,6 +1424,60 @@ def translate(b: bytes) -> bytes:
 import native
 assert native.translate(b'ABCD') == b'BBCD'
 
+[case testIncrementalCrossGroupExportTableOffsets]
+# Regression: under separate=True, each consumer module's IR is
+# compiled against the positional layout of its deps'
+# `exports_<group>` struct. Reordering the dep's classes keeps the
+# same set of public names, so mypy's interface hash for the dep is
+# unchanged -- the consumer is not invalidated and stays fully
+# cached, which causes `_load_cached_group_files` to return empty
+# cfile content for the consumer's group.
+#
+# Before the fix, `get_header_deps` over empty content returned no
+# includes, so `Extension.depends` for the consumer ended up empty
+# and setuptools never recompiled the consumer's .o when the dep's
+# `__native_<dep>.h` shifted struct offsets. The stale .o kept the
+# old offsets and silently resolved cross-group calls to the wrong
+# class.
+from other_classes import Gamma, Delta
+
+def make_gamma() -> Gamma:
+    return Gamma()
+
+def make_delta() -> Delta:
+    return Delta()
+
+[file other_classes.py]
+class Alpha:
+    a: int = 1
+
+class Beta:
+    b: int = 2
+
+class Gamma:
+    g: int = 3
+
+class Delta:
+    d: int = 4
+
+[file other_classes.py.2]
+class Delta:
+    d: int = 4
+
+class Alpha:
+    a: int = 1
+
+class Beta:
+    b: int = 2
+
+class Gamma:
+    g: int = 3
+
+[file driver.py]
+import native
+assert type(native.make_gamma()).__name__ == "Gamma"
+assert type(native.make_delta()).__name__ == "Delta"
+
 [case testCrossModuleAttrDefaults]
 from other import Parent
 
@@ -1418,6 +1505,45 @@ class Parent:
     config: Dict[str, str] = MY_DEFAULT
     total: int = VAL_1 + VAL_2 + VAL_3
     TAG: ClassVar[str] = "parent"
+
+[file driver.py]
+from native import test
+test()
+
+[case testIncrementalCrossModuleInheritedAttrDefaults]
+# Regression: under separate=True, when only the subclass module is
+# recompiled (parent loaded from mypy's incremental cache, so its
+# ClassDef.defs.body is empty), the subclass produces no
+# __mypyc_defaults_setup of its own and ClassIR.get_method returns
+# the parent's. The emitted call must use the cross-group
+# exports_<group>. prefix, otherwise the generated C references an
+# undeclared symbol and clang/gcc fail to compile.
+import other_a
+
+def test() -> None:
+    c = other_a.Child()
+    assert c.x == 1
+    assert c.y == "hello"
+
+[file other_b.py]
+class Parent:
+    x: int = 1
+    y: str = "hello"
+
+[file other_a.py]
+from other_b import Parent
+
+class Child(Parent):
+    pass
+
+[file other_a.py.2]
+from other_b import Parent
+
+class Child(Parent):
+    pass
+
+def _force_recompile() -> int:
+    return 1
 
 [file driver.py]
 from native import test
@@ -1617,6 +1743,41 @@ assert sum_range(0) == 0
 assert sum_range(1) == 0
 assert sum_range(5) == 10
 
+[case testPackageCycleInheritedEq]
+-- Regression test for generating __ne__ from an inherited __eq__ when the
+-- inherited method's declaration is available before its FuncIR body has been
+-- generated. This can happen in package import cycles where __init__ imports a
+-- child module before the subpackage that defines the base class.
+from other.other_child import Child
+
+def make_child() -> Child:
+    return Child()
+
+[file other/__init__.py]
+from other.other_child import Child as Child
+from other.other_subpkg import Base as Base
+
+[file other/other_child.py]
+from other.other_subpkg import Base
+
+class Child(Base):
+    pass
+
+[file other/other_subpkg/__init__.py]
+from other.other_subpkg.other_base import Base as Base
+
+[file other/other_subpkg/other_base.py]
+class Base:
+    def __eq__(self, other: object) -> bool:
+        return True
+
+[file driver.py]
+from native import make_child
+left = make_child()
+right = make_child()
+assert left == right
+assert not (left != right)
+
 [case testSeparateCrossGroupInheritedInit]
 -- Under separate=True, a subclass whose __init__ is inherited from a
 -- different group must call the base's CPyPy_ wrapper through the exports
@@ -1641,3 +1802,130 @@ class Base:
 from native import make_child
 assert make_child(7) == "child(7)"
 assert make_child(-1) == "child(-1)"
+
+[case testIncrementalBuiltinBaseClassConstruction]
+# Regression: builtin_base classes (Exception subclasses) were unconditionally
+# added to func_to_decl in load_type_map, causing cross-group call sites to
+# emit CPyDef instead of CPyType for the constructor.
+from other_errors import MyError
+from other_util import process
+
+def run(value: str) -> None:
+    if not value:
+        raise MyError("empty")
+
+def compute(x: str) -> str:
+    result = process(x)
+    if not result:
+        raise MyError("no result")
+    return result
+
+[file other_errors.py]
+class MyError(Exception):
+    pass
+
+[file other_util.py]
+def process(x: str) -> str:
+    return x
+
+[file other_util.py.2]
+def process(x: str, flag: bool = False) -> str:
+    return x.strip()
+
+[file driver.py]
+from native import run, compute
+try:
+    run("")
+except Exception as e:
+    print(str(e))
+print(compute("hello"))
+
+[out]
+empty
+hello
+[out2]
+empty
+hello
+
+[case testIncrementalCrossModuleInheritedAttrDefaultsWithOverride]
+# Regression: same shape as testIncrementalCrossModuleInheritedAttrDefaults,
+# but the subclass adds an attribute of its own, so generate_attr_defaults_init
+# emits a __mypyc_defaults_setup for it. Before the fix, the recompiled
+# subclass walked the parent's ClassDef.defs.body to collect inherited
+# defaults; when the parent was loaded from mypy's incremental cache that
+# body was empty, so the inherited initialization was dropped and any
+# access to an inherited attribute through compiled code raised
+# "AttributeError: attribute '<name>' of '<base>' undefined".
+import other_a
+
+def test() -> None:
+    c = other_a.Child()
+    # Inherited attributes must still be initialized after the subclass
+    # has been recompiled against a cache-loaded parent.
+    assert c.x == 1
+    assert c.y == "hello"
+    # Own override is set by the subclass's own __mypyc_defaults_setup.
+    assert c.z is True
+    # Method defined on the parent reads an inherited attribute through
+    # the compiled path; this is what crashes pre-fix.
+    assert c.use() == 1
+
+[file other_b.py]
+class Parent:
+    x: int = 1
+    y: str = "hello"
+    z: bool = False
+
+    def use(self) -> int:
+        if self.x:
+            return 1
+        return 0
+
+[file other_a.py]
+from other_b import Parent
+
+class Child(Parent):
+    z: bool = True
+
+[file other_a.py.2]
+from other_b import Parent
+
+class Child(Parent):
+    z: bool = True
+
+def _force_recompile() -> int:
+    return 1
+
+[file driver.py]
+from native import test
+test()
+
+[case testCrossModuleInheritedAttrDefaultsSameGroup]
+# separate: [(["native.py"], "grp1"), (["other_a.py", "other_b.py"], "grp2")]
+# Regression: with the subclass (other_a) and base (other_b) in the same
+# compilation group, IR build runs alphabetically within the group, so
+# the subclass is IR-built before the base. The decision to emit
+# __mypyc_defaults_setup (and a chained call to the ancestor's) must be
+# set up in the prepare phase, before any IR build runs; otherwise the
+# subclass's lookup of the parent's setup decl misses and inherited
+# defaults are lost on a fresh build.
+import other_a
+
+def test() -> None:
+    c = other_a.Child()
+    assert c.x == 1
+    assert c.z is True
+
+[file other_b.py]
+class Parent:
+    x: int = 1
+
+[file other_a.py]
+from other_b import Parent
+
+class Child(Parent):
+    z: bool = True
+
+[file driver.py]
+from native import test
+test()
