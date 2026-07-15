@@ -512,6 +512,23 @@ async def stolen(n: int) -> int:
 async def test_stolen() -> None:
     await assert_no_leaks(lambda: stolen(200), 16)
 
+async def retain_arg(c: set[int]) -> None:
+    async def nested() -> int:
+        await sleep()
+        return len(c)
+
+    await nested()
+
+async def test_completed_coroutine_releases_environment() -> None:
+    import weakref
+
+    c = {1}
+    ref = weakref.ref(c)
+    coro = retain_arg(c)
+    c = {2}
+    await coro
+    assert ref() is None
+
 [file asyncio/__init__.pyi]
 async def sleep(t: float) -> None: ...
 

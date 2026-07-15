@@ -22,6 +22,13 @@ PyObject *CPy_GetCoro(PyObject *obj)
     }
 }
 
+void CPyGen_Clear(PyObject *obj)
+{
+    inquiry clear = Py_TYPE(obj)->tp_clear;
+    if (clear != NULL)
+        clear(obj);
+}
+
 PyObject *CPyIter_Send(PyObject *iter, PyObject *val)
 {
     // Do a send, or a next if second arg is None.

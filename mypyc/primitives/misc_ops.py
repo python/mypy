@@ -74,6 +74,14 @@ coro_op = custom_op(
     error_kind=ERR_MAGIC,
 )
 
+# Release references held by a generator or coroutine after it finishes.
+generator_clear_op = custom_op(
+    arg_types=[object_rprimitive],
+    return_type=void_rtype,
+    c_function_name="CPyGen_Clear",
+    error_kind=ERR_NEVER,
+)
+
 # Do obj.send(value), or a next(obj) if second arg is None.
 # (This behavior is to match the PEP 380 spec for yield from.)
 # Like next_raw_op, don't swallow StopIteration,

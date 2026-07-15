@@ -964,6 +964,7 @@ static inline PyObject *CPy_TYPE(PyObject *obj) {
 
 PyObject *CPy_CalculateMetaclass(PyObject *type, PyObject *o);
 PyObject *CPy_GetCoro(PyObject *obj);
+void CPyGen_Clear(PyObject *obj);
 PyObject *CPyIter_Send(PyObject *iter, PyObject *val);
 int CPy_YieldFromErrorHandle(PyObject *iter, PyObject **outp);
 PyObject *CPy_FetchStopIterationValue(void);

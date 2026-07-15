@@ -23,6 +23,7 @@ from mypyc.ir.ops import (
 from mypyc.ir.rtypes import object_rprimitive
 from mypyc.irbuild.targets import AssignmentTarget
 from mypyc.primitives.exc_ops import restore_exc_info_op, set_stop_iteration_value
+from mypyc.primitives.misc_ops import generator_clear_op
 
 if TYPE_CHECKING:
     from mypyc.irbuild.builder import IRBuilder
@@ -94,6 +95,11 @@ class GeneratorNonlocalControl(BaseNonlocalControl):
         # __next__ is called, we jump to the case in which
         # StopIteration is raised.
         builder.assign(builder.fn_info.generator_class.next_label_target, Integer(-1), line)
+
+        # Match CPython's completed-frame behavior even when the coroutine object
+        # remains referenced by an event loop or task wrapper.
+        builder.call_c(generator_clear_op, [builder.fn_info.generator_class.curr_env_reg], line)
+        builder.call_c(generator_clear_op, [builder.fn_info.generator_class.self_reg], line)
 
         # Raise a StopIteration containing a field for the value that
         # should be returned. Before doing so, create a new block
