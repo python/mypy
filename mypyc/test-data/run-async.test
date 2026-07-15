@@ -566,6 +566,40 @@ async def test_closed_coroutine_releases_environment() -> None:
     coro.close()
     assert ref() is None
 
+async def interpreted_leaf(c: set[int]) -> int:
+    await sleep()
+    return len(c)
+
+async def compiled_leaf(c: set[int]) -> int:
+    await sleep()
+    return len(c)
+
+async def compiled_awaits_interpreted(c: set[int]) -> int:
+    import interpreted
+
+    return await interpreted.interpreted_leaf(c)
+
+async def interpreted_awaits_compiled(fn, c: set[int]) -> int:
+    return await fn(c)
+
+async def test_completed_mixed_coroutine_releases_environment() -> None:
+    import interpreted
+    import weakref
+
+    c = {1}
+    ref = weakref.ref(c)
+    coro = compiled_awaits_interpreted(c)
+    c = {2}
+    assert await coro == 1
+    assert ref() is None
+
+    c = {3}
+    ref = weakref.ref(c)
+    coro = interpreted.interpreted_awaits_compiled(compiled_leaf, c)
+    c = {4}
+    assert await coro == 1
+    assert ref() is None
+
 [file asyncio/__init__.pyi]
 async def sleep(t: float) -> None: ...
 
