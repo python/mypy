@@ -8,10 +8,13 @@ from __future__ import annotations
 from abc import abstractmethod
 from typing import TYPE_CHECKING
 
+from mypyc.ir.class_ir import ClassIR
 from mypyc.ir.ops import (
+    ERR_NEVER,
     NO_TRACEBACK_LINE_NO,
     BasicBlock,
     Branch,
+    Call,
     Goto,
     Integer,
     Register,
@@ -23,7 +26,6 @@ from mypyc.ir.ops import (
 from mypyc.ir.rtypes import object_rprimitive
 from mypyc.irbuild.targets import AssignmentTarget
 from mypyc.primitives.exc_ops import restore_exc_info_op, set_stop_iteration_value
-from mypyc.primitives.misc_ops import generator_clear_op
 
 if TYPE_CHECKING:
     from mypyc.irbuild.builder import IRBuilder
@@ -91,15 +93,7 @@ class GeneratorNonlocalControl(BaseNonlocalControl):
     """Default nonlocal control in a generator function outside statements."""
 
     def gen_return(self, builder: IRBuilder, value: Value, line: int) -> None:
-        # Assign an invalid next label number so that the next time
-        # __next__ is called, we jump to the case in which
-        # StopIteration is raised.
-        builder.assign(builder.fn_info.generator_class.next_label_target, Integer(-1), line)
-
-        # Match CPython's completed-frame behavior even when the coroutine object
-        # remains referenced by an event loop or task wrapper.
-        builder.call_c(generator_clear_op, [builder.fn_info.generator_class.curr_env_reg], line)
-        builder.call_c(generator_clear_op, [builder.fn_info.generator_class.self_reg], line)
+        gen_generator_func_cleanup(builder, line)
 
         # Raise a StopIteration containing a field for the value that
         # should be returned. Before doing so, create a new block
@@ -136,6 +130,25 @@ class GeneratorNonlocalControl(BaseNonlocalControl):
         # caller is a native function.
         builder.add(SetMem(object_rprimitive, stop_iter_reg, value))
         builder.add(Return(Integer(0, object_rprimitive)))
+
+
+def gen_class_clear(builder: IRBuilder, obj: Value, cl: ClassIR, line: int) -> None:
+    call = Call(cl.clear, [obj], line)
+    call.error_kind = ERR_NEVER
+    builder.add(call)
+
+
+def gen_generator_func_cleanup(builder: IRBuilder, line: int) -> None:
+    """Clear references held by a completed generator or coroutine."""
+    cls = builder.fn_info.generator_class
+
+    # Assign an invalid next label number so that the next time __next__ is
+    # called, we jump to the case in which StopIteration is raised.
+    builder.assign(cls.next_label_target, Integer(-1), line)
+
+    gen_class_clear(builder, cls.curr_env_reg, builder.fn_info.env_class, line)
+    if builder.fn_info.env_class is not cls.ir:
+        gen_class_clear(builder, cls.self_reg, cls.ir, line)
 
 
 class CleanupNonlocalControl(NonlocalControl):

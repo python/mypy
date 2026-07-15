@@ -252,7 +252,7 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
     getseters_name = f"{name_prefix}_getseters"
     vtable_name = f"{name_prefix}_vtable"
     traverse_name = f"{name_prefix}_traverse"
-    clear_name = f"{name_prefix}_clear"
+    clear_name = emitter.native_function_name(cl.clear)
     dealloc_name = f"{name_prefix}_dealloc"
     methods_name = f"{name_prefix}_methods"
     vtable_setup_name = f"{name_prefix}_trait_vtable_setup"
@@ -280,7 +280,7 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
         fields["tp_dealloc"] = f"(destructor){name_prefix}_dealloc"
         if not cl.is_acyclic:
             fields["tp_traverse"] = f"(traverseproc){name_prefix}_traverse"
-            fields["tp_clear"] = f"(inquiry){name_prefix}_clear"
+            fields["tp_clear"] = f"(inquiry){clear_name}"
     # Populate .tp_finalize and generate a finalize method only if __del__ is defined for this class.
     del_method = next((e.method for e in cl.vtable_entries if e.name == "__del__"), None)
     if del_method:
@@ -903,9 +903,12 @@ def generate_traverse_for_class(cl: ClassIR, func_name: str, emitter: Emitter) -
 
 
 def generate_clear_for_class(cl: ClassIR, func_name: str, emitter: Emitter) -> None:
-    emitter.emit_line("static int")
-    emitter.emit_line(f"{func_name}({cl.struct_name(emitter.names)} *self)")
+    emitter.emit_line("static " + native_function_header(cl.clear, emitter))
     emitter.emit_line("{")
+    emitter.emit_line(
+        f"{cl.struct_name(emitter.names)} *self = "
+        f"({cl.struct_name(emitter.names)} *)cpy_r_self;"
+    )
     for base in reversed(cl.base_mro):
         for attr, rtype in base.attributes.items():
             emitter.emit_gc_clear(f"self->{emitter.attr(attr)}", rtype)
@@ -963,7 +966,7 @@ def generate_dealloc_for_class(
     if not cl.is_acyclic:
         emitter.emit_line("PyObject_GC_UnTrack(self);")
     if cl.builtin_base:
-        emitter.emit_line(f"{clear_func_name}(self);")
+        emitter.emit_line(f"{clear_func_name}((PyObject *)self);")
         # For native subclasses of builtins such as dict, the base deallocator
         # is responsible for tearing down base-owned storage and freeing memory.
         # Re-track self if base is GC-aware to match cpython's subtype_dealloc.
@@ -978,7 +981,7 @@ def generate_dealloc_for_class(
         emit_reuse_dealloc(cl, emitter)
     # The trashcan is needed to handle deep recursive deallocations
     emitter.emit_line(f"CPy_TRASHCAN_BEGIN(self, {dealloc_func_name})")
-    emitter.emit_line(f"{clear_func_name}(self);")
+    emitter.emit_line(f"{clear_func_name}((PyObject *)self);")
     emitter.emit_line("Py_TYPE(self)->tp_free((PyObject *)self);")
     emitter.emit_line("CPy_TRASHCAN_END(self)")
     emitter.emit_line("done: ;")

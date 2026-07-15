@@ -7,7 +7,7 @@ from typing import NamedTuple
 from mypyc.common import PROPSET_PREFIX, JsonDict
 from mypyc.ir.func_ir import FuncDecl, FuncIR, FuncSignature, RuntimeArg
 from mypyc.ir.ops import DeserMaps, Value
-from mypyc.ir.rtypes import RInstance, RType, deserialize_type, object_rprimitive
+from mypyc.ir.rtypes import RInstance, RType, c_int_rprimitive, deserialize_type, object_rprimitive
 from mypyc.namegen import NameGenerator, exported_name
 
 # Some notes on the vtable layout: Each concrete class has a vtable
@@ -142,6 +142,13 @@ class ClassIR:
             None,
             module_name,
             FuncSignature([RuntimeArg("type", object_rprimitive)], RInstance(self)),
+        )
+        self.clear = FuncDecl(
+            name + "_clear",
+            None,
+            module_name,
+            FuncSignature([RuntimeArg("self", RInstance(self))], c_int_rprimitive),
+            internal=True,
         )
         # Attributes defined in the class (not inherited)
         self.attributes: dict[str, RType] = {}
@@ -412,6 +419,7 @@ class ClassIR:
             "_serializable": self._serializable,
             "builtin_base": self.builtin_base,
             "ctor": self.ctor.serialize(),
+            "clear": self.clear.serialize(),
             # We serialize dicts as lists to ensure order is preserved
             "attributes": [(k, t.serialize()) for k, t in self.attributes.items()],
             "final_attributes": sorted(self.final_attributes),
@@ -474,6 +482,7 @@ class ClassIR:
         ir._serializable = data["_serializable"]
         ir.builtin_base = data["builtin_base"]
         ir.ctor = FuncDecl.deserialize(data["ctor"], ctx)
+        ir.clear = FuncDecl.deserialize(data["clear"], ctx)
         ir.attributes = {k: deserialize_type(t, ctx) for k, t in data["attributes"]}
         ir.final_attributes = set(data["final_attributes"])
         ir.method_decls = {

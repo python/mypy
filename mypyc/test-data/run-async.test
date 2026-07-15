@@ -529,6 +529,43 @@ async def test_completed_coroutine_releases_environment() -> None:
     await coro
     assert ref() is None
 
+async def retain_arg_then_raise(c: set[int]) -> None:
+    async def nested() -> int:
+        await sleep()
+        return len(c)
+
+    await nested()
+    raise ValueError
+
+async def test_failed_coroutine_releases_environment() -> None:
+    import weakref
+
+    c = {1}
+    ref = weakref.ref(c)
+    coro = retain_arg_then_raise(c)
+    c = {2}
+    try:
+        await coro
+    except ValueError:
+        pass
+    assert ref() is None
+
+async def close_retain_arg(c: set[int]) -> None:
+    await sleep()
+    len(c)
+
+async def test_closed_coroutine_releases_environment() -> None:
+    import weakref
+    from typing import Any, cast
+
+    c = {1}
+    ref = weakref.ref(c)
+    coro = cast(Any, close_retain_arg(c))
+    coro.send(None)
+    c = {2}
+    coro.close()
+    assert ref() is None
+
 [file asyncio/__init__.pyi]
 async def sleep(t: float) -> None: ...
 
