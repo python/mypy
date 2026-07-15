@@ -407,6 +407,12 @@ import asyncio
 import gc
 import platform
 
+from testutil import is_gil_disabled
+
+def immediate_deallocation_checks_are_reliable() -> bool:
+    # Free-threaded builds can defer deallocation, so weakref liveness is not deterministic.
+    return not is_gil_disabled()
+
 async def sleep() -> None:
     # Non-zero value hangs on Windows.
     time = 0 if platform.system() == "Windows" else 0.0001
@@ -520,6 +526,9 @@ async def retain_arg(c: set[int]) -> None:
     await nested()
 
 async def test_completed_coroutine_releases_environment() -> None:
+    if not immediate_deallocation_checks_are_reliable():
+        return
+
     import weakref
 
     c = {1}
@@ -538,6 +547,9 @@ async def retain_arg_then_raise(c: set[int]) -> None:
     raise ValueError
 
 async def test_failed_coroutine_releases_environment() -> None:
+    if not immediate_deallocation_checks_are_reliable():
+        return
+
     import weakref
 
     c = {1}
@@ -555,6 +567,9 @@ async def close_retain_arg(c: set[int]) -> None:
     len(c)
 
 async def test_closed_coroutine_releases_environment() -> None:
+    if not immediate_deallocation_checks_are_reliable():
+        return
+
     import weakref
     from typing import Any, cast
 
@@ -583,6 +598,9 @@ async def interpreted_awaits_compiled(fn, c: set[int]) -> int:
     return await fn(c)
 
 async def test_completed_mixed_coroutine_releases_environment() -> None:
+    if not immediate_deallocation_checks_are_reliable():
+        return
+
     import interpreted
     import weakref
 
