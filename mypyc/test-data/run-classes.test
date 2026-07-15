@@ -990,6 +990,34 @@ try:
 except LeakyErr as e:
     assert e.data == "hi"
 
+[case testInheritedHeapBaseFinalizerRuns]
+# Regression test: when a mypyc-compiled Exception subclass inherits from an
+# interpreted (heap) base that defines __del__, the base's finalizer must still
+# run. Our custom tp_dealloc bypasses subtype_dealloc, so we must invoke
+# PyObject_CallFinalizerFromDealloc ourselves when tp_finalize is inherited.
+from mypy_extensions import mypyc_attr
+
+events: list[str] = []
+
+@mypyc_attr(native_class=False)
+class HeapError(Exception):
+    def __del__(self) -> None:
+        events.append("base del")
+
+class NativeError(HeapError):
+    def __init__(self, payload: object) -> None:
+        self.own = payload
+
+[file driver.py]
+import gc
+from native import NativeError, events
+
+for _ in range(1):
+    NativeError(object())
+
+gc.collect()
+assert events == ["base del"], events
+
 [case testSubclassDict]
 from typing import Dict
 class WelpDict(Dict[str, int]):

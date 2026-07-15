@@ -935,7 +935,13 @@ def generate_dealloc_for_class(
     emitter.emit_line("static void")
     emitter.emit_line(f"{dealloc_func_name}({cl.struct_name(emitter.names)} *self)")
     emitter.emit_line("{")
-    if has_tp_finalize:
+    # Always run the finalizer dance for builtin_base subclasses: we're bypassing
+    # subtype_dealloc, so an inherited tp_finalize (e.g. from an interpreted base's
+    # __del__) would otherwise be skipped. Runtime-gate on tp_finalize so we no-op
+    # when nothing in the MRO defines a finalizer.
+    if has_tp_finalize or cl.builtin_base:
+        if not has_tp_finalize:
+            emitter.emit_line("if (Py_TYPE(self)->tp_finalize) {")
         emitter.emit_line("PyObject *type, *value, *traceback;")
         emitter.emit_line("PyErr_Fetch(&type, &value, &traceback);")
         emitter.emit_line("int res = PyObject_CallFinalizerFromDealloc((PyObject *)self);")
@@ -952,6 +958,8 @@ def generate_dealloc_for_class(
         emitter.emit_line("if (res < 0) {")
         emitter.emit_line("goto done;")
         emitter.emit_line("}")
+        if not has_tp_finalize:
+            emitter.emit_line("}")
     if not cl.is_acyclic:
         emitter.emit_line("PyObject_GC_UnTrack(self);")
     if cl.builtin_base:
