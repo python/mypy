@@ -1487,7 +1487,8 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                         # TODO: check recursively for inner type variables
                         if (
                             arg_type.variance == COVARIANT
-                            and defn.name not in ("__init__", "__new__", "__post_init__")
+                            and defn.name
+                            not in {"__init__", "__new__", "__post_init__", "__replace__"}
                             and not is_private(defn.name)  # private methods are not inherited
                             and (i != 0 or not found_self)
                         ):
