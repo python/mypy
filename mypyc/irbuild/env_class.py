@@ -292,9 +292,7 @@ def add_vars_to_env(builder: IRBuilder, prefix: str = "") -> None:
                     object_rprimitive,
                     env_for_func,
                     reassign=False,
-                    keep_alive_on_completion=is_free_variable_in_nested_func(
-                        builder, builder.fn_info.fitem, nested_fn
-                    ),
+                    keep_alive_on_completion=is_free_variable(builder, nested_fn),
                     prefix=nested_prefix,
                 )
 

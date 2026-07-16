@@ -2125,6 +2125,16 @@ async def make_arg_reader(payload: list[int]) -> Callable[[], int]:
 
     return read_payload
 
+async def make_indirect_reader() -> Callable[[], int]:
+    def leaf() -> int:
+        return 17
+
+    def reader() -> int:
+        return leaf()
+
+    await asyncio.sleep(0)
+    return reader
+
 def test_closure_returned_from_completed_coroutine_keeps_capture() -> None:
     read_payload = asyncio.run(make_reader())
     assert read_payload() == 7
@@ -2133,6 +2143,21 @@ def test_closure_returned_from_completed_coroutine_keeps_capture() -> None:
     read_arg_payload = asyncio.run(make_arg_reader(payload))
     payload = [0]
     assert read_arg_payload() == 13
+
+    indirect_reader = asyncio.run(make_indirect_reader())
+    assert indirect_reader() == 17
+
+async def test_closure_returned_from_awaited_coroutine_keeps_capture() -> None:
+    read_payload = await make_reader()
+    assert read_payload() == 7
+
+    payload = [13]
+    read_arg_payload = await make_arg_reader(payload)
+    payload = [0]
+    assert read_arg_payload() == 13
+
+    indirect_reader = await make_indirect_reader()
+    assert indirect_reader() == 17
 
 [file asyncio/__init__.pyi]
 from typing import Awaitable, TypeVar
