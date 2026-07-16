@@ -2580,6 +2580,23 @@ Gen(2).__replace__(x="not an int")  # E: Argument "x" to "__replace__" of "Gen" 
 
 [builtins fixtures/tuple.pyi]
 
+[case testDunderReplaceAllowsCovariantDataclassField]
+# flags: --python-version 3.13
+from dataclasses import dataclass
+from typing import Generic, TypeVar
+
+T_co = TypeVar("T_co", covariant=True)
+
+@dataclass(frozen=True)
+class A(Generic[T_co]):
+    value: T_co
+
+class B(Generic[T_co]):
+    def __replace__(self, *, value: T_co) -> B[T_co]:
+        return self
+
+[builtins fixtures/tuple.pyi]
+
 [case testDunderReplaceCovariantOverride]
 # flags: --python-version 3.13  --enable-error-code mutable-override
 from dataclasses import dataclass
