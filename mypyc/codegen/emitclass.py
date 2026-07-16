@@ -353,7 +353,11 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
         if not cl.is_acyclic:
             generate_traverse_for_class(cl, traverse_name, emitter)
             emit_line()
-        generate_clear_for_class(cl, clear_name, emitter)
+        generate_clear_for_class(cl, cl.clear, emitter)
+        emit_line()
+        generate_clear_for_class(
+            cl, cl.clear_on_completion, emitter, skip_attrs=cl.attrs_to_keep_alive_on_completion
+        )
         emit_line()
         generate_dealloc_for_class(cl, dealloc_name, clear_name, bool(del_method), emitter)
         emit_line()
@@ -902,8 +906,12 @@ def generate_traverse_for_class(cl: ClassIR, func_name: str, emitter: Emitter) -
     emitter.emit_line("}")
 
 
-def generate_clear_for_class(cl: ClassIR, func_name: str, emitter: Emitter) -> None:
-    emitter.emit_line("static " + native_function_header(cl.clear, emitter))
+def generate_clear_for_class(
+    cl: ClassIR, func_decl: FuncDecl, emitter: Emitter, skip_attrs: set[str] | None = None
+) -> None:
+    if skip_attrs is None:
+        skip_attrs = set()
+    emitter.emit_line("static " + native_function_header(func_decl, emitter))
     emitter.emit_line("{")
     emitter.emit_line(
         f"{cl.struct_name(emitter.names)} *self = "
@@ -911,6 +919,8 @@ def generate_clear_for_class(cl: ClassIR, func_name: str, emitter: Emitter) -> N
     )
     for base in reversed(cl.base_mro):
         for attr, rtype in base.attributes.items():
+            if attr in skip_attrs:
+                continue
             emitter.emit_gc_clear(f"self->{emitter.attr(attr)}", rtype)
     base_args = "(PyObject *)self"
     if cl.builtin_base:

@@ -150,8 +150,18 @@ class ClassIR:
             FuncSignature([RuntimeArg("self", RInstance(self))], c_int_rprimitive),
             internal=True,
         )
+        self.clear_on_completion = FuncDecl(
+            name + "_clear_on_completion",
+            None,
+            module_name,
+            FuncSignature([RuntimeArg("self", RInstance(self))], c_int_rprimitive),
+            internal=True,
+        )
         # Attributes defined in the class (not inherited)
         self.attributes: dict[str, RType] = {}
+        # Attributes that must survive generator/coroutine completion because
+        # escaped nested functions may still read them as closure variables.
+        self.attrs_to_keep_alive_on_completion: set[str] = set()
         # Final attributes defined in the class (not inherited)
         self.final_attributes: set[str] = set()
         # Deletable attributes
@@ -420,8 +430,10 @@ class ClassIR:
             "builtin_base": self.builtin_base,
             "ctor": self.ctor.serialize(),
             "clear": self.clear.serialize(),
+            "clear_on_completion": self.clear_on_completion.serialize(),
             # We serialize dicts as lists to ensure order is preserved
             "attributes": [(k, t.serialize()) for k, t in self.attributes.items()],
+            "attrs_to_keep_alive_on_completion": sorted(self.attrs_to_keep_alive_on_completion),
             "final_attributes": sorted(self.final_attributes),
             # We try to serialize a name reference, but if the decl isn't in methods
             # then we can't be sure that will work so we serialize the whole decl.
@@ -483,7 +495,9 @@ class ClassIR:
         ir.builtin_base = data["builtin_base"]
         ir.ctor = FuncDecl.deserialize(data["ctor"], ctx)
         ir.clear = FuncDecl.deserialize(data["clear"], ctx)
+        ir.clear_on_completion = FuncDecl.deserialize(data["clear_on_completion"], ctx)
         ir.attributes = {k: deserialize_type(t, ctx) for k, t in data["attributes"]}
+        ir.attrs_to_keep_alive_on_completion = set(data["attrs_to_keep_alive_on_completion"])
         ir.final_attributes = set(data["final_attributes"])
         ir.method_decls = {
             k: ctx.functions[v].decl if isinstance(v, str) else FuncDecl.deserialize(v, ctx)

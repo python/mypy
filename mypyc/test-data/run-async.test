@@ -2104,6 +2104,74 @@ for i in range(50):
     assert yields == ("hello",), yields
     assert val == "value" + str(i) + "world", repr(val)
 
+[case testCoroutineClosureOutlivesCompletedCoroutine]
+import asyncio
+from typing import Callable
+
+async def make_reader() -> Callable[[], int]:
+    payload = [7]
+    await asyncio.sleep(0)
+
+    def read_payload() -> int:
+        return payload[0]
+
+    return read_payload
+
+async def make_arg_reader(payload: list[int]) -> Callable[[], int]:
+    await asyncio.sleep(0)
+
+    def read_payload() -> int:
+        return payload[0]
+
+    return read_payload
+
+def test_closure_returned_from_completed_coroutine_keeps_capture() -> None:
+    read_payload = asyncio.run(make_reader())
+    assert read_payload() == 7
+
+    payload = [13]
+    read_arg_payload = asyncio.run(make_arg_reader(payload))
+    payload = [0]
+    assert read_arg_payload() == 13
+
+[file asyncio/__init__.pyi]
+from typing import Awaitable, TypeVar
+
+T = TypeVar("T")
+
+def run(x: Awaitable[T]) -> T: ...
+async def sleep(t: float) -> None: ...
+
+[typing fixtures/typing-full.pyi]
+
+[case testNestedCoroutineOutlivesCompletedCoroutine]
+import asyncio
+from typing import Awaitable
+
+async def make_nested_coroutine() -> Awaitable[int]:
+    payload = [11]
+    await asyncio.sleep(0)
+
+    async def read_payload() -> int:
+        await asyncio.sleep(0)
+        return payload[0]
+
+    return read_payload()
+
+def test_nested_coroutine_returned_from_completed_coroutine_keeps_capture() -> None:
+    read_payload = asyncio.run(make_nested_coroutine())
+    assert asyncio.run(read_payload) == 11
+
+[file asyncio/__init__.pyi]
+from typing import Awaitable, TypeVar
+
+T = TypeVar("T")
+
+def run(x: Awaitable[T]) -> T: ...
+async def sleep(t: float) -> None: ...
+
+[typing fixtures/typing-full.pyi]
+
 [case testBorrowedFinalAttrAcrossAsyncComprehension]
 import asyncio
 from typing import Final

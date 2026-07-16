@@ -132,8 +132,8 @@ class GeneratorNonlocalControl(BaseNonlocalControl):
         builder.add(Return(Integer(0, object_rprimitive)))
 
 
-def gen_class_clear(builder: IRBuilder, obj: Value, cl: ClassIR, line: int) -> None:
-    call = Call(cl.clear, [obj], line)
+def gen_class_clear_on_completion(builder: IRBuilder, obj: Value, cl: ClassIR, line: int) -> None:
+    call = Call(cl.clear_on_completion, [obj], line)
     call.error_kind = ERR_NEVER
     builder.add(call)
 
@@ -146,9 +146,9 @@ def gen_generator_func_cleanup(builder: IRBuilder, line: int) -> None:
     # called, we jump to the case in which StopIteration is raised.
     builder.assign(cls.next_label_target, Integer(-1), line)
 
-    gen_class_clear(builder, cls.curr_env_reg, builder.fn_info.env_class, line)
+    gen_class_clear_on_completion(builder, cls.curr_env_reg, builder.fn_info.env_class, line)
     if builder.fn_info.env_class is not cls.ir:
-        gen_class_clear(builder, cls.self_reg, cls.ir, line)
+        gen_class_clear_on_completion(builder, cls.self_reg, cls.ir, line)
 
 
 class CleanupNonlocalControl(NonlocalControl):
