@@ -3484,23 +3484,23 @@ class State:
             if options.export_types:
                 manager.all_types.update(self.type_map())
 
-            # Two possible sources of indirect dependencies:
-            # * Symbols not directly imported in this module but accessed via an attribute
-            #   or via a re-export (vast majority of these recorded in semantic analysis).
-            # * For each expression type we need to record definitions of type components
-            #   since "meaning" of the type may be updated when definitions are updated.
+            # Indirect dependencies: modules this one never imports directly but
+            # whose interface changes must still invalidate it. Three sources:
+            # * module_refs: modules reached via attribute access or re-exports
+            #   (mostly recorded during semantic analysis).
+            # * The type of every checked expression, resolved to the modules
+            #   defining the type's components — for a class instance, its whole
+            #   MRO (TypeIndirectionVisitor, inside patch_indirect_dependencies).
+            # * For mypyc-compiled modules: the ancestors of every class
+            #   *defined* here. Generated C embeds each ancestor's method and
+            #   attribute layout (vtables, object struct), so the defining module
+            #   must be recompiled when any ancestor's interface changes. A bare
+            #   `class B(A): pass` produces no expression types, so the
+            #   sources above record nothing for it, and staleness propagation
+            #   would stop at intermediate modules whose own interfaces are
+            #   unchanged.
             indirect_refs = self.tree.module_refs | self.type_checker().module_refs
             if self.options.mypyc:
-                # A mypyc-compiled class's vtable and object struct embed the
-                # method/attribute layout of every MRO ancestor, so the module
-                # *defining* a class must be recompiled whenever any ancestor's
-                # interface changes. Use sites already pull ancestor modules in
-                # via TypeIndirectionVisitor (visit_instance walks the MRO), but
-                # a bare definition like `class Leaf(Mid): pass` produces no
-                # expression types at all, so without this the defining module
-                # records no dependency on transitive base modules and staleness
-                # propagation stops at intermediate modules whose own interfaces
-                # are unchanged. See testIncrementalCrossGroupInheritedMethodRemoved.
                 indirect_refs |= self.compiled_class_ancestor_refs()
             # We should always patch indirect dependencies, even in full (non-incremental) builds,
             # because the cache still may be written, and it must be correct.
