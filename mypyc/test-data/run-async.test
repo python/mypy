@@ -407,6 +407,12 @@ import asyncio
 import gc
 import platform
 
+from testutil import is_gil_disabled
+
+def immediate_deallocation_checks_are_reliable() -> bool:
+    # Free-threaded builds can defer deallocation, so weakref liveness is not deterministic.
+    return not is_gil_disabled()
+
 async def sleep() -> None:
     # Non-zero value hangs on Windows.
     time = 0 if platform.system() == "Windows" else 0.0001
@@ -511,6 +517,106 @@ async def stolen(n: int) -> int:
 
 async def test_stolen() -> None:
     await assert_no_leaks(lambda: stolen(200), 16)
+
+async def retain_arg(c: set[int]) -> None:
+    async def nested() -> int:
+        await sleep()
+        return len(c)
+
+    await nested()
+
+async def test_completed_coroutine_releases_environment() -> None:
+    if not immediate_deallocation_checks_are_reliable():
+        return
+
+    import weakref
+
+    c = {1}
+    ref = weakref.ref(c)
+    coro = retain_arg(c)
+    c = {2}
+    await coro
+    assert ref() is None
+
+async def retain_arg_then_raise(c: set[int]) -> None:
+    async def nested() -> int:
+        await sleep()
+        return len(c)
+
+    await nested()
+    raise ValueError
+
+async def test_failed_coroutine_releases_environment() -> None:
+    if not immediate_deallocation_checks_are_reliable():
+        return
+
+    import weakref
+
+    c = {1}
+    ref = weakref.ref(c)
+    coro = retain_arg_then_raise(c)
+    c = {2}
+    try:
+        await coro
+    except ValueError:
+        pass
+    assert ref() is None
+
+async def close_retain_arg(c: set[int]) -> None:
+    await sleep()
+    len(c)
+
+async def test_closed_coroutine_releases_environment() -> None:
+    if not immediate_deallocation_checks_are_reliable():
+        return
+
+    import weakref
+    from typing import Any, cast
+
+    c = {1}
+    ref = weakref.ref(c)
+    coro = cast(Any, close_retain_arg(c))
+    coro.send(None)
+    c = {2}
+    coro.close()
+    assert ref() is None
+
+async def interpreted_leaf(c: set[int]) -> int:
+    await sleep()
+    return len(c)
+
+async def compiled_leaf(c: set[int]) -> int:
+    await sleep()
+    return len(c)
+
+async def compiled_awaits_interpreted(c: set[int]) -> int:
+    import interpreted
+
+    return await interpreted.interpreted_leaf(c)
+
+async def interpreted_awaits_compiled(fn, c: set[int]) -> int:
+    return await fn(c)
+
+async def test_completed_mixed_coroutine_releases_environment() -> None:
+    if not immediate_deallocation_checks_are_reliable():
+        return
+
+    import interpreted
+    import weakref
+
+    c = {1}
+    ref = weakref.ref(c)
+    coro = compiled_awaits_interpreted(c)
+    c = {2}
+    assert await coro == 1
+    assert ref() is None
+
+    c = {3}
+    ref = weakref.ref(c)
+    coro = interpreted.interpreted_awaits_compiled(compiled_leaf, c)
+    c = {4}
+    assert await coro == 1
+    assert ref() is None
 
 [file asyncio/__init__.pyi]
 async def sleep(t: float) -> None: ...
@@ -1997,6 +2103,99 @@ for i in range(50):
     yields, val = run_generator(f(c), inputs=["world"])
     assert yields == ("hello",), yields
     assert val == "value" + str(i) + "world", repr(val)
+
+[case testCoroutineClosureOutlivesCompletedCoroutine]
+import asyncio
+from typing import Callable
+
+async def make_reader() -> Callable[[], int]:
+    payload = [7]
+    await asyncio.sleep(0)
+
+    def read_payload() -> int:
+        return payload[0]
+
+    return read_payload
+
+async def make_arg_reader(payload: list[int]) -> Callable[[], int]:
+    await asyncio.sleep(0)
+
+    def read_payload() -> int:
+        return payload[0]
+
+    return read_payload
+
+async def make_indirect_reader() -> Callable[[], int]:
+    def leaf() -> int:
+        return 17
+
+    def reader() -> int:
+        return leaf()
+
+    await asyncio.sleep(0)
+    return reader
+
+def test_closure_returned_from_completed_coroutine_keeps_capture() -> None:
+    read_payload = asyncio.run(make_reader())
+    assert read_payload() == 7
+
+    payload = [13]
+    read_arg_payload = asyncio.run(make_arg_reader(payload))
+    payload = [0]
+    assert read_arg_payload() == 13
+
+    indirect_reader = asyncio.run(make_indirect_reader())
+    assert indirect_reader() == 17
+
+async def test_closure_returned_from_awaited_coroutine_keeps_capture() -> None:
+    read_payload = await make_reader()
+    assert read_payload() == 7
+
+    payload = [13]
+    read_arg_payload = await make_arg_reader(payload)
+    payload = [0]
+    assert read_arg_payload() == 13
+
+    indirect_reader = await make_indirect_reader()
+    assert indirect_reader() == 17
+
+[file asyncio/__init__.pyi]
+from typing import Awaitable, TypeVar
+
+T = TypeVar("T")
+
+def run(x: Awaitable[T]) -> T: ...
+async def sleep(t: float) -> None: ...
+
+[typing fixtures/typing-full.pyi]
+
+[case testNestedCoroutineOutlivesCompletedCoroutine]
+import asyncio
+from typing import Awaitable
+
+async def make_nested_coroutine() -> Awaitable[int]:
+    payload = [11]
+    await asyncio.sleep(0)
+
+    async def read_payload() -> int:
+        await asyncio.sleep(0)
+        return payload[0]
+
+    return read_payload()
+
+def test_nested_coroutine_returned_from_completed_coroutine_keeps_capture() -> None:
+    read_payload = asyncio.run(make_nested_coroutine())
+    assert asyncio.run(read_payload) == 11
+
+[file asyncio/__init__.pyi]
+from typing import Awaitable, TypeVar
+
+T = TypeVar("T")
+
+def run(x: Awaitable[T]) -> T: ...
+async def sleep(t: float) -> None: ...
+
+[typing fixtures/typing-full.pyi]
 
 [case testBorrowedFinalAttrAcrossAsyncComprehension]
 import asyncio
