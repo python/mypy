@@ -3480,21 +3480,14 @@ class State:
             if options.export_types:
                 manager.all_types.update(self.type_map())
 
-            # Indirect dependencies: modules this one never imports directly but
-            # whose interface changes must still invalidate it. Three sources:
-            # * module_refs: modules reached via attribute access or re-exports
-            #   (mostly recorded during semantic analysis).
-            # * The type of every checked expression, resolved to the modules
-            #   defining the type's components — for a class instance, its whole
-            #   MRO (TypeIndirectionVisitor, inside patch_indirect_dependencies).
-            # * For mypyc-compiled modules: the ancestors of every class
-            #   *defined* here. Generated C embeds each ancestor's method and
-            #   attribute layout (vtables, object struct), so the defining module
-            #   must be recompiled when any ancestor's interface changes. A bare
-            #   `class B(A): pass` produces no expression types, so the
-            #   sources above record nothing for it, and staleness propagation
-            #   would stop at intermediate modules whose own interfaces are
-            #   unchanged.
+            # Possible sources of indirect dependencies:
+            # * Symbols not directly imported in this module but accessed via an attribute
+            #   or via a re-export (vast majority of these recorded in semantic analysis).
+            # * For each expression type we need to record definitions of type components
+            #   since "meaning" of the type may be updated when definitions are updated.
+            # * For mypyc-compiled modules only: modules defining MRO ancestors of
+            #   classes defined here, since the generated C embeds each ancestor's
+            #   method/attribute layout.
             indirect_refs = self.tree.module_refs | self.type_checker().module_refs
             if self.options.mypyc:
                 indirect_refs |= self.compiled_class_ancestor_refs()
