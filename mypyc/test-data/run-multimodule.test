@@ -1900,6 +1900,110 @@ def _force_recompile() -> int:
 from native import test
 test()
 
+[case testIncrementalCrossGroupInheritedMethodRemoved]
+# Regression: under separate=True, a module whose only content is a subclass
+# definition (`class Leaf(Mid): pass`) produces no expression types, so it
+# recorded no dependency on the modules defining its transitive bases. When a
+# Base method two hops up the inheritance chain was removed, staleness
+# propagation stopped at other_mid (its own interface is unchanged) and
+# other_leaf stayed fresh: its stale generated C still referenced the method
+# in Leaf's vtable via exports_other_base.CPyDef_..., which no longer exists
+# in the regenerated export table, and the build failed.
+# compiled_class_ancestor_refs must record the MRO ancestors' modules as
+# indirect deps so an ancestor's interface change recompiles the defining
+# module too. (removed_method is declared after existing_method so the
+# surviving call site's vtable slot is unaffected.)
+import other_leaf
+
+def test() -> int:
+    c = other_leaf.Leaf()
+    return c.existing_method(5)
+
+[file other_base.py]
+class Base:
+    def existing_method(self, x: int) -> int:
+        return x + 1
+
+    def removed_method(self, x: int) -> int:
+        return x + 100
+
+[file other_base.py.2]
+class Base:
+    def existing_method(self, x: int) -> int:
+        return x + 1
+
+[file other_mid.py]
+from other_base import Base
+
+class Mid(Base):
+    def mid_method(self, x: int) -> int:
+        return x + 2
+
+[file other_leaf.py]
+from other_mid import Mid
+
+class Leaf(Mid):
+    pass
+
+[file driver.py]
+from native import test
+print(test())
+
+[out]
+6
+[out2]
+6
+
+[case testIncrementalCrossGroupInheritedMethodRemovedNonEmptyLeaf]
+# Same regression as testIncrementalCrossGroupInheritedMethodRemoved, but the
+# subclass body is NOT empty: a class constant and a method that never uses
+# self. Neither produces an expression whose type reaches Leaf's MRO, so the
+# pre-existing dependency sources still record nothing for other_leaf, while
+# its generated vtable references the ancestors regardless of body shape.
+# Guards against narrowing compiled_class_ancestor_refs to pass-only bodies.
+import other_leaf
+
+def test() -> int:
+    return other_leaf.Leaf().existing_method(5)
+
+[file other_base.py]
+class Base:
+    def existing_method(self, x: int) -> int:
+        return x + 1
+
+    def removed_method(self, x: int) -> int:
+        return x + 100
+
+[file other_base.py.2]
+class Base:
+    def existing_method(self, x: int) -> int:
+        return x + 1
+
+[file other_mid.py]
+from other_base import Base
+
+class Mid(Base):
+    def mid_method(self, x: int) -> int:
+        return x + 2
+
+[file other_leaf.py]
+from other_mid import Mid
+
+class Leaf(Mid):
+    FLAG = True
+
+    def foo(self) -> str:
+        return "foo"
+
+[file driver.py]
+from native import test
+print(test())
+
+[out]
+6
+[out2]
+6
+
 [case testCrossModuleInheritedAttrDefaultsSameGroup]
 # separate: [(["native.py"], "grp1"), (["other_a.py", "other_b.py"], "grp2")]
 # Regression: with the subclass (other_a) and base (other_b) in the same
