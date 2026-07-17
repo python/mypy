@@ -1568,12 +1568,15 @@ class IRBuilder:
         base: FuncInfo | ImplicitClass,
         reassign: bool = False,
         always_defined: bool = False,
+        keep_alive_on_completion: bool = False,
         prefix: str = "",
     ) -> AssignmentTarget:
         # First, define the variable name as an attribute of the environment class, and then
         # construct a target for that attribute.
         name = prefix + remangle_redefinition_name(var.name)
         self.fn_info.env_class.attributes[name] = rtype
+        if keep_alive_on_completion:
+            self.fn_info.env_class.attrs_to_keep_alive_on_completion.add(name)
         if always_defined:
             self.fn_info.env_class.attrs_with_defaults.add(name)
         attr_target = AssignmentTargetAttr(base.curr_env_reg, name)
