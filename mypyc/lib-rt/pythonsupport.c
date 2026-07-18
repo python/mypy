@@ -6,20 +6,26 @@
 #include "pythonsupport.h"
 
 #ifdef Py_GIL_DISABLED
-// Cold slow path of CPy_GetAttrRef (declared in pythonsupport.h). The optimistic
-// try-incref failed, either because the field changed or because an unflagged
-// cross-thread value could not be increfed safely. Reload under the same
-// per-object lock that protects CPy_SetAttrRef, then take a reference while the
-// value is guaranteed to remain in the field. _Py_XNewRefWithLock also sets
-// maybe-weakref lazily, so later cross-thread reads generally take the lock-free
-// fast path.
+// Cold slow path of CPy_GetAttrRef (declared in pythonsupport.h). First try the
+// lock-free shared-refcount path and validate that the field still contains the
+// value. If that fails, reload under the same per-object lock that protects
+// CPy_SetAttrRef and take a reference while the value is guaranteed to remain in
+// the field. _Py_XNewRefWithLock also sets maybe-weakref lazily, so later
+// cross-thread reads generally use the lock-free shared-refcount path.
 CPy_NOINLINE
-PyObject *CPy_GetAttrRefSlow(PyObject *owner, PyObject **field) {
-    PyObject *v;
+CPy_COLD
+PyObject *CPy_GetAttrRefSlow(PyObject *v, PyObject *owner, PyObject **field) {
+    if (_Py_TryIncRefShared(v)) {
+        if (v == (PyObject *)_Py_atomic_load_ptr(field)) {
+            return v;
+        }
+        Py_DECREF(v);
+    }
+    PyObject *result;
     Py_BEGIN_CRITICAL_SECTION(owner);
-    v = _Py_XNewRefWithLock((PyObject *)_Py_atomic_load_ptr_relaxed(field));
+    result = _Py_XNewRefWithLock((PyObject *)_Py_atomic_load_ptr_relaxed(field));
     Py_END_CRITICAL_SECTION();
-    return v;
+    return result;
 }
 #endif
 
