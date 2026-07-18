@@ -3275,15 +3275,23 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
     def type_overrides_set(
         self, exprs: Sequence[Expression], overrides: Sequence[Type]
     ) -> Iterator[None]:
-        """Set _temporary_ type overrides for given expressions."""
+        """Set _temporary_ type overrides for given expressions.
+
+        Nested calls are safe: previous overrides (if any) are restored on exit.
+        """
         assert len(exprs) == len(overrides)
+        previous: list[tuple[Expression, Type | None]] = []
         for expr, typ in zip(exprs, overrides):
+            previous.append((expr, self.type_overrides.get(expr)))
             self.type_overrides[expr] = typ
         try:
             yield
         finally:
-            for expr in exprs:
-                del self.type_overrides[expr]
+            for expr, old in previous:
+                if old is None:
+                    self.type_overrides.pop(expr, None)
+                else:
+                    self.type_overrides[expr] = old
 
     def combine_function_signatures(self, types: list[ProperType]) -> AnyType | CallableType:
         """Accepts a list of function signatures and attempts to combine them together into a
@@ -4514,14 +4522,23 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
     def check_list_add(self, e: OpExpr) -> Type:
         """Type check list concatenation under an outer list type context.
 
-        Like list literals and '[...] * n', both operands should see the outer
-        list[...] context so that e.g. ``x: list[int | None] = [0] + [1]`` works.
+        Like list literals and '[...] * n', constructing operands should see the
+        outer list[...] context so e.g. ``x: list[int | None] = [0] + [1]`` works.
+
+        Only list literals/comprehensions/nested ``+`` on the right need a type
+        override; named values should keep their inferred types so ``list.__add__``
+        overloads continue to apply (and so we don't nest overrides unsafely).
         """
         ctx = self.type_context[-1]
         left_type = self.accept(e.left, type_context=ctx)
-        right_type = self.accept(e.right, type_context=ctx)
-        # check_op re-accepts the right operand; keep the context-aware type.
-        with self.type_overrides_set([e.right], [right_type]):
+        if isinstance(e.right, (ListExpr, ListComprehension, OpExpr)):
+            right_type = self.accept(e.right, type_context=ctx)
+            # check_op re-accepts the right operand; keep the context-aware type.
+            with self.type_overrides_set([e.right], [right_type]):
+                result, method_type = self.check_op(
+                    "__add__", left_type, e.right, e, allow_reverse=True
+                )
+        else:
             result, method_type = self.check_op(
                 "__add__", left_type, e.right, e, allow_reverse=True
             )

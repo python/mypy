@@ -857,6 +857,8 @@ x = [i for i in [0, 1, 2]] + [10]
 x = [0] + [None]
 x = [] + [1]
 x = [1] + [2] + [3]
+a: List[Optional[int]] = [None]
+x = a + [10]
 y: List[int]
 y = [0] + ['x']  # E: List item 0 has incompatible type "str"; expected "int"
 [builtins fixtures/list.pyi]
