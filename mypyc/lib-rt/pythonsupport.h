@@ -44,28 +44,31 @@ extern "C" {
 //
 // On free-threaded builds a plain load followed by an incref races with a
 // concurrent setter that may decref the old value to zero and free it before the
-// incref runs (use-after-free). We avoid that with an optimistic try-incref that
-// validates the field. If that fails, the slow path takes the same per-object
-// lock as CPy_SetAttrRef and reloads the field before taking a reference.
+// incref runs (use-after-free). We avoid that with an optimistic try-incref,
+// validating the field when taking a shared reference. If no reference can be
+// secured that way, the fallback takes the same per-object lock as CPy_SetAttrRef
+// and reloads the field before taking a reference.
 //
-// The hot path is lock-free. _Py_TryIncrefCompare handles values owned by this
-// thread and immortal values cheaply, and uses a shared-refcount CAS followed by
-// field validation when possible. An unflagged cross-thread value takes the slow
-// path once; _Py_NewRefWithLock sets maybe-weakref lazily, so subsequent reads can
-// generally use the lock-free shared-refcount path. It is only used in
-// free-threaded builds; the default (GIL) build keeps the plain load + incref
-// generated inline by mypyc.
-PyObject *CPy_GetAttrRefSlow(PyObject *owner, PyObject **field);
+// The hot path is lock-free and intentionally small: _Py_TryIncrefFast handles
+// values owned by this thread and immortal values. Everything colder -- the
+// shared-refcount CAS, field validation, and per-object lock fallback -- is in
+// CPy_GetAttrRefSlow. The cold annotation also prevents those arguments and
+// branches from bloating the caller's hot path. An unflagged cross-thread value
+// takes the locked slow path once; _Py_NewRefWithLock sets maybe-weakref lazily,
+// so subsequent reads generally succeed through the lock-free shared-refcount
+// path. The default (GIL) build keeps the plain load + incref generated inline by
+// mypyc.
+CPy_COLD PyObject *CPy_GetAttrRefSlow(PyObject *v, PyObject *owner, PyObject **field);
 
 static inline PyObject *CPy_GetAttrRef(PyObject *owner, PyObject **field) {
     PyObject *v = (PyObject *)_Py_atomic_load_ptr_acquire(field);
     if (v == NULL) {
         return NULL;
     }
-    if (_Py_TryIncrefCompare(field, v)) {
+    if (likely(_Py_TryIncrefFast(v))) {
         return v;
     }
-    return CPy_GetAttrRefSlow(owner, field);
+    return CPy_GetAttrRefSlow(v, owner, field);
 }
 
 // Read a native attribute that is a single reference-counted 'PyObject *' field
