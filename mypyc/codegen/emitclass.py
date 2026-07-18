@@ -1192,8 +1192,8 @@ def generate_getter(cl: ClassIR, attr: str, rtype: RType, emitter: Emitter) -> N
     attr_expr = f"self->{attr_field}"
 
     if IS_FREE_THREADED and is_simple_refcounted_pointer(rtype):
-        # In free-threaded builds, load the attribute and take a new reference
-        # atomically to avoid a use-after-free race with a concurrent setter.
+        # In free-threaded builds, load the attribute and take a new reference with
+        # an optimistic validated incref to avoid racing with a concurrent setter.
         # CPy_GetAttrRef returns NULL if the attribute is undefined (NULL field),
         # which is exactly the error/undefined value for a 'PyObject *' field.
         #
@@ -1206,7 +1206,7 @@ def generate_getter(cl: ClassIR, attr: str, rtype: RType, emitter: Emitter) -> N
         if attr in cl.final_attributes:
             getattr_ref = f"CPy_GetAttrRefFinal((PyObject **)&{attr_expr})"
         else:
-            getattr_ref = f"CPy_GetAttrRef((PyObject **)&{attr_expr})"
+            getattr_ref = f"CPy_GetAttrRef((PyObject *)self, (PyObject **)&{attr_expr})"
         emitter.emit_line(f"PyObject *retval = {getattr_ref};")
         emitter.emit_line("if (unlikely(retval == NULL)) {")
         emitter.emit_line("PyErr_SetString(PyExc_AttributeError,")
@@ -1269,10 +1269,14 @@ def generate_setter(cl: ClassIR, attr: str, rtype: RType, emitter: Emitter) -> N
             emitter.emit_cast("value", "tmp", rtype, declare_dest=True)
             emitter.emit_lines("if (!tmp)", "    return -1;")
         emitter.emit_inc_ref("tmp", rtype)
-        emitter.emit_line(f"CPy_SetAttrRef((PyObject **)&self->{attr_field}, tmp);")
+        emitter.emit_line(
+            f"CPy_SetAttrRef((PyObject *)self, (PyObject **)&self->{attr_field}, tmp);"
+        )
         if deletable:
             emitter.emit_line("} else {")
-            emitter.emit_line(f"CPy_SetAttrRef((PyObject **)&self->{attr_field}, NULL);")
+            emitter.emit_line(
+                f"CPy_SetAttrRef((PyObject *)self, (PyObject **)&self->{attr_field}, NULL);"
+            )
             emitter.emit_line("}")
         emitter.emit_line("return 0;")
         emitter.emit_line("}")
