@@ -3608,6 +3608,12 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         if e.op == "*" and isinstance(e.left, ListExpr):
             # Expressions of form [...] * e get special type inference.
             return self.check_list_multiply(e)
+        if e.op == "+":
+            # Expressions of form list + list under a list type context get special
+            # type inference so literals/comprehensions honor the outer context.
+            ctx = get_proper_type(self.type_context[-1])
+            if is_named_instance(ctx, "builtins.list"):
+                return self.check_list_add(e)
         if e.op == "%":
             if isinstance(e.left, BytesExpr):
                 return self.strfrm_checker.check_str_interpolation(e.left, e.right)
@@ -4502,6 +4508,23 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         else:
             left_type = self.accept(e.left)
         result, method_type = self.check_op("__mul__", left_type, e.right, e)
+        e.method_type = method_type
+        return result
+
+    def check_list_add(self, e: OpExpr) -> Type:
+        """Type check list concatenation under an outer list type context.
+
+        Like list literals and '[...] * n', both operands should see the outer
+        list[...] context so that e.g. ``x: list[int | None] = [0] + [1]`` works.
+        """
+        ctx = self.type_context[-1]
+        left_type = self.accept(e.left, type_context=ctx)
+        right_type = self.accept(e.right, type_context=ctx)
+        # check_op re-accepts the right operand; keep the context-aware type.
+        with self.type_overrides_set([e.right], [right_type]):
+            result, method_type = self.check_op(
+                "__add__", left_type, e.right, e, allow_reverse=True
+            )
         e.method_type = method_type
         return result
 

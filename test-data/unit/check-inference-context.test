@@ -849,6 +849,18 @@ if int():
     a = [''] * 3  # E: List item 0 has incompatible type "str"; expected "int"
 [builtins fixtures/list.pyi]
 
+[case testListAddInContext]
+from typing import List, Optional
+x: List[Optional[int]]
+x = [0, 1, 2] + [10]
+x = [i for i in [0, 1, 2]] + [10]
+x = [0] + [None]
+x = [] + [1]
+x = [1] + [2] + [3]
+y: List[int]
+y = [0] + ['x']  # E: List item 0 has incompatible type "str"; expected "int"
+[builtins fixtures/list.pyi]
+
 [case testUnionTypeContext]
 from typing import Union, List, TypeVar
 T = TypeVar('T')
