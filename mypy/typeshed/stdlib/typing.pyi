@@ -1060,13 +1060,13 @@ class NamedTuple(tuple[Any, ...]):
 
     @final
     @classmethod
-    def _make(cls, iterable: Iterable[Any]) -> typing_extensions.Self: ...
+    def _make(cls, iterable: Iterable[Any]) -> typing_extensions.Self: ...  # ty:ignore[invalid-type-form]
     @final
     def _asdict(self) -> dict[str, Any]: ...
     @final
-    def _replace(self, **kwargs: Any) -> typing_extensions.Self: ...
+    def _replace(self, **kwargs: Any) -> typing_extensions.Self: ...  # ty:ignore[invalid-type-form]
     if sys.version_info >= (3, 13):
-        def __replace__(self, **kwargs: Any) -> typing_extensions.Self: ...
+        def __replace__(self, **kwargs: Any) -> typing_extensions.Self: ...  # ty:ignore[invalid-type-form]
 
 # Internal mypy fallback type for all typed dicts (does not exist at runtime)
 # N.B. Keep this mostly in sync with typing_extensions._TypedDict/mypy_extensions._TypedDict

@@ -1,4 +1,4 @@
-From d3dabcf7b7aaf0997b59f0a28bb41d17b6098f2c Mon Sep 17 00:00:00 2001
+From b5d1e4c76d8139e1a20f9178e8123f3ee39084d2 Mon Sep 17 00:00:00 2001
 From: Marc Mueller <30130371+cdce8p@users.noreply.github.com>
 Date: Sat, 21 Dec 2024 22:36:38 +0100
 Subject: [PATCH] Revert Remove redundant inheritances from Iterator in
@@ -15,7 +15,7 @@ Subject: [PATCH] Revert Remove redundant inheritances from Iterator in
  7 files changed, 34 insertions(+), 34 deletions(-)
 
 diff --git a/mypy/typeshed/stdlib/_asyncio.pyi b/mypy/typeshed/stdlib/_asyncio.pyi
-index 23b690a9c..0ce93a435 100644
+index 242093e1e..92bb4e5f4 100644
 --- a/mypy/typeshed/stdlib/_asyncio.pyi
 +++ b/mypy/typeshed/stdlib/_asyncio.pyi
 @@ -1,6 +1,6 @@
@@ -36,10 +36,10 @@ index 23b690a9c..0ce93a435 100644
      @property
      def _exception(self) -> BaseException | None: ...
 diff --git a/mypy/typeshed/stdlib/builtins.pyi b/mypy/typeshed/stdlib/builtins.pyi
-index 1808e28e2..9db6f4fc7 100644
+index e63b74214..9ea382dd6 100644
 --- a/mypy/typeshed/stdlib/builtins.pyi
 +++ b/mypy/typeshed/stdlib/builtins.pyi
-@@ -1369,7 +1369,7 @@ class frozenset(AbstractSet[_T_co]):
+@@ -1368,7 +1368,7 @@ class frozenset(AbstractSet[_T_co]):
      def __class_getitem__(cls, item: Any, /) -> GenericAlias: ...
  
  @disjoint_base
@@ -48,7 +48,7 @@ index 1808e28e2..9db6f4fc7 100644
      def __new__(cls, iterable: Iterable[_T], start: int = 0) -> Self: ...
      def __iter__(self) -> Self: ...
      def __next__(self) -> tuple[int, _T]: ...
-@@ -1635,7 +1635,7 @@ else:
+@@ -1634,7 +1634,7 @@ else:
  exit: _sitebuiltins.Quitter
  
  @disjoint_base
@@ -57,7 +57,7 @@ index 1808e28e2..9db6f4fc7 100644
      @overload
      def __new__(cls, function: None, iterable: Iterable[_T | None], /) -> Self: ...
      @overload
-@@ -1706,7 +1706,7 @@ license: _sitebuiltins._Printer
+@@ -1705,7 +1705,7 @@ license: _sitebuiltins._Printer
  def locals() -> dict[str, Any]: ...
  
  @disjoint_base
@@ -66,7 +66,7 @@ index 1808e28e2..9db6f4fc7 100644
      # 3.14 adds `strict` argument.
      if sys.version_info >= (3, 14):
          @overload
-@@ -2022,7 +2022,7 @@ def pow(base: _SupportsSomeKindOfPow, exp: complex, mod: None = None) -> complex
+@@ -2021,7 +2021,7 @@ def pow(base: _SupportsSomeKindOfPow, exp: complex, mod: None = None) -> complex
  quit: _sitebuiltins.Quitter
  
  @disjoint_base
@@ -75,7 +75,7 @@ index 1808e28e2..9db6f4fc7 100644
      @overload
      def __new__(cls, sequence: Reversible[_T], /) -> Iterator[_T]: ...  # type: ignore[misc]
      @overload
-@@ -2100,7 +2100,7 @@ def vars(object: type, /) -> types.MappingProxyType[str, Any]: ...
+@@ -2101,7 +2101,7 @@ def vars(object: type, /) -> types.MappingProxyType[str, Any]: ...
  def vars(object: Any = ..., /) -> dict[str, Any]: ...
  
  @disjoint_base
@@ -131,10 +131,10 @@ index 37783254c..db9c228f5 100644
      @overload
      def __init__(
 diff --git a/mypy/typeshed/stdlib/itertools.pyi b/mypy/typeshed/stdlib/itertools.pyi
-index d26a4e1da..9d1cd84da 100644
+index 60e79bc2e..fd7daf11e 100644
 --- a/mypy/typeshed/stdlib/itertools.pyi
 +++ b/mypy/typeshed/stdlib/itertools.pyi
-@@ -28,7 +28,7 @@ _Predicate: TypeAlias = Callable[[_T], object]
+@@ -28,7 +28,7 @@ _Predicate = Callable[[_T], object]
  # Technically count can take anything that implements a number protocol and has an add method
  # but we can't enforce the add method
  @disjoint_base
@@ -295,13 +295,13 @@ index d26a4e1da..9d1cd84da 100644
              @overload
              def __new__(cls, iterable: Iterable[_T], n: Literal[1], *, strict: Literal[True]) -> batched[tuple[_T]]: ...
 diff --git a/mypy/typeshed/stdlib/multiprocessing/pool.pyi b/mypy/typeshed/stdlib/multiprocessing/pool.pyi
-index b79f9e773..f276372d0 100644
+index 5642e50d0..203c5887c 100644
 --- a/mypy/typeshed/stdlib/multiprocessing/pool.pyi
 +++ b/mypy/typeshed/stdlib/multiprocessing/pool.pyi
 @@ -1,4 +1,4 @@
 -from collections.abc import Callable, Iterable, Mapping
 +from collections.abc import Callable, Iterable, Iterator, Mapping
- from multiprocessing.context import DefaultContext, Process
+ from multiprocessing.context import DefaultContext, Process as _Process
  from types import GenericAlias, TracebackType
  from typing import Any, Final, Generic, TypeVar
 @@ -32,7 +32,7 @@ class MapResult(ApplyResult[list[_T]]):
@@ -314,10 +314,10 @@ index b79f9e773..f276372d0 100644
      def __iter__(self) -> Self: ...
      def next(self, timeout: float | None = None) -> _T: ...
 diff --git a/mypy/typeshed/stdlib/sqlite3/__init__.pyi b/mypy/typeshed/stdlib/sqlite3/__init__.pyi
-index 7c033bdf4..7bf020558 100644
+index 80a02079d..d1065a509 100644
 --- a/mypy/typeshed/stdlib/sqlite3/__init__.pyi
 +++ b/mypy/typeshed/stdlib/sqlite3/__init__.pyi
-@@ -426,7 +426,7 @@ class Connection:
+@@ -437,7 +437,7 @@ class Connection:
      ) -> Literal[False]: ...
  
  @disjoint_base
@@ -327,5 +327,5 @@ index 7c033bdf4..7bf020558 100644
      @property
      def connection(self) -> Connection: ...
 -- 
-2.54.0
+2.55.0
 
