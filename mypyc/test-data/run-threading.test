@@ -1,5 +1,68 @@
 # Test cases for librt.threading (compile and run)
 
+[case testConcurrentNativeAttributeGetSet]
+from typing import Any
+import threading
+import sys
+
+class Item:
+    def __init__(self, value: int) -> None:
+        self.value = value
+
+class Box:
+    def __init__(self) -> None:
+        self.item = Item(0)
+
+def native_writer(box: Box, count: int) -> None:
+    for i in range(count):
+        box.item = Item(i)
+
+def native_reader(box: Box, count: int) -> None:
+    for _ in range(count):
+        item = box.item
+        assert item.value >= 0
+
+def dynamic_writer(box: Any, count: int) -> None:
+    for i in range(count):
+        box.item = Item(i)
+
+def dynamic_reader(box: Any, count: int) -> None:
+    for _ in range(count):
+        item = box.item
+        assert item.value >= 0
+
+def test_attribute_set_decrefs_old_value_immediately() -> None:
+    box = Box()
+    dynamic_sys: Any = sys
+    old = box.item
+    before = dynamic_sys.getrefcount(old)
+    box.item = Item(1)
+    assert dynamic_sys.getrefcount(old) == before - 1
+
+    dynamic: Any = box
+    old = box.item
+    before = dynamic_sys.getrefcount(old)
+    dynamic.item = Item(2)
+    assert dynamic_sys.getrefcount(old) == before - 1
+
+def test_concurrent_native_attribute_get_set() -> None:
+    # Native access exercises the direct generated calls. Access through Any uses
+    # the generated getset descriptor. On a free-threaded build all four workers
+    # race, repeatedly dropping the field's last reference to the previous Item.
+    box = Box()
+    count = 10_000
+    threads = [
+        threading.Thread(target=native_writer, args=(box, count)),
+        threading.Thread(target=native_reader, args=(box, count)),
+        threading.Thread(target=dynamic_writer, args=(box, count)),
+        threading.Thread(target=dynamic_reader, args=(box, count)),
+    ]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join()
+    assert box.item.value >= 0
+
 [case testLockBasics_librt]
 from typing import Any
 from testutil import assertRaises
