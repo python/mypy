@@ -6,12 +6,13 @@
 #include "pythonsupport.h"
 
 #ifdef Py_GIL_DISABLED
-// Cold slow path of CPy_GetAttrRef (declared in pythonsupport.h). First try the
-// lock-free shared-refcount path and validate that the field still contains the
-// value. If that fails, reload under the same per-object lock that protects
-// CPy_SetAttrRef and take a reference while the value is guaranteed to remain in
-// the field. _Py_XNewRefWithLock also sets maybe-weakref lazily, so later
-// cross-thread reads generally use the lock-free shared-refcount path.
+// Cold slow path of CPy_GetAttrRef (declared in pythonsupport.h). First try to
+// acquire a shared reference without locking, then validate that the field still
+// contains v. If validation fails, drop the provisional reference. If the shared
+// incref or validation fails, take the owner's critical section, reload the field,
+// and take a reference while the value cannot be replaced. _Py_XNewRefWithLock
+// also sets maybe-weakref lazily, so later cross-thread reads generally use the
+// lock-free shared-refcount path.
 CPy_NOINLINE
 CPy_COLD
 PyObject *CPy_GetAttrRefSlow(PyObject *v, PyObject *owner, PyObject **field) {

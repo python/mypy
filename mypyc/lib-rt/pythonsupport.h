@@ -54,7 +54,7 @@ extern "C" {
 // shared-refcount CAS, field validation, and per-object lock fallback -- is in
 // CPy_GetAttrRefSlow. The cold annotation also prevents those arguments and
 // branches from bloating the caller's hot path. An unflagged cross-thread value
-// takes the locked slow path once; _Py_NewRefWithLock sets maybe-weakref lazily,
+// takes the locked slow path once; _Py_XNewRefWithLock sets maybe-weakref lazily,
 // so subsequent reads generally succeed through the lock-free shared-refcount
 // path. The default (GIL) build keeps the plain load + incref generated inline by
 // mypyc.
@@ -79,7 +79,7 @@ static inline PyObject *CPy_GetAttrRef(PyObject *owner, PyObject **field) {
 // use-after-free race that CPy_GetAttrRef guards against cannot happen: the field
 // holds a strong reference for the object's whole lifetime, and any thread reading
 // it necessarily holds 'self', which keeps the value alive. So the try-incref +
-// _Py_NewRefWithLock fallback are unnecessary here -- a plain load + Py_INCREF is
+// _Py_XNewRefWithLock fallback are unnecessary here -- a plain load + Py_INCREF is
 // safe. A cross-thread Py_INCREF is an unconditional
 // atomic add on ob_ref_shared, so (unlike CPy_GetAttrRef's try-incref) it needs no
 // maybe-weakref and has no slow path. The load is relaxed rather than acquire: the
@@ -100,11 +100,12 @@ static inline PyObject *CPy_GetAttrRefFinal(PyObject **field) {
 // and safely reclaiming the previous value.
 //
 // The owner's critical section serializes writers and synchronizes them with
-// CPy_GetAttrRef's fallback path. A lock-free reader either secures a reference
-// and validates the field, or fails and reloads it under this lock. Thus once the
-// replacement is published, the old field reference can be decrefed normally;
-// no QSBR-delayed decref is needed. Decref outside the critical section so an
-// arbitrary destructor does not run while the owner is locked.
+// CPy_GetAttrRef's fallback path. A lock-free reader either secures a local or
+// immortal reference directly, or secures a shared reference and validates the
+// field. Otherwise it reloads the field under this lock. Thus once the replacement
+// is published, the old field reference can be decrefed normally; no QSBR-delayed
+// decref is needed. Decref outside the critical section so an arbitrary destructor
+// does not run while the owner is locked.
 static inline void CPy_SetAttrRef(PyObject *owner, PyObject **field, PyObject *value) {
     PyObject *old;
     Py_BEGIN_CRITICAL_SECTION(owner);
