@@ -3612,7 +3612,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             # Expressions of form list + list under a list type context get special
             # type inference so literals/comprehensions honor the outer context.
             ctx = get_proper_type(self.type_context[-1])
-            if is_named_instance(ctx, "builtins.list"):
+            if ctx is not None and is_named_instance(ctx, "builtins.list"):
                 return self.check_list_add(e)
         if e.op == "%":
             if isinstance(e.left, BytesExpr):
