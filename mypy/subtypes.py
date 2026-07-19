@@ -1258,6 +1258,11 @@ def is_protocol_implementation(
     for l, r in reversed(assuming):
         if l == left and r == right:
             return True
+    # Guard against infinite recursion when left type keeps growing but right
+    # protocol stays the same (GH#21739). If we're already checking this
+    # protocol against many different left types, bail out assuming compatibility.
+    if len(assuming) > 50:
+        return True
     with pop_on_exit(assuming, left, right):
         for member in right.type.protocol_members:
             if member in members_not_to_check:

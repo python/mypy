@@ -4809,3 +4809,38 @@ bad_rep(t)  # E: Argument 1 to "bad_rep" has incompatible type "C"; expected "P[
             # N:     Got: \
             # N:         def rep(self) -> C
 [builtins fixtures/tuple.pyi]
+
+[case testProtocolInfiniteRecursionGrowingLeft]
+# Regression test for https://github.com/python/mypy/issues/21739
+# When the left type keeps growing but the right protocol stays the same,
+# the assuming mechanism cannot detect the cycle. Guard against infinite recursion.
+from dataclasses import dataclass
+from typing import Any, Callable, Protocol
+
+class PExp(Protocol):
+    def EQ(self, other: Any) -> "PExp": ...
+
+class PRef(Protocol):
+    def EQ(self, other: Any) -> "PExp": ...
+
+@dataclass
+class Exp:
+    _left: Any
+    _op: str
+    _right: Any
+
+    def EQ(self, other: Any) -> "Exp":
+        return Exp(self, "EQ", other)
+
+@dataclass
+class Ref:
+    get: Callable[[], Any]
+
+    def EQ(self, other: Any) -> "Exp":
+        return Exp(self, "EQ", other)
+
+@dataclass
+class Cache:
+    def spam(self, name: str) -> "PRef":
+        return Ref(lambda: "spam")
+[builtins fixtures/dataclasses.pyi]
