@@ -5203,6 +5203,7 @@ reveal_type(j(c, b)) # N: Revealed type is "TypedDict({'x'?=: builtins.int})"
 # See https://peps.python.org/pep-0728/
 
 [case testTypedDictWithClosedFalse]
+# flags: --python-version 3.15
 from typing import TypedDict
 D = TypedDict('D', {'x': int, 'y': str}, closed=False)
 d: D
@@ -5216,6 +5217,7 @@ reveal_type(e)  # N: Revealed type is "TypedDict('__main__.E', {'x': builtins.in
 [typing fixtures/typing-typeddict.pyi]
 
 [case testTypedDictWithClosedTrue]
+# flags: --python-version 3.15
 from typing import TypedDict
 D = TypedDict('D', {'x': int, 'y': str}, closed=True)
 d: D
@@ -5225,6 +5227,51 @@ class E(TypedDict, closed=True):
     y: str
 e: E
 reveal_type(e)  # N: Revealed type is "TypedDict('__main__.E', {'x': builtins.int, 'y': builtins.str}, closed=True)"
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictClosedArgumentBeforePython315]
+# flags: --python-version 3.14
+from typing import TypedDict
+
+class ClassClosed(TypedDict, closed=True):  # E: "closed" argument to TypedDict is only available in Python 3.15 and later
+    x: int
+class ClassOpen(TypedDict, closed=False):  # E: "closed" argument to TypedDict is only available in Python 3.15 and later
+    x: int
+FunctionalClosed = TypedDict('FunctionalClosed', {'x': int}, closed=True)  # E: "closed" argument to TypedDict is only available in Python 3.15 and later
+FunctionalOpen = TypedDict('FunctionalOpen', {'x': int}, closed=False)  # E: "closed" argument to TypedDict is only available in Python 3.15 and later
+class InvalidClosed(TypedDict, closed=0):  # E: "closed" argument must be a True or False literal
+    x: int
+class WithoutClosed(TypedDict):
+    x: int
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testTypingExtensionsTypedDictClosedArgumentBeforePython315]
+# flags: --python-version 3.14
+from typing_extensions import TypedDict
+
+class ClassClosed(TypedDict, closed=True):
+    x: int
+class ClassOpen(TypedDict, closed=False):
+    x: int
+FunctionalClosed = TypedDict('FunctionalClosed', {'x': int}, closed=True)
+FunctionalOpen = TypedDict('FunctionalOpen', {'x': int}, closed=False)
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+[file typing_extensions.pyi]
+TypedDict = 0
+
+[case testTypedDictClosedArgumentInPython315]
+# flags: --python-version 3.15
+from typing import TypedDict
+
+class ClassClosed(TypedDict, closed=True):
+    x: int
+class ClassOpen(TypedDict, closed=False):
+    x: int
+FunctionalClosed = TypedDict('FunctionalClosed', {'x': int}, closed=True)
+FunctionalOpen = TypedDict('FunctionalOpen', {'x': int}, closed=False)
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 
@@ -5240,6 +5287,7 @@ class D(TypedDict, closed=bool): # E: "closed" argument must be a True or False 
 [typing fixtures/typing-typeddict.pyi]
 
 [case testTypedDictWithClosedAndTotal]
+# flags: --python-version 3.15
 from typing import TypedDict
 A = TypedDict('A', {'x': int, 'y': str}, total=False, closed=True)
 B = TypedDict('B', {'x': int, 'y': str}, closed=True, total=False)
@@ -5261,6 +5309,7 @@ B = TypedDict('B', {'x': int}, total=True, total=False)  # E: Repeated keyword a
 [typing fixtures/typing-typeddict.pyi]
 
 [case testTypedDictSubclassingClosed]
+# flags: --python-version 3.15
 from typing import TypedDict
 class D(TypedDict, closed=True):
     x: int
@@ -5308,6 +5357,7 @@ reveal_type(d8)  # N: Revealed type is "TypedDict('__main__.D8', {'x': builtins.
 [typing fixtures/typing-typeddict.pyi]
 
 [case testTypedDictSubclassingOpenAndClosed]
+# flags: --python-version 3.15
 from typing import TypedDict
 class B1(TypedDict, closed=True):
     x: int
@@ -5332,6 +5382,7 @@ reveal_type(d4)  # N: Revealed type is "TypedDict('__main__.D4', {'x': builtins.
 [typing fixtures/typing-typeddict.pyi]
 
 [case testCanSubclassClosedTypedDictWithForwardDeclarations]
+# flags: --python-version 3.15
 from typing import TypedDict, final
 
 class D1(TypedDict, closed=True):
@@ -5349,6 +5400,7 @@ reveal_type(d2)  # N: Revealed type is "TypedDict('__main__.D2', {'forward_decla
 [typing fixtures/typing-full.pyi]
 
 [case testTypedDictSubtypingClosedMustRemainClosed]
+# flags: --python-version 3.15
 from typing import TypedDict
 A = TypedDict('A', {'x': int}, closed=True)
 B = TypedDict('B', {'x': int}, closed=True)
@@ -5368,6 +5420,7 @@ g(b)
 [typing fixtures/typing-typeddict.pyi]
 
 [case testTypedDictSubtypingCannotAddKeysToAClosedSupertype]
+# flags: --python-version 3.15
 from typing import TypedDict
 A = TypedDict('A', {'x': int}, closed=True)
 B = TypedDict('B', {'x': int, 'y': int}, closed=True)
@@ -5383,6 +5436,7 @@ g(d)
 [typing fixtures/typing-typeddict.pyi]
 
 [case testTypedDictSubtypingCanDropOptionalReadonlyKeysInAClosedSubtype]
+# flags: --python-version 3.15
 from typing import ReadOnly, TypedDict
 # Optional, readonly, closed: permitted
 A = TypedDict('A', {'x': int, 'y': ReadOnly[int]}, total=False, closed=True)
@@ -5416,6 +5470,7 @@ f_g(h)  # E: Argument 1 to "f_g" has incompatible type "H"; expected "G"
 [typing fixtures/typing-typeddict.pyi]
 
 [case testTypedDictSubtypingClosedTypeVarBound]
+# flags: --python-version 3.15
 from typing import TypedDict, TypeVar
 A = TypedDict('A', {'x': int}, closed=True)
 B = TypedDict('B', {'x': int})
@@ -5433,6 +5488,7 @@ fB(b)
 [typing fixtures/typing-typeddict.pyi]
 
 [case testTypedDictSubtypingClosedExplicitNever]
+# flags: --python-version 3.15
 from typing import NotRequired, ReadOnly, TypedDict
 from typing_extensions import Never
 A = TypedDict('A', {}, closed=True)
@@ -5457,6 +5513,7 @@ f_b(c)  # E: Argument 1 to "f_b" has incompatible type "C"; expected "B"
 [typing fixtures/typing-typeddict.pyi]
 
 [case testJoinOfClosedTypedDict]
+# flags: --python-version 3.15
 from typing import Any, TypedDict, TypeVar
 A = TypedDict('A', {'x': int}, closed=True)
 B = TypedDict('B', {'y': int})
@@ -5484,6 +5541,7 @@ reveal_type(j(e, b)) # N: Revealed type is "TypedDict({'y': Any})"
 [typing fixtures/typing-typeddict.pyi]
 
 [case testMeetOfClosedTypedDictsWithMatchingRequiredKeysIsNotAnonymous]
+# flags: --python-version 3.15
 from typing import TypedDict, TypeVar, Callable
 X = TypedDict('X', {'x': int, 'y': int}, closed=True)
 Y = TypedDict('Y', {'x': int, 'y': int}, closed=True)
@@ -5502,6 +5560,7 @@ reveal_type(meet(fZX))  # N: Revealed type is "TypedDict('__main__.X', {'x': bui
 [typing fixtures/typing-typeddict.pyi]
 
 [case testMeetOfClosedTypedDictsWithDifferentKeys]
+# flags: --python-version 3.15
 from typing import TypedDict, TypeVar, Callable, ReadOnly
 T = TypeVar('T')
 def meet(x: Callable[[T, T], None]) -> T: pass
@@ -5538,6 +5597,7 @@ if int():
 [typing fixtures/typing-typeddict.pyi]
 
 [case testMeetOfTypedDictsExplicitAndImplicitClosedMissing]
+# flags: --python-version 3.15
 from typing import Any, NotRequired, ReadOnly, TypedDict, TypeVar, Callable
 from typing_extensions import Never
 A = TypedDict('A', {'x': ReadOnly[NotRequired[Never]]}, closed=True)
@@ -5550,6 +5610,7 @@ reveal_type(f(g))  # N: Revealed type is "TypedDict({}, closed=True)"
 [typing fixtures/typing-typeddict.pyi]
 
 [case testMeetOfTypedDictClosedMissingAndAny]
+# flags: --python-version 3.15
 from typing import Any, TypedDict, TypeVar, Callable, ReadOnly
 T = TypeVar('T')
 def meet(x: Callable[[T, T], None]) -> T: pass
@@ -5570,6 +5631,7 @@ reveal_type(meet(fCA))  # N: Revealed type is "TypedDict({}, closed=True)"
 [typing fixtures/typing-typeddict.pyi]
 
 [case testMeetOfTypedDictsClosedNotRequiredNeverAndAny]
+# flags: --python-version 3.15
 from typing import Any, NotRequired, TypedDict, TypeVar, Callable
 from typing_extensions import Never
 A = TypedDict('A', {'x': NotRequired[Any], 'y': NotRequired[Never]}, closed=True)
@@ -5582,6 +5644,7 @@ reveal_type(f(g))  # N: Revealed type is "TypedDict({}, closed=True)"
 [typing fixtures/typing-typeddict.pyi]
 
 [case testMeetOfOpenAndClosedTypedDictsExtraKeyInClosed]
+# flags: --python-version 3.15
 from typing import TypedDict, TypeVar, Callable, ReadOnly
 T = TypeVar('T')
 def meet(x: Callable[[T, T], None]) -> T: pass
@@ -5595,6 +5658,7 @@ reveal_type(meet(fAyBAx))  # N: Revealed type is "TypedDict({'a'=: builtins.int,
 [typing fixtures/typing-typeddict.pyi]
 
 [case testMeetOfOpenAndClosedTypedDictsExtraKeyInOpen]
+# flags: --python-version 3.15
 from typing import TypedDict, TypeVar, Callable, ReadOnly
 T = TypeVar('T')
 def meet(x: Callable[[T, T], None]) -> T: pass
@@ -5629,6 +5693,7 @@ reveal_type(meet(fD4C))  # N: Revealed type is "TypedDict({'a'=: builtins.int}, 
 [typing fixtures/typing-typeddict.pyi]
 
 [case testTypedDictGetMethodClosed]
+# flags: --python-version 3.15
 from typing import TypedDict, Literal
 class Unrelated: pass
 D = TypedDict('D', {'x': int, 'y': str}, closed=True)
@@ -5666,6 +5731,7 @@ reveal_type(d.get(x_or_y_or_z, u)) # N: Revealed type is "builtins.int | builtin
 [typing fixtures/typing-typeddict.pyi]
 
 [case testOperatorContainsNarrowsTypedDicts_unionWithList_closed]
+# flags: --python-version 3.15
 from __future__ import annotations
 from typing import assert_type, TypedDict, Union
 
@@ -5685,6 +5751,7 @@ else:
 [typing fixtures/typing-full.pyi]
 
 [case testOperatorContainsNarrowsTypedDicts_total_closed]
+# flags: --python-version 3.15
 from __future__ import annotations
 from typing import assert_type, Literal, TypedDict, TypeVar, Union
 
@@ -5729,7 +5796,7 @@ def f(arg: TD) -> None:
 [typing fixtures/typing-full.pyi]
 
 [case testOperatorContainsNarrowsTypedDicts_closed]
-# flags: --warn-unreachable
+# flags: --python-version 3.15 --warn-unreachable
 from __future__ import annotations
 from typing import assert_type, TypedDict, Union
 
@@ -5768,6 +5835,7 @@ else:
 [typing fixtures/typing-full.pyi]
 
 [case testOperatorContainsNarrowsTypedDicts_partialThroughTotalFalse_closed]
+# flags: --python-version 3.15
 from __future__ import annotations
 from typing import assert_type, Literal, TypedDict, Union
 
@@ -5798,6 +5866,7 @@ else:
 [typing fixtures/typing-full.pyi]
 
 [case testOperatorContainsNarrowsTypedDicts_partialThroughNotRequired_closed]
+# flags: --python-version 3.15
 from __future__ import annotations
 from typing import assert_type, TypedDict, Union
 from typing_extensions import Required, NotRequired
@@ -5825,6 +5894,7 @@ else:
 [typing fixtures/typing-full.pyi]
 
 [case testOperatorContainsNarrowsTypeVarWithClosedTypedDictBound]
+# flags: --python-version 3.15
 from typing import TypedDict, TypeVar
 from typing_extensions import Never, assert_type
 
@@ -5840,7 +5910,7 @@ def func(t: T):
 [typing fixtures/typing-typeddict.pyi]
 
 [case testTypedDictUnpackFromClosedMissingKey]
-# flags: --extra-checks
+# flags: --python-version 3.15 --extra-checks
 from typing import TypedDict
 from typing_extensions import Never, NotRequired
 D1 = TypedDict("D1", {"a": int, "b": str}, closed=True)
@@ -5853,7 +5923,7 @@ d3: D3 = {**d1}
 [typing fixtures/typing-typeddict.pyi]
 
 [case testTypedDictUnpackIntoClosed]
-# flags: --extra-checks
+# flags: --python-version 3.15 --extra-checks
 from typing import Any, Mapping, TypedDict, Union
 from typing_extensions import Never, NotRequired
 D1 = TypedDict("D1", {"a": int, "b": str}, closed=True)

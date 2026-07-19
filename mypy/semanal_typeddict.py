@@ -40,6 +40,7 @@ from mypy.options import Options
 from mypy.semanal_shared import (
     SemanticAnalyzerInterface,
     has_placeholder,
+    parse_bool,
     require_bool_literal_argument,
 )
 from mypy.state import state
@@ -111,10 +112,18 @@ class TypedDictAnalyzer:
         if isinstance(defn.analyzed, TypedDictExpr):
             existing_info = defn.analyzed.info
 
+        base_fullname: str | None = None
+        if (
+            len(defn.base_type_exprs) == 1
+            and isinstance(defn.base_type_exprs[0], RefExpr)
+            and defn.base_type_exprs[0].fullname in TPDICT_NAMES
+        ):
+            base_fullname = defn.base_type_exprs[0].fullname
+
         is_closed: bool | None = None
         if "closed" in defn.keywords:
-            is_closed = require_bool_literal_argument(
-                self.api, defn.keywords["closed"], "closed", False
+            is_closed = self.parse_typeddict_closed_argument(
+                defn.keywords["closed"], base_fullname
             )
 
         if (
@@ -599,7 +608,7 @@ class TypedDictAnalyzer:
         fullname = callee.fullname
         if fullname not in TPDICT_NAMES:
             return False, None, []
-        res = self.parse_typeddict_args(call)
+        res = self.parse_typeddict_args(call, fullname)
         if res is None:
             # This is a valid typed dict, but some type is not ready.
             # The caller should defer this until next iteration.
@@ -662,7 +671,7 @@ class TypedDictAnalyzer:
         return True, info, tvar_defs
 
     def parse_typeddict_args(
-        self, call: CallExpr
+        self, call: CallExpr, fullname: str
     ) -> tuple[str, list[str], list[Type], bool, bool, list[TypeVarLikeType], bool] | None:
         """Parse typed dict call expression.
 
@@ -702,7 +711,10 @@ class TypedDictAnalyzer:
         closed: bool = False
         for arg_name, arg in zip(call.arg_names[2:], call.args[2:]):
             assert arg_name
-            value = require_bool_literal_argument(self.api, arg, arg_name)
+            if arg_name == "closed":
+                value = self.parse_typeddict_closed_argument(arg, fullname)
+            else:
+                value = require_bool_literal_argument(self.api, arg, arg_name)
             if value is None:
                 return "", [], [], True, False, [], False
             if arg_name == "closed":
@@ -718,6 +730,22 @@ class TypedDictAnalyzer:
         items, types, ok = res
         assert total is not None
         return args[0].value, items, types, total, closed, tvar_defs, ok
+
+    def parse_typeddict_closed_argument(
+        self, arg: Expression, fullname: str | None
+    ) -> bool | None:
+        literal_value = parse_bool(arg)
+        value = require_bool_literal_argument(self.api, arg, "closed", False)
+        if (
+            literal_value is not None
+            and fullname == "typing.TypedDict"
+            and self.options.python_version < (3, 15)
+        ):
+            self.fail(
+                '"closed" argument to TypedDict is only available in Python 3.15 and later', arg
+            )
+            return None
+        return value
 
     def parse_typeddict_fields_with_types(
         self, dict_items: list[tuple[Expression | None, Expression]]

@@ -1089,6 +1089,7 @@ main:2: note: Revealed type is "TypedDict('m.D', {'x'?: builtins.int, 'y'?: buil
 main:2: note: Revealed type is "TypedDict('m.D', {'x'?: builtins.int, 'y'?: builtins.str})"
 
 [case testSerializeClosedTotalTypedDict]
+# flags: --python-version 3.15
 from m import d
 reveal_type(d)
 [file m.py]
@@ -1098,9 +1099,9 @@ d: D
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 [out1]
-main:2: note: Revealed type is "TypedDict('m.D', {'x': builtins.int, 'y': builtins.str}, closed=True)"
+main:3: note: Revealed type is "TypedDict('m.D', {'x': builtins.int, 'y': builtins.str}, closed=True)"
 [out2]
-main:2: note: Revealed type is "TypedDict('m.D', {'x': builtins.int, 'y': builtins.str}, closed=True)"
+main:3: note: Revealed type is "TypedDict('m.D', {'x': builtins.int, 'y': builtins.str}, closed=True)"
 
 --
 -- Modules
