@@ -3618,8 +3618,17 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         if e.op == "+":
             # Expressions of form list + list under a list type context get special
             # type inference so literals/comprehensions honor the outer context.
+            # Only kick in when at least one operand is a list constructor; applying
+            # the context to e.g. list(xs) + ys breaks heterogeneous list.__add__.
             ctx = get_proper_type(self.type_context[-1])
-            if ctx is not None and is_named_instance(ctx, "builtins.list"):
+            if (
+                ctx is not None
+                and is_named_instance(ctx, "builtins.list")
+                and (
+                    isinstance(e.left, (ListExpr, ListComprehension, OpExpr))
+                    or isinstance(e.right, (ListExpr, ListComprehension, OpExpr))
+                )
+            ):
                 return self.check_list_add(e)
         if e.op == "%":
             if isinstance(e.left, BytesExpr):
@@ -4524,13 +4533,18 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         Like list literals and '[...] * n', constructing operands should see the
         outer list[...] context so e.g. ``x: list[int | None] = [0] + [1]`` works.
 
-        Only list literals/comprehensions/nested ``+`` on the right need a type
-        override; named values should keep their inferred types so ``list.__add__``
-        overloads continue to apply (and so we don't nest overrides unsafely).
+        Only list literals/comprehensions/nested ``+`` get the context. Calls like
+        ``list(xs)`` and named values keep their inferred types so heterogeneous
+        ``list.__add__`` overloads still apply (and so we don't nest overrides
+        unsafely).
         """
         ctx = self.type_context[-1]
-        left_type = self.accept(e.left, type_context=ctx)
-        if isinstance(e.right, (ListExpr, ListComprehension, OpExpr)):
+        constructing = (ListExpr, ListComprehension, OpExpr)
+        if isinstance(e.left, constructing):
+            left_type = self.accept(e.left, type_context=ctx)
+        else:
+            left_type = self.accept(e.left)
+        if isinstance(e.right, constructing):
             right_type = self.accept(e.right, type_context=ctx)
             # check_op re-accepts the right operand; keep the context-aware type.
             with self.type_overrides_set([e.right], [right_type]):
