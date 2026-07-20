@@ -1664,6 +1664,7 @@ class ClassDef(Statement):
         "has_incompatible_baseclass",
         "docstring",
         "removed_statements",
+        "is_mypy_only",
     )
 
     __match_args__ = ("name", "defs")
@@ -1714,6 +1715,7 @@ class ClassDef(Statement):
         self.has_incompatible_baseclass = False
         self.docstring: str | None = None
         self.removed_statements = []
+        self.is_mypy_only = False
 
     @property
     def fullname(self) -> str:
@@ -1862,6 +1864,7 @@ class AssignmentStmt(Statement):
         "is_alias_def",
         "is_final_def",
         "invalid_recursive_alias",
+        "is_mypy_only",
     )
 
     __match_args__ = ("lvalues", "rvalues", "type")
@@ -1904,6 +1907,7 @@ class AssignmentStmt(Statement):
         self.is_alias_def = False
         self.is_final_def = False
         self.invalid_recursive_alias = False
+        self.is_mypy_only = False
 
     def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_assignment_stmt(self)

@@ -8,8 +8,10 @@ from mypy.literals import literal
 from mypy.nodes import (
     LITERAL_YES,
     AssertStmt,
+    AssignmentStmt,
     Block,
     CallExpr,
+    ClassDef,
     ComparisonExpr,
     Expression,
     FuncDef,
@@ -56,6 +58,8 @@ def infer_reachability_of_if_statement(s: IfStmt, options: Options) -> None:
         if result in (ALWAYS_FALSE, MYPY_FALSE):
             # The condition is considered always false, so we skip the if/elif body.
             mark_block_unreachable(s.body[i])
+            if result == MYPY_FALSE and i == len(s.expr) - 1 and s.else_body:
+                mark_block_mypy_only(s.else_body)
         elif result in (ALWAYS_TRUE, MYPY_TRUE):
             # This condition is considered always true, so all of the remaining
             # elif/else bodies should not be checked.
@@ -368,3 +372,12 @@ class MarkImportsMypyOnlyVisitor(TraverserVisitor):
 
     def visit_func_def(self, node: FuncDef) -> None:
         node.is_mypy_only = True
+        super().visit_func_def(node)
+
+    def visit_class_def(self, node: ClassDef) -> None:
+        node.is_mypy_only = True
+        super().visit_class_def(node)
+
+    def visit_assignment_stmt(self, node: AssignmentStmt) -> None:
+        node.is_mypy_only = True
+        super().visit_assignment_stmt(node)

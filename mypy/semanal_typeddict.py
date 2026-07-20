@@ -112,18 +112,10 @@ class TypedDictAnalyzer:
         if isinstance(defn.analyzed, TypedDictExpr):
             existing_info = defn.analyzed.info
 
-        base_fullname: str | None = None
-        if (
-            len(defn.base_type_exprs) == 1
-            and isinstance(defn.base_type_exprs[0], RefExpr)
-            and defn.base_type_exprs[0].fullname in TPDICT_NAMES
-        ):
-            base_fullname = defn.base_type_exprs[0].fullname
-
         is_closed: bool | None = None
         if "closed" in defn.keywords:
-            is_closed = self.parse_typeddict_closed_argument(
-                defn.keywords["closed"], base_fullname
+            is_closed = require_bool_literal_argument(
+                self.api, defn.keywords["closed"], "closed", False
             )
 
         if (
@@ -131,6 +123,19 @@ class TypedDictAnalyzer:
             and isinstance(defn.base_type_exprs[0], RefExpr)
             and defn.base_type_exprs[0].fullname in TPDICT_NAMES
         ):
+            if (
+                is_closed is not None
+                and parse_bool(defn.keywords["closed"]) is not None
+                and defn.base_type_exprs[0].fullname == "typing.TypedDict"
+                and self.options.python_version < (3, 15)
+                and not self.api.is_stub_file
+                and not defn.is_mypy_only
+            ):
+                self.fail(
+                    '"closed" argument to TypedDict is only available in Python 3.15 and later',
+                    defn.keywords["closed"],
+                )
+                is_closed = None
             # Building a new TypedDict
             field_sources, statements = self.analyze_typeddict_classdef_fields(defn)
             if field_sources is None:
@@ -157,7 +162,9 @@ class TypedDictAnalyzer:
         typeddict_bases: list[Expression] = []
         typeddict_bases_set = set()
         for i, expr in enumerate(defn.base_type_exprs):
-            ok, maybe_type_info, _ = self.check_typeddict(expr, inline_base(defn.name, i))
+            ok, maybe_type_info, _ = self.check_typeddict(
+                expr, inline_base(defn.name, i), defn.is_mypy_only
+            )
             if ok and maybe_type_info is not None:
                 # expr is a CallExpr
                 info = maybe_type_info
@@ -585,7 +592,7 @@ class TypedDictAnalyzer:
         return typ, is_required, readonly
 
     def check_typeddict(
-        self, node: Expression, name: str
+        self, node: Expression, name: str, is_mypy_only: bool = False
     ) -> tuple[bool, TypeInfo | None, list[TypeVarLikeType]]:
         """Check if a call defines a TypedDict.
 
@@ -608,7 +615,7 @@ class TypedDictAnalyzer:
         fullname = callee.fullname
         if fullname not in TPDICT_NAMES:
             return False, None, []
-        res = self.parse_typeddict_args(call, fullname)
+        res = self.parse_typeddict_args(call, fullname, is_mypy_only)
         if res is None:
             # This is a valid typed dict, but some type is not ready.
             # The caller should defer this until next iteration.
@@ -671,7 +678,7 @@ class TypedDictAnalyzer:
         return True, info, tvar_defs
 
     def parse_typeddict_args(
-        self, call: CallExpr, fullname: str
+        self, call: CallExpr, fullname: str, is_mypy_only: bool
     ) -> tuple[str, list[str], list[Type], bool, bool, list[TypeVarLikeType], bool] | None:
         """Parse typed dict call expression.
 
@@ -712,7 +719,19 @@ class TypedDictAnalyzer:
         for arg_name, arg in zip(call.arg_names[2:], call.args[2:]):
             assert arg_name
             if arg_name == "closed":
-                value = self.parse_typeddict_closed_argument(arg, fullname)
+                value = require_bool_literal_argument(self.api, arg, "closed", False)
+                if (
+                    parse_bool(arg) is not None
+                    and fullname == "typing.TypedDict"
+                    and self.options.python_version < (3, 15)
+                    and not self.api.is_stub_file
+                    and not is_mypy_only
+                ):
+                    self.fail(
+                        '"closed" argument to TypedDict is only available in Python 3.15 and later',
+                        arg,
+                    )
+                    return "", [], [], True, False, [], False
             else:
                 value = require_bool_literal_argument(self.api, arg, arg_name)
             if value is None:
@@ -730,22 +749,6 @@ class TypedDictAnalyzer:
         items, types, ok = res
         assert total is not None
         return args[0].value, items, types, total, closed, tvar_defs, ok
-
-    def parse_typeddict_closed_argument(
-        self, arg: Expression, fullname: str | None
-    ) -> bool | None:
-        literal_value = parse_bool(arg)
-        value = require_bool_literal_argument(self.api, arg, "closed", False)
-        if (
-            literal_value is not None
-            and fullname == "typing.TypedDict"
-            and self.options.python_version < (3, 15)
-        ):
-            self.fail(
-                '"closed" argument to TypedDict is only available in Python 3.15 and later', arg
-            )
-            return None
-        return value
 
     def parse_typeddict_fields_with_types(
         self, dict_items: list[tuple[Expression | None, Expression]]

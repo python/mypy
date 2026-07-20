@@ -3676,7 +3676,7 @@ class SemanticAnalyzer(
         namespace = self.qualified_name(name)
         with self.tvar_scope_frame(self.tvar_scope.class_frame(namespace)):
             is_typed_dict, info, tvar_defs = self.typed_dict_analyzer.check_typeddict(
-                s.rvalue, name
+                s.rvalue, name, s.is_mypy_only
             )
             if not is_typed_dict:
                 return False

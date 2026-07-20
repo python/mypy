@@ -5233,6 +5233,7 @@ reveal_type(e)  # N: Revealed type is "TypedDict('__main__.E', {'x': builtins.in
 [case testTypedDictClosedArgumentBeforePython315]
 # flags: --python-version 3.14
 from typing import TypedDict
+from typing_extensions import TYPE_CHECKING
 
 class ClassClosed(TypedDict, closed=True):  # E: "closed" argument to TypedDict is only available in Python 3.15 and later
     x: int
@@ -5244,8 +5245,38 @@ class InvalidClosed(TypedDict, closed=0):  # E: "closed" argument must be a True
     x: int
 class WithoutClosed(TypedDict):
     x: int
+
+if TYPE_CHECKING:
+    class TypeCheckingClassClosed(TypedDict, closed=True):
+        x: int
+    class TypeCheckingClassOpen(TypedDict, closed=False):
+        x: int
+    TypeCheckingFunctionalClosed = TypedDict('TypeCheckingFunctionalClosed', {'x': int}, closed=True)
+    TypeCheckingFunctionalOpen = TypedDict('TypeCheckingFunctionalOpen', {'x': int}, closed=False)
+    class TypeCheckingInvalidClosed(TypedDict, closed=0):  # E: "closed" argument must be a True or False literal
+        x: int
+    def type_checking_function() -> None:
+        class NestedClassClosed(TypedDict, closed=True):
+            x: int
+        NestedFunctionalOpen = TypedDict('NestedFunctionalOpen', {'x': int}, closed=False)
+if not TYPE_CHECKING:
+    pass
+else:
+    class ElseClassClosed(TypedDict, closed=True):
+        x: int
+    ElseFunctionalOpen = TypedDict('ElseFunctionalOpen', {'x': int}, closed=False)
+from stub import StubClassClosed, StubClassOpen, StubFunctionalClosed, StubFunctionalOpen
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
+[file stub.pyi]
+from typing import TypedDict
+
+class StubClassClosed(TypedDict, closed=True):
+    x: int
+class StubClassOpen(TypedDict, closed=False):
+    x: int
+StubFunctionalClosed = TypedDict('StubFunctionalClosed', {'x': int}, closed=True)
+StubFunctionalOpen = TypedDict('StubFunctionalOpen', {'x': int}, closed=False)
 
 [case testTypingExtensionsTypedDictClosedArgumentBeforePython315]
 # flags: --python-version 3.14
