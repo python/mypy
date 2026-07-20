@@ -590,11 +590,11 @@ class Plugin(CommonPluginApi):
     def get_additional_indirect_deps(self, file: MypyFile) -> set[str]:
         """Customize indirect dependencies for a module.
 
-        Unlike get_additional_deps(), this hook is called after the module
-        has been type checked, so analyzed information (such as class MROs)
-        is available. The returned module names are recorded as indirect
-        dependencies: a change to their interfaces will invalidate this
-        module's cache, but they are not treated as imports.
+        This hook is called after the module has been type checked, so
+        analyzed information (such as class MROs) is available. The
+        returned module names are recorded as indirect dependencies:
+        a change to their interfaces will invalidate this module's
+        cache, but they are not treated as imports.
         """
         return set()
 
