@@ -23,7 +23,7 @@ from mypy.build import (
 )
 from mypy.errors import CompileError
 from mypy.fscache import FileSystemCache
-from mypy.nodes import MypyFile
+from mypy.nodes import MypyFile, TypeInfo
 from mypy.options import Options
 from mypy.plugin import Plugin, ReportConfigContext
 from mypy.util import hash_digest, json_dumps
@@ -199,6 +199,28 @@ class MypycPlugin(Plugin):
     def get_additional_deps(self, file: MypyFile) -> list[tuple[int, str, int]]:
         # Report dependency on modules in the module's group
         return [(10, id, -1) for id in self.group_map.get(file.fullname, (None, []))[1]]
+
+    def get_additional_indirect_deps(self, file: MypyFile) -> set[str]:
+        """Modules defining MRO ancestors of classes defined in this module.
+
+        The generated C for a class (vtable arrays, getter/setter tables,
+        object struct) references every inherited method/attribute of every
+        ancestor, including ancestors defined in modules this module does
+        not import directly. Recording them as indirect dependencies makes
+        an ancestor's interface change re-trigger type checking (and hence
+        C regeneration) of this module. Only top-level classes are scanned:
+        mypyc rejects nested class definitions.
+        """
+        if file.fullname not in self.group_map:
+            return set()
+
+        mods: set[str] = set()
+        for sym in file.names.values():
+            node = sym.node
+            if isinstance(node, TypeInfo) and node.module_name == file.fullname:
+                for ancestor in node.mro[1:]:
+                    mods.add(ancestor.module_name)
+        return mods
 
 
 def parse_and_typecheck(

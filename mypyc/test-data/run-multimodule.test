@@ -1901,18 +1901,8 @@ from native import test
 test()
 
 [case testIncrementalCrossGroupInheritedMethodRemoved]
-# Regression: under separate=True, a module whose only content is a subclass
-# definition (`class Leaf(Mid): pass`) produces no expression types, so it
-# recorded no dependency on the modules defining its transitive bases. When a
-# Base method two hops up the inheritance chain was removed, staleness
-# propagation stopped at other_mid (its own interface is unchanged) and
-# other_leaf stayed fresh: its stale generated C still referenced the method
-# in Leaf's vtable via exports_other_base.CPyDef_..., which no longer exists
-# in the regenerated export table, and the build failed.
-# compiled_class_ancestor_refs must record the MRO ancestors' modules as
-# indirect deps so an ancestor's interface change recompiles the defining
-# module too. (removed_method is declared after existing_method so the
-# surviving call site's vtable slot is unaffected.)
+# Regression: updating a transitive base class triggers recompilation of the
+# subclass-defining module (mypy#21742).
 import other_leaf
 
 def test() -> int:
@@ -1955,12 +1945,8 @@ print(test())
 6
 
 [case testIncrementalCrossGroupInheritedMethodRemovedNonEmptyLeaf]
-# Same regression as testIncrementalCrossGroupInheritedMethodRemoved, but the
-# subclass body is NOT empty: a class constant and a method that never uses
-# self. Neither produces an expression whose type reaches Leaf's MRO, so the
-# pre-existing dependency sources still record nothing for other_leaf, while
-# its generated vtable references the ancestors regardless of body shape.
-# Guards against narrowing compiled_class_ancestor_refs to pass-only bodies.
+# Regression: updating a transitive base class triggers recompilation of the
+# module defining a subclass with a non-empty body (mypy#21742).
 import other_leaf
 
 def test() -> int:

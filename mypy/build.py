@@ -118,7 +118,6 @@ from mypy.nodes import (
     MypyFile,
     OverloadedFuncDef,
     SymbolTable,
-    TypeInfo,
 )
 from mypy.options import OPTIONS_AFFECTING_CACHE_NO_PLATFORM
 from mypy.partially_defined import PossiblyUndefinedVariableVisitor
@@ -3480,20 +3479,21 @@ class State:
             if options.export_types:
                 manager.all_types.update(self.type_map())
 
-            # Possible sources of indirect dependencies:
-            # * Symbols not directly imported in this module but accessed via an attribute
-            #   or via a re-export (vast majority of these recorded in semantic analysis).
-            # * For each expression type we need to record definitions of type components
-            #   since "meaning" of the type may be updated when definitions are updated.
-            # * For mypyc-compiled modules only: modules defining MRO ancestors of
-            #   classes defined here, since the generated C embeds each ancestor's
-            #   method/attribute layout.
-            indirect_refs = self.tree.module_refs | self.type_checker().module_refs
-            if self.options.mypyc:
-                indirect_refs |= self.compiled_class_ancestor_refs()
             # We should always patch indirect dependencies, even in full (non-incremental) builds,
             # because the cache still may be written, and it must be correct.
-            self.patch_indirect_dependencies(indirect_refs, set(self.type_map().values()))
+            self.patch_indirect_dependencies(
+                # Three possible sources of indirect dependencies:
+                # * Symbols not directly imported in this module but accessed via an attribute
+                #   or via a re-export (vast majority of these recorded in semantic analysis).
+                # * For each expression type we need to record definitions of type components
+                #   since "meaning" of the type may be updated when definitions are updated.
+                # * Additional dependencies reported by plugins (e.g. mypyc, see
+                #   MypycPlugin.get_additional_indirect_deps).
+                self.tree.module_refs
+                | self.type_checker().module_refs
+                | manager.plugin.get_additional_indirect_deps(self.tree),
+                set(self.type_map().values()),
+            )
 
             if self.options.dump_inference_stats:
                 dump_type_stats(
@@ -3534,27 +3534,6 @@ class State:
                 continue
             self.add_dependency(dep)
             self.priorities[dep] = PRI_INDIRECT
-
-    def compiled_class_ancestor_refs(self) -> set[str]:
-        """Modules defining MRO ancestors of classes defined in this module.
-
-        Only used for mypyc-compiled modules: the generated C for a class
-        (vtable arrays, getter/setter tables, object struct) references
-        every inherited method/attribute of every ancestor, including
-        ancestors defined in modules this module does not import directly.
-        Recording them as indirect dependencies makes an ancestor's
-        interface change re-trigger type checking (and hence C regeneration)
-        of this module. Only top-level classes are scanned: mypyc rejects
-        nested class definitions.
-        """
-        assert self.tree is not None
-        mods: set[str] = set()
-        for sym in self.tree.names.values():
-            node = sym.node
-            if isinstance(node, TypeInfo) and node.module_name == self.id:
-                for ancestor in node.mro[1:]:
-                    mods.add(ancestor.module_name)
-        return mods
 
     def compute_fine_grained_deps(self) -> dict[str, set[str]]:
         assert self.tree is not None
