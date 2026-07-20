@@ -25,6 +25,7 @@ from mypy.nodes import (
     MemberExpr,
     NameExpr,
     OpExpr,
+    RefExpr,
     SliceExpr,
     StrExpr,
     TupleExpr,
@@ -58,8 +59,6 @@ def infer_reachability_of_if_statement(s: IfStmt, options: Options) -> None:
         if result in (ALWAYS_FALSE, MYPY_FALSE):
             # The condition is considered always false, so we skip the if/elif body.
             mark_block_unreachable(s.body[i])
-            if result == MYPY_FALSE and i == len(s.expr) - 1 and s.else_body:
-                mark_block_mypy_only(s.else_body)
         elif result in (ALWAYS_TRUE, MYPY_TRUE):
             # This condition is considered always true, so all of the remaining
             # elif/else bodies should not be checked.
@@ -172,6 +171,63 @@ def infer_condition_value(expr: Expression, options: Options) -> int:
     return result
 
 
+def infer_runtime_condition_value(expr: Expression, options: Options) -> int:
+    """Infer whether a condition is definitely true or false at runtime.
+
+    Unlike ``infer_condition_value()``, this intentionally doesn't use the
+    ``MYPY_TRUE`` and ``MYPY_FALSE`` states. It only returns a definite result
+    when the expression's runtime value follows from the configured target.
+    """
+    if isinstance(expr, UnaryExpr) and expr.op == "not":
+        positive = infer_runtime_condition_value(expr.expr, options)
+        return {
+            ALWAYS_TRUE: ALWAYS_FALSE,
+            ALWAYS_FALSE: ALWAYS_TRUE,
+            TRUTH_VALUE_UNKNOWN: TRUTH_VALUE_UNKNOWN,
+        }[positive]
+
+    if isinstance(expr, OpExpr):
+        if expr.op not in ("or", "and"):
+            return TRUTH_VALUE_UNKNOWN
+        left = infer_runtime_condition_value(expr.left, options)
+        right = infer_runtime_condition_value(expr.right, options)
+        if expr.op == "or":
+            if ALWAYS_TRUE in (left, right):
+                return ALWAYS_TRUE
+            if left == right == ALWAYS_FALSE:
+                return ALWAYS_FALSE
+        else:
+            if ALWAYS_FALSE in (left, right):
+                return ALWAYS_FALSE
+            if left == right == ALWAYS_TRUE:
+                return ALWAYS_TRUE
+        return TRUTH_VALUE_UNKNOWN
+
+    if isinstance(expr, RefExpr) and expr.fullname in (
+        "typing.TYPE_CHECKING",
+        "typing_extensions.TYPE_CHECKING",
+    ):
+        return ALWAYS_FALSE
+
+    if isinstance(expr, (NameExpr, MemberExpr)):
+        if expr.name == "MYPY":
+            return ALWAYS_FALSE
+        if expr.name == "PY2":
+            return ALWAYS_FALSE
+        if expr.name == "PY3":
+            return ALWAYS_TRUE
+        if expr.name in options.always_true:
+            return ALWAYS_TRUE
+        if expr.name in options.always_false:
+            return ALWAYS_FALSE
+        return TRUTH_VALUE_UNKNOWN
+
+    result = consider_sys_version_info(expr, options.python_version, use_fullname=True)
+    if result == TRUTH_VALUE_UNKNOWN:
+        result = consider_sys_platform(expr, options.platform, use_fullname=True)
+    return result
+
+
 def infer_pattern_value(pattern: Pattern) -> int:
     if isinstance(pattern, AsPattern) and pattern.pattern is None:
         return ALWAYS_TRUE
@@ -183,7 +239,9 @@ def infer_pattern_value(pattern: Pattern) -> int:
         return TRUTH_VALUE_UNKNOWN
 
 
-def consider_sys_version_info(expr: Expression, pyversion: tuple[int, ...]) -> int:
+def consider_sys_version_info(
+    expr: Expression, pyversion: tuple[int, ...], *, use_fullname: bool = False
+) -> int:
     """Consider whether expr is a comparison involving sys.version_info.
 
     Return ALWAYS_TRUE, ALWAYS_FALSE, or TRUTH_VALUE_UNKNOWN.
@@ -202,10 +260,10 @@ def consider_sys_version_info(expr: Expression, pyversion: tuple[int, ...]) -> i
     if op not in ("==", "!=", "<=", ">=", "<", ">"):
         return TRUTH_VALUE_UNKNOWN
 
-    index = contains_sys_version_info(expr.operands[0])
+    index = contains_sys_version_info(expr.operands[0], use_fullname=use_fullname)
     thing = contains_int_or_tuple_of_ints(expr.operands[1])
     if index is None or thing is None:
-        index = contains_sys_version_info(expr.operands[1])
+        index = contains_sys_version_info(expr.operands[1], use_fullname=use_fullname)
         thing = contains_int_or_tuple_of_ints(expr.operands[0])
         op = reverse_op[op]
     if isinstance(index, int) and isinstance(thing, int):
@@ -227,7 +285,7 @@ def consider_sys_version_info(expr: Expression, pyversion: tuple[int, ...]) -> i
     return TRUTH_VALUE_UNKNOWN
 
 
-def consider_sys_platform(expr: Expression, platform: str) -> int:
+def consider_sys_platform(expr: Expression, platform: str, *, use_fullname: bool = False) -> int:
     """Consider whether expr is a comparison involving sys.platform.
 
     Return ALWAYS_TRUE, ALWAYS_FALSE, or TRUTH_VALUE_UNKNOWN.
@@ -243,7 +301,7 @@ def consider_sys_platform(expr: Expression, platform: str) -> int:
         op = expr.operators[0]
         if op not in ("==", "!="):
             return TRUTH_VALUE_UNKNOWN
-        if not is_sys_attr(expr.operands[0], "platform"):
+        if not is_sys_attr(expr.operands[0], "platform", use_fullname=use_fullname):
             return TRUTH_VALUE_UNKNOWN
         right = expr.operands[1]
         if not isinstance(right, StrExpr):
@@ -254,7 +312,7 @@ def consider_sys_platform(expr: Expression, platform: str) -> int:
             return TRUTH_VALUE_UNKNOWN
         if len(expr.args) != 1 or not isinstance(expr.args[0], StrExpr):
             return TRUTH_VALUE_UNKNOWN
-        if not is_sys_attr(expr.callee.expr, "platform"):
+        if not is_sys_attr(expr.callee.expr, "platform", use_fullname=use_fullname):
             return TRUTH_VALUE_UNKNOWN
         if expr.callee.name != "startswith":
             return TRUTH_VALUE_UNKNOWN
@@ -300,10 +358,14 @@ def contains_int_or_tuple_of_ints(expr: Expression) -> None | int | tuple[int, .
     return None
 
 
-def contains_sys_version_info(expr: Expression) -> None | int | tuple[int | None, int | None]:
-    if is_sys_attr(expr, "version_info"):
+def contains_sys_version_info(
+    expr: Expression, *, use_fullname: bool = False
+) -> None | int | tuple[int | None, int | None]:
+    if is_sys_attr(expr, "version_info", use_fullname=use_fullname):
         return (None, None)  # Same as sys.version_info[:]
-    if isinstance(expr, IndexExpr) and is_sys_attr(expr.base, "version_info"):
+    if isinstance(expr, IndexExpr) and is_sys_attr(
+        expr.base, "version_info", use_fullname=use_fullname
+    ):
         index = expr.index
         if isinstance(index, IntExpr):
             return index.value
@@ -324,11 +386,13 @@ def contains_sys_version_info(expr: Expression) -> None | int | tuple[int | None
     return None
 
 
-def is_sys_attr(expr: Expression, name: str) -> bool:
+def is_sys_attr(expr: Expression, name: str, *, use_fullname: bool = False) -> bool:
     # TODO: This currently doesn't work with code like this:
     # - import sys as _sys
     # - from sys import version_info
     if isinstance(expr, MemberExpr) and expr.name == name:
+        if use_fullname:
+            return expr.fullname == f"sys.{name}"
         if isinstance(expr.expr, NameExpr) and expr.expr.name == "sys":
             # TODO: Guard against a local named sys, etc.
             # (Though later passes will still do most checking.)
@@ -358,6 +422,10 @@ def mark_block_mypy_only(block: Block) -> None:
     block.accept(MarkImportsMypyOnlyVisitor())
 
 
+def mark_block_runtime_unreachable(block: Block) -> None:
+    block.accept(MarkRuntimeUnreachableVisitor())
+
+
 class MarkImportsMypyOnlyVisitor(TraverserVisitor):
     """Visitor that sets is_mypy_only (which affects priority)."""
 
@@ -372,12 +440,17 @@ class MarkImportsMypyOnlyVisitor(TraverserVisitor):
 
     def visit_func_def(self, node: FuncDef) -> None:
         node.is_mypy_only = True
+
+
+class MarkRuntimeUnreachableVisitor(TraverserVisitor):
+    """Mark definitions contained in code that cannot run at runtime."""
+
+    def visit_func_def(self, node: FuncDef) -> None:
         super().visit_func_def(node)
 
     def visit_class_def(self, node: ClassDef) -> None:
-        node.is_mypy_only = True
+        node.is_runtime_unreachable = True
         super().visit_class_def(node)
 
     def visit_assignment_stmt(self, node: AssignmentStmt) -> None:
-        node.is_mypy_only = True
-        super().visit_assignment_stmt(node)
+        node.is_runtime_unreachable = True

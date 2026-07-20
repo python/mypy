@@ -272,7 +272,7 @@ class TransformVisitor(NodeVisitor[Node]):
         new.fullname = node.fullname
         new.info = node.info
         new.decorators = [self.expr(decorator) for decorator in node.decorators]
-        new.is_mypy_only = node.is_mypy_only
+        new.is_runtime_unreachable = node.is_runtime_unreachable
         return new
 
     def visit_global_decl(self, node: GlobalDecl) -> GlobalDecl:
@@ -328,7 +328,7 @@ class TransformVisitor(NodeVisitor[Node]):
         )
         new.line = node.line
         new.is_final_def = node.is_final_def
-        new.is_mypy_only = node.is_mypy_only
+        new.is_runtime_unreachable = node.is_runtime_unreachable
         new.type = self.optional_type(node.type)
         return new
 

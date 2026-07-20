@@ -129,7 +129,7 @@ class TypedDictAnalyzer:
                 and defn.base_type_exprs[0].fullname == "typing.TypedDict"
                 and self.options.python_version < (3, 15)
                 and not self.api.is_stub_file
-                and not defn.is_mypy_only
+                and not defn.is_runtime_unreachable
             ):
                 self.fail(
                     '"closed" argument to TypedDict is only available in Python 3.15 and later',
@@ -163,7 +163,7 @@ class TypedDictAnalyzer:
         typeddict_bases_set = set()
         for i, expr in enumerate(defn.base_type_exprs):
             ok, maybe_type_info, _ = self.check_typeddict(
-                expr, inline_base(defn.name, i), defn.is_mypy_only
+                expr, inline_base(defn.name, i), defn.is_runtime_unreachable
             )
             if ok and maybe_type_info is not None:
                 # expr is a CallExpr
@@ -592,7 +592,7 @@ class TypedDictAnalyzer:
         return typ, is_required, readonly
 
     def check_typeddict(
-        self, node: Expression, name: str, is_mypy_only: bool = False
+        self, node: Expression, name: str, is_runtime_unreachable: bool = False
     ) -> tuple[bool, TypeInfo | None, list[TypeVarLikeType]]:
         """Check if a call defines a TypedDict.
 
@@ -615,7 +615,7 @@ class TypedDictAnalyzer:
         fullname = callee.fullname
         if fullname not in TPDICT_NAMES:
             return False, None, []
-        res = self.parse_typeddict_args(call, fullname, is_mypy_only)
+        res = self.parse_typeddict_args(call, fullname, is_runtime_unreachable)
         if res is None:
             # This is a valid typed dict, but some type is not ready.
             # The caller should defer this until next iteration.
@@ -678,7 +678,7 @@ class TypedDictAnalyzer:
         return True, info, tvar_defs
 
     def parse_typeddict_args(
-        self, call: CallExpr, fullname: str, is_mypy_only: bool
+        self, call: CallExpr, fullname: str, is_runtime_unreachable: bool
     ) -> tuple[str, list[str], list[Type], bool, bool, list[TypeVarLikeType], bool] | None:
         """Parse typed dict call expression.
 
@@ -725,7 +725,7 @@ class TypedDictAnalyzer:
                     and fullname == "typing.TypedDict"
                     and self.options.python_version < (3, 15)
                     and not self.api.is_stub_file
-                    and not is_mypy_only
+                    and not is_runtime_unreachable
                 ):
                     self.fail(
                         '"closed" argument to TypedDict is only available in Python 3.15 and later',

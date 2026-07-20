@@ -5234,6 +5234,8 @@ reveal_type(e)  # N: Revealed type is "TypedDict('__main__.E', {'x': builtins.in
 # flags: --python-version 3.14
 from typing import TypedDict
 from typing_extensions import TYPE_CHECKING
+MYPY = False
+unknown: bool
 
 class ClassClosed(TypedDict, closed=True):  # E: "closed" argument to TypedDict is only available in Python 3.15 and later
     x: int
@@ -5259,12 +5261,37 @@ if TYPE_CHECKING:
         class NestedClassClosed(TypedDict, closed=True):
             x: int
         NestedFunctionalOpen = TypedDict('NestedFunctionalOpen', {'x': int}, closed=False)
+if MYPY:
+    class MypyClassClosed(TypedDict, closed=True):
+        x: int
+    MypyFunctionalOpen = TypedDict('MypyFunctionalOpen', {'x': int}, closed=False)
 if not TYPE_CHECKING:
     pass
 else:
     class ElseClassClosed(TypedDict, closed=True):
         x: int
     ElseFunctionalOpen = TypedDict('ElseFunctionalOpen', {'x': int}, closed=False)
+if not TYPE_CHECKING:
+    pass
+elif unknown:
+    class ElifClassClosed(TypedDict, closed=True):
+        x: int
+    ElifFunctionalOpen = TypedDict('ElifFunctionalOpen', {'x': int}, closed=False)
+runtime_flag: bool
+if TYPE_CHECKING or runtime_flag:
+    class RuntimeOrClassClosed(TypedDict, closed=True):  # E: "closed" argument to TypedDict is only available in Python 3.15 and later
+        x: int
+    RuntimeOrFunctionalOpen = TypedDict('RuntimeOrFunctionalOpen', {'x': int}, closed=False)  # E: "closed" argument to TypedDict is only available in Python 3.15 and later
+if not TYPE_CHECKING and runtime_flag:
+    pass
+else:
+    class RuntimeElseClassClosed(TypedDict, closed=True):  # E: "closed" argument to TypedDict is only available in Python 3.15 and later
+        x: int
+    RuntimeElseFunctionalOpen = TypedDict('RuntimeElseFunctionalOpen', {'x': int}, closed=False)  # E: "closed" argument to TypedDict is only available in Python 3.15 and later
+if TYPE_CHECKING and runtime_flag:
+    class RuntimeAndClassClosed(TypedDict, closed=True):
+        x: int
+    RuntimeAndFunctionalOpen = TypedDict('RuntimeAndFunctionalOpen', {'x': int}, closed=False)
 from stub import StubClassClosed, StubClassOpen, StubFunctionalClosed, StubFunctionalOpen
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
@@ -5277,6 +5304,53 @@ class StubClassOpen(TypedDict, closed=False):
     x: int
 StubFunctionalClosed = TypedDict('StubFunctionalClosed', {'x': int}, closed=True)
 StubFunctionalOpen = TypedDict('StubFunctionalOpen', {'x': int}, closed=False)
+
+[case testTypedDictClosedArgumentInAliasedTypingOnlyContextBeforePython315]
+# flags: --python-version 3.14
+import typing
+from typing import TYPE_CHECKING as TC, TypedDict
+from typing_extensions import TYPE_CHECKING as EXT_TC
+
+if TC:
+    class AliasedClassClosed(TypedDict, closed=True):
+        x: int
+    AliasedFunctionalOpen = TypedDict('AliasedFunctionalOpen', {'x': int}, closed=False)
+if not not TC:
+    class DoubleNegatedClassClosed(TypedDict, closed=True):
+        x: int
+    DoubleNegatedFunctionalOpen = TypedDict(
+        'DoubleNegatedFunctionalOpen', {'x': int}, closed=False
+    )
+if EXT_TC:
+    class ExtensionsAliasedClassClosed(TypedDict, closed=True):
+        x: int
+    ExtensionsAliasedFunctionalOpen = TypedDict(
+        'ExtensionsAliasedFunctionalOpen', {'x': int}, closed=False
+    )
+if typing.TYPE_CHECKING:
+    class QualifiedClassClosed(TypedDict, closed=True):
+        x: int
+    QualifiedFunctionalOpen = TypedDict('QualifiedFunctionalOpen', {'x': int}, closed=False)
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictClosedArgumentWithShadowedTypeCheckingBeforePython315]
+# flags: --python-version 3.14
+from typing import TypedDict
+
+TYPE_CHECKING = True
+if TYPE_CHECKING:
+    class ShadowedClassClosed(TypedDict, closed=True):  # E: "closed" argument to TypedDict is only available in Python 3.15 and later
+        x: int
+    ShadowedFunctionalOpen = TypedDict('ShadowedFunctionalOpen', {'x': int}, closed=False)  # E: "closed" argument to TypedDict is only available in Python 3.15 and later
+def shadowed_locally() -> None:
+    TYPE_CHECKING = True
+    if TYPE_CHECKING:
+        class LocallyShadowedClassClosed(TypedDict, closed=True):  # E: "closed" argument to TypedDict is only available in Python 3.15 and later
+            x: int
+        LocallyShadowedFunctionalOpen = TypedDict('LocallyShadowedFunctionalOpen', {'x': int}, closed=False)  # E: "closed" argument to TypedDict is only available in Python 3.15 and later
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testTypingExtensionsTypedDictClosedArgumentBeforePython315]
 # flags: --python-version 3.14
@@ -5292,6 +5366,19 @@ FunctionalOpen = TypedDict('FunctionalOpen', {'x': int}, closed=False)
 [typing fixtures/typing-typeddict.pyi]
 [file typing_extensions.pyi]
 TypedDict = 0
+
+[case testMypyExtensionsTypedDictClosedArgumentBeforePython315]
+# flags: --python-version 3.14
+from mypy_extensions import TypedDict
+
+class ClassClosed(TypedDict, closed=True):
+    x: int
+class ClassOpen(TypedDict, closed=False):
+    x: int
+FunctionalClosed = TypedDict('FunctionalClosed', {'x': int}, closed=True)
+FunctionalOpen = TypedDict('FunctionalOpen', {'x': int}, closed=False)
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testTypedDictClosedArgumentInPython315]
 # flags: --python-version 3.15
