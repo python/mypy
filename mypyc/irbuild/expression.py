@@ -58,7 +58,12 @@ from mypy.types import (
     TypeType,
     get_proper_type,
 )
-from mypyc.common import MAX_SHORT_INT
+from mypyc.common import (
+    IS_FREE_THREADED,
+    KEEP_ALIVE_SHORT_LIVED,
+    KEEP_ALIVE_WHOLE_EXPRESSION,
+    MAX_SHORT_INT,
+)
 from mypyc.ir.class_ir import ClassIR
 from mypyc.ir.func_ir import FUNC_CLASSMETHOD, FUNC_STATICMETHOD
 from mypyc.ir.ops import (
@@ -66,11 +71,14 @@ from mypyc.ir.ops import (
     Assign,
     BasicBlock,
     CallC,
+    Cast,
     ComparisonOp,
+    GetAttr,
     Integer,
     LoadAddress,
     LoadLiteral,
     PrimitiveDescription,
+    PrimitiveOp,
     RaiseStandardError,
     Register,
     TupleGet,
@@ -252,7 +260,7 @@ def transform_member_expr(builder: IRBuilder, expr: MemberExpr) -> Value:
     if expr.fullname in ("typing.TYPE_CHECKING", "typing_extensions.TYPE_CHECKING"):
         return builder.false(expr.line)
 
-    # First check if this is maybe a final attribute.
+    # First check if this is maybe a final class/module attribute.
     final = builder.get_final_ref(expr)
     if final is not None:
         fullname, final_var, native = final
@@ -272,9 +280,16 @@ def transform_member_expr(builder: IRBuilder, expr: MemberExpr) -> Value:
     if isinstance(expr.node, MypyFile) and expr.node.fullname in builder.imports:
         return builder.load_module(expr.node.fullname)
 
-    can_borrow = builder.is_native_attr_ref(expr)
-    obj = builder.accept(expr.expr, can_borrow=can_borrow)
     rtype = builder.node_type(expr)
+    # Borrowing a native attribute read is unsafe on free-threaded builds, since another
+    # thread could concurrently reassign the attribute and free the old value. We still borrow
+    # in two cases:
+    #  - Native Final attributes are read-only at runtime, so they can never be reassigned.
+    #  - Vec-typed attributes require manual synchronization, so we borrow them liberally.
+    can_borrow = builder.is_native_attr_ref(expr) and (
+        not IS_FREE_THREADED or isinstance(rtype, RVec) or builder.is_final_native_attr_ref(expr)
+    )
+    obj = builder.accept(expr.expr, can_borrow=can_borrow)
 
     if (
         is_object_rprimitive(obj.type)
@@ -298,8 +313,43 @@ def transform_member_expr(builder: IRBuilder, expr: MemberExpr) -> Value:
 
     check_instance_attribute_access_through_class(builder, expr, typ)
 
-    borrow = can_borrow and builder.can_borrow
-    return builder.builder.get_attr(obj, expr.name, rtype, expr.line, borrow=borrow)
+    is_final = builder.is_final_native_attr_ref(expr)
+    scope = KEEP_ALIVE_SHORT_LIVED
+    if (
+        is_final
+        and builder.expression_depth > 1
+        and value_borrow_scope(builder, obj) >= KEEP_ALIVE_WHOLE_EXPRESSION
+        # Don't borrow across the whole expression if the borrow root can be
+        # rebound via a walrus assignment
+        and not builder.root_is_reassigned(obj)
+        # Don't borrow across a suspension point (await/yield/yield from), since
+        # the borrow would not survive the suspend (registers aren't spilled).
+        and not builder.expr_has_suspend
+    ):
+        scope = KEEP_ALIVE_WHOLE_EXPRESSION
+    borrow = (can_borrow and builder.can_borrow) or scope == KEEP_ALIVE_WHOLE_EXPRESSION
+    return builder.builder.get_attr(
+        obj, expr.name, rtype, expr.line, borrow=borrow, borrow_scope=scope
+    )
+
+
+def value_borrow_scope(builder: IRBuilder, v: Value) -> int:
+    """Compute how long an existing borrowed value can safely be kept alive.
+
+    Returns a KEEP_ALIVE_* constant (or a large value if 'v' is not borrowed and
+    thus has no borrowing constraint).
+    """
+    if isinstance(v, GetAttr) and v.is_borrowed:
+        return min(v.borrow_scope, value_borrow_scope(builder, v.obj))
+    elif isinstance(v, Cast) and v.is_borrowed:
+        # A cast just propagates the value (when successful), so the scope is
+        # determined by the source.
+        return value_borrow_scope(builder, v.src)
+    elif isinstance(v, (CallC, PrimitiveOp)) and v.is_borrowed:
+        # Values borrowed from a C function (e.g. a borrowed list/vec item) may be
+        # invalidated by arbitrary computation, so they are only short-lived.
+        return KEEP_ALIVE_SHORT_LIVED
+    return 999
 
 
 def check_instance_attribute_access_through_class(
@@ -773,8 +823,14 @@ def try_optimize_int_floor_divide(builder: IRBuilder, expr: OpExpr) -> OpExpr:
 def transform_index_expr(builder: IRBuilder, expr: IndexExpr) -> Value:
     index = expr.index
     base_type = builder.node_type(expr.base)
-    can_borrow = is_list_rprimitive(base_type) or isinstance(base_type, RVec)
-    can_borrow_base = can_borrow and is_borrow_friendly_expr(builder, index)
+    # We can borrow a list item safely only if GIL is enabled. The vec type is optimized for
+    # performance, so we'll do unsafe borrowing.
+    can_borrow = (is_list_rprimitive(base_type) and not IS_FREE_THREADED) or isinstance(
+        base_type, RVec
+    )
+    can_borrow_base = (
+        is_list_rprimitive(base_type) or isinstance(base_type, RVec)
+    ) and is_borrow_friendly_expr(builder, index)
 
     # Check for dunder specialization for non-slice indexing
     if not isinstance(index, SliceExpr):
@@ -796,7 +852,7 @@ def transform_index_expr(builder: IRBuilder, expr: IndexExpr) -> Value:
         if value:
             return value
 
-    index_reg = builder.accept(expr.index, can_borrow=can_borrow)
+    index_reg = builder.accept(expr.index, can_borrow=can_borrow or can_borrow_base)
     return builder.builder.get_item(
         base, index_reg, builder.node_type(expr), expr.line, can_borrow=builder.can_borrow
     )
@@ -862,15 +918,17 @@ def transform_conditional_expr(builder: IRBuilder, expr: ConditionalExpr) -> Val
     target = Register(expr_type)
 
     builder.activate_block(if_body)
-    true_value = builder.accept(expr.if_expr)
-    true_value = builder.coerce(true_value, expr_type, expr.line)
-    builder.add(Assign(target, true_value, expr.line))
+    with builder.builder.borrow_region(expr.line):
+        true_value = builder.accept(expr.if_expr)
+        true_value = builder.coerce(true_value, expr_type, expr.line)
+        builder.add(Assign(target, true_value, expr.line))
     builder.goto(next_block)
 
     builder.activate_block(else_body)
-    false_value = builder.accept(expr.else_expr)
-    false_value = builder.coerce(false_value, expr_type, expr.line)
-    builder.add(Assign(target, false_value, expr.line))
+    with builder.builder.borrow_region(expr.line):
+        false_value = builder.accept(expr.else_expr)
+        false_value = builder.coerce(false_value, expr_type, expr.line)
+        builder.add(Assign(target, false_value, expr.line))
     builder.goto(next_block)
 
     builder.activate_block(next_block)

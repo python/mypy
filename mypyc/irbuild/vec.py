@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Final
 
-from mypyc.common import IS_32_BIT_PLATFORM, PLATFORM_SIZE
+from mypyc.common import IS_32_BIT_PLATFORM, KEEP_ALIVE_SHORT_LIVED, PLATFORM_SIZE
 from mypyc.ir.ops import (
     ERR_MAGIC,
     Assign,
@@ -52,6 +52,7 @@ from mypyc.ir.rtypes import (
     vec_api_by_item_type,
     vec_item_type_tags,
 )
+from mypyc.primitives.librt_vecs_ops import vec_get_item_unsafe_borrow_op, vec_get_item_unsafe_op
 
 if TYPE_CHECKING:
     from mypyc.irbuild.ll_builder import LowLevelIRBuilder
@@ -316,9 +317,10 @@ def vec_get_item(
 ) -> Value:
     """Generate inlined vec __getitem__ call.
 
-    We inline this, since it's simple but performance-critical.
+    We inline the length and bounds check, since they are simple but
+    performance-critical. The actual item load is emitted as a generic primitive
+    op that is lowered later.
     """
-    # TODO: Support more item types
     # TODO: Support more index types
     len_val = vec_len(builder, base)
     index = vec_check_and_adjust_index(builder, len_val, index, line)
@@ -328,13 +330,28 @@ def vec_get_item(
 def vec_get_item_unsafe(
     builder: LowLevelIRBuilder, base: Value, index: Value, line: int, *, can_borrow: bool = False
 ) -> Value:
-    """Get vec item, assuming index is non-negative and within bounds."""
+    """Get vec item, assuming index is non-negative and within bounds.
+
+    This emits a generic primitive op that is inlined during lowering.
+    """
+    assert isinstance(base.type, RVec)
+    if can_borrow:
+        desc = vec_get_item_unsafe_borrow_op
+    else:
+        desc = vec_get_item_unsafe_op
+    return builder.primitive_op(desc, [base, index], line, type_args=[base.type.item_type])
+
+
+def vec_get_item_unsafe_lower(
+    builder: LowLevelIRBuilder, base: Value, index: Value, line: int, *, can_borrow: bool = False
+) -> Value:
+    """Generate the low-level IR for an unsafe vec item load."""
     assert isinstance(base.type, RVec)
     index = as_platform_int(builder, index, line)
     vtype = base.type
     item_addr = vec_item_ptr(builder, base, index)
     result = vec_load_mem_item(builder, item_addr, vtype.item_type, can_borrow=can_borrow)
-    builder.keep_alives.append(base)
+    builder.add_keep_alive(base, KEEP_ALIVE_SHORT_LIVED)
     return result
 
 

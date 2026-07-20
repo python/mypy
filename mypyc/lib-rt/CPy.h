@@ -664,16 +664,68 @@ PyObject *CPyObject_GetSlice(PyObject *obj, CPyTagged start, CPyTagged end);
 // List operations
 
 
-PyObject *CPyList_Build(Py_ssize_t len, ...);
+#ifndef Py_GIL_DISABLED
+
 PyObject *CPyList_GetItem(PyObject *list, CPyTagged index);
 PyObject *CPyList_GetItemShort(PyObject *list, CPyTagged index);
+PyObject *CPyList_GetItemInt64(PyObject *list, int64_t index);
+bool CPyList_SetItem(PyObject *list, CPyTagged index, PyObject *value);
+bool CPyList_SetItemInt64(PyObject *list, int64_t index, PyObject *value);
+
+#else
+
+PyObject *CPyList_GetItem_(PyObject *list, CPyTagged index);
+bool CPyList_SetItem_(PyObject *list, CPyTagged index, PyObject *value);
+
+static inline PyObject *CPyList_GetItem(PyObject *list, CPyTagged index) {
+    if (likely(CPyTagged_CheckShort(index) && !CPyTagged_IsNegative(index))) {
+        // Inlined fast path
+        Py_ssize_t n = CPyTagged_ShortAsSsize_t(index);
+        return PyList_GetItemRef(list, n);
+    } else {
+        return CPyList_GetItem_(list, index);
+    }
+}
+
+static inline PyObject *CPyList_GetItemShort(PyObject *list, CPyTagged index) {
+    Py_ssize_t n = CPyTagged_ShortAsSsize_t(index);
+    if (n < 0) {
+        n += PyList_GET_SIZE(list);
+    }
+    return PyList_GetItemRef(list, n);
+}
+
+static inline PyObject *CPyList_GetItemInt64(PyObject *list, int64_t index) {
+    if (index < 0) {
+        index += PyList_GET_SIZE(list);
+    }
+    return PyList_GetItemRef(list, index);
+}
+
+static inline bool CPyList_SetItem(PyObject *list, CPyTagged index, PyObject *value) {
+    if (likely(CPyTagged_CheckShort(index) && !CPyTagged_IsNegative(index))) {
+        // Inlined fast path
+        Py_ssize_t n = CPyTagged_ShortAsSsize_t(index);
+        return PyList_SetItem(list, n, value) >= 0;
+    } else {
+        return CPyList_SetItem_(list, index, value);
+    }
+}
+
+static inline bool CPyList_SetItemInt64(PyObject *list, int64_t index, PyObject *value) {
+    if (index < 0) {
+        index += PyList_GET_SIZE(list);
+    }
+    return PyList_SetItem(list, index, value) >= 0;
+}
+
+#endif
+
 PyObject *CPyList_GetItemBorrow(PyObject *list, CPyTagged index);
 PyObject *CPyList_GetItemShortBorrow(PyObject *list, CPyTagged index);
-PyObject *CPyList_GetItemInt64(PyObject *list, int64_t index);
 PyObject *CPyList_GetItemInt64Borrow(PyObject *list, int64_t index);
-bool CPyList_SetItem(PyObject *list, CPyTagged index, PyObject *value);
 void CPyList_SetItemUnsafe(PyObject *list, Py_ssize_t index, PyObject *value);
-bool CPyList_SetItemInt64(PyObject *list, int64_t index, PyObject *value);
+PyObject *CPyList_Build(Py_ssize_t len, ...);
 PyObject *CPyList_PopLast(PyObject *obj);
 PyObject *CPyList_Pop(PyObject *obj, CPyTagged index);
 CPyTagged CPyList_Count(PyObject *obj, PyObject *value);

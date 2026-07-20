@@ -62,6 +62,7 @@ from mypyc.ir.deps import (
     LIBRT_BASE64,
     LIBRT_RANDOM,
     LIBRT_STRINGS,
+    LIBRT_THREADING,
     LIBRT_TIME,
     LIBRT_VECS,
     Capsule,
@@ -210,15 +211,18 @@ def parse_and_typecheck(
 ) -> BuildResult:
     assert options.strict_optional, "strict_optional must be turned on"
     mypyc_plugin = MypycPlugin(options, compiler_options, groups)
-    result = build(
-        sources=sources,
-        options=options,
-        alt_lib_path=alt_lib_path,
-        fscache=fscache,
-        extra_plugins=[mypyc_plugin],
-    )
-    mypyc_plugin.metastore.close()
+    try:
+        result = build(
+            sources=sources,
+            options=options,
+            alt_lib_path=alt_lib_path,
+            fscache=fscache,
+            extra_plugins=[mypyc_plugin],
+        )
+    finally:
+        mypyc_plugin.metastore.close()
     if result.errors:
+        result.manager.metastore.close()
         raise CompileError(result.errors)
     return result
 
@@ -1256,6 +1260,10 @@ class GroupGenerator:
             emitter.emit_line("}")
         if LIBRT_TIME in module.dependencies:
             emitter.emit_line("if (import_librt_time() < 0) {")
+            emitter.emit_line("return -1;")
+            emitter.emit_line("}")
+        if LIBRT_THREADING in module.dependencies:
+            emitter.emit_line("if (import_librt_threading() < 0) {")
             emitter.emit_line("return -1;")
             emitter.emit_line("}")
         if LIBRT_VECS in module.dependencies:

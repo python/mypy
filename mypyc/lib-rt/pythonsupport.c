@@ -5,6 +5,27 @@
 
 #include "pythonsupport.h"
 
+#ifdef Py_GIL_DISABLED
+// Cold slow path of CPy_GetAttrRef (declared in pythonsupport.h). Reached only
+// when the inline fast-path try-incref fails: the value is owned by another
+// thread, so taking a reference requires an atomic shared-refcount operation.
+// Kept out-of-line so the inline fast path stays small.
+//
+// First try the lock-free shared-refcount CAS. If the value has not had
+// maybe-weakref set yet (for example, it was published by CPy_InitAttrRef), force
+// a cross-thread reference via _Py_NewRefWithLock, which cannot fail and sets
+// maybe-weakref so subsequent reads take the fast path. The value was already
+// observed in the field by CPy_GetAttrRef; CPy_SetAttrRef's QSBR-delayed decref
+// keeps any replaced value alive long enough for this reader.
+CPy_NOINLINE
+PyObject *CPy_GetAttrRefSlow(PyObject *v) {
+    if (_Py_TryIncRefShared(v)) {
+        return v;
+    }
+    return _Py_NewRefWithLock(v);  // sets maybe-weakref; cannot fail
+}
+#endif
+
 /////////////////////////////////////////
 // Adapted from bltinmodule.c in Python 3.7.0
 PyObject*

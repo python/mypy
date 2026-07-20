@@ -1,0 +1,252 @@
+[case testFinalAttrBorrowed]
+from typing import Final
+
+class C:
+    def __init__(self, x: str) -> None:
+        self.f: Final = x
+        self.x = x
+
+def f(s: str) -> None: pass
+
+def calls(c: C) -> None:
+    f(c.f)
+    f(c.x)
+    c.f.startswith("a")
+
+def ret(c: C) -> str:
+    return c.f
+[out]
+def C.__init__(self, x):
+    self :: __main__.C
+    x :: str
+L0:
+    self.f = x
+    self.x = x
+    return 1
+def f(s):
+    s :: str
+L0:
+    return 1
+def calls(c):
+    c :: __main__.C
+    r0 :: str
+    r1 :: None
+    r2 :: str
+    r3 :: None
+    r4, r5 :: str
+    r6 :: i32
+    r7 :: bool
+L0:
+    r0 = borrow c.f
+    r1 = f(r0)
+    keep_alive c
+    r2 = c.x
+    r3 = f(r2)
+    r4 = borrow c.f
+    r5 = 'a'
+    r6 = CPyStr_Startswith(r4, r5)
+    r7 = truncate r6: i32 to builtins.bool
+    keep_alive c
+    return 1
+def ret(c):
+    c :: __main__.C
+    r0 :: str
+L0:
+    r0 = c.f
+    return r0
+
+[case testInheritedFinalAttrBorrowed]
+from typing import Final
+
+class Base:
+    x: str
+
+    def __init__(self, s: str) -> None:
+        self.s: Final = s
+
+class Deriv(Base):
+    def __init__(self, n: int) -> None:
+        self.n: Final = n
+
+def f(b: Base) -> str:
+    return b.s + "a"
+
+def g(d: Deriv) -> str:
+    return d.s * d.n
+
+def h(d: Deriv) -> str:
+    return d.x + "a"
+[out]
+def Base.__init__(self, s):
+    self :: __main__.Base
+    s :: str
+L0:
+    self.s = s
+    return 1
+def Deriv.__init__(self, n):
+    self :: __main__.Deriv
+    n :: int
+L0:
+    self.n = n
+    return 1
+def f(b):
+    b :: __main__.Base
+    r0, r1, r2 :: str
+L0:
+    r0 = borrow b.s
+    r1 = 'a'
+    r2 = PyUnicode_Concat(r0, r1)
+    keep_alive b
+    return r2
+def g(d):
+    d :: __main__.Deriv
+    r0 :: str
+    r1 :: int
+    r2 :: str
+L0:
+    r0 = borrow d.s
+    r1 = borrow d.n
+    r2 = CPyStr_Multiply(r0, r1)
+    keep_alive d, d
+    return r2
+def h(d):
+    d :: __main__.Deriv
+    r0, r1, r2 :: str
+L0:
+    r0 = d.x
+    r1 = 'a'
+    r2 = PyUnicode_Concat(r0, r1)
+    return r2
+
+[case testFinalAttrExpressionKinds]
+from typing import Final
+
+class C:
+    def __init__(self, s: str, n: int, l: list[str]) -> None:
+        self.f: Final = s
+        self.n: Final = n
+        self.l: Final = l
+        self.s = s
+
+def f() -> C:
+    return C("", 0, [])
+
+def assign(c: C) -> None:
+    a = c.f
+    c.s = c.f
+
+def indexing(c: C) -> str:
+    return c.l[c.n]
+
+def call_eq(c: C) -> bool:
+    return f().f == c.f
+[out]
+def C.__init__(self, s, n, l):
+    self :: __main__.C
+    s :: str
+    n :: int
+    l :: list
+L0:
+    self.f = s
+    self.n = n
+    self.l = l
+    self.s = s
+    return 1
+def f():
+    r0 :: str
+    r1 :: list
+    r2 :: __main__.C
+L0:
+    r0 = ''
+    r1 = PyList_New(0)
+    r2 = C(r0, 0, r1)
+    return r2
+def assign(c):
+    c :: __main__.C
+    r0, a, r1 :: str
+    r2 :: bool
+L0:
+    r0 = c.f
+    a = r0
+    r1 = c.f
+    c.s = r1; r2 = is_error
+    return 1
+def indexing(c):
+    c :: __main__.C
+    r0 :: list
+    r1 :: int
+    r2 :: object
+    r3 :: str
+L0:
+    r0 = borrow c.l
+    r1 = borrow c.n
+    r2 = CPyList_GetItem(r0, r1)
+    r3 = cast(str, r2)
+    keep_alive c, c
+    return r3
+def call_eq(c):
+    c, r0 :: __main__.C
+    r1, r2 :: str
+    r3 :: bool
+L0:
+    r0 = f()
+    r1 = borrow r0.f
+    r2 = borrow c.f
+    r3 = CPyStr_Equal(r1, r2)
+    keep_alive r0, c
+    return r3
+
+[case testFinalAttrExpressionKinds2_withgil]
+from typing import Final
+
+class C:
+    def __init__(self, d: D) -> None:
+        self.d: Final = d
+
+class D:
+    def __init__(self, s: str) -> None:
+        self.f: Final = s
+
+def f(c: C) -> str:
+    return c.d.f + "a"
+
+def g(a: list[D], n: int) -> str:
+    return a[n].f + "a"
+[out]
+def C.__init__(self, d):
+    self :: __main__.C
+    d :: __main__.D
+L0:
+    self.d = d
+    return 1
+def D.__init__(self, s):
+    self :: __main__.D
+    s :: str
+L0:
+    self.f = s
+    return 1
+def f(c):
+    c :: __main__.C
+    r0 :: __main__.D
+    r1, r2, r3 :: str
+L0:
+    r0 = borrow c.d
+    r1 = borrow r0.f
+    r2 = 'a'
+    r3 = PyUnicode_Concat(r1, r2)
+    keep_alive c, r0
+    return r3
+def g(a, n):
+    a :: list
+    n :: int
+    r0 :: object
+    r1 :: __main__.D
+    r2, r3, r4 :: str
+L0:
+    r0 = CPyList_GetItemBorrow(a, n)
+    r1 = borrow cast(__main__.D, r0)
+    r2 = r1.f
+    keep_alive a, n, r0
+    r3 = 'a'
+    r4 = PyUnicode_Concat(r2, r3)
+    return r4

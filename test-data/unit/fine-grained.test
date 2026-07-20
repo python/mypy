@@ -11839,3 +11839,134 @@ def bar() -> str: return "a"
 main:2: note: Revealed type is "None | builtins.int"
 ==
 main:2: note: Revealed type is "None | builtins.str"
+
+[case testStarExportedNameDeleted1]
+import pkg
+
+pkg.loads()
+
+[file pkg/__init__.pyi]
+from .sub import *
+
+[file pkg/sub.pyi]
+def loads() -> None: ...
+
+[file pkg/sub.pyi.2]
+[out]
+==
+main:3: error: "object" has no attribute "loads"
+
+[case testStarExportedNameDeleted2]
+import pkg
+
+pkg.C()
+
+[file pkg/__init__.pyi]
+from .sub import *
+
+[file pkg/sub.pyi]
+class C: pass
+
+[file pkg/sub.pyi.2]
+[out]
+==
+main:3: error: "object" has no attribute "C"
+
+[case testStarExportedNameDeleted3]
+from pkg import loads
+
+loads()
+
+[file pkg/__init__.pyi]
+from .sub import *
+
+[file pkg/sub.pyi]
+def loads() -> None: ...
+
+[file pkg/sub.pyi.2]
+[out]
+==
+main:1: error: Module "pkg" has no attribute "loads"
+
+[case testStarExportedNameDeleted4]
+from pkg import sub
+
+a = sub.x
+
+[file pkg/__init__.pyi]
+from .sub import *
+
+[file pkg/sub.pyi]
+x = 1
+
+[file pkg/sub.pyi.2]
+[out]
+==
+main:3: error: "object" has no attribute "x"
+
+[case testStarExportedNameDeleted5]
+from pkg import sub
+
+x: sub.N = 1
+
+[file pkg/__init__.pyi]
+from .sub import *
+
+[file pkg/sub.pyi]
+N = int
+
+[file pkg/sub.pyi.2]
+[out]
+==
+main:3: error: Name "sub.N" is not defined
+
+[case testStarExportedNameDeleted6]
+from pkg import *
+
+loads()
+
+[file pkg/__init__.pyi]
+from .sub import *
+
+[file pkg/sub.pyi]
+def loads() -> None: ...
+
+[file pkg/sub.pyi.2]
+[out]
+==
+main:3: error: Name "loads" is not defined
+
+[case testStarExportedNameDeleted7]
+from pkg import *
+
+C()
+
+[file pkg/__init__.pyi]
+from .sub import *
+
+[file pkg/sub.pyi]
+class C: pass
+
+[file pkg/sub.pyi.2]
+[out]
+==
+main:3: error: Name "C" is not defined
+
+[case testStarExportedNameDeleted8]
+from a import *
+
+C()
+
+[file a.py]
+from b import *
+
+[file b.py]
+from c import *
+
+[file c.py]
+class C: pass
+
+[file c.py.2]
+[out]
+==
+main:3: error: Name "C" is not defined

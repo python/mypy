@@ -1870,7 +1870,7 @@ L0:
     r5 = a.f(12, 6, r4)
     return 1
 
-[case testListComprehension]
+[case testListComprehension_withgil]
 from typing import List
 
 def f() -> List[int]:
@@ -1931,7 +1931,7 @@ L7:
 L8:
     return r0
 
-[case testDictComprehension]
+[case testDictComprehension_withgil]
 from typing import Dict
 def f() -> Dict[int, int]:
     return {x: x*x for x in [1,2,3] if x != 2 if x != 3}
@@ -1993,7 +1993,7 @@ L7:
 L8:
     return r0
 
-[case testLoopsMultipleAssign]
+[case testLoopsMultipleAssign_withgil]
 from typing import List, Tuple
 def f(l: List[Tuple[int, int, int]]) -> List[int]:
     for x, y, z in l:
@@ -2063,7 +2063,7 @@ L7:
 L8:
     return r10
 
-[case testProperty]
+[case testProperty_withgil]
 class PropertyHolder:
     @property
     def value(self) -> int:
@@ -2114,7 +2114,7 @@ L0:
     r1 = CPyTagged_Multiply(4, r0)
     return r1
 
-[case testNativeIndex]
+[case testNativeIndex_withgil]
 from typing import List
 class A:
     def __getitem__(self, index: int) -> int: pass

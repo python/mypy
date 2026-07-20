@@ -69,6 +69,19 @@ x = 1
 <n.x> -> m.f
 <n> -> m, m.f
 
+[case testAccessReexportedModuleAttribute]
+import pkg
+pkg.f()
+[file pkg/__init__.py]
+from pkg.sub import *
+[file pkg/sub.py]
+def f() -> None: pass
+[out]
+<pkg.f> -> m
+<pkg.sub.f> -> m
+<pkg.sub[wildcard]> -> pkg
+<pkg> -> m
+
 [case testImport]
 import n
 [file n.py]

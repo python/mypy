@@ -82,6 +82,7 @@ files = [
     "run-base64.test",
     "run-librt-time.test",
     "run-librt-random.test",
+    "run-threading.test",
     "run-match.test",
     "run-vecs-i64-interp.test",
     "run-vecs-misc-interp.test",
@@ -234,6 +235,10 @@ class TestRun(MypycDataSuite):
         # Avoid checking modules/packages named 'unchecked', to provide a way
         # to test interacting with code we don't have types for.
         options.per_module_options["unchecked.*"] = {"follow_imports": "error"}
+        # Avoid checking modules/packages named 'skipped', to provide a way
+        # to test interacting with code ignored by follow_imports=skip.
+        options.per_module_options["skipped"] = {"follow_imports": "skip"}
+        options.per_module_options["skipped.*"] = {"follow_imports": "skip"}
 
         source = build.BuildSource("native.py", "native", None)
         sources = [source]

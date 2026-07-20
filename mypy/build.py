@@ -1030,7 +1030,9 @@ class BuildManager:
 
         parallel_states = []
         for state in states:
-            if not self.fscache.exists(state.xpath, real_only=True):
+            if not self.fscache.exists(state.xpath, real_only=True) or (
+                self.shadow_map and self.maybe_swap_for_shadow_path(state.xpath) != state.xpath
+            ):
                 state.source = state.get_source()
             if state.tree is not None:
                 # The file was already parsed.
@@ -4343,7 +4345,7 @@ def load_graph(
         for dep in st.ancestors + dependencies + st.suppressed:
             ignored = dep in st.suppressed_set and dep not in entry_points
             if ignored and dep not in added:
-                manager.missing_modules[dep] = SuppressionReason.NOT_FOUND
+                manager.missing_modules.setdefault(dep, SuppressionReason.NOT_FOUND)
                 # TODO: for now we skip this in the daemon as a performance optimization.
                 # This however creates a correctness issue, see #7777 and State.is_fresh().
                 if not manager.use_fine_grained_cache() or manager.options.warn_unused_configs:

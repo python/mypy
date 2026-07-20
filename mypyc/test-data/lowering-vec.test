@@ -1,0 +1,155 @@
+[case testLowerVecI64GetItem_64bit]
+from librt.vecs import vec
+from mypy_extensions import i64
+
+def f(i: i64) -> i64:
+    v = vec[i64]()
+    return v[i]
+[out]
+def f(i):
+    i :: i64
+    r0, v :: vec[i64]
+    r1 :: native_int
+    r2 :: bit
+    r3 :: i64
+    r4 :: bit
+    r5 :: bool
+    r6 :: i64
+    r7 :: ptr
+    r8 :: i64
+    r9 :: ptr
+    r10, r11 :: i64
+L0:
+    r0 = VecI64Api.alloc(0, 0)
+    if is_error(r0) goto L8 (error at f:5) else goto L1
+L1:
+    v = r0
+    r1 = v.len
+    r2 = i < r1 :: unsigned
+    if r2 goto L6 else goto L2 :: bool
+L2:
+    r3 = i + r1
+    r4 = r3 < r1 :: unsigned
+    if r4 goto L5 else goto L9 :: bool
+L3:
+    r5 = raise IndexError
+    if not r5 goto L8 (error at f:6) else goto L4 :: bool
+L4:
+    unreachable
+L5:
+    r6 = r3
+    goto L7
+L6:
+    r6 = i
+L7:
+    r7 = v.items
+    r8 = r6 * 8
+    r9 = r7 + r8
+    r10 = load_mem r9 :: i64*
+    dec_ref v
+    return r10
+L8:
+    r11 = <error> :: i64
+    return r11
+L9:
+    dec_ref v
+    goto L3
+
+[case testLowerVecNestedGetItem_64bit]
+from librt.vecs import vec
+from mypy_extensions import i64
+
+def f(i: i64, j: i64) -> str:
+    v = vec[vec[str]]([])
+    return v[i][j]
+[out]
+def f(i, j):
+    i, j :: i64
+    r0 :: object
+    r1 :: ptr
+    r2 :: vec[vec[str]]
+    r3 :: ptr
+    v :: vec[vec[str]]
+    r4 :: native_int
+    r5 :: bit
+    r6 :: i64
+    r7 :: bit
+    r8 :: bool
+    r9 :: i64
+    r10 :: ptr
+    r11 :: i64
+    r12 :: ptr
+    r13 :: vec[str]
+    r14 :: native_int
+    r15 :: bit
+    r16 :: i64
+    r17 :: bit
+    r18 :: bool
+    r19 :: i64
+    r20 :: ptr
+    r21 :: i64
+    r22 :: ptr
+    r23, r24 :: str
+L0:
+    r0 = load_address PyUnicode_Type
+    r1 = r0
+    r2 = VecNestedApi.alloc(0, 0, r1, 1)
+    if is_error(r2) goto L14 (error at f:5) else goto L1
+L1:
+    r3 = r2.items
+    v = r2
+    r4 = v.len
+    r5 = i < r4 :: unsigned
+    if r5 goto L6 else goto L2 :: bool
+L2:
+    r6 = i + r4
+    r7 = r6 < r4 :: unsigned
+    if r7 goto L5 else goto L15 :: bool
+L3:
+    r8 = raise IndexError
+    if not r8 goto L14 (error at f:6) else goto L4 :: bool
+L4:
+    unreachable
+L5:
+    r9 = r6
+    goto L7
+L6:
+    r9 = i
+L7:
+    r10 = v.items
+    r11 = r9 * 16
+    r12 = r10 + r11
+    r13 = borrow load_mem r12 :: vec[str]*
+    r14 = r13.len
+    r15 = j < r14 :: unsigned
+    if r15 goto L12 else goto L8 :: bool
+L8:
+    r16 = j + r14
+    r17 = r16 < r14 :: unsigned
+    if r17 goto L11 else goto L16 :: bool
+L9:
+    r18 = raise IndexError
+    if not r18 goto L14 (error at f:6) else goto L10 :: bool
+L10:
+    unreachable
+L11:
+    r19 = r16
+    goto L13
+L12:
+    r19 = j
+L13:
+    r20 = r13.items
+    r21 = r19 * 8
+    r22 = r20 + r21
+    r23 = load_mem r22 :: builtins.str*
+    dec_ref v
+    return r23
+L14:
+    r24 = <error> :: str
+    return r24
+L15:
+    dec_ref v
+    goto L3
+L16:
+    dec_ref v
+    goto L9

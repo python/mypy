@@ -956,6 +956,68 @@ except Failure as e:
     assert e.x == 10
 heyo()
 
+[case testSubclassExceptionNoAttributeLeak]
+# Regression test: on Python <3.12, a mypyc-compiled Exception subclass with
+# instance attributes used to leak its __dict__ contents on every destruction
+# because BaseException's inherited dealloc/clear doesn't know about the extra
+# __dict__ slot mypyc appends at tp_dictoffset = sizeof(PyBaseExceptionObject).
+class LeakyErr(Exception):
+    def __init__(self, payload: object) -> None:
+        self.data = payload
+
+[file driver.py]
+import gc
+from native import LeakyErr
+
+class Payload:
+    live = 0
+    def __init__(self) -> None:
+        Payload.live += 1
+    def __del__(self) -> None:
+        Payload.live -= 1
+
+# Each iteration creates a fresh Payload, stashes it on a fresh LeakyErr, and
+# drops both. If the exception's __dict__ leaks, the Payload it references
+# survives — __del__ never runs and Payload.live grows without bound.
+for _ in range(1000):
+    LeakyErr(Payload())
+gc.collect()
+assert Payload.live == 0, f"leaked {Payload.live} payloads"
+
+# Sanity-check the normal raise/catch path still works and attrs are readable.
+try:
+    raise LeakyErr("hi")
+except LeakyErr as e:
+    assert e.data == "hi"
+
+[case testInheritedHeapBaseFinalizerRuns]
+# Regression test: when a mypyc-compiled Exception subclass inherits from an
+# interpreted (heap) base that defines __del__, the base's finalizer must still
+# run. Our custom tp_dealloc bypasses subtype_dealloc, so we must invoke
+# PyObject_CallFinalizerFromDealloc ourselves when tp_finalize is inherited.
+from mypy_extensions import mypyc_attr
+
+events: list[str] = []
+
+@mypyc_attr(native_class=False)
+class HeapError(Exception):
+    def __del__(self) -> None:
+        events.append("base del")
+
+class NativeError(HeapError):
+    def __init__(self, payload: object) -> None:
+        self.own = payload
+
+[file driver.py]
+import gc
+from native import NativeError, events
+
+for _ in range(1):
+    NativeError(object())
+
+gc.collect()
+assert events == ["base del"], events
+
 [case testSubclassDict]
 from typing import Dict
 class WelpDict(Dict[str, int]):
@@ -2825,6 +2887,98 @@ def test_final_attribute() -> None:
     assert C.b['x'] == 'y'
     assert C.a is C.b
 
+[case testFinalInstanceAttributeCannotBeRebound]
+from typing import Any, Final
+
+from testutil import assertRaises
+
+class C:
+    def __init__(self, x: int) -> None:
+        self.x: Final[int] = x
+
+class D(C):
+    def __init__(self, x: int, y: int) -> None:
+        super().__init__(x)
+        self.y: Final[int] = y
+
+def rebind_via_any(o: Any, value: int) -> None:
+    o.x = value
+
+def test_rebind_via_any() -> None:
+    c = C(1)
+    with assertRaises(AttributeError):
+        rebind_via_any(c, 2)
+    assert c.x == 1
+
+def test_rebind_via_setattr() -> None:
+    c = C(1)
+    with assertRaises(AttributeError):
+        setattr(c, "x", 3)
+    assert c.x == 1
+
+def test_rebind_inherited_via_setattr() -> None:
+    d = D(1, 2)
+    # Inherited Final attribute can't be modified.
+    with assertRaises(AttributeError):
+        setattr(d, "x", 3)
+    # The subclass's own Final attribute can't be modified either.
+    with assertRaises(AttributeError):
+        setattr(d, "y", 4)
+    assert d.x == 1
+    assert d.y == 2
+
+[case testFinalRefcountedAttributeRead]
+# Exercises reading Final reference-counted ('PyObject *') attributes, which on
+# free-threaded builds use a faster read path (CPy_GetAttrRefFinal) that skips the
+# concurrent-writer guard, since a Final attribute is never rebound.
+from typing import Final
+
+class C:
+    def __init__(self, s: str, items: list[int]) -> None:
+        self.s: Final = s
+        self.items: Final = items
+
+    def read_s(self) -> str:
+        return self.s
+
+    def read_items(self) -> list[int]:
+        return self.items
+
+    def chained_len(self) -> int:
+        # borrowed intermediate read of a Final attr, then a call on it
+        return len(self.items)
+
+class D(C):
+    def __init__(self, s: str, items: list[int], t: str) -> None:
+        super().__init__(s, items)
+        self.t: Final = t
+
+    def read_inherited(self) -> str:
+        return self.s
+
+def test_read_final_object_attrs() -> None:
+    c = C("hello", [1, 2, 3])
+    # Read via getter (property access) and via native method bodies.
+    assert c.s == "hello"
+    assert c.read_s() == "hello"
+    assert c.items == [1, 2, 3]
+    assert c.read_items() == [1, 2, 3]
+    assert c.chained_len() == 3
+    # Reading repeatedly must not corrupt the refcount / free the value.
+    for _ in range(1000):
+        assert c.read_s() == "hello"
+        assert c.read_items() == [1, 2, 3]
+    assert c.s == "hello"
+    assert c.read_items() is c.items
+
+def test_read_inherited_final_attr() -> None:
+    d = D("a", [4, 5], "b")
+    assert d.s == "a"
+    assert d.t == "b"
+    assert d.read_s() == "a"
+    assert d.read_inherited() == "a"
+    assert d.read_items() == [4, 5]
+
 [case testClassDerivedFromIntEnum]
 from enum import IntEnum, auto
 
@@ -3360,22 +3514,11 @@ def test_dict_subclass_dealloc() -> None:
     del d
 
 [file driver.py]
-import sys
-
 from native import events, test_dict_subclass_dealloc
 
 test_dict_subclass_dealloc()
 
-expected_events: list[str] = []
-
-# TODO: Fix when compiling for older python.
-# The user-defined __del__ method is currently only invoked when __dict__ is a managed dict
-# because calling __del__ in tp_clear on older python crashes.
-if sys.version_info >= (3, 12):
-    expected_events.append("deleting DictSubclass")
-expected_events.append("deleting Item")
-
-assert events == expected_events, events
+assert events == ["deleting DictSubclass", "deleting Item"], events
 
 [case testDel]
 class A:
@@ -6006,3 +6149,134 @@ for _ in range(100):
     check(foo)
 after = sys.getrefcount(foo.obj)
 assert after - init == 0, f"Leaked {after - init} refs"
+
+[case testNativeAttrSetterRefcountLeak]
+# Setting a native attribute from interpreted code goes through the generated
+# getset descriptor setter. For refcounted unboxed types (heap-boxed ints,
+# tuples with refcounted items) the setter must take exactly one reference to
+# the stored value, not two.
+from dataclasses import dataclass
+from typing import Tuple
+
+@dataclass
+class IntField:
+    v: int
+
+@dataclass
+class TupleField:
+    v: Tuple[int, int]
+
+[file driver.py]
+import sys
+from native import IntField, TupleField
+
+# A heap-boxed int (>= 2**62) is stored as a refcounted PyObject*, unlike small
+# inline-tagged ints, so an over-incref strands a real reference. Compute the
+# values at runtime (not as folded literals): on free-threaded builds code
+# constants are immortal, and getrefcount could not observe a leak on them.
+shift = 70
+BIG = 1 << shift
+
+def check_no_leak(make, value) -> None:
+    base = sys.getrefcount(value)
+    objs = [make(value) for _ in range(100)]
+    alive = sys.getrefcount(value)
+    # Each live instance must hold exactly one reference to the field value.
+    assert alive - base == 100, f"expected 100 live refs, got {alive - base}"
+    del objs
+    after = sys.getrefcount(value)
+    assert after == base, f"leaked {after - base} refs"
+
+# The dataclass-generated __init__ stores self.v = v via the descriptor setter.
+check_no_leak(IntField, BIG)
+
+# Tuple[int, int] is stored as an unboxed RTuple; its boxed-int elements are
+# refcounted, so the setter must not over-incref them either. Use the same int
+# in both slots so each instance holds exactly two references to it.
+ELEM = 1 << (shift + 1)
+base = sys.getrefcount(ELEM)
+objs = [TupleField((ELEM, ELEM)) for _ in range(100)]
+alive = sys.getrefcount(ELEM)
+assert alive - base == 200, f"expected 200 live refs, got {alive - base}"
+del objs
+assert sys.getrefcount(ELEM) == base, f"tuple field leaked {sys.getrefcount(ELEM) - base} refs"
+
+# Re-assigning through the setter must release the previous value too.
+o = IntField(BIG)
+base = sys.getrefcount(BIG)
+o.v = BIG
+o.v = BIG
+assert sys.getrefcount(BIG) == base, "reassignment leaked refs"
+
+[case testBorrowedFinalAttributeInLambdaAndNestedFunction]
+from typing import Final, Callable
+
+class Box:
+    def __init__(self, n: int) -> None:
+        self.n = n
+
+class C:
+    def __init__(self, b: Box) -> None:
+        self.b: Final = b
+
+def use(x: Box, y: Box) -> int:
+    return x.n + y.n
+
+def spend(x: Box) -> Box:
+    # Allocate a lot so a freed Box slot is likely to be reused, turning any
+    # use-after-free of a borrowed attribute into an observable wrong result.
+    junk = [Box(i) for i in range(100)]
+    return Box(x.n + junk[50].n - 50)
+
+def make_lambda() -> Callable[[], int]:
+    # The lambda body creates a C, borrows its final attribute, then calls
+    # spend() (which allocates heavily) before reading the borrow.
+    return lambda: use(C(Box(111)).b, spend(Box(0)))
+
+def make_nested() -> Callable[[], int]:
+    def inner() -> int:
+        return use(C(Box(111)).b, spend(Box(0)))
+    return inner
+
+def test_borrowed_final_attribute_in_lambda() -> None:
+    f = make_lambda()
+    for _ in range(1000):
+        assert f() == 111
+
+def test_borrowed_final_attribute_in_nested_function() -> None:
+    g = make_nested()
+    for _ in range(1000):
+        assert g() == 111
+
+[case testBorrowedFinalAttributeInComprehension]
+from typing import Final
+
+class Box:
+    def __init__(self, n: int) -> None:
+        self.n = n
+
+class C:
+    def __init__(self, b: Box) -> None:
+        self.b: Final = b
+
+def use(x: Box, y: Box) -> int:
+    return x.n + y.n
+
+def spend(x: Box) -> Box:
+    # Allocate a lot so a freed Box slot is likely to be reused, turning any
+    # use-after-free of a borrowed attribute into an observable wrong result.
+    junk = [Box(i) for i in range(100)]
+    return Box(x.n + junk[50].n - 50)
+
+def comp(ns: list[int]) -> list[int]:
+    # Each iteration allocates a fresh C, borrows its final attribute .b, then
+    # calls spend() (which allocates heavily) before reading the borrow. The
+    # borrow container must be kept alive for the current iteration only; if it
+    # is scoped to the whole (comprehension) expression, the refcount pass
+    # dec_refs an uninitialized temporary on the loop back-edge and leaks/uses
+    # freed memory.
+    return [use(C(Box(111)).b, spend(Box(i))) for i in ns]
+
+def test_borrowed_final_attribute_in_comprehension() -> None:
+    for _ in range(1000):
+        assert comp([1, 2, 3, 4, 5]) == [112, 113, 114, 115, 116]
