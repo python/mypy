@@ -220,9 +220,12 @@ from mypy.reachability import (
     ALWAYS_TRUE,
     MYPY_FALSE,
     MYPY_TRUE,
+    TRUTH_VALUE_UNKNOWN,
     infer_condition_value,
     infer_reachability_of_if_statement,
     infer_reachability_of_match_statement,
+    infer_runtime_condition_value,
+    mark_block_runtime_unreachable,
 )
 from mypy.scope import Scope
 from mypy.semanal_enum import EnumCallAnalyzer
@@ -3676,7 +3679,7 @@ class SemanticAnalyzer(
         namespace = self.qualified_name(name)
         with self.tvar_scope_frame(self.tvar_scope.class_frame(namespace)):
             is_typed_dict, info, tvar_defs = self.typed_dict_analyzer.check_typeddict(
-                s.rvalue, name
+                s.rvalue, name, s.is_runtime_unreachable
             )
             if not is_typed_dict:
                 return False
@@ -5607,9 +5610,22 @@ class SemanticAnalyzer(
     def visit_if_stmt(self, s: IfStmt) -> None:
         self.statement = s
         infer_reachability_of_if_statement(s, self.options)
+        remaining = ALWAYS_TRUE
         for i in range(len(s.expr)):
             s.expr[i].accept(self)
+            condition = infer_runtime_condition_value(s.expr[i], self.options)
+            if remaining == ALWAYS_FALSE or condition == ALWAYS_FALSE:
+                mark_block_runtime_unreachable(s.body[i])
+
+            if remaining == ALWAYS_FALSE or condition == ALWAYS_TRUE:
+                remaining = ALWAYS_FALSE
+            elif remaining == ALWAYS_TRUE and condition == ALWAYS_FALSE:
+                remaining = ALWAYS_TRUE
+            else:
+                remaining = TRUTH_VALUE_UNKNOWN
             self.visit_block(s.body[i])
+        if s.else_body and remaining == ALWAYS_FALSE:
+            mark_block_runtime_unreachable(s.else_body)
         self.visit_block_maybe(s.else_body)
 
     def visit_try_stmt(self, s: TryStmt) -> None:

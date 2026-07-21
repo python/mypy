@@ -677,6 +677,7 @@ __main__.Point
 __main__.p
 
 [case testTypedDict5]
+# flags: --python-version 3.15
 from typing import TypedDict
 class Point(TypedDict):
     x: int

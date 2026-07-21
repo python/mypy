@@ -3746,6 +3746,7 @@ b.py:4: error: ReadOnly TypedDict key "y" TypedDict is mutated
 b.py:3: error: ReadOnly TypedDict key "x" TypedDict is mutated
 
 [case testTypedDictUpdateClosed]
+# flags: --python-version 3.15
 import b
 [file a.py]
 from typing import TypedDict, Union
@@ -3789,6 +3790,7 @@ b.py:9: error: TypedDict "B" has no key "a"
 ==
 
 [case testTypedDictUpdateClosedPassingToFailing]
+# flags: --python-version 3.15
 import b
 [file a.py]
 from typing import TypedDict, Union
