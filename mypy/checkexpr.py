@@ -3836,6 +3836,15 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                         right_type = try_getting_literal(right_type)
                         self.msg.dangerous_comparison(left_type, right_type, "equality", e)
 
+                # For ordering comparisons on tuples, verify that element types
+                # actually support the comparison. The tuple stubs use a covariant
+                # TypeVar which can allow the reverse operator to pass even when
+                # element types don't support the comparison at runtime.
+                if not w.has_new_errors() and operator in ("<", ">", "<=", ">="):
+                    right_type = self.accept(right)
+                    if not self.chk.can_skip_diagnostics:
+                        self._check_tuple_element_comparison(operator, left_type, right_type, e)
+
             elif operator == "is" or operator == "is not":
                 right_type = self.accept(right)  # validate the right operand
                 sub_result = self.bool_type()
@@ -4019,6 +4028,48 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             ):
                 return False
         return not is_overlapping_types(left, right, ignore_promotions=False)
+
+    def _check_tuple_element_comparison(
+        self, operator: str, left_type: Type, right_type: Type, context: Context
+    ) -> None:
+        """Check that tuple element types support an ordering comparison.
+
+        Tuple comparisons are element-wise at runtime, but the typeshed stubs
+        use a covariant TypeVar which can allow comparisons to pass at the type
+        level even when element types don't support the operator.
+        """
+        left_proper = get_proper_type(left_type)
+        right_proper = get_proper_type(right_type)
+
+        left_elem = self._get_tuple_item_type(left_proper)
+        right_elem = self._get_tuple_item_type(right_proper)
+
+        if left_elem is None or right_elem is None:
+            return
+
+        # Skip check if either element type is Any
+        left_elem_proper = get_proper_type(left_elem)
+        right_elem_proper = get_proper_type(right_elem)
+        if isinstance(left_elem_proper, AnyType) or isinstance(right_elem_proper, AnyType):
+            return
+
+        method = operators.op_methods[operator]
+        with self.msg.filter_errors() as w:
+            self.check_op(
+                method,
+                left_elem,
+                TempNode(right_elem, context=context),
+                context,
+                allow_reverse=True,
+            )
+        if w.has_new_errors():
+            self.msg.unsupported_operand_types(operator, left_type, right_type, context)
+
+    def _get_tuple_item_type(self, typ: ProperType) -> Type | None:
+        """Get the element type of a homogeneous tuple type, or None if not applicable."""
+        if isinstance(typ, Instance) and typ.type.fullname == "builtins.tuple":
+            return typ.args[0] if typ.args else None
+        return None
 
     def check_method_call_by_name(
         self,
