@@ -2662,6 +2662,7 @@ class OpExpr(Expression):
         "right_unreachable",
         "analyzed",
         "as_type",
+        "suppress_redundant_expr",
     )
 
     __match_args__ = ("left", "op", "right")
@@ -2675,6 +2676,8 @@ class OpExpr(Expression):
     right_always: bool
     # Per static analysis only: Is the right side unreachable?
     right_unreachable: bool
+    # Suppress redundant-expr warnings for this expression.
+    suppress_redundant_expr: bool
     # Used for expressions that represent a type "X | Y" in some contexts
     analyzed: TypeAliasExpr | None
     # If this value expression can also be parsed as a valid type expression,
@@ -2693,6 +2696,7 @@ class OpExpr(Expression):
         self.right_always = False
         self.right_unreachable = False
         self.analyzed = analyzed
+        self.suppress_redundant_expr = False
         self.as_type = NotParsed.VALUE
 
     def accept(self, visitor: ExpressionVisitor[T]) -> T:
