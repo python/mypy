@@ -158,6 +158,7 @@ from mypy.types import (
     ParamSpecType,
     PartialType,
     ProperType,
+    SentinelValue,
     TupleType,
     Type,
     TypeAliasType,
@@ -1096,7 +1097,10 @@ class TypeTriggersVisitor(TypeVisitor[list[str]]):
         return triggers
 
     def visit_literal_type(self, typ: LiteralType) -> list[str]:
-        return self.get_type_triggers(typ.fallback)
+        triggers = self.get_type_triggers(typ.fallback)
+        if isinstance(typ.value, SentinelValue):
+            triggers.append(make_trigger(typ.value.fullname))
+        return triggers
 
     def visit_unbound_type(self, typ: UnboundType) -> list[str]:
         return []
