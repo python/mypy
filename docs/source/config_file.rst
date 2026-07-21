@@ -847,6 +847,10 @@ section of the command line docs.
        from foo import bar
        __all__ = ['bar']
 
+    Although this option is enabled by default, :confval:`strict` enables
+    :option:`mypy --no-implicit-reexport`. Set ``implicit_reexport = true``
+    explicitly if you want to keep implicit reexports when using strict mode.
+
 .. confval:: strict_equality
 
    :type: boolean
