@@ -6856,3 +6856,71 @@ if isinstance(headers, dict):
 
 reveal_type(headers)  # N: Revealed type is "__main__.Headers | typing.Iterable[tuple[builtins.bytes, builtins.bytes]]"
 [builtins fixtures/isinstancelist.pyi]
+
+[case testOverloadAliasToAnyArg]
+# An alias `Incomplete = Any` used as an overload arg should behave like bare
+# Any (engage the ambiguity fallback), not silently match a None-default overload.
+from typing import Any, TypeVar, overload
+from typing_extensions import TypeAlias
+
+T = TypeVar("T")
+Incomplete: TypeAlias = Any
+
+class M:
+    @overload
+    def get(self, key: str, default: None = None) -> str | None: ...
+    @overload
+    def get(self, key: str, default: str) -> str: ...
+    @overload
+    def get(self, key: str, default: T) -> str | T: ...
+    def get(self, key, default=None): ...
+
+a: Incomplete
+b: Any
+reveal_type(M().get("k", a))  # N: Revealed type is "Any"
+reveal_type(M().get("k", b))  # N: Revealed type is "Any"
+
+# Unambiguous overload: alias-Any picks the matching return type, no false ambiguity.
+@overload
+def f(x: int, y: int) -> int: ...
+@overload
+def f(x: object, y: int) -> object: ...
+def f(x, y): ...
+
+reveal_type(f(1, a))  # N: Revealed type is "builtins.int"
+[builtins fixtures/tuple.pyi]
+
+[case testAliasToAnyDoesNotTriggerDisallowAnyExplicitAtUseSite]
+# flags: --disallow-any-explicit --show-error-codes
+from typing import Any
+from typing_extensions import TypeAlias
+
+Incomplete: TypeAlias = Any  # E: Explicit "Any" is not allowed  [explicit-any]
+
+def f(x: Incomplete) -> Incomplete:  # no error
+    return x
+
+a: Incomplete = 1  # no error
+[builtins fixtures/tuple.pyi]
+
+[case testOverloadNestedAnyDoesNotTriggerAmbiguity]
+# Any (explicit or alias-to-Any) nested inside a generic argument should not
+# trigger the overload-ambiguity fallback — only a top-level Any actual arg counts.
+from typing import Any, Generic, TypeVar, overload
+from typing_extensions import TypeAlias
+
+T = TypeVar("T")
+Incomplete: TypeAlias = Any
+
+class Array(Generic[T]): pass
+
+class Series(Generic[T]):
+    @overload
+    def __add__(self: Series[bool], other: Array[Any]) -> Series[bool]: ...
+    @overload
+    def __add__(self: Series[T], other: Array[Any]) -> Series[T]: ...
+    def __add__(self, other): ...
+
+def f(x: Series[Any], y: Array[Incomplete]) -> None:
+    reveal_type(x + y)  # N: Revealed type is "__main__.Series[builtins.bool]"
+[builtins fixtures/tuple.pyi]

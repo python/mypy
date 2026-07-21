@@ -8299,6 +8299,12 @@ def remove_imported_names_from_symtable(names: SymbolTable, module: str) -> None
 
 def make_any_non_explicit(t: Type) -> Type:
     """Replace all Any types within in with Any that has attribute 'explicit' set to False"""
+    # An alias whose target is exactly Any should still behave like a real Any when used.
+    # Explicit Any nested inside a larger alias target is kept as the historical
+    # non-real Any flavor to avoid making large generic aliases overload-ambiguous.
+    proper_t = get_proper_type(t)
+    if isinstance(proper_t, AnyType) and proper_t.type_of_any == TypeOfAny.explicit:
+        return proper_t.copy_modified(TypeOfAny.from_alias_target)
     return t.accept(MakeAnyNonExplicit())
 
 
