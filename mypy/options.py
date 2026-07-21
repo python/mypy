@@ -78,6 +78,7 @@ OPTIONS_AFFECTING_CACHE: Final = (
         "strict_bytes",
         "fixed_format_cache",
         "untyped_calls_exclude",
+        "use_method_hook_defining_class",
         "enable_incomplete_feature",
         "install_types",
     }
@@ -340,6 +341,10 @@ class Options:
 
         # Paths of user plugins
         self.plugins: list[str] = []
+        # Temporary opt-in compatibility flag for plugin method hook fullnames.
+        # If True, inherited calls use the defining class (Base.method). If False,
+        # they use the call-site class (Derived.method).
+        self.use_method_hook_defining_class = False
 
         # Per-module options (raw)
         self.per_module_options: dict[str, dict[str, object]] = {}

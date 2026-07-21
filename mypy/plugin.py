@@ -658,7 +658,8 @@ class Plugin(CommonPluginApi):
         may infer a better type for the method. The hook is also called for special
         Python dunder methods except __init__ and __new__ (use get_function_hook to customize
         class instantiation). This function is called with the method full name using
-        the class where it was _defined_. For example, in this code:
+        the class of the object on which the method is called, unless
+        use_method_hook_defining_class is enabled. For example, in this code:
 
             from lib import Special
 
@@ -674,7 +675,8 @@ class Plugin(CommonPluginApi):
             x: Special
             y = x[0]
 
-        this method is called with '__main__.Base.method', and then with
+        this method is called with '__main__.Derived.method' (or '__main__.Base.method'
+        with use_method_hook_defining_class), and then with
         'lib.Special.__getitem__'.
         """
         return None
@@ -683,7 +685,8 @@ class Plugin(CommonPluginApi):
         """Adjust return type of a method call.
 
         This is the same as get_function_hook(), but is called with the
-        method full name (again, using the class where the method is defined).
+        method full name (with the same class selection behavior as
+        get_method_signature_hook()).
         """
         return None
 
