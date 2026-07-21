@@ -685,7 +685,8 @@ def verify_typeinfo(
     # Filter out non-identifier names, as these are (hopefully always?) whacky/fictional things
     # (like __mypy-replace or __mypy-post_init, etc.) that don't exist at runtime,
     # and exist purely for internal mypy reasons
-    to_check = {name for name in stub.names if name.isidentifier()}
+    existing_stub_names = {name for name in stub.names if name.isidentifier()}
+    to_check = existing_stub_names.copy()
     # Check all public things on the runtime class
     to_check.update(
         m for m in vars(runtime) if not is_probably_private(m) and m not in IGNORABLE_CLASS_DUNDERS
@@ -740,11 +741,15 @@ def verify_typeinfo(
         # Do not error for an object missing from the stub
         # If the runtime object is a types.WrapperDescriptorType object
         # and has a non-special dunder name.
-        # The vast majority of these are false positives.
+        # The vast majority of these are false positives, unless the stub gives us
+        # a reason to expect the method.
         if not (
             isinstance(stub_to_verify, Missing)
             and isinstance(runtime_attr, types.WrapperDescriptorType)
             and is_dunder(mangled_entry, exclude_special=True)
+            and not is_expected_dunder(
+                mangled_entry, stub=stub, existing_stub_names=existing_stub_names
+            )
         ):
             yield from verify(stub_to_verify, runtime_attr, object_path + [entry])
 
@@ -1844,6 +1849,60 @@ IGNORABLE_CLASS_DUNDERS: Final = frozenset(
 )
 
 
+PAIRED_DUNDERS: Final = (
+    ("__add__", "__radd__"),
+    ("__sub__", "__rsub__"),
+    ("__mul__", "__rmul__"),
+    ("__matmul__", "__rmatmul__"),
+    ("__truediv__", "__rtruediv__"),
+    ("__floordiv__", "__rfloordiv__"),
+    ("__mod__", "__rmod__"),
+    ("__divmod__", "__rdivmod__"),
+    ("__pow__", "__rpow__"),
+    ("__lshift__", "__rlshift__"),
+    ("__rshift__", "__rrshift__"),
+    ("__and__", "__rand__"),
+    ("__xor__", "__rxor__"),
+    ("__or__", "__ror__"),
+    ("__lt__", "__gt__"),
+    ("__le__", "__ge__"),
+    ("__enter__", "__exit__"),
+)
+
+
+def is_expected_dunder(name: str, *, stub: nodes.TypeInfo, existing_stub_names: set[str]) -> bool:
+    """
+    Return `True` if we would reasonably "expect" this dunder to be present in the stub,
+    given the presence of other dunders that are already in the stub.
+
+    For example, if the stub has `__add__`, we would expect it to also have `__radd__`,
+    and vice versa.
+
+    We use this to inform our heuristics regarding whether a diagnostic complaining about
+    a missing dunder method is likely to be a false positive or not. In many cases where
+    a runtime dunder is an instance of `WrapperDesriptorType`, the runtime dunder will
+    not actually be callable at runtime, so it's too noisy to complain about them in
+    general. If we would reasonably *expect* the dunder to be present in the stub, however,
+    it may be worth complaining about the missing dunder even if the dunder at runtime is
+    a `WrapperDescriptorType`.
+    """
+    if any(
+        (name == left and right in existing_stub_names)
+        or (name == right and left in existing_stub_names)
+        for left, right in PAIRED_DUNDERS
+    ):
+        return True
+
+    if name == "__le__" and {"__lt__", "__eq__"}.issubset(existing_stub_names):
+        return True
+    if name == "__ge__" and {"__gt__", "__eq__"}.issubset(existing_stub_names):
+        return True
+
+    return (name in ("__or__", "__ror__", "__ior__") and stub.has_base("typing.Mapping")) or (
+        name in ("__mul__", "__rmul__", "__imul__") and stub.has_base("typing.Sequence")
+    )
+
+
 def is_probably_private(name: str) -> bool:
     return name.startswith("_") and not is_dunder(name)
 
@@ -1967,7 +2026,7 @@ def safe_inspect_signature(runtime: Any) -> inspect.Signature | None:
 
 
 def describe_runtime_callable(signature: inspect.Signature, *, is_async: bool) -> str:
-    return f'{"async " if is_async else ""}def {signature}'
+    return f"{'async ' if is_async else ''}def {signature}"
 
 
 class _TypeCheckOnlyBaseMapper(mypy.types.TypeTranslator):
