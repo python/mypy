@@ -4018,6 +4018,12 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                 "builtins.bytearray"
             ):
                 return False
+        # Enum members of a mixin class (e.g. `class A(str, Enum)`) may compare
+        # equal to values of the mixin type at runtime. Mypy tracks enum
+        # literals by member name rather than runtime value, so we can't tell
+        # whether the comparison is non-overlapping. Avoid the false positive.
+        if _enum_mixin_overlaps(left, right) or _enum_mixin_overlaps(right, left):
+            return False
         return not is_overlapping_types(left, right, ignore_promotions=False)
 
     def check_method_call_by_name(
@@ -6961,6 +6967,33 @@ def try_getting_literal(typ: Type) -> ProperType:
     if isinstance(typ, Instance) and typ.last_known_value is not None:
         return typ.last_known_value
     return typ
+
+
+def _enum_mixin_overlaps(left: ProperType, right: ProperType) -> bool:
+    """Return True if `left` is an enum literal whose enum class mixes in a
+    non-enum base (e.g. `str`, `int`) that `right` is also a value of.
+
+    Enum members of such mixin enums compare equal to plain values of the mixin
+    type at runtime (e.g. `MyStrEnum.member == "hello"` can be True). Since
+    mypy represents an enum literal by member name rather than runtime value,
+    it can't tell whether such a comparison is non-overlapping. Treating it as
+    potentially overlapping avoids false positives under `--strict-equality`.
+    """
+    if not (isinstance(left, LiteralType) and left.is_enum_literal()):
+        return False
+    enum_info = left.fallback.type
+    # Look for a non-enum, non-object base class that the right side could
+    # also be an instance of.
+    for base in enum_info.mro[1:]:
+        if base.fullname in ("builtins.object",):
+            continue
+        if base.is_enum:
+            continue
+        if isinstance(right, Instance) and right.type.has_base(base.fullname):
+            return True
+        if isinstance(right, LiteralType) and right.fallback.type.has_base(base.fullname):
+            return True
+    return False
 
 
 def is_expr_literal_type(node: Expression) -> bool:
