@@ -1014,6 +1014,24 @@ match m:
         reveal_type(m)  # N: Revealed type is "__main__.A[builtins.int]"
         reveal_type(i)  # N: Revealed type is "builtins.int"
 
+[case testMatchClassPatternCaptureGenericNamedTupleAlreadyKnown]
+# flags: --warn-unreachable
+from typing import Generic, NamedTuple, TypeVar
+
+T = TypeVar("T")
+
+class A(NamedTuple, Generic[T]):
+    a: T
+
+def f(m: A[int]) -> int:
+    match m:
+        case A(a=i):
+            return i
+        case _:
+            return "oops"  # E: Statement is unreachable
+[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-namedtuple.pyi]
+
 [case testMatchClassPatternCaptureFilledGenericTypeAlias]
 # flags: --strict-equality --warn-unreachable
 from typing import Generic, TypeVar
