@@ -645,6 +645,8 @@ def prepare_methods_and_attributes(
                     add_getter_declaration(ir, name, attr_rtype, module_name)
                     add_setter_declaration(ir, name, attr_rtype, module_name)
                 ir.attributes[name] = attr_rtype
+                if node.node.is_final:
+                    ir.final_attributes.add(name)
         elif isinstance(node.node, (FuncDef, Decorator)):
             prepare_method_def(ir, module_name, cdef, mapper, node.node, options)
         elif isinstance(node.node, OverloadedFuncDef):

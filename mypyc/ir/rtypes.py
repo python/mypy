@@ -41,7 +41,7 @@ from abc import abstractmethod
 from typing import TYPE_CHECKING, ClassVar, Final, Generic, TypeGuard, TypeVar, Union, final
 
 from mypyc.common import HAVE_IMMORTAL, IS_32_BIT_PLATFORM, PLATFORM_SIZE, JsonDict, short_name
-from mypyc.ir.deps import LIBRT_RANDOM, LIBRT_STRINGS, LIBRT_VECS, Dependency
+from mypyc.ir.deps import LIBRT_RANDOM, LIBRT_STRINGS, LIBRT_THREADING, LIBRT_VECS, Dependency
 from mypyc.namegen import NameGenerator
 
 if TYPE_CHECKING:
@@ -550,16 +550,36 @@ KNOWN_NATIVE_TYPES: Final = {
 } | {
     "librt.random.Random": RPrimitive(
         "librt.random.Random", is_unboxed=False, is_refcounted=True, dependencies=(LIBRT_RANDOM,)
-    )
+    ),
+    "librt.threading.Lock": RPrimitive(
+        "librt.threading.Lock",
+        is_unboxed=False,
+        is_refcounted=True,
+        dependencies=(LIBRT_THREADING,),
+    ),
 }
 
 bytes_writer_rprimitive: Final = KNOWN_NATIVE_TYPES["librt.strings.BytesWriter"]
 string_writer_rprimitive: Final = KNOWN_NATIVE_TYPES["librt.strings.StringWriter"]
 random_rprimitive: Final = KNOWN_NATIVE_TYPES["librt.random.Random"]
+lock_rprimitive: Final = KNOWN_NATIVE_TYPES["librt.threading.Lock"]
 
 
 def is_native_rprimitive(rtype: RType) -> bool:
     return isinstance(rtype, RPrimitive) and rtype.name in KNOWN_NATIVE_TYPES
+
+
+def is_simple_refcounted_pointer(rtype: RType) -> bool:
+    """Is rtype represented at runtime as a single, reference-counted 'PyObject *'?
+
+    This covers 'object', 'str', containers, instances of native classes and
+    optional/union types -- everything whose C representation is exactly one
+    'PyObject *' field that owns a reference. It excludes unboxed types (tagged
+    'int', fixed-width ints, floats, bools), inline tuples ('RTuple'), vectors
+    ('RVec') and C structs ('RStruct'), which need different treatment for
+    free-threaded memory safety.
+    """
+    return rtype.is_refcounted and not rtype.is_unboxed and not isinstance(rtype, RStruct)
 
 
 def is_tagged(rtype: RType) -> TypeGuard[RPrimitive]:

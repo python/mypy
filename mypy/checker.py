@@ -1487,7 +1487,8 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                         # TODO: check recursively for inner type variables
                         if (
                             arg_type.variance == COVARIANT
-                            and defn.name not in ("__init__", "__new__", "__post_init__")
+                            and defn.name
+                            not in {"__init__", "__new__", "__post_init__", "__replace__"}
                             and not is_private(defn.name)  # private methods are not inherited
                             and (i != 0 or not found_self)
                         ):
@@ -1825,6 +1826,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                         "Consider using the upper bound "
                         f"{format_type(typ.ret_type.upper_bound, self.options)} instead",
                         context=typ.ret_type,
+                        code=TYPE_VAR,
                     )
 
     def check_default_params(self, item: FuncItem, body_is_trivial: bool | None = None) -> None:
@@ -3132,7 +3134,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
             x: A[int] = C()
             x.foo  # ...runtime type is (str) -> None, while static type is (int) -> None
         """
-        if name in ("__init__", "__new__", "__init_subclass__"):
+        if name in {"__init__", "__new__", "__init_subclass__", "__replace__"}:
             # __init__ and friends can be incompatible -- it's a special case.
             return
         first = base1.names[name]
@@ -6857,9 +6859,13 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                         for known_item in container_item_types:
                             # Match the should_coerce_literals logic from narrow_type_by_identity_equality
                             p_known_item = get_proper_type(known_item)
-                            if is_literal_type_like(p_known_item) or (
-                                isinstance(p_known_item, Instance) and p_known_item.type.is_enum
-                            ):
+                            if (
+                                is_literal_type_like(p_known_item)
+                                or (
+                                    isinstance(p_known_item, Instance)
+                                    and p_known_item.type.is_enum
+                                )
+                            ) and not has_custom_eq_checks(p_known_item):
                                 known_item = coerce_to_literal(known_item)
                             if_map, else_map = self.narrow_type_by_identity_equality(
                                 "==",
@@ -8128,7 +8134,20 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
         return self.analyze_iterable_item_type_without_expression(it, context)[1]
 
     def function_type(self, func: FuncBase) -> FunctionLike:
-        return function_type(func, self.named_type("builtins.function"))
+        typ = function_type(func, self.named_type("builtins.function"))
+        if (
+            isinstance(func, FuncItem)
+            and func.is_coroutine
+            and not func.is_async_generator
+            and func.type is None
+            and isinstance(typ, CallableType)
+        ):
+            any_type = AnyType(TypeOfAny.special_form)
+            ret_type = self.named_generic_type(
+                "typing.Coroutine", [any_type, any_type, typ.ret_type]
+            )
+            return typ.copy_modified(ret_type=ret_type)
+        return typ
 
     def push_type_map(self, type_map: TypeMap, *, from_assignment: bool = True) -> None:
         if is_unreachable_map(type_map):
@@ -8874,6 +8893,7 @@ def builtin_item_type(tp: Type) -> Type | None:
             "builtins.list",
             "builtins.tuple",
             "builtins.dict",
+            "builtins.frozendict",
             "builtins.set",
             "builtins.frozenset",
             "_collections_abc.dict_keys",

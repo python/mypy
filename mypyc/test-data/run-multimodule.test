@@ -1900,6 +1900,96 @@ def _force_recompile() -> int:
 from native import test
 test()
 
+[case testIncrementalCrossGroupInheritedMethodRemoved]
+# Regression: updating a transitive base class triggers recompilation of the
+# subclass-defining module (mypy#21742).
+import other_leaf
+
+def test() -> int:
+    c = other_leaf.Leaf()
+    return c.existing_method(5)
+
+[file other_base.py]
+class Base:
+    def existing_method(self, x: int) -> int:
+        return x + 1
+
+    def removed_method(self, x: int) -> int:
+        return x + 100
+
+[file other_base.py.2]
+class Base:
+    def existing_method(self, x: int) -> int:
+        return x + 1
+
+[file other_mid.py]
+from other_base import Base
+
+class Mid(Base):
+    def mid_method(self, x: int) -> int:
+        return x + 2
+
+[file other_leaf.py]
+from other_mid import Mid
+
+class Leaf(Mid):
+    pass
+
+[file driver.py]
+from native import test
+print(test())
+
+[out]
+6
+[out2]
+6
+
+[case testIncrementalCrossGroupInheritedMethodRemovedNonEmptyLeaf]
+# Regression: updating a transitive base class triggers recompilation of the
+# module defining a subclass with a non-empty body (mypy#21742).
+import other_leaf
+
+def test() -> int:
+    return other_leaf.Leaf().existing_method(5)
+
+[file other_base.py]
+class Base:
+    def existing_method(self, x: int) -> int:
+        return x + 1
+
+    def removed_method(self, x: int) -> int:
+        return x + 100
+
+[file other_base.py.2]
+class Base:
+    def existing_method(self, x: int) -> int:
+        return x + 1
+
+[file other_mid.py]
+from other_base import Base
+
+class Mid(Base):
+    def mid_method(self, x: int) -> int:
+        return x + 2
+
+[file other_leaf.py]
+from other_mid import Mid
+
+class Leaf(Mid):
+    FLAG = True
+
+    def foo(self) -> str:
+        return "foo"
+
+[file driver.py]
+from native import test
+print(test())
+
+[out]
+6
+[out2]
+6
+
 [case testCrossModuleInheritedAttrDefaultsSameGroup]
 # separate: [(["native.py"], "grp1"), (["other_a.py", "other_b.py"], "grp2")]
 # Regression: with the subclass (other_a) and base (other_b) in the same

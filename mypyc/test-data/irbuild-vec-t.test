@@ -512,15 +512,25 @@ L0:
     return r2
 
 [case testVecTBorrowGetItem_64bit]
+from typing import Final
+
 from librt.vecs import vec
 from mypy_extensions import i64
 
 class A:
-    x: str
+    def __init__(self, x: str) -> None:
+        # Final to allow borrowing on free-threaded builds
+        self.x: Final = x
 
 def f(v: vec[A], n: i64) -> int:
     return len(v[n].x)
 [out]
+def A.__init__(self, x):
+    self :: __main__.A
+    x :: str
+L0:
+    self.x = x
+    return 1
 def f(v, n):
     v :: vec[__main__.A]
     n :: i64

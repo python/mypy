@@ -3482,12 +3482,16 @@ class State:
             # We should always patch indirect dependencies, even in full (non-incremental) builds,
             # because the cache still may be written, and it must be correct.
             self.patch_indirect_dependencies(
-                # Two possible sources of indirect dependencies:
+                # Three possible sources of indirect dependencies:
                 # * Symbols not directly imported in this module but accessed via an attribute
                 #   or via a re-export (vast majority of these recorded in semantic analysis).
                 # * For each expression type we need to record definitions of type components
                 #   since "meaning" of the type may be updated when definitions are updated.
-                self.tree.module_refs | self.type_checker().module_refs,
+                # * Additional dependencies reported by plugins (e.g. mypyc, see
+                #   MypycPlugin.get_additional_indirect_deps).
+                self.tree.module_refs
+                | self.type_checker().module_refs
+                | manager.plugin.get_additional_indirect_deps(self.tree),
                 set(self.type_map().values()),
             )
 

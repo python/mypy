@@ -914,7 +914,7 @@ class DataclassTransformer:
 
         # Perform a simple-minded inference from the signature of __set__, if present.
         # We can't use mypy.checkmember here, since this plugin runs before type checking.
-        # We only support some basic scanerios here, which is hopefully sufficient for
+        # We only support some basic scenarios here, which is hopefully sufficient for
         # the vast majority of use cases.
         if not isinstance(t, Instance):
             return default

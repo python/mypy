@@ -30,6 +30,8 @@ Follow submodule links in the table to a detailed description of each submodule.
      - Pseudorandom number generation
    * - :doc:`librt.strings <librt_strings>`
      - String and bytes utilities
+   * - :doc:`librt.threading <librt_threading>`
+     - Threading primitives
    * - :doc:`librt.time <librt_time>`
      - Time utilities
    * - :doc:`librt.vecs <librt_vecs>`

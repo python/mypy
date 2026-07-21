@@ -49,7 +49,7 @@ from mypy.nodes import (
     YieldExpr,
     YieldFromExpr,
 )
-from mypyc.common import TEMP_ATTR_NAME
+from mypyc.common import KEEP_ALIVE_SHORT_LIVED, KEEP_ALIVE_WHOLE_EXPRESSION, TEMP_ATTR_NAME
 from mypyc.ir.ops import (
     ERR_NEVER,
     NAMESPACE_MODULE,
@@ -80,12 +80,19 @@ from mypyc.ir.rtypes import (
     c_pyssize_t_rprimitive,
     exc_rtuple,
     is_tagged,
+    lock_rprimitive,
     none_rprimitive,
     object_pointer_rprimitive,
     object_rprimitive,
 )
 from mypyc.irbuild.ast_helpers import is_borrow_friendly_expr, process_conditional
-from mypyc.irbuild.builder import IRBuilder, create_type_params, int_borrow_friendly_op
+from mypyc.irbuild.builder import (
+    IRBuilder,
+    create_type_params,
+    expr_has_suspend,
+    find_walrus_targets,
+    int_borrow_friendly_op,
+)
 from mypyc.irbuild.for_helpers import for_loop_helper
 from mypyc.irbuild.generator import add_raise_exception_blocks_to_generator_class
 from mypyc.irbuild.nonlocalcontrol import (
@@ -115,6 +122,7 @@ from mypyc.primitives.exc_ops import (
     restore_exc_info_op,
 )
 from mypyc.primitives.generic_ops import iter_op, next_raw_op, py_delattr_op
+from mypyc.primitives.librt_threading_ops import lock_acquire_op, lock_release_op
 from mypyc.primitives.misc_ops import (
     check_stop_op,
     coro_op,
@@ -159,10 +167,17 @@ def transform_expression_stmt(builder: IRBuilder, stmt: ExpressionStmt) -> None:
     if isinstance(stmt.expr, StrExpr):
         # Docstring. Ignore
         return
-    # ExpressionStmts do not need to be coerced like other Expressions, so we shouldn't
-    # call builder.accept here.
+    # ExpressionStmts do not need to be coerced like other Expressions, so
+    # we shouldn't call builder.accept here.
+    builder.expression_depth += 1
+    builder.reassigned_in_expr = find_walrus_targets(stmt.expr)
+    builder.expr_has_suspend = expr_has_suspend(stmt.expr)
     stmt.expr.accept(builder.visitor)
-    builder.flush_keep_alives(stmt.line)
+    builder.expression_depth -= 1
+    builder.reassigned_in_expr = set()
+    builder.expr_has_suspend = False
+    builder.flush_keep_alives(stmt.line, scope=KEEP_ALIVE_SHORT_LIVED)
+    builder.flush_keep_alives(stmt.line, scope=KEEP_ALIVE_WHOLE_EXPRESSION)
 
 
 def transform_return_stmt(builder: IRBuilder, stmt: ReturnStmt) -> None:
@@ -1108,6 +1123,10 @@ def transform_with(
     al = "a" if is_async else ""
 
     mgr_v = builder.accept(expr)
+
+    if not is_async and mgr_v.type == lock_rprimitive:
+        transform_with_lock(builder, mgr_v, target, body, line)
+        return
     is_native = isinstance(mgr_v.type, RInstance)
     if is_native:
         value = builder.add(MethodCall(mgr_v, f"__{al}enter__", args=[], line=line))
@@ -1177,6 +1196,32 @@ def transform_with(
         finally_body,
         line,
     )
+
+
+def transform_with_lock(
+    builder: IRBuilder, mgr_v: Value, target: Lvalue | None, body: GenFunc, line: int
+) -> None:
+    """Optimized 'with' for librt.threading.Lock.
+
+    Generate a simple try/finally with direct acquire/release calls.
+    Lock.__exit__ never suppresses exceptions, so we don't need the
+    full PEP 343 try/except/finally machinery.
+    """
+    # __enter__: acquire the lock
+    value = builder.primitive_op(lock_acquire_op, [mgr_v], line)
+
+    mgr = builder.maybe_spill(mgr_v)
+
+    def try_body() -> None:
+        if target:
+            builder.assign(builder.get_assignment_target(target), value, line)
+        body()
+
+    def finally_body() -> None:
+        # __exit__: release the lock (ignoring exception info)
+        builder.primitive_op(lock_release_op, [builder.read(mgr, line)], line)
+
+    transform_try_finally_stmt(builder, try_body, finally_body, line)
 
 
 def transform_with_stmt(builder: IRBuilder, o: WithStmt) -> None:

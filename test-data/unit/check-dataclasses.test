@@ -2580,6 +2580,23 @@ Gen(2).__replace__(x="not an int")  # E: Argument "x" to "__replace__" of "Gen" 
 
 [builtins fixtures/tuple.pyi]
 
+[case testDunderReplaceAllowsCovariantDataclassField]
+# flags: --python-version 3.13
+from dataclasses import dataclass
+from typing import Generic, TypeVar
+
+T_co = TypeVar("T_co", covariant=True)
+
+@dataclass(frozen=True)
+class A(Generic[T_co]):
+    value: T_co
+
+class B(Generic[T_co]):
+    def __replace__(self, *, value: T_co) -> B[T_co]:
+        return self
+
+[builtins fixtures/tuple.pyi]
+
 [case testDunderReplaceCovariantOverride]
 # flags: --python-version 3.13  --enable-error-code mutable-override
 from dataclasses import dataclass
@@ -2607,6 +2624,27 @@ class X(metaclass=DCMeta):
 class Y(X):
     a: int  # E: Covariant override of a mutable attribute (base class "X" defined the type as "int | None", expression has type "int")
 [builtins fixtures/tuple.pyi]
+
+
+[case testDunderReplaceDoesNotBlockPlainIssubclassNarrowing]
+# https://github.com/python/mypy/issues/21635
+# flags: --python-version 3.13
+from dataclasses import dataclass
+
+@dataclass
+class A: ...
+@dataclass
+class M: ...
+@dataclass
+class B(A): ...
+@dataclass
+class C(M, A): ...
+
+cls: type[A] = C
+if issubclass(cls, M):
+    reveal_type(cls)  # N: Revealed type is "type[__main__.<subclass of "__main__.A" and "__main__.M">]"
+    n: int = 'foo'  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+[builtins fixtures/isinstancelist.pyi]
 
 
 [case testFrozenWithFinal]

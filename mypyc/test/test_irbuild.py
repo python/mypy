@@ -36,6 +36,7 @@ files = [
     "irbuild-statements.test",
     "irbuild-nested.test",
     "irbuild-classes.test",
+    "irbuild-final.test",
     "irbuild-optional.test",
     "irbuild-any.test",
     "irbuild-generics.test",
@@ -61,6 +62,7 @@ files = [
     "irbuild-librt-strings.test",
     "irbuild-librt-random.test",
     "irbuild-base64.test",
+    "irbuild-threading.test",
     "irbuild-time.test",
     "irbuild-match.test",
 ]
@@ -85,6 +87,9 @@ class TestGenOps(MypycDataSuite):
             return
         if "_withgil" in testcase.name and IS_FREE_THREADED:
             # Test case should only run on a non-free-threaded build.
+            return
+        if "_nogil" in testcase.name and not IS_FREE_THREADED:
+            # Test case should only run on a free-threaded build.
             return
         with use_custom_builtins(os.path.join(self.data_prefix, ICODE_GEN_BUILTINS), testcase):
             expected_output = remove_comment_lines(testcase.output)

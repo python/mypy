@@ -110,6 +110,7 @@ LIBRT_BASE64: Final = Capsule("librt.base64")
 LIBRT_VECS: Final = Capsule("librt.vecs")
 LIBRT_TIME: Final = Capsule("librt.time")
 LIBRT_RANDOM: Final = Capsule("librt.random")
+LIBRT_THREADING: Final = Capsule("librt.threading")
 
 BYTES_EXTRA_OPS: Final = SourceDep("bytes_extra_ops.c")
 BYTES_WRITER_EXTRA_OPS: Final = SourceDep("byteswriter_extra_ops.c")

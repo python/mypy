@@ -26,7 +26,7 @@ L0:
     r1 = cast(list, r0)
     return r1
 
-[case testListOfListGet2]
+[case testListOfListGet2_withgil]
 from typing import List
 def f(x: List[List[int]]) -> int:
     return x[0][1]
@@ -43,6 +43,24 @@ L0:
     r2 = CPyList_GetItemShort(r1, 2)
     r3 = unbox(int, r2)
     keep_alive x, r0
+    return r3
+
+[case testListOfListGet2_nogil]
+from typing import List
+def f(x: List[List[int]]) -> int:
+    return x[0][1]
+[out]
+def f(x):
+    x :: list
+    r0 :: object
+    r1 :: list
+    r2 :: object
+    r3 :: int
+L0:
+    r0 = CPyList_GetItemShort(x, 0)
+    r1 = cast(list, r0)
+    r2 = CPyList_GetItemShort(r1, 2)
+    r3 = unbox(int, r2)
     return r3
 
 [case testListSet]
@@ -361,7 +379,7 @@ L0:
     r2 = r1 >= 0 :: signed
     return 1
 
-[case testListBuiltFromGenerator]
+[case testListBuiltFromGenerator_withgil]
 from typing import List
 def f(source: List[int]) -> None:
     a = list(x + 1 for x in source)
@@ -430,7 +448,7 @@ L8:
     b = r11
     return 1
 
-[case testGeneratorNext]
+[case testGeneratorNext_withgil]
 from typing import List, Optional
 
 def test(x: List[int]) -> None:
@@ -471,7 +489,7 @@ L5:
     res = r6
     return 1
 
-[case testSimplifyListUnion]
+[case testSimplifyListUnion_withgil]
 from typing import List, Union, Optional
 
 def narrow(a: Union[List[str], List[bytes], int]) -> int:
@@ -905,7 +923,7 @@ L10:
     a = r3
     return 1
 
-[case testListBuiltFromStars]
+[case testListBuiltFromStars_withgil]
 from typing import Final
 
 abc: Final = "abc"

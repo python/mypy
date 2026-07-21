@@ -35,6 +35,7 @@ generate fast code.
    librt_base64
    librt_random
    librt_strings
+   librt_threading
    librt_time
    librt_vecs
 
