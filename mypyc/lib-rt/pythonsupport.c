@@ -6,23 +6,27 @@
 #include "pythonsupport.h"
 
 #ifdef Py_GIL_DISABLED
-// Cold slow path of CPy_GetAttrRef (declared in pythonsupport.h). Reached only
-// when the inline fast-path try-incref fails: the value is owned by another
-// thread, so taking a reference requires an atomic shared-refcount operation.
-// Kept out-of-line so the inline fast path stays small.
-//
-// First try the lock-free shared-refcount CAS. If the value has not had
-// maybe-weakref set yet (for example, it was published by CPy_InitAttrRef), force
-// a cross-thread reference via _Py_NewRefWithLock, which cannot fail and sets
-// maybe-weakref so subsequent reads take the fast path. The value was already
-// observed in the field by CPy_GetAttrRef; CPy_SetAttrRef's QSBR-delayed decref
-// keeps any replaced value alive long enough for this reader.
+// Cold slow path of CPy_GetAttrRef (declared in pythonsupport.h). First try to
+// acquire a shared reference without locking, then validate that the field still
+// contains v. If validation fails, drop the provisional reference. If the shared
+// incref or validation fails, take the owner's critical section, reload the field,
+// and take a reference while the value cannot be replaced. _Py_XNewRefWithLock
+// also sets maybe-weakref lazily, so later cross-thread reads generally use the
+// lock-free shared-refcount path.
 CPy_NOINLINE
-PyObject *CPy_GetAttrRefSlow(PyObject *v) {
+CPy_COLD
+PyObject *CPy_GetAttrRefSlow(PyObject *v, PyObject *owner, PyObject **field) {
     if (_Py_TryIncRefShared(v)) {
-        return v;
+        if (v == (PyObject *)_Py_atomic_load_ptr(field)) {
+            return v;
+        }
+        Py_DECREF(v);
     }
-    return _Py_NewRefWithLock(v);  // sets maybe-weakref; cannot fail
+    PyObject *result;
+    Py_BEGIN_CRITICAL_SECTION(owner);
+    result = _Py_XNewRefWithLock((PyObject *)_Py_atomic_load_ptr_relaxed(field));
+    Py_END_CRITICAL_SECTION();
+    return result;
 }
 #endif
 
