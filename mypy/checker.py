@@ -1964,6 +1964,9 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
 
         assert defn.info
 
+        if defn.info.is_protocol:
+            return
+
         # First check for a valid signature
         method_type = CallableType(
             [AnyType(TypeOfAny.special_form), AnyType(TypeOfAny.special_form)],
