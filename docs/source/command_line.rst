@@ -828,8 +828,10 @@ of the above sections.
     strict will catch type errors as long as intentional methods like type ignore
     or casting were not used.)
 
-    Note: the :option:`--warn-unreachable` flag
-    is not automatically enabled by the strict flag.
+    Note: the :option:`--warn-unreachable` flag, among others, is not
+    enabled by the strict flag. If you are interested in enabling even more
+    useful checks, you may be interested in :option:`--enable-all-error-codes`
+    and/or :option:`--enable-error-code`.
 
     The strict flag does not take precedence over other strict-related flags.
     Directly specifying a flag of alternate behavior will override the
@@ -850,7 +852,7 @@ of the above sections.
 
 .. option:: --disable-error-code
 
-    This flag allows disabling one or multiple error codes globally.
+    This flag disables one or multiple error codes globally.
     See :ref:`error-codes` for more information.
 
     .. code-block:: python
@@ -865,7 +867,7 @@ of the above sections.
 
 .. option:: --enable-error-code
 
-    This flag allows enabling one or multiple error codes globally.
+    This flag enables one or multiple error codes globally.
     See :ref:`error-codes` for more information.
 
     Note: This flag will override disabled error codes from the
@@ -881,6 +883,32 @@ of the above sections.
         x = 'a string'
         x.trim()  # error: "str" has no attribute "trim"  [attr-defined]
 
+.. option:: --enable-all-error-codes
+
+    This flag enables all of the error codes for mypy,
+    including the optional ones that are off by default.
+    See :ref:`error-codes` and :ref:`error-codes-optional`
+    for more information.
+
+    (Unlike the other flag for error code enablement, these can be countermanded
+    with :option:`--disable-error-code`.)
+
+    Note that future releases of mypy will likely introduce more error codes,
+    so the effective result of using this flag will change from release to
+    release.
+
+    While often useful, keep in mind that this flag will enable **all** error
+    codes, including any that may be experimental, wrongheaded, or
+    contradictory.
+
+    Enabling all codes is not the same as enabling all checks that mypy could
+    perform.
+    However, :option:`--strict` and :option:`--enable-all-error-codes` used in
+    tandem should be sufficient to get you virtually every useful check mypy
+    can perform.
+
+    Due to a bug, this flag will not actually enable all error codes:
+    https://github.com/python/mypy/issues/19604
 
 .. _configuring-error-messages:
 
