@@ -2983,3 +2983,19 @@ def f(x: SE | None) -> None:
     else:
         reveal_type(x)  # N: Revealed type is "__main__.SE | None"
 [builtins fixtures/primitives.pyi]
+
+
+[case testEnumSentinelComparedToAny]
+import enum
+from typing import Any
+
+class SentinelType(enum.Enum):
+    SENTINEL = enum.auto()
+
+SENTINEL: SentinelType = SentinelType.SENTINEL
+
+x: Any = None
+if x is SENTINEL:
+    reveal_type(x)  # N: Revealed type is "Literal[__main__.SentinelType.SENTINEL]"
+    reveal_type(SENTINEL)  # N: Revealed type is "__main__.SentinelType"
+[builtins fixtures/primitives.pyi]
