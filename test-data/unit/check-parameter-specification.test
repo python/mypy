@@ -92,7 +92,7 @@ class B(Generic[P]): ...
 Other = B[P]
 
 T = TypeVar('T', bound=Alias[..., Any])
-Alias[..., Any]  # E: Type application is only supported for generic classes
+Alias[..., Any]  # E: Type application is only supported for generic classes and type aliases
 B[...]
 Other[...]
 [builtins fixtures/paramspec.pyi]
