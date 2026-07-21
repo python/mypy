@@ -1898,8 +1898,17 @@ def is_expected_dunder(name: str, *, stub: nodes.TypeInfo, existing_stub_names: 
     if name == "__ge__" and {"__gt__", "__eq__"}.issubset(existing_stub_names):
         return True
 
-    return (name in ("__or__", "__ror__", "__ior__") and stub.has_base("typing.Mapping")) or (
-        name in ("__mul__", "__rmul__", "__imul__") and stub.has_base("typing.Sequence")
+    if (name in ("__or__", "__ror__") and stub.has_base("typing.Mapping")) or (
+        name in ("__mul__", "__rmul__") and stub.has_base("typing.Sequence")
+    ):
+        return True
+
+    # In-place syntax such as `*=` and `|=` can work with immutable types (for example,
+    # tuples or frozensets), but generally delegates to the non-in-place dunder in
+    # these cases. The in-place dunders themselves are generally only defined for
+    # mutable types.
+    return (name == "__ior__" and stub.has_base("typing.MutableMapping")) or (
+        name == "__imul__" and stub.has_base("typing.MutableSequence")
     )
 
 
@@ -2026,7 +2035,7 @@ def safe_inspect_signature(runtime: Any) -> inspect.Signature | None:
 
 
 def describe_runtime_callable(signature: inspect.Signature, *, is_async: bool) -> str:
-    return f"{'async ' if is_async else ''}def {signature}"
+    return f'{"async " if is_async else ""}def {signature}'
 
 
 class _TypeCheckOnlyBaseMapper(mypy.types.TypeTranslator):
