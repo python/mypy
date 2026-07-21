@@ -783,6 +783,132 @@ Note that you may come across :py:data:`~typing.AnyStr` imported from
 :py:mod:`typing`. This feature is now deprecated, but it means the same
 as our definition of ``AnyStr`` above.
 
+.. _type-parameter-defaults:
+
+Type parameter defaults (PEP 696)
+*********************************
+
+A type parameter can declare a *default* type, as specified in :pep:`696`.
+When a generic class, function or type alias is used but a type argument for
+such a type parameter is omitted, mypy uses the default instead of requiring
+the argument (or falling back to ``Any``). This works for
+:py:class:`~typing.TypeVar`, :py:class:`~typing.ParamSpec` and
+:py:class:`~typing.TypeVarTuple`, and is useful when adding a new type
+parameter to an existing generic without breaking code that doesn't provide
+the extra type argument.
+
+Using the Python 3.13 syntax, a default is written with ``= <type>`` after the
+type parameter:
+
+.. code-block:: python
+
+   class Array[T = float]: ...
+
+   def first[T = int](x: list[T]) -> T: ...
+
+The same is possible with the legacy syntax using the ``default=...`` keyword
+argument. The ``default`` keyword argument requires ``typing_extensions`` (it
+is also available from :py:mod:`typing` on Python 3.13 and later):
+
+.. code-block:: python
+
+   from typing import Generic
+   from typing_extensions import TypeVar
+
+   T = TypeVar("T", default=float)
+
+   class Array(Generic[T]): ...
+
+When a type argument is omitted, the default is substituted (Python 3.13
+syntax):
+
+.. code-block:: python
+
+   class Pair[T1 = int, T2 = str]: ...
+
+   def f(a: Pair, b: Pair[float]) -> None:
+       reveal_type(a)  # Revealed type is "Pair[int, str]"
+       reveal_type(b)  # Revealed type is "Pair[float, str]"
+
+Defaults are also supported for ``ParamSpec`` and ``TypeVarTuple``. A
+``ParamSpec`` default must be a list of types, ``...``, or another
+``ParamSpec``; a ``TypeVarTuple`` default must be an unpacked tuple type
+(Python 3.13 syntax):
+
+.. code-block:: python
+
+   class C[**P = [int, str]]: ...
+   class D[*Ts = *tuple[int, str]]: ...
+
+The equivalent using the legacy syntax:
+
+.. code-block:: python
+
+   from typing import Generic
+   from typing_extensions import ParamSpec, TypeVarTuple, Unpack
+
+   P = ParamSpec("P", default=[int, str])
+   Ts = TypeVarTuple("Ts", default=Unpack[tuple[int, str]])
+
+   class C(Generic[P]): ...
+   class D(Generic[Unpack[Ts]]): ...
+
+In a generic function, a default is only used when mypy can't infer the type
+parameter from the arguments:
+
+.. code-block:: python
+
+   def f[T = str](x: int | T) -> T: ...
+
+   reveal_type(f(1))    # Revealed type is "str" (T uses the default)
+   reveal_type(f(1.0))  # Revealed type is "float" (T is inferred)
+
+There are some restrictions on defaults. A type parameter with a default can't
+be followed by one without a default, similar to how an argument with a default
+value can't be followed by one without a default in a function signature:
+
+.. code-block:: python
+
+   from typing import Generic
+   from typing_extensions import TypeVar
+
+   T1 = TypeVar("T1", default=int)
+   T2 = TypeVar("T2")
+
+   # Error: "T2" cannot appear after "T1" in type parameter list because it has
+   # no default type
+   class Invalid(Generic[T1, T2]): ...
+
+A default must also be compatible with the bound or value constraints of the
+type parameter. It must be a subtype of the upper bound, and for a
+value-constrained type parameter it must be one of the constraint types
+(Python 3.13 syntax):
+
+.. code-block:: python
+
+   # Error: TypeVar default must be a subtype of the bound type
+   class Bad1[T: str = int]: ...
+
+   # Error: TypeVar default must be one of the constraint types
+   class Bad2[T: (int, str) = bytes]: ...
+
+A default can refer to an earlier type parameter of the same class, function or
+type alias (but not a later one):
+
+.. code-block:: python
+
+   class Pair2[X, Y = X]: ...
+
+   p: Pair2[int]
+   reveal_type(p)  # Revealed type is "Pair2[int, int]"
+
+.. note::
+
+   The Python 3.13 syntax for type parameter defaults (for example
+   ``class C[T = int]``) requires Python 3.13 or later at runtime. The legacy
+   ``default=...`` argument works on all supported Python versions when
+   imported from ``typing_extensions``.
+
 .. _declaring-decorators:
 
 Declaring decorators
