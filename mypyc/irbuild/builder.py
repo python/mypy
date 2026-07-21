@@ -974,7 +974,9 @@ class IRBuilder:
         # This may be the whole lvalue list if there is no starred value
         split_idx = target.star_idx if target.star_idx is not None else len(target.items)
 
-        # Assign values before the first starred value
+        # Read values before the first starred value
+        left_values = []
+        right_values = []
         for litem in target.items[:split_idx]:
             ritem = self.call_c(next_op, [iterator], line)
             error_block, ok_block = BasicBlock(), BasicBlock()
@@ -990,9 +992,9 @@ class IRBuilder:
 
             self.activate_block(ok_block)
 
-            self.assign(litem, ritem, line)
+            left_values.append(ritem)
 
-        # Assign the starred value and all values after it
+        # Read the starred value and all values after it
         if target.star_idx is not None:
             post_star_vals = target.items[split_idx + 1 :]
             iter_list = self.primitive_op(to_list, [iterator], line)
@@ -1015,6 +1017,13 @@ class IRBuilder:
 
             for litem in reversed(post_star_vals):
                 ritem = self.primitive_op(list_pop_last, [iter_list], line)
+                right_values.append(ritem)
+
+            # Assign read values to target lvalues
+            for litem, ritem in zip(target.items[:split_idx], left_values):
+                self.assign(litem, ritem, line)
+
+            for litem, ritem in zip(reversed(post_star_vals), right_values):
                 self.assign(litem, ritem, line)
 
             # Assign the starred value
@@ -1036,6 +1045,10 @@ class IRBuilder:
             self.add(Unreachable())
 
             self.activate_block(ok_block)
+
+            # Assign read values to target lvalues
+            for litem, ritem in zip(target.items[:split_idx], left_values):
+                self.assign(litem, ritem, line)
 
     def push_loop_stack(self, continue_block: BasicBlock, break_block: BasicBlock) -> None:
         self.nonlocal_control.append(
