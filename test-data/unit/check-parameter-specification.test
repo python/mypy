@@ -2556,6 +2556,42 @@ def fn(f: MiddlewareFactory[P]) -> Capture[P]: ...
 reveal_type(fn(ServerErrorMiddleware))  # N: Revealed type is "__main__.Capture[[handler: builtins.str | None =, debug: builtins.bool =]]"
 [builtins fixtures/paramspec.pyi]
 
+[case testParamSpecProtocolInferenceRejectsConflictingMembers]
+from typing import Generic, Protocol, TypeVar
+from typing_extensions import ParamSpec
+
+P = ParamSpec("P")
+T = TypeVar("T")
+
+class Context: pass
+
+class Namer(Protocol[P]):
+    def name_for(self, *args: P.args, **kwargs: P.kwargs) -> str: ...
+    def execute_on(self, ctx: Context, *args: P.args, **kwargs: P.kwargs) -> None: ...
+
+class Impl0:
+    def name_for(self, x: int, y: str) -> str: ...
+    def execute_on(self, ctx: Context, x: int, y: str) -> None: ...
+
+class Impl1:
+    def name_for(self, y: str) -> str: ...
+    def execute_on(self, ctx: Context, x: int, y: str) -> None: ...
+
+class UseImplFirst(Generic[P, T]):
+    def __init__(self, impl: T, *args: P.args, **kwargs: P.kwargs) -> None: ...
+    def __call__(self: "UseImplFirst[P, Namer[P]]") -> None: ...
+
+def use_impl_second(impl: Namer[P], *args: P.args, **kwargs: P.kwargs) -> None: ...
+def use_impl_third(wrapper: UseImplFirst[P, Namer[P]]) -> None: ...
+
+ok: Namer[[int, str]] = Impl0()
+use_impl_second(Impl0(), 0, "0")
+use_impl_third(UseImplFirst(Impl0(), 0, "0"))
+
+use_impl_second(Impl1(), 1, "1")  # E: Cannot infer value of type parameter "P" of "use_impl_second"
+use_impl_third(UseImplFirst(Impl1(), 1, "1"))  # E: Cannot infer value of type parameter "P" of "use_impl_third"
+[builtins fixtures/paramspec.pyi]
+
 [case testRunParamSpecDuplicateArgsKwargs]
 from typing_extensions import ParamSpec, Concatenate
 from typing import Callable, Union

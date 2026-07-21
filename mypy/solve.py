@@ -9,7 +9,7 @@ from typing import TypeAlias as _TypeAlias
 from mypy.constraints import SUBTYPE_OF, SUPERTYPE_OF, Constraint, infer_constraints, neg_op
 from mypy.expandtype import expand_type
 from mypy.graph_utils import prepare_sccs, strongly_connected_components, topsort
-from mypy.join import join_type_list
+from mypy.join import is_similar_params, join_type_list
 from mypy.meet import meet_type_list, meet_types
 from mypy.subtypes import is_subtype
 from mypy.typeops import get_all_type_vars
@@ -18,6 +18,7 @@ from mypy.types import (
     Instance,
     NoneType,
     Overloaded,
+    Parameters,
     ParamSpecType,
     ProperType,
     TupleType,
@@ -260,6 +261,13 @@ def _join_sorted_key(t: Type) -> int:
     return 0
 
 
+def _precise_parameter_constraint_target(target: Type) -> Parameters | None:
+    target = get_proper_type(target)
+    if isinstance(target, Parameters) and not target.imprecise_arg_kinds:
+        return target
+    return None
+
+
 def solve_one(lowers: Iterable[Type], uppers: Iterable[Type]) -> Type | None:
     """Solve constraints by finding by using meets of upper bounds, and joins of lower bounds."""
 
@@ -292,6 +300,18 @@ def solve_one(lowers: Iterable[Type], uppers: Iterable[Type]) -> Type | None:
         # Retain `None` when no bottoms were provided to avoid bogus `Never` inference.
         bottom = UnionType.make_union(lowers)
     else:
+        # Joining incompatible concrete ParamSpec lower bounds falls back to Any,
+        # but for precise call signatures this would silently erase the conflict.
+        precise_param_lowers = [
+            lower
+            for lower in (_precise_parameter_constraint_target(lower) for lower in lowers)
+            if lower is not None
+        ]
+        if precise_param_lowers and not all(
+            is_similar_params(precise_param_lowers[0], lower) for lower in precise_param_lowers[1:]
+        ):
+            return None
+
         # The order of lowers is non-deterministic.
         # We attempt to sort lowers because joins are non-associative. For instance:
         # join(join(int, str), int | str) == join(object, int | str) == object
