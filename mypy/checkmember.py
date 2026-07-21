@@ -1111,6 +1111,10 @@ def check_self_arg(
             ),
             ignore_pos_arg_names=True,
         ):
+            if not self_callable and not has_valid_self_type_bounds(
+                item, selfarg, dispatched_arg_type
+            ):
+                continue
             new_items.append(item)
         elif isinstance(selfarg, ParamSpecType):
             # TODO: This is not always right. What's the most reasonable thing to do here?
@@ -1126,6 +1130,46 @@ def check_self_arg(
     if len(new_items) == 1:
         return new_items[0]
     return Overloaded(new_items)
+
+
+def has_valid_self_type_bounds(
+    item: CallableType, selfarg: ProperType, dispatched_arg_type: Type
+) -> bool:
+    """Check that inferred self type arguments satisfy their bounds/values.
+
+    This only applies to explicit self type variables, so we don't disturb
+    PEP 673 Self handling while still rejecting bounded self types like
+    ``list[SupportsRichComparisonT]`` when the receiver can't satisfy the bound.
+    """
+    if not item.variables or not supported_self_type(selfarg):
+        return True
+
+    self_ids = {tv.id for tv in get_all_type_vars(selfarg)}
+    self_vars = [tv for tv in item.variables if tv.id in self_ids and tv.name != "Self"]
+    if not self_vars:
+        return True
+
+    from mypy.infer import infer_type_arguments
+
+    typeargs = infer_type_arguments(
+        self_vars, selfarg, dispatched_arg_type, is_supertype=True, erase_types=False
+    )
+    return all(
+        self_type_argument_within_bounds(tvar, typ) for tvar, typ in zip(self_vars, typeargs)
+    )
+
+
+def self_type_argument_within_bounds(tvar: TypeVarLikeType, typ: Type | None) -> bool:
+    if typ is None or isinstance(tvar, (ParamSpecType, TypeVarTupleType)):
+        return True
+
+    assert isinstance(tvar, TypeVarType)
+    if tvar.name == "Self":
+        return True
+    if tvar.values:
+        return any(is_subtype(typ, value) for value in tvar.values)
+
+    return is_subtype(typ, tvar.upper_bound)
 
 
 def analyze_class_attribute_access(
