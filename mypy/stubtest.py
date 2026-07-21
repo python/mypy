@@ -298,14 +298,34 @@ def verify(
     yield Error(object_path, "is an unknown mypy node", stub, runtime)
 
 
+def _get_stub_submodules(module_fullname: str) -> set[str]:
+    """Names of the direct submodules of ``module_fullname`` that have their own stub.
+
+    Python's import system binds an imported submodule as an attribute of its
+    parent package, so such submodules are implicitly available on the package
+    at runtime (e.g. via ``from .submod import *`` in ``__init__``) even if the
+    package's stub does not re-import them explicitly. They are verified
+    separately as their own modules.
+    """
+    return {
+        name.rpartition(".")[2]
+        for name in _all_stubs
+        if name.rpartition(".")[0] == module_fullname
+    }
+
+
 def _verify_exported_names(
     object_path: list[str], stub: nodes.MypyFile, runtime_all_as_set: set[str]
 ) -> Iterator[Error]:
     # note that this includes the case the stub simply defines `__all__: list[str]`
     assert "__all__" in stub.names
     public_names_in_stub = {m for m, o in stub.names.items() if o.module_public}
+    # Submodules with their own stub are implicitly available as attributes of
+    # the package at runtime, so don't report them as missing from the stub's
+    # `__all__`. See #21328.
+    stub_submodules = _get_stub_submodules(stub.fullname)
     names_in_stub_not_runtime = sorted(public_names_in_stub - runtime_all_as_set)
-    names_in_runtime_not_stub = sorted(runtime_all_as_set - public_names_in_stub)
+    names_in_runtime_not_stub = sorted(runtime_all_as_set - public_names_in_stub - stub_submodules)
     if not (names_in_runtime_not_stub or names_in_stub_not_runtime):
         return
     yield Error(
@@ -440,6 +460,14 @@ def verify_mypyfile(
         if isinstance(stub_entry, nodes.MypyFile):
             # Don't recursively check exported modules, since that leads to infinite recursion
             continue
+        if isinstance(stub_entry, Missing) and f"{stub.fullname}.{entry}" in _all_stubs:
+            # A submodule with its own stub is implicitly bound as an attribute of
+            # its parent package once imported at runtime (e.g. via
+            # `from .submod import *` in __init__). It is verified separately as
+            # its own module, so don't report it as missing from the parent's
+            # stub. See #21328.
+            if isinstance(getattr(runtime, entry, MISSING), types.ModuleType):
+                continue
         assert stub_entry is not None
         if (
             is_probably_private(entry)
