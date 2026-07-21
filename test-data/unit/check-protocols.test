@@ -4809,3 +4809,12 @@ bad_rep(t)  # E: Argument 1 to "bad_rep" has incompatible type "C"; expected "P[
             # N:     Got: \
             # N:         def rep(self) -> C
 [builtins fixtures/tuple.pyi]
+
+[case testProtocolTernaryRpow]
+from typing import Protocol
+
+class PowableProto(Protocol):
+    def __pow__(self, other: "PowableProto", modulo: "PowableProto") -> "PowableProto":
+        ...
+    def __rpow__(self, other: "PowableProto", modulo: "PowableProto") -> "PowableProto":
+        ...
