@@ -166,6 +166,7 @@ TUPLE_LIKE_INSTANCE_NAMES: Final = (
     "builtins.tuple",
     "typing.Iterable",
     "typing.Container",
+    "typing.Collection",
     "typing.Sequence",
     "typing.Reversible",
 )
