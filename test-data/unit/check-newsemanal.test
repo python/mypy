@@ -2531,7 +2531,7 @@ from p.c import B
 [case testNewSemanticAnalyzerQualifiedFunctionAsType]
 import m
 
-x: m.C.a.b # E: Name "m.C.a.b" is not defined
+x: m.C.a.b # E: Name "m.C.a.b" is not defined ("m.C" is a function, not a module or class)
 
 [file m.py]
 def C(): pass
@@ -2569,8 +2569,7 @@ class C:
     class E: pass
 
     def f(self) -> None:
-        # TODO: Error message could be better
-        class D(self.E): # E: Name "self.E" is not defined
+        class D(self.E): # E: Name "self.E" is not defined ("self" is a variable, not a module or class)
             pass
 
 [case testNewAnalyzerShadowOuterDefinitionBasedOnOrderSinglePass]
@@ -2813,7 +2812,7 @@ class B: ...
 
 [case testNewAnalyzerImportAmbiguousWithTopLevelFunction]
 import a.b  # This works at runtime
-x: a.b.B  # E: Name "a.b.B" is not defined
+x: a.b.B  # E: Name "a.b.B" is not defined ("a.b" is a function, not a module or class)
 reveal_type(a.b)  # N: Revealed type is "def ()"
 [file a/__init__.py]
 import a.b
