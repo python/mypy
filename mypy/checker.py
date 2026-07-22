@@ -5182,10 +5182,9 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                 # a lot of maintenance!
                 if isinstance(s.expr, CallExpr) and isinstance(s.expr.callee, MemberExpr):
                     called_on = get_proper_type(self.expr_checker.accept(s.expr.callee.expr))
-                    is_a_taskgroup = (
-                        isinstance(called_on, Instance) and
-                        called_on.type.fullname.endswith(".TaskGroup")
-                    )
+                    is_a_taskgroup = isinstance(
+                        called_on, Instance
+                    ) and called_on.type.fullname.endswith(".TaskGroup")
                 else:
                     is_a_taskgroup = False
                 if not is_a_taskgroup:
