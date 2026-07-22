@@ -5160,12 +5160,14 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                         new_type = self.named_generic_type(typename, [key_type, value_type])
                         self.replace_partial_type(var, new_type, partial_types)
 
-    def type_requires_usage(self, typ: Type) -> tuple[str, ErrorCode] | None:
-        """Some types require usage in all cases. The classic example is
-        an unused coroutine.
+    def type_requires_usage(self, typ: Type, s: ExpressionStmt) -> tuple[str, ErrorCode] | None:
+        """Some types require usage in basically all cases. The classic
+        example is an unused coroutine.
 
         In the case that it does require usage, returns a note to attach
-        to the error message.
+        to the error message. We special case somethings that return
+        awaitables because in those particular cases we can guarantee
+        it's safe.
         """
         proper_type = get_proper_type(typ)
         if isinstance(proper_type, Instance):
@@ -5174,12 +5176,24 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
             if proper_type.type.fullname == "typing.Coroutine":
                 return ("Are you missing an await?", UNUSED_COROUTINE)
             if proper_type.type.get("__await__") is not None:
-                return ("Are you missing an await?", UNUSED_AWAITABLE)
+                # this is quite ad-hoc, but there's no good way around
+                # this. the alternative is a hardcoded list of
+                # TaskGroups and their respective functions, but that's
+                # a lot of maintenance!
+                if isinstance(s.expr, CallExpr) and isinstance(s.expr.callee, MemberExpr):
+                    called_on = get_proper_type(self.expr_checker.accept(s.expr.callee.expr))
+                    is_a_taskgroup = isinstance(
+                        called_on, Instance
+                    ) and called_on.type.fullname.endswith(".TaskGroup")
+                else:
+                    is_a_taskgroup = False
+                if not is_a_taskgroup:
+                    return ("Are you missing an await?", UNUSED_AWAITABLE)
         return None
 
     def visit_expression_stmt(self, s: ExpressionStmt) -> None:
         expr_type = self.expr_checker.accept(s.expr, allow_none_return=True, always_allow_any=True)
-        error_note_and_code = self.type_requires_usage(expr_type)
+        error_note_and_code = self.type_requires_usage(expr_type, s)
         if error_note_and_code:
             error_note, code = error_note_and_code
             self.fail(
