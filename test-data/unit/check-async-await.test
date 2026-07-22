@@ -882,10 +882,6 @@ async def main() -> None:
                                                        # N: Revealed type is "typing.Awaitable[builtins.object]"
 
 
-
-
-
-
 [file asyncio/__init__.pyi]
 from .taskgroups import TaskGroup as TaskGroup
 

@@ -5176,16 +5176,15 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
             if proper_type.type.fullname == "typing.Coroutine":
                 return ("Are you missing an await?", UNUSED_COROUTINE)
             if proper_type.type.get("__await__") is not None:
-                # this is quite brittle, but there's no good way around this.
-                # called_on
+                # this is quite ad-hoc, but there's no good way around
+                # this. the alternative is a hardcoded list of
+                # TaskGroups and their respective functions, but that's
+                # a lot of maintenance!
                 if isinstance(s.expr, CallExpr) and isinstance(s.expr.callee, MemberExpr):
                     called_on = get_proper_type(self.expr_checker.accept(s.expr.callee.expr))
                     is_a_taskgroup = (
                         isinstance(called_on, Instance) and
-                        (called_on.type.fullname, s.expr.callee.name) in [
-                            ("asyncio.taskgroups.TaskGroup", "create_task"),
-                            ("anyio.abc._tasks.TaskGroup", "start_soon")
-                        ]
+                        called_on.type.fullname.endswith(".TaskGroup")
                     )
                 else:
                     is_a_taskgroup = False
