@@ -706,6 +706,7 @@ class SuggestionEngine:
     def reload(self, state: State) -> list[str]:
         """Recheck the module given by state."""
         assert state.path is not None
+        self.manager.errors.reset()
         self.fgmanager.flush_cache()
         return self.fgmanager.update([(state.id, state.path)], [])
 

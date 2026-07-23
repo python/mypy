@@ -392,6 +392,31 @@ def bar() -> None:
     x = foo('abc')  # type: str
     foo(arg='xyz')
 
+[case testDaemonSuggestStdlibAfterMessage]
+$ dmypy start -- --follow-imports=error --no-error-summary
+Daemon started
+$ dmypy check main.py
+main.py:1: note: Revealed type is "Literal[1]?"
+$ dmypy suggest os.path.islink --callsites
+No suggestions
+$ dmypy status
+Daemon is up and running
+$ dmypy suggest os.path.isdir --callsites
+No suggestions
+$ dmypy check main.py
+main.py:1: note: Revealed type is "Literal[1]?"
+== Return code: 1
+$ {python} -c "import shutil; shutil.copy('main2.py', 'main.py')"
+$ dmypy check main.py
+main.py:1: note: Revealed type is "Literal[2]?"
+== Return code: 1
+$ dmypy stop
+Daemon stopped
+[file main.py]
+reveal_type(1)
+[file main2.py]
+reveal_type(2)
+
 [case testDaemonInspectCheck]
 $ dmypy start
 Daemon started
