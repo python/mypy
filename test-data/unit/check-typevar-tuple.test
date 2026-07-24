@@ -2921,3 +2921,22 @@ def g(x: K) -> None:
     assert d is not None
     reveal_type(d)  # N: Revealed type is "tuple[K | list[int], ...] | tuple[*tuple[int | list[int], ...], int]"
 [builtins fixtures/tuple.pyi]
+
+[case testTypeVarTupleUnpackVarWithConstrainedTypeVarExpansion]
+# Regression test for https://github.com/python/mypy/issues/21693
+from typing import Generic, Tuple, TypeVar
+from typing_extensions import Literal, TypeVarTuple, Unpack
+
+T = TypeVar("T")
+P = TypeVar("P", Literal[True], Literal[False])
+Ts = TypeVarTuple("Ts")
+
+class Container(Generic[T, P]):
+    def foo(self) -> T: ...
+
+def f(container: Container[Tuple[Unpack[Ts]], P]) -> None:
+    result = container.foo()
+    reveal_type(result)  # N: Revealed type is "tuple[Unpack[Ts`-1]]"
+    y = (*result,)
+    reveal_type(y)  # N: Revealed type is "tuple[Unpack[Ts`-1]]"
+[builtins fixtures/tuple.pyi]
