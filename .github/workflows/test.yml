@@ -226,6 +226,10 @@ jobs:
     - name: Setup tox environment
       run: |
         tox run -e ${{ matrix.toxenv }} --notest
+    - name: Install local librt in tox environment
+      if: ${{ !matrix.test_mypyc && matrix.toxenv == 'py' }}
+      # Use local version of librt so that fixes not yet in a PyPI release are available.
+      run: tox exec -e ${{ matrix.toxenv }} -- pip install -U mypyc/lib-rt
     - name: Test
       run: tox run -e ${{ matrix.toxenv }} --skip-pkg-install -- ${{ matrix.tox_extra_args }}
       continue-on-error: ${{ matrix.allow_failure == 'true' }}

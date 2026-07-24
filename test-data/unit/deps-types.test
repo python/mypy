@@ -1026,3 +1026,14 @@ class P(Protocol):
 <mod.P> -> <m.x>, m, mod.P
 <mod.P[wildcard]> -> <mod.P>
 <mod> -> m
+
+[case testSentinelType]
+from typing_extensions import Sentinel
+
+MISSING = Sentinel("MISSING")
+
+def f(x: MISSING) -> None:
+    pass
+[builtins fixtures/tuple.pyi]
+[out]
+<m.MISSING> -> <m.MISSING>, <m.f>, m, m.f

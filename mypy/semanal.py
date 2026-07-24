@@ -271,6 +271,7 @@ from mypy.types import (
     OVERRIDE_DECORATOR_NAMES,
     PROTOCOL_NAMES,
     REVEAL_TYPE_NAMES,
+    SENTINEL_TYPE_NAMES,
     TPDICT_NAMES,
     TYPE_ALIAS_NAMES,
     TYPE_CHECK_ONLY_NAMES,
@@ -289,6 +290,7 @@ from mypy.types import (
     ParamSpecType,
     PlaceholderType,
     ProperType,
+    SentinelValue,
     TrivialSyntheticTypeTranslator,
     TupleType,
     Type,
@@ -3377,9 +3379,15 @@ class SemanticAnalyzer(
         # may be set to True while there were still placeholders due to forward refs.
         s.is_alias_def = False
 
+        sentinel_definition = self.is_sentinel_declaration(s)
+
         # OK, this is a regular assignment, perform the necessary analysis steps.
         s.is_final_def = self.unwrap_final(s)
+        if sentinel_definition:
+            s.is_final_def = True
         self.analyze_lvalues(s)
+        if sentinel_definition:
+            self.setup_sentinel_var(s)
         self.check_final_implicit_def(s)
         self.store_final_status(s)
         self.check_classvar(s)
@@ -3391,6 +3399,51 @@ class SemanticAnalyzer(
         self.process__all__(s)
         self.process__deletable__(s)
         self.process__slots__(s)
+
+    def is_sentinel_declaration(self, s: AssignmentStmt) -> bool:
+        """Does this assignment define a PEP 661 sentinel singleton?"""
+        if self.is_func_scope() or s.unanalyzed_type is not None:
+            return False
+        if len(s.lvalues) != 1 or not isinstance(s.lvalues[0], NameExpr):
+            return False
+        if not isinstance(s.rvalue, CallExpr):
+            return False
+        call = s.rvalue
+        if not isinstance(call.callee, RefExpr):
+            return False
+        if call.callee.fullname not in SENTINEL_TYPE_NAMES:
+            return False
+        if not call.args or call.arg_kinds[0] != ARG_POS or not isinstance(call.args[0], StrExpr):
+            return False
+        return True
+
+    def setup_sentinel_var(self, s: AssignmentStmt) -> None:
+        lvalue = s.lvalues[0]
+        assert isinstance(lvalue, NameExpr)
+        if not isinstance(lvalue.node, Var):
+            return
+        var = lvalue.node
+        var.is_sentinel = True
+        typ = self.sentinel_type_for_var(var, s.rvalue)
+        if typ is not None:
+            s.type = typ
+
+    def sentinel_type_for_var(self, var: Var, rvalue: Expression) -> Instance | None:
+        assert isinstance(rvalue, CallExpr)
+        callee = rvalue.callee
+        assert isinstance(callee, RefExpr)
+        typ = self.named_type_or_none(callee.fullname)
+        if typ is None:
+            return None
+        name = f"{self.type.name}.{var.name}" if self.type is not None else var.name
+        return typ.copy_modified(
+            last_known_value=LiteralType(
+                SentinelValue(var.fullname, name),
+                fallback=typ,
+                line=rvalue.line,
+                column=rvalue.column,
+            )
+        )
 
     def analyze_identity_global_assignment(self, s: AssignmentStmt) -> bool:
         """Special case 'X = X' in global scope.
@@ -3556,6 +3609,8 @@ class SemanticAnalyzer(
             # Assignment color = Color['RED'] defines a variable, not an alias.
             return not rv.node.is_enum
         if isinstance(rv.node, Var):
+            if rv.node.is_sentinel:
+                return True
             return rv.node.fullname in NEVER_NAMES
 
         if isinstance(rv, NameExpr):
@@ -4763,6 +4818,7 @@ class SemanticAnalyzer(
                     var.is_final
                     and isinstance(typ, Instance)
                     and typ.last_known_value
+                    and not isinstance(typ.last_known_value.value, SentinelValue)
                     and (not self.type or not self.type.is_enum)
                 ):
                     var.final_value = typ.last_known_value.value
