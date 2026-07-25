@@ -13,7 +13,7 @@ import inspect
 import keyword
 import os.path
 from collections.abc import Callable, Mapping
-from types import FunctionType, ModuleType
+from types import FunctionType, ModuleType, UnionType as RuntimeUnionType
 from typing import Any
 
 from mypy.fastparse import parse_type_comment
@@ -768,11 +768,19 @@ class InspectionStubGenerator(BaseStubGenerator):
 
                 rw_properties.append(f"{self._indent}{name}: {inferred_type}")
 
-    def get_type_fullname(self, typ: type) -> str:
+    def get_type_fullname(self, typ: object) -> str:
         """Given a type, return a string representation"""
         if typ is Any:
             return "Any"
-        typename = getattr(typ, "__qualname__", typ.__name__)
+        if typ is type(None):
+            return "None"
+        if isinstance(typ, RuntimeUnionType):
+            return " | ".join(self.get_type_fullname(item) for item in typ.__args__)
+        typename = getattr(typ, "__qualname__", None)
+        if typename is None:
+            typename = getattr(typ, "__name__", None)
+        if typename is None:
+            return "_typeshed.Incomplete"
         module_name = self.get_obj_module(typ)
         if module_name is None:
             # This should not normally happen, but some types may resist our

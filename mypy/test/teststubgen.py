@@ -1069,6 +1069,17 @@ class StubgencSuite(unittest.TestCase):
             ],
         )
 
+    def test_non_c_generate_signature_with_pep604_union(self) -> None:
+        def test(arg0: int | str) -> float | None:
+            pass
+
+        output: list[str] = []
+        mod = ModuleType(test.__module__, "")
+        gen = InspectionStubGenerator(mod.__name__, known_modules=[mod.__name__], module=mod)
+        gen.is_c_module = False
+        gen.generate_function_stub("test", test, output=output)
+        assert_equal(output, ["def test(arg0: int | str) -> float | None: ..."])
+
     def test_generate_c_type_inheritance(self) -> None:
         class TestClass(KeyError):
             pass
