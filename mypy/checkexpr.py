@@ -4774,7 +4774,12 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         self.check_method_call_by_name("__getitem__", left_type, [index], [ARG_POS], context=index)
         # We could return the return type from above, but unions are often better than the join
         union = self.union_tuple_fallback_item(left_type)
-        if isinstance(index, SliceExpr):
+        # A slice always yields a tuple, whether written as slice syntax (a SliceExpr) or
+        # passed as a value of type slice (e.g. a variable), which isn't a SliceExpr.
+        index_type = get_proper_type(self.chk.lookup_type_or_none(index))
+        if isinstance(index, SliceExpr) or (
+            isinstance(index_type, Instance) and index_type.type.fullname == "builtins.slice"
+        ):
             return self.chk.named_generic_type("builtins.tuple", [union])
         return union
 
