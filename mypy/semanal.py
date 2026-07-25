@@ -3609,8 +3609,6 @@ class SemanticAnalyzer(
             # Assignment color = Color['RED'] defines a variable, not an alias.
             return not rv.node.is_enum
         if isinstance(rv.node, Var):
-            if rv.node.is_sentinel:
-                return True
             return rv.node.fullname in NEVER_NAMES
 
         if isinstance(rv, NameExpr):

@@ -153,3 +153,18 @@ def func(x: int | BUILTIN | TYPEXT) -> None:
             assert_type(x, int)
 
 [builtins fixtures/sentinel.pyi]
+
+[case testSentinelReassignmentIsNotTypeAlias]
+from typing_extensions import sentinel, assert_type
+
+MISSING = sentinel("MISSING")
+ALIAS = MISSING
+
+assert_type(ALIAS, sentinel)
+
+def func(x: int | MISSING = MISSING) -> None:
+    pass
+
+func(MISSING)
+func(ALIAS)  # E: Argument 1 to "func" has incompatible type "Sentinel"; expected "int | MISSING"
+[builtins fixtures/tuple.pyi]
