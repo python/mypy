@@ -761,7 +761,70 @@ class ASTConverter:
             ret.append(last_if_overload)
         elif last_if_stmt is not None:
             ret.append(last_if_stmt)
-        return ret
+        return self._merge_non_adjacent_property_overloads(ret)
+
+    def _merge_non_adjacent_property_overloads(self, stmts: list[Statement]) -> list[Statement]:
+        """Merge non-adjacent @x.setter and @x.deleter into their property getter.
+
+        fix_function_overloads only groups *consecutive* same-named decorators.
+        When a property getter and its setter/deleter are separated by other
+        statements, the setter/deleter ends up as an isolated Decorator in the
+        output.  This second pass finds those stray components and folds them
+        back into the property's OverloadedFuncDef (or promotes the lone getter
+        Decorator to an OverloadedFuncDef).
+
+        See https://github.com/python/mypy/issues/1465.
+        """
+        # Build a map: property name -> index of its getter / OverloadedFuncDef in stmts.
+        prop_getter_pos: dict[str, int] = {}
+        for i, stmt in enumerate(stmts):
+            if isinstance(stmt, Decorator):
+                if any(isinstance(d, NameExpr) and d.name == "property" for d in stmt.decorators):
+                    prop_getter_pos[stmt.name] = i
+            elif isinstance(stmt, OverloadedFuncDef) and stmt.items:
+                first = stmt.items[0]
+                if isinstance(first, Decorator) and any(
+                    isinstance(d, NameExpr) and d.name == "property" for d in first.decorators
+                ):
+                    prop_getter_pos[first.name] = i
+
+        if not prop_getter_pos:
+            return stmts
+
+        # Find setter/deleter Decorators whose getter appeared earlier, then merge.
+        result: list[Statement | None] = list(stmts)
+        for i, stmt in enumerate(stmts):
+            if not isinstance(stmt, Decorator):
+                continue
+            # Identify @prop_name.setter or @prop_name.deleter
+            prop_name: str | None = None
+            for d in stmt.decorators:
+                if (
+                    isinstance(d, MemberExpr)
+                    and isinstance(d.expr, NameExpr)
+                    and d.name in {"setter", "deleter"}
+                ):
+                    prop_name = d.expr.name
+                    break
+            if prop_name is None:
+                continue
+            getter_pos = prop_getter_pos.get(prop_name)
+            if getter_pos is None or getter_pos >= i:
+                # No matching getter found earlier in the same scope.
+                continue
+            # This is a non-adjacent setter/deleter; merge it into the getter's node.
+            existing = result[getter_pos]
+            if isinstance(existing, Decorator):
+                # Promote the lone getter Decorator to an OverloadedFuncDef.
+                ovl = OverloadedFuncDef([existing, stmt])
+                ovl.set_line(existing)
+                result[getter_pos] = ovl
+            elif isinstance(existing, OverloadedFuncDef):
+                existing.items.append(stmt)
+                existing.unanalyzed_items.append(stmt)
+            result[i] = None  # Remove from its original (non-adjacent) position.
+
+        return [s for s in result if s is not None]
 
     def _check_ifstmt_for_overloads(
         self, stmt: IfStmt, current_overload_name: str | None = None
