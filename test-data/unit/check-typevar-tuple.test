@@ -1738,6 +1738,27 @@ vt = 1, *test(), 2  # OK, type context is used
 vt2 = 1, *test(), 2  # E: Need type annotation for "vt2"
 [builtins fixtures/tuple.pyi]
 
+[case testVariadicTupleContextStarPositionMismatch]
+from typing import Tuple
+from typing_extensions import Unpack
+
+a: Tuple[str, ...]
+b: Tuple[str, Unpack[Tuple[str, ...]]]
+
+# The star lines up with the context unpack.
+b = ("first", *a)
+# The star does not line up, but the context is still variadic, so the
+# precise tuple type is inferred rather than collapsing to tuple[str, ...].
+b = (*a, "last")
+
+# A variadic context must not paper over genuinely incompatible item types.
+c: Tuple[int, Unpack[Tuple[int, ...]]]
+c = (*a, "last")  # E: Incompatible types in assignment (expression has type "tuple[Unpack[tuple[str, ...]], str]", variable has type "tuple[int, Unpack[tuple[int, ...]]]")
+# A fixed-length context still requires enough items.
+d: Tuple[str, str, Unpack[Tuple[str, ...]]]
+d = ("only",)  # E: Incompatible types in assignment (expression has type "tuple[str]", variable has type "tuple[str, str, Unpack[tuple[str, ...]]]")
+[builtins fixtures/tuple.pyi]
+
 [case testVariadicTupleConcatenation]
 # flags: --enable-incomplete-feature=PreciseTupleTypes
 from typing import Tuple

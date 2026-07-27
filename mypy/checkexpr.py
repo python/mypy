@@ -5348,8 +5348,20 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         if type_context_items is not None:
             unpack_in_context = find_unpack_in_list(type_context_items) is not None
         seen_unpack_in_items = False
+        # A variadic tuple context justifies inferring a precise tuple type even when
+        # tuple_context_matches() rejected the context because the structure doesn't
+        # line up exactly (e.g. (*a, "last") against tuple[str, *tuple[str, ...]]).
+        # Without this, such an expression collapses to tuple[str, ...], which is not
+        # assignable back to the variadic context. Note this deliberately does not feed
+        # unpack_in_context, whose index bookkeeping below relies on a full match.
+        variadic_context = (
+            isinstance(type_context, TupleType)
+            and find_unpack_in_list(type_context.items) is not None
+        )
         allow_precise_tuples = (
-            unpack_in_context or PRECISE_TUPLE_TYPES in self.chk.options.enable_incomplete_feature
+            unpack_in_context
+            or variadic_context
+            or PRECISE_TUPLE_TYPES in self.chk.options.enable_incomplete_feature
         )
 
         # Infer item types.  Give up if there's a star expression
