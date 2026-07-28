@@ -2955,10 +2955,12 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                     "enum membership. If so, use `member = value` to mark an enum member, "
                     "instead of `member: type`",
                     defn,
+                    code=codes.MISC,
                 )
                 self.note(
                     "See https://typing.readthedocs.io/en/latest/spec/enums.html#defining-members",
                     defn,
+                    code=codes.MISC,
                 )
 
         self.check_enum_bases(defn)
