@@ -5908,6 +5908,8 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         for index in [e.begin_index, e.end_index, e.stride]:
             if index:
                 type_args.append(self.accept(index))
+            elif not self.chk.options.strict_optional:
+                type_args.append(AnyType(TypeOfAny.special_form))
             else:
                 type_args.append(NoneType())
         return self.chk.named_generic_type("builtins.slice", type_args)
