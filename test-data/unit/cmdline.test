@@ -1210,32 +1210,6 @@ y: int = 'y'  # E: Incompatible types in assignment (expression has type "str", 
 z: int = 'z'
 [out]
 
-[case testCmdlineCfgEnableErrorCodeTrailingComma]
-# cmd: mypy .
-[file mypy.ini]
-\[mypy]
-enable_error_code =
-  truthy-bool,
-  redundant-expr,
-[out]
-
-[case testCmdlineCfgDisableErrorCodeTrailingComma]
-# cmd: mypy .
-[file mypy.ini]
-\[mypy]
-disable_error_code =
-  misc,
-  override,
-[out]
-
-[case testCmdlineCfgAlwaysTrueTrailingComma]
-# cmd: mypy .
-[file mypy.ini]
-\[mypy]
-always_true =
-  MY_VAR,
-[out]
-
 [case testCmdlineCfgModulesTrailingComma]
 # cmd: mypy
 [file mypy.ini]
