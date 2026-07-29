@@ -1554,6 +1554,18 @@ def wrap(fn: F) -> F:
 
     return cast(F, wrapper)
 
+C = Callable[..., Any]
+
+def get_decorator() -> C:
+    def decorator(endpoint: C) -> C:
+        @wraps(endpoint)
+        async def inner(self: Any, val: int, *args: Any) -> Any:
+            return await endpoint(self, val, *args)
+
+        return cast(C, inner)
+
+    return cast(C, decorator)
+
 @wrap
 def wrapped(val: int) -> int:
     return val
@@ -1593,12 +1605,34 @@ class T:
     async def static_async(val: int) -> int:
         return 2
 
+    @staticmethod
+    @wrap
+    def wrapped_static(val: int) -> int:
+        return 2
+
+    @staticmethod
+    @wrap
+    async def wrapped_static_async(val: int) -> int:
+        return 2
+
     @classmethod
     def class_method(cls, val: int) -> int:
         return 3
 
     @classmethod
     async def class_method_async(cls, val: int) -> int:
+        assert cls is T
+        return 3
+
+    @classmethod
+    @wrap
+    def wrapped_class_method(cls, val: int) -> int:
+        assert cls is T
+        return 3
+
+    @classmethod
+    @get_decorator()
+    async def wrapped_class_method_async(cls, val: int) -> int:
         assert cls is T
         return 3
 
@@ -1663,10 +1697,22 @@ def test_method() -> None:
     assert not is_coroutine(T.static)
     assert is_coroutine(T.static_async)
     assert asyncio.run(T.static_async(3)) == 2
+    assert not is_coroutine(T.wrapped_static)
+    assert is_coroutine(T.wrapped_static_async)
+    assert T.wrapped_static(3) == 4
+    assert t.wrapped_static(3) == 4
+    assert asyncio.run(T.wrapped_static_async(3)) == 4
+    assert asyncio.run(t.wrapped_static_async(3)) == 4
 
     assert not is_coroutine(T.class_method)
     assert is_coroutine(T.class_method_async)
     assert asyncio.run(T.class_method_async(4)) == 3
+    assert not is_coroutine(T.wrapped_class_method)
+    assert is_coroutine(T.wrapped_class_method_async)
+    assert T.wrapped_class_method(4) == 6
+    assert t.wrapped_class_method(4) == 6
+    assert asyncio.run(T.wrapped_class_method_async(4)) == 3
+    assert asyncio.run(t.wrapped_class_method_async(4)) == 3
 
 def test_nested() -> None:
     def nested(val: int) -> int:
@@ -1783,11 +1829,23 @@ def test_method() -> None:
     assert native.is_coroutine(native.T.static_async)
     assert asyncio.run(native.T.static_async(3)) == 2
     assert asyncio.run(t.static_async(3)) == 2
+    assert not native.is_coroutine(native.T.wrapped_static)
+    assert native.is_coroutine(native.T.wrapped_static_async)
+    assert native.T.wrapped_static(3) == 4
+    assert t.wrapped_static(3) == 4
+    assert asyncio.run(native.T.wrapped_static_async(3)) == 4
+    assert asyncio.run(t.wrapped_static_async(3)) == 4
 
     assert not native.is_coroutine(native.T.class_method)
     assert native.is_coroutine(native.T.class_method_async)
     assert asyncio.run(native.T.class_method_async(4)) == 3
     assert asyncio.run(t.class_method_async(4)) == 3
+    assert not native.is_coroutine(native.T.wrapped_class_method)
+    assert native.is_coroutine(native.T.wrapped_class_method_async)
+    assert native.T.wrapped_class_method(4) == 6
+    assert t.wrapped_class_method(4) == 6
+    assert asyncio.run(native.T.wrapped_class_method_async(4)) == 3
+    assert asyncio.run(t.wrapped_class_method_async(4)) == 3
 
 def test_nested() -> None:
     def nested(val: int) -> int:
