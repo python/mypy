@@ -70,6 +70,7 @@ from mypy.types import (
     find_unpack_in_list,
     flatten_nested_unions,
     get_proper_type,
+    has_type_vars,
     is_named_instance,
     split_with_prefix_and_suffix,
 )
@@ -1258,6 +1259,14 @@ def is_protocol_implementation(
     for l, r in reversed(assuming):
         if l == left and r == right:
             return True
+    # Class objects and tuple fallbacks bind the self type differently, so only try to
+    # close an expanding cycle for a plain instance against a protocol.
+    if (
+        not class_obj
+        and original_left is left
+        and can_close_expanding_protocol_cycle(left, right, assuming, members_not_to_check)
+    ):
+        return True
     with pop_on_exit(assuming, left, right):
         for member in right.type.protocol_members:
             if member in members_not_to_check:
@@ -1335,6 +1344,96 @@ def is_protocol_implementation(
     )
     type_state.record_subtype_cache_entry(subtype_kind, left, right)
     return True
+
+
+def is_plain_signature(t: CallableType) -> bool:
+    """Does subtyping for this callable only compare argument types and the return type?
+
+    Generic methods, type guards and type predicates all add obligations on top of
+    those, so they are not "plain" for our purposes.
+    """
+    return not t.variables and t.type_guard is None and t.type_is is None
+
+
+def can_close_expanding_protocol_cycle(
+    left: Instance,
+    right: Instance,
+    assuming: list[tuple[Instance, Instance]],
+    members_not_to_check: set[str],
+) -> bool:
+    """Can we close a recursive protocol check whose left hand side keeps expanding?
+
+    The assumption stack in is_protocol_implementation() closes a cycle when it sees the
+    exact same (left, right) pair again. That never happens when the candidate's member
+    returns a *strictly larger* instance of the candidate class, as in::
+
+        class PExp(Protocol[T]):
+            def eq(self, other: T) -> PExp[T]: ...
+        class Exp(Generic[A, B]):
+            def eq(self, other: Any) -> Exp[Exp[A, B], Any]: ...
+
+    Checking Exp[int, int] against PExp[str] then recurses forever, since each step
+    produces a new, bigger left type (see #21739).
+
+    Closing such a cycle is only sound when the expanding return type is the *only* place
+    the candidate's class type variables can be observed. Note that
+    is_callable_compatible() compares return types *before* arguments, so the enclosing
+    level has not validated its own argument obligations yet; it does that once this
+    recursive return succeeds. That is still enough, because the conditions below pin the
+    protocol to the same instance and forbid the candidate's arguments from depending on
+    class state: the obligations we skip here are the very same types that the previous
+    level goes on to check. We recognise a deliberately narrow shape and give up on
+    anything else.
+    """
+    # Only relevant when we are about to re-enter this *exact* protocol instance with a
+    # bigger left type. Requiring the same instance rather than just the same TypeInfo
+    # matters: a protocol whose own arguments change on the way round the cycle (say
+    # P[int] -> P[object]) gets unrolled until it reaches a fixed point, so we never skip
+    # an obligation that is still changing.
+    if not any(l.type is left.type and r == right for l, r in assuming):
+        return False
+    # With a single member there are no sibling obligations that could observe the
+    # expansion while we are assuming the recursive one.
+    members = [m for m in right.type.protocol_members if m not in members_not_to_check]
+    if len(members) != 1:
+        return False
+    member = members[0]
+    # Settable members are also checked in the opposite direction, which the reasoning
+    # above does not cover.
+    if IS_SETTABLE in get_member_flags(member, right):
+        return False
+    protocol_member = find_member(member, right, left)
+    candidate_member = get_protocol_member(left, left, member, class_obj=False)
+    if protocol_member is None or candidate_member is None:
+        # Either side may fail to resolve; fall through to the normal member loop instead
+        # of closing the cycle on incomplete information.
+        return False
+    supertype = get_proper_type(protocol_member)
+    subtype = get_proper_type(candidate_member)
+    if not isinstance(supertype, CallableType) or not isinstance(subtype, CallableType):
+        return False
+    if not is_plain_signature(supertype) or not is_plain_signature(subtype):
+        return False
+    # The protocol member must hand back the protocol unchanged...
+    if supertype.ret_type != right:
+        return False
+    # ...and the candidate member must hand back the candidate class itself, so that the
+    # only remaining obligation is the pair we are already assuming.
+    sub_ret = get_proper_type(subtype.ret_type)
+    if not isinstance(sub_ret, Instance) or sub_ret.type is not left.type:
+        return False
+    # Finally, nothing outside the return type may depend on class state. We check this
+    # on the generic signature, so it holds for every instantiation in the expansion.
+    self_type = fill_typevars(left.type)
+    if not isinstance(self_type, Instance):
+        return False
+    generic_member = get_protocol_member(self_type, self_type, member, class_obj=False)
+    if generic_member is None:
+        return False
+    generic = get_proper_type(generic_member)
+    if not isinstance(generic, CallableType) or not is_plain_signature(generic):
+        return False
+    return not any(has_type_vars(arg) for arg in generic.arg_types)
 
 
 def get_protocol_member(

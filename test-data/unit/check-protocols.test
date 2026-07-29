@@ -930,6 +930,47 @@ def last(seq: Linked[T]) -> T:
     pass
 last(L()) # E: Argument 1 to "last" has incompatible type "L"; expected "Linked[Never]"
 
+[case testRecursiveProtocolWithExpandingGenericReturn]
+# https://github.com/python/mypy/issues/21739
+from typing import Any, Generic, Protocol, TypeVar
+
+T = TypeVar('T')
+A = TypeVar('A')
+B = TypeVar('B')
+
+class PExp(Protocol[T]):
+    def eq(self, other: T) -> PExp[T]: pass
+
+# Exp.eq returns a strictly larger Exp, so the (Exp, PExp) pair never repeats
+# exactly and the assumption stack in is_protocol_implementation never closes it.
+class Exp(Generic[A, B]):
+    def eq(self, other: Any) -> Exp[Exp[A, B], Any]: pass
+
+x: PExp[str] = Exp[int, int]()
+
+[case testRecursiveProtocolWithExpandingGenericReturnChangingProtocolArgs]
+# https://github.com/python/mypy/issues/21739
+from typing import Generic, Protocol, TypeVar
+
+T_contra = TypeVar('T_contra', contravariant=True)
+A = TypeVar('A')
+
+# The protocol argument changes on the way round the cycle (P[int] -> P[object]), so the
+# cycle must not be closed until the protocol reaches a fixed point: otherwise we would
+# skip checking "object" against C.f's "int" parameter.
+class P(Protocol[T_contra]):
+    def f(self, x: T_contra) -> P[object]: pass
+
+class C(Generic[A]):
+    def f(self, x: int) -> C[C[A]]: pass
+
+y: P[int] = C[int]() # E: Incompatible types in assignment (expression has type "C[int]", variable has type "P[int]") \
+                     # N: Following member(s) of "C[int]" have conflicts: \
+                     # N:     Expected: \
+                     # N:         def f(self, x: int) -> P[object] \
+                     # N:     Got: \
+                     # N:         def f(self, x: int) -> C[C[int]]
+
 [case testMutuallyRecursiveProtocols]
 from typing import Protocol, Sequence, List
 
