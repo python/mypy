@@ -22,7 +22,13 @@ from mypyc.common import (
     TYPE_VAR_PREFIX,
 )
 from mypyc.ir.class_ir import ClassIR, all_concrete_classes
-from mypyc.ir.func_ir import FUNC_STATICMETHOD, FuncDecl, FuncIR, get_text_signature
+from mypyc.ir.func_ir import (
+    FUNC_CLASSMETHOD,
+    FUNC_STATICMETHOD,
+    FuncDecl,
+    FuncIR,
+    get_text_signature,
+)
 from mypyc.ir.ops import (
     NAMESPACE_MODULE,
     NAMESPACE_STATIC,
@@ -1419,13 +1425,17 @@ class Emitter:
         cname = f"{PREFIX}{fn.cname(self.names)}"
         wrapper_name = f"{cname}_wrapper"
         cfunc = f"(PyCFunction){cname}"
-        func_flags = "METH_FASTCALL | METH_KEYWORDS"
+        func_flags = ["METH_FASTCALL", "METH_KEYWORDS"]
+        if fn.class_name and fn.decl.kind == FUNC_STATICMETHOD:
+            func_flags.append("METH_STATIC")
+        elif fn.class_name and fn.decl.kind == FUNC_CLASSMETHOD:
+            func_flags.append("METH_CLASS")
         doc = f"PyDoc_STR({native_function_doc_initializer(fn)})"
         has_self_arg = "true" if fn.class_name and fn.decl.kind != FUNC_STATICMETHOD else "false"
 
         code_flags = "CO_COROUTINE"
         self.emit_line(
-            f'PyObject* {wrapper_name} = CPyFunction_New({module}, "{filepath}", "{name}", {cfunc}, {func_flags}, {doc}, {fn.line}, {code_flags}, {has_self_arg});'
+            f'PyObject* {wrapper_name} = CPyFunction_New({module}, "{filepath}", "{name}", {cfunc}, {" | ".join(func_flags)}, {doc}, {fn.line}, {code_flags}, {has_self_arg});'
         )
         self.emit_line(f"if (unlikely(!{wrapper_name}))")
         self.emit_line(error_stmt)
