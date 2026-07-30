@@ -1049,8 +1049,8 @@ enabled by default starting from mypy 2.0.
 
     Use ``NUMBER`` parallel worker processes (in addition to the coordinator
     process) to perform type-checking. Specifying ``--num-workers 0`` (default)
-    disables parallel checking. Automatic detection of the optimal number
-    of workers is not supported yet.
+    disables parallel checking. Automatic detection of the physical CPU core count
+    is possible through ``--num-workers auto```.
 
     This setting will override the ``MYPY_NUM_WORKERS`` environment
     variable if it is set.

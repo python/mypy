@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import multiprocessing
 import os
 import platform
 import subprocess
@@ -1179,12 +1180,18 @@ def define_options(
     internals_group.add_argument("--export-ref-info", action="store_true", help=argparse.SUPPRESS)
 
     # Experimental parallel type-checking support.
+    def _num_workers_type(value: str) -> int:
+        if value == "auto":
+            return multiprocessing.cpu_count()
+
+        return int(value)
+
     internals_group.add_argument(
         "-n",
         "--num-workers",
-        type=int,
+        type=_num_workers_type,
         default=0,
-        help="Number of separate mypy worker processes (experimental)",
+        help="Number of separate mypy worker processes (experimental). With `auto` detects (and uses) physical CPU count.",
     )
 
     report_group = parser.add_argument_group(
