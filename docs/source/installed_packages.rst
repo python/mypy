@@ -101,6 +101,14 @@ simplest way is to contribute stubs to the `typeshed
 <https://github.com/python/typeshed>`_ repository, and a stub package
 will automatically be uploaded to PyPI.
 
+Setuptools 69.0.0 and later automatically include ``.pyi`` and
+``py.typed`` files in distributions when they are inside a package
+directory. New projects should use ``pyproject.toml`` to
+`configure setuptools
+<https://setuptools.pypa.io/en/latest/userguide/pyproject_config.html>`_.
+The legacy ``setup.py`` examples below show how to include these files
+explicitly when compatibility with older setuptools versions is required.
+
 If you would like to publish a library package to a package repository
 yourself (e.g. on PyPI) for either internal or external use in type
 checking, packages that supply type information via type comments or
@@ -115,7 +123,7 @@ package directory. For example, here is a typical directory structure:
         lib.py
         py.typed
 
-The ``setup.py`` file could look like this:
+For setuptools versions before 69, the ``setup.py`` file could look like this:
 
 .. code-block:: python
 
@@ -141,7 +149,7 @@ require a ``py.typed`` file. An example can be seen below:
         lib.pyi
         py.typed
 
-The ``setup.py`` file might look like this:
+For setuptools versions before 69, the ``setup.py`` file might look like this:
 
 .. code-block:: python
 
@@ -171,7 +179,7 @@ had stubs for ``package_c``, we might do the following:
         __init__.pyi
         lib.pyi
 
-The ``setup.py`` might look like this:
+For setuptools versions before 69, the ``setup.py`` might look like this:
 
 .. code-block:: python
 
@@ -185,10 +193,12 @@ The ``setup.py`` might look like this:
         packages=["package_c-stubs"]
     )
 
-The instructions above are enough to ensure that the built wheels
-contain the appropriate files. However, to ensure inclusion inside the
-``sdist`` (``.tar.gz`` archive), you may also need to modify the
-inclusion rules in your ``MANIFEST.in``:
+With setuptools 69.0.0 or later, no ``package_data`` or ``MANIFEST.in``
+entries are needed for type information files inside a package directory.
+When supporting older setuptools versions, the ``package_data`` settings
+above ensure that built wheels contain the appropriate files. To include
+them in the ``sdist`` (``.tar.gz`` archive), you may also need to modify
+the inclusion rules in your ``MANIFEST.in``:
 
 .. code-block:: text
 
