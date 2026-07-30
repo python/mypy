@@ -670,6 +670,14 @@ files = config.py
 mypy: error: Cannot read file 'override.py': No such file or directory
 == Return code: 2
 
+[case testCommandOverridesTargetsFromConfig]
+# cmd: mypy -c pass
+[file mypy.ini]
+\[mypy]
+files = should_be_ignored.py
+packages = should_be_ignored_package
+modules = should_be_ignored_module
+
 [case testErrorSummaryOnSuccess]
 # cmd: mypy --error-summary good.py
 [file good.py]
