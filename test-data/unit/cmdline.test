@@ -1321,3 +1321,13 @@ error: Cache must be enabled in parallel mode
 from foo.api import bar as bar
 [file foo-stubs/api/bar.pyi]
 [out]
+
+[case testParallelAutoRunWithSyntaxError]
+# cmd: mypy a.py --num-workers=auto --pretty
+[file a.py]
+1 2
+[out]
+a.py:1: error: Simple statements must be separated by newlines or semicolons
+    1 2
+       ^
+== Return code: 2
