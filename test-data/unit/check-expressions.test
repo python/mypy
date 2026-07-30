@@ -1248,6 +1248,28 @@ class SupportsIndex(Protocol):
     def __index__(self) -> int: ...
 [builtins fixtures/slice.pyi]
 
+[case testSliceWithPerFileStrictOptional]
+# flags: --no-strict-optional
+# mypy: strict-optional
+"x"[1:]
+[file builtins.py]
+from typing import Generic, TypeVar
+
+_StartT = TypeVar("_StartT", covariant=True)
+_StopT = TypeVar("_StopT", covariant=True, default=_StartT)
+_StepT = TypeVar("_StepT", covariant=True, default=_StartT | _StopT)
+
+class object:
+    def __init__(self) -> None: pass
+class type: pass
+class tuple(Generic[_StartT]): pass
+class function: pass
+class int: pass
+class str:
+    def __getitem__(self, index: slice[int | None]) -> str: pass
+class slice(Generic[_StartT, _StopT, _StepT]): pass
+class dict: pass
+
 [case testNoneSliceBounds]
 from typing import Any
 a: Any
