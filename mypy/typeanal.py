@@ -2189,7 +2189,7 @@ def fix_instance(
             else:
                 unpacked = [arg]
             for arg in unpacked:
-                with state.strict_optional_set(options.strict_optional):
+                with state.strict_optional_set(True):
                     # Gradually expand defaults, as they may depend on previous variables.
                     if tv.has_default():
                         arg = expand_type(arg, env)
