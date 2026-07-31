@@ -3595,6 +3595,7 @@ EXCLUDED_PROTOCOL_ATTRIBUTES: Final = frozenset(
     {
         "__abstractmethods__",
         "__annotations__",
+        "__class__",
         "__dict__",
         "__doc__",
         "__init__",

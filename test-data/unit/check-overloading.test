@@ -6856,3 +6856,42 @@ if isinstance(headers, dict):
 
 reveal_type(headers)  # N: Revealed type is "__main__.Headers | typing.Iterable[tuple[builtins.bytes, builtins.bytes]]"
 [builtins fixtures/isinstancelist.pyi]
+
+[case testOverloadProtocolClassPropertyDoesNotEraseListItemType]
+from collections.abc import Iterator, Sequence
+from typing import Any, Protocol, TypeVar, overload
+
+T_co = TypeVar("T_co", covariant=True)
+
+class ReducedCovariantList(Protocol[T_co]):
+    @property
+    def __class__(self) -> type[list[Any]]: ...
+    def __iter__(self) -> Iterator[T_co]: ...
+
+@overload
+def f(x: ReducedCovariantList[str]) -> str: ...
+@overload
+def f(x: Sequence[int]) -> int: ...
+def f(x: object) -> object: ...
+
+reveal_type(f([1]))  # N: Revealed type is "builtins.int"
+[file builtins.py]
+from typing import Generic, Self, TypeVar
+from collections.abc import Iterator, Sequence
+
+class object:
+    @property
+    def __class__(self) -> type[Self]: pass
+class type: pass
+class function: pass
+class property: pass
+class int: pass
+class str: pass
+class bool: pass
+class dict: pass
+class ellipsis: pass
+class tuple: pass
+
+T = TypeVar("T")
+class list(Sequence[T], Generic[T]):
+    def __iter__(self) -> Iterator[T]: pass
