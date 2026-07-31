@@ -8361,6 +8361,9 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                 is_upper_bound = False
             if isinstance(typ.item, Instance) and typ.item.type.is_final:
                 is_upper_bound = False
+            if isinstance(typ.item, TypeVarType) and typ.item.id.is_self():
+                # except for Self types, because isinstance checks for exact type
+                is_upper_bound = False
             return TypeRange(typ.item, is_upper_bound=is_upper_bound)
         if isinstance(typ, AnyType):
             return TypeRange(typ, is_upper_bound=False)

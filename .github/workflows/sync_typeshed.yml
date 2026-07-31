@@ -17,13 +17,13 @@ jobs:
       pull-requests: write
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
           persist-credentials: true  # needed to `git push` the PR branch
         # TODO: use whatever solution ends up working for
         # https://github.com/python/typeshed/issues/8434
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.10"
       - name: git config

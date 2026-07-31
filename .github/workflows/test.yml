@@ -160,7 +160,7 @@ jobs:
       PYTEST_ADDOPTS: --color=yes
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
       with:
         persist-credentials: false
 
@@ -198,7 +198,7 @@ jobs:
           sudo ln -s /opt/pythondev/bin/python3 /opt/pythondev/bin/python
           sudo ln -s /opt/pythondev/bin/pip3 /opt/pythondev/bin/pip
           echo "/opt/pythondev/bin" >> $GITHUB_PATH
-    - uses: actions/setup-python@v5
+    - uses: actions/setup-python@v6
       if: ${{ !(matrix.debug_build || endsWith(matrix.python, '-dev')) }}
       with:
         python-version: ${{ matrix.python }}
@@ -253,7 +253,7 @@ jobs:
       CXX: i686-linux-gnu-g++
       CC: i686-linux-gnu-gcc
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           persist-credentials: false
       - name: Install 32-bit build dependencies
