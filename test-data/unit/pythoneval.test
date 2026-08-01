@@ -2310,3 +2310,12 @@ type Alias[T] = list[T]
 def g[T = int](x: T) -> T: ...
 [out]
 _testNativeParserPEP695InStubNoVersionError.py:3: note: Revealed type is "def [T] (x: T) -> T"
+
+[case testOverloadedGzipOpenAssignableToCallableReturningIO_Issue21784]
+# https://github.com/python/mypy/issues/21784
+from collections.abc import Callable
+from typing import IO
+import gzip
+
+foo: Callable[[str, str], IO] = gzip.open
+[out]

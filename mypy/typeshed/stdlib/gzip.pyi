@@ -2,7 +2,7 @@ import sys
 import zlib
 from _typeshed import ReadableBuffer, SizedBuffer, StrOrBytesPath, WriteableBuffer
 from io import FileIO, TextIOWrapper
-from typing import Final, Literal, Protocol, TypeAlias, overload, type_check_only
+from typing import IO, Final, Literal, Protocol, TypeAlias, overload, type_check_only
 from typing_extensions import deprecated
 
 if sys.version_info >= (3, 14):
@@ -90,9 +90,9 @@ class _PaddedFile:
 
 class BadGzipFile(OSError): ...
 
-class GzipFile(BaseStream):
+class GzipFile(BaseStream, IO[bytes]):
     myfileobj: FileIO | None
-    mode: object
+    mode: object  # type: ignore[assignment]  # value is actually READ/WRITE (int), not str as in IO[bytes]
     name: str
     compress: zlib._Compress
     fileobj: _ReadableFileobj | _WritableFileobj
