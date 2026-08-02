@@ -1542,6 +1542,41 @@ def check(paths: Iterable[str], key: Callable[[str], int]) -> Union[str, None]:
     return mymin(paths, key=key, default=None)
 [builtins fixtures/tuple.pyi]
 
+[case testContextInferenceDoesNotWidenInvariantArgument]
+from typing import Generic, Iterable, Iterator, TypeVar, Union
+
+T = TypeVar("T")
+S = TypeVar("S")
+
+class Vec(Generic[T]):
+    def getitem(self, i: int) -> T: pass
+    def setitem(self, i: int, v: T) -> None: pass
+    def __init__(self, iterable: Iterable[T]) -> None: pass
+    def __iter__(self) -> Iterator[T]: pass
+    def __add__(self, value: "Vec[S]") -> "Vec[Union[S, T]]": pass
+
+def fmt(arg: Iterable[Union[int, str]]) -> None: pass
+
+l1: Vec[int] = Vec([1])
+l2: Vec[int] = Vec([1])
+fmt(l1 + l2)
+
+dummy = l1 + l2
+fmt(dummy)
+
+[case testContextInferenceDoesNotWidenKeyedMinItem]
+from typing import Callable, Iterable, List, Tuple, TypeVar
+
+T = TypeVar("T")
+
+def my_min(values: Iterable[T], *, key: Callable[[T], int]) -> T: pass
+def tuple_len(x: Tuple[str, ...]) -> int: pass
+def dot_join(parts: Iterable[str]) -> str: pass
+
+def smallest_prefix(x: List[Tuple[str, ...]]) -> str:
+    return dot_join(my_min(x, key=tuple_len))
+[builtins fixtures/tuple.pyi]
+
 [case testBinaryOpInferenceContext]
 from typing import Literal, TypeVar
 
@@ -1615,6 +1650,34 @@ async def inner(c: Cls[T]) -> Optional[T]:
 async def outer(c: Cls[T]) -> Optional[T]:
     return await inner(c)
 [builtins fixtures/async_await.pyi]
+[typing fixtures/typing-async.pyi]
+
+[case testContextInferenceDoesNotWidenAwaitedInferredAttribute]
+from typing import Mapping, Optional, TypeVar
+
+K = TypeVar("K")
+
+async def select_one(options: Mapping[K, str]) -> Optional[K]:
+    return None
+
+class ViaInferredAttr:
+    async def m(self) -> None:
+        cases = {"a": "x"}
+        self._done = await select_one(cases)
+
+async def via_local() -> None:
+    cases = {"a": "x"}
+    done = await select_one(cases)
+    done = await select_one(cases)
+    done2: Optional[str] = await select_one(cases)
+
+class ViaAnnotatedAttr:
+    _done: Optional[str]
+
+    async def m(self) -> None:
+        cases = {"a": "x"}
+        self._done = await select_one(cases)
+[builtins fixtures/dict.pyi]
 [typing fixtures/typing-async.pyi]
 
 [case testContextFallbackNarrowingTernaryRValue]
