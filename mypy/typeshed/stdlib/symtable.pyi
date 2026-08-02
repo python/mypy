@@ -56,7 +56,7 @@ class Function(SymbolTable):
     def get_nonlocals(self) -> tuple[str, ...]: ...
 
 class Class(SymbolTable):
-    @deprecated("Deprecated since Python 3.14; will be removed in Python 3.16.")
+    @deprecated("Deprecated; will be removed in Python 3.16.")
     def get_methods(self) -> tuple[str, ...]: ...
 
 class Symbol:

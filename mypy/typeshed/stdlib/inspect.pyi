@@ -195,8 +195,8 @@ if sys.version_info >= (3, 14):
 
 modulesbyfile: dict[str, Any]
 
-_GetMembersPredicateTypeGuard = Callable[[Any], TypeGuard[_T]]
-_GetMembersPredicateTypeIs = Callable[[Any], TypeIs[_T]]
+_GetMembersPredicateTypeGuard: TypeAlias = Callable[[Any], TypeGuard[_T]]
+_GetMembersPredicateTypeIs: TypeAlias = Callable[[Any], TypeIs[_T]]
 _GetMembersPredicate: TypeAlias = Callable[[Any], bool]
 _GetMembersReturn: TypeAlias = list[tuple[str, _T]]
 
