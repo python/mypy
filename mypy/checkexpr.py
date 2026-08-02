@@ -4850,10 +4850,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
     def visit_cast_expr(self, expr: CastExpr) -> Type:
         """Type check a cast expression."""
         source_type = self.accept(
-            expr.expr,
-            type_context=AnyType(TypeOfAny.special_form),
-            allow_none_return=True,
-            always_allow_any=True,
+            expr.expr, type_context=None, allow_none_return=True, always_allow_any=True
         )
         target_type = expr.type
         options = self.chk.options
