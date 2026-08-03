@@ -4288,6 +4288,119 @@ def check_or_nested(maybe: bool) -> None:
         reveal_type(bar)  # N: Revealed type is "builtins.list[builtins.int]"
         reveal_type(baz)  # N: Revealed type is "builtins.list[builtins.int]"
 
+[case testInferWalrusAssignmentNestedInCondition]
+class Foo:
+    def __init__(self, value: bool) -> None:
+        self.value = value
+
+def truthy(x: object) -> bool: ...
+
+def check_binary_op(maybe: bool, n: int) -> None:
+    woo = None
+    if maybe and (woo := 5) + n:
+        reveal_type(woo)  # N: Revealed type is "builtins.int"
+    else:
+        reveal_type(woo)  # N: Revealed type is "builtins.int | None"
+
+def check_call(maybe: bool) -> None:
+    woo = None
+    if maybe and truthy(woo := Foo(True)):
+        reveal_type(woo)  # N: Revealed type is "__main__.Foo"
+    else:
+        reveal_type(woo)  # N: Revealed type is "__main__.Foo | None"
+
+def check_isinstance(maybe: bool) -> None:
+    woo = None
+    if maybe and isinstance(woo := Foo(True), Foo):
+        reveal_type(woo)  # N: Revealed type is "__main__.Foo"
+    else:
+        reveal_type(woo)  # N: Revealed type is "__main__.Foo | None"
+
+def check_comparison(maybe: bool, n: int) -> None:
+    woo = None
+    if maybe and (woo := 5) > n:
+        reveal_type(woo)  # N: Revealed type is "builtins.int"
+    else:
+        reveal_type(woo)  # N: Revealed type is "builtins.int | None"
+
+def check_unary_op(maybe: bool) -> None:
+    woo = None
+    if maybe and -(woo := 5):
+        reveal_type(woo)  # N: Revealed type is "builtins.int"
+    else:
+        reveal_type(woo)  # N: Revealed type is "builtins.int | None"
+
+def check_or(maybe: bool, n: int) -> None:
+    woo = None
+    if maybe or (woo := 5) + n:
+        reveal_type(woo)  # N: Revealed type is "builtins.int | None"
+    else:
+        reveal_type(woo)  # N: Revealed type is "builtins.int"
+
+def check_nested_walrus(maybe: bool, n: int) -> None:
+    foo = None
+    bar = None
+    if maybe and (foo := (bar := 5)) + n:
+        reveal_type(foo)  # N: Revealed type is "builtins.int"
+        reveal_type(bar)  # N: Revealed type is "builtins.int"
+    else:
+        reveal_type(foo)  # N: Revealed type is "builtins.int | None"
+        reveal_type(bar)  # N: Revealed type is "builtins.int | None"
+
+def check_nested_and(maybe: bool) -> None:
+    # Nested short-circuiting operators are not walked into, but they are still
+    # handled, because find_isinstance_check recurses into them itself.
+    woo = None
+    if maybe and (1 and (woo := 5)):
+        reveal_type(woo)  # N: Revealed type is "builtins.int"
+[builtins fixtures/len.pyi]
+
+[case testInferWalrusAssignmentNestedInConditionNotAlwaysEvaluated]
+from typing import List
+
+def check_ternary_branch(maybe: bool) -> None:
+    woo = None
+    if 1 if maybe else (woo := 5):
+        reveal_type(woo)  # N: Revealed type is "builtins.int | None"
+    else:
+        reveal_type(woo)  # N: Revealed type is "builtins.int | None"
+
+def check_ternary_condition(maybe: bool) -> None:
+    woo = None
+    if 1 if (woo := 5) else 0:
+        reveal_type(woo)  # N: Revealed type is "builtins.int"
+
+def check_comprehension(xs: List[int]) -> None:
+    woo = None
+    if [y for y in xs if (woo := y)]:
+        reveal_type(woo)  # N: Revealed type is "builtins.int | None"
+
+def check_chained_comparison(a: int, b: int) -> None:
+    # The else branch should stay optional, and does not. Pre-existing: the
+    # operand is narrowed through collapse_walrus in comparison_type_narrowing_helper.
+    woo = None
+    if a < b < (woo := 5):
+        reveal_type(woo)  # N: Revealed type is "builtins.int"
+    else:
+        reveal_type(woo)  # N: Revealed type is "builtins.int"
+[builtins fixtures/len.pyi]
+
+[case testInferWalrusAssignmentDoesNotWeakenNarrowing]
+from typing import Optional, Union
+
+def check_truthiness(val: Optional[int]) -> None:
+    if x := val:
+        reveal_type(x)  # N: Revealed type is "builtins.int"
+
+def check_isinstance(val: Union[int, str]) -> None:
+    if isinstance(x := val, int):
+        reveal_type(x)  # N: Revealed type is "builtins.int"
+
+def check_is_not_none(val: Optional[int]) -> None:
+    if (x := val) is not None:
+        reveal_type(x)  # N: Revealed type is "builtins.int"
+[builtins fixtures/isinstancelist.pyi]
+
 [case testInferOptionalAgainstAny]
 from typing import Any, Optional, TypeVar
 
