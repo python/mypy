@@ -6592,7 +6592,6 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
         if_map, else_map = self.find_isinstance_check_helper(
             node, in_boolean_context=in_boolean_context
         )
-        self.propagate_walrus_assignments(node, if_map, else_map)
         new_if_map = self.propagate_up_typemap_info(if_map)
         new_else_map = self.propagate_up_typemap_info(else_map)
         return new_if_map, new_else_map
@@ -6600,19 +6599,20 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
     def propagate_walrus_assignments(
         self, node: Expression, if_map: TypeMap, else_map: TypeMap
     ) -> None:
-        """Narrow the targets of walrus assignments nested within a condition.
+        """Narrow the targets of walrus assignments nested within `node`.
 
-        Such an assignment has already happened by the time the condition has
-        been evaluated, so the assigned type applies to both branches, and both
-        maps are updated in place. Which branches are actually reached is decided
-        by the callers combining these maps: `and` carries the right operand's if
-        map into the if branch, and `or` carries its else map into the else
-        branch.
+        Only used for the right operand of `and` and `or`. Elsewhere the operand
+        is always evaluated, so the binder already carries the assignment and
+        adding it here would only widen the result: an entry makes the branches
+        join through the target's declaration, which may be wider than the type
+        assigned.
+
+        The assignment has happened once `node` has been evaluated, whatever
+        value it produced, so both maps are updated in place. Which branch that
+        reaches is decided by the caller combining them: `and` carries the right
+        operand's if map into the if branch, and `or` carries its else map into
+        the else branch.
         """
-        if isinstance(node, NameExpr):
-            # The most common condition, and it has no subexpressions.
-            return
-
         collector = WalrusAssignmentCollector()
         node.accept(collector)
         if not collector.assignments:
@@ -6744,6 +6744,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
         elif isinstance(node, OpExpr) and node.op == "and":
             left_if_vars, left_else_vars = self.find_isinstance_check(node.left)
             right_if_vars, right_else_vars = self.find_isinstance_check(node.right)
+            self.propagate_walrus_assignments(node.right, right_if_vars, right_else_vars)
 
             # (e1 and e2) is true if both e1 and e2 are true,
             # and false if at least one of e1 and e2 is false.
@@ -6757,6 +6758,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
         elif isinstance(node, OpExpr) and node.op == "or":
             left_if_vars, left_else_vars = self.find_isinstance_check(node.left)
             right_if_vars, right_else_vars = self.find_isinstance_check(node.right)
+            self.propagate_walrus_assignments(node.right, right_if_vars, right_else_vars)
 
             # (e1 or e2) is true if at least one of e1 or e2 is true,
             # and false if both e1 and e2 are false.
