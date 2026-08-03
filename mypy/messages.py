@@ -1580,6 +1580,15 @@ class MessageBuilder:
             self.note("Redefinition:", defn)
             self.pretty_callable_or_overload(new_type, defn, offset=4, parent_error=error)
 
+    def cannot_access_abstract_class_attribute(
+        self, class_name: str, attr_name: str, kind: str, context: Context
+    ) -> None:
+        self.fail(
+            f'Cannot access abstract {kind} "{attr_name}" of abstract class "{class_name}"',
+            context,
+            code=codes.ABSTRACT,
+        )
+
     def cannot_instantiate_abstract_class(
         self, class_name: str, abstract_attributes: dict[str, bool], context: Context
     ) -> None:
