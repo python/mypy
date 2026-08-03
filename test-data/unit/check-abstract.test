@@ -1688,3 +1688,63 @@ from typing import TYPE_CHECKING
 class C:
     if TYPE_CHECKING:
         def dynamic(self) -> int: ...  # OK
+
+[case testAccessAbstractStaticAndClassMethodOnClass]
+from abc import abstractmethod, ABCMeta
+from typing import Type
+
+class A(metaclass=ABCMeta):
+    @staticmethod
+    @abstractmethod
+    def s() -> int: pass
+    @classmethod
+    @abstractmethod
+    def c(cls) -> int: pass
+    @abstractmethod
+    def m(self) -> int: pass
+
+A.s()  # E: Cannot access abstract static method "s" of abstract class "A"
+A.c()  # E: Cannot access abstract class method "c" of abstract class "A"
+f = A.s  # E: Cannot access abstract static method "s" of abstract class "A"
+
+# Unbound: whatever is passed as self may implement the method.
+g = A.m
+
+# An instance may be of a subclass which implements the method.
+def via_instance(a: A) -> None:
+    a.m()
+    a.s()
+    a.c()
+
+# So may the class object behind type[A].
+def via_type(t: Type[A]) -> None:
+    t.s()
+    t.c()
+[builtins fixtures/classmethod.pyi]
+
+[case testAccessAbstractStaticAndClassMethodOnSubclass]
+from abc import abstractmethod, ABCMeta
+
+class A(metaclass=ABCMeta):
+    @staticmethod
+    @abstractmethod
+    def s() -> int: pass
+    @classmethod
+    @abstractmethod
+    def c(cls) -> int: pass
+
+class Implemented(A):
+    @staticmethod
+    def s() -> int: return 0
+    @classmethod
+    def c(cls) -> int: return 0
+
+class StillAbstract(A):
+    @staticmethod
+    def s() -> int: return 0
+
+Implemented.s()
+Implemented.c()
+StillAbstract.s()
+StillAbstract.c()  # E: Cannot access abstract class method "c" of abstract class "StillAbstract"
+[builtins fixtures/classmethod.pyi]
