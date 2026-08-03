@@ -64,7 +64,7 @@ if sys.platform == "win32":
 
 if sys.platform == "darwin":
     if sys.version_info < (3, 13):
-        @deprecated("Deprecated since Python 3.11; removed in Python 3.13.")
+        @deprecated("Deprecated; removed in Python 3.13.")
         class MacOSX(BaseBrowser):
             def __init__(self, name: str) -> None: ...
             def open(self, url: str, new: int = 0, autoraise: bool = True) -> bool: ...

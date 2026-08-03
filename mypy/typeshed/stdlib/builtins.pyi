@@ -30,7 +30,7 @@ from _typeshed import (
     SupportsRichComparisonT,
     SupportsWrite,
 )
-from collections.abc import Awaitable, Callable, Iterable, Iterator, MutableSet, Reversible, Set as AbstractSet, Sized
+from collections.abc import Awaitable, Callable, Iterable, Iterator, MutableSet, Set as AbstractSet, Sized
 from io import BufferedRandom, BufferedReader, BufferedWriter, FileIO, TextIOWrapper
 from os import PathLike
 from types import CellType, CodeType, EllipsisType, GenericAlias, NotImplementedType, TracebackType, UnionType
@@ -281,6 +281,7 @@ class int:
             *,
             signed: bool = False,
         ) -> Self: ...
+
     else:
         def to_bytes(self, length: SupportsIndex, byteorder: Literal["little", "big"], *, signed: bool = False) -> bytes: ...
         @classmethod
@@ -344,6 +345,7 @@ class int:
     def __floor__(self) -> int: ...
     if sys.version_info >= (3, 14):
         def __round__(self, ndigits: SupportsIndex | None = None, /) -> int: ...
+
     else:
         def __round__(self, ndigits: SupportsIndex = ..., /) -> int: ...
 
@@ -645,6 +647,7 @@ class bytes(Sequence[int]):
     def partition(self, sep: ReadableBuffer, /) -> tuple[bytes, bytes, bytes]: ...
     if sys.version_info >= (3, 15):
         def replace(self, old: ReadableBuffer, new: ReadableBuffer, /, count: SupportsIndex = -1) -> bytes: ...
+
     else:
         def replace(self, old: ReadableBuffer, new: ReadableBuffer, count: SupportsIndex = -1, /) -> bytes: ...
 
@@ -765,6 +768,7 @@ class bytearray(MutableSequence[int]):
     def removesuffix(self, suffix: ReadableBuffer, /) -> bytearray: ...
     if sys.version_info >= (3, 15):
         def replace(self, old: ReadableBuffer, new: ReadableBuffer, /, count: SupportsIndex = -1) -> bytearray: ...
+
     else:
         def replace(self, old: ReadableBuffer, new: ReadableBuffer, count: SupportsIndex = -1, /) -> bytearray: ...
 
@@ -917,6 +921,7 @@ class memoryview(Sequence[_I]):
     if sys.version_info >= (3, 14):
         def index(self, value: object, start: SupportsIndex = 0, stop: SupportsIndex = sys.maxsize, /) -> int: ...
         def count(self, value: object, /) -> int: ...
+
     else:
         # These are inherited from the Sequence ABC, but don't actually exist on memoryview.
         # See https://github.com/python/cpython/issues/125420
@@ -1003,6 +1008,7 @@ class slice(Generic[_StartT_co, _StopT_co, _StepT_co]):
     def __eq__(self, value: object, /) -> bool: ...
     if sys.version_info >= (3, 12):
         def __hash__(self) -> int: ...
+
     else:
         __hash__: ClassVar[None]  # type: ignore[assignment]
 
@@ -1077,6 +1083,7 @@ class function:
             closure: tuple[CellType, ...] | None = None,
             kwdefaults: dict[str, object] | None = None,
         ) -> Self: ...
+
     else:
         def __new__(
             cls,
@@ -1241,6 +1248,7 @@ class dict(MutableMapping[_KT, _VT]):
         def __ror__(self, value: frozendict[_KT, _VT], /) -> frozendict[_KT, _VT]: ...
         @overload
         def __ror__(self, value: frozendict[_T1, _T2], /) -> frozendict[_KT | _T1, _VT | _T2]: ...
+
     else:
         @overload
         def __or__(self, value: dict[_KT, _VT], /) -> dict[_KT, _VT]: ...
@@ -1999,7 +2007,7 @@ _SupportsSomeKindOfPow = (  # noqa: Y026  # TODO: Use TypeAlias once mypy bugs a
 )
 
 # TODO: `pow(int, int, Literal[0])` fails at runtime,
-# but adding a `NoReturn` overload isn't a good solution for expressing that (see #8566).
+# but adding a `Never` overload isn't a good solution for expressing that (see #8566).
 @overload
 def pow(base: int, exp: int, mod: int) -> int: ...
 @overload
@@ -2040,15 +2048,19 @@ def pow(base: _SupportsSomeKindOfPow, exp: complex, mod: None = None) -> complex
 
 quit: _sitebuiltins.Quitter
 
+@type_check_only
+class _SupportsReversed(Protocol[_T_co]):
+    def __reversed__(self) -> _T_co: ...
+
 @disjoint_base
-class reversed(Iterator[_T]):
+class reversed(Iterator[_T_co]):
     @overload
-    def __new__(cls, sequence: Reversible[_T], /) -> Iterator[_T]: ...  # type: ignore[misc]
+    def __new__(cls, sequence: _SupportsReversed[_T], /) -> _T: ...  # type: ignore[misc]
     @overload
-    def __new__(cls, sequence: SupportsLenAndGetItem[_T], /) -> Iterator[_T]: ...  # type: ignore[misc]
+    def __new__(cls, sequence: SupportsLenAndGetItem[_T_co], /) -> Self: ...
 
     def __iter__(self) -> Self: ...
-    def __next__(self) -> _T: ...
+    def __next__(self) -> _T_co: ...
     def __length_hint__(self) -> int: ...
 
 def repr(obj: object, /) -> str: ...
@@ -2201,7 +2213,7 @@ class BaseException:
     __suppress_context__: bool
     __traceback__: TracebackType | None
     def __init__(self, *args: object) -> None: ...
-    def __new__(cls, *args: Any, **kwds: Any) -> Self: ...
+    def __new__(cls, /, *args: Any, **kwds: Any) -> Self: ...
     def __setstate__(self, state: dict[str, Any] | None, /) -> None: ...
     def with_traceback(self, tb: TracebackType | None, /) -> Self: ...
     # Necessary for security-focused static analyzers (e.g, pysa)

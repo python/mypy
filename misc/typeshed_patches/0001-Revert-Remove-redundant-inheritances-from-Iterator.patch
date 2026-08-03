@@ -1,4 +1,4 @@
-From b5d1e4c76d8139e1a20f9178e8123f3ee39084d2 Mon Sep 17 00:00:00 2001
+From aedaebba6e477469af6bc21ffb60ff6fc5def01e Mon Sep 17 00:00:00 2001
 From: Marc Mueller <30130371+cdce8p@users.noreply.github.com>
 Date: Sat, 21 Dec 2024 22:36:38 +0100
 Subject: [PATCH] Revert Remove redundant inheritances from Iterator in
@@ -36,10 +36,10 @@ index 242093e1e..92bb4e5f4 100644
      @property
      def _exception(self) -> BaseException | None: ...
 diff --git a/mypy/typeshed/stdlib/builtins.pyi b/mypy/typeshed/stdlib/builtins.pyi
-index e63b74214..9ea382dd6 100644
+index ec72c308e..d0963d5b7 100644
 --- a/mypy/typeshed/stdlib/builtins.pyi
 +++ b/mypy/typeshed/stdlib/builtins.pyi
-@@ -1368,7 +1368,7 @@ class frozenset(AbstractSet[_T_co]):
+@@ -1376,7 +1376,7 @@ class frozenset(AbstractSet[_T_co]):
      def __class_getitem__(cls, item: Any, /) -> GenericAlias: ...
  
  @disjoint_base
@@ -48,7 +48,7 @@ index e63b74214..9ea382dd6 100644
      def __new__(cls, iterable: Iterable[_T], start: int = 0) -> Self: ...
      def __iter__(self) -> Self: ...
      def __next__(self) -> tuple[int, _T]: ...
-@@ -1634,7 +1634,7 @@ else:
+@@ -1642,7 +1642,7 @@ else:
  exit: _sitebuiltins.Quitter
  
  @disjoint_base
@@ -57,7 +57,7 @@ index e63b74214..9ea382dd6 100644
      @overload
      def __new__(cls, function: None, iterable: Iterable[_T | None], /) -> Self: ...
      @overload
-@@ -1705,7 +1705,7 @@ license: _sitebuiltins._Printer
+@@ -1713,7 +1713,7 @@ license: _sitebuiltins._Printer
  def locals() -> dict[str, Any]: ...
  
  @disjoint_base
@@ -66,16 +66,16 @@ index e63b74214..9ea382dd6 100644
      # 3.14 adds `strict` argument.
      if sys.version_info >= (3, 14):
          @overload
-@@ -2021,7 +2021,7 @@ def pow(base: _SupportsSomeKindOfPow, exp: complex, mod: None = None) -> complex
- quit: _sitebuiltins.Quitter
+@@ -2033,7 +2033,7 @@ class _SupportsReversed(Protocol[_T_co]):
+     def __reversed__(self) -> _T_co: ...
  
  @disjoint_base
--class reversed(Generic[_T]):
-+class reversed(Iterator[_T]):
+-class reversed(Generic[_T_co]):
++class reversed(Iterator[_T_co]):
      @overload
-     def __new__(cls, sequence: Reversible[_T], /) -> Iterator[_T]: ...  # type: ignore[misc]
+     def __new__(cls, sequence: _SupportsReversed[_T], /) -> _T: ...  # type: ignore[misc]
      @overload
-@@ -2101,7 +2101,7 @@ def vars(object: type, /) -> types.MappingProxyType[str, Any]: ...
+@@ -2113,7 +2113,7 @@ def vars(object: type, /) -> types.MappingProxyType[str, Any]: ...
  def vars(object: Any = ..., /) -> dict[str, Any]: ...
  
  @disjoint_base
