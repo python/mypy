@@ -4376,8 +4376,9 @@ def check_comprehension(xs: List[int]) -> None:
         reveal_type(woo)  # N: Revealed type is "builtins.int | None"
 
 def check_chained_comparison(a: int, b: int) -> None:
-    # The else branch should stay optional, and does not. Pre-existing: the
-    # operand is narrowed through collapse_walrus in comparison_type_narrowing_helper.
+    # The else branch should stay optional, and does not. Pre-existing: chain
+    # operands are checked in one binder frame, so the assignment is recorded
+    # even when short-circuiting means it never ran.
     woo = None
     if a < b < (woo := 5):
         reveal_type(woo)  # N: Revealed type is "builtins.int"
