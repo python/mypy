@@ -21,8 +21,8 @@ T = TypeVar("T")
 def identity(xs: list[T]) -> list[T]:
     return xs
 
-xs: list[int] = []
-cast(list[int], identity(xs))
+def f(xs: list[int]) -> list[int]:
+    return cast(list[int], identity(xs))
 [out]
 main:10: error: Redundant cast to "list[int]"
 

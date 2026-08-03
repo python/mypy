@@ -4861,13 +4861,18 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         redundant_source_type = source_type
 
         if options.warn_redundant_casts:
+            cast_context = self.type_context[-1]
+
             with self.msg.filter_errors() as local_errors:
                 with (
                     self.chk.local_type_map,
                     self.chk.binder.frame_context(can_skip=False, discard=True),
                 ):
                     inferred_source_type = self.accept(
-                        expr.expr, type_context=None, allow_none_return=True, always_allow_any=True
+                        expr.expr,
+                        type_context=cast_context,
+                        allow_none_return=True,
+                        always_allow_any=True,
                     )
 
             if not local_errors.has_new_errors():
