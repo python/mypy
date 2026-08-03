@@ -4358,48 +4358,62 @@ def check_nested_and(maybe: bool) -> None:
 [case testInferWalrusAssignmentNestedInConditionNotAlwaysEvaluated]
 from typing import List
 
+# Each condition puts the walrus on the right of an `and`, which is where the
+# assignment is not carried by the binder and this narrowing applies.
+
 def check_ternary_branch(maybe: bool) -> None:
     woo = None
-    if 1 if maybe else (woo := 5):
+    if maybe and (1 if maybe else (woo := 5)):
         reveal_type(woo)  # N: Revealed type is "builtins.int | None"
     else:
         reveal_type(woo)  # N: Revealed type is "builtins.int | None"
 
 def check_ternary_condition(maybe: bool) -> None:
     woo = None
-    if 1 if (woo := 5) else 0:
+    if maybe and (1 if (woo := 5) else 0):
         reveal_type(woo)  # N: Revealed type is "builtins.int"
 
-def check_comprehension(xs: List[int]) -> None:
+def check_comprehension(maybe: bool, xs: List[int]) -> None:
     woo = None
-    if [y for y in xs if (woo := y)]:
+    if maybe and [y for y in xs if (woo := y)]:
         reveal_type(woo)  # N: Revealed type is "builtins.int | None"
 
-def check_chained_comparison(a: int, b: int) -> None:
-    # The else branch should stay optional, and does not. Pre-existing: chain
-    # operands are checked in one binder frame, so the assignment is recorded
-    # even when short-circuiting means it never ran.
+def check_chained_comparison(maybe: bool, a: int, b: int) -> None:
+    # Conservative: entering the branch does imply a < b was true and so the
+    # walrus ran, but operands after the second are not walked into.
     woo = None
-    if a < b < (woo := 5):
-        reveal_type(woo)  # N: Revealed type is "builtins.int"
-    else:
-        reveal_type(woo)  # N: Revealed type is "builtins.int"
+    if maybe and a < b < (woo := 5):
+        reveal_type(woo)  # N: Revealed type is "builtins.int | None"
 [builtins fixtures/len.pyi]
 
 [case testInferWalrusAssignmentDoesNotWeakenNarrowing]
 from typing import Optional, Union
 
-def check_truthiness(val: Optional[int]) -> None:
-    if x := val:
+# The walrus goes on the right of an `and` so that the narrowing added for the
+# assignment has to give way to the more precise narrowing from the condition.
+
+def check_truthiness(maybe: bool, val: Optional[int]) -> None:
+    if maybe and (x := val):
         reveal_type(x)  # N: Revealed type is "builtins.int"
 
-def check_isinstance(val: Union[int, str]) -> None:
-    if isinstance(x := val, int):
+def check_isinstance(maybe: bool, val: Union[int, str]) -> None:
+    if maybe and isinstance(x := val, int):
         reveal_type(x)  # N: Revealed type is "builtins.int"
 
-def check_is_not_none(val: Optional[int]) -> None:
-    if (x := val) is not None:
+def check_is_not_none(maybe: bool, val: Optional[int]) -> None:
+    if maybe and (x := val) is not None:
         reveal_type(x)  # N: Revealed type is "builtins.int"
+
+def truthy(x: object) -> bool: ...
+
+def check_declaration_wider_than_assignment(val: Optional[int], n: int) -> None:
+    # An operand that is always evaluated must not be given a map entry: the
+    # branches would then join through the declaration of x, which is wider than
+    # what the walrus assigned. Reported by mypy_primer against rotki.
+    x = val
+    if truthy(x := n):
+        pass
+    reveal_type(x)  # N: Revealed type is "builtins.int"
 [builtins fixtures/isinstancelist.pyi]
 
 [case testInferOptionalAgainstAny]
