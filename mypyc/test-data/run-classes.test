@@ -6280,3 +6280,35 @@ def comp(ns: list[int]) -> list[int]:
 def test_borrowed_final_attribute_in_comprehension() -> None:
     for _ in range(1000):
         assert comp([1, 2, 3, 4, 5]) == [112, 113, 114, 115, 116]
+
+[case testPropertySetterException]
+from testutil import assertRaises
+
+class T:
+    def __init__(self, val: int) -> None:
+        self._val = val
+
+    @property
+    def val(self) -> int:
+        return self._val
+
+    @val.setter
+    def val(self, x: int) -> None:
+        if x < 0:
+            raise ValueError("No")
+        self._val = x
+
+def test_property_setter_exception() -> None:
+    t = T(1)
+    assert t.val == 1
+
+    t.val = 2
+    assert t.val == 2
+
+    with assertRaises(ValueError):
+        t.val = -1
+
+    # Generic setattr goes through the Python descriptor setter instead of
+    # calling the native property setter directly through the vtable.
+    with assertRaises(ValueError):
+        setattr(t, "val", -1)
