@@ -1809,7 +1809,11 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             #
             # TODO: Once we start adding support for enums, make sure we report a custom
             # error for case 2 as well.
-            if arg.type_of_any not in (TypeOfAny.from_error, TypeOfAny.special_form):
+            if arg.type_of_any not in (
+                TypeOfAny.from_error,
+                TypeOfAny.special_form,
+                TypeOfAny.from_alias_target,
+            ):
                 self.fail(
                     f'Parameter {idx} of Literal[...] cannot be of type "Any"',
                     ctx,
