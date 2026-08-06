@@ -6290,6 +6290,7 @@ class T:
     def __init__(self, val: int) -> None:
         self._val = val
         self._val_overlaps: i16 = -1
+        self._tuple_val = (0, 0)
         self._locked = 0
 
     @property
@@ -6314,6 +6315,17 @@ class T:
         return self._val_overlaps
 
     @property
+    def tuple_val(self) -> tuple[int, int]:
+        return self._tuple_val
+
+    @tuple_val.setter
+    def tuple_val(self, x: tuple[int, int]) -> tuple[int, int]:
+        if x[0] < 0:
+            raise ValueError("Invalid tuple")
+        self._tuple_val = x
+        return self._tuple_val
+
+    @property
     def locked(self) -> int:
         raise ValueError("Locked")
 
@@ -6328,11 +6340,26 @@ def test_property_setter_exception() -> None:
     t.val_overlaps = -113
     assert t.val_overlaps == -113
 
+    t.val_overlaps = -1
+    assert t.val_overlaps == -1
+
+    t.tuple_val = (1, 2)
+    assert t.tuple_val == (1, 2)
+
+    setattr(t, "val_overlaps", -113)
+    assert t.val_overlaps == -113
+
+    setattr(t, "tuple_val", (3, 4))
+    assert t.tuple_val == (3, 4)
+
     with assertRaises(ValueError):
         t.val = -1
 
     with assertRaises(ValueError):
         t.val_overlaps = 1
+
+    with assertRaises(ValueError):
+        t.tuple_val = (-1, 0)
 
     # Generic setattr goes through the Python descriptor setter instead of
     # calling the native property setter directly through the vtable.
@@ -6341,6 +6368,9 @@ def test_property_setter_exception() -> None:
 
     with assertRaises(ValueError):
         setattr(t, "val_overlaps", 1)
+
+    with assertRaises(ValueError):
+        setattr(t, "tuple_val", (-1, 0))
 
 def test_property_getter_exception() -> None:
     t = T(1)

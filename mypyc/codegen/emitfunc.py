@@ -576,10 +576,8 @@ class FunctionEmitterVisitor(OpVisitor[None]):
                     op.attr,
                 )
             )
-            error_cond = f"{tmp} == {self.emitter.c_error_value(ret_type)}"
-            if ret_type.error_overlap:
-                error_cond += " && PyErr_Occurred()"
-            self.emit_line(f"{dest} = !({error_cond});")
+            self.emit_line(f"{dest} = 1;")
+            self.emitter.emit_error_check(tmp, ret_type, f"{dest} = 0;")
         elif IS_FREE_THREADED and is_simple_refcounted_pointer(attr_rtype):
             # In free-threaded builds, publishing a single reference-counted
             # 'PyObject *' field must be atomic so a concurrent reader (see

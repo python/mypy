@@ -1369,7 +1369,7 @@ def generate_property_setter(
         emitter.emit_line(
             f"retval = {NATIVE_PREFIX}{func_ir.cname(emitter.names)}((PyObject *) self, value);"
         )
-    emitter.emit_line(f"if (retval == {emitter.c_error_value(ret_type)}) return -1;")
+    emitter.emit_error_check("retval", ret_type, "return -1;")
     emitter.emit_line("return 0;")
     emitter.emit_line("}")
 
