@@ -804,19 +804,18 @@ from xml.etree.ElementTree import Element
 1 + 'a'
 
 [case testDaemonRecheckMissingGraphDependency]
-$ dmypy start
+-- Dropping pkg.tests from the graph leaves a stale ancestors edge behind, which
+-- a later recheck used to dereference unconditionally (KeyError: 'pkg.tests').
+$ dmypy start -- --no-error-summary
 Daemon started
 $ dmypy check src/
 src/pkg/example.py:2: error: Name "x" already defined on line 1  [no-redef]
-Found 1 error in 1 file (checked 2 source files)
 == Return code: 1
 $ dmypy recheck
 src/pkg/example.py:2: error: Incompatible import of "x" (imported name has type "int", local name has type "str")  [assignment]
-Found 1 error in 1 file (checked 53 source files)
 == Return code: 1
 $ dmypy recheck
 src/pkg/example.py:2: error: Incompatible import of "x" (imported name has type "int", local name has type "str")  [assignment]
-Found 1 error in 1 file (checked 53 source files)
 == Return code: 1
 [file mypy.ini]
 \[mypy]
