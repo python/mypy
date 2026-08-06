@@ -382,12 +382,13 @@ the library, you will get a message like this:
     main.py:1: note: (or run "mypy --install-types" to install all missing stub packages)
 
 You can resolve the issue by running the suggested pip commands.
+
 If you're running mypy in CI, you can ensure the presence of any stub packages
 you need the same as you would any other test dependency, e.g. by adding them to
-the appropriate ``requirements.txt`` file.
+the appropriate ``requirements.txt`` file or dependency section of ``pyproject.toml``.
 
-Alternatively, add the :option:`--install-types <mypy --install-types>`
-to your mypy command to install all known missing stubs:
+The :option:`--install-types <mypy --install-types>` flag
+makes mypy list and (after a prompt) install all known missing stubs:
 
 .. code-block:: text
 
@@ -397,11 +398,13 @@ This is slower than explicitly installing stubs, since it effectively
 runs mypy twice -- the first time to find the missing stubs, and
 the second time to type check your code properly after mypy has
 installed the stubs. It also can make controlling stub versions harder,
-resulting in less reproducible type checking.
+resulting in less reproducible type checking -- it might even install
+incompatible versions of your project's non-type dependencies, if the
+type stubs require them!
 
 By default, :option:`--install-types <mypy --install-types>` shows a confirmation prompt.
 Use :option:`--non-interactive <mypy --non-interactive>` to install all suggested
-stub packages without asking for confirmation *and* type check your code:
+stub packages without asking for confirmation *and* then type check your code.
 
 If you've already installed the relevant third-party libraries in an environment
 other than the one mypy is running in, you can use :option:`--python-executable
