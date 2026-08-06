@@ -802,3 +802,37 @@ Found 1 error in 1 file (checked 1 source file)
 [file test.py]
 from xml.etree.ElementTree import Element
 1 + 'a'
+
+[case testDaemonRecheckMissingGraphDependency]
+$ dmypy start
+Daemon started
+$ dmypy check src/
+src/pkg/example.py:2: error: Name "x" already defined on line 1  [no-redef]
+Found 1 error in 1 file (checked 2 source files)
+== Return code: 1
+$ dmypy recheck
+src/pkg/example.py:2: error: Incompatible import of "x" (imported name has type "int", local name has type "str")  [assignment]
+Found 1 error in 1 file (checked 53 source files)
+== Return code: 1
+$ dmypy recheck
+src/pkg/example.py:2: error: Incompatible import of "x" (imported name has type "int", local name has type "str")  [assignment]
+Found 1 error in 1 file (checked 53 source files)
+== Return code: 1
+[file mypy.ini]
+\[mypy]
+follow_imports = normal
+mypy_path = src
+files = src/pkg/
+exclude = (?x)(
+    \./.*
+    | tests
+  )
+\[mypy-pkg.tests.*]
+follow_imports = skip
+[file src/pkg/__init__.py]
+[file src/pkg/example.py]
+x = "1"
+from pkg.tests.test_something import x
+[file src/pkg/tests/__init__.py]
+[file src/pkg/tests/test_something.py]
+x = 1
