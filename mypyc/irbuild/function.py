@@ -506,6 +506,8 @@ def handle_ext_method(builder: IRBuilder, cdef: ClassDef, fdef: FuncDef) -> None
         # @classmethod and @staticmethod aren't included in fdefs_to_decorators, since
         # mypy represents them using the function kind. Reapply the outer descriptor
         # after the other decorators, matching Python's decorator evaluation order.
+        # TODO: Handle cases where @classmethod/@staticmethod are the inner decorator.
+        # See mypyc#1208 for reference.
         if func_ir.decl.kind == FUNC_CLASSMETHOD:
             cls_meth = builder.load_module_attr_by_fullname("builtins.classmethod", fdef.line)
             decorated_func = builder.py_call(cls_meth, [decorated_func], fdef.line)
