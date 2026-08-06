@@ -1358,7 +1358,8 @@ def generate_property_setter(
         )
     )
     emitter.emit_line("{")
-    emitter.emit_line("char retval = 0;")
+    ret_type = func_ir.ret_type
+    emitter.emit_line(f"{emitter.ctype(ret_type)} retval = {emitter.c_undefined_value(ret_type)};")
     if arg_type.is_unboxed:
         emitter.emit_unbox("value", "tmp", arg_type, error=ReturnHandler("-1"), declare_dest=True)
         emitter.emit_line(
@@ -1368,7 +1369,7 @@ def generate_property_setter(
         emitter.emit_line(
             f"retval = {NATIVE_PREFIX}{func_ir.cname(emitter.names)}((PyObject *) self, value);"
         )
-    emitter.emit_line("if (retval != 1) return -1;")
+    emitter.emit_line(f"if (retval == {emitter.c_error_value(ret_type)}) return -1;")
     emitter.emit_line("return 0;")
     emitter.emit_line("}")
 
