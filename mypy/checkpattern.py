@@ -671,6 +671,13 @@ class PatternChecker(PatternVisitor[PatternType]):
         #
         # Check keyword patterns
         #
+        narrowed_type_for_members = narrowed_type
+        proper_narrowed_type_for_members = get_proper_type(narrowed_type_for_members)
+        if isinstance(proper_narrowed_type_for_members, TupleType) and (
+            proper_narrowed_type_for_members.partial_fallback.type.is_named_tuple
+        ):
+            narrowed_type_for_members = proper_narrowed_type_for_members.partial_fallback
+
         can_match = True
         for keyword, pattern in keyword_pairs:
             key_type: Type | None = None
@@ -678,7 +685,7 @@ class PatternChecker(PatternVisitor[PatternType]):
                 if keyword is not None:
                     key_type = analyze_member_access(
                         keyword,
-                        narrowed_type,
+                        narrowed_type_for_members,
                         pattern,
                         is_lvalue=False,
                         is_super=False,
