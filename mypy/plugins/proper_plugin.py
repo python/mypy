@@ -58,8 +58,9 @@ def isinstance_proper_hook(ctx: FunctionContext) -> Type:
 
     right = get_proper_type(ctx.arg_types[1][0])
     for arg in ctx.arg_types[0]:
+        p_arg = get_proper_type(arg)
         if (
-            is_improper_type(arg) or isinstance(get_proper_type(arg), AnyType)
+            is_improper_type(arg) or isinstance(p_arg, AnyType) and not p_arg.is_special_form
         ) and is_dangerous_target(right):
             if is_special_target(right):
                 return ctx.default_return_type
