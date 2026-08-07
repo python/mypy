@@ -707,6 +707,7 @@ class SuggestionEngine:
         """Recheck the module given by state."""
         assert state.path is not None
         self.fgmanager.flush_cache()
+        self.manager.errors.reset()
         return self.fgmanager.update([(state.id, state.path)], [])
 
     def ensure_loaded(self, state: State, force: bool = False) -> MypyFile:
