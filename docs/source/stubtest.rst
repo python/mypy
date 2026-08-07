@@ -45,6 +45,29 @@ test Python's official collection of library stubs,
 
     stubtest will import and execute Python code from the packages it checks.
 
+Private stub names
+******************
+
+Stubtest treats names in stubs that begin with a leading underscore (e.g.,
+``_T``) as private to the stub. If such a name does not exist at runtime,
+stubtest will not report an error. This is commonly used for :py:class:`TypeVar
+<typing.TypeVar>` definitions and other type-checking-only helpers that do not
+need to be present at runtime.
+
+For example, the following stub will not produce a "not present at runtime"
+error, even though ``_T`` is missing from the implementation:
+
+.. code-block:: python
+
+    from typing import Generic, TypeVar
+
+    _T = TypeVar("_T")
+
+    class SomeClass(Generic[_T]): ...
+
+Note that dunder names (such as ``__init__``) are not treated as private by
+this rule.
+
 Example
 *******
 
