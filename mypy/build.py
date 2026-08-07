@@ -1904,14 +1904,21 @@ def exclude_from_backups(target_dir: str) -> None:
 
 def create_metastore(options: Options, parallel_worker: bool) -> MetadataStore:
     """Create the appropriate metadata store."""
+    cache_dir_prefix = _cache_dir_prefix(options)
     if options.sqlite_cache:
-        mds: MetadataStore = SqliteMetadataStore(
-            _cache_dir_prefix(options),
-            set_journal_mode=not parallel_worker,
-            num_shards=options.sqlite_num_shards,
-        )
+        try:
+            mds: MetadataStore = SqliteMetadataStore(
+                cache_dir_prefix,
+                set_journal_mode=not parallel_worker,
+                num_shards=options.sqlite_num_shards,
+            )
+        except ImportError:
+            # The sqlite3 Python module can be present even when the _sqlite3
+            # extension module is not available. Fall back to the filesystem
+            # cache instead of crashing when initializing the default cache.
+            mds = FilesystemMetadataStore(cache_dir_prefix)
     else:
-        mds = FilesystemMetadataStore(_cache_dir_prefix(options))
+        mds = FilesystemMetadataStore(cache_dir_prefix)
     return mds
 
 
