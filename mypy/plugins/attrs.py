@@ -57,6 +57,7 @@ from mypy.plugins.common import (
 from mypy.server.trigger import make_wildcard_trigger
 from mypy.state import state
 from mypy.typeops import (
+    bind_self,
     get_type_vars,
     make_simplified_union,
     map_type_from_supertype,
@@ -751,6 +752,27 @@ def _parse_converter(
             )
         else:
             converter_type = None
+    elif (
+        isinstance(converter_expr, MemberExpr)
+        and isinstance(converter_expr.expr, RefExpr)
+        and isinstance(converter_expr.expr.node, TypeInfo)
+    ):
+        # The converter is a member accessed through a type node.
+        sym = converter_expr.expr.node.get(converter_expr.name)
+        if sym is not None and isinstance(sym.node, Decorator) and not sym.node.decorators:
+            func = sym.node.func
+            if func.is_class:
+                if func.type is None:
+                    converter_info.init_type = AnyType(TypeOfAny.unannotated)
+                    return converter_info
+                if isinstance(func.type, FunctionLike):
+                    converter_type = bind_self(func.type, is_classmethod=True)
+            elif func.is_static:
+                if func.type is None:
+                    converter_info.init_type = AnyType(TypeOfAny.unannotated)
+                    return converter_info
+                if isinstance(func.type, FunctionLike):
+                    converter_type = func.type
 
     if isinstance(converter_expr, LambdaExpr):
         # TODO: should we send a fail if converter_expr.min_args > 1?
