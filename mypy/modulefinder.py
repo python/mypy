@@ -196,6 +196,9 @@ class FindModuleCache:
         self.initial_components: dict[tuple[str, ...], dict[str, list[str]]] = {}
         # Cache find_module: id -> result
         self.results: dict[str, ModuleSearchResult] = {}
+        # Ancestor packages reached only because a descendant ships py.typed.
+        # Maps id -> directory; consulted as a fallback in `_find_module` so
+        # those parents are findable too.
         self.ns_ancestors: dict[str, str] = {}
         self.options = options
         custom_typeshed_dir = None
