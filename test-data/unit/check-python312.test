@@ -248,6 +248,42 @@ inv2: Invariant[int] = Invariant[float]([1])  # E: Incompatible types in assignm
 [builtins fixtures/tuple.pyi]
 [typing fixtures/typing-full.pyi]
 
+[case testPEP695InferVarianceWithAttrsFrozen]
+import attrs
+
+# attrs synthesizes ordering dunders (__lt__/__le__/__gt__/__ge__) whose
+# ``other`` parameter is typed as the class's own ``Self[T]``. Those methods
+# are plugin-generated and must not drag T into a contravariant position
+# during PEP 695 variance inference. A frozen class using T only covariantly
+# should be inferred covariant.
+@attrs.frozen
+class Covariant[T]:
+    x: T
+    def get(self) -> T:
+        return self.x
+
+cov1: Covariant[object] = Covariant[int](1)
+cov2: Covariant[int] = Covariant[object](1)  # E: Incompatible types in assignment (expression has type "Covariant[object]", variable has type "Covariant[int]")
+
+# A mutable attribute still makes the class invariant.
+@attrs.define
+class Invariant[T]:
+    x: T
+
+inv1: Invariant[object] = Invariant[int](1)  # E: Incompatible types in assignment (expression has type "Invariant[int]", variable has type "Invariant[object]")
+inv2: Invariant[int] = Invariant[object](1)  # E: Incompatible types in assignment (expression has type "Invariant[object]", variable has type "Invariant[int]")
+
+# A user-written method with T in a parameter must still be honored: only
+# plugin-generated methods are skipped, so this class stays contravariant.
+@attrs.frozen
+class Contravariant[T]:
+    def feed(self, x: T) -> None: ...
+
+con1: Contravariant[int] = Contravariant[object]()
+con2: Contravariant[object] = Contravariant[int]()  # E: Incompatible types in assignment (expression has type "Contravariant[int]", variable has type "Contravariant[object]")
+[builtins fixtures/plugin_attrs.pyi]
+[typing fixtures/typing-full.pyi]
+
 [case testPEP695InferVarianceCalculateOnDemand]
 class Covariant[T]:
     def __init__(self) -> None:
