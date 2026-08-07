@@ -148,11 +148,13 @@ from mypy.nodes import (
     CallExpr,
     ClassDef,
     ComparisonExpr,
+    ConditionalExpr,
     Context,
     ContinueStmt,
     Decorator,
     DelStmt,
     DictExpr,
+    DictionaryComprehension,
     EllipsisExpr,
     Expression,
     ExpressionStmt,
@@ -161,6 +163,7 @@ from mypy.nodes import (
     FuncBase,
     FuncDef,
     FuncItem,
+    GeneratorExpr,
     GlobalDecl,
     IfStmt,
     Import,
@@ -6593,6 +6596,38 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
         new_else_map = self.propagate_up_typemap_info(else_map)
         return new_if_map, new_else_map
 
+    def propagate_walrus_assignments(
+        self, node: Expression, if_map: TypeMap, else_map: TypeMap
+    ) -> None:
+        """Narrow the targets of walrus assignments nested within `node`.
+
+        Only used for the right operand of `and` and `or`. Elsewhere the operand
+        is always evaluated, so the binder already carries the assignment and
+        adding it here would only widen the result: an entry makes the branches
+        join through the target's declaration, which may be wider than the type
+        assigned.
+
+        The assignment has happened once `node` has been evaluated, whatever
+        value it produced, so both maps are updated in place. Which branch that
+        reaches is decided by the caller combining them: `and` carries the right
+        operand's if map into the if branch, and `or` carries its else map into
+        the else branch.
+        """
+        collector = WalrusAssignmentCollector()
+        node.accept(collector)
+        if not collector.assignments:
+            return
+
+        for type_map in (if_map, else_map):
+            narrowed = {literal_hash(expr) for expr in type_map}
+            for assignment in collector.assignments:
+                if literal_hash(assignment.target) in narrowed:
+                    # The condition narrows this target more precisely.
+                    continue
+                assigned_type = self.lookup_type_or_none(assignment.value)
+                if assigned_type is not None:
+                    type_map[assignment.target] = assigned_type
+
     def find_isinstance_check_helper(
         self, node: Expression, *, in_boolean_context: bool = True
     ) -> tuple[TypeMap, TypeMap]:
@@ -6709,6 +6744,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
         elif isinstance(node, OpExpr) and node.op == "and":
             left_if_vars, left_else_vars = self.find_isinstance_check(node.left)
             right_if_vars, right_else_vars = self.find_isinstance_check(node.right)
+            self.propagate_walrus_assignments(node.right, right_if_vars, right_else_vars)
 
             # (e1 and e2) is true if both e1 and e2 are true,
             # and false if at least one of e1 and e2 is false.
@@ -6722,6 +6758,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
         elif isinstance(node, OpExpr) and node.op == "or":
             left_if_vars, left_else_vars = self.find_isinstance_check(node.left)
             right_if_vars, right_else_vars = self.find_isinstance_check(node.right)
+            self.propagate_walrus_assignments(node.right, right_if_vars, right_else_vars)
 
             # (e1 or e2) is true if at least one of e1 or e2 is true,
             # and false if both e1 and e2 are false.
@@ -9779,6 +9816,46 @@ def collapse_walrus(e: Expression) -> Expression:
     if isinstance(e, AssignmentExpr):
         return e.target
     return e
+
+
+class WalrusAssignmentCollector(TraverserVisitor):
+    """Collect the walrus assignments which an expression always performs.
+
+    Traversal stops at any expression which may leave its operands unevaluated,
+    or which evaluates them in a separate scope. Every collected assignment has
+    therefore taken place once the visited expression has been evaluated,
+    whatever value it produced.
+    """
+
+    def __init__(self) -> None:
+        self.assignments: list[AssignmentExpr] = []
+
+    def visit_assignment_expr(self, o: AssignmentExpr, /) -> None:
+        self.assignments.append(o)
+        o.value.accept(self)
+
+    def visit_op_expr(self, o: OpExpr, /) -> None:
+        if o.op in ("and", "or"):
+            # Short-circuiting; find_isinstance_check recurses into these itself.
+            return
+        super().visit_op_expr(o)
+
+    def visit_comparison_expr(self, o: ComparisonExpr, /) -> None:
+        # `a < b < c` stops at the first false comparison.
+        for operand in o.operands[:2]:
+            operand.accept(self)
+
+    def visit_conditional_expr(self, o: ConditionalExpr, /) -> None:
+        o.cond.accept(self)
+
+    def visit_generator_expr(self, o: GeneratorExpr, /) -> None:
+        """Skip generator expressions, and the comprehensions built on them."""
+
+    def visit_dictionary_comprehension(self, o: DictionaryComprehension, /) -> None:
+        """Skip dictionary comprehensions."""
+
+    def visit_lambda_expr(self, o: LambdaExpr, /) -> None:
+        """Skip lambdas, whose body is not evaluated here."""
 
 
 def find_last_var_assignment_line(n: Node, v: Var) -> int:
