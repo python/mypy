@@ -1554,6 +1554,18 @@ def wrap(fn: F) -> F:
 
     return cast(F, wrapper)
 
+C = Callable[..., Any]
+
+def get_decorator() -> C:
+    def decorator(endpoint: C) -> C:
+        @wraps(endpoint)
+        async def inner(self: Any, val: int, *args: Any) -> Any:
+            return await endpoint(self, val, *args)
+
+        return cast(C, inner)
+
+    return cast(C, decorator)
+
 @wrap
 def wrapped(val: int) -> int:
     return val
@@ -1571,34 +1583,57 @@ async def wrapped2_async(val: int) -> int:
     return val * 2
 
 class T:
-    def returns_one(self) -> int:
+    def returns_one(self, val: int) -> int:
         return 1
 
-    async def returns_one_async(self) -> int:
-        return 1
-
-    @wrap
-    def returns_two(self) -> int:
+    async def returns_one_async(self, val: int) -> int:
         return 1
 
     @wrap
-    async def returns_two_async(self) -> int:
+    def returns_two(self, val: int) -> int:
+        return 1
+
+    @wrap
+    async def returns_two_async(self, val: int) -> int:
         return 1
 
     @staticmethod
-    def static() -> int:
+    def static(val: int) -> int:
         return 2
 
     @staticmethod
-    async def static_async() -> int:
+    async def static_async(val: int) -> int:
+        return 2
+
+    @staticmethod
+    @wrap
+    def wrapped_static(val: int) -> int:
+        return 2
+
+    @staticmethod
+    @wrap
+    async def wrapped_static_async(val: int) -> int:
         return 2
 
     @classmethod
-    def class_method(cls) -> int:
+    def class_method(cls, val: int) -> int:
         return 3
 
     @classmethod
-    async def class_method_async(cls) -> int:
+    async def class_method_async(cls, val: int) -> int:
+        assert cls is T
+        return 3
+
+    @classmethod
+    @wrap
+    def wrapped_class_method(cls, val: int) -> int:
+        assert cls is T
+        return 3
+
+    @classmethod
+    @get_decorator()
+    async def wrapped_class_method_async(cls, val: int) -> int:
+        assert cls is T
         return 3
 
 def is_coroutine(fn):
@@ -1653,38 +1688,50 @@ def test_method() -> None:
     t = T()
     # Call through variable to make sure the call is through vectorcall and not optimized to a native call.
     f: Any = t.returns_one_async
-    assert asyncio.run(f()) == 1
+    assert asyncio.run(f(1)) == 1
 
     assert not is_coroutine(T.returns_two)
     assert is_coroutine(T.returns_two_async)
-    assert asyncio.run(t.returns_two_async()) == 2
+    assert asyncio.run(t.returns_two_async(2)) == 2
 
     assert not is_coroutine(T.static)
     assert is_coroutine(T.static_async)
-    assert asyncio.run(T.static_async()) == 2
+    assert asyncio.run(T.static_async(3)) == 2
+    assert not is_coroutine(T.wrapped_static)
+    assert is_coroutine(T.wrapped_static_async)
+    assert T.wrapped_static(3) == 4
+    assert t.wrapped_static(3) == 4
+    assert asyncio.run(T.wrapped_static_async(3)) == 4
+    assert asyncio.run(t.wrapped_static_async(3)) == 4
 
     assert not is_coroutine(T.class_method)
     assert is_coroutine(T.class_method_async)
-    assert asyncio.run(T.class_method_async()) == 3
+    assert asyncio.run(T.class_method_async(4)) == 3
+    assert not is_coroutine(T.wrapped_class_method)
+    assert is_coroutine(T.wrapped_class_method_async)
+    assert T.wrapped_class_method(4) == 6
+    assert t.wrapped_class_method(4) == 6
+    assert asyncio.run(T.wrapped_class_method_async(4)) == 3
+    assert asyncio.run(t.wrapped_class_method_async(4)) == 3
 
 def test_nested() -> None:
-    def nested() -> int:
+    def nested(val: int) -> int:
         return 1
 
-    async def nested_async() -> int:
+    async def nested_async(val: int) -> int:
         return 1
 
     @wrap
-    def nested_wrapped() -> int:
+    def nested_wrapped(val: int) -> int:
         return 2
 
     @wrap
-    async def nested_wrapped_async() -> int:
+    async def nested_wrapped_async(val: int) -> int:
         return 2
 
     assert not is_coroutine(nested)
     assert is_coroutine(nested_async)
-    assert asyncio.run(nested_async()) == 1
+    assert asyncio.run(nested_async(1)) == 1
 
     assert getattr(nested_async, "__name__") == "nested_async", getattr(nested_async, "__name__")
     setattr(nested_async, "__name__", "some custom name")
@@ -1696,7 +1743,7 @@ def test_nested() -> None:
 
     assert not is_coroutine(nested_wrapped)
     assert is_coroutine(nested_wrapped_async)
-    assert asyncio.run(nested_wrapped_async()) == 4
+    assert asyncio.run(nested_wrapped_async(2)) == 4
 
 def test_async_function_wrapper_code_refcount() -> None:
     if is_gil_disabled():
@@ -1728,6 +1775,102 @@ def test_nested_async_function_wrapper_code_refcount() -> None:
     after = getrefcount(code)
     assert before == after + 1, (before, after)
     assert after == 1, after
+
+[file driver.py]
+import asyncio
+import sys
+import weakref
+
+import native
+
+def test_function() -> None:
+    native.identity_async.__name__ = "identity_async"
+    native.wrapped_async.__name__ = "wrapped_async"
+
+    assert not native.is_coroutine(native.identity)
+    assert native.is_coroutine(native.identity_async)
+    assert str(native.identity_async).startswith("<function identity_async"), str(native.identity_async)
+    assert asyncio.run(native.identity_async(42)) == 42
+
+    wr = weakref.ref(native.identity_async)
+    f = wr()
+    assert f
+    assert asyncio.run(f(43)) == 43
+
+    assert getattr(native.identity_async, "__name__") == "identity_async"
+    assert getattr(native.identity_async, "__code__") is not None
+    assert getattr(native.identity_async, "__defaults__") is None
+    assert getattr(native.identity_async, "__kwdefaults__") is None
+    assert getattr(native.identity_async, "__annotations__") is None
+
+    assert not native.is_coroutine(native.wrapped)
+    assert native.is_coroutine(native.wrapped_async)
+    assert asyncio.run(native.wrapped_async(22)) == 44
+
+    assert getattr(native.wrapped, "__name__") == "wrapped"
+    assert getattr(native.wrapped2, "__name__") == "wrapped2"
+    assert getattr(native.wrapped_async, "__name__") == "wrapped_async"
+    assert getattr(native.wrapped2_async, "__name__") == "wrapped2_async"
+
+def test_method() -> None:
+    assert not native.is_coroutine(native.T.returns_one)
+    assert native.is_coroutine(native.T.returns_one_async)
+    assert str(native.T.returns_one_async).startswith("<function T.returns_one_async")
+
+    t = native.T()
+    f = t.returns_one_async
+    assert asyncio.run(f(1)) == 1
+
+    assert not native.is_coroutine(native.T.returns_two)
+    assert native.is_coroutine(native.T.returns_two_async)
+    assert asyncio.run(t.returns_two_async(2)) == 2
+
+    assert not native.is_coroutine(native.T.static)
+    assert native.is_coroutine(native.T.static_async)
+    assert asyncio.run(native.T.static_async(3)) == 2
+    assert asyncio.run(t.static_async(3)) == 2
+    assert not native.is_coroutine(native.T.wrapped_static)
+    assert native.is_coroutine(native.T.wrapped_static_async)
+    assert native.T.wrapped_static(3) == 4
+    assert t.wrapped_static(3) == 4
+    assert asyncio.run(native.T.wrapped_static_async(3)) == 4
+    assert asyncio.run(t.wrapped_static_async(3)) == 4
+
+    assert not native.is_coroutine(native.T.class_method)
+    assert native.is_coroutine(native.T.class_method_async)
+    assert asyncio.run(native.T.class_method_async(4)) == 3
+    assert asyncio.run(t.class_method_async(4)) == 3
+    assert not native.is_coroutine(native.T.wrapped_class_method)
+    assert native.is_coroutine(native.T.wrapped_class_method_async)
+    assert native.T.wrapped_class_method(4) == 6
+    assert t.wrapped_class_method(4) == 6
+    assert asyncio.run(native.T.wrapped_class_method_async(4)) == 3
+    assert asyncio.run(t.wrapped_class_method_async(4)) == 3
+
+def test_nested() -> None:
+    def nested(val: int) -> int:
+        return 1
+
+    async def nested_async(val: int) -> int:
+        return 1
+
+    nested_wrapped = native.wrap(nested)
+    nested_wrapped_async = native.wrap(nested_async)
+
+    assert not native.is_coroutine(nested_wrapped)
+    assert native.is_coroutine(nested_wrapped_async)
+    assert nested_wrapped(1) == 2
+    assert asyncio.run(nested_wrapped_async(2)) == 2
+
+native.test_function()
+native.test_method()
+native.test_nested()
+native.test_async_function_wrapper_code_refcount()
+native.test_nested_async_function_wrapper_code_refcount()
+
+test_function()
+test_nested()
+test_method()
 
 [file asyncio/__init__.pyi]
 def run(x: object) -> object: ...

@@ -867,6 +867,35 @@ def f(c: C) -> None:
 [builtins fixtures/async_await.pyi]
 [typing fixtures/typing-async.pyi]
 
+[case testOkUnusedAwaitable]
+# flags: --python-version 3.11 --show-error-codes --enable-error-code unused-awaitable
+import asyncio
+
+async def main() -> None:
+    async with asyncio.TaskGroup() as tg:
+        # this is ok:
+        tg.create_task(asyncio.sleep(1))
+
+        # but from something else (e.g. passed through a reveal_type) it's not ok
+        reveal_type(tg.create_task(asyncio.sleep(1)))  # E: Value of type "Awaitable[object]" must be used  [unused-awaitable] \
+                                                       # N: Are you missing an await? \
+                                                       # N: Revealed type is "typing.Awaitable[builtins.object]"
+
+
+[file asyncio/__init__.pyi]
+from .taskgroups import TaskGroup as TaskGroup
+
+async def sleep(time: int) -> None: pass
+
+[file asyncio/taskgroups.pyi]
+from typing import Awaitable
+
+class TaskGroup:
+    def create_task(self, coro: object) -> Awaitable[object]: pass
+
+    async def __aenter__(self) -> "TaskGroup": pass
+    async def __aexit__(self, x, y, z) -> None: pass
+
 [case testAsyncForOutsideCoroutine]
 async def g():
     yield 0

@@ -608,9 +608,7 @@ def generate_vtable(
         method = entry.shadow_method if shadow and entry.shadow_method else entry.method
         emitter.emit_line(
             "(CPyVTableItem){}{}{},".format(
-                emitter.get_group_prefix(entry.method.decl),
-                NATIVE_PREFIX,
-                method.cname(emitter.names),
+                emitter.get_group_prefix(method.decl), NATIVE_PREFIX, method.cname(emitter.names)
             )
         )
 

@@ -109,51 +109,23 @@ package directory. For example, here is a typical directory structure:
 
 .. code-block:: text
 
-    setup.py
+    pyproject.toml
     package_a/
         __init__.py
         lib.py
         py.typed
-
-The ``setup.py`` file could look like this:
-
-.. code-block:: python
-
-    from setuptools import setup
-
-    setup(
-        name="SuperPackageA",
-        author="Me",
-        version="0.1",
-        package_data={"package_a": ["py.typed"]},
-        packages=["package_a"]
-    )
 
 Some packages have a mix of stub files and runtime files. These packages also
 require a ``py.typed`` file. An example can be seen below:
 
 .. code-block:: text
 
-    setup.py
+    pyproject.toml
     package_b/
         __init__.py
         lib.py
         lib.pyi
         py.typed
-
-The ``setup.py`` file might look like this:
-
-.. code-block:: python
-
-    from setuptools import setup
-
-    setup(
-        name="SuperPackageB",
-        author="Me",
-        version="0.1",
-        package_data={"package_b": ["py.typed", "lib.pyi"]},
-        packages=["package_b"]
-    )
 
 In this example, both ``lib.py`` and the ``lib.pyi`` stub file exist. At
 runtime, the Python interpreter will use ``lib.py``, but mypy will use
@@ -166,27 +138,14 @@ had stubs for ``package_c``, we might do the following:
 
 .. code-block:: text
 
-    setup.py
+    pyproject.toml
     package_c-stubs/
         __init__.pyi
         lib.pyi
 
-The ``setup.py`` might look like this:
-
-.. code-block:: python
-
-    from setuptools import setup
-
-    setup(
-        name="SuperPackageC",
-        author="Me",
-        version="0.1",
-        package_data={"package_c-stubs": ["__init__.pyi", "lib.pyi"]},
-        packages=["package_c-stubs"]
-    )
-
 The instructions above are enough to ensure that the built wheels
-contain the appropriate files. However, to ensure inclusion inside the
+contain the appropriate files, assuming sufficiently modern packaging
+(e.g. ``setuptools>=69``). However, to ensure inclusion inside the
 ``sdist`` (``.tar.gz`` archive), you may also need to modify the
 inclusion rules in your ``MANIFEST.in``:
 
