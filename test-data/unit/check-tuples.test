@@ -1447,6 +1447,15 @@ reveal_type(t[x:])  # N: Revealed type is "builtins.tuple[builtins.int | builtin
 t[y:]  # E: Invalid index type "slice[str, None, None]" for "tuple[int, str]"; expected type "slice[int | None]"
 [builtins fixtures/tuple.pyi]
 
+[case testTupleIndexBySliceVariable]
+# https://github.com/python/mypy/issues/21708
+s: slice
+t = (0, "")
+reveal_type(t[s])  # N: Revealed type is "builtins.tuple[builtins.int | builtins.str, ...]"
+u = (0, 0)
+reveal_type(u[s])  # N: Revealed type is "builtins.tuple[builtins.int, ...]"
+[builtins fixtures/tuple.pyi]
+
 [case testTupleSliceStepZeroNoCrash]
 # This was crashing: https://github.com/python/mypy/issues/18062
 # TODO: emit better error when 0 is used for step
