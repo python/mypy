@@ -448,6 +448,66 @@ Application('name', rating=123)  # E: Too many positional arguments for "Applica
 
 [builtins fixtures/dataclasses.pyi]
 
+[case testDataclassesOrderingKwOnlyWithPEP661Sentinel]
+-- Regression test for KW_ONLY implemented as a PEP 661 sentinel, as in
+-- https://github.com/python/cpython/commit/16952218d0535904236e8a39851133688c9ce1f0
+-- `_is_kw_only_type` must recognize this shape too, or `_` stops being excluded
+-- from `__init__` and kw-only ordering enforcement silently stops firing.
+from dataclasses import dataclass, KW_ONLY
+
+@dataclass
+class Application:
+    _: KW_ONLY
+    name: str = 'Unnamed'
+    rating: int
+
+Application(rating=5)
+Application('name', 123)  # E: Too many positional arguments for "Application"
+
+[file dataclasses.pyi]
+from typing import Any, Callable, TypeVar, overload
+from typing_extensions import sentinel
+
+_T = TypeVar("_T")
+
+KW_ONLY = sentinel("KW_ONLY")
+MISSING = sentinel("MISSING")
+
+class Field:
+    default: Any
+    default_factory: Any
+
+def field(
+    *,
+    default: Any = ...,
+    default_factory: Any = ...,
+    init: bool = ...,
+    repr: bool = ...,
+    hash: Any = ...,
+    compare: bool = ...,
+    metadata: Any = ...,
+    kw_only: Any = ...,
+) -> Any: ...
+@overload
+def dataclass(cls: type[_T]) -> type[_T]: ...
+@overload
+def dataclass(
+    cls: None = ...,
+    *,
+    init: bool = ...,
+    repr: bool = ...,
+    eq: bool = ...,
+    order: bool = ...,
+    unsafe_hash: bool = ...,
+    frozen: bool = ...,
+    match_args: bool = ...,
+    kw_only: bool = ...,
+    slots: bool = ...,
+    weakref_slot: bool = ...,
+) -> Callable[[type[_T]], type[_T]]: ...
+
+[builtins fixtures/dataclasses.pyi]
+
 [case testDataclassesOrderingKwOnlyWithSentinelAndFieldOverride]
 from dataclasses import dataclass, field, KW_ONLY
 
