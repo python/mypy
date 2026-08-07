@@ -6792,7 +6792,23 @@ class SemanticAnalyzer(
                     # See https://github.com/python/mypy/pull/13468
                     if isinstance(node, ParamSpecExpr) and part in ("args", "kwargs"):
                         return None
-                    # Lookup through invalid node, such as variable or function
+                    if not suppress_errors and isinstance(node, (Var, FuncDef, Decorator)):
+                        # Attribute access through a variable or function cannot be
+                        # resolved by mypy. Give a more specific error than "Name ... is
+                        # not defined" so the user understands *why*.
+                        prefix = ".".join(parts[:i])
+                        if isinstance(node, (FuncDef, Decorator)):
+                            kind = "a function"
+                        else:
+                            kind = "a variable"
+                        self.fail(
+                            f'Name "{name}" is not defined'
+                            f' ("{prefix}" is {kind}, not a module or class)',
+                            ctx,
+                            code=codes.NAME_DEFINED,
+                        )
+                        return None
+                    # Lookup through invalid node
                     nextsym = None
                 if not nextsym or nextsym.module_hidden:
                     if not suppress_errors:
