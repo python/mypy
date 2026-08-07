@@ -548,7 +548,7 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         rtype = op.class_type
         cl = rtype.class_ir
         attr_rtype, decl_cl = cl.attr_details(op.attr)
-        if op.is_propset:
+        if op.propset is not None:
             # Again, use vtable access for properties...
             assert not op.is_init and op.error_kind == ERR_FALSE, "%s %d %d %s" % (
                 op.attr,
@@ -557,10 +557,14 @@ class FunctionEmitterVisitor(OpVisitor[None]):
                 rtype,
             )
             version = "_TRAIT" if cl.is_trait else ""
+            ret_type = op.propset.sig.ret_type
+            c_ret_type = self.emitter.ctype(ret_type)
+            tmp = self.temp_name()
             self.emit_line(
-                "%s = CPY_SET_ATTR%s(%s, %s, %d, %s, %s, %s); /* %s */"
+                "%s %s = CPY_SET_ATTR%s(%s, %s, %d, %s, %s, %s, %s); /* %s */"
                 % (
-                    dest,
+                    c_ret_type,
+                    tmp,
                     version,
                     obj,
                     self.emitter.type_struct_name(rtype.class_ir),
@@ -568,9 +572,12 @@ class FunctionEmitterVisitor(OpVisitor[None]):
                     src,
                     rtype.struct_name(self.names),
                     self.ctype(rtype.attr_type(op.attr)),
+                    c_ret_type,
                     op.attr,
                 )
             )
+            self.emit_line(f"{dest} = 1;")
+            self.emitter.emit_error_check(tmp, ret_type, f"{dest} = 0;")
         elif IS_FREE_THREADED and is_simple_refcounted_pointer(attr_rtype):
             # In free-threaded builds, publishing a single reference-counted
             # 'PyObject *' field must be atomic so a concurrent reader (see

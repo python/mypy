@@ -107,13 +107,13 @@ static inline size_t CPy_FindAttrOffset(PyTypeObject *trait, CPyVTableItem *vtab
 #define CPY_GET_ATTR_TRAIT(obj, trait, vtable_index, object_type, attr_type)   \
     ((attr_type (*)(object_type *))(CPy_FindTraitVtable(trait, ((object_type *)obj)->vtable))[vtable_index])((object_type *)obj)
 
-// Set attribute value using vtable
-#define CPY_SET_ATTR(obj, type, vtable_index, value, object_type, attr_type) \
-    ((bool (*)(object_type *, attr_type))((object_type *)obj)->vtable[vtable_index])( \
+// Set attribute value using vtable.
+#define CPY_SET_ATTR(obj, type, vtable_index, value, object_type, attr_type, ret_type) \
+    ((ret_type (*)(object_type *, attr_type))((object_type *)obj)->vtable[vtable_index])( \
         (object_type *)obj, value)
 
-#define CPY_SET_ATTR_TRAIT(obj, trait, vtable_index, value, object_type, attr_type) \
-    ((bool (*)(object_type *, attr_type))(CPy_FindTraitVtable(trait, ((object_type *)obj)->vtable))[vtable_index])( \
+#define CPY_SET_ATTR_TRAIT(obj, trait, vtable_index, value, object_type, attr_type, ret_type) \
+    ((ret_type (*)(object_type *, attr_type))(CPy_FindTraitVtable(trait, ((object_type *)obj)->vtable))[vtable_index])( \
         (object_type *)obj, value)
 
 #define CPY_GET_METHOD(obj, type, vtable_index, object_type, method_type) \
