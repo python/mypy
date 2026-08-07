@@ -3402,7 +3402,7 @@ class SemanticAnalyzer(
 
     def is_sentinel_declaration(self, s: AssignmentStmt) -> bool:
         """Does this assignment define a PEP 661 sentinel singleton?"""
-        if self.is_func_scope() or s.unanalyzed_type is not None:
+        if self.is_nested_within_func_scope() or s.unanalyzed_type is not None:
             return False
         if len(s.lvalues) != 1 or not isinstance(s.lvalues[0], NameExpr):
             return False
