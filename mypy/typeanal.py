@@ -1984,14 +1984,15 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             self.allow_unpack = old_allow_unpack
         if (
             not allow_param_spec
-            and isinstance(analyzed, ParamSpecType)
-            and analyzed.flavor == ParamSpecFlavor.BARE
+            and isinstance(analyzed, (ParamSpecType, Parameters))
+            and (isinstance(analyzed, Parameters) or analyzed.flavor == ParamSpecFlavor.BARE)
         ):
-            if analyzed.prefix.arg_types:
+            is_concatenate = isinstance(analyzed, Parameters) or analyzed.prefix.arg_types
+            if is_concatenate:
                 self.fail("Invalid location for Concatenate", t, code=codes.VALID_TYPE)
                 self.note("You can use Concatenate as the first argument to Callable", t)
-                analyzed = AnyType(TypeOfAny.from_error)
             else:
+                assert isinstance(analyzed, ParamSpecType)
                 self.fail(
                     INVALID_PARAM_SPEC_LOCATION.format(format_type(analyzed, self.options)),
                     t,
@@ -2002,7 +2003,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                     t,
                     code=codes.VALID_TYPE,
                 )
-                analyzed = AnyType(TypeOfAny.from_error)
+            analyzed = AnyType(TypeOfAny.from_error)
         return analyzed
 
     def anal_var_def(self, var_def: TypeVarLikeType) -> TypeVarLikeType:
