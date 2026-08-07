@@ -1202,6 +1202,15 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                             "Arguments not allowed after ParamSpec.args", t, code=codes.VALID_TYPE
                         )
                     at = self.anal_type(ut, nested=nested, allow_unpack=False)
+                    if isinstance(at, Parameters):
+                        # A Parameters here comes from a misplaced Concatenate ending in
+                        # an explicit ellipsis, e.g. Callable[[Concatenate[int, ...]], None].
+                        self.fail(
+                            "Concatenate is only valid as the first argument to Callable",
+                            ut,
+                            code=codes.VALID_TYPE,
+                        )
+                        at = AnyType(TypeOfAny.from_error)
                 arg_types.append(at)
 
             if nested and arg_types:
