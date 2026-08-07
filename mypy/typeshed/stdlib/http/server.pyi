@@ -128,7 +128,7 @@ class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
 def executable(path: StrPath) -> bool: ...  # undocumented
 
 if sys.version_info < (3, 15):
-    @deprecated("Deprecated since Python 3.13; will be removed in Python 3.15.")
+    @deprecated("Deprecated and unsafe; will be removed in Python 3.15.")
     class CGIHTTPRequestHandler(SimpleHTTPRequestHandler):
         cgi_directories: list[str]
         have_fork: bool  # undocumented

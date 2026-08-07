@@ -11,7 +11,7 @@ def mac_ver(
 ) -> tuple[str, tuple[str, str, str], str]: ...
 
 if sys.version_info < (3, 15):
-    @deprecated("Deprecated since Python 3.13; will be removed in Python 3.15.")
+    @deprecated("Deprecated; will be removed in Python 3.15.")
     def java_ver(
         release: str = "",
         vendor: str = "",

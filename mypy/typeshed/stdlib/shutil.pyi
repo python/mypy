@@ -3,8 +3,8 @@ import sys
 from _typeshed import BytesPath, ExcInfo, FileDescriptorOrPath, MaybeNone, StrOrBytesPath, StrPath, SupportsRead, SupportsWrite
 from collections.abc import Callable, Iterable, Sequence
 from tarfile import _TarfileFilter
-from typing import Any, AnyStr, NamedTuple, NoReturn, Protocol, TypeAlias, TypeVar, overload, type_check_only
-from typing_extensions import deprecated
+from typing import Any, AnyStr, NamedTuple, Protocol, TypeAlias, TypeVar, overload, type_check_only
+from typing_extensions import Never, deprecated
 
 __all__ = [
     "copyfileobj",
@@ -191,7 +191,7 @@ else:
 if sys.platform == "win32" and sys.version_info < (3, 12):
     @overload
     @deprecated("On Windows before Python 3.12, using a PathLike as `cmd` would always fail or return `None`.")
-    def which(cmd: os.PathLike[str], mode: int = 1, path: StrPath | None = None) -> NoReturn: ...
+    def which(cmd: os.PathLike[str], mode: int = 1, path: StrPath | None = None) -> Never: ...
 
 @overload
 def which(cmd: StrPath, mode: int = 1, path: StrPath | None = None) -> str | None: ...

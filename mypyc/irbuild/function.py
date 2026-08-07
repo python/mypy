@@ -82,7 +82,12 @@ from mypyc.primitives.dict_ops import (
     dict_new_op,
     exact_dict_set_item_op,
 )
-from mypyc.primitives.generic_ops import generic_getattr, generic_setattr, py_setattr_op
+from mypyc.primitives.generic_ops import (
+    generic_getattr,
+    generic_setattr,
+    py_get_item_op,
+    py_setattr_op,
+)
 from mypyc.primitives.misc_ops import register_function
 from mypyc.sametype import is_same_method_signature, is_same_type
 
@@ -486,13 +491,29 @@ def handle_ext_method(builder: IRBuilder, cdef: ClassDef, fdef: FuncDef) -> None
     if is_decorated(builder, fdef):
         # Obtain the function name in order to construct the name of the helper function.
         _, _, name = fdef.fullname.rpartition(".")
-        # Read the PyTypeObject representing the class, get the callable object
-        # representing the non-decorated method
+        # Get the callable representing the non-decorated method directly from the type
+        # dictionary. Attribute access would bind a class method before its decorators are
+        # applied, but the decorators need to receive the unbound function.
         typ = builder.load_native_type_object(cdef.fullname)
-        orig_func = builder.py_get_attr(typ, name, fdef.line)
+        type_dict = builder.py_get_attr(typ, "__dict__", fdef.line)
+        orig_func = builder.primitive_op(
+            py_get_item_op, [type_dict, builder.load_str(name)], fdef.line
+        )
 
         # Decorate the non-decorated method
         decorated_func = load_decorated_func(builder, fdef, orig_func)
+
+        # @classmethod and @staticmethod aren't included in fdefs_to_decorators, since
+        # mypy represents them using the function kind. Reapply the outer descriptor
+        # after the other decorators, matching Python's decorator evaluation order.
+        # TODO: Handle cases where @classmethod/@staticmethod are the inner decorator.
+        # See mypyc#1208 for reference.
+        if func_ir.decl.kind == FUNC_CLASSMETHOD:
+            cls_meth = builder.load_module_attr_by_fullname("builtins.classmethod", fdef.line)
+            decorated_func = builder.py_call(cls_meth, [decorated_func], fdef.line)
+        elif func_ir.decl.kind == FUNC_STATICMETHOD:
+            stat_meth = builder.load_module_attr_by_fullname("builtins.staticmethod", fdef.line)
+            decorated_func = builder.py_call(stat_meth, [decorated_func], fdef.line)
 
         # Set the callable object representing the decorated method as an attribute of the
         # extension class.

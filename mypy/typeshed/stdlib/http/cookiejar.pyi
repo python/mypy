@@ -129,7 +129,7 @@ class Cookie:
     domain_initial_dot: bool
     def __init__(
         self,
-        version: int | None,
+        version: int | str | None,
         name: str,
         value: str | None,  # undocumented
         port: str | None,
@@ -140,7 +140,7 @@ class Cookie:
         path: str,
         path_specified: bool,
         secure: bool,
-        expires: int | None,
+        expires: float | str | None,
         discard: bool,
         comment: str | None,
         comment_url: str | None,
