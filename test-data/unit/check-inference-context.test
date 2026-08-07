@@ -126,6 +126,22 @@ class A(Generic[T]): pass
 class B: pass
 [out]
 
+[case testInferUnpackedOverloadWithTupleAndOtherReturns]
+# https://github.com/python/mypy/issues/19920
+from typing import Tuple, TypeVar, overload
+
+_T = TypeVar("_T")
+
+@overload  # type: ignore[no-overload-impl]
+def gather(f1: _T) -> Tuple[_T]: ...
+@overload
+def gather(*fns: object) -> int: ...
+
+def crash() -> None:
+    foo: str
+    (foo,) = gather(0)  # E: "int" object is not iterable
+[builtins fixtures/tuple.pyi]
+
 [case testInferMultipleLocalVariableTypesWithArrayRvalueAndNesting]
 from typing import TypeVar, List, Generic
 T = TypeVar('T')
