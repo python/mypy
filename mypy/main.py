@@ -1494,9 +1494,11 @@ def process_options(
     if special_opts.no_executable or options.no_site_packages:
         options.python_executable = None
 
-    # Paths listed in the config file will be ignored if any paths, modules or packages
-    # are passed on the command line.
-    if not (special_opts.files or special_opts.packages or special_opts.modules):
+    # File, package, and module targets from the config file are used only if no target
+    # is specified on the command line.
+    if not (
+        special_opts.files or special_opts.packages or special_opts.modules or special_opts.command
+    ):
         if options.files:
             special_opts.files = options.files
         if options.packages:
