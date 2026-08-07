@@ -411,6 +411,8 @@ class Options:
         # Install missing stub packages in non-interactive mode (don't prompt for
         # confirmation, and don't show any errors)
         self.non_interactive = False
+        # Lock file used for --install-types to discover installable stub packages.
+        self.install_types_from_pylock: str | None = None
         # When we encounter errors that may cause many additional errors,
         # skip most errors after this many messages have been reported.
         # -1 means unlimited.
