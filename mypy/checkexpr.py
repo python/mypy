@@ -6413,7 +6413,19 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         # Check that the iterator's item type matches the type yielded by the Generator function
         # containing this `yield from` expression.
         expected_item_type = self.chk.get_generator_yield_type(return_type, False)
-        actual_item_type = self.chk.get_generator_yield_type(iter_type, False)
+        proper_iter_type = get_proper_type(iter_type)
+        if (
+            isinstance(proper_iter_type, Instance)
+            and not self.chk.is_generator_return_type(proper_iter_type, is_coroutine=False)
+            and not self.chk.is_async_generator_return_type(proper_iter_type)
+            and self.chk.type_is_iterable(proper_iter_type)
+        ):
+            # A concrete Iterable/Iterator subclass isn't one of the generator types, and its item
+            # type isn't necessarily its first type argument (e.g. enumerate), so map it to Iterable
+            # the way a `for` loop does instead of falling back to Any.
+            actual_item_type = self.chk.iterable_item_type(proper_iter_type, e)
+        else:
+            actual_item_type = self.chk.get_generator_yield_type(iter_type, False)
 
         self.chk.check_subtype(
             actual_item_type,
