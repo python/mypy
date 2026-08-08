@@ -1752,17 +1752,39 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             freeze_all_type_vars(fresh_ret_type)
             callee = callee.copy_modified(ret_type=fresh_ret_type)
 
+        formal_to_actual: list[list[int]] | None = None
         if callee.is_generic():
             callee = freshen_function_type_vars(callee)
+            callee_before_context = callee
             callee = self.infer_function_type_arguments_using_context(callee, context)
+            if callee != callee_before_context:
+                formal_to_actual = map_actuals_to_formals(
+                    arg_kinds,
+                    arg_names,
+                    callee.arg_kinds,
+                    callee.arg_names,
+                    lambda i: self.accept(args[i]),
+                )
+                if self.should_infer_args_without_context(
+                    callee_before_context,
+                    callee,
+                    args,
+                    arg_kinds,
+                    arg_names,
+                    formal_to_actual,
+                    context,
+                ):
+                    callee = callee_before_context
+                    formal_to_actual = None
 
-        formal_to_actual = map_actuals_to_formals(
-            arg_kinds,
-            arg_names,
-            callee.arg_kinds,
-            callee.arg_names,
-            lambda i: self.accept(args[i]),
-        )
+        if formal_to_actual is None:
+            formal_to_actual = map_actuals_to_formals(
+                arg_kinds,
+                arg_names,
+                callee.arg_kinds,
+                callee.arg_names,
+                lambda i: self.accept(args[i]),
+            )
 
         if callee.special_sig == "tuple" and len(args) == 1:
             with self.msg.filter_errors():
@@ -2060,6 +2082,112 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             else:
                 res.append(self.accept(arg))
         return res
+
+    def should_infer_args_without_context(
+        self,
+        callee: CallableType,
+        contextual_callee: CallableType,
+        args: list[Expression],
+        arg_kinds: list[ArgKind],
+        arg_names: Sequence[str | None] | None,
+        formal_to_actual: list[list[int]],
+        context: Context,
+    ) -> bool:
+        """Should we abandon contextual type argument inference for this call?
+
+        Context can infer a wider type argument than the actual argument supports when
+        the type variable also appears in an invariant or callback argument position.
+        In that case we can use regular argument inference instead, but only if it
+        produces a valid call whose return type still satisfies the outer context.
+        """
+        if contextual_callee.special_sig is not None or contextual_callee.is_type_obj():
+            # Keep the previous behavior for special synthetic signatures and type object
+            # calls, where context is often intentionally used to produce better errors.
+            return False
+
+        valid = True
+
+        def check_arg(
+            caller_type: Type,
+            original_caller_type: Type,
+            caller_kind: ArgKind,
+            callee_type: Type,
+            n: int,
+            m: int,
+            callee: CallableType,
+            object_type: Type | None,
+            context: Context,
+            outer_context: Context,
+        ) -> None:
+            nonlocal valid
+            if not is_subtype(
+                get_proper_type(caller_type),
+                get_proper_type(callee_type),
+                options=self.chk.options,
+            ):
+                valid = False
+
+        validation_callee = contextual_callee
+        validation_formal_to_actual = formal_to_actual
+        with self.msg.filter_errors(), self.chk.local_type_map:
+            if validation_callee.is_generic():
+                need_refresh = any(
+                    isinstance(v, (ParamSpecType, TypeVarTupleType))
+                    for v in validation_callee.variables
+                )
+                validation_callee = self.infer_function_type_arguments(
+                    validation_callee,
+                    args,
+                    arg_kinds,
+                    arg_names,
+                    validation_formal_to_actual,
+                    need_refresh,
+                    context,
+                )
+                if need_refresh:
+                    validation_formal_to_actual = map_actuals_to_formals(
+                        arg_kinds,
+                        arg_names,
+                        validation_callee.arg_kinds,
+                        validation_callee.arg_names,
+                        lambda i: self.accept(args[i]),
+                    )
+            arg_types = self.infer_arg_types_in_context(
+                validation_callee, args, arg_kinds, validation_formal_to_actual
+            )
+            self.check_argument_types(
+                arg_types,
+                arg_kinds,
+                args,
+                validation_callee,
+                validation_formal_to_actual,
+                context,
+                check_arg=check_arg,
+            )
+        if valid:
+            return False
+
+        ctx = self.type_context[-1]
+        if not ctx:
+            return False
+
+        with self.msg.filter_errors() as local_errors, self.chk.local_type_map:
+            formal_to_actual = map_actuals_to_formals(
+                arg_kinds,
+                arg_names,
+                callee.arg_kinds,
+                callee.arg_names,
+                lambda i: self.accept(args[i]),
+            )
+            need_refresh = any(
+                isinstance(v, (ParamSpecType, TypeVarTupleType)) for v in callee.variables
+            )
+            inferred_callee = self.infer_function_type_arguments(
+                callee, args, arg_kinds, arg_names, formal_to_actual, need_refresh, context
+            )
+        return not local_errors.has_new_errors() and is_subtype(
+            inferred_callee.ret_type, ctx, options=self.chk.options
+        )
 
     def infer_function_type_arguments_using_context(
         self, callable: CallableType, error_context: Context
