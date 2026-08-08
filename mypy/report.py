@@ -30,7 +30,7 @@ try:
         # lxml doesn't support free-threading yet
         LXML_INSTALLED = False
     else:
-        from lxml import etree  # type: ignore[import-untyped]
+        from lxml import etree
 
         LXML_INSTALLED = True
 except ImportError:
