@@ -21,6 +21,7 @@ from mypy.test.helpers import (
 
 # Semantic analyzer test cases: dump parse tree
 # Semantic analysis test case description files.
+from mypy.test.update_data import update_testcase_output
 from mypy.types import TypeStrVisitor
 
 semanal_files = find_test_files(
@@ -112,6 +113,11 @@ def test_semanal_error(testcase: DataDrivenTestCase) -> None:
         a = e.messages
     if testcase.normalize_output:
         a = normalize_error_messages(a)
+
+    # This may not work perfectly, since it was designed for testcheck.py, use with care.
+    if testcase.output != a and testcase.config.getoption("--update-data", False):
+        update_testcase_output(testcase, a, incremental_step=1)
+
     assert_string_arrays_equal(
         testcase.output, a, f"Invalid compiler output ({testcase.file}, line {testcase.line})"
     )

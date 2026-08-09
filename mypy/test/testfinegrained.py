@@ -44,6 +44,8 @@ from mypy.test.helpers import (
 )
 
 # Set to True to perform (somewhat expensive) checks for duplicate AST nodes after merge
+from mypy.test.update_data import update_testcase_output
+
 CHECK_CONSISTENCY = False
 
 
@@ -129,6 +131,10 @@ class FineGrainedSuite(DataSuite):
 
         # Normalize paths in test output (for Windows).
         a = [line.replace("\\", "/") for line in a]
+
+        # This may not work perfectly, since it was designed for testcheck.py, use with care.
+        if testcase.output != a and testcase.config.getoption("--update-data", False):
+            update_testcase_output(testcase, a, incremental_step=1)
 
         assert_string_arrays_equal(
             testcase.output, a, f"Invalid output ({testcase.file}, line {testcase.line})"
