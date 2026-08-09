@@ -860,7 +860,11 @@ class InspectionStubGenerator(BaseStubGenerator):
                     ro_properties,
                     class_info,
                 )
-            elif inspect.isclass(value) and self.is_defined_in_module(value):
+            elif (
+                inspect.isclass(value)
+                and self.is_defined_in_module(value)
+                and not is_enclosing_class(value, class_info)
+            ):
                 self.generate_class_stub(attr, value, types, parent_class=class_info)
             else:
                 attrs.append((attr, value))
@@ -918,6 +922,19 @@ class InspectionStubGenerator(BaseStubGenerator):
         self.record_name(name)
         type_str = self.strip_or_import(self.get_type_annotation(obj))
         output.append(f"{name}: {type_str}")
+
+
+def is_enclosing_class(cls: type, class_info: ClassInfo | None) -> bool:
+    """Is 'cls' the class we are generating a stub for, or one that encloses it?
+
+    Such an attribute is a back reference (e.g. 'C.C = C', or two classes in the
+    same module exposing each other). Recursing into it would never terminate.
+    """
+    while class_info is not None:
+        if class_info.cls is cls:
+            return True
+        class_info = class_info.parent
+    return False
 
 
 def method_name_sort_key(name: str) -> tuple[int, str]:
