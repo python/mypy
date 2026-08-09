@@ -1,0 +1,7 @@
+contact_links:
+  - about: "Please check the linked documentation page before filing new issues."
+    name: "Common issues and solutions"
+    url: "https://mypy.readthedocs.io/en/stable/common_issues.html"
+  - about: "Please ask and answer any questions on the python/typing Gitter."
+    name: "Questions or Chat"
+    url: "https://gitter.im/python/typing"

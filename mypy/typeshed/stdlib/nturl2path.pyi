@@ -1,0 +1,6 @@
+from typing_extensions import deprecated
+
+@deprecated("Deprecated; use `urllib.request` file-URL helpers instead.")
+def url2pathname(url: str) -> str: ...
+@deprecated("Deprecated; use `urllib.request` file-URL helpers instead.")
+def pathname2url(p: str) -> str: ...

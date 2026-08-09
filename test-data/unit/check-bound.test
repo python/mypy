@@ -1,0 +1,229 @@
+-- Enforcement of upper bounds
+-- ---------------------------
+
+
+[case testBoundOnGenericFunction]
+from typing import TypeVar
+
+class A: pass
+class B(A): pass
+class C(A): pass
+class D: pass
+
+T = TypeVar('T', bound=A)
+U = TypeVar('U')
+def f(x: T) -> T: pass
+def g(x: U) -> U:
+    return f(x) # E: Value of type variable "T" of "f" cannot be "U"
+
+f(A())
+f(B())
+f(D()) # E: Value of type variable "T" of "f" cannot be "D"
+
+b = B()
+if int():
+    b = f(b)
+if int():
+    b = f(C()) # E: Incompatible types in assignment (expression has type "C", variable has type "B")
+
+
+[case testBoundOnGenericClass]
+from typing import TypeVar, Generic
+
+class A: pass
+class B(A): pass
+T = TypeVar('T', bound=A)
+
+class G(Generic[T]):
+    def __init__(self, x: T) -> None: pass
+
+v: G[A]
+w: G[B]
+x: G[str]  # E: Type argument "str" of "G" must be a subtype of "A"
+y = G('a') # E: Value of type variable "T" of "G" cannot be "str"
+z = G(A())
+z = G(B())
+
+
+[case testBoundVoid]
+# flags: --no-strict-optional --no-local-partial-types
+from typing import TypeVar, Generic
+T = TypeVar('T', bound=int)
+class C(Generic[T]):
+    t = None # type: T
+    def get(self) -> T:
+        return self.t
+c1 = None # type: C[None]
+c1.get()
+d = c1.get()
+reveal_type(d)  # N: Revealed type is "None"
+
+
+[case testBoundAny]
+from typing import TypeVar, Generic
+T = TypeVar('T', bound=int)
+class C(Generic[T]):
+    def __init__(self, x: T) -> None: pass
+def f(x: T) -> T:
+    return x
+
+def g(): pass
+
+f(g())
+C(g())
+z: C
+
+
+[case testBoundHigherOrderWithVoid]
+# flags: --no-strict-optional --no-local-partial-types
+from typing import TypeVar, Callable
+class A: pass
+T = TypeVar('T', bound=A)
+def f(g: Callable[[], T]) -> T:
+    return g()
+def h() -> None: pass
+f(h)
+a = f(h)
+reveal_type(a)  # N: Revealed type is "None"
+
+
+[case testBoundInheritance]
+from typing import TypeVar, Generic
+class A: pass
+T = TypeVar('T')
+TA = TypeVar('TA', bound=A)
+
+class C(Generic[TA]): pass
+class D0(C[TA], Generic[TA]): pass
+class D1(C[T], Generic[T]): pass # E: Type argument "T" of "C" must be a subtype of "A"
+class D2(C[A]): pass
+class D3(C[str]): pass # E: Type argument "str" of "C" must be a subtype of "A"
+
+
+-- Using information from upper bounds
+-- -----------------------------------
+
+
+[case testBoundGenericFunctions]
+from typing import TypeVar
+class A: pass
+class B(A): pass
+
+T = TypeVar('T')
+TA = TypeVar('TA', bound=A)
+TB = TypeVar('TB', bound=B)
+
+def f(x: T) -> T:
+    return x
+def g(x: TA) -> TA:
+    return f(x)
+def h(x: TB) -> TB:
+    return g(x)
+def g2(x: TA) -> TA:
+    return h(x) # Fail
+
+def j(x: TA) -> A:
+    return x
+def k(x: TA) -> B:
+    return x # Fail
+[out]
+main:16: error: Value of type variable "TB" of "h" cannot be "TA"
+main:21: error: Incompatible return value type (got "TA", expected "B")
+
+
+[case testBoundMethodUsage]
+from typing import TypeVar
+class A0:
+    def foo(self) -> None: pass
+class A(A0):
+    def bar(self) -> None: pass
+    a = 1
+    @property
+    def b(self) -> int:
+        return self.a
+class B(A):
+    def baz(self) -> None: pass
+
+T = TypeVar('T', bound=A)
+
+def f(x: T) -> T:
+    x.foo()
+    x.bar()
+    x.baz()  # E: "T" has no attribute "baz"
+    x.a
+    x.b
+    return x
+
+b = f(B())
+[builtins fixtures/property.pyi]
+[out]
+
+[case testBoundClassMethod]
+from typing import TypeVar
+class A0:
+    @classmethod
+    def foo(cls, x: int) -> int: pass
+class A(A0): pass
+
+T = TypeVar('T', bound=A)
+def f(x: T) -> int:
+    return x.foo(22)
+[builtins fixtures/classmethod.pyi]
+
+
+[case testBoundClassMethodWithNamedTupleBase]
+from typing import NamedTuple, Type, TypeVar
+class A(NamedTuple):
+    @classmethod
+    def foo(cls) -> None: ...
+
+T = TypeVar('T', bound=A)
+def f(x: Type[T]) -> None:
+    reveal_type(x.foo)  # N: Revealed type is "def ()"
+    x.foo()
+[builtins fixtures/classmethod.pyi]
+
+
+[case testBoundStaticMethod]
+from typing import TypeVar
+class A0:
+    @staticmethod
+    def foo(x: int) -> int: pass
+class A(A0): pass
+
+T = TypeVar('T', bound=A)
+def f(x: T) -> int:
+    return x.foo(22)
+[builtins fixtures/staticmethod.pyi]
+
+
+[case testBoundOnDecorator]
+from typing import TypeVar, Callable, Any, cast
+T = TypeVar('T', bound=Callable[..., Any])
+
+def twice(f: T) -> T:
+    def result(*args, **kwargs) -> Any:
+        f(*args, **kwargs)
+        return f(*args, **kwargs)
+    return cast(T, result)
+
+@twice
+def foo(x: int) -> int:
+    return x
+
+a = 1
+b = foo(a)
+if int():
+    b = 'a' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+twice(a) # E: Value of type variable "T" of "twice" cannot be "int"
+[builtins fixtures/args.pyi]
+
+
+[case testIterableBoundUnpacking]
+from typing import Tuple, TypeVar
+TupleT = TypeVar("TupleT", bound=Tuple[int, ...])
+def f(t: TupleT) -> None:
+    a, *b = t
+    reveal_type(a)  # N: Revealed type is "builtins.int"
+    reveal_type(b)  # N: Revealed type is "builtins.list[builtins.int]"
+[builtins fixtures/tuple.pyi]

@@ -1,0 +1,5 @@
+-r ../mypy-requirements.txt
+sphinx>=8.1.0
+furo>=2022.3.4
+myst-parser>=4.0.0
+sphinx_inline_tabs>=2023.04.21

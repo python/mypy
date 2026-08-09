@@ -1,0 +1,5 @@
+[case testUnderscoresBasics]
+x: int
+x = 1000_000
+x = 0x_FF_FF_FF_FF
+y: str = 1000_000.000_001  # E: Incompatible types in assignment (expression has type "float", variable has type "str")

@@ -1,0 +1,321 @@
+#define PY_SSIZE_T_CLEAN
+#include "CPy.h"
+#include <stdint.h>
+
+#define CPyFunction_weakreflist(f) (((PyCFunctionObject *)f)->m_weakreflist)
+#define CPyFunction_class(f) ((PyObject*) ((PyCMethodObject *) (f))->mm_class)
+#define CPyFunction_func_vectorcall(f) (((PyCFunctionObject *)f)->vectorcall)
+
+static int
+CPyFunction_clear(CPyFunction *m) {
+    Py_CLEAR(((PyCFunctionObject*)m)->m_module);
+    PyObject_ClearManagedDict((PyObject*)m);
+    Py_CLEAR(m->func_name);
+    Py_CLEAR(m->func_code);
+    PyObject *cls = CPyFunction_class(m);
+    ((PyCMethodObject *)m)->mm_class = NULL;
+    Py_XDECREF(cls);
+
+    return 0;
+}
+
+static void CPyFunction_dealloc(CPyFunction *m) {
+    PyObject_GC_UnTrack(m);
+    if (CPyFunction_weakreflist(m) != NULL)
+        PyObject_ClearWeakRefs((PyObject *) m);
+    CPyFunction_clear(m);
+    PyMem_Free(m->func.func.m_ml);
+    PyObject_GC_Del(m);
+}
+
+static PyObject* CPyFunction_repr(CPyFunction *op) {
+    // Use helper to get name for free threading safety.
+    PyObject *name = CPyFunction_get_name((PyObject *)op, NULL);
+    if (unlikely(name == NULL)) {
+        return NULL;
+    }
+    PyObject *result = PyUnicode_FromFormat("<function %U at %p>", name, (void *)op);
+    Py_DECREF(name);
+    return result;
+}
+
+static PyObject* CPyFunction_call(PyObject *func, PyObject *args, PyObject *kw) {
+    CPyFunction *f = (CPyFunction *)func;
+    vectorcallfunc vc = CPyFunction_func_vectorcall(f);
+    assert(vc);
+    return PyVectorcall_Call(func, args, kw);
+}
+
+static int CPyFunction_traverse(CPyFunction *m, visitproc visit, void *arg) {
+    Py_VISIT(((PyCFunctionObject *)m)->m_module);
+    int e = PyObject_VisitManagedDict((PyObject*)m, visit, arg);
+    if (e != 0) return e;
+    Py_VISIT(m->func_name);
+    Py_VISIT(m->func_code);
+    Py_VISIT(CPyFunction_class(m));
+    return 0;
+}
+
+static PyMemberDef CPyFunction_members[] = {
+    {"__module__", T_OBJECT, offsetof(PyCFunctionObject, m_module), 0, 0},
+    {"__vectorcalloffset__", T_PYSSIZET, offsetof(PyCFunctionObject, vectorcall), READONLY, 0},
+    {"__weaklistoffset__", T_PYSSIZET, offsetof(PyCFunctionObject, m_weakreflist), READONLY, 0},
+    {0, 0, 0,  0, 0}
+};
+
+PyObject* CPyFunction_get_name(PyObject *op, void *context) {
+    (void)context;
+    CPyFunction *func = (CPyFunction *)op;
+    PyObject *result;
+    Py_BEGIN_CRITICAL_SECTION(op);
+    if (unlikely(func->func_name == NULL)) {
+        func->func_name = PyUnicode_InternFromString(((PyCFunctionObject *)func)->m_ml->ml_name);
+    }
+    result = func->func_name;
+    Py_XINCREF(result);
+    Py_END_CRITICAL_SECTION();
+    return result;
+}
+
+int CPyFunction_set_name(PyObject *op, PyObject *value, void *context) {
+    (void)context;
+    CPyFunction *func = (CPyFunction *)op;
+    if (unlikely(!value || !PyUnicode_Check(value))) {
+        PyErr_SetString(PyExc_TypeError, "__name__ must be set to a string object");
+        return -1;
+    }
+
+    Py_INCREF(value);
+    // Decref outside critical section, since it could run arbitrary code.
+    PyObject *old;
+    Py_BEGIN_CRITICAL_SECTION(op);
+    old = func->func_name;
+    func->func_name = value;
+    Py_END_CRITICAL_SECTION();
+    Py_XDECREF(old);
+    return 0;
+}
+
+PyObject* CPyFunction_get_code(PyObject *op, void *context) {
+    (void)context;
+    CPyFunction *func = (CPyFunction *)op;
+    PyObject* result = (func->func_code) ? func->func_code : Py_None;
+    Py_INCREF(result);
+    return result;
+}
+
+static PyObject* CPyFunction_get_none(PyObject *op, void *context) {
+    (void)op;
+    (void)context;
+    PyObject* result = Py_None;
+    Py_INCREF(result);
+    return result;
+}
+
+int CPyFunction_set_none(PyObject *op, PyObject *value, void *context) {
+    (void)op;
+    (void)value;
+    (void)context;
+    return 0;
+}
+
+PyObject* CPyFunction_get_defaults(PyObject *op, void *context) {
+    return CPyFunction_get_none(op, context);
+}
+
+PyObject* CPyFunction_get_kwdefaults(PyObject *op, void *context) {
+    return CPyFunction_get_none(op, context);
+}
+
+PyObject* CPyFunction_get_annotations(PyObject *op, void *context) {
+    return CPyFunction_get_none(op, context);
+}
+
+int CPyFunction_set_annotations(PyObject *op, PyObject *value, void *context) {
+    return CPyFunction_set_none(op, value, context);
+}
+
+static PyGetSetDef CPyFunction_getsets[] = {
+    {"__dict__", (getter)PyObject_GenericGetDict, (setter)PyObject_GenericSetDict, 0, 0},
+    {"__name__", (getter)CPyFunction_get_name, (setter)CPyFunction_set_name, 0, 0},
+    {"__code__", (getter)CPyFunction_get_code, 0, 0, 0},
+    {"__defaults__", (getter)CPyFunction_get_defaults, 0, 0, 0},
+    {"__kwdefaults__", (getter)CPyFunction_get_kwdefaults, 0, 0, 0},
+    {"__annotations__", (getter)CPyFunction_get_annotations, CPyFunction_set_annotations, 0, 0},
+    {0, 0, 0, 0, 0}
+};
+
+static PyObject* CPyFunction_descr_get(PyObject *func, PyObject *self, PyObject *typ) {
+    int flags = ((PyCFunctionObject *)func)->m_ml->ml_flags;
+    if (flags & METH_CLASS) {
+        if (typ == NULL) {
+            if (self == NULL) {
+                PyErr_SetString(PyExc_TypeError, "__get__(None, None) is invalid");
+                return NULL;
+            }
+            typ = (PyObject *)Py_TYPE(self);
+        }
+        return PyMethod_New(func, typ);
+    }
+    if (!self || (flags & METH_STATIC)) {
+        Py_INCREF(func);
+        return func;
+    }
+    return PyMethod_New(func, self);
+}
+
+static PyType_Slot CPyFunction_slots[] = {
+    {Py_tp_dealloc, (void *)CPyFunction_dealloc},
+    {Py_tp_repr, (void *)CPyFunction_repr},
+    {Py_tp_call, (void *)CPyFunction_call},
+    {Py_tp_traverse, (void *)CPyFunction_traverse},
+    {Py_tp_clear, (void *)CPyFunction_clear},
+    {Py_tp_members, (void *)CPyFunction_members},
+    {Py_tp_getset, (void *)CPyFunction_getsets},
+    {Py_tp_descr_get, (void *)CPyFunction_descr_get},
+    {0, 0},
+};
+
+static PyType_Spec CPyFunction_spec = {
+    .name = "Function compiled with mypyc",
+    .basicsize = sizeof(CPyFunction),
+    .itemsize = 0,
+    .flags = Py_TPFLAGS_IMMUTABLETYPE |
+#if PY_VERSION_HEX >= 0x030C0000
+             Py_TPFLAGS_MANAGED_DICT |
+#endif
+             Py_TPFLAGS_HAVE_VECTORCALL | Py_TPFLAGS_DEFAULT | Py_TPFLAGS_HAVE_GC | Py_TPFLAGS_BASETYPE,
+    .slots = CPyFunction_slots,
+};
+
+static PyTypeObject *CPyFunctionType = NULL;
+
+static PyObject* CPyFunction_Vectorcall(PyObject *func, PyObject *const *args, size_t nargsf, PyObject *kwnames) {
+    CPyFunction *f = (CPyFunction *)func;
+    Py_ssize_t nargs = PyVectorcall_NARGS(nargsf);
+    PyObject *self;
+    PyCFunction meth = ((PyCFunctionObject *)f)->m_ml->ml_meth;
+
+    self = ((PyCFunctionObject *)f)->m_self;
+    if (!self) {
+        self = args[0];
+        args += 1;
+        nargs -= 1;
+    }
+    return ((_PyCFunctionFastWithKeywords)(void(*)(void))meth)(self, args, nargs, kwnames);
+}
+
+
+// Steals ml, name, and code. Borrows module.
+static CPyFunction* CPyFunction_Init(CPyFunction *op, PyMethodDef *ml, PyObject* name,
+                                     PyObject *module, PyObject* code, bool set_self) {
+    PyCFunctionObject *cf = (PyCFunctionObject *)op;
+    CPyFunction_weakreflist(op) = NULL;
+    cf->m_ml = ml;
+    cf->m_self = set_self ? (PyObject *) op : NULL;
+
+    Py_XINCREF(module);
+    cf->m_module = module;
+
+    op->func_name = name;
+
+    ((PyCMethodObject *)op)->mm_class = NULL;
+
+    op->func_code = code;
+
+    CPyFunction_func_vectorcall(op) = CPyFunction_Vectorcall;
+    return op;
+}
+
+static PyObject* CPyCode_New(const char *filename, const char *funcname, int first_line, int flags) {
+    PyCodeObject *code_obj = PyCode_NewEmpty(filename, funcname, first_line);
+    if (unlikely(!code_obj)) {
+        return NULL;
+    }
+    code_obj->co_flags = flags;
+    return (PyObject *)code_obj;
+}
+
+static PyMethodDef* CPyMethodDef_New(const char *name, PyCFunction func, int flags, const char *doc) {
+    PyMethodDef *method = (PyMethodDef *)PyMem_Malloc(sizeof(PyMethodDef));
+    if (unlikely(!method)) {
+        return NULL;
+    }
+    method->ml_name = name;
+    method->ml_meth = func;
+    method->ml_flags = flags;
+    method->ml_doc = doc;
+    return method;
+}
+
+PyObject* CPyFunction_New(PyObject *module, const char *filename, const char *funcname,
+                          PyCFunction func, int func_flags, const char *func_doc,
+                          int first_line, int code_flags, bool has_self_arg) {
+    PyMethodDef *method = NULL;
+    PyObject *code = NULL, *name = NULL, *op = NULL;
+    bool set_self = false;
+
+#ifdef Py_GIL_DISABLED
+    // Double-checked locking: the common case (type already created) is a
+    // lock-free atomic load. Only the first-time initialization takes the
+    // mutex, which serializes concurrent creators.
+    if (!_Py_atomic_load_ptr_acquire(&CPyFunctionType)) {
+        static PyMutex type_init_mutex = {0};
+        PyMutex_Lock(&type_init_mutex);
+        if (!CPyFunctionType) {
+            PyTypeObject *type = (PyTypeObject *)PyType_FromSpec(&CPyFunction_spec);
+            if (unlikely(!type)) {
+                PyMutex_Unlock(&type_init_mutex);
+                goto err;
+            }
+            _Py_atomic_store_ptr_release(&CPyFunctionType, type);
+        }
+        PyMutex_Unlock(&type_init_mutex);
+    }
+#else
+    if (!CPyFunctionType) {
+        CPyFunctionType = (PyTypeObject *)PyType_FromSpec(&CPyFunction_spec);
+        if (unlikely(!CPyFunctionType)) {
+            goto err;
+        }
+    }
+#endif
+
+    method = CPyMethodDef_New(funcname, func, func_flags, func_doc);
+    if (unlikely(!method)) {
+        goto err;
+    }
+    code = CPyCode_New(filename, funcname, first_line, code_flags);
+    if (unlikely(!code)) {
+        goto err;
+    }
+    name = PyUnicode_FromString(funcname);
+    if (unlikely(!name)) {
+        goto err;
+    }
+
+    // Set m_self inside the function wrapper only if the wrapped function has no self arg
+    // to pass m_self as the self arg when the function is called.
+    // When the function has a self arg, it will come in the args vector passed to the
+    // vectorcall handler.
+    set_self = !has_self_arg;
+    CPyFunction *raw = PyObject_GC_New(CPyFunction, CPyFunctionType);
+    if (unlikely(!raw)) {
+        goto err;
+    }
+    op = (PyObject *)CPyFunction_Init(raw, method, name, module, code, set_self);
+    method = NULL;
+    name = NULL;
+    code = NULL;
+    PyObject_GC_Track(op);
+    return op;
+
+err:
+    CPyError_OutOfMemory();
+    if (method) {
+        PyMem_Free(method);
+    }
+    Py_XDECREF(name);
+    Py_XDECREF(code);
+    return NULL;
+}

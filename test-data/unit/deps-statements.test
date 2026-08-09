@@ -1,0 +1,634 @@
+-- Test cases for generating fine-grained dependencies for statements.
+--
+-- The dependencies are used for fined-grained incremental checking.
+--
+-- See the comment at the top of deps.test for more documentation.
+
+[case testIfStmt]
+def f1() -> int: pass
+def f2() -> None: pass
+def f3() -> int: pass
+def f4() -> None: pass
+def f5() -> None: pass
+
+def g() -> None:
+    if f1():
+        f2()
+    elif f3():
+        f4()
+    else:
+        f5()
+[out]
+<m.f1> -> m.g
+<m.f2> -> m.g
+<m.f3> -> m.g
+<m.f4> -> m.g
+<m.f5> -> m.g
+
+[case testWhileStmt]
+def f1() -> int: pass
+def f2() -> None: pass
+def f3() -> None: pass
+
+def g() -> None:
+    while f1():
+        f2()
+    else:
+        f3()
+[out]
+<m.f1> -> m.g
+<m.f2> -> m.g
+<m.f3> -> m.g
+
+[case testAssertStmt]
+def f1() -> int: pass
+def f2() -> str: pass
+def f3() -> int: pass
+
+def g() -> None:
+    assert f1(), f2()
+    assert f3()
+[out]
+<m.f1> -> m.g
+<m.f2> -> m.g
+<m.f3> -> m.g
+
+[case testRaiseStmt]
+def f1() -> BaseException: pass
+def f2() -> BaseException: pass
+
+def g1() -> None:
+    raise f1()
+
+def g2() -> None:
+    raise f1() from f2()
+[builtins fixtures/exception.pyi]
+[out]
+<m.f1> -> m.g1, m.g2
+<m.f2> -> m.g2
+
+[case testTryFinallyStmt]
+def f1() -> None: pass
+def f2() -> None: pass
+
+def g() -> None:
+    try:
+        f1()
+    finally:
+        f2()
+[out]
+<m.f1> -> m.g
+<m.f2> -> m.g
+
+[case testForStmt]
+from typing import Iterator
+
+class A:
+    def __iter__(self) -> Iterator[int]: pass
+
+def f1() -> None: pass
+def f2() -> None: pass
+
+def g() -> None:
+    a: A
+    for x in a:
+        f1()
+    else:
+        f2()
+[builtins fixtures/list.pyi]
+[out]
+<m.A.__getitem__> -> m.g
+<m.A.__iter__> -> m.g
+<m.A> -> m.A, m.g
+<m.f1> -> m.g
+<m.f2> -> m.g
+
+[case testTryExceptStmt]
+class A(BaseException): pass
+class B(BaseException):
+    def f(self) -> None: pass
+
+def f1() -> None: pass
+def f2() -> None: pass
+def f3() -> None: pass
+
+def g() -> None:
+    try:
+        f1()
+    except A:
+        f2()
+    except B as e:
+        e.f()
+    else:
+        f3()
+[builtins fixtures/exception.pyi]
+[out]
+-- The dependencies on the ctor are basically spurious but not a problem
+<m.A.__init__> -> m.g
+<m.A.__new__> -> m.g
+<m.A> -> m.A, m.g
+<m.B.__init__> -> m.g
+<m.B.__new__> -> m.g
+<m.B.f> -> m.g
+<m.B> -> m.B, m.g
+<m.f1> -> m.g
+<m.f2> -> m.g
+<m.f3> -> m.g
+
+[case testTryExceptStmt2]
+class A(BaseException): pass
+class B(BaseException):
+    def f(self) -> None: pass
+
+def f1() -> None: pass
+def f2() -> None: pass
+
+def g() -> None:
+    try:
+        f1()
+    except (A, B):
+        f2()
+[builtins fixtures/exception.pyi]
+[out]
+-- The dependencies on the ctor are basically spurious but not a problem
+<m.A.__init__> -> m.g
+<m.A.__new__> -> m.g
+<m.A> -> m.A, m.g
+<m.B.__init__> -> m.g
+<m.B.__new__> -> m.g
+<m.B> -> m.B, m.g
+<m.f1> -> m.g
+<m.f2> -> m.g
+
+[case testWithStmt]
+from typing import Any
+class A:
+    def __enter__(self) -> 'B': pass
+    def __exit__(self, a, b, c) -> None: pass
+
+class B:
+    def f(self) -> None: pass
+
+def g() -> None:
+    a: A
+    with a as x:
+        x.f()
+[out]
+<m.A.__enter__> -> m.g
+<m.A.__exit__> -> m.g
+<m.A> -> m.A, m.g
+<m.B.f> -> m.g
+<m.B> -> <m.A.__enter__>, m.A.__enter__, m.B
+
+[case testWithStmt2]
+from typing import Any
+class A:
+    def __enter__(self) -> 'C': pass
+    def __exit__(self, a, b, c) -> None: pass
+class B:
+    def __enter__(self) -> 'D': pass
+    def __exit__(self, a, b, c) -> None: pass
+
+class C: pass
+class D: pass
+
+def g() -> None:
+    a: A
+    b: B
+    with a as x, b as y:
+        pass
+[out]
+<m.A.__enter__> -> m.g
+<m.A.__exit__> -> m.g
+<m.A> -> m.A, m.g
+<m.B.__enter__> -> m.g
+<m.B.__exit__> -> m.g
+<m.B> -> m.B, m.g
+<m.C> -> <m.A.__enter__>, m.A.__enter__, m.C
+<m.D> -> <m.B.__enter__>, m.B.__enter__, m.D
+
+[case testWithStmtAnnotation]
+from typing import Any
+class A:
+    def __enter__(self) -> Any: pass
+    def __exit__(self, a, b, c) -> None: pass
+
+class B: pass
+
+def f(b: B) -> None: pass
+
+def g() -> None:
+    a: A
+    with a as x: # type: B
+        f(x)
+[out]
+<m.A.__enter__> -> m.g
+<m.A.__exit__> -> m.g
+<m.A> -> m.A, m.g
+<m.B> -> <m.f>, m.B, m.f, m.g
+<m.f> -> m.g
+
+[case testForStmtAnnotation]
+class A:
+    def __iter__(self): pass
+
+class B:
+    def f(self) -> None: pass
+
+def g() -> None:
+    a: A
+    for x in a: # type: B
+        x.f()
+[builtins fixtures/list.pyi]
+[out]
+<m.A.__getitem__> -> m.g
+<m.A.__iter__> -> m.g
+<m.A> -> m.A, m.g
+<m.B.f> -> m.g
+<m.B> -> m.B, m.g
+
+[case testMultipleAssignment]
+from typing import Iterator
+class A:
+    def __iter__(self) -> Iterator[int]: pass
+
+def f() -> None:
+    a: A
+    x, y = a
+[out]
+<m.A.__iter__> -> <m.A>, m.f
+<m.A> -> m.A, m.f, typing.Iterable
+
+[case testMultipleLvalues]
+class A:
+    def f(self) -> None:
+        self.x = 1
+        self.y = 1
+
+def g() -> None:
+    a: A
+    a.x = a.y = 1
+[out]
+<m.A.x> -> m.A.f, m.g
+<m.A.y> -> m.A.f, m.g
+<m.A> -> m.A, m.g
+
+[case testNestedLvalues]
+class A:
+    def f(self) -> None:
+        self.x = 1
+        self.y = ''
+
+def g() -> None:
+    a: A
+    a.x, a.y = 1, ''
+[out]
+<m.A.x> -> m.A.f, m.g
+<m.A.y> -> m.A.f, m.g
+<m.A> -> m.A, m.g
+
+[case testForAndSetItem]
+class A:
+    def __setitem__(self, x: int, y: int) -> None: pass
+
+def f(): pass
+
+def g() -> None:
+    a: A
+    for a[0] in f():
+        pass
+[builtins fixtures/list.pyi]
+[out]
+<m.A.__getitem__> -> m.g
+<m.A.__setitem__> -> m.g
+<m.A> -> m.A, m.g
+<m.f> -> m.g
+
+[case testMultipleAssignmentAndFor]
+from typing import Iterator, Iterable
+
+class A:
+    def f(self) -> None:
+        self.x = 1
+        self.y = 1
+
+class B:
+    def __iter__(self) -> Iterator[int]: pass
+
+def f() -> Iterable[B]: pass
+
+def g() -> None:
+    a: A
+    for a.x, a.y in f():
+        pass
+[builtins fixtures/list.pyi]
+[out]
+<m.A.x> -> m.A.f, m.g
+<m.A.y> -> m.A.f, m.g
+<m.A> -> m.A, m.g
+<m.B.__getitem__> -> m.g
+<m.B.__iter__> -> <m.B>, m.g
+<m.B> -> <m.f>, m.B, m.f, typing.Iterable
+<m.f> -> m.g
+
+[case testNestedSetItem]
+class A:
+    def __setitem__(self, x: int, y: int) -> None: pass
+class B:
+    def __setitem__(self, x: int, y: int) -> None: pass
+
+def f(): pass
+
+def g() -> None:
+    a: A
+    b: B
+    a[0], b[0] = f()
+[out]
+<m.A.__getitem__> -> m.g
+<m.A.__setitem__> -> m.g
+<m.A> -> m.A, m.g
+<m.B.__getitem__> -> m.g
+<m.B.__setitem__> -> m.g
+<m.B> -> m.B, m.g
+<m.f> -> m.g
+
+[case testOperatorAssignmentStmt]
+class A:
+    def __add__(self, other: 'B') -> 'A': pass
+
+class B: pass
+
+def f() -> B: pass
+
+def g() -> None:
+    a: A
+    a += f()
+[out]
+<m.A.__add__> -> m.g
+<m.A.__iadd__> -> m.g
+<m.A> -> <m.A.__add__>, m.A, m.A.__add__, m.g
+<m.B> -> <m.A.__add__>, <m.f>, m.A.__add__, m.B, m.f
+<m.f> -> m.g
+
+[case testOperatorAssignmentStmtSetItem]
+class A:
+    def __add__(self, other: 'B') -> 'A': pass
+
+class B: pass
+
+class C:
+    def __getitem__(self, x: int) -> A: pass
+    def __setitem__(self, x: int, y: A) -> None: pass
+
+def f() -> int: pass
+
+def g() -> None:
+    b: B
+    c: C
+    c[f()] += b
+[out]
+<m.A.__add__> -> m.g
+<m.A.__iadd__> -> m.g
+<m.A> -> <m.A.__add__>, <m.C.__getitem__>, <m.C.__setitem__>, m.A, m.A.__add__, m.C.__getitem__, m.C.__setitem__
+<m.B> -> <m.A.__add__>, m.A.__add__, m.B, m.g
+<m.C.__getitem__> -> m.g
+<m.C.__setitem__> -> m.g
+<m.C> -> m.C, m.g
+<m.f> -> m.g
+
+[case testYieldStmt]
+from typing import Iterator
+
+class A: pass
+
+def f1() -> A: pass
+
+def g() -> Iterator[A]:
+    yield f1()
+[builtins fixtures/list.pyi]
+[out]
+<m.A> -> <m.f1>, <m.g>, m.A, m.f1, m.g
+<m.f1> -> m.g
+
+[case testDelStmt]
+class A:
+    def f(self) -> None:
+        self.x = 1
+
+def f() -> A: pass
+
+def g() -> None:
+    del f().x
+[out]
+<m.A.x> -> m.A.f, m.g
+<m.A> -> <m.f>, m.A, m.f
+<m.f> -> m.g
+
+[case testDelStmtWithIndexing]
+class A:
+    def __delitem__(self, x: int) -> None: pass
+
+def f1() -> A: pass
+def f2() -> int: pass
+
+def g() -> None:
+    del f1()[f2()]
+[out]
+<m.A.__delitem__> -> m.g
+-- __getitem__ is redundant but harmless
+<m.A.__getitem__> -> m.g
+<m.A> -> <m.f1>, m.A, m.f1
+<m.f1> -> m.g
+<m.f2> -> m.g
+
+[case testYieldFrom]
+from typing import Iterator
+class A:
+    def __iter__(self) -> Iterator[int]: pass
+def f() -> Iterator[int]:
+    yield from A()
+[out]
+<m.A.__init__> -> m.f
+<m.A.__iter__> -> <m.A>, m.f
+<m.A.__new__> -> m.f
+<m.A> -> m.A, m.f, typing.Iterable
+
+[case testFunctionDecorator]
+from typing import Callable
+def dec(f: Callable[[int], int]) -> Callable[[str], str]:
+    pass
+
+def f() -> int: pass
+
+@dec
+def g(x: int) -> int:
+    return f()
+[out]
+<m.dec> -> m
+<m.f> -> m.g
+<m.g> -> m
+
+[case testMethodDecorator]
+from typing import Callable, Any
+def dec(f: Callable[[Any, int], int]) -> Callable[[Any, str], str]:
+    pass
+
+def f() -> int: pass
+
+class A:
+    @dec
+    def g(self, x: int) -> int:
+        return f()
+[out]
+<m.A.g> -> m
+<m.A> -> m.A
+<m.dec> -> m
+<m.f> -> m.A.g
+
+[case testNestedFunction]
+class A: pass
+
+def h() -> None: pass
+
+def f() -> None:
+    def g(x: A) -> None:
+        h()
+[out]
+<m.A> -> <m.f>, m.A, m.f
+<m.h> -> m.f
+
+[case testPlatformCheck]
+import a
+import sys
+
+def f() -> int:
+    if sys.platform == 'nonexistent':
+        return a.g()
+    else:
+        return 1
+[file a.py]
+[builtins fixtures/ops.pyi]
+[out]
+<a> -> m
+<sys.platform> -> m.f
+<sys> -> m, m.f
+
+[case testOverload]
+from typing import overload
+
+class A: pass
+class B(A): pass
+
+@overload
+def f(x: B) -> B: ...
+@overload
+def f(x: A) -> A: ...
+
+def f(x: A) -> A:
+    g()
+    return x
+
+def g() -> None: pass
+[builtins fixtures/isinstancelist.pyi]
+[out]
+<m.A.(abstract)> -> <m.B.__init__>, m
+<m.A.__init__> -> <m.B.__init__>
+<m.A.__new__> -> <m.B.__new__>
+<m.A> -> <m.f>, m, m.A, m.B, m.f
+<m.B> -> <m.f>, m.B, m.f
+<m.g> -> m.f
+
+[case testOverloadedMethod]
+from typing import overload
+
+class A: pass
+class B(A): pass
+
+class C:
+    @overload
+    def f(self, x: B) -> B: ...
+    @overload
+    def f(self, x: A) -> A: ...
+
+    def f(self, x: A) -> A:
+        self.g()
+        return x
+
+    def g(self) -> None: pass
+[builtins fixtures/isinstancelist.pyi]
+[out]
+<m.A.(abstract)> -> <m.B.__init__>, m
+<m.A.__init__> -> <m.B.__init__>
+<m.A.__new__> -> <m.B.__new__>
+<m.A> -> <m.C.f>, m, m.A, m.B, m.C.f
+<m.B> -> <m.C.f>, m.B, m.C.f
+<m.C.g> -> m.C.f
+<m.C> -> m.C
+
+[case testConditionalFunctionDefinition]
+import sys
+
+class A: pass
+class B: pass
+
+if sys.platform == 'nonexistent':
+    def f(x: A) -> None:
+        g()
+else:
+    def f(x: B) -> None:
+        h()
+
+def g() -> None: pass
+def h() -> None: pass
+[builtins fixtures/ops.pyi]
+[out]
+<m.A> -> m.A
+<m.B> -> <m.f>, m.B, m.f
+<m.h> -> m.f
+<sys.platform> -> m
+<sys> -> m
+
+[case testConditionalMethodDefinition]
+import sys
+
+class A: pass
+class B: pass
+
+class C:
+    if sys.platform == 'nonexistent':
+        def f(self, x: A) -> None:
+            self.g()
+    else:
+        def f(self, x: B) -> None:
+            self.h()
+
+    def g(self) -> None: pass
+    def h(self) -> None: pass
+[builtins fixtures/ops.pyi]
+[out]
+<m.A> -> m.A
+<m.B> -> <m.C.f>, m.B, m.C.f
+<m.C.h> -> m.C.f
+<m.C> -> m.C
+<sys.platform> -> m
+<sys> -> m
+
+[case testNewType]
+from typing import NewType
+from m import C
+
+N = NewType('N', C)
+
+def f(n: N) -> None:
+    pass
+[file m.py]
+class C:
+    x: int
+[out]
+<m.N> -> <m.f>, m, m.f
+<m.C.(abstract)> -> <m.N.__init__>, m
+<m.C.__init__> -> <m.N.__init__>
+<m.C.__new__> -> <m.N.__new__>
+<m.C.x> -> <m.N.x>
+<m.C> -> m, m.N
+<m> -> m

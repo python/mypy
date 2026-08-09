@@ -1,0 +1,49 @@
+[case testAssertTypeFail1]
+import typing
+import array as arr
+class array:
+    pass
+def f(si: arr.array[int]):
+    typing.assert_type(si, array) # E: Expression is of type "array.array[int]", not "__main__.array"
+[builtins fixtures/tuple.pyi]
+
+[case testAssertTypeFail2]
+import typing
+import array as arr
+class array:
+    class array:
+        i = 1
+def f(si: arr.array[int]):
+    typing.assert_type(si, array.array) # E: Expression is of type "array.array[int]", not "__main__.array.array"
+[builtins fixtures/tuple.pyi]
+
+[case testAssertTypeFail3]
+import typing
+import array as arr
+class array:
+    class array:
+        i = 1
+def f(si: arr.array[int]):
+    typing.assert_type(si, int) # E: Expression is of type "array[int]", not "int"
+[builtins fixtures/tuple.pyi]
+
+[case testAssertTypeFailCallableArgKind]
+from typing import assert_type, Callable
+def myfunc(arg: int) -> None: pass
+assert_type(myfunc, Callable[[int], None])  # E: Expression is of type "def myfunc(arg: int) -> None", not "Callable[[int], None]"
+
+[case testAssertTypeOverload]
+from typing import assert_type, overload
+
+class Foo:
+    @overload
+    def __new__(cls, x: int) -> Foo: ...
+    @overload
+    def __new__(cls, x: str) -> Foo: ...
+    def __new__(cls, x: "int | str") -> Foo:
+        return cls(0)
+
+assert_type(Foo, type[Foo])
+A = Foo
+assert_type(A, type[Foo])
+[builtins fixtures/tuple.pyi]

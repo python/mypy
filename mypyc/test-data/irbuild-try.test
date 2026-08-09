@@ -1,0 +1,607 @@
+[case testTryExcept1]
+def g() -> None:
+    try:
+        object()
+    except:
+        print("weeee")
+[out]
+def g():
+    r0 :: object
+    r1 :: str
+    r2, r3 :: object
+    r4 :: tuple[object, object, object]
+    r5 :: str
+    r6 :: object
+    r7 :: str
+    r8 :: object
+    r9 :: object[1]
+    r10 :: object_ptr
+    r11 :: object
+    r12 :: bit
+L0:
+L1:
+    r0 = builtins :: module
+    r1 = 'object'
+    r2 = CPyObject_GetAttr(r0, r1)
+    r3 = PyObject_Vectorcall(r2, 0, 0, 0)
+    goto L5
+L2: (handler for L1)
+    r4 = CPy_CatchError()
+    r5 = 'weeee'
+    r6 = builtins :: module
+    r7 = 'print'
+    r8 = CPyObject_GetAttr(r6, r7)
+    r9 = [r5]
+    r10 = load_address r9
+    r11 = PyObject_Vectorcall(r8, r10, 1, 0)
+    keep_alive r5
+L3:
+    CPy_RestoreExcInfo(r4)
+    goto L5
+L4: (handler for L2)
+    CPy_RestoreExcInfo(r4)
+    r12 = CPy_KeepPropagating()
+    unreachable
+L5:
+    return 1
+
+[case testTryExcept2]
+def g(b: bool) -> None:
+    try:
+        if b:
+            object()
+        else:
+            str('hi')
+    except:
+        print("weeee")
+[out]
+def g(b):
+    b :: bool
+    r0 :: object
+    r1 :: str
+    r2, r3 :: object
+    r4, r5 :: str
+    r6 :: tuple[object, object, object]
+    r7 :: str
+    r8 :: object
+    r9 :: str
+    r10 :: object
+    r11 :: object[1]
+    r12 :: object_ptr
+    r13 :: object
+    r14 :: bit
+L0:
+L1:
+    if b goto L2 else goto L3 :: bool
+L2:
+    r0 = builtins :: module
+    r1 = 'object'
+    r2 = CPyObject_GetAttr(r0, r1)
+    r3 = PyObject_Vectorcall(r2, 0, 0, 0)
+    goto L4
+L3:
+    r4 = 'hi'
+    r5 = PyObject_Str(r4)
+L4:
+    goto L8
+L5: (handler for L1, L2, L3, L4)
+    r6 = CPy_CatchError()
+    r7 = 'weeee'
+    r8 = builtins :: module
+    r9 = 'print'
+    r10 = CPyObject_GetAttr(r8, r9)
+    r11 = [r7]
+    r12 = load_address r11
+    r13 = PyObject_Vectorcall(r10, r12, 1, 0)
+    keep_alive r7
+L6:
+    CPy_RestoreExcInfo(r6)
+    goto L8
+L7: (handler for L5)
+    CPy_RestoreExcInfo(r6)
+    r14 = CPy_KeepPropagating()
+    unreachable
+L8:
+    return 1
+
+[case testTryExcept3]
+def g() -> None:
+    try:
+        print('a')
+        try:
+            object()
+        except AttributeError as e:
+            print('b', e)
+    except:
+        print("weeee")
+[out]
+def g():
+    r0 :: str
+    r1 :: object
+    r2 :: str
+    r3 :: object
+    r4 :: object[1]
+    r5 :: object_ptr
+    r6, r7 :: object
+    r8 :: str
+    r9, r10 :: object
+    r11 :: tuple[object, object, object]
+    r12 :: object
+    r13 :: str
+    r14 :: object
+    r15 :: bit
+    r16, e :: object
+    r17 :: str
+    r18 :: object
+    r19 :: str
+    r20 :: object
+    r21 :: object[2]
+    r22 :: object_ptr
+    r23 :: object
+    r24 :: bit
+    r25 :: tuple[object, object, object]
+    r26 :: str
+    r27 :: object
+    r28 :: str
+    r29 :: object
+    r30 :: object[1]
+    r31 :: object_ptr
+    r32 :: object
+    r33 :: bit
+L0:
+L1:
+    r0 = 'a'
+    r1 = builtins :: module
+    r2 = 'print'
+    r3 = CPyObject_GetAttr(r1, r2)
+    r4 = [r0]
+    r5 = load_address r4
+    r6 = PyObject_Vectorcall(r3, r5, 1, 0)
+    keep_alive r0
+L2:
+    r7 = builtins :: module
+    r8 = 'object'
+    r9 = CPyObject_GetAttr(r7, r8)
+    r10 = PyObject_Vectorcall(r9, 0, 0, 0)
+    goto L8
+L3: (handler for L2)
+    r11 = CPy_CatchError()
+    r12 = builtins :: module
+    r13 = 'AttributeError'
+    r14 = CPyObject_GetAttr(r12, r13)
+    r15 = CPy_ExceptionMatches(r14)
+    if r15 goto L4 else goto L5 :: bool
+L4:
+    r16 = CPy_GetExcValue()
+    e = r16
+    r17 = 'b'
+    r18 = builtins :: module
+    r19 = 'print'
+    r20 = CPyObject_GetAttr(r18, r19)
+    r21 = [r17, e]
+    r22 = load_address r21
+    r23 = PyObject_Vectorcall(r20, r22, 2, 0)
+    keep_alive r17, e
+    goto L6
+L5:
+    CPy_Reraise()
+    unreachable
+L6:
+    CPy_RestoreExcInfo(r11)
+    goto L8
+L7: (handler for L3, L4, L5)
+    CPy_RestoreExcInfo(r11)
+    r24 = CPy_KeepPropagating()
+    unreachable
+L8:
+    goto L12
+L9: (handler for L1, L6, L7, L8)
+    r25 = CPy_CatchError()
+    r26 = 'weeee'
+    r27 = builtins :: module
+    r28 = 'print'
+    r29 = CPyObject_GetAttr(r27, r28)
+    r30 = [r26]
+    r31 = load_address r30
+    r32 = PyObject_Vectorcall(r29, r31, 1, 0)
+    keep_alive r26
+L10:
+    CPy_RestoreExcInfo(r25)
+    goto L12
+L11: (handler for L9)
+    CPy_RestoreExcInfo(r25)
+    r33 = CPy_KeepPropagating()
+    unreachable
+L12:
+    return 1
+
+[case testTryExcept4]
+def g() -> None:
+    try:
+        pass
+    except KeyError:
+        print("weeee")
+    except IndexError:
+        print("yo")
+[out]
+def g():
+    r0 :: tuple[object, object, object]
+    r1 :: object
+    r2 :: str
+    r3 :: object
+    r4 :: bit
+    r5 :: str
+    r6 :: object
+    r7 :: str
+    r8 :: object
+    r9 :: object[1]
+    r10 :: object_ptr
+    r11, r12 :: object
+    r13 :: str
+    r14 :: object
+    r15 :: bit
+    r16 :: str
+    r17 :: object
+    r18 :: str
+    r19 :: object
+    r20 :: object[1]
+    r21 :: object_ptr
+    r22 :: object
+    r23 :: bit
+L0:
+L1:
+    goto L9
+L2: (handler for L1)
+    r0 = CPy_CatchError()
+    r1 = builtins :: module
+    r2 = 'KeyError'
+    r3 = CPyObject_GetAttr(r1, r2)
+    r4 = CPy_ExceptionMatches(r3)
+    if r4 goto L3 else goto L4 :: bool
+L3:
+    r5 = 'weeee'
+    r6 = builtins :: module
+    r7 = 'print'
+    r8 = CPyObject_GetAttr(r6, r7)
+    r9 = [r5]
+    r10 = load_address r9
+    r11 = PyObject_Vectorcall(r8, r10, 1, 0)
+    keep_alive r5
+    goto L7
+L4:
+    r12 = builtins :: module
+    r13 = 'IndexError'
+    r14 = CPyObject_GetAttr(r12, r13)
+    r15 = CPy_ExceptionMatches(r14)
+    if r15 goto L5 else goto L6 :: bool
+L5:
+    r16 = 'yo'
+    r17 = builtins :: module
+    r18 = 'print'
+    r19 = CPyObject_GetAttr(r17, r18)
+    r20 = [r16]
+    r21 = load_address r20
+    r22 = PyObject_Vectorcall(r19, r21, 1, 0)
+    keep_alive r16
+    goto L7
+L6:
+    CPy_Reraise()
+    unreachable
+L7:
+    CPy_RestoreExcInfo(r0)
+    goto L9
+L8: (handler for L2, L3, L4, L5, L6)
+    CPy_RestoreExcInfo(r0)
+    r23 = CPy_KeepPropagating()
+    unreachable
+L9:
+    return 1
+
+[case testTryFinally]
+def a(b: bool) -> None:
+    try:
+        if b:
+            raise Exception('hi')
+    finally:
+        print('finally')
+[out]
+def a(b):
+    b :: bool
+    r0 :: str
+    r1 :: object
+    r2 :: str
+    r3 :: object
+    r4 :: object[1]
+    r5 :: object_ptr
+    r6 :: object
+    r7, r8, r9 :: tuple[object, object, object]
+    r10 :: str
+    r11 :: object
+    r12 :: str
+    r13 :: object
+    r14 :: object[1]
+    r15 :: object_ptr
+    r16 :: object
+    r17 :: bit
+L0:
+L1:
+    if b goto L2 else goto L3 :: bool
+L2:
+    r0 = 'hi'
+    r1 = builtins :: module
+    r2 = 'Exception'
+    r3 = CPyObject_GetAttr(r1, r2)
+    r4 = [r0]
+    r5 = load_address r4
+    r6 = PyObject_Vectorcall(r3, r5, 1, 0)
+    keep_alive r0
+    CPy_Raise(r6)
+    unreachable
+L3:
+L4:
+L5:
+    r7 = <error> :: tuple[object, object, object]
+    r8 = r7
+    goto L7
+L6: (handler for L1, L2, L3)
+    r9 = CPy_CatchError()
+    r8 = r9
+L7:
+    r10 = 'finally'
+    r11 = builtins :: module
+    r12 = 'print'
+    r13 = CPyObject_GetAttr(r11, r12)
+    r14 = [r10]
+    r15 = load_address r14
+    r16 = PyObject_Vectorcall(r13, r15, 1, 0)
+    keep_alive r10
+    if is_error(r8) goto L9 else goto L8
+L8:
+    CPy_Reraise()
+    unreachable
+L9:
+    goto L13
+L10: (handler for L7, L8)
+    if is_error(r8) goto L12 else goto L11
+L11:
+    CPy_RestoreExcInfo(r8)
+L12:
+    r17 = CPy_KeepPropagating()
+    unreachable
+L13:
+    return 1
+
+[case testWith]
+from typing import Any
+def foo(x: Any) -> None:
+    with x() as y:
+        print('hello')
+[out]
+def foo(x):
+    x, r0, r1 :: object
+    r2 :: str
+    r3 :: object
+    r4 :: str
+    r5 :: object
+    r6 :: object[1]
+    r7 :: object_ptr
+    r8 :: object
+    r9 :: bool
+    y :: object
+    r10 :: str
+    r11 :: object
+    r12 :: str
+    r13 :: object
+    r14 :: object[1]
+    r15 :: object_ptr
+    r16 :: object
+    r17, r18 :: tuple[object, object, object]
+    r19, r20, r21 :: object
+    r22 :: object[4]
+    r23 :: object_ptr
+    r24 :: object
+    r25 :: i32
+    r26 :: bit
+    r27 :: bool
+    r28 :: bit
+    r29, r30, r31 :: tuple[object, object, object]
+    r32 :: object
+    r33 :: object[4]
+    r34 :: object_ptr
+    r35 :: object
+    r36 :: bit
+L0:
+    r0 = PyObject_Vectorcall(x, 0, 0, 0)
+    r1 = CPy_TYPE(r0)
+    r2 = '__exit__'
+    r3 = CPyObject_GetAttr(r1, r2)
+    r4 = '__enter__'
+    r5 = CPyObject_GetAttr(r1, r4)
+    r6 = [r0]
+    r7 = load_address r6
+    r8 = PyObject_Vectorcall(r5, r7, 1, 0)
+    keep_alive r0
+    r9 = 1
+L1:
+L2:
+    y = r8
+    r10 = 'hello'
+    r11 = builtins :: module
+    r12 = 'print'
+    r13 = CPyObject_GetAttr(r11, r12)
+    r14 = [r10]
+    r15 = load_address r14
+    r16 = PyObject_Vectorcall(r13, r15, 1, 0)
+    keep_alive r10
+    goto L8
+L3: (handler for L2)
+    r17 = CPy_CatchError()
+    r9 = 0
+    r18 = CPy_GetExcInfo()
+    r19 = r18[0]
+    r20 = r18[1]
+    r21 = r18[2]
+    r22 = [r0, r19, r20, r21]
+    r23 = load_address r22
+    r24 = PyObject_Vectorcall(r3, r23, 4, 0)
+    keep_alive r0, r19, r20, r21
+    r25 = PyObject_IsTrue(r24)
+    r26 = r25 >= 0 :: signed
+    r27 = truncate r25: i32 to builtins.bool
+    if r27 goto L5 else goto L4 :: bool
+L4:
+    CPy_Reraise()
+    unreachable
+L5:
+L6:
+    CPy_RestoreExcInfo(r17)
+    goto L8
+L7: (handler for L3, L4, L5)
+    CPy_RestoreExcInfo(r17)
+    r28 = CPy_KeepPropagating()
+    unreachable
+L8:
+L9:
+L10:
+    r29 = <error> :: tuple[object, object, object]
+    r30 = r29
+    goto L12
+L11: (handler for L1, L6, L7, L8)
+    r31 = CPy_CatchError()
+    r30 = r31
+L12:
+    if r9 goto L13 else goto L14 :: bool
+L13:
+    r32 = load_address _Py_NoneStruct
+    r33 = [r0, r32, r32, r32]
+    r34 = load_address r33
+    r35 = PyObject_Vectorcall(r3, r34, 4, 0)
+    keep_alive r0, r32, r32, r32
+L14:
+    if is_error(r30) goto L16 else goto L15
+L15:
+    CPy_Reraise()
+    unreachable
+L16:
+    goto L20
+L17: (handler for L12, L13, L14, L15)
+    if is_error(r30) goto L19 else goto L18
+L18:
+    CPy_RestoreExcInfo(r30)
+L19:
+    r36 = CPy_KeepPropagating()
+    unreachable
+L20:
+    return 1
+
+[case testWithNativeSimple]
+class DummyContext:
+    def __enter__(self) -> None:
+        pass
+    def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+        pass
+
+def foo(x: DummyContext) -> None:
+    with x:
+        print('hello')
+[out]
+def DummyContext.__enter__(self):
+    self :: __main__.DummyContext
+L0:
+    return 1
+def DummyContext.__exit__(self, exc_type, exc_val, exc_tb):
+    self :: __main__.DummyContext
+    exc_type, exc_val, exc_tb :: object
+L0:
+    return 1
+def foo(x):
+    x :: __main__.DummyContext
+    r0 :: None
+    r1 :: bool
+    r2 :: str
+    r3 :: object
+    r4 :: str
+    r5 :: object
+    r6 :: object[1]
+    r7 :: object_ptr
+    r8 :: object
+    r9, r10 :: tuple[object, object, object]
+    r11, r12, r13 :: object
+    r14 :: None
+    r15 :: object
+    r16 :: i32
+    r17 :: bit
+    r18 :: bool
+    r19 :: bit
+    r20, r21, r22 :: tuple[object, object, object]
+    r23 :: object
+    r24 :: None
+    r25 :: bit
+L0:
+    r0 = x.__enter__()
+    r1 = 1
+L1:
+L2:
+    r2 = 'hello'
+    r3 = builtins :: module
+    r4 = 'print'
+    r5 = CPyObject_GetAttr(r3, r4)
+    r6 = [r2]
+    r7 = load_address r6
+    r8 = PyObject_Vectorcall(r5, r7, 1, 0)
+    keep_alive r2
+    goto L8
+L3: (handler for L2)
+    r9 = CPy_CatchError()
+    r1 = 0
+    r10 = CPy_GetExcInfo()
+    r11 = r10[0]
+    r12 = r10[1]
+    r13 = r10[2]
+    r14 = x.__exit__(r11, r12, r13)
+    r15 = box(None, r14)
+    r16 = PyObject_IsTrue(r15)
+    r17 = r16 >= 0 :: signed
+    r18 = truncate r16: i32 to builtins.bool
+    if r18 goto L5 else goto L4 :: bool
+L4:
+    CPy_Reraise()
+    unreachable
+L5:
+L6:
+    CPy_RestoreExcInfo(r9)
+    goto L8
+L7: (handler for L3, L4, L5)
+    CPy_RestoreExcInfo(r9)
+    r19 = CPy_KeepPropagating()
+    unreachable
+L8:
+L9:
+L10:
+    r20 = <error> :: tuple[object, object, object]
+    r21 = r20
+    goto L12
+L11: (handler for L1, L6, L7, L8)
+    r22 = CPy_CatchError()
+    r21 = r22
+L12:
+    if r1 goto L13 else goto L14 :: bool
+L13:
+    r23 = load_address _Py_NoneStruct
+    r24 = x.__exit__(r23, r23, r23)
+L14:
+    if is_error(r21) goto L16 else goto L15
+L15:
+    CPy_Reraise()
+    unreachable
+L16:
+    goto L20
+L17: (handler for L12, L13, L14, L15)
+    if is_error(r21) goto L19 else goto L18
+L18:
+    CPy_RestoreExcInfo(r21)
+L19:
+    r25 = CPy_KeepPropagating()
+    unreachable
+L20:
+    return 1

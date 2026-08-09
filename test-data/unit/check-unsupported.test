@@ -1,0 +1,17 @@
+-- Tests for unsupported features
+
+
+[case testDecorateOverloadedFunction]
+from foo import *
+[file foo.pyi]
+# The error messages are not the most informative ever.
+def d(x): pass
+@d
+def f(): pass
+def f(x): pass # E
+def g(): pass
+@d # E
+def g(x): pass
+[out]
+tmp/foo.pyi:5: error: Name "f" already defined on line 3
+tmp/foo.pyi:7: error: Name "g" already defined on line 6

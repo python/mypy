@@ -1,0 +1,4 @@
+# NOTE: this needs to be kept in sync with the "requires" list in pyproject.toml
+-r mypy-requirements.txt
+types-psutil
+types-setuptools
