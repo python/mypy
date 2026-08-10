@@ -4408,8 +4408,10 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                     # inferred return type for an overloaded function
                     # to be ambiguous.
                     return
-                assert isinstance(reinferred_rvalue_type, TupleType)
-                rvalue_type = reinferred_rvalue_type
+                if isinstance(reinferred_rvalue_type, TupleType):
+                    # This branch will usually be taken, but in some cases context can
+                    # e.g. select a different overload
+                    rvalue_type = reinferred_rvalue_type
 
             left_rv_types, star_rv_types, right_rv_types = self.split_around_star(
                 rvalue_type.items, star_index, len(lvalues)
