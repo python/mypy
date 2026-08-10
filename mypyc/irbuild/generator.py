@@ -174,6 +174,12 @@ def setup_generator_class(builder: IRBuilder) -> ClassIR:
         builder.fn_info.env_class = generator_class_ir
     else:
         generator_class_ir.attributes[ENV_ATTR_NAME] = RInstance(builder.fn_info.env_class)
+        if not builder.fn_info.fitem.is_coroutine:
+            # After completion generators still need generator.__mypyc_env__ for subsequent
+            # __next__() calls to observe the terminal next-label and raise StopIteration.
+            # Coroutines can't be resumed after completion, so keeping the environment alive
+            # there would just extend local lifetimes unnecessarily.
+            generator_class_ir.attrs_to_keep_alive_on_completion.add(ENV_ATTR_NAME)
 
     builder.classes.append(generator_class_ir)
     return generator_class_ir
