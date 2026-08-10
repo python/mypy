@@ -804,6 +804,11 @@ class MessageBuilder:
                     if isinstance(arg_type, Instance) and isinstance(type, Instance):
                         notes = append_invariance_notes(notes, arg_type, type)
                         notes = append_numbers_notes(notes, arg_type, type)
+                if arg_kind == ARG_STAR2 and isinstance(arg_type, Instance):
+                    if arg_type.type.fullname == "builtins.dict" and len(arg_type.args) >= 2:
+                        notes.append(
+                            'Consider annotating the ** argument as "**kwargs: Any" or using a TypedDict'
+                        )
             object_type = get_proper_type(object_type)
             if isinstance(object_type, TypedDictType):
                 code = codes.TYPEDDICT_ITEM

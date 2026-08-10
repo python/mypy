@@ -3777,7 +3777,8 @@ def foo(x: P, y: P) -> None: ...
 args: list[object]
 foo(*args)  # E: Argument 1 to "foo" has incompatible type "*list[object]"; expected "P"
 kwargs: dict[str, object]
-foo(**kwargs)  # E: Argument 1 to "foo" has incompatible type "**dict[str, object]"; expected "P"
+foo(**kwargs)  # E: Argument 1 to "foo" has incompatible type "**dict[str, object]"; expected "P" \
+               # N: Consider annotating the ** argument as "**kwargs: Any" or using a TypedDict
 [builtins fixtures/dict.pyi]
 
 [case testNoImplicitReturnErrorOnDeferral_no_empty]
