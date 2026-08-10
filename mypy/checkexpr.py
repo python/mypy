@@ -4817,7 +4817,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                 if (
                     isinstance(key_type, LiteralType)
                     and isinstance(key_type.value, str)
-                    and key_type.fallback.type.fullname != "builtins.bytes"
+                    and is_subtype(key_type.fallback, self.named_type("builtins.str"))
                 ):
                     key_names.append(key_type.value)
                 else:
