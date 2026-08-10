@@ -411,6 +411,8 @@ class Options:
         # Install missing stub packages in non-interactive mode (don't prompt for
         # confirmation, and don't show any errors)
         self.non_interactive = False
+        # List missing stub packages to stdout (instead of installing them)
+        self.list_install_types = False
         # When we encounter errors that may cause many additional errors,
         # skip most errors after this many messages have been reported.
         # -1 means unlimited.
