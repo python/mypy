@@ -46,6 +46,7 @@ from mypy.traverser import TraverserVisitor
 from mypy.type_visitor import ANY_STRATEGY, BoolTypeQuery
 from mypy.typeanal import collect_all_inner_types
 from mypy.types import (
+    OVERLOAD_NAMES,
     AnyType,
     CallableType,
     FunctionLike,
@@ -239,7 +240,10 @@ class StatisticsVisitor(TraverserVisitor):
         self.record_precise_if_checked_scope(o)
 
     def visit_name_expr(self, o: NameExpr) -> None:
-        if o.fullname in ("builtins.None", "builtins.True", "builtins.False", "builtins.Ellipsis"):
+        if (
+            o.fullname in ("builtins.None", "builtins.True", "builtins.False", "builtins.Ellipsis")
+            or o.fullname in OVERLOAD_NAMES
+        ):
             self.record_precise_if_checked_scope(o)
         else:
             self.process_node(o)
@@ -346,7 +350,12 @@ class StatisticsVisitor(TraverserVisitor):
                 self.type(self.typemap.get(node))
 
     def record_precise_if_checked_scope(self, node: Node) -> None:
-        if isinstance(node, Expression) and self.typemap and node not in self.typemap:
+        if (
+            isinstance(node, Expression)
+            and self.typemap
+            and node not in self.typemap
+            and not (isinstance(node, NameExpr) and node.fullname in OVERLOAD_NAMES)
+        ):
             kind = TYPE_UNANALYZED
         elif self.is_checked_scope():
             kind = TYPE_PRECISE
