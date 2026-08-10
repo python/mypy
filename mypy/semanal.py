@@ -8189,7 +8189,29 @@ class SemanticAnalyzer(
                         # 2. Reference to an unknown placeholder node.
                         maybe_type_expr.as_type = None
                         return
-            else:  # does not look like an identifier
+            elif (leftmost_name := dotted_identifier_leftmost(str_value)) is not None:
+                # Dotted-name string (e.g. "builtins.tuple", "typing.Mapping").
+                # Look up the leftmost component; if it cannot be a type prefix
+                # then the whole dotted name cannot spell a type. Mirrors the
+                # IndexExpr-with-MemberExpr-base filter logic below.
+                sym = self.lookup(leftmost_name, UnboundType(leftmost_name), suppress_errors=True)
+                if sym is None:
+                    # Leftmost component does not refer to anything in scope
+                    maybe_type_expr.as_type = None
+                    return
+                node = sym.node  # cache
+                if isinstance(node, PlaceholderNode) and not node.becomes_typeinfo:
+                    # Either:
+                    # 1. f'Cannot resolve name "{t.name}" (possible cyclic definition)'
+                    # 2. Reference to an unknown placeholder node.
+                    maybe_type_expr.as_type = None
+                    return
+                if isinstance(node, Var) and not self.var_is_typing_special_form(node):
+                    # Leftmost component is a Var: it is a value, so it cannot be
+                    # the module or class prefix of a dotted type name.
+                    maybe_type_expr.as_type = None
+                    return
+            else:  # does not look like an identifier or dotted identifier
                 if '"' in str_value or "'" in str_value:
                     # Only valid inside a Literal[...] or Annotated[..., ...] type
                     if "[" not in str_value:
@@ -8566,6 +8588,36 @@ def erase_func_annotations(func: FuncDef) -> None:
         arg.variable.type = None
     func.type = None
     func.unanalyzed_type = None
+
+
+def dotted_identifier_leftmost(s: str) -> str | None:
+    """The leftmost component of s, if s is a dotted identifier, else None.
+
+    A dotted identifier is two or more identifiers joined by ".", such as
+    "builtins.tuple" or "typing.Mapping". A bare identifier is not a dotted
+    identifier: callers are expected to handle that case separately.
+
+    Returns the leftmost component (which is never empty) so that callers
+    need not split s a second time to obtain it.
+    """
+    # NOTE: Scanning with find() rather than s.split(".") avoids allocating a
+    #       list, since only the leftmost component is ever needed.
+    dot = s.find(".")
+    if dot == -1:
+        return None
+    leftmost = s[:dot]
+    if not leftmost.isidentifier():
+        return None
+    start = dot + 1
+    while True:
+        dot = s.find(".", start)
+        if dot == -1:
+            if not s[start:].isidentifier():
+                return None
+            return leftmost
+        if not s[start:dot].isidentifier():
+            return None
+        start = dot + 1
 
 
 def has_nontype_char(s: str) -> bool:
