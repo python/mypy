@@ -1123,8 +1123,14 @@ def define_options(
         title="Advanced options", description="Debug and customize mypy internals."
     )
     internals_group.add_argument("--pdb", action="store_true", help="Invoke pdb on fatal error")
+    add_invertible_flag(
+        "--show-traceback",
+        default=True,
+        help="Show traceback on fatal error",
+        group=internals_group,
+    )
     internals_group.add_argument(
-        "--show-traceback", "--tb", action="store_true", help="Show traceback on fatal error"
+        "--tb", dest="show_traceback", action="store_true", help=argparse.SUPPRESS
     )
     internals_group.add_argument(
         "--raise-exceptions", action="store_true", help="Raise exception on fatal error"
