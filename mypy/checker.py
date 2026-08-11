@@ -614,9 +614,9 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                             if not self.should_report_unreachable_issues():
                                 finish = True
                             if (
-                                not self.is_noop_for_reachability(d)
+                                not finish
                                 and not reported_unreachable
-                                and not finish
+                                and not self.is_noop_for_reachability(d)
                             ):
                                 self.msg.unreachable_statement(d)
                                 finish = True
@@ -3326,9 +3326,9 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                 if not self.should_report_unreachable_issues():
                     finish = True
                 if (
-                    not self.is_noop_for_reachability(s)
+                    not finish
                     and not reported_unreachable
-                    and not finish
+                    and not self.is_noop_for_reachability(s)
                 ):
                     self.msg.unreachable_statement(s)
                     finish = True
