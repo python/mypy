@@ -965,6 +965,13 @@ def define_options(
         group=strictness_group,
     )
 
+    add_invertible_flag(
+        "--check-unreachable",
+        default=False,
+        help=argparse.SUPPRESS,  # "Type check unreachable code",
+        group=strictness_group,
+    )
+
     strict_help = "Strict mode; enables the following flags: {}".format(
         ", ".join(strict_flag_names)
     )
