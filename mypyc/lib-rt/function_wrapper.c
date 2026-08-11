@@ -145,9 +145,19 @@ static PyGetSetDef CPyFunction_getsets[] = {
     {0, 0, 0, 0, 0}
 };
 
-static PyObject* CPy_PyMethod_New(PyObject *func, PyObject *self, PyObject *typ) {
-    (void)typ;
-    if (!self) {
+static PyObject* CPyFunction_descr_get(PyObject *func, PyObject *self, PyObject *typ) {
+    int flags = ((PyCFunctionObject *)func)->m_ml->ml_flags;
+    if (flags & METH_CLASS) {
+        if (typ == NULL) {
+            if (self == NULL) {
+                PyErr_SetString(PyExc_TypeError, "__get__(None, None) is invalid");
+                return NULL;
+            }
+            typ = (PyObject *)Py_TYPE(self);
+        }
+        return PyMethod_New(func, typ);
+    }
+    if (!self || (flags & METH_STATIC)) {
         Py_INCREF(func);
         return func;
     }
@@ -162,7 +172,7 @@ static PyType_Slot CPyFunction_slots[] = {
     {Py_tp_clear, (void *)CPyFunction_clear},
     {Py_tp_members, (void *)CPyFunction_members},
     {Py_tp_getset, (void *)CPyFunction_getsets},
-    {Py_tp_descr_get, (void *)CPy_PyMethod_New},
+    {Py_tp_descr_get, (void *)CPyFunction_descr_get},
     {0, 0},
 };
 

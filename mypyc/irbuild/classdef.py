@@ -760,7 +760,6 @@ def find_attr_initializers(
     if cls.builtin_base:
         return set(), []
 
-    cls_type = dataclass_type(cdef)
     attrs_with_defaults: set[str] = set()
     default_assignments: list[tuple[AssignmentStmt, str]] = []
 
@@ -774,10 +773,11 @@ def find_attr_initializers(
         info_ir = builder.mapper.type_to_ir.get(info)
         if info_ir is None:
             continue
+        info_cls_type = dataclass_type(info.defn)
         for stmt in info.defn.defs.body:
             if not isinstance(stmt, AssignmentStmt):
                 continue
-            name = default_attr_name(stmt, info_ir, cls_type)
+            name = default_attr_name(stmt, info_ir, info_cls_type)
             if name is None:
                 continue
             attrs_with_defaults.add(name)

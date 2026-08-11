@@ -2019,3 +2019,32 @@ class Child(Parent):
 [file driver.py]
 from native import test
 test()
+
+[case testCompiledSubclassOfCompiledBaseThatAllowsInterpretedSubclasses]
+from mypy_extensions import mypyc_attr
+
+from other import CompiledBase
+
+class CompiledSubclass(CompiledBase):
+    def value(self) -> int:
+        return 1
+
+@mypyc_attr(allow_interpreted_subclasses=True)
+class CompiledSubclassThatAllowsInterpreted(CompiledBase):
+    def value(self) -> int:
+        return 2
+
+def test_compiled_subclasses_of_compiled_base_that_allows_interpreted_subclasses() -> None:
+    c1 = CompiledSubclass()
+    assert c1.value() == 1
+
+    c2 = CompiledSubclassThatAllowsInterpreted()
+    assert c2.value() == 2
+
+[file other.py]
+from mypy_extensions import mypyc_attr
+
+@mypyc_attr(allow_interpreted_subclasses=True)
+class CompiledBase:
+    def value(self) -> int:
+        raise NotImplementedError

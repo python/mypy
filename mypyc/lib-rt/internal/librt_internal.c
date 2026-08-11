@@ -930,6 +930,7 @@ write_tag(PyObject *self, PyObject *const *args, size_t nargs) {
 #define LITERAL_BYTES 5
 #define LITERAL_FLOAT 6
 #define LITERAL_COMPLEX 7
+#define LITERAL_SENTINEL 8
 
 // Supported builtin collections.
 #define LIST_GEN 20
@@ -1161,6 +1162,11 @@ _skip_object(PyObject *data, uint8_t tag) {
         return _skip(data, 8);
     if (tag == LITERAL_COMPLEX)
         return _skip(data, 16);
+    if (tag == LITERAL_SENTINEL) {
+        if (unlikely(_skip_str_bytes(data) == CPY_NONE_ERROR))
+            return CPY_NONE_ERROR;
+        return _skip_str_bytes(data);
+    }
     PyErr_Format(PyExc_ValueError, "Unsupported tag: %d", tag);
     return CPY_NONE_ERROR;
 }
