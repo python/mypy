@@ -1422,8 +1422,10 @@ def process(response1,response2)-> Union[float,int]:
 
 [case testLegacyTypeComments]
 # flags: --enable-error-code type-comment
+from typing import AsyncGenerator
 def f(): ...
-async def g(): ...
+async def g() -> AsyncGenerator[int, None]:
+    yield 2
 
 a = 2  # type: int  # E: Using type comments with mypy is (soft-)deprecated, use inline annotations instead  [type-comment]
 
@@ -1444,3 +1446,4 @@ async def func2():  # E: Using type comments with mypy is (soft-)deprecated, use
         ...
 
 [builtins fixtures/tuple.pyi]
+[typing fixtures/typing-full.pyi]
