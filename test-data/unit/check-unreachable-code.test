@@ -1744,3 +1744,10 @@ assert sys.platform == "win32"
 
 42 + "no way"  # type: ignore[operator]
 [builtins fixtures/isinstancelist.pyi]
+
+
+[case testCheckUnreachableBasics]
+# flags: --check-unreachable --warn-unreachable
+if False:
+    reveal_type(5)  # E: Statement is unreachable \
+                    # N: Revealed type is "Literal[5]?"

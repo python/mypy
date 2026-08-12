@@ -604,18 +604,31 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
             with self.tscope.module_scope(self.tree.fullname):
                 with self.enter_partial_types(), self.binder.top_frame_context():
                     marked_unreachable = False
+                    reported_unreachable = False
                     for d in self.tree.defs:
                         if self.binder.is_unreachable():
+                            finish = False
                             if not marked_unreachable:
                                 self.mark_unreachable(self.tree.defs, after=d)
                                 marked_unreachable = True
                             if not self.should_report_unreachable_issues():
-                                break
-                            if not self.is_noop_for_reachability(d):
+                                finish = True
+                            if (
+                                not finish
+                                and not reported_unreachable
+                                and not self.is_noop_for_reachability(d)
+                            ):
                                 self.msg.unreachable_statement(d)
+                                finish = True
+                                reported_unreachable = True
+
+                            if finish and not self.options.check_unreachable:
                                 break
-                        else:
-                            self.accept(d)
+
+                            if not self.options.check_unreachable:
+                                continue
+
+                        self.accept(d)
 
                 assert not self.current_node_deferred
 
@@ -3303,20 +3316,33 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
             self.binder.unreachable()
             return
         marked_unreachable = False
+        reported_unreachable = False
         for s in b.body:
             if self.binder.is_unreachable():
+                finish = False
                 if self.scope.top_level_function() is None and not marked_unreachable:
                     self.mark_unreachable(b.body, after=s)
                     marked_unreachable = True
                 if not self.should_report_unreachable_issues():
-                    break
-                if not self.is_noop_for_reachability(s):
+                    finish = True
+                if (
+                    not finish
+                    and not reported_unreachable
+                    and not self.is_noop_for_reachability(s)
+                ):
                     self.msg.unreachable_statement(s)
+                    finish = True
+                    reported_unreachable = True
+
+                if finish and not self.options.check_unreachable:
                     break
-            else:
-                self.accept(s)
-                # Clear expression cache after each statement to avoid unlimited growth.
-                self.expr_checker.expr_cache.clear()
+
+                if not self.options.check_unreachable:
+                    continue
+
+            self.accept(s)
+            # Clear expression cache after each statement to avoid unlimited growth.
+            self.expr_checker.expr_cache.clear()
 
     def should_report_unreachable_issues(self) -> bool:
         return (
