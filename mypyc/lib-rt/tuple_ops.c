@@ -5,6 +5,26 @@
 #include <Python.h>
 #include "CPy.h"
 
+PyObject *CPySequenceTuple_GetItem_(PyObject *tuple, CPyTagged index) {
+    if (CPyTagged_CheckShort(index)) {
+        Py_ssize_t n = CPyTagged_ShortAsSsize_t(index);
+        Py_ssize_t size = PyTuple_GET_SIZE(tuple);
+        if (n < 0) {
+            n += size;
+        }
+        if (n < 0 || n >= size) {
+            PyErr_SetString(PyExc_IndexError, "tuple index out of range");
+            return NULL;
+        }
+        PyObject *result = PyTuple_GET_ITEM(tuple, n);
+        Py_INCREF(result);
+        return result;
+    } else {
+        PyErr_SetString(PyExc_OverflowError, CPYTHON_LARGE_INT_ERRMSG);
+        return NULL;
+    }
+}
+
 PyObject *CPySequenceTuple_GetSlice(PyObject *obj, CPyTagged start, CPyTagged end) {
     if (likely(PyTuple_CheckExact(obj)
                && CPyTagged_CheckShort(start) && CPyTagged_CheckShort(end))) {

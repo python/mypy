@@ -863,29 +863,22 @@ bool CPySet_Remove(PyObject *set, PyObject *key);
 // Tuple operations
 
 PyObject *CPySequenceTuple_GetSlice(PyObject *obj, CPyTagged start, CPyTagged end);
-
-static inline bool CPySequenceTuple_IsValidIndex(Py_ssize_t n, Py_ssize_t size) {
-    return (0 <= n && n < size) || (-size <= n && n < 0);
-}
+PyObject *CPySequenceTuple_GetItem_(PyObject *tuple, CPyTagged index);
 
 static inline PyObject *CPySequenceTuple_GetItem(PyObject *tuple, CPyTagged index)
 {
-    if (likely(CPyTagged_CheckShort(index))) {
+    if (likely(CPyTagged_CheckShort(index) && !CPyTagged_IsNegative(index))) {
         Py_ssize_t n = CPyTagged_ShortAsSsize_t(index);
         Py_ssize_t size = PyTuple_GET_SIZE(tuple);
-        if (unlikely(!CPySequenceTuple_IsValidIndex(n, size)))
-        {
+        if (unlikely(n >= size)) {
             PyErr_SetString(PyExc_IndexError, "tuple index out of range");
             return NULL;
         }
-        if (n < 0)
-            n += size;
         PyObject *result = PyTuple_GET_ITEM(tuple, n);
         Py_INCREF(result);
         return result;
     } else {
-        PyErr_SetString(PyExc_OverflowError, CPYTHON_LARGE_INT_ERRMSG);
-        return NULL;
+        return CPySequenceTuple_GetItem_(tuple, index);
     }
 }
 
