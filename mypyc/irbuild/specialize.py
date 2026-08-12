@@ -84,7 +84,7 @@ from mypyc.ir.rtypes import (
     string_writer_rprimitive,
     uint8_rprimitive,
 )
-from mypyc.irbuild.builder import IRBuilder
+from mypyc.irbuild.builder import IRBuilder, get_call_target_fullname
 from mypyc.irbuild.constant_fold import constant_fold_expr
 from mypyc.irbuild.for_helpers import (
     comprehension_helper,
@@ -99,7 +99,15 @@ from mypyc.irbuild.format_str_tokenizer import (
     join_formatted_strings,
     tokenizer_format_call,
 )
-from mypyc.irbuild.vec import vec_append, vec_pop, vec_remove
+from mypyc.irbuild.vec import (
+    supports_vec_to_sequence,
+    vec_append,
+    vec_extend,
+    vec_pop,
+    vec_remove,
+    vec_to_list,
+    vec_to_tuple,
+)
 from mypyc.primitives.bytearray_ops import isinstance_bytearray
 from mypyc.primitives.bytes_ops import (
     bytes_adjust_index_op,
@@ -198,7 +206,7 @@ def apply_function_specialization(
     builder: IRBuilder, expr: CallExpr, callee: RefExpr
 ) -> Value | None:
     """Invoke the Specializer callback for a function if one has been registered"""
-    return _apply_specialization(builder, expr, callee, callee.fullname)
+    return _apply_specialization(builder, expr, callee, get_call_target_fullname(callee))
 
 
 def apply_method_specialization(
@@ -331,6 +339,16 @@ def translate_len(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value 
 
 
 @specialize_function("builtins.list")
+def translate_vec_to_list(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value | None:
+    if len(expr.args) == 1 and expr.arg_kinds == [ARG_POS]:
+        arg_type = builder.node_type(expr.args[0])
+        if isinstance(arg_type, RVec) and supports_vec_to_sequence(arg_type):
+            vec = builder.accept(expr.args[0])
+            return vec_to_list(builder.builder, vec, expr.line)
+    return None
+
+
+@specialize_function("builtins.list")
 def dict_methods_fast_path(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value | None:
     """Specialize a common case when list() is called on a dictionary
     view method call.
@@ -387,6 +405,16 @@ def translate_list_from_generator_call(
             empty_op_llbuilder=builder.builder.new_list_op_with_length,
             set_item_op=set_item,
         )
+    return None
+
+
+@specialize_function("builtins.tuple")
+def translate_vec_to_tuple(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value | None:
+    if len(expr.args) == 1 and expr.arg_kinds == [ARG_POS]:
+        arg_type = builder.node_type(expr.args[0])
+        if isinstance(arg_type, RVec) and supports_vec_to_sequence(arg_type):
+            vec = builder.accept(expr.args[0])
+            return vec_to_tuple(builder.builder, vec, expr.line)
     return None
 
 
@@ -1517,6 +1545,19 @@ def translate_vec_append(builder: IRBuilder, expr: CallExpr, callee: RefExpr) ->
             vec_value = builder.accept(vec_arg)
             arg_value = builder.accept(item_arg)
             return vec_append(builder.builder, vec_value, arg_value, item_arg.line)
+    return None
+
+
+@specialize_function("librt.vecs.extend")
+def translate_vec_extend(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value | None:
+    if len(expr.args) == 2 and expr.arg_kinds == [ARG_POS, ARG_POS]:
+        vec_arg = expr.args[0]
+        iter_arg = expr.args[1]
+        vec_type = builder.node_type(vec_arg)
+        if isinstance(vec_type, RVec):
+            vec_value = builder.accept(vec_arg)
+            iter_value = builder.accept(iter_arg)
+            return vec_extend(builder.builder, vec_value, iter_value, iter_arg.line)
     return None
 
 

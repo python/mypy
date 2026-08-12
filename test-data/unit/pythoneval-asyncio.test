@@ -474,7 +474,7 @@ def test() -> None:
 async def bad(arg: P) -> T:
     pass
 [out]
-_program.py:8: note: Revealed type is "def [T] (arg: P?) -> typing.Coroutine[Any, Any, T`-1]"
+_program.py:8: note: Revealed type is "def [T] (arg: P?) -> typing.Coroutine[Any, Any, T]"
 _program.py:9: error: Value of type "Coroutine[Any, Any, Never]" must be used
 _program.py:9: note: Are you missing an await?
 _program.py:11: error: Variable "_testForwardRefToBadAsyncShouldNotCrash_newsemanal.P" is not valid as a type

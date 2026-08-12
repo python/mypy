@@ -128,8 +128,12 @@ def convert_symbol_table_node(self: SymbolTableNode, cfg: Config) -> Json:
         data["plugin_generated"] = True
     if self.cross_ref:
         data["cross_ref"] = self.cross_ref
-    elif self.node is not None:
-        data["node"] = convert_symbol_node(self.node, cfg)
+    else:
+        # Read the raw node without cross-reference fixup, since exportjson reads
+        # cache files in isolation and no node fixer is available.
+        node = self.read_node_no_fixup()
+        if node is not None:
+            data["node"] = convert_symbol_node(node, cfg)
     return data
 
 
@@ -572,7 +576,6 @@ def convert_binary_cache_meta_to_json(data: bytes, data_file: str) -> Json:
         "dep_lines": meta.dep_lines,
         "dep_hashes": [dep.hex() for dep in meta.dep_hashes],
         "interface_hash": meta.interface_hash.hex(),
-        "error_lines": meta.error_lines,
         "version_id": meta.version_id,
         "ignore_all": meta.ignore_all,
         "plugin_data": meta.plugin_data,

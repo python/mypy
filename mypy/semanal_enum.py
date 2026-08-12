@@ -5,7 +5,7 @@ This is conceptually part of mypy.semanal (semantic analyzer pass 2).
 
 from __future__ import annotations
 
-from typing import Final, cast
+from typing import Final
 
 from mypy.nodes import (
     ARG_NAMED,
@@ -60,7 +60,7 @@ class EnumCallAnalyzer:
         self.options = options
         self.api = api
 
-    def process_enum_call(self, s: AssignmentStmt, is_func_scope: bool) -> bool:
+    def process_enum_call(self, s: AssignmentStmt) -> bool:
         """Check if s defines an Enum; if yes, store the definition in symbol table.
 
         Return True if this looks like an Enum definition (but maybe with errors),
@@ -70,7 +70,7 @@ class EnumCallAnalyzer:
             return False
         lvalue = s.lvalues[0]
         name = lvalue.name
-        enum_call = self.check_enum_call(s.rvalue, name, is_func_scope)
+        enum_call = self.check_enum_call(s.rvalue, name)
         if enum_call is None:
             return False
         if isinstance(lvalue, MemberExpr):
@@ -80,9 +80,7 @@ class EnumCallAnalyzer:
         self.api.add_symbol(name, enum_call, s)
         return True
 
-    def check_enum_call(
-        self, node: Expression, var_name: str, is_func_scope: bool
-    ) -> TypeInfo | None:
+    def check_enum_call(self, node: Expression, var_name: str) -> TypeInfo | None:
         """Check if a call defines an Enum.
 
         Example:
@@ -110,23 +108,15 @@ class EnumCallAnalyzer:
         )
         if not ok:
             # Error. Construct dummy return value.
-            name = var_name
-            if is_func_scope:
-                name += "@" + str(call.line)
-            info = self.build_enum_call_typeinfo(name, [], fullname, node.line)
+            info = self.build_enum_call_typeinfo(var_name, [], fullname, node.line)
         else:
             if new_class_name != var_name:
                 msg = f'String argument 1 "{new_class_name}" to {fullname}(...) does not match variable name "{var_name}"'
                 self.fail(msg, call)
-
-            name = cast(StrExpr, call.args[0]).value
-            if name != var_name or is_func_scope:
-                # Give it a unique name derived from the line number.
-                name += "@" + str(call.line)
-            info = self.build_enum_call_typeinfo(name, items, fullname, call.line)
+            info = self.build_enum_call_typeinfo(var_name, items, fullname, call.line)
         # Store generated TypeInfo under both names, see semanal_namedtuple for more details.
-        if name != var_name or is_func_scope:
-            self.api.add_symbol_skip_local(name, info)
+        if self.api.is_nested_within_func_scope():
+            self.api.add_global_symbol(var_name, node, info)
         call.analyzed = EnumCallExpr(info, items, values)
         call.analyzed.set_line(call)
         info.line = node.line

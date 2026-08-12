@@ -129,6 +129,9 @@ def freshen_function_type_vars(callee: F) -> F:
             tv = v.new_unification_variable(v)
             tvs.append(tv)
             tvmap[v.id] = tv
+            if tv.has_default():
+                # Point to fresh ids in case defaults depend on previous variables.
+                tv.default = expand_type(tv.default, tvmap)
         fresh = expand_type(callee, tvmap).copy_modified(variables=tvs)
         return cast(F, fresh)
     else:
@@ -182,7 +185,6 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
     def __init__(self, variables: Mapping[TypeVarId, Type]) -> None:
         super().__init__()
         self.variables = variables
-        self.recursive_tvar_guard: dict[TypeVarId, Type | None] | None = None
 
     def visit_unbound_type(self, t: UnboundType) -> Type:
         return t
@@ -226,11 +228,11 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
         if t.type.fullname == "builtins.tuple":
             # Normalize Tuple[*Tuple[X, ...], ...] -> Tuple[X, ...]
             arg = args[0]
-            if isinstance(arg, UnpackType):
+            if isinstance(arg, UnpackType) and not (
+                isinstance(arg.type, TypeAliasType) and arg.type.is_recursive
+            ):
                 unpacked = get_proper_type(arg.type)
                 if isinstance(unpacked, Instance):
-                    # TODO: this and similar asserts below may be unsafe because get_proper_type()
-                    # may be called during semantic analysis before all invalid types are removed.
                     assert unpacked.type.fullname == "builtins.tuple"
                     args = list(unpacked.args)
         return t.copy_modified(args=args)
@@ -245,16 +247,6 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
             # TODO: do we really need to do this?
             # If I try to remove this special-casing ~40 tests fail on reveal_type().
             return repl.copy_modified(last_known_value=None)
-        if isinstance(repl, TypeVarType) and repl.has_default():
-            if self.recursive_tvar_guard is None:
-                self.recursive_tvar_guard = {}
-            if (tvar_id := repl.id) in self.recursive_tvar_guard:
-                return self.recursive_tvar_guard[tvar_id] or repl
-            self.recursive_tvar_guard[tvar_id] = None
-            repl.default = repl.default.accept(self)
-            expanded = repl.accept(self)  # Note: `expanded is repl` may be true.
-            repl = repl if isinstance(expanded, TypeVarType) else expanded
-            self.recursive_tvar_guard[tvar_id] = repl
         return repl
 
     def visit_param_spec(self, t: ParamSpecType) -> Type:
@@ -344,7 +336,7 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
             return dict_type
         kwargs = {}
         required_names = set()
-        extra_items: Type = UninhabitedType()
+        extra_items: Type | None = None
         for kind, name, type in zip(repl.arg_kinds, repl.arg_names, repl.arg_types):
             if kind == ArgKind.ARG_NAMED and name is not None:
                 kwargs[name] = type
@@ -354,10 +346,11 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
                 extra_items = type
             elif not kind.is_star() and name is not None:
                 kwargs[name] = type
-        if not kwargs:
+        if not kwargs and extra_items is not None:
             return Instance(dict_type.type, [dict_type.args[0], extra_items])
-        # TODO: when PEP 728 is implemented, pass extra_items below.
-        return TypedDictType(kwargs, required_names, set(), fallback=dict_type)
+        # TODO: when PEP 728 `extra_items` is implemented, pass extra_items below.
+        is_closed = extra_items is None
+        return TypedDictType(kwargs, required_names, set(), dict_type, is_closed=is_closed)
 
     def visit_type_var_tuple(self, t: TypeVarTupleType) -> Type:
         # Sometimes solver may need to expand a type variable with (a copy of) itself
@@ -493,11 +486,16 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
             arg_types = self.interpolate_args_for_unpack(t, var_arg.typ)
         else:
             arg_types = self.expand_types(t.arg_types)
+        instance_type = None
+        if t.instance_type is not None:
+            instance_type = t.instance_type.accept(self)
+            assert isinstance(instance_type, ProperType)
         expanded = t.copy_modified(
             arg_types=arg_types,
             ret_type=t.ret_type.accept(self),
-            type_guard=(t.type_guard.accept(self) if t.type_guard is not None else None),
-            type_is=(t.type_is.accept(self) if t.type_is is not None else None),
+            type_guard=t.type_guard.accept(self) if t.type_guard is not None else None,
+            type_is=t.type_is.accept(self) if t.type_is is not None else None,
+            instance_type=instance_type,
         )
         if needs_normalization:
             return expanded.with_normalized_var_args()
@@ -538,7 +536,9 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
         if len(items) == 1:
             # Normalize Tuple[*Tuple[X, ...]] -> Tuple[X, ...]
             item = items[0]
-            if isinstance(item, UnpackType):
+            if isinstance(item, UnpackType) and not (
+                isinstance(item.type, TypeAliasType) and item.type.is_recursive
+            ):
                 unpacked = get_proper_type(item.type)
                 if isinstance(unpacked, Instance):
                     # expand_type() may be called during semantic analysis, before invalid unpacks are fixed.

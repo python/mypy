@@ -48,7 +48,10 @@ bump CACHE_VERSION below.
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import Any, Final, TypeAlias as _TypeAlias
+from typing import TYPE_CHECKING, Any, Final, TypeAlias as _TypeAlias
+
+if TYPE_CHECKING:
+    from mypy.types import SentinelValue
 
 from librt.internal import (
     ReadBuffer as ReadBuffer,
@@ -69,7 +72,7 @@ from librt.internal import (
 from mypy_extensions import u8
 
 # High-level cache layout format
-CACHE_VERSION: Final = 5
+CACHE_VERSION: Final = 11
 
 # Type used internally to represent errors:
 #   (path, line, column, end_line, end_column, severity, message, code)
@@ -77,7 +80,12 @@ ErrorTuple: _TypeAlias = tuple[str | None, int, int, int, int, str, str, str | N
 
 
 class CacheMeta:
-    """Class representing cache metadata for a module."""
+    """Class representing cache metadata for a module.
+
+    This class represents the data known after checking module interface only, i.e.
+    this doesn't have: error messages and indirect dependencies, these are stored
+    in CacheMetaEx.
+    """
 
     def __init__(
         self,
@@ -99,7 +107,6 @@ class CacheMeta:
         dep_hashes: list[bytes],
         interface_hash: bytes,
         trans_dep_hash: bytes,
-        error_lines: list[ErrorTuple],
         version_id: str,
         ignore_all: bool,
         plugin_data: Any,
@@ -123,7 +130,6 @@ class CacheMeta:
         self.dep_hashes = dep_hashes  # list of interface_hash for dependencies
         self.interface_hash = interface_hash  # hash representing the public interface
         self.trans_dep_hash = trans_dep_hash  # hash of import structure (transitive)
-        self.error_lines = error_lines
         self.version_id = version_id  # mypy version for cache invalidation
         self.ignore_all = ignore_all  # if errors were ignored
         self.plugin_data = plugin_data  # config data from plugins
@@ -146,7 +152,6 @@ class CacheMeta:
             "dep_hashes": [dep.hex() for dep in self.dep_hashes],
             "interface_hash": self.interface_hash.hex(),
             "trans_dep_hash": self.trans_dep_hash.hex(),
-            "error_lines": self.error_lines,
             "version_id": self.version_id,
             "ignore_all": self.ignore_all,
             "plugin_data": self.plugin_data,
@@ -175,7 +180,6 @@ class CacheMeta:
                 dep_hashes=[bytes.fromhex(dep) for dep in meta["dep_hashes"]],
                 interface_hash=bytes.fromhex(meta["interface_hash"]),
                 trans_dep_hash=bytes.fromhex(meta["trans_dep_hash"]),
-                error_lines=[tuple(err) for err in meta["error_lines"]],
                 version_id=meta["version_id"],
                 ignore_all=meta["ignore_all"],
                 plugin_data=meta["plugin_data"],
@@ -203,7 +207,6 @@ class CacheMeta:
         write_bytes_list(data, self.dep_hashes)
         write_bytes(data, self.interface_hash)
         write_bytes(data, self.trans_dep_hash)
-        write_errors(data, self.error_lines)
         write_str(data, self.version_id)
         write_bool(data, self.ignore_all)
         # Plugin data may be not a dictionary, so we use
@@ -233,7 +236,6 @@ class CacheMeta:
                 dep_hashes=read_bytes_list(data),
                 interface_hash=read_bytes(data),
                 trans_dep_hash=read_bytes(data),
-                error_lines=read_errors(data),
                 version_id=read_str(data),
                 ignore_all=read_bool(data),
                 plugin_data=read_json_value(data),
@@ -242,9 +244,64 @@ class CacheMeta:
             return None
 
 
+class CacheMetaEx:
+    """Class representing "implementation-specific" part of cache metadata for a module."""
+
+    def __init__(
+        self,
+        dependencies: list[str],
+        suppressed: list[str],
+        dep_hashes: list[bytes],
+        error_lines: list[ErrorTuple],
+    ) -> None:
+        self.dependencies = dependencies
+        self.suppressed = suppressed
+        self.dep_hashes = dep_hashes
+        self.error_lines = error_lines
+
+    def serialize(self) -> dict[str, Any]:
+        return {
+            "dependencies": self.dependencies,
+            "suppressed": self.suppressed,
+            "dep_hashes": [dep.hex() for dep in self.dep_hashes],
+            "error_lines": self.error_lines,
+        }
+
+    @classmethod
+    def deserialize(cls, meta: dict[str, Any]) -> CacheMetaEx | None:
+        try:
+            return CacheMetaEx(
+                dependencies=meta["dependencies"],
+                suppressed=meta["suppressed"],
+                dep_hashes=[bytes.fromhex(dep) for dep in meta["dep_hashes"]],
+                error_lines=[tuple(err) for err in meta["error_lines"]],
+            )
+        except (KeyError, ValueError):
+            return None
+
+    def write(self, data: WriteBuffer) -> None:
+        write_str_list(data, self.dependencies)
+        write_str_list(data, self.suppressed)
+        write_bytes_list(data, self.dep_hashes)
+        write_errors(data, self.error_lines)
+
+    @classmethod
+    def read(cls, data: ReadBuffer) -> CacheMetaEx | None:
+        try:
+            return CacheMetaEx(
+                dependencies=read_str_list(data),
+                suppressed=read_str_list(data),
+                dep_hashes=read_bytes_list(data),
+                error_lines=read_errors(data),
+            )
+        except (ValueError, AssertionError):
+            return None
+
+
 # Always use this type alias to refer to type tags.
 Tag = u8
 
+# Note: all tags should be kept in sync with lib-rt/internal/librt_internal.c.
 # Primitives.
 LITERAL_FALSE: Final[Tag] = 0
 LITERAL_TRUE: Final[Tag] = 1
@@ -254,6 +311,7 @@ LITERAL_STR: Final[Tag] = 4
 LITERAL_BYTES: Final[Tag] = 5
 LITERAL_FLOAT: Final[Tag] = 6
 LITERAL_COMPLEX: Final[Tag] = 7
+LITERAL_SENTINEL: Final[Tag] = 8
 
 # Collections.
 LIST_GEN: Final[Tag] = 20
@@ -262,15 +320,19 @@ LIST_STR: Final[Tag] = 22
 LIST_BYTES: Final[Tag] = 23
 TUPLE_GEN: Final[Tag] = 24
 DICT_STR_GEN: Final[Tag] = 30
+DICT_INT_GEN: Final[Tag] = 31
 
 # Misc classes.
 EXTRA_ATTRS: Final[Tag] = 150
 DT_SPEC: Final[Tag] = 151
+# Four integers representing source file (line, column) range.
+LOCATION: Final[Tag] = 152
 
+RESERVED: Final[Tag] = 254
 END_TAG: Final[Tag] = 255
 
 
-def read_literal(data: ReadBuffer, tag: Tag) -> int | str | bool | float:
+def read_literal(data: ReadBuffer, tag: Tag) -> int | str | bool | float | SentinelValue:
     if tag == LITERAL_INT:
         return read_int_bare(data)
     elif tag == LITERAL_STR:
@@ -281,12 +343,18 @@ def read_literal(data: ReadBuffer, tag: Tag) -> int | str | bool | float:
         return True
     elif tag == LITERAL_FLOAT:
         return read_float_bare(data)
+    elif tag == LITERAL_SENTINEL:
+        from mypy.types import SentinelValue as _SentinelValue
+
+        return _SentinelValue(read_str_bare(data), read_str_bare(data))
     assert False, f"Unknown literal tag {tag}"
 
 
 # There is an intentional asymmetry between read and write for literals because
 # None and/or complex values are only allowed in some contexts but not in others.
-def write_literal(data: WriteBuffer, value: int | str | bool | float | complex | None) -> None:
+def write_literal(
+    data: WriteBuffer, value: int | str | bool | float | complex | SentinelValue | None
+) -> None:
     if isinstance(value, bool):
         write_bool(data, value)
     elif isinstance(value, int):
@@ -302,8 +370,12 @@ def write_literal(data: WriteBuffer, value: int | str | bool | float | complex |
         write_tag(data, LITERAL_COMPLEX)
         write_float_bare(data, value.real)
         write_float_bare(data, value.imag)
-    else:
+    elif value is None:
         write_tag(data, LITERAL_NONE)
+    else:
+        write_tag(data, LITERAL_SENTINEL)
+        write_str_bare(data, value.fullname)
+        write_str_bare(data, value.name)
 
 
 def read_int(data: ReadBuffer) -> int:
@@ -420,7 +492,7 @@ def write_str_opt_list(data: WriteBuffer, value: list[str | None]) -> None:
         write_str_opt(data, item)
 
 
-Value: _TypeAlias = None | int | str | bool
+Value: _TypeAlias = None | int | float | str | bool
 
 # Our JSON format is somewhat non-standard as we distinguish lists and tuples.
 # This is convenient for some internal things, like mypyc plugin and error serialization.
@@ -450,6 +522,8 @@ def read_json_value(data: ReadBuffer) -> JsonValue:
     if tag == DICT_STR_GEN:
         size = read_int_bare(data)
         return {read_str_bare(data): read_json_value(data) for _ in range(size)}
+    if tag == LITERAL_FLOAT:
+        return read_float_bare(data)
     assert False, f"Invalid JSON tag: {tag}"
 
 
@@ -480,6 +554,9 @@ def write_json_value(data: WriteBuffer, value: JsonValue) -> None:
         for key in sorted(value):
             write_str_bare(data, key)
             write_json_value(data, value[key])
+    elif isinstance(value, float):
+        write_tag(data, LITERAL_FLOAT)
+        write_float_bare(data, value)
     else:
         assert False, f"Invalid JSON value: {value}"
 
@@ -498,6 +575,20 @@ def write_json(data: WriteBuffer, value: dict[str, Any]) -> None:
     for key in sorted(value):
         write_str_bare(data, key)
         write_json_value(data, value[key])
+
+
+def write_flags(data: WriteBuffer, flags: list[bool]) -> None:
+    assert len(flags) <= 26, "This many flags not supported yet"
+    packed = 0
+    for i, flag in enumerate(flags):
+        if flag:
+            packed |= 1 << i
+    write_int(data, packed)
+
+
+def read_flags(data: ReadBuffer, num_flags: int) -> list[bool]:
+    packed = read_int(data)
+    return [(packed & (1 << i)) != 0 for i in range(num_flags)]
 
 
 def write_errors(data: WriteBuffer, errs: list[ErrorTuple]) -> None:

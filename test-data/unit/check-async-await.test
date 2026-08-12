@@ -192,7 +192,7 @@ async def f() -> None:
 [builtins fixtures/async_await.pyi]
 [typing fixtures/typing-async.pyi]
 
-[case testAsyncForTypeComments]
+[case testAsyncForTypeComments_no_native_parse]
 
 from typing import AsyncIterator, Union
 class C(AsyncIterator[int]):
@@ -342,7 +342,7 @@ async def f() -> None:
 [builtins fixtures/async_await.pyi]
 [typing fixtures/typing-async.pyi]
 
-[case testAsyncWithTypeComments]
+[case testAsyncWithTypeComments_no_native_parse]
 
 class C:
     async def __aenter__(self) -> int: pass
@@ -839,6 +839,63 @@ def bar() -> None:
 [builtins fixtures/async_await.pyi]
 [typing fixtures/typing-async.pyi]
 
+[case testUntypedAsyncFunctionAndMethodReturnCoroutine]
+# flags: --show-error-codes
+async def foo():
+    pass
+
+class C:
+    async def method(self):
+        pass
+
+def f(c: C) -> None:
+    a = foo()
+    b = c.method()
+    reveal_type(foo)                # N: Revealed type is "def () -> typing.Coroutine[Any, Any, Any]"
+    reveal_type(a)                  # E: Value of type "Coroutine[Any, Any, Any]" must be used  [unused-coroutine] \
+                                    # N: Are you missing an await? \
+                                    # N: Revealed type is "typing.Coroutine[Any, Any, Any]"
+    foo()                           # E: Value of type "Coroutine[Any, Any, Any]" must be used  [unused-coroutine] \
+                                    # N: Are you missing an await?
+    reveal_type(c.method)           # N: Revealed type is "def () -> typing.Coroutine[Any, Any, Any]"
+    reveal_type(b)                  # E: Value of type "Coroutine[Any, Any, Any]" must be used  [unused-coroutine] \
+                                    # N: Are you missing an await? \
+                                    # N: Revealed type is "typing.Coroutine[Any, Any, Any]"
+    c.method()                      # E: Value of type "Coroutine[Any, Any, Any]" must be used  [unused-coroutine] \
+                                    # N: Are you missing an await?
+
+[builtins fixtures/async_await.pyi]
+[typing fixtures/typing-async.pyi]
+
+[case testOkUnusedAwaitable]
+# flags: --python-version 3.11 --show-error-codes --enable-error-code unused-awaitable
+import asyncio
+
+async def main() -> None:
+    async with asyncio.TaskGroup() as tg:
+        # this is ok:
+        tg.create_task(asyncio.sleep(1))
+
+        # but from something else (e.g. passed through a reveal_type) it's not ok
+        reveal_type(tg.create_task(asyncio.sleep(1)))  # E: Value of type "Awaitable[object]" must be used  [unused-awaitable] \
+                                                       # N: Are you missing an await? \
+                                                       # N: Revealed type is "typing.Awaitable[builtins.object]"
+
+
+[file asyncio/__init__.pyi]
+from .taskgroups import TaskGroup as TaskGroup
+
+async def sleep(time: int) -> None: pass
+
+[file asyncio/taskgroups.pyi]
+from typing import Awaitable
+
+class TaskGroup:
+    def create_task(self, coro: object) -> Awaitable[object]: pass
+
+    async def __aenter__(self) -> "TaskGroup": pass
+    async def __aexit__(self, x, y, z) -> None: pass
+
 [case testAsyncForOutsideCoroutine]
 async def g():
     yield 0
@@ -1089,5 +1146,37 @@ class Launcher(P):
                                        # E: "list[int]" has no attribute "__aiter__" (not async iterable)
 [{5: 5 async for _ in [5]} for _ in []]#  # E: "async for" outside async function \
                                           # E: "list[int]" has no attribute "__aiter__" (not async iterable)
+[builtins fixtures/async_await.pyi]
+[typing fixtures/typing-async.pyi]
+
+[case testTypesCoroutineDecoratorUntyped]
+import types
+
+@types.coroutine
+def f(x):
+    yield
+    1 + ""  # OK, in untyped function
+    return 1
+
+async def test() -> None:
+    reveal_type(f)  # N: Revealed type is "def (x: Any) -> typing.AwaitableGenerator[Any, Any, Any, Any]"
+    reveal_type(await f(1))  # N: Revealed type is "Any"
+
+[builtins fixtures/async_await.pyi]
+[typing fixtures/typing-async.pyi]
+
+[case testTypesCoroutineDecoratorPartiallyTyped]
+import types
+
+@types.coroutine
+def f(x: int):
+    yield
+    1 + ""  # E: Unsupported left operand type for + ("int")
+    return 1
+
+async def test() -> None:
+    reveal_type(f)  # N: Revealed type is "def (x: builtins.int) -> typing.AwaitableGenerator[Any, Any, Any, Any]"
+    reveal_type(await f(1))  # N: Revealed type is "Any"
+
 [builtins fixtures/async_await.pyi]
 [typing fixtures/typing-async.pyi]

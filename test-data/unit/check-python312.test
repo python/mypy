@@ -280,6 +280,9 @@ class Covariant[T]:
 
 class Invariant[T]:
     def f(self) -> None:
+        # We add this to force processing this method as part of the interface in parallel checking,
+        # otherwise, it will be processed at a later stage, not testing the no ready behavior below
+        self.y = int()
         c = Invariant(1)
         # We need to know that T is invariant here, and for this we need the type
         # of self.x, which won't be available on the first type checking pass,
@@ -306,6 +309,7 @@ if int():
 [case testPEP695InferVarianceNotReadyForJoin]
 class Invariant[T]:
     def f(self) -> None:
+        self.y = int()
         # Assume covariance if variance us not ready
         reveal_type([Invariant(1), Invariant(object())]) \
             # N: Revealed type is "builtins.list[__main__.Invariant[builtins.object]]"
@@ -326,6 +330,7 @@ def a2(x: Invariant[object]) -> None: pass
 
 class Invariant[T]:
     def f(self) -> None:
+        self.y = int()
         reveal_type(c(a1, a2))  # N: Revealed type is "__main__.Invariant[builtins.int]"
 
     def __init__(self, x: T) -> None:
@@ -819,6 +824,20 @@ f(1, u)
 f('x', None)  # E: Value of type variable "T" of "f" cannot be "str" \
               # E: Value of type variable "S" of "f" cannot be "None"
 
+[case testPEP695UpperBoundTypeTypeConstructorReturnType]
+class A:
+    def __init__(self, value: str = "") -> None: pass
+class B:
+    def __init__(self, value: str = "") -> None: pass
+
+def make[T: A | B](ftype: type[T], value: str | None) -> T:
+    if value is None:
+        return ftype()
+    return ftype(value)
+
+reveal_type(make(A, "a"))  # N: Revealed type is "__main__.A"
+reveal_type(make(B, None))  # N: Revealed type is "__main__.B"
+
 [case testPEP695InferVarianceOfTupleType]
 class Cov[T](tuple[int, str]):
     def f(self) -> T: pass
@@ -1138,13 +1157,13 @@ class C[T]:
         x = ''  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
         return a
 
-[case testPEP695ArgumentDefault]
+[case testPEP695ParameterDefault]
 from typing import cast
 
 def f[T](
     x: T =
         T  # E: Name "T" is not defined \
-           # E: Incompatible default for argument "x" (default has type "TypeVar", argument has type "T")
+           # E: Incompatible default for parameter "x" (default has type "TypeVar", parameter has type "T")
 ) -> T:
     return x
 
@@ -1622,7 +1641,7 @@ reveal_type(a)  # N: Revealed type is "builtins.list[builtins.int]"
 def f[T](x: foobar, y: T) -> T: ...  # E: Name "foobar" is not defined
 reveal_type(f)  # N: Revealed type is "def [T] (x: Any, y: T`-1) -> T`-1"
 
-[case testPEP695WrongNumberOfConstrainedTypes]
+[case testPEP695WrongNumberOfConstrainedTypes_no_native_parse]
 type A[T: ()] = list[T]  # E: Type variable must have at least two constrained types
 a: A[int]
 reveal_type(a)  # N: Revealed type is "builtins.list[builtins.int]"
@@ -1771,7 +1790,7 @@ type Y[T] = {"item": T, **Y[T]}  # E: Overwriting TypedDict field "item" while m
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-full.pyi]
 
-[case testPEP695UsingIncorrectExpressionsInTypeVariableBound]
+[case testPEP695UsingIncorrectExpressionsInTypeVariableBound_no_native_parse]
 type X[T: (yield 1)] = Any  # E: Yield expression cannot be used as a type variable bound
 type Y[T: (yield from [])] = Any # E: Yield expression cannot be used as a type variable bound
 type Z[T: (a := 1)] = Any  # E: Named expression cannot be used as a type variable bound
@@ -1802,7 +1821,7 @@ def fooy_nested[T: (1 + (yield from []))](): pass  # E: Yield expression cannot 
 def fooz_nested[T: (1 + (a := 1))](): pass  # E: Named expression cannot be used as a type variable bound
 def fook_nested[T: (1 +(await 1))](): pass  # E: Await expression cannot be used as a type variable bound
 
-[case testPEP695UsingIncorrectExpressionsInTypeAlias]
+[case testPEP695UsingIncorrectExpressionsInTypeAlias_no_native_parse]
 type X = (yield 1)  # E: Yield expression cannot be used within a type alias
 type Y = (yield from []) # E: Yield expression cannot be used within a type alias
 type Z = (a := 1)  # E: Named expression cannot be used within a type alias
@@ -1812,6 +1831,44 @@ type XNested = (1 + (yield 1))  # E: Yield expression cannot be used within a ty
 type YNested = (1 + (yield from [])) # E: Yield expression cannot be used within a type alias
 type ZNested = (1 + (a := 1))  # E: Named expression cannot be used within a type alias
 type KNested = (1 + (await 1))  # E: Await expression cannot be used within a type alias
+
+[case testWalrusRebindsNamesLoadedInComprehensionTargets]
+# Newly legal in https://github.com/python/cpython/pull/100581
+from typing import Any
+
+def f(c: Any, d: Any, e: Any, f: Any, g: Any, h: Any, j: Any) -> None:
+    ((c := 1) for a, (*b, c[d+e::f(g)], h.i) in j)
+    [(c := 1) for a, (*b, c[d+e::f(g)], h.i) in j]
+    {(c := 1) for a, (*b, c[d+e::f(g)], h.i) in j}
+
+    ((d := 1) for a, (*b, c[d+e::f(g)], h.i) in j)
+    [(d := 1) for a, (*b, c[d+e::f(g)], h.i) in j]
+    {(d := 1) for a, (*b, c[d+e::f(g)], h.i) in j}
+
+    ((e := 1) for a, (*b, c[d+e::f(g)], h.i) in j)
+    [(e := 1) for a, (*b, c[d+e::f(g)], h.i) in j]
+    {(e := 1) for a, (*b, c[d+e::f(g)], h.i) in j}
+
+    ((f := 1) for a, (*b, c[d+e::f(g)], h.i) in j)
+    [(f := 1) for a, (*b, c[d+e::f(g)], h.i) in j]
+    {(f := 1) for a, (*b, c[d+e::f(g)], h.i) in j}
+
+    ((g := 1) for a, (*b, c[d+e::f(g)], h.i) in j)
+    [(g := 1) for a, (*b, c[d+e::f(g)], h.i) in j]
+    {(g := 1) for a, (*b, c[d+e::f(g)], h.i) in j}
+
+    ((h := 1) for a, (*b, c[d+e::f(g)], h.i) in j)
+    [(h := 1) for a, (*b, c[d+e::f(g)], h.i) in j]
+    {(h := 1) for a, (*b, c[d+e::f(g)], h.i) in j}
+
+    ((i := 1) for a, (*b, c[d+e::f(g)], h.i) in j)
+    [(i := 1) for a, (*b, c[d+e::f(g)], h.i) in j]
+    {(i := 1) for a, (*b, c[d+e::f(g)], h.i) in j}
+
+    ((j := 1) for a, (*b, c[d+e::f(g)], h.i) in j)
+    [(j := 1) for a, (*b, c[d+e::f(g)], h.i) in j]
+    {(j := 1) for a, (*b, c[d+e::f(g)], h.i) in j}
+[builtins fixtures/primitives.pyi]
 
 [case testPEP695TypeAliasAndAnnotated]
 from typing_extensions import Annotated, Annotated as _Annotated
@@ -2236,4 +2293,41 @@ class C[*Ts, *Us]:  # E: Can only use one type var tuple in a class def
 class D[*Ts](Generic[Unpack[Us]]):  # E: Generic[...] base class is redundant \
                                     # E: Can only use one type var tuple in a class def
     pass
+[builtins fixtures/tuple.pyi]
+
+[case testPEP695VariadicAliasUnpack]
+class C[*Ts]:
+    pass
+
+type T[T, *Ts] = C[*Ts]
+
+x: T[bool, *tuple[()]]
+reveal_type(x)  # N: Revealed type is "__main__.C[()]"
+
+y: T[bool]
+reveal_type(y)  # N: Revealed type is "__main__.C[()]"
+[builtins fixtures/tuple.pyi]
+
+[case testTupleBaseTupleTypeUnpack]
+class X(tuple[*tuple[int], *tuple[int]]):
+    pass
+x = X((1, 2))
+reveal_type(x)  # N: Revealed type is "tuple[builtins.int, builtins.int, fallback=__main__.X]"
+[builtins fixtures/tuple.pyi]
+
+[case testNewTypeTupleTypeUnpack]
+from typing import NewType
+
+T = NewType("T", tuple[*tuple[int], *tuple[int]])
+t = T((1, 2))
+reveal_type(t)  # N: Revealed type is "tuple[builtins.int, builtins.int, fallback=__main__.T]"
+[builtins fixtures/tuple.pyi]
+
+[case testNamedTupleTupleTypeUnpack]
+from typing import NamedTuple
+
+class N(NamedTuple):
+    x: tuple[*tuple[int], *tuple[int]]
+n = N((1, 2))
+reveal_type(n)  # N: Revealed type is "tuple[tuple[builtins.int, builtins.int], fallback=__main__.N]"
 [builtins fixtures/tuple.pyi]

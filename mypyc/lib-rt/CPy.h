@@ -3,8 +3,8 @@
 #ifndef CPY_CPY_H
 #define CPY_CPY_H
 
-#include <stdbool.h>
 #include <Python.h>
+#include <stdbool.h>
 #include <frameobject.h>
 #include <structmember.h>
 #include <assert.h>
@@ -107,13 +107,13 @@ static inline size_t CPy_FindAttrOffset(PyTypeObject *trait, CPyVTableItem *vtab
 #define CPY_GET_ATTR_TRAIT(obj, trait, vtable_index, object_type, attr_type)   \
     ((attr_type (*)(object_type *))(CPy_FindTraitVtable(trait, ((object_type *)obj)->vtable))[vtable_index])((object_type *)obj)
 
-// Set attribute value using vtable
-#define CPY_SET_ATTR(obj, type, vtable_index, value, object_type, attr_type) \
-    ((bool (*)(object_type *, attr_type))((object_type *)obj)->vtable[vtable_index])( \
+// Set attribute value using vtable.
+#define CPY_SET_ATTR(obj, type, vtable_index, value, object_type, attr_type, ret_type) \
+    ((ret_type (*)(object_type *, attr_type))((object_type *)obj)->vtable[vtable_index])( \
         (object_type *)obj, value)
 
-#define CPY_SET_ATTR_TRAIT(obj, trait, vtable_index, value, object_type, attr_type) \
-    ((bool (*)(object_type *, attr_type))(CPy_FindTraitVtable(trait, ((object_type *)obj)->vtable))[vtable_index])( \
+#define CPY_SET_ATTR_TRAIT(obj, trait, vtable_index, value, object_type, attr_type, ret_type) \
+    ((ret_type (*)(object_type *, attr_type))(CPy_FindTraitVtable(trait, ((object_type *)obj)->vtable))[vtable_index])( \
         (object_type *)obj, value)
 
 #define CPY_GET_METHOD(obj, type, vtable_index, object_type, method_type) \
@@ -154,6 +154,7 @@ PyObject *CPyTagged_ToBigEndianBytes(CPyTagged self, Py_ssize_t length, int sign
 PyObject *CPyTagged_ToLittleEndianBytes(CPyTagged self, Py_ssize_t length, int signed_flag);
 
 PyObject *CPyTagged_Str(CPyTagged n);
+PyObject *CPyTagged_AsciiBytes(CPyTagged n);
 CPyTagged CPyTagged_FromFloat(double f);
 PyObject *CPyLong_FromStrWithBase(PyObject *o, CPyTagged base);
 PyObject *CPyLong_FromStr(PyObject *o);
@@ -663,16 +664,68 @@ PyObject *CPyObject_GetSlice(PyObject *obj, CPyTagged start, CPyTagged end);
 // List operations
 
 
-PyObject *CPyList_Build(Py_ssize_t len, ...);
+#ifndef Py_GIL_DISABLED
+
 PyObject *CPyList_GetItem(PyObject *list, CPyTagged index);
 PyObject *CPyList_GetItemShort(PyObject *list, CPyTagged index);
+PyObject *CPyList_GetItemInt64(PyObject *list, int64_t index);
+bool CPyList_SetItem(PyObject *list, CPyTagged index, PyObject *value);
+bool CPyList_SetItemInt64(PyObject *list, int64_t index, PyObject *value);
+
+#else
+
+PyObject *CPyList_GetItem_(PyObject *list, CPyTagged index);
+bool CPyList_SetItem_(PyObject *list, CPyTagged index, PyObject *value);
+
+static inline PyObject *CPyList_GetItem(PyObject *list, CPyTagged index) {
+    if (likely(CPyTagged_CheckShort(index) && !CPyTagged_IsNegative(index))) {
+        // Inlined fast path
+        Py_ssize_t n = CPyTagged_ShortAsSsize_t(index);
+        return PyList_GetItemRef(list, n);
+    } else {
+        return CPyList_GetItem_(list, index);
+    }
+}
+
+static inline PyObject *CPyList_GetItemShort(PyObject *list, CPyTagged index) {
+    Py_ssize_t n = CPyTagged_ShortAsSsize_t(index);
+    if (n < 0) {
+        n += PyList_GET_SIZE(list);
+    }
+    return PyList_GetItemRef(list, n);
+}
+
+static inline PyObject *CPyList_GetItemInt64(PyObject *list, int64_t index) {
+    if (index < 0) {
+        index += PyList_GET_SIZE(list);
+    }
+    return PyList_GetItemRef(list, index);
+}
+
+static inline bool CPyList_SetItem(PyObject *list, CPyTagged index, PyObject *value) {
+    if (likely(CPyTagged_CheckShort(index) && !CPyTagged_IsNegative(index))) {
+        // Inlined fast path
+        Py_ssize_t n = CPyTagged_ShortAsSsize_t(index);
+        return PyList_SetItem(list, n, value) >= 0;
+    } else {
+        return CPyList_SetItem_(list, index, value);
+    }
+}
+
+static inline bool CPyList_SetItemInt64(PyObject *list, int64_t index, PyObject *value) {
+    if (index < 0) {
+        index += PyList_GET_SIZE(list);
+    }
+    return PyList_SetItem(list, index, value) >= 0;
+}
+
+#endif
+
 PyObject *CPyList_GetItemBorrow(PyObject *list, CPyTagged index);
 PyObject *CPyList_GetItemShortBorrow(PyObject *list, CPyTagged index);
-PyObject *CPyList_GetItemInt64(PyObject *list, int64_t index);
 PyObject *CPyList_GetItemInt64Borrow(PyObject *list, int64_t index);
-bool CPyList_SetItem(PyObject *list, CPyTagged index, PyObject *value);
 void CPyList_SetItemUnsafe(PyObject *list, Py_ssize_t index, PyObject *value);
-bool CPyList_SetItemInt64(PyObject *list, int64_t index, PyObject *value);
+PyObject *CPyList_Build(Py_ssize_t len, ...);
 PyObject *CPyList_PopLast(PyObject *obj);
 PyObject *CPyList_Pop(PyObject *obj, CPyTagged index);
 CPyTagged CPyList_Count(PyObject *obj, PyObject *value);
@@ -780,7 +833,11 @@ Py_ssize_t CPyStr_Count(PyObject *unicode, PyObject *substring, CPyTagged start)
 Py_ssize_t CPyStr_CountFull(PyObject *unicode, PyObject *substring, CPyTagged start, CPyTagged end);
 CPyTagged CPyStr_Ord(PyObject *obj);
 PyObject *CPyStr_Multiply(PyObject *str, CPyTagged count);
+PyObject *CPyStr_Lower(PyObject *str);
+PyObject *CPyStr_Upper(PyObject *str);
 bool CPyStr_IsSpace(PyObject *str);
+bool CPyStr_IsAlnum(PyObject *str);
+bool CPyStr_IsDigit(PyObject *str);
 
 // Bytes operations
 
@@ -916,6 +973,7 @@ PyObject *CPyType_FromTemplate(PyObject *template_,
 PyObject *CPyType_FromTemplateWrapper(PyObject *template_,
                                       PyObject *orig_bases,
                                       PyObject *modname);
+bool CPy_InitSubclass(PyObject *type);
 int CPyDataclass_SleightOfHand(PyObject *dataclass_dec, PyObject *tp,
                                PyObject *dict, PyObject *annotations,
                                PyObject *dataclass_type);
@@ -953,6 +1011,16 @@ bool CPyImport_ImportMany(PyObject *modules, CPyModule **statics[], PyObject *gl
                           PyObject *tb_path, PyObject *tb_function, Py_ssize_t *tb_lines);
 PyObject *CPyImport_ImportFromMany(PyObject *mod_id, PyObject *names, PyObject *as_names,
                                    PyObject *globals);
+PyObject *CPyImport_GetNativeAttrs(PyObject *mod_id, PyObject *names, PyObject *as_names,
+                                   PyObject *globals);
+PyObject *CPyImport_ImportNative(PyObject *module_name,
+                                 PyObject *(*init_only_fn)(void),
+                                 int (*exec_fn)(PyObject *),
+                                 CPyModule **module_static,
+                                 PyObject *shared_lib_file, PyObject *ext_suffix,
+                                 Py_ssize_t is_package);
+int CPyImport_SetDunderAttrs(PyObject *module, PyObject *module_name, PyObject *shared_lib_file,
+                             PyObject *ext_suffix, Py_ssize_t is_package);
 
 PyObject *CPySingledispatch_RegisterFunction(PyObject *singledispatch_func, PyObject *cls,
                                              PyObject *func);

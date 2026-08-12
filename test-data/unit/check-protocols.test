@@ -1729,6 +1729,7 @@ if isinstance(x, Iterable):
 [typing fixtures/typing-full.pyi]
 
 [case testConcreteClassesInProtocolsIsInstance]
+# flags: --warn-unreachable
 from typing import Protocol, runtime_checkable, TypeVar, Generic
 
 T = TypeVar('T')
@@ -1757,25 +1758,25 @@ c = C()
 if isinstance(c, P1):
     reveal_type(c) # N: Revealed type is "__main__.C"
 else:
-    reveal_type(c) # Unreachable
+    reveal_type(c)  # E: Statement is unreachable
 if isinstance(c, P):
     reveal_type(c) # N: Revealed type is "__main__.C"
 else:
-    reveal_type(c) # Unreachable
+    reveal_type(c)  # E: Statement is unreachable
 
 c1i: C1[int]
 if isinstance(c1i, P1):
     reveal_type(c1i) # N: Revealed type is "__main__.C1[builtins.int]"
 else:
-    reveal_type(c1i) # Unreachable
+    reveal_type(c1i)  # E: Statement is unreachable
 if isinstance(c1i, P):
     reveal_type(c1i) # N: Revealed type is "__main__.<subclass of "__main__.C1[builtins.int]" and "__main__.P">"
 else:
     reveal_type(c1i) # N: Revealed type is "__main__.C1[builtins.int]"
 
 c1s: C1[str]
-if isinstance(c1s, P1):
-    reveal_type(c1s) # Unreachable
+if isinstance(c1s, P1):  # E: Subclass of "C1[str]" and "P1" cannot exist: would have incompatible method signatures
+    reveal_type(c1s)  # E: Statement is unreachable
 else:
     reveal_type(c1s) # N: Revealed type is "__main__.C1[builtins.str]"
 
@@ -4557,7 +4558,30 @@ def bad() -> Proto:
                    # N:     Expected: \
                    # N:         def f(self) -> int \
                    # N:     Got: \
-                   # N:         def f() -> str \
+                   # N:         def f(self) -> str \
+
+class Impl:
+    @defer
+    def f(self) -> int: ...
+
+[case testProtocolCheckDefersNode2]
+from typing import Any, Callable, Protocol, TypeVar
+
+class Proto(Protocol):
+    def f(self) -> int:
+        ...
+
+T = TypeVar("T")
+def defer(f: Callable[[T], int]) -> Callable[[T], list[int]]:
+    ...
+
+def bad() -> Proto:
+    return Impl()  # E: Incompatible return value type (got "Impl", expected "Proto") \
+                   # N: Following member(s) of "Impl" have conflicts: \
+                   # N:     Expected: \
+                   # N:         def f(self) -> int \
+                   # N:     Got: \
+                   # N:         def f(self) -> list[int] \
 
 class Impl:
     @defer
@@ -4745,3 +4769,43 @@ tmp/a.py:8: note:     Expected:
 tmp/a.py:8: note:         def f(self) -> PNested
 tmp/a.py:8: note:     Got:
 tmp/a.py:8: note:         def f(self) -> CNested
+
+[case testProtocolCannotBeDisjointBase]
+from typing import Protocol
+from typing_extensions import disjoint_base
+
+@disjoint_base  # E: @disjoint_base cannot be used with protocol class
+class A(Protocol):
+    pass
+
+[builtins fixtures/tuple.pyi]
+
+[case testTupleTypeSelfTypeProto]
+from typing import Protocol, TypeVar
+
+R = TypeVar("R", covariant=True)
+
+class P(Protocol[R]):
+    def rep(self) -> R: ...
+
+T = TypeVar("T")
+def rep(x: P[T]) -> T: ...
+
+class C(tuple[int, str]):
+    def rep(self: T) -> T: ...
+
+t: C
+reveal_type(t)  # N: Revealed type is "tuple[builtins.int, builtins.str, fallback=__main__.C]"
+reveal_type(rep(t))  # N: Revealed type is "tuple[builtins.int, builtins.str, fallback=__main__.C]"
+
+def ok_rep(x: P[tuple[int, str]]) -> None: ...
+ok_rep(t)
+
+def bad_rep(x: P[tuple[str, int]]) -> None: ...
+bad_rep(t)  # E: Argument 1 to "bad_rep" has incompatible type "C"; expected "P[tuple[str, int]]" \
+            # N: Following member(s) of "C" have conflicts: \
+            # N:     Expected: \
+            # N:         def rep(self) -> tuple[str, int] \
+            # N:     Got: \
+            # N:         def rep(self) -> C
+[builtins fixtures/tuple.pyi]

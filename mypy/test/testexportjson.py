@@ -11,6 +11,7 @@ from mypy import build
 from mypy.errors import CompileError
 from mypy.exportjson import convert_binary_cache_meta_to_json, convert_binary_cache_to_json
 from mypy.modulefinder import BuildSource
+from mypy.modules_state import modules_state
 from mypy.options import Options
 from mypy.test.config import test_temp_dir
 from mypy.test.data import DataDrivenTestCase, DataSuite
@@ -31,6 +32,7 @@ class TypeExportSuite(DataSuite):
             options.show_traceback = True
             options.allow_empty_bodies = True
             options.fixed_format_cache = True
+            options.sqlite_cache = False
             fnam = os.path.join(self.base_path, "main.py")
             with open(fnam, "w") as f:
                 f.write(src)
@@ -42,6 +44,11 @@ class TypeExportSuite(DataSuite):
 
             major, minor = sys.version_info[:2]
             cache_dir = os.path.join(".mypy_cache", f"{major}.{minor}")
+
+            # Reset the global fixup state, since the exportjson tool
+            # reads cache files in isolation (no node fixer available).
+            modules_state.node_fixer = None
+            modules_state.modules = {}
 
             for module in result.files:
                 if module in (

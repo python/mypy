@@ -74,8 +74,15 @@ class Person5:
     friends: Set[str] = field(default_factory=set)
     parents: FrozenSet[str] = frozenset()
 
+@dataclass
+class HasFactoryDefault:
+    x: dict[str, int] = field(default_factory=dict)
+
+class InheritsDataclassInit(HasFactoryDefault):
+    pass
+
 [file other.py]
-from native import Person1, Person1b, Person2, Person3, Person4, Person5, testBool
+from native import Person1, Person1b, Person2, Person3, Person4, Person5, testBool, InheritsDataclassInit
 i1 = Person1(age = 5, name = 'robot')
 assert i1.age == 5
 assert i1.name == 'robot'
@@ -125,6 +132,9 @@ assert Person1.__annotations__ == {'age': int, 'name': str}
 assert Person2.__annotations__ == {'age': int, 'name': str}
 assert Person5.__annotations__ == {'weight': float, 'friends': set,
                                        'parents': frozenset}
+v = InheritsDataclassInit()
+assert isinstance(v.x, dict)
+assert v.x == {}
 
 [file driver.py]
 import sys

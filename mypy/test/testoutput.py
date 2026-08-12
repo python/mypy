@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import os
 import os.path
+import re
 
 from mypy import api
 from mypy.defaults import PYTHON3_VERSION
@@ -24,7 +25,12 @@ class OutputJSONsuite(DataSuite):
 
 def test_output_json(testcase: DataDrivenTestCase) -> None:
     """Runs Mypy in a subprocess, and ensures that `--output=json` works as intended."""
-    mypy_cmdline = ["--output=json"]
+    program_text = "\n".join(testcase.input)
+    flags_match = re.search("# flags: (.*)$", program_text, flags=re.MULTILINE)
+    if flags_match is not None:
+        mypy_cmdline = flags_match.group(1).split()
+    else:
+        mypy_cmdline = ["--output=json"]
     mypy_cmdline.append(f"--python-version={'.'.join(map(str, PYTHON3_VERSION))}")
 
     # Write the program to a file.

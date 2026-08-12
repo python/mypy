@@ -277,8 +277,29 @@ nested_enumerate()
 nested_range()
 nested_list()
 gen = nested_yield()
-for k in range(12):
-    assert next(gen) == k % 4
+expected = [0, 1, 2, 2, 0, 1, 2, 2, 0, 1, 2, 2]
+assert list(gen) == expected
+[out]
+
+[case testRangeLoopVariableAfterLoop]
+for i in range(3):
+    pass
+assert i == 2, f"expected 2, got {i}"
+
+for j in range(0, 10, 3):
+    pass
+assert j == 9, f"expected 9, got {j}"
+
+for k in range(5, 0, -1):
+    pass
+assert k == 1, f"expected 1, got {k}"
+
+for m in range(0, 10, 2):
+    pass
+assert m == 8, f"expected 8, got {m}"
+
+[file driver.py]
+from native import *
 [out]
 
 [case testForIterable]

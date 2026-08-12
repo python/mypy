@@ -12,7 +12,7 @@
 def f()
   pass
 [out]
-file:1: error: Invalid syntax
+file:1: error: Expected ':'
 
 [case testUnexpectedIndent]
 1
@@ -55,7 +55,7 @@ file:1: error: Invalid syntax
 [case testUnexpectedEof]
 if 1:
 [out]
-file:1: error: Expected an indented block
+file:1: error: Expected an indented block after 'if' statement on line 1
 
 [case testInvalidKeywordArguments1]
 f(x=y, z)
@@ -281,17 +281,17 @@ file:3: error: Inconsistent use of "**" in function signature
 [case testPrintStatementInPython3]
 print 1
 [out]
-file:1: error: Missing parentheses in call to 'print'. Did you mean print(1)?
+file:1: error: Missing parentheses in call to 'print'. Did you mean print(...)?
 
 [case testInvalidConditionInConditionalExpression]
 1 if 2, 3 else 4
 [out]
-file:1: error: Invalid syntax
+file:1: error: Expected 'else' after 'if' expression
 
 [case testInvalidConditionInConditionalExpression2]
 1 if x for y in z else 4
 [out]
-file:1: error: Invalid syntax
+file:1: error: Expected 'else' after 'if' expression
 
 [case testInvalidConditionInConditionalExpression3]
 1 if x else for y in z
@@ -360,17 +360,17 @@ file:1: error: Invalid syntax
 [case testParseErrorInExtendedSlicing]
 x[:,
 [out]
-file:1: error: Unexpected EOF while parsing
+file:1: error: '[' was never closed
 
 [case testParseErrorInExtendedSlicing2]
 x[:,::
 [out]
-file:1: error: Unexpected EOF while parsing
+file:1: error: '[' was never closed
 
 [case testParseErrorInExtendedSlicing3]
 x[:,:
 [out]
-file:1: error: Unexpected EOF while parsing
+file:1: error: '[' was never closed
 
 [case testInvalidEncoding]
 # foo
@@ -407,7 +407,7 @@ file:0: error: Unknown encoding: uft8
 2L
 0x2L
 [out]
-file:1: error: Invalid syntax
+file:1: error: Invalid decimal literal
 
 [case testPython2LegacyInequalityInPython3]
 1 <> 2
@@ -440,4 +440,4 @@ try:
 except KeyError, IndexError:
     pass
 [out]
-file:3: error: Invalid syntax
+file:3: error: Multiple exception types must be parenthesized

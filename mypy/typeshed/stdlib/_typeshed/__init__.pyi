@@ -6,7 +6,7 @@ import sys
 from collections.abc import Awaitable, Callable, Iterable, Iterator, Sequence, Set as AbstractSet, Sized
 from dataclasses import Field
 from os import PathLike
-from types import FrameType, TracebackType
+from types import FrameType, NoneType as NoneType, TracebackType
 from typing import (
     Any,
     AnyStr,
@@ -18,11 +18,11 @@ from typing import (
     SupportsFloat,
     SupportsIndex,
     SupportsInt,
+    TypeAlias,
     TypeVar,
-    final,
     overload,
 )
-from typing_extensions import Buffer, LiteralString, Self as _Self, TypeAlias
+from typing_extensions import Buffer, LiteralString, Self as _Self
 
 _KT = TypeVar("_KT")
 _KT_co = TypeVar("_KT_co", covariant=True)
@@ -57,6 +57,14 @@ Unused: TypeAlias = object  # stable
 # https://typing.python.org/en/latest/guides/writing_stubs.html#the-any-trick
 # for more information.
 MaybeNone: TypeAlias = Any  # stable
+
+# typeshed-internal type aliases to facilitate transition from
+# `float` to either `float | int` or `float` (and similar for `complex`).
+# When you encounter one of these type aliases, you are encouraged to
+# replace them with the correct type. Please don't use them outside typeshed.
+# See https://github.com/python/typeshed/issues/16059 for details.
+FloatInt: TypeAlias = float | int
+ComplexInt: TypeAlias = complex | float | int
 
 # Used to mark arguments that default to a sentinel value. This prevents
 # stubtest from complaining about the default value not matching.
@@ -125,6 +133,12 @@ class SupportsMul(Protocol[_T_contra, _T_co]):
 
 class SupportsRMul(Protocol[_T_contra, _T_co]):
     def __rmul__(self, x: _T_contra, /) -> _T_co: ...
+
+class SupportsMod(Protocol[_T_contra, _T_co]):
+    def __mod__(self, other: _T_contra, /) -> _T_co: ...
+
+class SupportsRMod(Protocol[_T_contra, _T_co]):
+    def __rmod__(self, other: _T_contra, /) -> _T_co: ...
 
 class SupportsDivMod(Protocol[_T_contra, _T_co]):
     def __divmod__(self, other: _T_contra, /) -> _T_co: ...
@@ -307,6 +321,7 @@ class IndexableBuffer(Buffer, Protocol):
 
 class SupportsGetItemBuffer(SliceableBuffer, IndexableBuffer, Protocol):
     def __contains__(self, x: Any, /) -> bool: ...
+
     @overload
     def __getitem__(self, slice: slice[SupportsIndex | None], /) -> Sequence[int]: ...
     @overload
@@ -316,15 +331,6 @@ class SizedBuffer(Sized, Buffer, Protocol): ...
 
 ExcInfo: TypeAlias = tuple[type[BaseException], BaseException, TracebackType]
 OptExcInfo: TypeAlias = ExcInfo | tuple[None, None, None]
-
-# stable
-if sys.version_info >= (3, 10):
-    from types import NoneType as NoneType
-else:
-    # Used by type checkers for checks involving None (does not exist at runtime)
-    @final
-    class NoneType:
-        def __bool__(self) -> Literal[False]: ...
 
 # This is an internal CPython type that is like, but subtly different from, a NamedTuple
 # Subclasses of this type are found in multiple modules.
@@ -353,10 +359,12 @@ AnyOrLiteralStr = TypeVar("AnyOrLiteralStr", str, bytes, LiteralString)  # noqa:
 StrOrLiteralStr = TypeVar("StrOrLiteralStr", LiteralString, str)  # noqa: Y001
 
 # Objects suitable to be passed to sys.setprofile, threading.setprofile, and similar
-ProfileFunction: TypeAlias = Callable[[FrameType, str, Any], object]
+ProfileFunction: TypeAlias = Callable[[FrameType, Literal["call", "return", "c_call", "c_return", "c_exception"], Any], object]
 
 # Objects suitable to be passed to sys.settrace, threading.settrace, and similar
-TraceFunction: TypeAlias = Callable[[FrameType, str, Any], TraceFunction | None]
+TraceFunction: TypeAlias = Callable[
+    [FrameType, Literal["call", "line", "return", "exception", "opcode"], Any], TraceFunction | None
+]
 
 # experimental
 # Might not work as expected for pyright, see

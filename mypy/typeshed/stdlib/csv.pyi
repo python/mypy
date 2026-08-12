@@ -19,11 +19,7 @@ from _csv import (
 
 if sys.version_info >= (3, 12):
     from _csv import QUOTE_NOTNULL as QUOTE_NOTNULL, QUOTE_STRINGS as QUOTE_STRINGS
-if sys.version_info >= (3, 10):
-    from _csv import Reader, Writer
-else:
-    from _csv import _reader as Reader, _writer as Writer
-
+from _csv import Reader, Writer
 from _typeshed import SupportsWrite
 from collections.abc import Collection, Iterable, Iterator, Mapping, Sequence
 from types import GenericAlias
@@ -80,6 +76,7 @@ class DictReader(Iterator[dict[_T | Any, str | Any]], Generic[_T]):
     reader: Reader
     dialect: _DialectLike
     line_num: int
+
     @overload
     def __init__(
         self,
@@ -116,6 +113,7 @@ class DictReader(Iterator[dict[_T | Any, str | Any]], Generic[_T]):
         quoting: _QuotingType = 0,
         strict: bool = False,
     ) -> None: ...
+
     def __iter__(self) -> Self: ...
     def __next__(self) -> dict[_T | Any, str | Any]: ...
     if sys.version_info >= (3, 12):

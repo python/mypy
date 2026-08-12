@@ -760,13 +760,16 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
             "Foo", ["b", "i32", "i64"], [bool_rprimitive, int32_rprimitive, int64_rprimitive]
         )
         self.assert_emit(
-            GetElementPtr(self.o, r, "b"), """cpy_r_r0 = (CPyPtr)&((Foo *)cpy_r_o)->b;"""
+            GetElementPtr(self.o, r, "b"),
+            """cpy_r_r0 = (CPyPtr)((CPyPtr)cpy_r_o + offsetof(Foo, b));""",
         )
         self.assert_emit(
-            GetElementPtr(self.o, r, "i32"), """cpy_r_r0 = (CPyPtr)&((Foo *)cpy_r_o)->i32;"""
+            GetElementPtr(self.o, r, "i32"),
+            """cpy_r_r0 = (CPyPtr)((CPyPtr)cpy_r_o + offsetof(Foo, i32));""",
         )
         self.assert_emit(
-            GetElementPtr(self.o, r, "i64"), """cpy_r_r0 = (CPyPtr)&((Foo *)cpy_r_o)->i64;"""
+            GetElementPtr(self.o, r, "i64"),
+            """cpy_r_r0 = (CPyPtr)((CPyPtr)cpy_r_o + offsetof(Foo, i64));""",
         )
 
     def test_set_element(self) -> None:

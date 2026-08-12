@@ -7,7 +7,7 @@ from typing import NamedTuple
 from mypyc.common import PROPSET_PREFIX, JsonDict
 from mypyc.ir.func_ir import FuncDecl, FuncIR, FuncSignature, RuntimeArg
 from mypyc.ir.ops import DeserMaps, Value
-from mypyc.ir.rtypes import RInstance, RType, deserialize_type, object_rprimitive
+from mypyc.ir.rtypes import RInstance, RType, c_int_rprimitive, deserialize_type, object_rprimitive
 from mypyc.namegen import NameGenerator, exported_name
 
 # Some notes on the vtable layout: Each concrete class has a vtable
@@ -143,8 +143,27 @@ class ClassIR:
             module_name,
             FuncSignature([RuntimeArg("type", object_rprimitive)], RInstance(self)),
         )
+        self.clear = FuncDecl(
+            name + "_clear",
+            None,
+            module_name,
+            FuncSignature([RuntimeArg("self", RInstance(self))], c_int_rprimitive),
+            internal=True,
+        )
+        self.clear_on_completion = FuncDecl(
+            name + "_clear_on_completion",
+            None,
+            module_name,
+            FuncSignature([RuntimeArg("self", RInstance(self))], c_int_rprimitive),
+            internal=True,
+        )
         # Attributes defined in the class (not inherited)
         self.attributes: dict[str, RType] = {}
+        # Attributes that must survive generator/coroutine completion because
+        # escaped nested functions may still read them as closure variables.
+        self.attrs_to_keep_alive_on_completion: set[str] = set()
+        # Final attributes defined in the class (not inherited)
+        self.final_attributes: set[str] = set()
         # Deletable attributes
         self.deletable: list[str] = []
         # We populate method_types with the signatures of every method before
@@ -266,6 +285,22 @@ class ClassIR:
 
     def attr_type(self, name: str) -> RType:
         return self.attr_details(name)[0]
+
+    def is_final_attr(self, name: str) -> bool:
+        """Is the (possibly inherited) attribute Final, i.e. never rebound?
+
+        A Final attribute is read-only at runtime (it has no setter) and is assigned
+        exactly once during construction, so it can never be reassigned afterwards.
+        This makes it safe to borrow on free-threaded builds (no concurrent store can
+        invalidate a borrowed reference) and lets reads skip the concurrent-writer
+        guard. Returns False for properties and for attributes this class doesn't have.
+        """
+        for ir in self.mro:
+            if name in ir.attributes:
+                return name in ir.final_attributes
+            if name in ir.property_types:
+                return False
+        return False
 
     def method_decl(self, name: str) -> FuncDecl:
         for ir in self.mro:
@@ -394,8 +429,12 @@ class ClassIR:
             "_serializable": self._serializable,
             "builtin_base": self.builtin_base,
             "ctor": self.ctor.serialize(),
+            "clear": self.clear.serialize(),
+            "clear_on_completion": self.clear_on_completion.serialize(),
             # We serialize dicts as lists to ensure order is preserved
             "attributes": [(k, t.serialize()) for k, t in self.attributes.items()],
+            "attrs_to_keep_alive_on_completion": sorted(self.attrs_to_keep_alive_on_completion),
+            "final_attributes": sorted(self.final_attributes),
             # We try to serialize a name reference, but if the decl isn't in methods
             # then we can't be sure that will work so we serialize the whole decl.
             "method_decls": [
@@ -455,7 +494,11 @@ class ClassIR:
         ir._serializable = data["_serializable"]
         ir.builtin_base = data["builtin_base"]
         ir.ctor = FuncDecl.deserialize(data["ctor"], ctx)
+        ir.clear = FuncDecl.deserialize(data["clear"], ctx)
+        ir.clear_on_completion = FuncDecl.deserialize(data["clear_on_completion"], ctx)
         ir.attributes = {k: deserialize_type(t, ctx) for k, t in data["attributes"]}
+        ir.attrs_to_keep_alive_on_completion = set(data["attrs_to_keep_alive_on_completion"])
+        ir.final_attributes = set(data["final_attributes"])
         ir.method_decls = {
             k: ctx.functions[v].decl if isinstance(v, str) else FuncDecl.deserialize(v, ctx)
             for k, v in data["method_decls"]

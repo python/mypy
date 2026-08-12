@@ -3,8 +3,8 @@ from _typeshed import MaybeNone
 from collections.abc import Awaitable, Callable, Coroutine, Iterable, Mapping, Sequence
 from contextlib import _GeneratorContextManager
 from types import TracebackType
-from typing import Any, ClassVar, Final, Generic, Literal, TypeVar, overload, type_check_only
-from typing_extensions import ParamSpec, Self, TypeAlias, disjoint_base
+from typing import Any, ClassVar, Final, Generic, Literal, ParamSpec, TypeAlias, TypeVar, overload, type_check_only
+from typing_extensions import Self, disjoint_base
 
 _T = TypeVar("_T")
 _TT = TypeVar("_TT", bound=type[Any])
@@ -244,42 +244,29 @@ class _patch(Generic[_T]):
     additional_patchers: Any
     # If new==DEFAULT, self is _patch[Any]. Ideally we'd be able to add an overload for it so that self is _patch[MagicMock],
     # but that's impossible with the current type system.
-    if sys.version_info >= (3, 10):
-        def __init__(
-            self: _patch[_T],  # pyright: ignore[reportInvalidTypeVarUse]  #11780
-            getter: Callable[[], Any],
-            attribute: str,
-            new: _T,
-            spec: Any | None,
-            create: bool,
-            spec_set: Any | None,
-            autospec: Any | None,
-            new_callable: Any | None,
-            kwargs: Mapping[str, Any],
-            *,
-            unsafe: bool = False,
-        ) -> None: ...
-    else:
-        def __init__(
-            self: _patch[_T],  # pyright: ignore[reportInvalidTypeVarUse]  #11780
-            getter: Callable[[], Any],
-            attribute: str,
-            new: _T,
-            spec: Any | None,
-            create: bool,
-            spec_set: Any | None,
-            autospec: Any | None,
-            new_callable: Any | None,
-            kwargs: Mapping[str, Any],
-        ) -> None: ...
-
+    def __init__(
+        self: _patch[_T],  # pyright: ignore[reportInvalidTypeVarUse]  #11780
+        getter: Callable[[], Any],
+        attribute: str,
+        new: _T,
+        spec: Any | None,
+        create: bool,
+        spec_set: Any | None,
+        autospec: Any | None,
+        new_callable: Any | None,
+        kwargs: Mapping[str, Any],
+        *,
+        unsafe: bool = False,
+    ) -> None: ...
     def copy(self) -> _patch[_T]: ...
+
     @overload
     def __call__(self, func: _TT) -> _TT: ...
     # If new==DEFAULT, this should add a MagicMock parameter to the function
     # arguments. See the _patch_default_new class below for this functionality.
     @overload
     def __call__(self, func: Callable[_P, _R]) -> Callable[_P, _R]: ...
+
     def decoration_helper(
         self, patched: _patch[Any], args: Sequence[Any], keywargs: Any
     ) -> _GeneratorContextManager[tuple[Sequence[Any], Any]]: ...
@@ -315,13 +302,11 @@ class _patch_dict:
     clear: Any
     def __init__(self, in_dict: Any, values: Any = (), clear: Any = False, **kwargs: Any) -> None: ...
     def __call__(self, f: Any) -> Any: ...
-    if sys.version_info >= (3, 10):
-        def decorate_callable(self, f: _F) -> _F: ...
-        def decorate_async_callable(self, f: _AF) -> _AF: ...
-
-    def decorate_class(self, klass: Any) -> Any: ...
     def __enter__(self) -> Any: ...
     def __exit__(self, *args: object) -> Any: ...
+    def decorate_callable(self, f: _F) -> _F: ...
+    def decorate_async_callable(self, f: _AF) -> _AF: ...
+    def decorate_class(self, klass: Any) -> Any: ...
     start: Any
     stop: Any
 
@@ -331,6 +316,7 @@ class _patch_dict:
 class _patcher:
     TEST_PREFIX: str
     dict: type[_patch_dict]
+
     # This overload also covers the case, where new==DEFAULT. In this case, the return type is _patch[Any].
     # Ideally we'd be able to add an overload for it so that the return type is _patch[MagicMock],
     # but that's impossible with the current type system.
@@ -377,6 +363,7 @@ class _patcher:
         # kwargs are passed to the MagicMock/AsyncMock constructor
         **kwargs: Any,
     ) -> _patch_pass_arg[MagicMock | AsyncMock]: ...
+
     # This overload also covers the case, where new==DEFAULT. In this case, the return type is _patch[Any].
     # Ideally we'd be able to add an overload for it so that the return type is _patch[MagicMock],
     # but that's impossible with the current type system.
@@ -426,6 +413,7 @@ class _patcher:
         # kwargs are passed to the MagicMock/AsyncMock constructor
         **kwargs: Any,
     ) -> _patch_pass_arg[MagicMock | AsyncMock]: ...
+
     @overload
     @staticmethod
     def multiple(
@@ -467,6 +455,7 @@ class _patcher:
         # The kwargs are the mock objects or DEFAULT
         **kwargs: Any,
     ) -> _patch[Any]: ...
+
     @staticmethod
     def stopall() -> None: ...
 
@@ -517,27 +506,16 @@ class _ANY(Any):
 
 ANY: _ANY
 
-if sys.version_info >= (3, 10):
-    def create_autospec(
-        spec: Any,
-        spec_set: Any = False,
-        instance: Any = False,
-        _parent: Any | None = None,
-        _name: Any | None = None,
-        *,
-        unsafe: bool = False,
-        **kwargs: Any,
-    ) -> Any: ...
-
-else:
-    def create_autospec(
-        spec: Any,
-        spec_set: Any = False,
-        instance: Any = False,
-        _parent: Any | None = None,
-        _name: Any | None = None,
-        **kwargs: Any,
-    ) -> Any: ...
+def create_autospec(
+    spec: Any,
+    spec_set: Any = False,
+    instance: Any = False,
+    _parent: Any | None = None,
+    _name: Any | None = None,
+    *,
+    unsafe: bool = False,
+    **kwargs: Any,
+) -> Any: ...
 
 class _SpecState:
     spec: Any

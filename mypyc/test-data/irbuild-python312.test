@@ -1,0 +1,6 @@
+[case testAcyclicGenericIsRejected_python3_12]
+from mypy_extensions import mypyc_attr
+
+@mypyc_attr(acyclic=True)
+class BadGeneric[T]:  # E: "acyclic" can't be used in a class that inherits from non-acyclic type "typing.Generic"
+    pass
