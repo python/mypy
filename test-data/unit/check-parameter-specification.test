@@ -141,6 +141,32 @@ reveal_type(whatever)  # N: Revealed type is "def (x: builtins.int) -> builtins.
 reveal_type(whatever(217))  # N: Revealed type is "builtins.list[builtins.int]"
 [builtins fixtures/paramspec.pyi]
 
+[case testParamSpecVariadicContextManager]
+from typing import Callable, Generic, TypeVar, TypeVarTuple, Unpack
+from typing_extensions import ParamSpec
+
+P = ParamSpec("P")
+R = TypeVar("R")
+Ts = TypeVarTuple("Ts")
+
+class contextmanager(Generic[P, R]):
+    def __init__(self, func: Callable[P, R]) -> None: ...
+
+    def __call__(self, *args: P.args, **kwargs: P.kwargs) -> "_contextmanager_cls[P, R]": ...
+
+class _contextmanager_cls(Generic[P, R]):
+    def __enter__(self) -> R: ...
+    def __exit__(self, *args: object) -> bool: ...
+
+@contextmanager
+def print_args(*args: Unpack[Ts]) -> tuple[Unpack[Ts]]: ...
+
+with print_args(2, "x") as value:
+    reveal_type(value)  # N: Revealed type is "tuple[builtins.int, builtins.str]"
+
+reveal_type(print_args(2, "x"))  # N: Revealed type is "__main__._contextmanager_cls[[Literal[2]?, Literal['x']?], tuple[Literal[2]?, Literal['x']?]]"
+[builtins fixtures/tuple.pyi]
+
 [case testInvalidParamSpecType]
 from typing import ParamSpec
 
