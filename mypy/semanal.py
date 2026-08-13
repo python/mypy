@@ -2394,6 +2394,16 @@ class SemanticAnalyzer(
                 declared_tvars = remove_dups(declared_tvars + all_tvars)
         else:
             declared_tvars = all_tvars
+        seen_type_var_tuple = False
+        checked_tvars: TypeVarLikeList = []
+        for tvar in declared_tvars:
+            if isinstance(tvar[1], TypeVarTupleExpr):
+                if seen_type_var_tuple:
+                    self.fail("Can only use one type var tuple in a class def", context)
+                    continue
+                seen_type_var_tuple = True
+            checked_tvars.append(tvar)
+        declared_tvars = checked_tvars
         for i in reversed(removed):
             # We need to actually remove the base class expressions like Generic[T],
             # mostly because otherwise they will create spurious dependencies in fine
