@@ -1420,7 +1420,7 @@ def process(response1: int,response2: int) -> int: # E: Overloaded function sign
 def process(response1,response2)-> Union[float,int]:
    return response1 + response2
 
-[case testLegacyTypeComments]
+[case testLegacyTypeComments_no_parallel]
 # flags: --enable-error-code type-comment
 from typing import AsyncGenerator
 def f(): ...

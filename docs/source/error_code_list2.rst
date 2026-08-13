@@ -708,7 +708,8 @@ Check that no legacy type comments are used [type-comment]
 If enabled with :option:`--enable-error-code type-comment <mypy --enable-error-code>`,
 mypy generates an error if legacy type comments are used. Tools like
 [com2ann](https://github.com/ilevkivskyi/com2ann) can help with translating type comments to
-type annotations.
+type annotations. This will only work with the current (old) parser
+(``--no-native-parser``).
 
 More information about type comments are available in the
 [typing specification](https://typing.python.org/en/latest/spec/historical.html#type-comments).

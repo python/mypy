@@ -6,7 +6,7 @@
 
 A new disabled by default error code `type-comment` was added. If enabled with
 `--enable-error-code type-comment`, mypy will generate errors if legacy type comments instead of
-type annotations are used.
+type annotations are used. This will only work with the current (old) parser (`--no-native-parser`).
 
 ```py
 a = 2  # type: int
