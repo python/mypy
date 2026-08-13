@@ -2104,6 +2104,12 @@ if int():
 -- ---------------
 
 
+[case testInvalidBareStarAssignmentTargetNoCrash]
+# https://github.com/python/mypy/issues/20796
+# flags: --debug-serialize
+*a = b  # E: Starred assignment target must be in a list or tuple \
+        # E: Name "b" is not defined
+
 [case testAssignListToStarExpr]
 from typing import List
 bs: List[A]
