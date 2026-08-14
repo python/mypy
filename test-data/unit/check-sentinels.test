@@ -36,12 +36,22 @@ MISSING = Sentinel("MISSING")
 SPECIAL = Sentinel("SPECIAL")
 
 def func(x: int | MISSING | SPECIAL) -> None:
-    # We could reasonably do narrowing here, but currently we're pretty conservative
-    # about narrowing on ==.
     if x == MISSING:
-        assert_type(x, int | MISSING | SPECIAL)
+        assert_type(x, MISSING)
     else:
-        assert_type(x, int | MISSING | SPECIAL)
+        assert_type(x, int | SPECIAL)
+[builtins fixtures/ops.pyi]
+
+[case testSentinelNarrowingInSequence]
+from typing_extensions import assert_type, Sentinel
+
+MISSING = Sentinel("MISSING")
+
+def func(var: str | MISSING | None) -> None:
+    if var in (MISSING, None):
+        assert_type(var, MISSING | None)
+    else:
+        assert_type(var, str)
 [builtins fixtures/tuple.pyi]
 
 [case testSentinelSameReprDistinctTypes]
