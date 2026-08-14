@@ -1751,3 +1751,30 @@ assert sys.platform == "win32"
 if False:
     reveal_type(5)  # E: Statement is unreachable \
                     # N: Revealed type is "Literal[5]?"
+
+[case testCheckUnreachableOnlyFlagsOnce]
+# flags: --check-unreachable --warn-unreachable
+if False:
+    if False:  # E: Statement is unreachable
+        "not flagged!"
+
+[case testCheckUnreachableHandlesFinallyRight]
+# flags: --check-unreachable --warn-unreachable
+def f1() -> None:
+    # it doesn't reset suppression
+    assert False
+    try:  # E: Statement is unreachable
+        pass
+    finally:
+        reveal_type(5)  # N: Revealed type is "Literal[5]?"
+    "something"
+
+def f2() -> None:
+    # but it does still mark things after as unreachable
+    try:
+        pass
+    finally:
+        assert False
+        reveal_type(5)  # E: Statement is unreachable \
+                        # N: Revealed type is "Literal[5]?"
+    "something"  # E: Statement is unreachable
