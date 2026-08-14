@@ -8,15 +8,16 @@ add a method to MessageBuilder and call this instead.
 
 from __future__ import annotations
 
-from typing import Final, NamedTuple
+from typing import Final
 
 from mypy import errorcodes as codes
 from mypy.errorcodes import ErrorCode
 
 
-class ErrorMessage(NamedTuple):
-    value: str
-    code: ErrorCode | None = None
+class ErrorMessage:
+    def __init__(self, value: str, code: ErrorCode | None = None) -> None:
+        self.value: Final = value
+        self.code: Final = code
 
     def format(self, *args: object, **kwargs: object) -> ErrorMessage:
         return ErrorMessage(self.value.format(*args, **kwargs), code=self.code)
@@ -91,7 +92,6 @@ AMBIGUOUS_SLICE_OF_VARIADIC_TUPLE: Final = ErrorMessage("Ambiguous slice of a va
 TOO_MANY_TARGETS_FOR_VARIADIC_UNPACK: Final = ErrorMessage(
     "Too many assignment targets for variadic unpack"
 )
-INVALID_SLICE_INDEX: Final = ErrorMessage("Slice index must be an integer, SupportsIndex or None")
 CANNOT_INFER_LAMBDA_TYPE: Final = ErrorMessage("Cannot infer type of lambda")
 CANNOT_ACCESS_INIT: Final = (
     'Accessing "__init__" on an instance is unsound, since instance.__init__ could be from'
@@ -126,8 +126,8 @@ ONLY_CLASS_APPLICATION: Final = ErrorMessage(
 RETURN_TYPE_EXPECTED: Final = ErrorMessage(
     "Function is missing a return type annotation", codes.NO_UNTYPED_DEF
 )
-ARGUMENT_TYPE_EXPECTED: Final = ErrorMessage(
-    "Function is missing a type annotation for one or more arguments", codes.NO_UNTYPED_DEF
+PARAM_TYPE_EXPECTED: Final = ErrorMessage(
+    "Function is missing a type annotation for one or more parameters", codes.NO_UNTYPED_DEF
 )
 KEYWORD_ARGUMENT_REQUIRES_STR_KEY_TYPE: Final = ErrorMessage(
     'Keyword argument only valid with "str" key type in call to "dict"'
@@ -180,6 +180,8 @@ BARE_GENERIC: Final = "Missing type arguments for generic type {}"
 IMPLICIT_GENERIC_ANY_BUILTIN: Final = (
     'Implicit generic "Any". Use "{}" and specify generic parameters'
 )
+NO_CYCLIC_DEFAULT: Final = "Cyclic type variable defaults are not supported"
+NO_DEFAULT_AFTER_TYPEVAR_TUPLE: Final = "A type variable with default cannot follow TypeVarTuple"
 INVALID_UNPACK: Final = "{} cannot be unpacked (must be tuple or TypeVarTuple)"
 INVALID_UNPACK_POSITION: Final = "Unpack is only valid in a variadic position"
 INVALID_PARAM_SPEC_LOCATION: Final = "Invalid location for ParamSpec {}"
@@ -224,7 +226,7 @@ SUPER_ENCLOSING_POSITIONAL_ARGS_REQUIRED: Final = ErrorMessage(
 
 # Self-type
 MISSING_OR_INVALID_SELF_TYPE: Final = ErrorMessage(
-    "Self argument missing for a non-static method (or an invalid type for self)"
+    '"self" parameter missing for a non-static method (or an invalid type for self)'
 )
 ERASED_SELF_TYPE_NOT_SUPERTYPE: Final = ErrorMessage(
     'The erased type of self "{}" is not a supertype of its class "{}"'
@@ -237,6 +239,9 @@ DEPENDENT_FINAL_IN_CLASS_BODY: Final = ErrorMessage(
 )
 CANNOT_ACCESS_FINAL_INSTANCE_ATTR: Final = (
     'Cannot access final instance attribute "{}" on class object'
+)
+CANNOT_ACCESS_INSTANCE_ONLY_ATTR: Final = (
+    'Cannot access instance-only attribute "{}" on class object'
 )
 CANNOT_MAKE_DELETABLE_FINAL: Final = ErrorMessage("Deletable attribute cannot be final")
 
@@ -300,7 +305,7 @@ FAILED_TO_MERGE_OVERLOADS: Final = ErrorMessage(
     "Condition can't be inferred, unable to merge overloads"
 )
 TYPE_IGNORE_WITH_ERRCODE_ON_MODULE: Final = ErrorMessage(
-    "type ignore with error code is not supported for modules; "
+    "Type ignore with error code is not supported for modules; "
     'use `# mypy: disable-error-code="{}"`',
     codes.SYNTAX,
 )
@@ -308,14 +313,14 @@ INVALID_TYPE_IGNORE: Final = ErrorMessage('Invalid "type: ignore" comment', code
 TYPE_COMMENT_SYNTAX_ERROR_VALUE: Final = ErrorMessage(
     'Syntax error in type comment "{}"', codes.SYNTAX
 )
-ELLIPSIS_WITH_OTHER_TYPEARGS: Final = ErrorMessage(
-    "Ellipses cannot accompany other argument types in function type signature", codes.SYNTAX
+ELLIPSIS_WITH_OTHER_TYPEPARAMS: Final = ErrorMessage(
+    "Ellipses cannot accompany other parameter types in function type signature", codes.SYNTAX
 )
-TYPE_SIGNATURE_TOO_MANY_ARGS: Final = ErrorMessage(
-    "Type signature has too many arguments", codes.SYNTAX
+TYPE_SIGNATURE_TOO_MANY_PARAMS: Final = ErrorMessage(
+    "Type signature has too many parameters", codes.SYNTAX
 )
-TYPE_SIGNATURE_TOO_FEW_ARGS: Final = ErrorMessage(
-    "Type signature has too few arguments", codes.SYNTAX
+TYPE_SIGNATURE_TOO_FEW_PARAMS: Final = ErrorMessage(
+    "Type signature has too few parameters", codes.SYNTAX
 )
 ARG_CONSTRUCTOR_NAME_EXPECTED: Final = ErrorMessage("Expected arg constructor name", codes.SYNTAX)
 ARG_CONSTRUCTOR_TOO_MANY_ARGS: Final = ErrorMessage(

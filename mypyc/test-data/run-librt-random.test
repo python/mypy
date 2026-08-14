@@ -1,0 +1,344 @@
+[case testRandom_librt]
+from typing import Any
+
+from librt.random import Random, random, randint, randrange, seed
+from mypy_extensions import i64
+from testutil import assertRaises
+
+#
+# Random object basics
+#
+
+def test_random_construct() -> None:
+    r = Random()
+    assert isinstance(r, Random)
+
+def test_randint_basic() -> None:
+    r = Random()
+    for i in range(100):
+        val = r.randint(0, 10)
+        assert 0 <= val <= 10
+
+def test_randint_single_value() -> None:
+    r = Random()
+    for i in range(10):
+        assert r.randint(5, 5) == 5
+
+def test_randint_negative_range() -> None:
+    r = Random()
+    for i in range(100):
+        val = r.randint(-10, -1)
+        assert -10 <= val <= -1
+
+def test_randint_mixed_range() -> None:
+    r = Random()
+    for i in range(100):
+        val = r.randint(-5, 5)
+        assert -5 <= val <= 5
+
+def test_randint_large_range() -> None:
+    r = Random()
+    for i in range(100):
+        val = r.randint(0, 1000000)
+        assert 0 <= val <= 1000000
+
+def test_randint_produces_different_values() -> None:
+    r = Random()
+    values = set()
+    for i in range(100):
+        values.add(r.randint(0, 1000000))
+    # With range 0-1000000 and 100 samples, we should get at least 2 distinct values
+    assert len(values) > 1
+
+def test_random_basic() -> None:
+    r = Random()
+    for i in range(100):
+        val = r.random()
+        assert 0.0 <= val < 1.0
+
+def test_random_returns_float() -> None:
+    r = Random()
+    val = r.random()
+    assert isinstance(val, float)
+
+def test_random_produces_different_values() -> None:
+    r = Random()
+    values = set()
+    for i in range(100):
+        values.add(r.random())
+    assert len(values) > 1
+
+def test_randrange_one_arg() -> None:
+    r = Random()
+    for i in range(100):
+        val = r.randrange(10)
+        assert 0 <= val < 10
+
+def test_randrange_two_args() -> None:
+    r = Random()
+    for i in range(100):
+        val = r.randrange(5, 15)
+        assert 5 <= val < 15
+
+def test_randrange_negative() -> None:
+    r = Random()
+    for i in range(100):
+        val = r.randrange(-10, 0)
+        assert -10 <= val < 0
+
+def test_randrange_single_value() -> None:
+    r = Random()
+    for i in range(10):
+        assert r.randrange(7, 8) == 7
+
+def test_randrange_produces_different_values() -> None:
+    r = Random()
+    values = set()
+    for i in range(100):
+        values.add(r.randrange(1000000))
+    assert len(values) > 1
+
+def test_constructor_seed() -> None:
+    r1 = Random(42)
+    r2 = Random(42)
+    vals1 = [r1.randint(0, 1000000) for _ in range(20)]
+    vals2 = [r2.randint(0, 1000000) for _ in range(20)]
+    assert vals1 == vals2
+
+def test_constructor_seed_different() -> None:
+    r1 = Random(42)
+    r2 = Random(43)
+    vals1 = [r1.randint(0, 1000000) for _ in range(20)]
+    vals2 = [r2.randint(0, 1000000) for _ in range(20)]
+    assert vals1 != vals2
+
+def test_constructor_none_seed() -> None:
+    r = Random(None)
+    val = r.random()
+    assert 0.0 <= val < 1.0
+
+def test_seed_method() -> None:
+    r = Random(0)
+    r.seed(42)
+    vals1 = [r.randint(0, 1000000) for _ in range(20)]
+    r.seed(42)
+    vals2 = [r.randint(0, 1000000) for _ in range(20)]
+    assert vals1 == vals2
+
+def test_seed_method_resets_state() -> None:
+    r = Random(42)
+    expected = [r.randint(0, 1000000) for _ in range(20)]
+    # Consume some values, then reseed
+    r.seed(42)
+    actual = [r.randint(0, 1000000) for _ in range(20)]
+    assert expected == actual
+
+#
+# Module-level functions
+#
+
+def test_module_random_basic() -> None:
+    for i in range(100):
+        val = random()
+        assert 0.0 <= val < 1.0
+
+def test_module_random_returns_float() -> None:
+    assert isinstance(random(), float)
+
+def test_module_random_produces_different_values() -> None:
+    values = set()
+    for i in range(100):
+        values.add(random())
+    assert len(values) > 1
+
+def test_module_randint_basic() -> None:
+    for i in range(100):
+        val = randint(0, 10)
+        assert 0 <= val <= 10
+
+def test_module_randint_single_value() -> None:
+    for i in range(10):
+        assert randint(5, 5) == 5
+
+def test_module_randint_produces_different_values() -> None:
+    values = set()
+    for i in range(100):
+        values.add(randint(0, 1000000))
+    assert len(values) > 1
+
+def test_module_randrange_one_arg() -> None:
+    for i in range(100):
+        val = randrange(10)
+        assert 0 <= val < 10
+
+def test_module_randrange_two_args() -> None:
+    for i in range(100):
+        val = randrange(5, 15)
+        assert 5 <= val < 15
+
+def test_module_randrange_produces_different_values() -> None:
+    values = set()
+    for i in range(100):
+        values.add(randrange(1000000))
+    assert len(values) > 1
+
+def test_module_seed_reproducible() -> None:
+    seed(42)
+    vals1 = [randint(0, 1000000) for _ in range(20)]
+    seed(42)
+    vals2 = [randint(0, 1000000) for _ in range(20)]
+    assert vals1 == vals2
+
+def test_module_seed_different() -> None:
+    seed(42)
+    vals1 = [randint(0, 1000000) for _ in range(20)]
+    seed(43)
+    vals2 = [randint(0, 1000000) for _ in range(20)]
+    assert vals1 != vals2
+
+#
+# Wrapper function calling convention (via Any)
+#
+
+def test_method_random_via_wrapper() -> None:
+    r: Any = Random(42)
+    val = r.random()
+    assert isinstance(val, float)
+    assert 0.0 <= val < 1.0
+
+def test_method_seed_via_wrapper() -> None:
+    r: Any = Random(0)
+    r.seed(42)
+    val = r.random()
+    assert 0.0 <= val < 1.0
+
+def test_module_random_via_wrapper() -> None:
+    random_any: Any = random
+    val = random_any()
+    assert isinstance(val, float)
+    assert 0.0 <= val < 1.0
+
+def test_module_randint_via_wrapper() -> None:
+    randint_any: Any = randint
+    val = randint_any(0, 10)
+    assert 0 <= val <= 10
+
+def test_module_seed_via_wrapper() -> None:
+    seed_any: Any = seed
+    seed_any(42)
+
+#
+# Wide i64 ranges
+#
+
+def method_randint(r: Random, a: i64, b: i64) -> i64:
+    return r.randint(a, b)
+
+def method_randrange(r: Random, a: i64, b: i64) -> i64:
+    return r.randrange(a, b)
+
+def module_randint(a: i64, b: i64) -> i64:
+    return randint(a, b)
+
+def module_randrange(a: i64, b: i64) -> i64:
+    return randrange(a, b)
+
+def test_full_i64_randint_native() -> None:
+    lo: i64 = -9223372036854775808
+    hi: i64 = 9223372036854775807
+    r = Random(42)
+    saw_non_min = False
+    for i in range(20):
+        val = method_randint(r, lo, hi)
+        assert lo <= val <= hi
+        if val != lo:
+            saw_non_min = True
+    assert saw_non_min
+
+def test_full_i64_randint_module_native() -> None:
+    lo: i64 = -9223372036854775808
+    hi: i64 = 9223372036854775807
+    saw_non_min = False
+    for i in range(20):
+        val = module_randint(lo, hi)
+        assert lo <= val <= hi
+        if val != lo:
+            saw_non_min = True
+    assert saw_non_min
+
+def test_wide_i64_randrange_native() -> None:
+    lo: i64 = -9223372036854775808
+    hi: i64 = 9223372036854775807
+    r = Random(43)
+    for i in range(20):
+        val = method_randrange(r, lo, hi)
+        assert lo <= val < hi
+        val = module_randrange(lo, hi)
+        assert lo <= val < hi
+
+def test_full_i64_randint_python_api() -> None:
+    r: Any = Random(42)
+    lo = -9223372036854775808
+    hi = 9223372036854775807
+    saw_non_min = False
+    for i in range(20):
+        val = r.randint(lo, hi)
+        assert lo <= val <= hi
+        if val != lo:
+            saw_non_min = True
+    assert saw_non_min
+
+def test_wide_i64_randrange_python_api() -> None:
+    r: Any = Random(43)
+    randrange_any: Any = randrange
+    lo = -9223372036854775808
+    hi = 9223372036854775807
+    for i in range(20):
+        val = r.randrange(lo, hi)
+        assert lo <= val < hi
+        val = randrange_any(lo, hi)
+        assert lo <= val < hi
+
+#
+# Error handling
+#
+
+def test_randint_empty_range() -> None:
+    r = Random()
+    with assertRaises(ValueError, "empty range"):
+        r.randint(10, 5)
+
+def test_randint_wrong_arg_count() -> None:
+    r = Random()
+    with assertRaises(TypeError):
+        r.randint(1)  # type: ignore[call-arg]
+    with assertRaises(TypeError):
+        r.randint(1, 2, 3)  # type: ignore[call-arg]
+
+def test_module_randint_empty_range() -> None:
+    with assertRaises(ValueError, "empty range"):
+        randint(10, 5)
+
+def test_randrange_empty_range() -> None:
+    r = Random()
+    with assertRaises(ValueError, "empty range"):
+        r.randrange(0)
+    with assertRaises(ValueError, "empty range"):
+        r.randrange(-5)
+    with assertRaises(ValueError, "empty range"):
+        r.randrange(10, 10)
+    with assertRaises(ValueError, "empty range"):
+        r.randrange(10, 5)
+
+def test_randrange_wrong_arg_count() -> None:
+    r = Random()
+    with assertRaises(TypeError):
+        r.randrange()  # type: ignore[call-overload]
+    with assertRaises(TypeError):
+        r.randrange(1, 2, 3)  # type: ignore[call-overload]
+
+def test_module_randrange_empty_range() -> None:
+    with assertRaises(ValueError, "empty range"):
+        randrange(0)
+    with assertRaises(ValueError, "empty range"):
+        randrange(10, 5)

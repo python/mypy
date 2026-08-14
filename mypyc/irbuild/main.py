@@ -153,7 +153,7 @@ def transform_mypy_file(builder: IRBuilder, mypyfile: MypyFile) -> None:
     builder.enter("<module>")
 
     # Make sure we have a builtins import
-    builder.gen_import("builtins", -1)
+    builder.gen_import("builtins", 1)
 
     # Generate ops.
     for node in mypyfile.defs:

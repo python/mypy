@@ -1,0 +1,156 @@
+# Test cases for librt.threading (compile and run)
+
+[case testLockBasics_librt]
+from typing import Any
+from testutil import assertRaises
+from librt.threading import Lock
+
+class BadBool:
+    def __bool__(self) -> bool:
+        raise RuntimeError("bad bool")
+
+def test_lock_basic() -> None:
+    lock = Lock()
+    assert not lock.locked()
+    assert lock.acquire()
+    assert lock.locked()
+    lock.release()
+    assert not lock.locked()
+
+def test_lock_context_manager() -> None:
+    lock = Lock()
+    with lock as acquired:
+        assert acquired is True
+        assert lock.locked()
+    assert not lock.locked()
+
+def test_lock_non_blocking() -> None:
+    lock = Lock()
+    assert lock.acquire()
+    assert not lock.acquire(False)
+    lock.release()
+    assert lock.acquire(False)
+    lock.release()
+
+def test_contention() -> None:
+    import threading
+    lock = Lock()
+    counter = [0]
+    n_threads = 4
+    n_increments = 10000
+
+    def worker() -> None:
+        for _ in range(n_increments):
+            lock.acquire()
+            counter[0] += 1
+            lock.release()
+
+    threads = [threading.Thread(target=worker) for _ in range(n_threads)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+    assert counter[0] == n_threads * n_increments
+
+def test_cross_thread_release() -> None:
+    # threading.Lock is unowned: a lock acquired on one thread may be
+    # released from another, after which another thread can acquire it.
+    import threading
+    lock = Lock()
+    assert lock.acquire()
+
+    started = threading.Event()
+    released = threading.Event()
+
+    def releaser() -> None:
+        started.set()
+        # Hand the lock off from a different thread than the acquirer.
+        lock.release()
+        released.set()
+
+    t = threading.Thread(target=releaser)
+    t.start()
+    started.wait()
+    # This may block until releaser releases the lock on the other thread.
+    assert lock.acquire()
+    t.join()
+    assert released.is_set()
+    lock.release()
+    assert not lock.locked()
+
+def test_context_manager_exception() -> None:
+    lock = Lock()
+    try:
+        with lock:
+            assert lock.locked()
+            raise ValueError("test")
+    except ValueError:
+        pass
+    assert not lock.locked()
+
+def test_acquire_blocking_true() -> None:
+    lock = Lock()
+    assert lock.acquire(True)
+    assert lock.locked()
+    lock.release()
+
+def test_lock_constructor_errors() -> None:
+    lock_type: Any = Lock
+    make_type: Any = type
+    with assertRaises(TypeError):
+        lock_type(1)
+    with assertRaises(TypeError):
+        lock_type(foo=1)
+    with assertRaises(TypeError):
+        make_type("LockSubclass", (lock_type,), {})
+
+def test_lock_acquire_argument_errors() -> None:
+    lock: Any = Lock()
+    with assertRaises(TypeError):
+        lock.acquire(True, False)
+    with assertRaises(TypeError):
+        lock.acquire(foo=True)
+
+def test_lock_acquire_blocking_truthiness() -> None:
+    lock: Any = Lock()
+    assert lock.acquire(blocking=True)
+    assert lock.locked()
+    assert not lock.acquire(blocking=False)
+    lock.release()
+
+    assert lock.acquire(None)
+    assert lock.locked()
+    assert not lock.acquire(None)
+    lock.release()
+
+    assert lock.acquire(1)
+    lock.release()
+    assert lock.acquire(0)
+    lock.release()
+
+def test_lock_acquire_blocking_bool_error() -> None:
+    lock: Any = Lock()
+    with assertRaises(RuntimeError, "bad bool"):
+        lock.acquire(BadBool())
+    with assertRaises(RuntimeError, "bad bool"):
+        lock.acquire(blocking=BadBool())
+
+def test_lock_exit_manual_call() -> None:
+    lock: Any = Lock()
+    lock.acquire()
+    assert lock.__exit__(None, None, None) is None
+    assert not lock.locked()
+
+    lock.acquire()
+    assert lock.__exit__() is None
+    assert not lock.locked()
+
+def test_release_unlocked() -> None:
+    lock = Lock()
+    with assertRaises(RuntimeError):
+        lock.release()
+    # Also after acquire + release
+    lock.acquire()
+    lock.release()
+    with assertRaises(RuntimeError):
+        lock.release()

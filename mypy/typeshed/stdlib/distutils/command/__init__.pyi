@@ -1,5 +1,3 @@
-import sys
-
 from . import (
     bdist,
     bdist_dumb,
@@ -41,8 +39,3 @@ __all__ = [
     "check",
     "upload",
 ]
-
-if sys.version_info < (3, 10):
-    from . import bdist_wininst
-
-    __all__ += ["bdist_wininst"]

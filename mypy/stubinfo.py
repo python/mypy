@@ -1,17 +1,9 @@
 from __future__ import annotations
 
 
-def is_module_from_legacy_bundled_package(module: str) -> bool:
-    top_level = module.split(".", 1)[0]
-    return top_level in legacy_bundled_packages
-
-
 def stub_distribution_name(module: str) -> str | None:
     top_level = module.split(".", 1)[0]
 
-    dist = legacy_bundled_packages.get(top_level)
-    if dist:
-        return dist
     dist = non_bundled_packages_flat.get(top_level)
     if dist:
         return dist
@@ -31,7 +23,7 @@ def stub_distribution_name(module: str) -> str | None:
 # Stubs for these third-party packages used to be shipped with mypy.
 #
 # Map package name to PyPI stub distribution name.
-legacy_bundled_packages: dict[str, str] = {
+_legacy_bundled_packages: dict[str, str] = {
     "aiofiles": "types-aiofiles",
     "bleach": "types-bleach",
     "cachetools": "types-cachetools",
@@ -78,6 +70,7 @@ non_bundled_packages_flat: dict[str, str] = {
     "_win32typing": "types-pywin32",
     "antlr4": "types-antlr4-python3-runtime",
     "assertpy": "types-assertpy",
+    "atheris": "types-atheris",
     "auth0": "types-auth0-python",
     "authlib": "types-Authlib",
     "aws_xray_sdk": "types-aws-xray-sdk",
@@ -94,6 +87,7 @@ non_bundled_packages_flat: dict[str, str] = {
     "click_shell": "types-click-shell",
     "click_web": "types-click-web",
     "colorama": "types-colorama",
+    "colorful": "types-colorful",
     "commctrl": "types-pywin32",
     "consolemenu": "types-console-menu",
     "convertdate": "types-convertdate",
@@ -109,7 +103,8 @@ non_bundled_packages_flat: dict[str, str] = {
     "dockerfile_parse": "types-dockerfile-parse",
     "editdistance": "types-editdistance",
     "entrypoints": "types-entrypoints",
-    "exifread": "types-ExifRead",
+    "ephem": "types-ephem",
+    "et_xmlfile": "types-et_xmlfile",
     "fanstatic": "types-fanstatic",
     "farmhash": "types-pyfarmhash",
     "flake8_builtins": "types-flake8-builtins",
@@ -131,6 +126,7 @@ non_bundled_packages_flat: dict[str, str] = {
     "grpc_reflection": "types-grpcio-reflection",
     "grpc_status": "types-grpcio-status",
     "grpc": "types-grpcio",
+    "gunicorn": "types-gunicorn",
     "hdbcli": "types-hdbcli",
     "hnswlib": "types-hnswlib",
     "html5lib": "types-html5lib",
@@ -185,6 +181,7 @@ non_bundled_packages_flat: dict[str, str] = {
     "portpicker": "types-portpicker",
     "psutil": "types-psutil",
     "psycopg2": "types-psycopg2",
+    "punq": "types-punq",
     "pyasn1": "types-pyasn1",
     "pyaudio": "types-pyaudio",
     "pyautogui": "types-PyAutoGUI",
@@ -222,6 +219,7 @@ non_bundled_packages_flat: dict[str, str] = {
     "servicemanager": "types-pywin32",
     "setuptools": "types-setuptools",
     "shapely": "types-shapely",
+    "simple_websocket": "types-simple-websocket",
     "slumber": "types-slumber",
     "socks": "types-PySocks",
     "sockshandler": "types-PySocks",
@@ -234,6 +232,7 @@ non_bundled_packages_flat: dict[str, str] = {
     "tqdm": "types-tqdm",
     "translationstring": "types-translationstring",
     "ttkthemes": "types-ttkthemes",
+    "tzdata": "types-tzdata",
     "unidiff": "types-unidiff",
     "untangle": "types-untangle",
     "usersettings": "types-usersettings",
@@ -241,6 +240,7 @@ non_bundled_packages_flat: dict[str, str] = {
     "uwsgidecorators": "types-uWSGI",
     "vobject": "types-vobject",
     "watchpoints": "types-watchpoints",
+    "webencodings": "types-webencodings",
     "webob": "types-WebOb",
     "whatthepatch": "types-whatthepatch",
     "win2kras": "types-pywin32",
@@ -294,10 +294,12 @@ non_bundled_packages_flat: dict[str, str] = {
     "workalendar": "types-workalendar",
     "wtforms": "types-WTForms",
     "wurlitzer": "types-wurlitzer",
+    "www_authenticate": "types-www-authenticate",
     "xdg": "types-pyxdg",
     "xdgenvpy": "types-xdgenvpy",
     "Xlib": "types-python-xlib",
     "xlrd": "types-xlrd",
+    "xmldiff": "types-xmldiff",
     "xmltodict": "types-xmltodict",
     "yt_dlp": "types-yt-dlp",
     "zstd": "types-zstd",
@@ -309,6 +311,7 @@ non_bundled_packages_flat: dict[str, str] = {
     "lxml": "lxml-stubs",  # https://github.com/lxml/lxml-stubs
     "scipy": "scipy-stubs",  # https://github.com/scipy/scipy-stubs
 }
+non_bundled_packages_flat.update(_legacy_bundled_packages)
 
 
 non_bundled_packages_namespace: dict[str, dict[str, str]] = {

@@ -65,7 +65,6 @@ class TypeShallowCopier(TypeVisitor[ProperType]):
 
     def visit_instance(self, t: Instance) -> ProperType:
         dup = Instance(t.type, t.args, last_known_value=t.last_known_value)
-        dup.invalid = t.invalid
         return self.copy_common(t, dup)
 
     def visit_type_var(self, t: TypeVarType) -> ProperType:
@@ -108,7 +107,10 @@ class TypeShallowCopier(TypeVisitor[ProperType]):
 
     def visit_typeddict_type(self, t: TypedDictType) -> ProperType:
         return self.copy_common(
-            t, TypedDictType(t.items, t.required_keys, t.readonly_keys, t.fallback)
+            t,
+            TypedDictType(
+                t.items, t.required_keys, t.readonly_keys, t.fallback, is_closed=t.is_closed
+            ),
         )
 
     def visit_literal_type(self, t: LiteralType) -> ProperType:

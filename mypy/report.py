@@ -285,7 +285,7 @@ class AnyExpressionsReporter(AbstractReporter):
         column_names = ["Name", "Anys", "Exprs", "Coverage"]
         rows: list[list[str]] = []
         for filename in sorted(self.counts):
-            (num_any, num_total) = self.counts[filename]
+            num_any, num_total = self.counts[filename]
             coverage = (float(num_total - num_any) / float(num_total)) * 100
             coverage_str = f"{coverage:.2f}%"
             rows.append([filename, str(num_any), str(num_total), coverage_str])

@@ -42,7 +42,7 @@ class TestAnalysis(MypycDataSuite):
                 for fn in ir:
                     if fn.name == TOP_LEVEL_NAME and not testcase.name.endswith("_toplevel"):
                         continue
-                    exceptions.insert_exception_handling(fn)
+                    exceptions.insert_exception_handling(fn, True)
                     actual.extend(format_func(fn))
                     cfg = dataflow.get_cfg(fn.blocks)
                     args: set[Value] = set(fn.arg_regs)

@@ -1,12 +1,12 @@
 import pickle
 import sys
-from _pickle import _ReducedType
+from _pickle import _BufferCallback, _ReducedType
 from _typeshed import HasFileno, SupportsWrite, Unused
 from abc import ABCMeta
 from builtins import type as Type  # alias to avoid name clash
 from collections.abc import Callable
 from copyreg import _DispatchTableType
-from multiprocessing import connection
+from multiprocessing import connection, popen_forkserver, popen_spawn_posix, resource_sharer
 from socket import socket
 from typing import Any, Final
 
@@ -19,7 +19,14 @@ HAVE_SEND_HANDLE: Final[bool]
 
 class ForkingPickler(pickle.Pickler):
     dispatch_table: _DispatchTableType
-    def __init__(self, file: SupportsWrite[bytes], protocol: int | None = ...) -> None: ...
+    def __init__(
+        self,
+        file: SupportsWrite[bytes],
+        protocol: int | None = None,
+        fix_imports: bool = True,
+        buffer_callback: _BufferCallback = None,
+        /,
+    ) -> None: ...
     @classmethod
     def register(cls, type: Type, reduce: Callable[[Any], _ReducedType]) -> None: ...
     @classmethod
@@ -50,7 +57,7 @@ else:
     def send_handle(conn: HasFileno, handle: int, destination_pid: Unused) -> None: ...
     def recv_handle(conn: HasFileno) -> int: ...
     def sendfds(sock: socket, fds: list[int]) -> None: ...
-    def DupFd(fd: int) -> Any: ...  # Return type is really hard to get right
+    def DupFd(fd: int) -> popen_forkserver._DupFd | popen_spawn_posix._DupFd | resource_sharer.DupFd: ...
 
 # These aliases are to work around pyright complaints.
 # Pyright doesn't like it when a class object is defined as an alias

@@ -3,8 +3,8 @@ import types
 import unittest
 from _typeshed import ExcInfo
 from collections.abc import Callable
-from typing import Any, Final, NamedTuple, type_check_only
-from typing_extensions import Self, TypeAlias
+from typing import Any, Final, NamedTuple, TypeAlias, type_check_only
+from typing_extensions import Self
 
 __all__ = [
     "register_optionflag",

@@ -29,6 +29,7 @@ from mypyc.ir.ops import (
     FloatNeg,
     FloatOp,
     GetAttr,
+    GetElement,
     GetElementPtr,
     Goto,
     IncRef,
@@ -230,10 +231,15 @@ class IRPrettyPrintVisitor(OpVisitor[str]):
 
     def visit_primitive_op(self, op: PrimitiveOp) -> str:
         args_str = ", ".join(self.format("%r", arg) for arg in op.args)
-        if op.is_void:
-            return self.format("%s %s", op.desc.name, args_str)
+        if op.type_args:
+            joined = ", ".join(str(arg) for arg in op.type_args)
+            type_args = f"[{joined}]"
         else:
-            return self.format("%r = %s %s", op, op.desc.name, args_str)
+            type_args = ""
+        if op.is_void:
+            return self.format("%s%s %s", op.desc.name, type_args, args_str)
+        else:
+            return self.format("%r = %s%s %s", op, op.desc.name, type_args, args_str)
 
     def visit_truncate(self, op: Truncate) -> str:
         return self.format("%r = truncate %r: %t to %t", op, op.src, op.src_type, op.type)
@@ -279,6 +285,9 @@ class IRPrettyPrintVisitor(OpVisitor[str]):
 
     def visit_set_mem(self, op: SetMem) -> str:
         return self.format("set_mem %r, %r :: %t*", op.dest, op.src, op.dest_type)
+
+    def visit_get_element(self, op: GetElement) -> str:
+        return self.format("%r = %r.%s", op, op.src, op.field)
 
     def visit_get_element_ptr(self, op: GetElementPtr) -> str:
         return self.format("%r = get_element_ptr %r %s :: %t", op, op.src, op.field, op.src_type)
@@ -414,7 +423,7 @@ def format_blocks(
         lines.append("L%d:%s" % (block.label, handler_msg))
         if block in source_to_error:
             for error in source_to_error[block]:
-                lines.append(f"  ERR: {error}")
+                lines.append(f"  ERROR: {error}")
         ops = block.ops
         if (
             isinstance(ops[-1], Goto)
@@ -429,8 +438,11 @@ def format_blocks(
             line = "    " + op.accept(visitor)
             lines.append(line)
             if op in source_to_error:
+                first = len(lines) - 1
+                # Use emojis to highlight the error
                 for error in source_to_error[op]:
-                    lines.append(f"  ERR: {error}")
+                    lines.append(f"    \U0001f446 ERROR: {error}")
+                lines[first] = " \U0000274c " + lines[first][4:]
 
         if not isinstance(block.ops[-1], (Goto, Branch, Return, Unreachable)):
             # Each basic block needs to exit somewhere.

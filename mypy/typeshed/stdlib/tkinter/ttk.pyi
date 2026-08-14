@@ -2,10 +2,10 @@ import _tkinter
 import sys
 import tkinter
 from _typeshed import MaybeNone
-from collections.abc import Callable, Iterable
+from collections.abc import Callable, Iterable, Sequence
 from tkinter.font import _FontDescription
-from typing import Any, Literal, TypedDict, overload, type_check_only
-from typing_extensions import Never, TypeAlias, Unpack
+from typing import Any, Literal, ParamSpec, TypeAlias, TypedDict, TypeVar, overload, type_check_only
+from typing_extensions import Never, Unpack
 
 __all__ = [
     "Button",
@@ -54,6 +54,10 @@ _Statespec: TypeAlias = tuple[Unpack[tuple[str, ...]], Any]
 _ImageStatespec: TypeAlias = tuple[Unpack[tuple[str, ...]], tkinter._Image | str]
 _VsapiStatespec: TypeAlias = tuple[Unpack[tuple[str, ...]], int]
 
+_P = ParamSpec("_P")
+_T = TypeVar("_T")
+
+@type_check_only
 class _Layout(TypedDict, total=False):
     side: Literal["left", "right", "top", "bottom"]
     sticky: str  # consists of letters 'n', 's', 'w', 'e', may contain repeats, may be empty
@@ -65,6 +69,7 @@ class _Layout(TypedDict, total=False):
 _LayoutSpec: TypeAlias = list[tuple[str, _Layout | None]]
 
 # Keep these in sync with the appropriate methods in Style
+@type_check_only
 class _ElementCreateImageKwargs(TypedDict, total=False):
     border: _Padding
     height: float | str
@@ -79,12 +84,15 @@ _ElementCreateArgsCrossPlatform: TypeAlias = (
     | tuple[Literal["from"], str]  # (fromelement is optional)
 )
 if sys.platform == "win32" and sys.version_info >= (3, 13):
+    @type_check_only
     class _ElementCreateVsapiKwargsPadding(TypedDict, total=False):
         padding: _Padding
 
+    @type_check_only
     class _ElementCreateVsapiKwargsMargin(TypedDict, total=False):
         padding: _Padding
 
+    @type_check_only
     class _ElementCreateVsapiKwargsSize(TypedDict):
         width: float | str
         height: float | str
@@ -115,6 +123,7 @@ class Style:
     master: tkinter.Misc
     tk: _tkinter.TkappType
     def __init__(self, master: tkinter.Misc | None = None) -> None: ...
+
     # For these methods, values given vary between options. Returned values
     # seem to be str, but this might not always be the case.
     @overload
@@ -123,15 +132,19 @@ class Style:
     def configure(self, style: str, query_opt: str, **kw: Any) -> Any: ...
     @overload
     def configure(self, style: str, query_opt: None = None, **kw: Any) -> None: ...
+
     @overload
     def map(self, style: str, query_opt: str) -> _Statespec: ...
     @overload
     def map(self, style: str, query_opt: None = None, **kw: Iterable[_Statespec]) -> dict[str, _Statespec]: ...
+
     def lookup(self, style: str, option: str, state: Iterable[str] | None = None, default: Any | None = None) -> Any: ...
+
     @overload
     def layout(self, style: str, layoutspec: _LayoutSpec) -> list[Never]: ...  # Always seems to return an empty list
     @overload
     def layout(self, style: str, layoutspec: None = None) -> _LayoutSpec: ...
+
     @overload
     def element_create(
         self,
@@ -195,16 +208,24 @@ class Style:
     def theme_create(self, themename: str, parent: str | None = None, settings: _ThemeSettings | None = None) -> None: ...
     def theme_settings(self, themename: str, settings: _ThemeSettings) -> None: ...
     def theme_names(self) -> tuple[str, ...]: ...
+
     @overload
     def theme_use(self, themename: str) -> None: ...
     @overload
     def theme_use(self, themename: None = None) -> str: ...
 
 class Widget(tkinter.Widget):
-    def __init__(self, master: tkinter.Misc | None, widgetname, kw=None) -> None: ...
+    def __init__(self, master: tkinter.Misc | None, widgetname: str | None, kw: dict[str, Any] | None = None) -> None: ...
     def identify(self, x: int, y: int) -> str: ...
-    def instate(self, statespec, callback=None, *args, **kw): ...
-    def state(self, statespec=None): ...
+
+    @overload
+    def instate(self, statespec: Sequence[str], callback: None = None) -> bool: ...
+    @overload
+    def instate(
+        self, statespec: Sequence[str], callback: Callable[_P, _T], *args: _P.args, **kw: _P.kwargs
+    ) -> Literal[False] | _T: ...
+
+    def state(self, statespec: Sequence[str] | None = None) -> tuple[str, ...]: ...
 
 class Button(Widget):
     def __init__(
@@ -227,6 +248,7 @@ class Button(Widget):
         underline: int = -1,
         width: int | Literal[""] = "",
     ) -> None: ...
+
     @overload
     def configure(
         self,
@@ -248,6 +270,7 @@ class Button(Widget):
     ) -> dict[str, tuple[str, str, str, Any, Any]] | None: ...
     @overload
     def configure(self, cnf: str) -> tuple[str, str, str, Any, Any]: ...
+
     config = configure
     def invoke(self) -> Any: ...
 
@@ -277,6 +300,7 @@ class Checkbutton(Widget):
         variable: tkinter.Variable = ...,
         width: int | Literal[""] = "",
     ) -> None: ...
+
     @overload
     def configure(
         self,
@@ -300,6 +324,7 @@ class Checkbutton(Widget):
     ) -> dict[str, tuple[str, str, str, Any, Any]] | None: ...
     @overload
     def configure(self, cnf: str) -> tuple[str, str, str, Any, Any]: ...
+
     config = configure
     def invoke(self) -> Any: ...
 
@@ -328,6 +353,7 @@ class Entry(Widget, tkinter.Entry):
         width: int = 20,
         xscrollcommand: str | Callable[[float, float], object] = "",
     ) -> None: ...
+
     @overload  # type: ignore[override]
     def configure(
         self,
@@ -352,6 +378,7 @@ class Entry(Widget, tkinter.Entry):
     ) -> dict[str, tuple[str, str, str, Any, Any]] | None: ...
     @overload
     def configure(self, cnf: str) -> tuple[str, str, str, Any, Any]: ...
+
     # config must be copy/pasted, otherwise ttk.Entry().config is mypy error (don't know why)
     @overload  # type: ignore[override]
     def config(
@@ -377,6 +404,7 @@ class Entry(Widget, tkinter.Entry):
     ) -> dict[str, tuple[str, str, str, Any, Any]] | None: ...
     @overload
     def config(self, cnf: str) -> tuple[str, str, str, Any, Any]: ...
+
     def bbox(self, index) -> tuple[int, int, int, int]: ...  # type: ignore[override]
     def identify(self, x: int, y: int) -> str: ...
     def validate(self): ...
@@ -408,6 +436,7 @@ class Combobox(Entry):
         width: int = 20,
         xscrollcommand: str | Callable[[float, float], object] = ...,  # undocumented
     ) -> None: ...
+
     @overload  # type: ignore[override]
     def configure(
         self,
@@ -435,6 +464,7 @@ class Combobox(Entry):
     ) -> dict[str, tuple[str, str, str, Any, Any]] | None: ...
     @overload
     def configure(self, cnf: str) -> tuple[str, str, str, Any, Any]: ...
+
     # config must be copy/pasted, otherwise ttk.Combobox().config is mypy error (don't know why)
     @overload  # type: ignore[override]
     def config(
@@ -463,6 +493,7 @@ class Combobox(Entry):
     ) -> dict[str, tuple[str, str, str, Any, Any]] | None: ...
     @overload
     def config(self, cnf: str) -> tuple[str, str, str, Any, Any]: ...
+
     def current(self, newindex: int | None = None) -> int: ...
     def set(self, value: Any) -> None: ...
 
@@ -485,6 +516,7 @@ class Frame(Widget):
         takefocus: bool | Literal[0, 1, ""] | Callable[[str], bool | None] = "",
         width: float | str = 0,
     ) -> None: ...
+
     @overload
     def configure(
         self,
@@ -502,6 +534,7 @@ class Frame(Widget):
     ) -> dict[str, tuple[str, str, str, Any, Any]] | None: ...
     @overload
     def configure(self, cnf: str) -> tuple[str, str, str, Any, Any]: ...
+
     config = configure
 
 class Label(Widget):
@@ -532,6 +565,7 @@ class Label(Widget):
         width: int | Literal[""] = "",
         wraplength: float | str = ...,
     ) -> None: ...
+
     @overload
     def configure(
         self,
@@ -560,6 +594,7 @@ class Label(Widget):
     ) -> dict[str, tuple[str, str, str, Any, Any]] | None: ...
     @overload
     def configure(self, cnf: str) -> tuple[str, str, str, Any, Any]: ...
+
     config = configure
 
 class Labelframe(Widget):
@@ -583,6 +618,7 @@ class Labelframe(Widget):
         underline: int = -1,
         width: float | str = 0,
     ) -> None: ...
+
     @overload
     def configure(
         self,
@@ -604,6 +640,7 @@ class Labelframe(Widget):
     ) -> dict[str, tuple[str, str, str, Any, Any]] | None: ...
     @overload
     def configure(self, cnf: str) -> tuple[str, str, str, Any, Any]: ...
+
     config = configure
 
 LabelFrame = Labelframe
@@ -629,6 +666,7 @@ class Menubutton(Widget):
         underline: int = -1,
         width: int | Literal[""] = "",
     ) -> None: ...
+
     @overload
     def configure(
         self,
@@ -650,6 +688,7 @@ class Menubutton(Widget):
     ) -> dict[str, tuple[str, str, str, Any, Any]] | None: ...
     @overload
     def configure(self, cnf: str) -> tuple[str, str, str, Any, Any]: ...
+
     config = configure
 
 class Notebook(Widget):
@@ -666,6 +705,7 @@ class Notebook(Widget):
         takefocus: bool | Literal[0, 1, ""] | Callable[[str], bool | None] = ...,
         width: int = 0,
     ) -> None: ...
+
     @overload
     def configure(
         self,
@@ -680,6 +720,7 @@ class Notebook(Widget):
     ) -> dict[str, tuple[str, str, str, Any, Any]] | None: ...
     @overload
     def configure(self, cnf: str) -> tuple[str, str, str, Any, Any]: ...
+
     config = configure
     def add(
         self,
@@ -721,6 +762,7 @@ class Panedwindow(Widget, tkinter.PanedWindow):
         width: int = 0,
     ) -> None: ...
     def add(self, child: tkinter.Widget, *, weight: int = ..., **kw) -> None: ...
+
     @overload  # type: ignore[override]
     def configure(
         self,
@@ -734,6 +776,7 @@ class Panedwindow(Widget, tkinter.PanedWindow):
     ) -> dict[str, tuple[str, str, str, Any, Any]] | None: ...
     @overload
     def configure(self, cnf: str) -> tuple[str, str, str, Any, Any]: ...
+
     # config must be copy/pasted, otherwise ttk.Panedwindow().config is mypy error (don't know why)
     @overload  # type: ignore[override]
     def config(
@@ -748,6 +791,7 @@ class Panedwindow(Widget, tkinter.PanedWindow):
     ) -> dict[str, tuple[str, str, str, Any, Any]] | None: ...
     @overload
     def config(self, cnf: str) -> tuple[str, str, str, Any, Any]: ...
+
     forget = tkinter.PanedWindow.forget
     def insert(self, pos, child, **kw) -> None: ...
     def pane(self, pane, option=None, **kw): ...
@@ -773,6 +817,7 @@ class Progressbar(Widget):
         value: float = 0.0,
         variable: tkinter.IntVar | tkinter.DoubleVar = ...,
     ) -> None: ...
+
     @overload
     def configure(
         self,
@@ -791,6 +836,7 @@ class Progressbar(Widget):
     ) -> dict[str, tuple[str, str, str, Any, Any]] | None: ...
     @overload
     def configure(self, cnf: str) -> tuple[str, str, str, Any, Any]: ...
+
     config = configure
     def start(self, interval: Literal["idle"] | int | None = None) -> None: ...
     def step(self, amount: float | None = None) -> None: ...
@@ -818,6 +864,7 @@ class Radiobutton(Widget):
         variable: tkinter.Variable | Literal[""] = ...,
         width: int | Literal[""] = "",
     ) -> None: ...
+
     @overload
     def configure(
         self,
@@ -840,6 +887,7 @@ class Radiobutton(Widget):
     ) -> dict[str, tuple[str, str, str, Any, Any]] | None: ...
     @overload
     def configure(self, cnf: str) -> tuple[str, str, str, Any, Any]: ...
+
     config = configure
     def invoke(self) -> Any: ...
 
@@ -863,6 +911,7 @@ class Scale(Widget, tkinter.Scale):  # type: ignore[misc]
         value: float = 0,
         variable: tkinter.IntVar | tkinter.DoubleVar = ...,
     ) -> None: ...
+
     @overload  # type: ignore[override]
     def configure(
         self,
@@ -882,6 +931,7 @@ class Scale(Widget, tkinter.Scale):  # type: ignore[misc]
     ) -> dict[str, tuple[str, str, str, Any, Any]] | None: ...
     @overload
     def configure(self, cnf: str) -> tuple[str, str, str, Any, Any]: ...
+
     # config must be copy/pasted, otherwise ttk.Scale().config is mypy error (don't know why)
     @overload  # type: ignore[override]
     def config(
@@ -902,6 +952,7 @@ class Scale(Widget, tkinter.Scale):  # type: ignore[misc]
     ) -> dict[str, tuple[str, str, str, Any, Any]] | None: ...
     @overload
     def config(self, cnf: str) -> tuple[str, str, str, Any, Any]: ...
+
     def get(self, x: int | None = None, y: int | None = None) -> float: ...
 
 # type ignore, because identify() methods of Widget and tkinter.Scale are incompatible
@@ -918,6 +969,7 @@ class Scrollbar(Widget, tkinter.Scrollbar):  # type: ignore[misc]
         style: str = "",
         takefocus: bool | Literal[0, 1, ""] | Callable[[str], bool | None] = "",
     ) -> None: ...
+
     @overload  # type: ignore[override]
     def configure(
         self,
@@ -931,6 +983,7 @@ class Scrollbar(Widget, tkinter.Scrollbar):  # type: ignore[misc]
     ) -> dict[str, tuple[str, str, str, Any, Any]] | None: ...
     @overload
     def configure(self, cnf: str) -> tuple[str, str, str, Any, Any]: ...
+
     # config must be copy/pasted, otherwise ttk.Scrollbar().config is mypy error (don't know why)
     @overload  # type: ignore[override]
     def config(
@@ -958,6 +1011,7 @@ class Separator(Widget):
         style: str = "",
         takefocus: bool | Literal[0, 1, ""] | Callable[[str], bool | None] = "",
     ) -> None: ...
+
     @overload
     def configure(
         self,
@@ -970,6 +1024,7 @@ class Separator(Widget):
     ) -> dict[str, tuple[str, str, str, Any, Any]] | None: ...
     @overload
     def configure(self, cnf: str) -> tuple[str, str, str, Any, Any]: ...
+
     config = configure
 
 class Sizegrip(Widget):
@@ -983,6 +1038,7 @@ class Sizegrip(Widget):
         style: str = "",
         takefocus: bool | Literal[0, 1, ""] | Callable[[str], bool | None] = "",
     ) -> None: ...
+
     @overload
     def configure(
         self,
@@ -994,6 +1050,7 @@ class Sizegrip(Widget):
     ) -> dict[str, tuple[str, str, str, Any, Any]] | None: ...
     @overload
     def configure(self, cnf: str) -> tuple[str, str, str, Any, Any]: ...
+
     config = configure
 
 class Spinbox(Entry):
@@ -1027,6 +1084,7 @@ class Spinbox(Entry):
         wrap: bool = False,
         xscrollcommand: str | Callable[[float, float], object] = "",
     ) -> None: ...
+
     @overload  # type: ignore[override]
     def configure(
         self,
@@ -1058,6 +1116,7 @@ class Spinbox(Entry):
     ) -> dict[str, tuple[str, str, str, Any, Any]] | None: ...
     @overload
     def configure(self, cnf: str) -> tuple[str, str, str, Any, Any]: ...
+
     config = configure  # type: ignore[assignment]
     def set(self, value: Any) -> None: ...
 
@@ -1116,6 +1175,7 @@ class Treeview(Widget, tkinter.XView, tkinter.YView):
         xscrollcommand: str | Callable[[float, float], object] = "",
         yscrollcommand: str | Callable[[float, float], object] = "",
     ) -> None: ...
+
     @overload
     def configure(
         self,
@@ -1135,10 +1195,12 @@ class Treeview(Widget, tkinter.XView, tkinter.YView):
     ) -> dict[str, tuple[str, str, str, Any, Any]] | None: ...
     @overload
     def configure(self, cnf: str) -> tuple[str, str, str, Any, Any]: ...
+
     config = configure
     def bbox(self, item: str | int, column: str | int | None = None) -> tuple[int, int, int, int] | Literal[""]: ...  # type: ignore[override]
     def get_children(self, item: str | int | None = None) -> tuple[str, ...]: ...
     def set_children(self, item: str | int, *newchildren: str | int) -> None: ...
+
     @overload
     def column(self, column: str | int, option: Literal["width", "minwidth"]) -> int: ...
     @overload
@@ -1161,13 +1223,16 @@ class Treeview(Widget, tkinter.XView, tkinter.YView):
         anchor: Literal["nw", "n", "ne", "w", "center", "e", "sw", "s", "se"] = ...,
         # id is read-only
     ) -> _TreeviewColumnDict | None: ...
+
     def delete(self, *items: str | int) -> None: ...
     def detach(self, *items: str | int) -> None: ...
     def exists(self, item: str | int) -> bool: ...
+
     @overload  # type: ignore[override]
     def focus(self, item: None = None) -> str: ...  # can return empty string
     @overload
     def focus(self, item: str | int) -> Literal[""]: ...
+
     @overload
     def heading(self, column: str | int, option: Literal["text"]) -> str: ...
     @overload
@@ -1191,6 +1256,7 @@ class Treeview(Widget, tkinter.XView, tkinter.YView):
         anchor: Literal["nw", "n", "ne", "w", "center", "e", "sw", "s", "se"] = ...,
         command: str | Callable[[], object] = ...,
     ) -> None: ...
+
     # Internal Method. Leave untyped:
     def identify(self, component, x, y): ...  # type: ignore[override]
     def identify_row(self, y: int) -> str: ...
@@ -1211,6 +1277,7 @@ class Treeview(Widget, tkinter.XView, tkinter.YView):
         open: bool = ...,
         tags: str | list[str] | tuple[str, ...] = ...,
     ) -> str: ...
+
     @overload
     def item(self, item: str | int, option: Literal["text"]) -> str: ...
     @overload
@@ -1237,6 +1304,7 @@ class Treeview(Widget, tkinter.XView, tkinter.YView):
         open: bool = ...,
         tags: str | list[str] | tuple[str, ...] = ...,
     ) -> None: ...
+
     def move(self, item: str | int, parent: str, index: int | Literal["end"]) -> None: ...
     reattach = move
     def next(self, item: str | int) -> str: ...  # returning empty string means last item
@@ -1244,28 +1312,34 @@ class Treeview(Widget, tkinter.XView, tkinter.YView):
     def prev(self, item: str | int) -> str: ...  # returning empty string means first item
     def see(self, item: str | int) -> None: ...
     def selection(self) -> tuple[str, ...]: ...
+
     @overload
     def selection_set(self, items: list[str] | tuple[str, ...] | list[int] | tuple[int, ...], /) -> None: ...
     @overload
     def selection_set(self, *items: str | int) -> None: ...
+
     @overload
     def selection_add(self, items: list[str] | tuple[str, ...] | list[int] | tuple[int, ...], /) -> None: ...
     @overload
     def selection_add(self, *items: str | int) -> None: ...
+
     @overload
     def selection_remove(self, items: list[str] | tuple[str, ...] | list[int] | tuple[int, ...], /) -> None: ...
     @overload
     def selection_remove(self, *items: str | int) -> None: ...
+
     @overload
     def selection_toggle(self, items: list[str] | tuple[str, ...] | list[int] | tuple[int, ...], /) -> None: ...
     @overload
     def selection_toggle(self, *items: str | int) -> None: ...
+
     @overload
     def set(self, item: str | int, column: None = None, value: None = None) -> dict[str, Any]: ...
     @overload
     def set(self, item: str | int, column: str | int, value: None = None) -> Any: ...
     @overload
     def set(self, item: str | int, column: str | int, value: Any) -> Literal[""]: ...
+
     # There's no tag_unbind() or 'add' argument for whatever reason.
     # Also, it's 'callback' instead of 'func' here.
     @overload
@@ -1276,6 +1350,7 @@ class Treeview(Widget, tkinter.XView, tkinter.YView):
     def tag_bind(self, tagname: str, sequence: str | None, callback: str) -> None: ...
     @overload
     def tag_bind(self, tagname: str, *, callback: str) -> None: ...
+
     @overload
     def tag_configure(self, tagname: str, option: Literal["foreground", "background"]) -> str: ...
     @overload
@@ -1294,6 +1369,7 @@ class Treeview(Widget, tkinter.XView, tkinter.YView):
         font: _FontDescription = ...,
         image: tkinter._Image | str = ...,
     ) -> _TreeviewTagDict | MaybeNone: ...  # can be None but annoying to check
+
     @overload
     def tag_has(self, tagname: str, item: None = None) -> tuple[str, ...]: ...
     @overload
@@ -1328,17 +1404,31 @@ class LabeledScale(Frame):
     value: Any
 
 class OptionMenu(Menubutton):
-    def __init__(
-        self,
-        master: tkinter.Misc | None,
-        variable: tkinter.StringVar,
-        default: str | None = None,
-        *values: str,
-        # rest of these are keyword-only because *args syntax used above
-        style: str = "",
-        direction: Literal["above", "below", "left", "right", "flush"] = "below",
-        command: Callable[[tkinter.StringVar], object] | None = None,
-    ) -> None: ...
+    if sys.version_info >= (3, 14):
+        def __init__(
+            self,
+            master: tkinter.Misc | None,
+            variable: tkinter.StringVar,
+            default: str | None = None,
+            *values: str,
+            # rest of these are keyword-only because *args syntax used above
+            style: str = "",
+            direction: Literal["above", "below", "left", "right", "flush"] = "below",
+            command: Callable[[tkinter.StringVar], object] | None = None,
+            name: str | None = None,
+        ) -> None: ...
+    else:
+        def __init__(
+            self,
+            master: tkinter.Misc | None,
+            variable: tkinter.StringVar,
+            default: str | None = None,
+            *values: str,
+            # rest of these are keyword-only because *args syntax used above
+            style: str = "",
+            direction: Literal["above", "below", "left", "right", "flush"] = "below",
+            command: Callable[[tkinter.StringVar], object] | None = None,
+        ) -> None: ...
     # configure, config, cget, destroy are inherited from Menubutton
     # destroy and __setitem__ are overridden, signature does not change
     def set_menu(self, default: str | None = None, *values: str) -> None: ...

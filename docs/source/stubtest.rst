@@ -183,6 +183,11 @@ The rest of this section documents the command line interface of stubtest.
 
     Ignore errors for whether an argument should or shouldn't be positional-only
 
+.. option:: --strict-type-check-only
+
+    Require :py:func:`@type_check_only <typing.type_check_only>` on private types
+    that are not present at runtime.
+
 .. option:: --allowlist FILE
 
     Use file as an allowlist. Can be passed multiple times to combine multiple

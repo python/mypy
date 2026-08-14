@@ -1,6 +1,6 @@
 # Test column numbers in messages. --show-column-numbers is enabled implicitly by test runner.
 
-[case testColumnsSyntaxError]
+[case testColumnsSyntaxError_no_native_parse]
 f()
 1 +
 [out]
@@ -134,7 +134,7 @@ def foobar(): pass
 [builtins fixtures/module.pyi]
 
 [case testColumnUnexpectedOrMissingKeywordArg]
-def f(): pass  # N:1: "f" defined here
+def f(): pass
 # TODO: Point to "x" instead
 (f(x=1)) # E:2: Unexpected keyword argument "x" for "f"
 def g(*, x: int) -> None: pass
@@ -143,10 +143,10 @@ def g(*, x: int) -> None: pass
 [case testColumnDefinedHere]
 class A: pass
 if int():
-    def f(a: 'A') -> None: pass # N:5: "f" defined here
+    def f(a: 'A') -> None: pass
     (f(b=object())) # E:6: Unexpected keyword argument "b" for "f"
 
-[case testColumnInvalidType]
+[case testColumnInvalidType_no_native_parse]
 
 from typing import Iterable
 
@@ -271,7 +271,7 @@ if int():
 
 [case testColumnIncompatibleDefault]
 if int():
-    def f(x: int = '') -> None: # E:20: Incompatible default for argument "x" (default has type "str", argument has type "int")
+    def f(x: int = '') -> None: # E:20: Incompatible default for parameter "x" (default has type "str", parameter has type "int")
         pass
 
 [case testColumnMissingProtocolMember]
@@ -298,7 +298,7 @@ x = cast(int, y) # E:5: Redundant cast to "int"
 
 [case testColumnTypeSignatureHasTooFewArguments]
 if int():
-    def f(x, y): # E:5: Type signature has too few arguments
+    def f(x, y): # E:5: Type signature has too few parameters
         # type: (int) -> None
         pass
 
@@ -342,7 +342,7 @@ if int():
 main:2:11: error: Syntax error in type annotation
 main:2:11: note: Suggestion: Is there a spurious trailing comma?
 
-[case testColumnSyntaxErrorInTypeAnnotation2]
+[case testColumnSyntaxErrorInTypeAnnotation2_no_native_parse]
 if int():
     # TODO: It would be better to point to the type comment
     xyz = 0  # type: blurbnard blarb
@@ -375,7 +375,7 @@ from typing import TypeVar, List
 
 T = TypeVar('T', int, str)
 
-def g(x): pass  # N:1: "g" defined here
+def g(x): pass
 
 def f(x: T) -> T:
     (x.bad) # E:6: "int" has no attribute "bad" \
@@ -384,8 +384,7 @@ def f(x: T) -> T:
     y: List[int, str] # E:8: "list" expects 1 type argument, but 2 given
     del 1[0] # E:5: "int" has no attribute "__delitem__"
     bb: List[int] = [''] # E:22: List item 0 has incompatible type "str"; expected "int"
-    # XXX: Disabled because the column differs in 3.8
-    # aa: List[int] = ['' for x in [1]] # :22: List comprehension has incompatible type List[str]; expected List[int]
+    aa: List[int] = ['' for x in [1]] # E:22: List comprehension has incompatible type List[str]; expected List[int]
     cc = 1 .bad # E:10: "int" has no attribute "bad"
     n: int = '' # E:14: Incompatible types in assignment (expression has type "str", variable has type "int")
     return x
@@ -408,6 +407,14 @@ x[0]
 main:2:10:2:17: error: Incompatible types in assignment (expression has type "str", variable has type "int")
 main:6:3:7:1: error: Argument 1 to "f" has incompatible type "int"; expected "str"
 main:8:1:8:4: error: Value of type "int" is not indexable
+
+[case testColumnsMissingPositionalArgShiftDetected]
+def f(x: int, y: str, z: bytes, aa: int) -> None: ...
+f(1, b'x', 1) # E:6: Missing positional argument "y" in call to "f"
+def g(x: int, y: str, z: bytes) -> None: ...
+g("hello", b'x') # E:3: Missing positional argument "x" in call to "g"
+g(1, "hello") # E:1: Missing positional argument "z" in call to "g"
+[builtins fixtures/primitives.pyi]
 
 [case testEndColumnsWithTooManyTypeVars]
 # flags: --pretty

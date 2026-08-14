@@ -378,7 +378,6 @@ class Application:
 [builtins fixtures/dataclasses.pyi]
 
 [case testDataclassesOrderingKwOnly]
-# flags: --python-version 3.10
 from dataclasses import dataclass
 
 @dataclass(kw_only=True)
@@ -398,7 +397,6 @@ Application(rating='name', name=123) # E: Argument "rating" to "Application" has
 [builtins fixtures/dataclasses.pyi]
 
 [case testDataclassesOrderingKwOnlyOnField]
-# flags: --python-version 3.10
 from dataclasses import dataclass, field
 
 @dataclass
@@ -417,7 +415,6 @@ Application(123, rating='name') # E: Argument 1 to "Application" has incompatibl
 [builtins fixtures/dataclasses.pyi]
 
 [case testDataclassesOrderingKwOnlyOnFieldFalse]
-# flags: --python-version 3.10
 from dataclasses import dataclass, field
 
 @dataclass
@@ -434,7 +431,6 @@ Application('name')  # E: Too few arguments for "Application"
 [builtins fixtures/dataclasses.pyi]
 
 [case testDataclassesOrderingKwOnlyWithSentinel]
-# flags: --python-version 3.10
 from dataclasses import dataclass, KW_ONLY
 
 @dataclass
@@ -452,8 +448,67 @@ Application('name', rating=123)  # E: Too many positional arguments for "Applica
 
 [builtins fixtures/dataclasses.pyi]
 
+[case testDataclassesOrderingKwOnlyWithPEP661Sentinel]
+-- Regression test for KW_ONLY implemented as a PEP 661 sentinel, as in
+-- https://github.com/python/cpython/commit/16952218d0535904236e8a39851133688c9ce1f0
+-- `_is_kw_only_type` must recognize this shape too, or `_` stops being excluded
+-- from `__init__` and kw-only ordering enforcement silently stops firing.
+from dataclasses import dataclass, KW_ONLY
+
+@dataclass
+class Application:
+    _: KW_ONLY
+    name: str = 'Unnamed'
+    rating: int
+
+Application(rating=5)
+Application('name', 123)  # E: Too many positional arguments for "Application"
+
+[file dataclasses.pyi]
+from typing import Any, Callable, TypeVar, overload
+from typing_extensions import sentinel
+
+_T = TypeVar("_T")
+
+KW_ONLY = sentinel("KW_ONLY")
+MISSING = sentinel("MISSING")
+
+class Field:
+    default: Any
+    default_factory: Any
+
+def field(
+    *,
+    default: Any = ...,
+    default_factory: Any = ...,
+    init: bool = ...,
+    repr: bool = ...,
+    hash: Any = ...,
+    compare: bool = ...,
+    metadata: Any = ...,
+    kw_only: Any = ...,
+) -> Any: ...
+@overload
+def dataclass(cls: type[_T]) -> type[_T]: ...
+@overload
+def dataclass(
+    cls: None = ...,
+    *,
+    init: bool = ...,
+    repr: bool = ...,
+    eq: bool = ...,
+    order: bool = ...,
+    unsafe_hash: bool = ...,
+    frozen: bool = ...,
+    match_args: bool = ...,
+    kw_only: bool = ...,
+    slots: bool = ...,
+    weakref_slot: bool = ...,
+) -> Callable[[type[_T]], type[_T]]: ...
+
+[builtins fixtures/dataclasses.pyi]
+
 [case testDataclassesOrderingKwOnlyWithSentinelAndFieldOverride]
-# flags: --python-version 3.10
 from dataclasses import dataclass, field, KW_ONLY
 
 @dataclass
@@ -473,7 +528,6 @@ Application(123, rating=123)  # E: "Application" gets multiple values for keywor
 [builtins fixtures/dataclasses.pyi]
 
 [case testDataclassesOrderingKwOnlyWithSentinelAndSubclass]
-# flags: --python-version 3.10
 from dataclasses import dataclass, field, KW_ONLY
 
 @dataclass
@@ -500,7 +554,6 @@ D(123, False)  # E: Argument 1 to "D" has incompatible type "int"; expected "str
 [builtins fixtures/dataclasses.pyi]
 
 [case testDataclassesOrderingKwOnlyWithMultipleSentinel]
-# flags: --python-version 3.10
 from dataclasses import dataclass, field, KW_ONLY
 
 @dataclass
@@ -839,7 +892,8 @@ class A(Generic[T]):
   @classmethod
   def foo(cls) -> None:
       reveal_type(cls)  # N: Revealed type is "type[__main__.A[T`1]]"
-      cls.x  # E: Access to generic instance variables via class is ambiguous
+      cls.x  # E: Cannot access instance-only attribute "x" on class object \
+             # E: Access to generic instance variables via class is ambiguous
 
   @classmethod
   def other(cls, x: T) -> A[T]: ...
@@ -1258,6 +1312,26 @@ class Person:
 
 [builtins fixtures/dataclasses.pyi]
 
+[case testDataclassesFloatSerializationIncremental]
+import m
+[file m.py]
+from lib import MyDataClass
+[file m.py.2]
+from lib import MyDataClass
+
+reveal_type(MyDataClass.MY_CONSTANT)
+[file lib.py]
+from dataclasses import dataclass
+from typing import Final
+
+@dataclass(kw_only=True, repr=False)
+class MyDataClass:
+    MY_CONSTANT: Final = 1.234
+[builtins fixtures/dataclasses.pyi]
+[out]
+[out2]
+tmp/m.py:3: note: Revealed type is "Literal[1.234]?"
+
 [case testDataclassesDefaultsMroOtherFile]
 import a
 
@@ -1426,7 +1500,6 @@ reveal_type(Foo(bar=1.5))  # N: Revealed type is "__main__.Foo"
 [typing fixtures/typing-typeddict.pyi]
 
 [case testDataclassWithSlotsArg]
-# flags: --python-version 3.10
 from dataclasses import dataclass
 
 @dataclass(slots=True)
@@ -1442,7 +1515,6 @@ class Some:
 [builtins fixtures/dataclasses.pyi]
 
 [case testDataclassWithSlotsDef]
-# flags: --python-version 3.10
 from dataclasses import dataclass
 
 @dataclass(slots=False)
@@ -1459,7 +1531,6 @@ class Some:
 [builtins fixtures/dataclasses.pyi]
 
 [case testDataclassWithSlotsDerivedFromNonSlot]
-# flags: --python-version 3.10
 from dataclasses import dataclass
 
 class A:
@@ -1475,7 +1546,6 @@ class B(A):
 [builtins fixtures/dataclasses.pyi]
 
 [case testDataclassWithSlotsConflict]
-# flags: --python-version 3.10
 from dataclasses import dataclass
 
 @dataclass(slots=True)
@@ -1496,24 +1566,7 @@ class DynamicDef:  # E: "DynamicDef" both defines "__slots__" and is used with "
     x: int
 [builtins fixtures/dataclasses.pyi]
 
-[case testDataclassWithSlotsArgBefore310]
-# flags: --python-version 3.9
-from dataclasses import dataclass
-
-@dataclass(slots=True)  # E: Keyword argument "slots" for "dataclass" is only valid in Python 3.10 and higher
-class Some:
-    x: int
-
-# Possible conflict:
-@dataclass(slots=True)  # E: Keyword argument "slots" for "dataclass" is only valid in Python 3.10 and higher
-class Other:
-    __slots__ = ('x',)
-    x: int
-[builtins fixtures/dataclasses.pyi]
-
-
 [case testDataclassWithSlotsRuntimeAttr]
-# flags: --python-version 3.10
 from dataclasses import dataclass
 
 @dataclass(slots=True)
@@ -1542,7 +1595,6 @@ NoSlots.__slots__  # E: "type[NoSlots]" has no attribute "__slots__"
 
 
 [case testSlotsDefinitionWithTwoPasses1]
-# flags: --python-version 3.10
 # https://github.com/python/mypy/issues/11821
 from typing import TypeVar, Protocol, Generic
 from dataclasses import dataclass
@@ -1560,7 +1612,6 @@ class Node(Generic[V]):  # Error was here
 [builtins fixtures/dataclasses.pyi]
 
 [case testSlotsDefinitionWithTwoPasses2]
-# flags: --python-version 3.10
 from typing import TypeVar, Protocol, Generic
 from dataclasses import dataclass
 
@@ -1578,7 +1629,6 @@ class Node(Generic[V]):  # E: "Node" both defines "__slots__" and is used with "
 [builtins fixtures/dataclasses.pyi]
 
 [case testSlotsDefinitionWithTwoPasses3]
-# flags: --python-version 3.10
 from typing import TypeVar, Protocol, Generic
 from dataclasses import dataclass
 
@@ -1596,7 +1646,6 @@ class Node(Generic[V]):  # E: "Node" both defines "__slots__" and is used with "
 [builtins fixtures/dataclasses.pyi]
 
 [case testSlotsDefinitionWithTwoPasses4]
-# flags: --python-version 3.10
 import dataclasses as dtc
 
 PublishedMessagesVar = dict[int, 'PublishedMessages']
@@ -1604,6 +1653,19 @@ PublishedMessagesVar = dict[int, 'PublishedMessages']
 @dtc.dataclass(frozen=True, slots=True)
 class PublishedMessages:
     left: int
+[builtins fixtures/dataclasses.pyi]
+
+[case testDataclassSlotsWithDeferredBase]
+from dataclasses import dataclass
+
+@dataclass
+class A(B): ...
+
+@dataclass
+class B: ...
+
+@dataclass(slots=True)
+class C: ...
 [builtins fixtures/dataclasses.pyi]
 
 [case testDataclassesAnyInherit]
@@ -1654,7 +1716,6 @@ def foo() -> None:
 [builtins fixtures/dataclasses.pyi]
 
 [case testDataclassesMultipleInheritanceWithNonDataclass]
-# flags: --python-version 3.10
 from dataclasses import dataclass
 
 @dataclass
@@ -1829,7 +1890,6 @@ class MyClass(MyGeneric[MyDataclass]): ...
 [builtins fixtures/dataclasses.pyi]
 
 [case testDataclassWithMatchArgs]
-# flags: --python-version 3.10
 from dataclasses import dataclass
 @dataclass
 class One:
@@ -1850,7 +1910,6 @@ reveal_type(e.__match_args__)  # N: Revealed type is "tuple[()]"
 [builtins fixtures/dataclasses.pyi]
 
 [case testDataclassWithMatchArgsAndKwOnly]
-# flags: --python-version 3.10
 from dataclasses import dataclass, field
 @dataclass(kw_only=True)
 class One:
@@ -1866,7 +1925,6 @@ reveal_type(Two.__match_args__)  # N: Revealed type is "tuple[Literal['a']]"
 [builtins fixtures/dataclasses.pyi]
 
 [case testDataclassWithoutMatchArgs]
-# flags: --python-version 3.10
 from dataclasses import dataclass
 @dataclass(match_args=False)
 class One:
@@ -1874,23 +1932,6 @@ class One:
     baz: str
 o: One
 reveal_type(o.__match_args__)  # E: "One" has no attribute "__match_args__" \
-                               # N: Revealed type is "Any"
-[builtins fixtures/dataclasses.pyi]
-
-[case testDataclassWithMatchArgsOldVersion]
-# flags: --python-version 3.9
-from dataclasses import dataclass
-@dataclass(match_args=True)
-class One:
-    bar: int
-o: One
-reveal_type(o.__match_args__)  # E: "One" has no attribute "__match_args__" \
-                               # N: Revealed type is "Any"
-@dataclass
-class Two:
-    bar: int
-t: Two
-reveal_type(t.__match_args__)  # E: "Two" has no attribute "__match_args__" \
                                # N: Revealed type is "Any"
 [builtins fixtures/dataclasses.pyi]
 
@@ -2055,7 +2096,7 @@ from dataclasses import dataclass, replace, InitVar
 from typing import ClassVar
 
 @dataclass
-class A:  # N: "replace" of "A" defined here
+class A:
     x: int
     q: InitVar[int]
     q2: InitVar[int] = 0
@@ -2599,6 +2640,23 @@ Gen(2).__replace__(x="not an int")  # E: Argument "x" to "__replace__" of "Gen" 
 
 [builtins fixtures/tuple.pyi]
 
+[case testDunderReplaceAllowsCovariantDataclassField]
+# flags: --python-version 3.13
+from dataclasses import dataclass
+from typing import Generic, TypeVar
+
+T_co = TypeVar("T_co", covariant=True)
+
+@dataclass(frozen=True)
+class A(Generic[T_co]):
+    value: T_co
+
+class B(Generic[T_co]):
+    def __replace__(self, *, value: T_co) -> B[T_co]:
+        return self
+
+[builtins fixtures/tuple.pyi]
+
 [case testDunderReplaceCovariantOverride]
 # flags: --python-version 3.13  --enable-error-code mutable-override
 from dataclasses import dataclass
@@ -2626,6 +2684,27 @@ class X(metaclass=DCMeta):
 class Y(X):
     a: int  # E: Covariant override of a mutable attribute (base class "X" defined the type as "int | None", expression has type "int")
 [builtins fixtures/tuple.pyi]
+
+
+[case testDunderReplaceDoesNotBlockPlainIssubclassNarrowing]
+# https://github.com/python/mypy/issues/21635
+# flags: --python-version 3.13
+from dataclasses import dataclass
+
+@dataclass
+class A: ...
+@dataclass
+class M: ...
+@dataclass
+class B(A): ...
+@dataclass
+class C(M, A): ...
+
+cls: type[A] = C
+if issubclass(cls, M):
+    reveal_type(cls)  # N: Revealed type is "type[__main__.<subclass of "__main__.A" and "__main__.M">]"
+    n: int = 'foo'  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+[builtins fixtures/isinstancelist.pyi]
 
 
 [case testFrozenWithFinal]
@@ -2736,4 +2815,31 @@ class ClassB(ClassA):
 
     def value(self) -> int:
         return 0
+[builtins fixtures/dict.pyi]
+
+[case testDataclassAllowsFinalField]
+# flags: --python-version=3.13
+from dataclasses import InitVar, dataclass
+from typing import Final, ClassVar
+
+@dataclass
+class C:
+    x: int
+    y: Final[int]
+    z: ClassVar[Final[int]] = 4
+
+c = C(1, 2)
+c.y = 3  # E: Cannot assign to final attribute "y"
+
+@dataclass
+class D(C):
+    x: Final[int]  # E: Cannot override writable attribute "x" with a final one
+
+@dataclass
+class Bad1:
+    x: Final[InitVar[int]]  # E: InitVar cannot be final
+
+@dataclass
+class Bad2:
+    x: InitVar[Final[int]]  # E: Final can be only used as an outermost qualifier in a variable annotation
 [builtins fixtures/dict.pyi]

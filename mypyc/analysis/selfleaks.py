@@ -1,6 +1,12 @@
 from __future__ import annotations
 
-from mypyc.analysis.dataflow import CFG, MAYBE_ANALYSIS, AnalysisResult, run_analysis
+from mypyc.analysis.dataflow import (
+    CFG,
+    MAYBE_ANALYSIS,
+    AnalysisResult,
+    GenAndKill as _DataflowGenAndKill,
+    run_analysis,
+)
 from mypyc.ir.ops import (
     Assign,
     AssignMulti,
@@ -11,13 +17,16 @@ from mypyc.ir.ops import (
     CallC,
     Cast,
     ComparisonOp,
+    DecRef,
     Extend,
     FloatComparisonOp,
     FloatNeg,
     FloatOp,
     GetAttr,
+    GetElement,
     GetElementPtr,
     Goto,
+    IncRef,
     InitStatic,
     IntOp,
     KeepAlive,
@@ -46,7 +55,7 @@ from mypyc.ir.ops import (
 )
 from mypyc.ir.rtypes import RInstance
 
-GenAndKill = tuple[set[None], set[None]]
+GenAndKill = _DataflowGenAndKill[None]
 
 CLEAN: GenAndKill = (set(), set())
 DIRTY: GenAndKill = ({None}, {None})
@@ -87,6 +96,12 @@ class SelfLeakedVisitor(OpVisitor[GenAndKill]):
         return CLEAN
 
     def visit_set_mem(self, op: SetMem) -> GenAndKill:
+        return CLEAN
+
+    def visit_inc_ref(self, op: IncRef) -> GenAndKill:
+        return CLEAN
+
+    def visit_dec_ref(self, op: DecRef) -> GenAndKill:
         return CLEAN
 
     def visit_call(self, op: Call) -> GenAndKill:
@@ -177,6 +192,9 @@ class SelfLeakedVisitor(OpVisitor[GenAndKill]):
         return CLEAN
 
     def visit_load_mem(self, op: LoadMem) -> GenAndKill:
+        return CLEAN
+
+    def visit_get_element(self, op: GetElement) -> GenAndKill:
         return CLEAN
 
     def visit_get_element_ptr(self, op: GetElementPtr) -> GenAndKill:

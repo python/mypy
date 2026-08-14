@@ -7,7 +7,7 @@ import os.path
 from mypy.errors import CompileError
 from mypy.test.config import test_temp_dir
 from mypy.test.data import DataDrivenTestCase
-from mypyc.common import TOP_LEVEL_NAME
+from mypyc.common import IS_FREE_THREADED, TOP_LEVEL_NAME
 from mypyc.ir.pprint import format_func
 from mypyc.options import CompilerOptions
 from mypyc.test.testutil import (
@@ -28,13 +28,19 @@ from mypyc.transform.uninit import insert_uninit_checks
 
 
 class TestLowering(MypycDataSuite):
-    files = ["lowering-int.test", "lowering-list.test"]
+    files = ["lowering-int.test", "lowering-list.test", "lowering-vec.test"]
     base_path = test_temp_dir
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
         options = infer_ir_build_options_from_test_name(testcase.name)
         if options is None:
             # Skipped test case
+            return
+        if "_withgil" in testcase.name and IS_FREE_THREADED:
+            # Test case should only run on a non-free-threaded build.
+            return
+        if "_nogil" in testcase.name and not IS_FREE_THREADED:
+            # Test case should only run on a free-threaded build.
             return
         with use_custom_builtins(os.path.join(self.data_prefix, ICODE_GEN_BUILTINS), testcase):
             expected_output = remove_comment_lines(testcase.output)
@@ -48,11 +54,11 @@ class TestLowering(MypycDataSuite):
                 for fn in ir:
                     if fn.name == TOP_LEVEL_NAME and not testcase.name.endswith("_toplevel"):
                         continue
-                    options = CompilerOptions()
+                    options = CompilerOptions(strict_traceback_checks=True)
                     # Lowering happens after exception handling and ref count opcodes have
                     # been added. Any changes must maintain reference counting semantics.
-                    insert_uninit_checks(fn)
-                    insert_exception_handling(fn)
+                    insert_uninit_checks(fn, True)
+                    insert_exception_handling(fn, True)
                     insert_ref_count_opcodes(fn)
                     lower_ir(fn, options)
                     do_flag_elimination(fn, options)

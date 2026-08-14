@@ -9,10 +9,11 @@ from __future__ import annotations
 
 import argparse
 import sys
+from typing import Any, cast
 
 from mypy.main import infer_python_executable, process_options
 from mypy.options import Options
-from mypy.test.helpers import Suite, assert_equal
+from mypy.test.helpers import Suite
 
 
 class ArgSuite(Suite):
@@ -21,7 +22,7 @@ class ArgSuite(Suite):
         _, parsed_options = process_options([], require_targets=False)
         # FIX: test this too. Requires changing working dir to avoid finding 'setup.cfg'
         options.config_file = parsed_options.config_file
-        assert_equal(options.snapshot(), parsed_options.snapshot())
+        assert options.snapshot() == parsed_options.snapshot()
 
     def test_executable_inference(self) -> None:
         """Test the --python-executable flag with --python-version"""
@@ -63,7 +64,7 @@ class ArgSuite(Suite):
 
         # first test inferring executable from version
         options = Options()
-        options.python_executable = None
+        options.python_executable = cast(Any, None)
         options.python_version = sys.version_info[:2]
         infer_python_executable(options, special_opts)
         assert options.python_version == sys.version_info[:2]

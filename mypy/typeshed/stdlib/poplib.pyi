@@ -1,10 +1,11 @@
 import socket
 import ssl
 import sys
+from _typeshed import StrOrBytesPath
 from builtins import list as _list  # conflicts with a method named "list"
 from re import Pattern
-from typing import Any, BinaryIO, Final, NoReturn, overload
-from typing_extensions import TypeAlias
+from typing import Any, BinaryIO, Final, TypeAlias, overload
+from typing_extensions import Never, deprecated
 
 __all__ = ["POP3", "error_proto", "POP3_SSL"]
 
@@ -43,10 +44,12 @@ class POP3:
     timestamp: Pattern[str]
     def apop(self, user: str, password: str) -> bytes: ...
     def top(self, which: Any, howmuch: int) -> _LongResp: ...
+
     @overload
     def uidl(self) -> _LongResp: ...
     @overload
     def uidl(self, which: Any) -> bytes: ...
+
     def utf8(self) -> bytes: ...
     def capa(self) -> dict[str, _list[str]]: ...
     def stls(self, context: ssl.SSLContext | None = None) -> bytes: ...
@@ -56,17 +59,35 @@ class POP3_SSL(POP3):
         def __init__(
             self, host: str, port: int = 995, *, timeout: float = ..., context: ssl.SSLContext | None = None
         ) -> None: ...
-        def stls(self, context: Any = None) -> NoReturn: ...
+        def stls(self, context: Any = None) -> Never: ...
     else:
+        @overload
         def __init__(
             self,
             host: str,
             port: int = 995,
-            keyfile: str | None = None,
-            certfile: str | None = None,
+            keyfile: None = None,
+            certfile: None = None,
             timeout: float = ...,
             context: ssl.SSLContext | None = None,
         ) -> None: ...
+        @overload
+        @deprecated(
+            "The `keyfile`, `certfile` parameters are deprecated since Python 3.6; "
+            "removed in Python 3.12. Use `context` parameter instead."
+        )
+        def __init__(
+            self,
+            host: str,
+            port: int = 995,
+            keyfile: StrOrBytesPath | None = None,
+            certfile: StrOrBytesPath | None = None,
+            timeout: float = ...,
+            context: None = None,
+        ) -> None: ...
+
+        keyfile: StrOrBytesPath | None
+        certfile: StrOrBytesPath | None
         # "context" is actually the last argument,
         # but that breaks LSP and it doesn't really matter because all the arguments are ignored
-        def stls(self, context: Any = None, keyfile: Any = None, certfile: Any = None) -> NoReturn: ...
+        def stls(self, context: Any = None, keyfile: Any = None, certfile: Any = None) -> Never: ...

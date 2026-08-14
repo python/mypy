@@ -42,6 +42,10 @@ TypeGuard: _SpecialForm
 TypeIs: _SpecialForm
 Never: _SpecialForm
 
+class Sentinel:
+    def __init__(self, name: str, repr: str | None = None) -> None: ...
+sentinel = Sentinel
+
 TypeVarTuple: _SpecialForm
 Unpack: _SpecialForm
 Required: _SpecialForm

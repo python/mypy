@@ -4,8 +4,10 @@ from abc import ABCMeta, abstractmethod
 from collections.abc import Iterator
 from io import BufferedReader
 from typing import IO, Any, Literal, Protocol, overload, runtime_checkable
+from typing_extensions import deprecated
 
 if sys.version_info >= (3, 11):
+    @deprecated("Deprecated. Use `importlib.resources.abc.TraversableResources` instead.")
     class ResourceReader(metaclass=ABCMeta):
         @abstractmethod
         def open_resource(self, resource: str) -> IO[bytes]: ...
@@ -36,14 +38,20 @@ if sys.version_info >= (3, 11):
         @overload
         @abstractmethod
         def open(self, mode: Literal["rb"]) -> IO[bytes]: ...
+
         @property
         @abstractmethod
         def name(self) -> str: ...
         def __truediv__(self, child: StrPath, /) -> Traversable: ...
         @abstractmethod
         def read_bytes(self) -> bytes: ...
-        @abstractmethod
-        def read_text(self, encoding: str | None = None) -> str: ...
+
+        if sys.version_info >= (3, 15):
+            @abstractmethod
+            def read_text(self, encoding: str | None = None, errors: str | None = None) -> str: ...
+        else:
+            @abstractmethod
+            def read_text(self, encoding: str | None = None) -> str: ...
 
     class TraversableResources(ResourceReader):
         @abstractmethod

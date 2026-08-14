@@ -90,6 +90,9 @@ if USE_MYPYC:
             # We don't populate __file__ properly at the top level or something?
             # Also I think there would be problems with how we generate version.py.
             "version.py",
+            # Empty __init__.py files, no benefit from compilation
+            os.path.join("plugins", "__init__.py"),
+            os.path.join("server", "__init__.py"),
             # Skip these to reduce the size of the build
             "stubtest.py",
             "stubgenc.py",
@@ -150,6 +153,7 @@ if USE_MYPYC:
     debug_level = os.getenv("MYPYC_DEBUG_LEVEL", "1")
     force_multifile = os.getenv("MYPYC_MULTI_FILE", "") == "1"
     log_trace = bool(int(os.getenv("MYPYC_LOG_TRACE", "0")))
+    separate = os.getenv("MYPYC_SEPARATE", "") == "1"
     ext_modules = mypycify(
         mypyc_targets + ["--config-file=mypy_bootstrap.ini"],
         opt_level=opt_level,
@@ -158,6 +162,7 @@ if USE_MYPYC:
         # our Appveyor builds run out of memory sometimes.
         multi_file=sys.platform == "win32" or force_multifile,
         log_trace=log_trace,
+        separate=separate,
         # Mypy itself is allowed to use native_internal extension.
         depends_on_librt_internal=True,
     )

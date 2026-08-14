@@ -123,11 +123,11 @@ static PyObject *CPy_GetTypeName(PyObject *type) {
     PyObject *module = NULL, *name = NULL;
     PyObject *full = NULL;
 
-    module = PyObject_GetAttrString(type, "__module__");
+    module = PyObject_GetAttr(type, mypyc_interned_str.__module__);
     if (!module || !PyUnicode_Check(module)) {
         goto out;
     }
-    name = PyObject_GetAttrString(type, "__qualname__");
+    name = PyObject_GetAttr(type, mypyc_interned_str.__qualname__);
     if (!name || !PyUnicode_Check(name)) {
         goto out;
     }

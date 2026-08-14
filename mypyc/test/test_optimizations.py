@@ -7,7 +7,7 @@ import os.path
 from mypy.errors import CompileError
 from mypy.test.config import test_temp_dir
 from mypy.test.data import DataDrivenTestCase
-from mypyc.common import TOP_LEVEL_NAME
+from mypyc.common import IS_FREE_THREADED, TOP_LEVEL_NAME
 from mypyc.ir.func_ir import FuncIR
 from mypyc.ir.pprint import format_func
 from mypyc.options import CompilerOptions
@@ -33,6 +33,12 @@ class OptimizationSuite(MypycDataSuite):
     base_path = test_temp_dir
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
+        if "_withgil" in testcase.name and IS_FREE_THREADED:
+            # Test case should only run on a non-free-threaded build.
+            return
+        if "_nogil" in testcase.name and not IS_FREE_THREADED:
+            # Test case should only run on a free-threaded build.
+            return
         with use_custom_builtins(os.path.join(self.data_prefix, ICODE_GEN_BUILTINS), testcase):
             expected_output = remove_comment_lines(testcase.output)
             try:
@@ -44,7 +50,7 @@ class OptimizationSuite(MypycDataSuite):
                 for fn in ir:
                     if fn.name == TOP_LEVEL_NAME and not testcase.name.endswith("_toplevel"):
                         continue
-                    insert_uninit_checks(fn)
+                    insert_uninit_checks(fn, True)
                     self.do_optimizations(fn)
                     actual.extend(format_func(fn))
 
@@ -58,11 +64,11 @@ class TestCopyPropagation(OptimizationSuite):
     files = ["opt-copy-propagation.test"]
 
     def do_optimizations(self, fn: FuncIR) -> None:
-        do_copy_propagation(fn, CompilerOptions())
+        do_copy_propagation(fn, CompilerOptions(strict_traceback_checks=True))
 
 
 class TestFlagElimination(OptimizationSuite):
     files = ["opt-flag-elimination.test"]
 
     def do_optimizations(self, fn: FuncIR) -> None:
-        do_flag_elimination(fn, CompilerOptions())
+        do_flag_elimination(fn, CompilerOptions(strict_traceback_checks=True))

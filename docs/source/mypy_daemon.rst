@@ -61,7 +61,8 @@ you have a large codebase.)
 
 .. note::
 
-    The mypy daemon requires ``--local-partial-types`` and automatically enables it.
+    The mypy daemon requires ``--local-partial-types``, which is enabled
+    by default starting from mypy 2.0.
 
 
 Daemon client commands

@@ -68,6 +68,34 @@ L3:
     y = r6
     return 1
 
+[case testUnreachableFinalNameExpr]
+from typing import Final
+
+ZERO: Final = 0
+
+def f(x: int) -> int:
+    if x is None:
+        return ZERO
+    return ZERO
+[out]
+def f(x):
+    x :: int
+    r0, r1 :: object
+    r2 :: bit
+    r3 :: object
+    r4 :: int
+L0:
+    r0 = load_address _Py_NoneStruct
+    r1 = box(int, x)
+    r2 = r1 == r0
+    if r2 goto L1 else goto L2 :: bool
+L1:
+    r3 = object 0
+    r4 = unbox(int, r3)
+    return r4
+L2:
+    return 0
+
 [case testUnreachableStatementAfterReturn]
 def f(x: bool) -> int:
     if x:

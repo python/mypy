@@ -12,6 +12,7 @@ from mypyc.ir.rtypes import (
     RType,
     RTypeVisitor,
     RUnion,
+    RVec,
     RVoid,
 )
 
@@ -49,6 +50,9 @@ class SameTypeVisitor(RTypeVisitor[bool]):
 
     def visit_rinstance(self, left: RInstance) -> bool:
         return isinstance(self.right, RInstance) and left.name == self.right.name
+
+    def visit_rvec(self, left: RVec) -> bool:
+        return isinstance(self.right, RVec) and left.item_type == self.right.item_type
 
     def visit_runion(self, left: RUnion) -> bool:
         if isinstance(self.right, RUnion):

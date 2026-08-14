@@ -7,7 +7,6 @@ rather than having to read it back from disk on each run.
 from __future__ import annotations
 
 import argparse
-import base64
 import json
 import os
 import pickle
@@ -16,6 +15,8 @@ import time
 import traceback
 from collections.abc import Callable, Mapping
 from typing import Any, NoReturn
+
+from librt.base64 import b64decode
 
 from mypy.defaults import RECURSION_LIMIT
 from mypy.dmypy_os import alive, kill
@@ -620,7 +621,7 @@ def do_daemon(args: argparse.Namespace) -> None:
     if args.options_data:
         from mypy.options import Options
 
-        options_dict = pickle.loads(base64.b64decode(args.options_data))
+        options_dict = pickle.loads(b64decode(args.options_data))
         options_obj = Options()
         options = options_obj.apply_changes(options_dict)
     else:

@@ -1,3 +1,4 @@
+import sys
 from collections.abc import Iterable, Iterator
 from email.errors import HeaderParseError, MessageDefect
 from email.policy import Policy
@@ -16,14 +17,17 @@ TOKEN_ENDS: Final[set[str]]
 ASPECIALS: Final[set[str]]
 ATTRIBUTE_ENDS: Final[set[str]]
 EXTENDED_ATTRIBUTE_ENDS: Final[set[str]]
-# Added in Python 3.9.20, 3.10.15, 3.11.10, 3.12.5
+# Added in Python 3.10.15, 3.11.10, 3.12.5
 NLSET: Final[set[str]]
-# Added in Python 3.9.20, 3.10.15, 3.11.10, 3.12.5
+# Added in Python 3.10.15, 3.11.10, 3.12.5
 SPECIALSNL: Final[set[str]]
 
-# Added in Python 3.9.23, 3.10.17, 3.11.12, 3.12.9, 3.13.2
+# Added in Python 3.10.17, 3.11.12, 3.12.9, 3.13.2
 def make_quoted_pairs(value: Any) -> str: ...
 def quote_string(value: Any) -> str: ...
+
+# Added in Python 3.10.20, 3.11.15, 3.12.13, 3.13.12, 3.14.3
+def make_parenthesis_pairs(value: Any) -> str: ...
 
 rfc2047_matcher: Final[Pattern[str]]
 
@@ -311,6 +315,13 @@ class MessageID(MsgID):
 class InvalidMessageID(MessageID):
     token_type: str
 
+if sys.version_info >= (3, 13):
+    # Added in Python 3.13.12, 3.14.3
+    class MessageIDList(TokenList):
+        token_type: str
+        @property
+        def message_ids(self) -> list[MsgID | Terminal]: ...
+
 class Header(TokenList):
     token_type: str
 
@@ -381,6 +392,11 @@ def get_address_list(value: str) -> tuple[AddressList, str]: ...
 def get_no_fold_literal(value: str) -> tuple[NoFoldLiteral, str]: ...
 def get_msg_id(value: str) -> tuple[MsgID, str]: ...
 def parse_message_id(value: str) -> MessageID: ...
+
+if sys.version_info >= (3, 13):
+    # Added in Python 3.13.12, 3.14.3
+    def parse_message_ids(value: str) -> MessageIDList: ...
+
 def parse_mime_version(value: str) -> MIMEVersion: ...
 def get_invalid_parameter(value: str) -> tuple[InvalidParameter, str]: ...
 def get_ttext(value: str) -> tuple[ValueTerminal, str]: ...

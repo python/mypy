@@ -105,6 +105,8 @@ class DefaultPlugin(Plugin):
             return partial_new_callback
         elif fullname == "enum.member":
             return enum_member_callback
+        elif fullname == "builtins.len":
+            return len_callback
         return None
 
     def get_function_signature_hook(
@@ -213,6 +215,18 @@ class DefaultPlugin(Plugin):
         return None
 
 
+def len_callback(ctx: FunctionContext) -> Type:
+    """Infer a better return type for 'len'."""
+    if len(ctx.arg_types) == 1 and len(ctx.arg_types[0]) == 1:
+        arg_type = ctx.arg_types[0][0]
+        arg_type = get_proper_type(arg_type)
+        if isinstance(arg_type, Instance) and arg_type.type.fullname == "librt.vecs.vec":
+            # The length of vec is a fixed-width integer, for more
+            # low-level optimization potential.
+            return ctx.api.named_generic_type("mypy_extensions.i64", [])
+    return ctx.default_return_type
+
+
 def typed_dict_get_signature_callback(ctx: MethodSigContext) -> CallableType:
     """Try to infer a better signature type for TypedDict.get.
 
@@ -279,9 +293,10 @@ def typed_dict_get_callback(ctx: MethodContext) -> Type:
         for key in keys:
             value_type: Type | None = ctx.type.items.get(key)
             if value_type is None:
-                return ctx.default_return_type
-
-            if key in ctx.type.required_keys:
+                if not ctx.type.is_closed:
+                    return ctx.default_return_type
+                output_types.append(default_type)
+            elif key in ctx.type.required_keys:
                 output_types.append(value_type)
             else:
                 # HACK to deal with get(key, {})

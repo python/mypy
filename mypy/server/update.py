@@ -128,6 +128,7 @@ from mypy.build import (
     BuildResult,
     Graph,
     State,
+    SuppressionReason,
     load_graph,
     process_fresh_modules,
 )
@@ -137,6 +138,7 @@ from mypy.fscache import FileSystemCache
 from mypy.modulefinder import BuildSource
 from mypy.nodes import (
     Decorator,
+    FuncBase,
     FuncDef,
     ImportFrom,
     MypyFile,
@@ -153,7 +155,7 @@ from mypy.server.astdiff import (
     snapshot_symbol_table,
 )
 from mypy.server.astmerge import merge_asts
-from mypy.server.aststrip import SavedAttributes, strip_target
+from mypy.server.aststrip import strip_target
 from mypy.server.deps import get_dependencies_of_target, merge_dependencies
 from mypy.server.target import trigger_to_target
 from mypy.server.trigger import WILDCARD_TAG, make_trigger
@@ -591,7 +593,7 @@ def update_module_isolated(
     sources = get_sources(manager.fscache, previous_modules, [(module, path)], followed)
 
     if module in manager.missing_modules:
-        manager.missing_modules.remove(module)
+        del manager.missing_modules[module]
 
     orig_module = module
     orig_state = graph.get(module)
@@ -727,7 +729,8 @@ def delete_module(module_id: str, path: str, graph: Graph, manager: BuildManager
     # If the module is removed from the build but still exists, then
     # we mark it as missing so that it will get picked up by import from still.
     if manager.fscache.isfile(path):
-        manager.missing_modules.add(module_id)
+        # TODO: check if there is an equivalent of #20800 for the daemon.
+        manager.missing_modules[module_id] = SuppressionReason.NOT_FOUND
 
 
 def dedupe_modules(modules: list[tuple[str, str]]) -> list[tuple[str, str]]:
@@ -780,29 +783,35 @@ def calculate_active_triggers(
         else:
             snapshot2 = snapshot_symbol_table(id, new.names)
         diff = compare_symbol_table_snapshots(id, snapshot1, snapshot2)
-        package_nesting_level = id.count(".")
-        for item in diff.copy():
-            if item.count(".") <= package_nesting_level + 1 and item.split(".")[-1] not in (
-                "__builtins__",
-                "__file__",
-                "__name__",
-                "__package__",
-                "__doc__",
-            ):
-                # Activate catch-all wildcard trigger for top-level module changes (used for
-                # "from m import *"). This also gets triggered by changes to module-private
-                # entries, but as these unneeded dependencies only result in extra processing,
-                # it's a minor problem.
-                #
-                # TODO: Some __* names cause mistriggers. Fix the underlying issue instead of
-                #     special casing them here.
-                diff.add(id + WILDCARD_TAG)
-            if item.count(".") > package_nesting_level + 1:
-                # These are for changes within classes, used by protocols.
-                diff.add(item.rsplit(".", 1)[0] + WILDCARD_TAG)
-
+        diff |= wildcard_triggers_for_changes(id, diff)
         names |= diff
     return {make_trigger(name) for name in names}
+
+
+def wildcard_triggers_for_changes(module_id: str, diff: set[str]) -> set[str]:
+    """Return catch-all wildcard triggers activated by a set of changed names."""
+    result: set[str] = set()
+    package_nesting_level = module_id.count(".")
+    for item in diff:
+        if item.count(".") <= package_nesting_level + 1 and item.split(".")[-1] not in (
+            "__builtins__",
+            "__file__",
+            "__name__",
+            "__package__",
+            "__doc__",
+        ):
+            # Activate catch-all wildcard trigger for top-level module changes (used for
+            # "from m import *"). This also gets triggered by changes to module-private
+            # entries, but as these unneeded dependencies only result in extra processing,
+            # it's a minor problem.
+            #
+            # TODO: Some __* names cause mistriggers. Fix the underlying issue instead of
+            #     special casing them here.
+            result.add(module_id + WILDCARD_TAG)
+        if item.count(".") > package_nesting_level + 1:
+            # These are for changes within classes, used by protocols.
+            result.add(item.rsplit(".", 1)[0] + WILDCARD_TAG)
+    return result
 
 
 def replace_modules_with_new_variants(
@@ -870,7 +879,7 @@ def propagate_changes_using_dependencies(
                 if id not in todo:
                     todo[id] = set()
                 manager.log_fine_grained(f"process target with error: {target}")
-                more_nodes, _ = lookup_target(manager, target)
+                more_nodes, _ = lookup_target(manager, target, id)
                 todo[id].update(more_nodes)
         triggered = set()
         # First invalidate subtype caches in all stale protocols.
@@ -948,7 +957,7 @@ def find_targets_recursive(
                 if module_id not in result:
                     result[module_id] = set()
                 manager.log_fine_grained(f"process: {target}")
-                deferred, stale_proto = lookup_target(manager, target)
+                deferred, stale_proto = lookup_target(manager, target, module_id)
                 if stale_proto:
                     stale_protos.add(stale_proto)
                 result[module_id].update(deferred)
@@ -1004,14 +1013,13 @@ def reprocess_nodes(
     for target in targets:
         if target == module_id:
             for info in graph[module_id].early_errors:
-                manager.errors.add_error_info(info)
+                manager.errors.add_error_info(info, file=graph[module_id].xpath)
 
     # Strip semantic analysis information.
-    saved_attrs: SavedAttributes = {}
     for deferred in nodes:
         processed_targets.append(deferred.node.fullname)
-        strip_target(deferred.node, saved_attrs)
-    semantic_analysis_for_targets(graph[module_id], nodes, graph, saved_attrs)
+        strip_target(deferred.node)
+    semantic_analysis_for_targets(graph[module_id], nodes, graph)
     # Merge symbol tables to preserve identities of AST nodes. The file node will remain
     # the same, but other nodes may have been recreated with different identities, such as
     # NamedTuples defined using assignment statements.
@@ -1042,6 +1050,7 @@ def reprocess_nodes(
     changed = compare_symbol_table_snapshots(
         file_node.fullname, old_symbols_snapshot, new_symbols_snapshot
     )
+    changed |= wildcard_triggers_for_changes(module_id, changed)
     new_triggered = {make_trigger(name) for name in changed}
 
     # Dependencies may have changed.
@@ -1095,7 +1104,7 @@ def update_deps(
 
 
 def lookup_target(
-    manager: BuildManager, target: str
+    manager: BuildManager, target: str, module_id: str
 ) -> tuple[list[FineGrainedDeferredNode], TypeInfo | None]:
     """Look up a target by fully-qualified name.
 
@@ -1103,7 +1112,26 @@ def lookup_target(
     needs to be reprocessed. If the target represents a TypeInfo corresponding
     to a protocol, return it as a second item in the return tuple, otherwise None.
     """
+    deferred, stale_proto = _lookup_target_impl(manager, target)
 
+    # If there are function targets that can infer outer variables, they should
+    # be re-processed as part of the module top-level instead (for consistency).
+    regular = []
+    shared = []
+    for d in deferred:
+        if isinstance(d.node, FuncBase) and d.node.def_or_infer_vars:
+            shared.append(d)
+        else:
+            regular.append(d)
+    deferred = regular
+    if shared:
+        deferred.append(FineGrainedDeferredNode(manager.modules[module_id], None))
+    return deferred, stale_proto
+
+
+def _lookup_target_impl(
+    manager: BuildManager, target: str
+) -> tuple[list[FineGrainedDeferredNode], TypeInfo | None]:
     def not_found() -> None:
         manager.log_fine_grained(f"Can't find matching target for {target} (stale dependency?)")
 
@@ -1153,7 +1181,7 @@ def lookup_target(
         for name, symnode in node.names.items():
             node = symnode.node
             if isinstance(node, FuncDef):
-                method, _ = lookup_target(manager, target + "." + name)
+                method, _ = _lookup_target_impl(manager, target + "." + name)
                 result.extend(method)
         return result, stale_info
     if isinstance(node, Decorator):

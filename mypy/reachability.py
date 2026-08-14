@@ -91,10 +91,7 @@ def infer_reachability_of_match_statement(s: MatchStmt, options: Options) -> Non
         ):
             # The case is considered always false, so we skip the case body.
             mark_block_unreachable(s.bodies[i])
-        elif pattern_value in (ALWAYS_FALSE, MYPY_TRUE) and guard_value in (
-            ALWAYS_TRUE,
-            MYPY_TRUE,
-        ):
+        elif pattern_value in (ALWAYS_TRUE, MYPY_TRUE) and guard_value in (ALWAYS_TRUE, MYPY_TRUE):
             for body in s.bodies[i + 1 :]:
                 mark_block_unreachable(body)
 

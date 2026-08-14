@@ -266,6 +266,38 @@ refer to attributes. These are not valid::
 
    __deletable__ = ('a',)  # Error: not in a class body
 
+Acyclic classes
+---------------
+
+By default, native classes participate in CPython's cyclic garbage
+collector (GC). This adds some overhead to object allocation and
+deallocation. If you know that instances of a class can never be
+part of reference cycles, you can opt out of cyclic GC using
+``@mypyc_attr(acyclic=True)``::
+
+    from mypy_extensions import mypyc_attr
+
+    @mypyc_attr(acyclic=True)
+    class Leaf:
+        def __init__(self, x: int, name: str) -> None:
+            self.x = x
+            self.name = name
+
+This can improve performance, especially for classes that are
+allocated and deallocated frequently. Acyclic instances also use
+less memory, since CPython doesn't need to add a GC header to them.
+
+The acyclic property is not inherited by subclasses. Each subclass
+must explicitly use ``@mypyc_attr(acyclic=True)`` to also opt out
+of cyclic GC.
+
+.. warning::
+
+    If instances of an acyclic class actually participate in reference
+    cycles, those cycles will never be collected, resulting in memory
+    leaks. Only use this for classes whose instances won't refer back
+    to objects that (directly or indirectly) refer to the instance.
+
 Other properties
 ----------------
 

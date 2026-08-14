@@ -157,7 +157,7 @@ MypyFile:1(
         NameExpr(x [l])))))
 
 [case testReusingForLoopIndexVariable]
-# flags: --allow-redefinition
+# flags: --allow-redefinition-old
 for x in None:
     pass
 for x in None:
@@ -176,7 +176,7 @@ MypyFile:1(
       PassStmt:5())))
 
 [case testReusingForLoopIndexVariable2]
-# flags: --allow-redefinition
+# flags: --allow-redefinition-old
 def f():
     for x in None:
         pass
@@ -357,7 +357,7 @@ MypyFile:1(
     IntExpr(1)))
 
 [case testStarLvalues]
-# flags: --allow-redefinition
+# flags: --allow-redefinition-old
 *x, y = 1
 *x, (y, *z) = 1
 *(x, q), r = 1
@@ -388,7 +388,7 @@ MypyFile:1(
     IntExpr(1)))
 
 [case testMultipleDefinition]
-# flags: --allow-redefinition
+# flags: --allow-redefinition-old
 x, y = 1
 x, y = 2
 [out]
@@ -824,7 +824,7 @@ MypyFile:1(
           NameExpr(Err [__main__.Err])
           Args())))))
 [case testMultipleAssignmentWithPartialNewDef]
-# flags: --allow-redefinition
+# flags: --allow-redefinition-old
 o = None
 x, o = o, o
 [out]
@@ -950,7 +950,7 @@ MypyFile:1(
               NameExpr(b [l]))))))))
 
 [case testRenameGlobalVariable]
-# flags: --allow-redefinition
+# flags: --allow-redefinition-old
 def f(a): pass
 x = 0
 f(x)
@@ -984,7 +984,7 @@ MypyFile:1(
         NameExpr(x [__main__.x])))))
 
 [case testNoRenameGlobalVariable]
-# flags: --disallow-redefinition
+# flags: --disallow-redefinition-old
 def f(a): pass
 x = 0
 f(x)
@@ -1017,7 +1017,7 @@ MypyFile:1(
         NameExpr(x [__main__.x])))))
 
 [case testRenameLocalVariable]
-# flags: --allow-redefinition
+# flags: --allow-redefinition-old
 def f(a):
     f(a)
     a = ''
@@ -1044,7 +1044,7 @@ MypyFile:1(
             NameExpr(a' [l])))))))
 
 [case testCannotRenameExternalVarWithinClass]
-# flags: --allow-redefinition
+# flags: --allow-redefinition-old
 x = 0
 x
 class A:
