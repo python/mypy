@@ -45,7 +45,7 @@ main:10: note: This violates the Liskov substitution principle
 main:10: note: See https://mypy.readthedocs.io/en/stable/common_issues.html#incompatible-overrides
 main:10: error: Argument 2 of "f" is incompatible with supertype "A"; supertype defines the argument type as "int"
 
-[case testPositionalOverridingArgumentNameInsensitivity]
+[case testPositionalOverridingArgumentNameSensitivity]
 import typing
 
 class A(object):
@@ -58,7 +58,11 @@ class B(A):
                                               # E: Argument 2 of "f" is incompatible with supertype "A"; supertype defines the argument type as "str"
 
 class C(A):
-    def f(self, foo: int, bar: str) -> None: pass
+    def f(self, foo: int, bar: str) -> None: pass # E: Signature of "f" incompatible with supertype "A" \
+                                                  # N:      Superclass: \
+                                                  # N:          def f(self, a: int, b: str) -> None \
+                                                  # N:      Subclass: \
+                                                  # N:          def f(self, foo: int, bar: str) -> None
 
 
 [case testPositionalOverridingArgumentNamesCheckedWhenMismatchingPos]
