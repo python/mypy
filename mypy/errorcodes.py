@@ -34,6 +34,19 @@ class ErrorCode:
             sub_code_map[sub_code_of.code].add(code)
         error_codes[code] = self
 
+    @staticmethod
+    def is_code_or_sub_code_of(
+        possible_child_code: ErrorCode | None, possible_parent_code: ErrorCode
+    ) -> bool:
+        """Check if the first code ⊆ the second code, so to speak.
+        If None is supplied as the first argument, this is always false.
+        Again, to quote the assert in ErrorCode above, "Nested subcategories are not supported"."""
+        if possible_child_code is None:
+            # This check is pretty much entirely just so we can do type-safe property access later.
+            return False
+        else:
+            return possible_parent_code in (possible_child_code, possible_child_code.sub_code_of)
+
     def __str__(self) -> str:
         return f"<ErrorCode {self.code}>"
 
@@ -115,6 +128,12 @@ IMPORT_NOT_FOUND: Final = ErrorCode(
 )
 IMPORT_UNTYPED: Final = ErrorCode(
     "import-untyped", "Require that imported module has stubs", "General", sub_code_of=IMPORT
+)
+IMPORT_UNTYPED_STUBS_AVAILABLE: Final = ErrorCode(
+    "import-untyped-stubs-available",
+    "Require that imported module (with known stubs) has stubs",
+    "General",
+    sub_code_of=IMPORT,
 )
 NO_REDEF: Final = ErrorCode("no-redef", "Check that each name is defined once", "General")
 FUNC_RETURNS_VALUE: Final = ErrorCode(
