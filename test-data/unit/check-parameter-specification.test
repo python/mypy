@@ -148,6 +148,7 @@ from typing_extensions import ParamSpec
 P = ParamSpec("P")
 R = TypeVar("R")
 Ts = TypeVarTuple("Ts")
+Us = TypeVarTuple("Us")
 
 class contextmanager(Generic[P, R]):
     def __init__(self, func: Callable[P, R]) -> None: ...
@@ -157,6 +158,7 @@ class contextmanager(Generic[P, R]):
 class _contextmanager_cls(Generic[P, R]):
     def __enter__(self) -> R: ...
     def __exit__(self, *args: object) -> bool: ...
+    def invoke(self, *args: P.args, **kwargs: P.kwargs) -> R: ...
 
 @contextmanager
 def print_args(*args: Unpack[Ts]) -> tuple[Unpack[Ts]]: ...
@@ -165,6 +167,10 @@ with print_args(2, "x") as value:
     reveal_type(value)  # N: Revealed type is "tuple[builtins.int, builtins.str]"
 
 reveal_type(print_args(2, "x"))  # N: Revealed type is "__main__._contextmanager_cls[[Literal[2]?, Literal['x']?], tuple[Literal[2]?, Literal['x']?]]"
+
+def forward(*args: Unpack[Us]) -> None:
+    manager = print_args(0, *args, "end")
+    reveal_type(manager.invoke(0, *args, "end"))  # N: Revealed type is "tuple[builtins.int, Unpack[Us`-1], builtins.str]"
 [builtins fixtures/tuple.pyi]
 
 [case testInvalidParamSpecType]

@@ -410,14 +410,29 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
                 and isinstance(arg_type.type, TypeVarTupleType)
             ):
                 expanded = self.expand_unpack(arg_type)
-                for item in expanded:
-                    arg_types.append(item)
-                    if isinstance(item, UnpackType):
-                        arg_kinds.append(ARG_STAR)
-                        arg_names.append(arg_name)
-                    else:
-                        arg_kinds.append(ArgKind.ARG_POS)
-                        arg_names.append(None)
+                # Keep a residual unpack and its suffix together as one vararg. Otherwise
+                # the suffix would become positional arguments placed after *args.
+                unpack_index = next(
+                    (i for i, item in enumerate(expanded) if isinstance(item, UnpackType)), None
+                )
+                if unpack_index is not None:
+                    arg_types.extend(expanded[:unpack_index])
+                    arg_kinds.extend([ArgKind.ARG_POS] * unpack_index)
+                    arg_names.extend([None] * unpack_index)
+
+                    unpack = expanded[unpack_index]
+                    assert isinstance(unpack, UnpackType)
+                    if unpack_index < len(expanded) - 1:
+                        unpack = UnpackType(
+                            TupleType(expanded[unpack_index:], arg_type.type.tuple_fallback)
+                        )
+                    arg_types.append(unpack)
+                    arg_kinds.append(ARG_STAR)
+                    arg_names.append(arg_name)
+                else:
+                    arg_types.extend(expanded)
+                    arg_kinds.extend([ArgKind.ARG_POS] * len(expanded))
+                    arg_names.extend([None] * len(expanded))
             else:
                 arg_types.append(arg_type.accept(self))
                 arg_kinds.append(arg_kind)
