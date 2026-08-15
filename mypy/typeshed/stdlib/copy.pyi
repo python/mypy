@@ -14,9 +14,14 @@ class _SupportsReplace(Protocol[_RT_co]):
 # None in CPython but non-None in Jython
 PyStringMap: Any
 
-# Note: memo and _nil are internal kwargs.
-def deepcopy(x: _T, memo: dict[int, Any] | None = None, _nil: Any = []) -> _T: ...
 def copy(x: _T) -> _T: ...
+
+if sys.version_info >= (3, 15):
+    def deepcopy(x: _T, memo: dict[int, Any] | None = None) -> _T: ...
+
+else:
+    # Note: memo and _nil are internal kwargs.
+    def deepcopy(x: _T, memo: dict[int, Any] | None = None, _nil: Any = []) -> _T: ...
 
 if sys.version_info >= (3, 13):
     __all__ += ["replace"]

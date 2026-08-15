@@ -268,10 +268,10 @@ class CodeType:
         __replace__ = replace
 
 @final
-class MappingProxyType(Mapping[_KT_co, _VT_co]):  # type: ignore[type-var]  # pyright: ignore[reportInvalidTypeArguments]  # ty:ignore[invalid-generic-class]
+class MappingProxyType(Mapping[_KT_co, _VT_co]):  # type: ignore[type-var]  # pyright: ignore[reportInvalidTypeArguments]  # ty:ignore[invalid-generic-class]  # pyrefly: ignore [invalid-variance]
     __hash__: ClassVar[None]  # type: ignore[assignment]
     def __new__(cls, mapping: SupportsKeysAndGetItem[_KT_co, _VT_co]) -> Self: ...
-    def __getitem__(self, key: _KT_co, /) -> _VT_co: ...  # type: ignore[misc]  # pyright: ignore[reportGeneralTypeIssues]
+    def __getitem__(self, key: _KT_co, /) -> _VT_co: ...  # type: ignore[misc]  # pyright: ignore[reportGeneralTypeIssues]  # pyrefly: ignore [invalid-variance]
     def __iter__(self) -> Iterator[_KT_co]: ...
     def __len__(self) -> int: ...
     def __eq__(self, value: object, /) -> bool: ...
@@ -281,11 +281,11 @@ class MappingProxyType(Mapping[_KT_co, _VT_co]):  # type: ignore[type-var]  # py
     def items(self) -> ItemsView[_KT_co, _VT_co]: ...
 
     @overload
-    def get(self, key: _KT_co, /) -> _VT_co | None: ...  # type: ignore[misc]  # pyright: ignore[reportGeneralTypeIssues] # Covariant type as parameter
+    def get(self, key: _KT_co, /) -> _VT_co | None: ...  # type: ignore[misc]  # pyright: ignore[reportGeneralTypeIssues] # Covariant type as parameter  # pyrefly: ignore [invalid-variance]
     @overload
-    def get(self, key: _KT_co, default: _VT_co, /) -> _VT_co: ...  # type: ignore[misc] # pyright: ignore[reportGeneralTypeIssues] # Covariant type as parameter
+    def get(self, key: _KT_co, default: _VT_co, /) -> _VT_co: ...  # type: ignore[misc] # pyright: ignore[reportGeneralTypeIssues] # Covariant type as parameter  # pyrefly: ignore [invalid-variance]
     @overload
-    def get(self, key: _KT_co, default: _T2, /) -> _VT_co | _T2: ...  # type: ignore[misc]  # pyright: ignore[reportGeneralTypeIssues] # Covariant type as parameter
+    def get(self, key: _KT_co, default: _T2, /) -> _VT_co | _T2: ...  # type: ignore[misc]  # pyright: ignore[reportGeneralTypeIssues] # Covariant type as parameter  # pyrefly: ignore [invalid-variance]
 
     def __class_getitem__(cls, item: Any, /) -> GenericAlias: ...
     def __reversed__(self) -> Iterator[_KT_co]: ...

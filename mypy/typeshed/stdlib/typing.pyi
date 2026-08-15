@@ -811,7 +811,7 @@ class Mapping(Collection[_KT], Generic[_KT, _VT_co]):
     @overload
     def get(self, key: _KT, /) -> _VT_co | None: ...
     @overload
-    def get(self, key: _KT, default: _VT_co, /) -> _VT_co: ...  # type: ignore[misc] # pyright: ignore[reportGeneralTypeIssues] # Covariant type as parameter
+    def get(self, key: _KT, default: _VT_co, /) -> _VT_co: ...  # type: ignore[misc] # pyright: ignore[reportGeneralTypeIssues] # Covariant type as parameter  # pyrefly: ignore [invalid-variance]
     @overload
     def get(self, key: _KT, default: _T, /) -> _VT_co | _T: ...
 

@@ -197,7 +197,7 @@ else:
         def rotate(self, angle: float) -> Vec2D: ...
 
 # Does not actually inherit from Canvas, but dynamically gets all methods of Canvas
-class ScrolledCanvas(Canvas, Frame):  # type: ignore[misc]
+class ScrolledCanvas(Canvas, Frame):  # type: ignore[misc]  # pyrefly: ignore [inconsistent-inheritance]
     bg: str
     hscroll: Scrollbar
     vscroll: Scrollbar
@@ -436,7 +436,7 @@ class TPen:
     st = showturtle
     ht = hideturtle
 
-class RawTurtle(TPen, TNavigator):  # type: ignore[misc]  # Conflicting methods in base classes
+class RawTurtle(TPen, TNavigator):  # type: ignore[misc]  # Conflicting methods in base classes  # pyrefly: ignore [inconsistent-inheritance]
     screen: TurtleScreen
     screens: ClassVar[list[TurtleScreen]]
     def __init__(
