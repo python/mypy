@@ -105,6 +105,13 @@ Related changes:
 
 Please see [git log](https://github.com/python/typeshed/commits/main?after=f76037a1eb3923c67a8bc0e302ee9c016ffb3431+0&branch=main&path=stdlib) for full list of standard library typeshed stub changes.
 
+### Mypy 2.3.1
+
+- Fix mypyc crash on double yielding Iterators (Daniël van Noord, PR [21826](https://github.com/python/mypy/pull/21826))
+- Fix mypyc `default_factory` for inherited dataclass (Daniël van Noord, PR [21785](https://github.com/python/mypy/pull/21785))
+- Clear mypyc coroutine env on coroutine completion (Piotr Sawicki, PR [21734](https://github.com/python/mypy/pull/21734))
+- Fix crash when unpacking return value from overload (Shantanu, PR [21830](https://github.com/python/mypy/pull/21830))
+
 ### Acknowledgements
 
 Thanks to all mypy contributors who contributed to this release:
