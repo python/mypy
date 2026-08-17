@@ -404,37 +404,50 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
         arg_kinds: list[ArgKind] = []
         arg_names: list[str | None] = []
         for arg_type, arg_kind, arg_name in zip(t.arg_types, t.arg_kinds, t.arg_names):
-            if (
-                arg_kind == ARG_STAR
-                and isinstance(arg_type, UnpackType)
-                and isinstance(arg_type.type, TypeVarTupleType)
-            ):
-                expanded = self.expand_unpack(arg_type)
+            expanded_arg_type: Type | None = None
+            expanded_vararg: list[Type] | None = None
+            tuple_fallback: Instance | None = None
+            if arg_kind == ARG_STAR and isinstance(arg_type, UnpackType):
+                if isinstance(arg_type.type, TypeVarTupleType):
+                    expanded_vararg = self.expand_unpack(arg_type)
+                    tuple_fallback = arg_type.type.tuple_fallback
+                else:
+                    expanded_arg_type = arg_type.accept(self)
+                    if isinstance(expanded_arg_type, UnpackType):
+                        unpacked = get_proper_type(expanded_arg_type.type)
+                        if isinstance(unpacked, TupleType):
+                            expanded_vararg = unpacked.items
+                            tuple_fallback = unpacked.partial_fallback
+            if expanded_vararg is not None:
                 # Keep a residual unpack and its suffix together as one vararg. Otherwise
                 # the suffix would become positional arguments placed after *args.
                 unpack_index = next(
-                    (i for i, item in enumerate(expanded) if isinstance(item, UnpackType)), None
+                    (i for i, item in enumerate(expanded_vararg) if isinstance(item, UnpackType)),
+                    None,
                 )
                 if unpack_index is not None:
-                    arg_types.extend(expanded[:unpack_index])
+                    arg_types.extend(expanded_vararg[:unpack_index])
                     arg_kinds.extend([ArgKind.ARG_POS] * unpack_index)
                     arg_names.extend([None] * unpack_index)
 
-                    unpack = expanded[unpack_index]
+                    unpack = expanded_vararg[unpack_index]
                     assert isinstance(unpack, UnpackType)
-                    if unpack_index < len(expanded) - 1:
+                    if unpack_index < len(expanded_vararg) - 1:
+                        assert tuple_fallback is not None
                         unpack = UnpackType(
-                            TupleType(expanded[unpack_index:], arg_type.type.tuple_fallback)
+                            TupleType(expanded_vararg[unpack_index:], tuple_fallback)
                         )
                     arg_types.append(unpack)
                     arg_kinds.append(ARG_STAR)
                     arg_names.append(arg_name)
                 else:
-                    arg_types.extend(expanded)
-                    arg_kinds.extend([ArgKind.ARG_POS] * len(expanded))
-                    arg_names.extend([None] * len(expanded))
+                    arg_types.extend(expanded_vararg)
+                    arg_kinds.extend([ArgKind.ARG_POS] * len(expanded_vararg))
+                    arg_names.extend([None] * len(expanded_vararg))
             else:
-                arg_types.append(arg_type.accept(self))
+                arg_types.append(
+                    expanded_arg_type if expanded_arg_type is not None else arg_type.accept(self)
+                )
                 arg_kinds.append(arg_kind)
                 arg_names.append(arg_name)
         return t.copy_modified(arg_types=arg_types, arg_kinds=arg_kinds, arg_names=arg_names)
