@@ -2054,7 +2054,17 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                 # cases. A cleaner alternative would be to switch to single bin type
                 # inference, but this is a lot of work.
                 old = self.infer_more_unions_for_recursive_type(ctx)
-                res.append(self.accept(arg, ctx))
+                arg_type = self.accept(arg, ctx)
+                proper_ctx = get_proper_type(ctx)
+                proper_arg_type = get_proper_type(arg_type)
+                if (
+                    isinstance(proper_ctx, TypeVarType)
+                    and isinstance(proper_arg_type, Instance)
+                    and proper_arg_type.last_known_value is not None
+                    and proper_arg_type.last_known_value.is_sentinel_literal()
+                ):
+                    arg_type = proper_arg_type.last_known_value
+                res.append(arg_type)
                 # We need to manually restore union inference state, ugh.
                 type_state.infer_unions = old
             else:

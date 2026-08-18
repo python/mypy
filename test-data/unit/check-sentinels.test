@@ -189,3 +189,13 @@ def func(x: int | MISSING = MISSING) -> None:
 func(MISSING)
 func(ALIAS)  # E: Argument 1 to "func" has incompatible type "Sentinel"; expected "int | MISSING"
 [builtins fixtures/tuple.pyi]
+
+[case testDictGetPEP661SentinelDefault]
+from typing_extensions import assert_type, sentinel
+
+Unknown = sentinel("Unknown")
+
+def func(d: dict[str, str]) -> None:
+    var = d.get("key", Unknown)
+    assert_type(var, str | Unknown)
+[builtins fixtures/dict.pyi]
