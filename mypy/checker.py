@@ -619,6 +619,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                                 and not self.is_noop_for_reachability(d)
                             ):
                                 self.msg.unreachable_statement(d)
+                                self.binder.suppress_unreachable_warnings()
                                 finish = True
                                 reported_unreachable = True
 
@@ -3331,6 +3332,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                     and not self.is_noop_for_reachability(s)
                 ):
                     self.msg.unreachable_statement(s)
+                    self.binder.suppress_unreachable_warnings()
                     finish = True
                     reported_unreachable = True
 
@@ -5517,6 +5519,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                     self.accept(s.finally_body)
 
         if s.finally_body:
+            previously_suppressed = self.binder.is_unreachable_warning_suppressed()
             # Then we try again for the more restricted set of options
             # that can fall through. (Why do we need to check the
             # finally clause twice? Depending on whether the finally
@@ -5533,6 +5536,11 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                 with IterationErrorWatcher(self.msg.errors, iter_errors):
                     self.accept(s.finally_body)
             self.msg.iteration_dependent_errors(iter_errors)
+
+            if not previously_suppressed:
+                # The finally body might have warned about unreachability,
+                # but we still want anything afterwards to warn too.
+                self.binder.frames[-1].suppress_unreachable_warnings = False
 
     def visit_try_without_finally(self, s: TryStmt, try_frame: bool) -> None:
         """Type check a try statement, ignoring the finally block.

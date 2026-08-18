@@ -1030,9 +1030,9 @@ class CalledProcessError(SubprocessError):
 
 class Popen(Generic[AnyStr]):
     args: _CMD
-    stdin: IO[Any] | None
-    stdout: IO[Any] | None
-    stderr: IO[Any] | None
+    stdin: IO[AnyStr] | None
+    stdout: IO[AnyStr] | None
+    stderr: IO[AnyStr] | None
     pid: int
     returncode: int | MaybeNone
     universal_newlines: bool

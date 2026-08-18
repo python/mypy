@@ -90,8 +90,8 @@ class HTMLRepr(Repr):
 
 class HTMLDoc(Doc):
     _repr_instance: HTMLRepr
-    repr = _repr_instance.repr
-    escape = _repr_instance.escape
+    repr = _repr_instance.repr  # pyrefly: ignore [unknown-name]
+    escape = _repr_instance.escape  # pyrefly: ignore [unknown-name]
     def page(self, title: str, contents: str) -> str: ...
     if sys.version_info >= (3, 11):
         def heading(self, title: str, extras: str = "") -> str: ...
@@ -197,7 +197,7 @@ class TextRepr(Repr):
 
 class TextDoc(Doc):
     _repr_instance: TextRepr
-    repr = _repr_instance.repr
+    repr = _repr_instance.repr  # pyrefly: ignore [unknown-name]
     def bold(self, text: str) -> str: ...
     def indent(self, text: str, prefix: str = "    ") -> str: ...
     def section(self, title: str, contents: str) -> str: ...
