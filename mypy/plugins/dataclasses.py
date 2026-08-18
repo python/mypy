@@ -63,6 +63,7 @@ from mypy.types import (
     LiteralType,
     NoneType,
     ProperType,
+    SentinelValue,
     TupleType,
     Type,
     TypeOfAny,
@@ -799,6 +800,9 @@ class DataclassTransformer:
         if node is None:
             return False
         node_type = get_proper_type(node)
+        if isinstance(node_type, LiteralType) and isinstance(node_type.value, SentinelValue):
+            # PEP 661 sentinel: `KW_ONLY = sentinel("KW_ONLY")` (Python 3.15+).
+            return node_type.value.fullname == "dataclasses.KW_ONLY"
         if not isinstance(node_type, Instance):
             return False
         return node_type.type.fullname == "dataclasses.KW_ONLY"

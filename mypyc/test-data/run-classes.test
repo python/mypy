@@ -2999,7 +2999,7 @@ from mypy_extensions import u8
 from librt.internal import (
     ReadBuffer, WriteBuffer, write_bool, read_bool, write_str, read_str, write_float, read_float,
     write_int, read_int, write_tag, read_tag, write_bytes, read_bytes,
-    cache_version,
+    cache_version, extract_symbol,
 )
 
 from testutil import assertRaises
@@ -3217,6 +3217,16 @@ def test_buffer_str_size() -> None:
         b = ReadBuffer(b.getvalue())
         assert read_str(b) == s
 
+def test_extract_symbol_sentinel_literal() -> None:
+    data = WriteBuffer()
+    write_tag(data, 8)  # LITERAL_SENTINEL
+    write_str(data, "__main__.MISSING")
+    write_str(data, "MISSING")
+    write_tag(data, 255)  # END_TAG
+
+    payload = data.getvalue()
+    assert extract_symbol(ReadBuffer(payload)) == payload
+
 [file driver.py]
 from native import *
 
@@ -3231,6 +3241,7 @@ test_buffer_str_size()
 test_buffer_int_powers()
 test_positive_long_int_serialized_bytes()
 test_negative_long_int_serialized_bytes()
+test_extract_symbol_sentinel_literal()
 
 def test_buffer_basic_interpreted() -> None:
     b = WriteBuffer()

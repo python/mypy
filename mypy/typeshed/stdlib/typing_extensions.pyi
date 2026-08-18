@@ -389,7 +389,7 @@ else:
     # At runtime it inherits from ABC and is not a Protocol, but it is on the
     # allowlist for use as a Protocol.
     @runtime_checkable
-    class Buffer(Protocol, abc.ABC):  # type: ignore[misc]  # pyright: ignore[reportGeneralTypeIssues]  # ty:ignore[invalid-protocol]
+    class Buffer(Protocol, abc.ABC):  # type: ignore[misc]  # pyright: ignore[reportGeneralTypeIssues]  # ty:ignore[invalid-protocol]  # pyrefly: ignore [invalid-inheritance]
         # Not actually a Protocol at runtime; see
         # https://github.com/python/typeshed/issues/10224 for why we're defining it this way
         def __buffer__(self, flags: int, /) -> memoryview: ...

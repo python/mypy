@@ -604,18 +604,32 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
             with self.tscope.module_scope(self.tree.fullname):
                 with self.enter_partial_types(), self.binder.top_frame_context():
                     marked_unreachable = False
+                    reported_unreachable = False
                     for d in self.tree.defs:
                         if self.binder.is_unreachable():
+                            finish = False
                             if not marked_unreachable:
                                 self.mark_unreachable(self.tree.defs, after=d)
                                 marked_unreachable = True
                             if not self.should_report_unreachable_issues():
-                                break
-                            if not self.is_noop_for_reachability(d):
+                                finish = True
+                            if (
+                                not finish
+                                and not reported_unreachable
+                                and not self.is_noop_for_reachability(d)
+                            ):
                                 self.msg.unreachable_statement(d)
+                                self.binder.suppress_unreachable_warnings()
+                                finish = True
+                                reported_unreachable = True
+
+                            if finish and not self.options.check_unreachable:
                                 break
-                        else:
-                            self.accept(d)
+
+                            if not self.options.check_unreachable:
+                                continue
+
+                        self.accept(d)
 
                 assert not self.current_node_deferred
 
@@ -3303,20 +3317,34 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
             self.binder.unreachable()
             return
         marked_unreachable = False
+        reported_unreachable = False
         for s in b.body:
             if self.binder.is_unreachable():
+                finish = False
                 if self.scope.top_level_function() is None and not marked_unreachable:
                     self.mark_unreachable(b.body, after=s)
                     marked_unreachable = True
                 if not self.should_report_unreachable_issues():
-                    break
-                if not self.is_noop_for_reachability(s):
+                    finish = True
+                if (
+                    not finish
+                    and not reported_unreachable
+                    and not self.is_noop_for_reachability(s)
+                ):
                     self.msg.unreachable_statement(s)
+                    self.binder.suppress_unreachable_warnings()
+                    finish = True
+                    reported_unreachable = True
+
+                if finish and not self.options.check_unreachable:
                     break
-            else:
-                self.accept(s)
-                # Clear expression cache after each statement to avoid unlimited growth.
-                self.expr_checker.expr_cache.clear()
+
+                if not self.options.check_unreachable:
+                    continue
+
+            self.accept(s)
+            # Clear expression cache after each statement to avoid unlimited growth.
+            self.expr_checker.expr_cache.clear()
 
     def should_report_unreachable_issues(self) -> bool:
         return (
@@ -4409,8 +4437,10 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                     # inferred return type for an overloaded function
                     # to be ambiguous.
                     return
-                assert isinstance(reinferred_rvalue_type, TupleType)
-                rvalue_type = reinferred_rvalue_type
+                if isinstance(reinferred_rvalue_type, TupleType):
+                    # This branch will usually be taken, but in some cases context can
+                    # e.g. select a different overload
+                    rvalue_type = reinferred_rvalue_type
 
             left_rv_types, star_rv_types, right_rv_types = self.split_around_star(
                 rvalue_type.items, star_index, len(lvalues)
@@ -5489,6 +5519,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                     self.accept(s.finally_body)
 
         if s.finally_body:
+            previously_suppressed = self.binder.is_unreachable_warning_suppressed()
             # Then we try again for the more restricted set of options
             # that can fall through. (Why do we need to check the
             # finally clause twice? Depending on whether the finally
@@ -5505,6 +5536,11 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                 with IterationErrorWatcher(self.msg.errors, iter_errors):
                     self.accept(s.finally_body)
             self.msg.iteration_dependent_errors(iter_errors)
+
+            if not previously_suppressed:
+                # The finally body might have warned about unreachability,
+                # but we still want anything afterwards to warn too.
+                self.binder.frames[-1].suppress_unreachable_warnings = False
 
     def visit_try_without_finally(self, s: TryStmt, try_frame: bool) -> None:
         """Type check a try statement, ignoring the finally block.

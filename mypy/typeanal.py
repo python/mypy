@@ -927,8 +927,12 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             if info.special_alias:
                 res, used_default = instantiate_type_alias(
                     info.special_alias,
-                    # TODO: should we allow NamedTuples generic in ParamSpec?
-                    self.anal_array(args, allow_unpack=True),
+                    self.anal_array(
+                        args,
+                        allow_unpack=True,
+                        allow_param_spec=True,
+                        allow_param_spec_literals=True,
+                    ),
                     self.fail,
                     self.note,
                     False,
@@ -953,8 +957,12 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             if info.special_alias:
                 res, used_default = instantiate_type_alias(
                     info.special_alias,
-                    # TODO: should we allow TypedDicts generic in ParamSpec?
-                    self.anal_array(args, allow_unpack=True),
+                    self.anal_array(
+                        args,
+                        allow_unpack=True,
+                        allow_param_spec=True,
+                        allow_param_spec_literals=True,
+                    ),
                     self.fail,
                     self.note,
                     False,
@@ -1049,6 +1057,16 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 line=t.line,
                 column=t.column,
             )
+
+        if isinstance(sym.node, Var) and sym.node.is_sentinel:
+            typ = get_proper_type(sym.node.type)
+            if isinstance(typ, Instance) and typ.last_known_value is not None:
+                return LiteralType(
+                    value=typ.last_known_value.value,
+                    fallback=typ.last_known_value.fallback,
+                    line=t.line,
+                    column=t.column,
+                )
 
         # None of the above options worked. We parse the args (if there are any)
         # to make sure there are no remaining semanal-only types, then give up.

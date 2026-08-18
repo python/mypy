@@ -2755,3 +2755,35 @@ reveal_type(Sneaky(f8, 1, y='').kwargs)  # N: Revealed type is "builtins.dict[bu
 reveal_type(Sneaky(f9, 1, y=0).kwargs)  # N: Revealed type is "TypedDict('builtins.dict', {'x'?: builtins.int, 'y': builtins.int, 'z'?: builtins.str}, closed=True)"
 reveal_type(Sneaky(f9, 1, y=0, z='').kwargs)  # N: Revealed type is "TypedDict('builtins.dict', {'x'?: builtins.int, 'y': builtins.int, 'z'?: builtins.str}, closed=True)"
 [builtins fixtures/paramspec.pyi]
+
+[case testNamedTupleAndTypedDictParamSpecInteraction]
+# https://github.com/python/mypy/issues/21039
+from typing import Callable, NamedTuple, TypedDict, ParamSpec, Generic
+
+P = ParamSpec("P")
+
+class X(TypedDict, Generic[P]):
+    c: Callable[P, None]
+
+def f1(y: X[P]) -> None: ...
+def f2(y: X[[int]]) -> None: ...
+def f3(y: X[...]) -> None: ...
+
+x1: X[[str]]
+f1(x1)
+f2(x1)  # E: Argument 1 to "f2" has incompatible type "X[[str]]"; expected "X[[int]]"
+f3(x1)
+
+class Y(NamedTuple, Generic[P]):
+    c: Callable[P, None]
+
+def g1(y: Y[P]) -> None: ...
+def g2(y: Y[[int]]) -> None: ...
+def g3(y: Y[...]) -> None: ...
+
+y1: Y[[str]]
+g1(y1)
+g2(y1)  # E: Argument 1 to "g2" has incompatible type "Y[[str]]"; expected "Y[[int]]"
+g3(y1)
+[builtins fixtures/paramspec.pyi]
+[typing fixtures/typing-full.pyi]
