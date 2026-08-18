@@ -61,6 +61,15 @@ main:3: note: See https://mypy.readthedocs.io/en/stable/common_issues.html#varia
 main:3: error: Invalid base class "X"
 main:6: error: Incompatible types in assignment (expression has type "str", variable has type "int")
 
+[case testInvalidBaseClass3_AttributeAccess]
+class A:
+    pass
+class B:
+    def __init__(self) -> None:
+        self.a = A
+b = B()
+class C(b.a):  # E: Name "b.a" is not defined ("b" is a variable, not a module or class)
+    pass
 
 [case testInvalidNumberOfTypeArgs]
 from typing import TypeVar
