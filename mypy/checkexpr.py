@@ -1940,6 +1940,11 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         """
         if isinstance(item, AnyType):
             return AnyType(TypeOfAny.from_another_any, source_any=item)
+        if isinstance(item, NoneType):
+            # `type(None)` / `type[None]` is instantiable at runtime and returns None.
+            return CallableType(
+                [], [], [], NoneType(), self.named_type("builtins.function"), from_type_type=True
+            )
         if isinstance(item, Instance):
             res = type_object_type(item.type)
             if isinstance(res, CallableType):
