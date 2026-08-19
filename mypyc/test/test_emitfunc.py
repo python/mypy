@@ -1,12 +1,11 @@
 from __future__ import annotations
 
 import unittest
-from unittest.mock import patch
 
 from mypy.test.helpers import assert_string_arrays_equal
 from mypyc.codegen.emit import Emitter, EmitterContext
 from mypyc.codegen.emitfunc import FunctionEmitterVisitor, generate_native_function
-from mypyc.common import HAVE_IMMORTAL, PLATFORM_SIZE
+from mypyc.common import HAVE_IMMORTAL, IS_FREE_THREADED, PLATFORM_SIZE
 from mypyc.ir.class_ir import ClassIR
 from mypyc.ir.func_ir import FuncDecl, FuncIR, FuncSignature, RuntimeArg
 from mypyc.ir.ops import (
@@ -490,7 +489,7 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
         )
 
     def test_get_attr_ref_free_threaded(self) -> None:
-        with patch("mypyc.codegen.emitfunc.IS_FREE_THREADED", True):
+        if IS_FREE_THREADED:
             self.assert_emit(
                 GetAttr(self.r, "o", 1),
                 """\
@@ -553,7 +552,7 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
         )
 
     def test_set_attr_ref_free_threaded(self) -> None:
-        with patch("mypyc.codegen.emitfunc.IS_FREE_THREADED", True):
+        if IS_FREE_THREADED:
             self.assert_emit(
                 SetAttr(self.r, "o", self.o, 1),
                 """\
