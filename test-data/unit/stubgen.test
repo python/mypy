@@ -355,6 +355,29 @@ def foo(x) -> None: ...
 def bar(x) -> None: ...
 def foo_bar(x) -> None: ...
 
+[case testAsyncContextManager]
+from collections.abc import AsyncGenerator, AsyncIterator
+from contextlib import asynccontextmanager
+
+@asynccontextmanager
+async def ctx() -> AsyncIterator[int]:
+    yield 1
+
+class A:
+    @asynccontextmanager
+    async def ctx(self) -> AsyncGenerator[str, None]:
+        yield "value"
+[out]
+from collections.abc import AsyncGenerator, AsyncIterator
+from contextlib import asynccontextmanager
+
+@asynccontextmanager
+def ctx() -> AsyncIterator[int]: ...
+
+class A:
+    @asynccontextmanager
+    def ctx(self) -> AsyncGenerator[str, None]: ...
+
 [case testMultipleAssignment]
 x, y = 1, 2
 [out]
