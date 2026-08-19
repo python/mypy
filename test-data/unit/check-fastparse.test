@@ -1,31 +1,25 @@
-[case testFastParseSyntaxError_no_native_parse]
+[case testFastParseSyntaxError]
+1 +  # E: Expected an expression
 
-1 +  # E: Invalid syntax
-
-[case testFastParseTypeCommentSyntaxError_no_native_parse]
-
+[case testFastParseTypeCommentSyntaxError]
 x = None # type: a : b  # E: Syntax error in type comment "a : b"
 
 [case testFastParseInvalidTypeComment]
-
 x = None # type: a + b  # E: Invalid type comment or annotation
 
 -- Function type comments are attributed to the function def line.
 -- This happens in both parsers.
-[case testFastParseFunctionAnnotationSyntaxError_no_native_parse]
-
+[case testFastParseFunctionAnnotationSyntaxError]
 def f():  # E: Syntax error in type comment "None -> None" # N: Suggestion: wrap argument types in parentheses
   # type: None -> None
   pass
 
-[case testFastParseFunctionAnnotationSyntaxErrorSpaces_no_native_parse]
-
+[case testFastParseFunctionAnnotationSyntaxErrorSpaces]
 def f():  # E: Syntax error in type comment "None -> None" # N: Suggestion: wrap argument types in parentheses
   # type:             None -> None
   pass
 
 [case testFastParseInvalidFunctionAnnotation]
-
 def f(x):  # E: Invalid type comment or annotation
   # type: (a + b) -> None
   pass
@@ -156,8 +150,7 @@ def f(a,        # type: A
 [builtins fixtures/dict.pyi]
 [out]
 
-[case testFastParsePerArgumentAnnotationsWithAnnotatedBareStar_no_native_parse]
-
+[case testFastParsePerArgumentAnnotationsWithAnnotatedBareStar]
 def f(*, # type: int  # E: Bare * has associated type comment
       x  # type: str
       ):
@@ -286,8 +279,7 @@ def f7(x: int):  # E: Function has duplicate type signatures
   # type: (int) -> int
   pass
 
-[case testFastParserDuplicateNames_no_native_parse]
-
+[case testFastParserDuplicateNames]
 def f(x, y, z):
   pass
 

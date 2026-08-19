@@ -161,6 +161,11 @@ class FineGrainedSuite(DataSuite):
         options.export_types = "inspect" in testcase.file
         # Treat empty bodies safely for these test cases.
         options.allow_empty_bodies = not testcase.name.endswith("_no_empty")
+
+        if testcase.name.endswith("_old_parser"):
+            # This test is only for the old parser.
+            options.native_parser = False
+
         options.reveal_verbose_types = True
         if re.search("flags:.*--follow-imports", source) is None:
             # Override the default for follow_imports

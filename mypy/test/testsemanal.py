@@ -64,6 +64,9 @@ def test_semanal(testcase: DataDrivenTestCase) -> None:
         src = "\n".join(testcase.input)
         options = get_semanal_options(src, testcase)
         options.python_version = testfile_pyversion(testcase.file)
+        if testcase.name.endswith("_old_parser"):
+            # This test is only for the old parser.
+            options.native_parser = False
         result = build.build(
             sources=[BuildSource("main", None, src)], options=options, alt_lib_path=test_temp_dir
         )

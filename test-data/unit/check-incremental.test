@@ -7260,7 +7260,7 @@ bar: int = foo
 [out3]
 tmp/bar.py:2: error: Incompatible types in assignment (expression has type "str", variable has type "int")
 
-[case testIncrementalBlockingErrorRepeatAndUndo_no_native_parse]
+[case testIncrementalBlockingErrorRepeatAndUndo]
 import m
 [file m.py]
 import f
@@ -7278,9 +7278,9 @@ x = 1
 [out]
 tmp/m.py:2: note: Revealed type is "builtins.int"
 [out2]
-tmp/f.py:1: error: Invalid syntax
+tmp/f.py:1: error: Simple statements must be separated by newlines or semicolons
 [out3]
-tmp/f.py:1: error: Invalid syntax
+tmp/f.py:1: error: Simple statements must be separated by newlines or semicolons
 [out4]
 tmp/m.py:2: note: Revealed type is "builtins.int"
 
