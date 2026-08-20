@@ -109,3 +109,32 @@ reveal_type(wrap[[int], str])  # N: Revealed type is "def (f: def (builtins.int)
 def variadic[*Ts](*args: *tuple[*Ts]) -> tuple[*Ts]: ...
 reveal_type(variadic[int, str])  # N: Revealed type is "def (builtins.int, builtins.str) -> tuple[builtins.int, builtins.str]"
 [builtins fixtures/tuple.pyi]
+
+[case testPEP718PhantomTypeParams]
+# flags: --enable-incomplete-feature=SubscriptableFunctions --python-version=3.12
+def f[T]() -> None: pass
+reveal_type(f)  # N: Revealed type is "def [T] ()"
+reveal_type(f[int])  # N: Revealed type is "def ()"
+f[int, str]  # E: Type application has too many types (1 expected)
+[builtins fixtures/tuple.pyi]
+
+[case testPEP718DeclarationOrder]
+# flags: --enable-incomplete-feature=SubscriptableFunctions --python-version=3.12
+def g[T, U](x: U, y: T) -> tuple[T, U]: ...
+reveal_type(g[int, str])  # N: Revealed type is "def (x: builtins.str, y: builtins.int) -> tuple[builtins.int, builtins.str]"
+[builtins fixtures/tuple.pyi]
+
+[case testPEP718OverloadDispatchOnBounds]
+# flags: --enable-incomplete-feature=SubscriptableFunctions --python-version=3.12
+from typing import overload
+class StringSerializer: ...
+class IntSerializer: ...
+@overload
+def ser[T: str]() -> StringSerializer: ...
+@overload
+def ser[T: int]() -> IntSerializer: ...  # E: Overloaded function signature 2 will never be matched: signature 1's parameter type(s) are the same or broader
+def ser(): ...
+reveal_type(ser[str]())  # N: Revealed type is "__main__.StringSerializer"
+reveal_type(ser[int]())  # N: Revealed type is "__main__.IntSerializer"
+ser[bytes]()  # E: No overload variant accepts 1 type argument
+[builtins fixtures/tuple.pyi]

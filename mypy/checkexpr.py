@@ -5281,7 +5281,23 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                 env[v.id] = d
         full_args: list[Type | None] = [None] * n_skip
         full_args.extend(padded)
-        return self.apply_generic_arguments(it, full_args, ctx)
+        if report:
+            return self.apply_generic_arguments(it, full_args, ctx)
+        # Silent mode (PEP 718 overload pre-filtering): a bound or constraint
+        # violation means this item does not accept the subscription — e.g.
+        # `ser[int]` must skip an overload whose type parameter is bounded by
+        # str. Capture violations instead of reporting them.
+        violations: list[str] = []
+
+        def note_violation(
+            _callable: CallableType, _typ: Type, name: str, _context: Context
+        ) -> None:
+            violations.append(name)
+
+        applied = applytype.apply_generic_arguments(it, full_args, note_violation, ctx)
+        if violations:
+            return None
+        return applied
 
     def apply_type_arguments_to_callable(
         self, tp: Type, args: Sequence[Type], ctx: Context

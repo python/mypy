@@ -1242,6 +1242,29 @@ class SemanticAnalyzer(
                     self.msg.type_parameters_should_be_declared(
                         [n.split(".")[-1] for n in extra], defn
                     )
+                if SUBSCRIPTABLE_FUNCTIONS in self.options.enable_incomplete_feature:
+                    # PEP 718 prototype: a function is generic over *all* its
+                    # declared type parameters, in declaration order — even
+                    # ones that don't appear in the signature (which explicit
+                    # subscription can now observe). Without this, variables
+                    # holds only the inferred (signature-appearance ordered)
+                    # subset.
+                    by_name = {v.name: v for v in fun_type.variables}
+                    new_vars: list[TypeVarLikeType] = []
+                    for p in defn.type_args:
+                        if p.name in by_name:
+                            new_vars.append(by_name.pop(p.name))
+                            continue
+                        sym = self.lookup_qualified(p.name, defn)
+                        if sym is None or not isinstance(sym.node, TypeVarLikeExpr):
+                            continue
+                        new_vars.append(
+                            a.tvar_scope.bind_new(p.name, sym.node, a.fail_func, fun_type)
+                        )
+                    # Defensively keep anything bound but not declared (already
+                    # reported above) at the end.
+                    new_vars.extend(by_name.values())
+                    fun_type.variables = tuple(new_vars)
             return has_self_type
 
     def setup_self_type(self) -> None:
