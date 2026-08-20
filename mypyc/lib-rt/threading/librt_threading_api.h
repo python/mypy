@@ -1,6 +1,8 @@
 #ifndef LIBRT_THREADING_API_H
 #define LIBRT_THREADING_API_H
 
+#include <stdbool.h>
+
 #include "librt_threading.h"
 
 int
@@ -16,5 +18,9 @@ extern void *LibRTThreading_API[LIBRT_THREADING_API_LEN];
 #define LibRTThreading_Lock_release_internal (*(char (*)(PyObject *self)) LibRTThreading_API[5])
 #define LibRTThreading_Lock_locked_internal (*(char (*)(PyObject *self)) LibRTThreading_API[6])
 #define LibRTThreading_Lock_acquire_blocking_internal (*(char (*)(PyObject *self, char blocking)) LibRTThreading_API[7])
+
+static inline bool CPyLock_Check(PyObject *obj) {
+    return Py_TYPE(obj) == LibRTThreading_Lock_type_internal();
+}
 
 #endif  // LIBRT_THREADING_API_H
