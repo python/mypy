@@ -1063,3 +1063,48 @@ A = list[T]
 a: A
 reveal_type(a)  # N: Revealed type is "builtins.list[builtins.list[Any]]"
 [builtins fixtures/tuple.pyi]
+
+[case testTypeVarDefaultPlaceholderInImportCycleTypedDict]
+import a
+from a import Base
+reveal_type(Base().inst())
+reveal_type(Base().group())
+[file a.py]
+from typing import Generic, TYPE_CHECKING
+from typing_extensions import TypeVar
+
+if TYPE_CHECKING:
+    from c import Inst
+    from d import Group
+
+T = TypeVar("T", default="Inst")
+
+class Base(Generic[T]):
+    def group(self) -> "Group": ...
+    def inst(self) -> T: ...
+
+[file b.py]
+from typing import Callable, Union
+from a import Base
+
+Alias = Union[Base, Callable[[], None]]
+
+[file c.py]
+from a import Base
+
+class Inst:
+    def make(self) -> Base: ...
+
+[file d.py]
+from typing import TYPE_CHECKING, Tuple
+from typing_extensions import TypedDict
+
+if TYPE_CHECKING:
+    from b import Alias
+
+class Group(TypedDict):
+    params: "Tuple[Alias, ...]"
+[builtins fixtures/tuple.pyi]
+[out]
+main:3: note: Revealed type is "c.Inst"
+main:4: note: Revealed type is "TypedDict('d.Group', {'params': builtins.tuple[a.Base[c.Inst] | (def ()), ...]})"

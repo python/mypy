@@ -54,6 +54,7 @@ from mypy.plugin import AnalyzeTypeContext, Plugin, TypeAnalyzerPluginInterface
 from mypy.semanal_shared import (
     SemanticAnalyzerCoreInterface,
     SemanticAnalyzerInterface,
+    has_placeholder,
     paramspec_args,
     paramspec_kwargs,
 )
@@ -527,6 +528,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                         use_generic_error=True,
                         unexpanded_type=t,
                         analyzing_tvar_def=self.analyzing_tvar_def,
+                        api=self.api,
                     )
                     if self.analyzing_tvar_def and used_default:
                         self.api.record_fixed_type(res.type)
@@ -916,6 +918,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 disallow_any=self.options.disallow_any_generics and not self.is_typeshed_stub,
                 options=self.options,
                 analyzing_tvar_def=self.analyzing_tvar_def,
+                api=self.api,
             )
             if self.analyzing_tvar_def and used_default:
                 self.api.record_fixed_type(info)
@@ -2142,6 +2145,7 @@ def fix_instance(
     use_generic_error: bool = False,
     unexpanded_type: Type | None = None,
     analyzing_tvar_def: bool = False,
+    api: SemanticAnalyzerCoreInterface | None = None,
 ) -> bool:
     """Fix a malformed instance by replacing all type arguments with TypeVar default or Any.
 
@@ -2173,6 +2177,14 @@ def fix_instance(
             use_any = False
             if tv.has_default():
                 arg = tv.default
+                if api is not None and has_placeholder(arg):
+                    # The default is a forward reference that is not ready in this pass.
+                    # A placeholder nested inside a type does not stop that type from
+                    # being committed, so substituting one here freezes it in place.
+                    if api.final_iteration:
+                        use_any = True
+                    else:
+                        api.defer()
                 if analyzing_tvar_def:
                     # Record the use of default only when analyzing another default.
                     used_default = True
