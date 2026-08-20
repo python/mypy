@@ -6231,10 +6231,10 @@ class Fields:
         self.pair = pair
 
 class DeletableFields:
-    __deletable__ = ("items",)
+    __deletable__ = ("pair",)
 
-    def __init__(self, items: list[int]) -> None:
-        self.items = items
+    def __init__(self, pair: tuple[int, int]) -> None:
+        self.pair = pair
 
 def test_type_error_preserves_value() -> None:
     getrefcount: Any = getattr(sys, "getrefcount")
@@ -6251,9 +6251,8 @@ def test_type_error_preserves_value() -> None:
 
     with assertRaises(AttributeError):
         del dynamic_fields.items
-    dynamic_fields.items = items
-    dynamic_fields.number = number
-    dynamic_fields.pair = pair
+    # Do not make successful pointer assignments before these checks. Free-threaded
+    # builds reclaim the replaced value using a QSBR-delayed decref.
     with assertRaises(TypeError):
         dynamic_fields.items = object()
     with assertRaises(TypeError):
@@ -6271,17 +6270,23 @@ def test_type_error_preserves_value() -> None:
 
 def test_deletion_releases_value() -> None:
     getrefcount: Any = getattr(sys, "getrefcount")
-    items = [1]
-    base = getrefcount(items)
-    fields = DeletableFields(items)
+    shift = 70
+    number = 1 << shift
+    # Single-word reference fields use delayed decrefs on free-threaded builds. An
+    # unboxed tuple instead exercises the synchronous deletion path changed by the fix.
+    pair = (number, number)
+    fields = DeletableFields(pair)
     dynamic_fields: Any = fields
-    assert getrefcount(items) == base + 1
+    stored_refcount = getrefcount(number)
 
-    del dynamic_fields.items
+    del dynamic_fields.pair
 
-    assert getrefcount(items) == base
+    after = getrefcount(number)
+    assert after == stored_refcount - 2, (stored_refcount, after)
+    # Keep the compiled tuple local live across both refcount measurements.
+    assert pair[0] is number
     with assertRaises(AttributeError):
-        fields.items
+        fields.pair
 
 [case testBorrowedFinalAttributeInLambdaAndNestedFunction]
 from typing import Final, Callable
