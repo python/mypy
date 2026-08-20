@@ -363,20 +363,28 @@ from contextlib import asynccontextmanager
 async def ctx() -> AsyncIterator[int]:
     yield 1
 
+async def coro() -> int:
+    return 1
+
 class A:
     @asynccontextmanager
     async def ctx(self) -> AsyncGenerator[str, None]:
         yield "value"
+
+    async def coro(self) -> int:
+        return 1
 [out]
 from collections.abc import AsyncGenerator, AsyncIterator
 from contextlib import asynccontextmanager
 
 @asynccontextmanager
 def ctx() -> AsyncIterator[int]: ...
+async def coro() -> int: ...
 
 class A:
     @asynccontextmanager
     def ctx(self) -> AsyncGenerator[str, None]: ...
+    async def coro(self) -> int: ...
 
 [case testMultipleAssignment]
 x, y = 1, 2
