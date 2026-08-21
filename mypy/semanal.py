@@ -4516,10 +4516,9 @@ class SemanticAnalyzer(
         elif isinstance(lval, TupleExpr):
             self.analyze_tuple_or_list_lvalue(lval, explicit_type)
         elif isinstance(lval, StarExpr):
-            if nested:
-                self.analyze_lvalue(lval.expr, nested, explicit_type)
-            else:
+            if not nested:
                 self.fail("Starred assignment target must be in a list or tuple", lval)
+            self.analyze_lvalue(lval.expr, nested, explicit_type)
         else:
             self.fail("Invalid assignment target", lval)
 
