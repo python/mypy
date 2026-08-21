@@ -9,6 +9,10 @@ class BadBool:
     def __bool__(self) -> bool:
         raise RuntimeError("bad bool")
 
+class MutableLockHolder:
+    def __init__(self) -> None:
+        self.lock = Lock()
+
 def test_lock_basic() -> None:
     lock = Lock()
     assert not lock.locked()
@@ -23,6 +27,22 @@ def test_lock_context_manager() -> None:
         assert acquired is True
         assert lock.locked()
     assert not lock.locked()
+
+def test_mutable_lock_attribute() -> None:
+    mutable_holder = MutableLockHolder()
+    assert not mutable_holder.lock.locked()
+    with mutable_holder.lock:
+        assert mutable_holder.lock.locked()
+    assert not mutable_holder.lock.locked()
+
+    dynamic_holder: Any = mutable_holder
+    replacement = Lock()
+    dynamic_holder.lock = replacement
+    assert mutable_holder.lock is replacement
+    with mutable_holder.lock:
+        assert replacement.locked()
+    with assertRaises(TypeError):
+        dynamic_holder.lock = object()
 
 def test_lock_non_blocking() -> None:
     lock = Lock()
