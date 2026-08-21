@@ -5,7 +5,7 @@ import unittest
 from mypy.test.helpers import assert_string_arrays_equal
 from mypyc.codegen.emit import Emitter, EmitterContext
 from mypyc.codegen.emitfunc import FunctionEmitterVisitor, generate_native_function
-from mypyc.common import HAVE_IMMORTAL, PLATFORM_SIZE
+from mypyc.common import HAVE_IMMORTAL, IS_FREE_THREADED, PLATFORM_SIZE
 from mypyc.ir.class_ir import ClassIR
 from mypyc.ir.func_ir import FuncDecl, FuncIR, FuncSignature, RuntimeArg
 from mypyc.ir.ops import (
@@ -121,6 +121,7 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
         ir.attributes = {
             "x": bool_rprimitive,
             "y": int_rprimitive,
+            "o": object_rprimitive,
             "i1": int64_rprimitive,
             "i2": int32_rprimitive,
             "t": RTuple([object_rprimitive, object_rprimitive]),
@@ -487,6 +488,18 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
             """,
         )
 
+    def test_get_attr_ref_free_threaded(self) -> None:
+        if IS_FREE_THREADED:
+            self.assert_emit(
+                GetAttr(self.r, "o", 1),
+                """\
+                cpy_r_r0 = CPy_GetAttrRef((PyObject *)cpy_r_r, (PyObject **)&((mod___AObject *)cpy_r_r)->_o);
+                if (unlikely(cpy_r_r0 == NULL)) {
+                    PyErr_SetString(PyExc_AttributeError, "attribute 'o' of 'A' undefined");
+                }
+                """,
+            )
+
     def test_get_attr_merged(self) -> None:
         op = GetAttr(self.r, "y", 1)
         branch = Branch(op, BasicBlock(8), BasicBlock(9), Branch.IS_ERROR)
@@ -537,6 +550,16 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
                cpy_r_r0 = 1;
             """,
         )
+
+    def test_set_attr_ref_free_threaded(self) -> None:
+        if IS_FREE_THREADED:
+            self.assert_emit(
+                SetAttr(self.r, "o", self.o, 1),
+                """\
+                CPy_SetAttrRef((PyObject *)cpy_r_r, (PyObject **)&((mod___AObject *)cpy_r_r)->_o, cpy_r_o);
+                cpy_r_r0 = 1;
+                """,
+            )
 
     def test_set_attr_non_refcounted(self) -> None:
         self.assert_emit(
