@@ -22,6 +22,29 @@ extern "C" {
 #define CPYTHON_LARGE_INT_ERRMSG "Python int too large to convert to C ssize_t"
 
 
+// Native module import synchronization
+
+typedef struct CPyModuleLockAPI CPyModuleLockAPI;
+
+typedef struct {
+    int32_t initialized;
+} CPyImportState;
+
+enum {
+    CPY_LOCK_ERROR = -1,
+    CPY_LOCK_ACQUIRED = 0,
+    CPY_LOCK_DEADLOCK = 1,
+};
+
+CPyModuleLockAPI *CPyModuleLockAPI_Alloc(void);
+void CPyModuleLockAPI_Free(CPyModuleLockAPI *api);
+int CPyImport_AcquireLock(CPyModuleLockAPI *api, PyObject *module_name,
+                          PyObject **module_lock);
+int CPyImport_ReleaseLock(PyObject *module_lock);
+bool CPyImport_IsInitialized(const CPyImportState *state);
+void CPyImport_SetInitialized(CPyImportState *state, bool initialized);
+
+
 // Naming conventions:
 //
 // Tagged: tagged int
@@ -1043,8 +1066,11 @@ PyObject *CPyImport_ImportNative(PyObject *module_name,
                                  PyObject *(*init_only_fn)(void),
                                  int (*exec_fn)(PyObject *),
                                  CPyModule **module_static,
+                                 CPyImportState *state, CPyModuleLockAPI *lock_api,
                                  PyObject *shared_lib_file, PyObject *ext_suffix,
                                  Py_ssize_t is_package);
+int CPyImport_Exec(PyObject *module, const char *module_name,
+                   int (*exec_fn)(PyObject *), CPyImportState *state);
 int CPyImport_SetDunderAttrs(PyObject *module, PyObject *module_name, PyObject *shared_lib_file,
                              PyObject *ext_suffix, Py_ssize_t is_package);
 

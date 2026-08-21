@@ -1506,46 +1506,143 @@ static int CPyImport_SetModuleSpec(PyObject *modobj, PyObject *module_name,
     return 0;
 }
 
+// Set module.__spec__._initializing for CPython's import machinery.
+static int CPyImport_SetInitializing(PyObject *module, bool initializing) {
+    PyObject *spec = PyObject_GetAttrString(module, "__spec__");
+    if (spec == NULL) {
+        return -1;
+    }
+    int result = PyObject_SetAttrString(spec, "_initializing",
+                                       initializing ? Py_True : Py_False);
+    Py_DECREF(spec);
+    return result;
+}
+
+// Import module_name's parent and return owned parent and child-name references.
+// Both outputs are NULL for a top-level module.
+static int CPyImport_ImportParent(PyObject *module_name, PyObject **parent_module,
+                                  PyObject **child_name) {
+    *parent_module = NULL;
+    *child_name = NULL;
+    Py_ssize_t name_len = PyUnicode_GetLength(module_name);
+    if (name_len < 0) {
+        return -1;
+    }
+    Py_ssize_t dot = PyUnicode_FindChar(module_name, '.', 0, name_len, -1);
+    if (dot < 0) {
+        return 0;
+    }
+    PyObject *parent_name = PyUnicode_Substring(module_name, 0, dot);
+    *child_name = PyUnicode_Substring(module_name, dot + 1, name_len);
+    if (parent_name == NULL || *child_name == NULL) {
+        Py_XDECREF(parent_name);
+        Py_CLEAR(*child_name);
+        return -1;
+    }
+    *parent_module = PyImport_Import(parent_name);
+    Py_DECREF(parent_name);
+    if (*parent_module == NULL) {
+        Py_CLEAR(*child_name);
+        return -1;
+    }
+    return 0;
+}
+
+// Import module_name's parent and bind the module under its child name.
+static int CPyImport_SetParentAttr(PyObject *module, PyObject *module_name) {
+    PyObject *parent_module;
+    PyObject *child_name;
+    if (CPyImport_ImportParent(module_name, &parent_module, &child_name) < 0) {
+        return -1;
+    }
+    if (parent_module == NULL) {
+        return 0;
+    }
+    int result = PyObject_SetAttr(parent_module, child_name, module);
+    Py_DECREF(parent_module);
+    Py_DECREF(child_name);
+    return result;
+}
+
+static int CPyImport_ReleaseLockPreservingException(PyObject *module_lock) {
+    PyObject *exc_type, *exc_val, *exc_tb;
+    PyErr_Fetch(&exc_type, &exc_val, &exc_tb);
+    int result = CPyImport_ReleaseLock(module_lock);
+    if (result < 0) {
+        PyErr_Clear();
+    }
+    PyErr_Restore(exc_type, exc_val, exc_tb);
+    return result;
+}
+
+// Execute a module once and publish completion; caller holds the module lock.
+int CPyImport_Exec(PyObject *module, const char *module_name,
+                   int (*exec_fn)(PyObject *), CPyImportState *state) {
+    if (CPyImport_IsInitialized(state)) {
+        return 0;
+    }
+    PyObject *name = PyUnicode_FromString(module_name);
+    if (name == NULL) {
+        return -1;
+    }
+
+    int result = exec_fn(module);
+    if (result == 0) {
+        // Match CPython import semantics: publish parent.child only after the
+        // child module finished executing successfully.
+        result = CPyImport_SetParentAttr(module, name);
+    }
+    if (result == 0) {
+        CPyImport_SetInitialized(state, true);
+    }
+    Py_DECREF(name);
+    return result;
+}
+
 PyObject *CPyImport_ImportNative(PyObject *module_name,
                                  PyObject *(*init_only_fn)(void),
                                  int (*exec_fn)(PyObject *),
                                  CPyModule **module_static,
+                                 CPyImportState *state, CPyModuleLockAPI *lock_api,
                                  PyObject *shared_lib_file, PyObject *ext_suffix,
                                  Py_ssize_t is_package) {
     PyObject *parent_module = NULL;
     PyObject *child_name = NULL;
     PyObject *exc_type, *exc_val, *exc_tb;
-    Py_ssize_t name_len = PyUnicode_GetLength(module_name);
-    if (name_len < 0) {
+    // Import the parent package first to preserve import ordering semantics.
+    if (CPyImport_ImportParent(module_name, &parent_module, &child_name) < 0) {
         return NULL;
     }
-    Py_ssize_t dot = PyUnicode_FindChar(module_name, '.', 0, name_len, -1);
-    if (dot >= 0) {
-        // Import the parent package first to preserve import ordering semantics.
-        PyObject *parent_name = PyUnicode_Substring(module_name, 0, dot);
-        if (parent_name == NULL) {
-            CPyError_OutOfMemory();
-        }
-        child_name = PyUnicode_Substring(module_name, dot + 1, name_len);
-        if (child_name == NULL) {
-            CPyError_OutOfMemory();
-        }
-        parent_module = PyImport_Import(parent_name);
-        Py_DECREF(parent_name);
-        if (parent_module == NULL) {
-            Py_DECREF(child_name);
-            return NULL;
-        }
-    }
+    Py_XDECREF(parent_module);
+    Py_XDECREF(child_name);
 
     // Create the module object without executing the module body.
     // CPyInitOnly_* uses an internal static to cache the module object.
     // We then check sys.modules to determine whether the module body
     // has already been executed (or is being executed in a circular import).
+    PyObject *module_lock;
+    int lock_result = CPyImport_AcquireLock(lock_api, module_name, &module_lock);
+    if (lock_result == CPY_LOCK_DEADLOCK) {
+        PyObject *partial = PyDict_GetItemWithError(PyImport_GetModuleDict(), module_name);
+        if (partial != NULL &&
+                (*module_static == NULL || partial == (PyObject *)*module_static)) {
+            Py_INCREF(partial);
+            return partial;
+        }
+        if (!PyErr_Occurred()) {
+            PyErr_Format(PyExc_ImportError,
+                         "import deadlock for native module '%U' without a partial module",
+                         module_name);
+        }
+        return NULL;
+    }
+    if (lock_result == CPY_LOCK_ERROR) {
+        return NULL;
+    }
+
     PyObject *module_dict = PyImport_GetModuleDict();
     if (module_dict == NULL) {
-        Py_XDECREF(parent_module);
-        Py_XDECREF(child_name);
+        CPyImport_ReleaseLockPreservingException(module_lock);
         return NULL;
     }
 
@@ -1554,33 +1651,36 @@ PyObject *CPyImport_ImportNative(PyObject *module_name,
         if (*module_static != NULL) {
             if (existing == (PyObject *)*module_static) {
                 Py_INCREF(existing);
-                Py_XDECREF(parent_module);
-                Py_XDECREF(child_name);
+                if (CPyImport_ReleaseLock(module_lock) < 0) {
+                    Py_DECREF(existing);
+                    existing = NULL;
+                }
                 return existing;
             }
             PyErr_Format(PyExc_ImportError,
                          "native module '%U' in sys.modules was replaced after initialization",
                          module_name);
-            Py_XDECREF(parent_module);
-            Py_XDECREF(child_name);
+            CPyImport_ReleaseLockPreservingException(module_lock);
             return NULL;
         }
     }
     if (PyErr_Occurred()) {
-        Py_XDECREF(parent_module);
-        Py_XDECREF(child_name);
+        CPyImport_ReleaseLockPreservingException(module_lock);
+        return NULL;
+    }
+
+    if (CPyImport_IsInitialized(state)) {
+        PyErr_Format(PyExc_ImportError,
+                     "initialized native module '%U' is missing from sys.modules",
+                     module_name);
+        CPyImport_ReleaseLockPreservingException(module_lock);
         return NULL;
     }
 
     PyObject *modobj = init_only_fn();
     if (modobj == NULL) {
-        Py_XDECREF(parent_module);
-        Py_XDECREF(child_name);
+        CPyImport_ReleaseLockPreservingException(module_lock);
         return NULL;
-    }
-
-    if (PyObject_SetItem(module_dict, module_name, modobj) < 0) {
-        goto fail;
     }
 
     if (*module_static != (CPyModule *)modobj) {
@@ -1594,31 +1694,41 @@ PyObject *CPyImport_ImportNative(PyObject *module_name,
         goto fail;
     }
 
+    if (CPyImport_SetInitializing(modobj, true) < 0) {
+        goto fail;
+    }
+
+    if (PyObject_SetItem(module_dict, module_name, modobj) < 0) {
+        goto fail;
+    }
+
     // Now execute the module body, with __file__ and __package__ already set.
     if (exec_fn(modobj) != 0) {
         goto fail;
     }
 
-    // Match CPython import semantics: publish parent.child only after the
-    // child module finished executing successfully.
-    if (parent_module != NULL && PyObject_SetAttr(parent_module, child_name, modobj) < 0) {
+    if (CPyImport_SetInitializing(modobj, false) < 0) {
         goto fail;
     }
 
-    Py_XDECREF(parent_module);
-    Py_XDECREF(child_name);
+    if (CPyImport_ReleaseLock(module_lock) < 0) {
+        Py_DECREF(modobj);
+        return NULL;
+    }
     return modobj;
 
 fail:
     // Clean up on failure so that a subsequent import attempt will retry
     // initialization.
     PyErr_Fetch(&exc_type, &exc_val, &exc_tb);
+    CPyImport_SetInitializing(modobj, false);
+    PyErr_Clear();
     PyObject_DelItem(module_dict, module_name);
     PyErr_Clear();
     PyErr_Restore(exc_type, exc_val, exc_tb);
-    Py_XDECREF(parent_module);
-    Py_XDECREF(child_name);
     Py_CLEAR(*module_static);
+    CPyImport_SetInitialized(state, false);
+    CPyImport_ReleaseLockPreservingException(module_lock);
     return NULL;
 }
 

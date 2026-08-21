@@ -14,6 +14,8 @@ REG_PREFIX: Final = "cpy_r_"  # Registers
 STATIC_PREFIX: Final = "CPyStatic_"  # Static variables (for literals etc.)
 TYPE_PREFIX: Final = "CPyType_"  # Type object struct
 MODULE_PREFIX: Final = "CPyModule_"  # Cached modules
+IMPORT_STATE_PREFIX: Final = "CPyImportState_"  # Native module initialization state
+MODULE_LOCK_API_PREFIX: Final = "CPyModuleLockAPI_"  # CPython module-lock API cache
 TYPE_VAR_PREFIX: Final = "CPyTypeVar_"  # Type variables when using new-style Python 3.12 syntax
 ATTR_PREFIX: Final = "_"  # Attributes
 FAST_PREFIX: Final = "__mypyc_fast_"  # Optimized methods in non-extension classes
@@ -92,6 +94,7 @@ RUNTIME_C_FILES: Final = [
     "tuple_ops.c",
     "exc_ops.c",
     "misc_ops.c",
+    "locks.c",
     "generic_ops.c",
     "pythonsupport.c",
     "function_wrapper.c",

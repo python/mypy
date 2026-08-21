@@ -141,12 +141,15 @@ import_op = custom_op(
 # Import a native same-group module directly via C-level init/exec functions.
 native_import_op = custom_op(
     # (module name, init-only function, exec function, module static,
-    #  shared lib __file__, ext suffix, is_package)
+    #  import state, compilation-unit lock, shared lib __file__, ext suffix,
+    #  is_package)
     arg_types=[
         str_rprimitive,
         c_pointer_rprimitive,
         c_pointer_rprimitive,
         object_pointer_rprimitive,
+        c_pointer_rprimitive,
+        c_pointer_rprimitive,
         object_rprimitive,
         str_rprimitive,
         c_pyssize_t_rprimitive,
@@ -154,6 +157,13 @@ native_import_op = custom_op(
     return_type=object_rprimitive,
     c_function_name="CPyImport_ImportNative",
     error_kind=ERR_MAGIC,
+)
+
+native_import_is_initialized_op = custom_op(
+    arg_types=[c_pointer_rprimitive],
+    return_type=bit_rprimitive,
+    c_function_name="CPyImport_IsInitialized",
+    error_kind=ERR_NEVER,
 )
 
 # Table-driven import op.
