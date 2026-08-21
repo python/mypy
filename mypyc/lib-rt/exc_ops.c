@@ -259,3 +259,11 @@ void CPy_AttributeError(const char *filename, const char *funcname, const char *
     PyErr_SetString(PyExc_AttributeError, buf);
     CPy_AddTraceback(filename, funcname, line, globals);
 }
+
+void CPy_UnboundLocalError(const char *filename, const char *funcname, const char *attrname,
+                           int line, PyObject *globals) {
+    char buf[500];
+    snprintf(buf, sizeof(buf), "local variable '%.200s' referenced before assignment", attrname);
+    PyErr_SetString(PyExc_UnboundLocalError, buf);
+    CPy_AddTraceback(filename, funcname, line, globals);
+}
