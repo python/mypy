@@ -224,7 +224,7 @@ accepts_bytes(c_alias)
 [builtins fixtures/tuple.pyi]
 [out]
 
-[case testLiteralMixingUnicodeAndBytesPython3ForwardStrings_no_native_parse]
+[case testLiteralMixingUnicodeAndBytesPython3ForwardStrings]
 from typing import Literal, TypeVar, Generic
 
 a_unicode_wrapper: u"Literal[u'foo']"
@@ -577,8 +577,7 @@ reveal_type(d)      # N: Revealed type is "Any"
 [builtins fixtures/primitives.pyi]
 [out]
 
-[case testLiteralDisallowFloatsAndComplex_no_native_parse]
-
+[case testLiteralDisallowFloatsAndComplex]
 from typing import Literal
 a1: Literal[3.14]    # E: Parameter 1 of Literal[...] cannot be of type "float"
 b1: 3.14             # E: Invalid type: float literals cannot be used as a type
@@ -601,7 +600,7 @@ d2: d2t              # E: Variable "__main__.d2t" is not valid as a type \
 [builtins fixtures/complex_tuple.pyi]
 [out]
 
-[case testLiteralDisallowComplexExpressions_no_native_parse]
+[case testLiteralDisallowComplexExpressions]
 from typing import Literal
 def dummy() -> int: return 3
 a: Literal[3 + 4]               # E: Invalid type: Literal[...] cannot contain arbitrary expressions
@@ -2460,7 +2459,7 @@ expect_2(final_set_2.pop())  # E: Argument 1 to "expect_2" has incompatible type
 -- Tests for Literals and enums
 --
 
-[case testLiteralWithEnumsBasic_no_native_parse]
+[case testLiteralWithEnumsBasic]
 from typing import Literal
 from enum import Enum
 

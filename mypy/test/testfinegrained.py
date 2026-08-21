@@ -44,6 +44,8 @@ from mypy.test.helpers import (
 )
 
 # Set to True to perform (somewhat expensive) checks for duplicate AST nodes after merge
+from mypy.test.update_data import update_testcase_output
+
 CHECK_CONSISTENCY = False
 
 
@@ -130,6 +132,10 @@ class FineGrainedSuite(DataSuite):
         # Normalize paths in test output (for Windows).
         a = [line.replace("\\", "/") for line in a]
 
+        # This may not work perfectly, since it was designed for testcheck.py, use with care.
+        if testcase.output != a and testcase.config.getoption("--update-data", False):
+            update_testcase_output(testcase, a, incremental_step=1)
+
         assert_string_arrays_equal(
             testcase.output, a, f"Invalid output ({testcase.file}, line {testcase.line})"
         )
@@ -155,6 +161,11 @@ class FineGrainedSuite(DataSuite):
         options.export_types = "inspect" in testcase.file
         # Treat empty bodies safely for these test cases.
         options.allow_empty_bodies = not testcase.name.endswith("_no_empty")
+
+        if testcase.name.endswith("_old_parser"):
+            # This test is only for the old parser.
+            options.native_parser = False
+
         options.reveal_verbose_types = True
         if re.search("flags:.*--follow-imports", source) is None:
             # Override the default for follow_imports

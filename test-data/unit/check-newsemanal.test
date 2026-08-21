@@ -1652,7 +1652,7 @@ tmp/a.py: note: In member "g" of class "A":
 tmp/a.py:10: error: Type argument "str" of "C" must be a subtype of "int"
 tmp/a.py:11: error: Type argument "str" of "C" must be a subtype of "int"
 
-[case testNewAnalyzerTypeArgBoundCheckDifferentNodes_no_native_parse]
+[case testNewAnalyzerTypeArgBoundCheckDifferentNodes]
 from typing import TypeVar, TypedDict, Generic, NamedTuple, NewType, Union, Any, cast, overload
 
 T = TypeVar('T', bound=int)

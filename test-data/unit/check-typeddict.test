@@ -4116,7 +4116,7 @@ B = TypedDict("B", {  # E: Type of a TypedDict key becomes "Any" due to an unfol
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 
-[case testTypedDictWithClassLevelKeywords_no_native_parse]
+[case testTypedDictWithClassLevelKeywords]
 from typing import TypedDict, Generic, TypeVar
 
 T = TypeVar('T')
@@ -5253,10 +5253,10 @@ reveal_type(c) # N: Revealed type is "TypedDict('__main__.C', {'x': builtins.int
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 
-[case testTypedDictWithDuplicateKeywordArguments_no_parallel]
+[case testTypedDictWithDuplicateKeywordArguments]
 from typing import TypedDict
-A = TypedDict('A', {'x': int}, closed=True, closed=False)  # E: Repeated keyword argument "closed" for "TypedDict"
-B = TypedDict('B', {'x': int}, total=True, total=False)  # E: Repeated keyword argument "total" for "TypedDict"
+A = TypedDict('A', {'x': int}, closed=True, closed=False)  # E: Duplicate keyword argument "closed"
+B = TypedDict('B', {'x': int}, total=True, total=False)  # E: Duplicate keyword argument "total"
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 

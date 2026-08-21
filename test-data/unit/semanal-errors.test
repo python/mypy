@@ -398,70 +398,70 @@ main:2: error: "yield" outside function
 [case testInvalidLvalues1]
 1 = 1
 [out]
-main:1: error: Cannot assign to literal here. Maybe you meant '==' instead of '='?
+main:1: error: Invalid assignment target
 
 [case testInvalidLvalues2]
 (1) = 1
 [out]
-main:1: error: Cannot assign to literal here. Maybe you meant '==' instead of '='?
+main:1: error: Invalid assignment target
 
 [case testInvalidLvalues3]
 (1, 1) = 1
 [out]
-main:1: error: Cannot assign to literal
+main:1: error: Invalid assignment target
 
 [case testInvalidLvalues4]
 [1, 1] = 1
 [out]
-main:1: error: Cannot assign to literal
+main:1: error: Invalid assignment target
 
 [case testInvalidLvalues6]
 x = y = z = 1  # ok
 x, (y, 1) = 1
 [out]
-main:2: error: Cannot assign to literal
+main:2: error: Invalid assignment target
 
 [case testInvalidLvalues7]
 x, [y, 1] = 1
 [out]
-main:1: error: Cannot assign to literal
+main:1: error: Invalid assignment target
 
 [case testInvalidLvalues8]
 x, [y, [z, 1]] = 1
 [out]
-main:1: error: Cannot assign to literal
+main:1: error: Invalid assignment target
 
 [case testInvalidLvalues9]
 x, (y) = 1 # ok
 x, (y, (z, z)) = 1 # ok
 x, (y, (z, 1)) = 1
 [out]
-main:3: error: Cannot assign to literal
+main:3: error: Invalid assignment target
 
 [case testInvalidLvalues10]
 x + x = 1
 [out]
-main:1: error: Cannot assign to expression here. Maybe you meant '==' instead of '='?
+main:1: error: Invalid assignment target
 
 [case testInvalidLvalues11]
 -x = 1
 [out]
-main:1: error: Cannot assign to expression here. Maybe you meant '==' instead of '='?
+main:1: error: Invalid assignment target
 
 [case testInvalidLvalues12]
 1.1 = 1
 [out]
-main:1: error: Cannot assign to literal here. Maybe you meant '==' instead of '='?
+main:1: error: Invalid assignment target
 
 [case testInvalidLvalues13]
 'x' = 1
 [out]
-main:1: error: Cannot assign to literal here. Maybe you meant '==' instead of '='?
+main:1: error: Invalid assignment target
 
 [case testInvalidLvalues14]
 x() = 1
 [out]
-main:1: error: Cannot assign to function call here. Maybe you meant '==' instead of '='?
+main:1: error: Invalid assignment target
 
 [case testTwoStarExpressions]
 a, *b, *c = 1
@@ -515,13 +515,13 @@ main:2: error: can't use starred expression here
 x = 1
 del x(1)
 [out]
-main:2: error: Cannot delete function call
+main:2: error: Invalid delete target
 
 [case testInvalidDel2]
 x = 1
 del x + 1
 [out]
-main:2: error: Cannot delete expression
+main:2: error: Invalid delete target
 
 [case testInvalidDel3]
 del z     # E: Name "z" is not defined
@@ -902,7 +902,7 @@ import typing
 def f(): pass
 f() = 1 # type: int
 [out]
-main:3: error: Cannot assign to function call here. Maybe you meant '==' instead of '='?
+main:3: error: Invalid assignment target
 
 [case testIndexedAssignmentWithTypeDeclaration]
 import typing
@@ -978,7 +978,7 @@ x, y = 1, 2 # type: int # E: Tuple type expected for multiple variables
 a = 1
 a() = None # type: int
 [out]
-main:2: error: Cannot assign to function call here. Maybe you meant '==' instead of '='?
+main:2: error: Invalid assignment target
 
 [case testInvalidLvalueWithExplicitType2]
 a = 1
@@ -1306,7 +1306,7 @@ main:2: note: Did you forget to import it from "typing"? (Suggestion: "from typi
 def f(): pass
 with f() as 1: pass
 [out]
-main:2: error: Cannot assign to literal
+main:2: error: Invalid assignment target
 
 [case testInvalidTypeAnnotation]
 import typing
@@ -1320,7 +1320,7 @@ import typing
 def f() -> None:
     f() = 1  # type: int
 [out]
-main:3: error: Cannot assign to function call here. Maybe you meant '==' instead of '='?
+main:3: error: Invalid assignment target
 
 [case testInvalidReferenceToAttributeOfOuterClass]
 class A:
