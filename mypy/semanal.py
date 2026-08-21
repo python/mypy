@@ -197,7 +197,7 @@ from mypy.nodes import (
     type_aliases_source_versions,
     typing_extensions_aliases,
 )
-from mypy.options import Options
+from mypy.options import SUBSCRIPTABLE_FUNCTIONS, Options
 from mypy.patterns import (
     AsPattern,
     ClassPattern,
@@ -1242,6 +1242,29 @@ class SemanticAnalyzer(
                     self.msg.type_parameters_should_be_declared(
                         [n.split(".")[-1] for n in extra], defn
                     )
+                if SUBSCRIPTABLE_FUNCTIONS in self.options.enable_incomplete_feature:
+                    # PEP 718 prototype: a function is generic over *all* its
+                    # declared type parameters, in declaration order — even
+                    # ones that don't appear in the signature (which explicit
+                    # subscription can now observe). Without this, variables
+                    # holds only the inferred (signature-appearance ordered)
+                    # subset.
+                    by_name = {v.name: v for v in fun_type.variables}
+                    new_vars: list[TypeVarLikeType] = []
+                    for p in defn.type_args:
+                        if p.name in by_name:
+                            new_vars.append(by_name.pop(p.name))
+                            continue
+                        sym = self.lookup_qualified(p.name, defn)
+                        if sym is None or not isinstance(sym.node, TypeVarLikeExpr):
+                            continue
+                        new_vars.append(
+                            a.tvar_scope.bind_new(p.name, sym.node, a.fail_func, fun_type)
+                        )
+                    # Defensively keep anything bound but not declared (already
+                    # reported above) at the end.
+                    new_vars.extend(by_name.values())
+                    fun_type.variables = tuple(new_vars)
             return has_self_type
 
     def setup_self_type(self) -> None:
@@ -6354,6 +6377,53 @@ class SemanticAnalyzer(
             )
             has_param_spec = base.node.has_param_spec_type
             num_args = len(base.node.type_vars)
+        elif (
+            isinstance(base, RefExpr)
+            and isinstance(base.node, (FuncDef, OverloadedFuncDef))
+            and SUBSCRIPTABLE_FUNCTIONS in self.options.enable_incomplete_feature
+        ):
+            # PEP 718: subscription of a generic function. Allow ParamSpec
+            # literals and Unpack based on the function's type parameters,
+            # mirroring the rules for generic classes. For PEP 695 syntax,
+            # read the unanalyzed type_args, since the analyzed signature's
+            # variables may not be bound yet at this point; fall back to the
+            # analyzed variables for old-style type variables.
+            allow_unpack = False
+            has_param_spec = False
+            num_args = 0
+            defs: list[FuncDef] = []
+            if isinstance(base.node, FuncDef):
+                defs = [base.node]
+            else:
+                for ovl_item in base.node.items:
+                    fi = ovl_item.func if isinstance(ovl_item, Decorator) else ovl_item
+                    if isinstance(fi, FuncDef):
+                        defs.append(fi)
+            for fd in defs:
+                if fd.type_args is not None:
+                    allow_unpack |= any(
+                        tparam.kind == TYPE_VAR_TUPLE_KIND for tparam in fd.type_args
+                    )
+                    has_param_spec |= any(
+                        tparam.kind == PARAM_SPEC_KIND for tparam in fd.type_args
+                    )
+                    num_args += len(fd.type_args)
+                elif isinstance(fd.type, CallableType):
+                    if not fd.type.variables:
+                        # Old-style type variables may not be bound into the
+                        # signature yet at this point; be permissive here per
+                        # the TODO above and let checkexpr validate.
+                        allow_unpack = True
+                        has_param_spec = True
+                        num_args = -1
+                    else:
+                        allow_unpack |= any(
+                            isinstance(v, TypeVarTupleType) for v in fd.type.variables
+                        )
+                        has_param_spec |= any(
+                            isinstance(v, ParamSpecType) for v in fd.type.variables
+                        )
+                        num_args += len(fd.type.variables)
         else:
             allow_unpack = False
             has_param_spec = False
