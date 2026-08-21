@@ -370,6 +370,13 @@ bar.py:3: (str)
 bar.py:4: (arg=str)
 $ dmypy suggest foo.foo
 (str) -> int
+$ {python} -c "print('reveal_type(1)')" >note.py
+$ dmypy check foo.py bar.py note.py
+note.py:1: note: Revealed type is "Literal[1]?"
+== Return code: 1
+$ dmypy suggest --callsites foo.foo
+bar.py:3: (str)
+bar.py:4: (arg=str)
 $ {python} -c "import shutil; shutil.copy('foo2.py', 'foo.py')"
 $ dmypy check foo.py bar.py
 bar.py:3: error: Incompatible types in assignment (expression has type "int", variable has type "str")  [assignment]
@@ -391,6 +398,8 @@ from foo import foo
 def bar() -> None:
     x = foo('abc')  # type: str
     foo(arg='xyz')
+[file note.py]
+reveal_type(1)
 
 [case testDaemonInspectCheck]
 $ dmypy start
