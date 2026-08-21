@@ -2334,7 +2334,7 @@ class CallableType(FunctionLike):
 
     def is_type_obj(self) -> bool:
         return self.fallback.type.is_metaclass() and not isinstance(
-            get_proper_type(self.ret_type), UninhabitedType
+            get_proper_type(self.ret_type), (UninhabitedType, AnyType)
         )
 
     def get_instance_type(self, *, force_fallback: bool = False) -> ProperType:
