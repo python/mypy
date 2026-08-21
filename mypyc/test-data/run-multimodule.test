@@ -2048,3 +2048,481 @@ from mypy_extensions import mypyc_attr
 class CompiledBase:
     def value(self) -> int:
         raise NotImplementedError
+
+[case testCallFunctionInLazilyImportedModule]
+import my_lib
+
+def get_version() -> str:
+    return my_lib.version()
+
+[file my_lib.py]
+def version() -> str:
+    return "1.0.0"
+
+[file other.py]
+def lazy_import() -> str:
+    import native
+
+    return native.get_version()
+
+[file driver.py]
+from threading import Barrier, Thread
+
+import other
+
+def test_lazy_import() -> None:
+    barrier = Barrier(2)
+
+    def run_once() -> None:
+        barrier.wait()
+        assert other.lazy_import() == "1.0.0"
+
+    threads = []
+    for _ in range(2):
+        t = Thread(target = run_once)
+        threads.append(t)
+        t.start()
+
+    for t in threads:
+        t.join()
+
+test_lazy_import()
+
+[case testConcurrentLazyNativeImportForms]
+# separate: [(["native.py", "other_dependency.py", "other_importer.py"], "testgroup")]
+from time import sleep
+
+sleep(0.05)
+import other_dependency
+
+def get_value() -> int:
+    return other_dependency.value
+
+[file other_dependency.py]
+value = 42
+
+[file other_importer.py]
+def by_module() -> int:
+    import native
+    return native.get_value()
+
+def by_from() -> int:
+    from native import get_value
+    return get_value()
+
+def by_from_alias() -> int:
+    from native import get_value as load_value
+    return load_value()
+
+[file driver.py]
+from concurrent.futures import ThreadPoolExecutor
+from threading import Barrier
+
+import other_importer
+
+functions = [
+    other_importer.by_module,
+    other_importer.by_from,
+    other_importer.by_from_alias,
+]
+barrier = Barrier(len(functions))
+
+def run(function):
+    barrier.wait()
+    return function()
+
+with ThreadPoolExecutor(max_workers=len(functions)) as executor:
+    futures = [executor.submit(run, function) for function in functions]
+    assert [future.result() for future in futures] == [42] * len(functions)
+
+[case testConcurrentLazyNativePackageImportForms]
+# separate: [(["other_pkg/__init__.py", "other_pkg/other_target.py", "other_pkg/other_importer.py"], "testgroup")]
+pass
+
+[file other_pkg/__init__.py]
+
+[file other_pkg/other_target.py]
+from time import sleep
+
+sleep(0.05)
+import py_dependency
+
+def get_value() -> int:
+    return py_dependency.value
+
+[file other_pkg/other_importer.py]
+def by_dotted_module() -> int:
+    import other_pkg.other_target
+    return other_pkg.other_target.get_value()
+
+def by_dotted_alias() -> int:
+    import other_pkg.other_target as target
+    return target.get_value()
+
+def by_from_package() -> int:
+    from other_pkg import other_target
+    return other_target.get_value()
+
+def by_from_module() -> int:
+    from other_pkg.other_target import get_value
+    return get_value()
+
+def by_relative_package() -> int:
+    from . import other_target
+    return other_target.get_value()
+
+def by_relative_module() -> int:
+    from .other_target import get_value
+    return get_value()
+
+[file py_dependency.py]
+value = 42
+
+[file driver.py]
+from concurrent.futures import ThreadPoolExecutor
+from threading import Barrier
+
+from other_pkg import other_importer
+
+functions = [
+    other_importer.by_dotted_module,
+    other_importer.by_dotted_alias,
+    other_importer.by_from_package,
+    other_importer.by_from_module,
+    other_importer.by_relative_package,
+    other_importer.by_relative_module,
+]
+barrier = Barrier(len(functions))
+
+def run(function):
+    barrier.wait()
+    return function()
+
+with ThreadPoolExecutor(max_workers=len(functions)) as executor:
+    futures = [executor.submit(run, function) for function in functions]
+    assert [future.result() for future in futures] == [42] * len(functions)
+
+[case testConcurrentLazyNativeImportFromInterpretedModules]
+from time import sleep
+
+sleep(0.05)
+import py_dependency
+
+def get_value() -> int:
+    return py_dependency.value
+
+[file py_dependency.py]
+value = 42
+
+[file py_importer.py]
+def by_module():
+    import native
+    return native.get_value()
+
+def by_from():
+    from native import get_value
+    return get_value()
+
+[file driver.py]
+from concurrent.futures import ThreadPoolExecutor
+from threading import Barrier
+
+import py_importer
+
+functions = [py_importer.by_module, py_importer.by_from]
+barrier = Barrier(len(functions))
+
+def run(function):
+    barrier.wait()
+    return function()
+
+with ThreadPoolExecutor(max_workers=len(functions)) as executor:
+    futures = [executor.submit(run, function) for function in functions]
+    assert [future.result() for future in futures] == [42] * len(functions)
+
+[case testConcurrentLazyNativeImportFromNativeAndInterpretedModules]
+# separate: [(["native.py", "other_importer.py"], "testgroup")]
+from time import sleep
+
+sleep(0.05)
+import py_dependency
+
+def get_value() -> int:
+    return py_dependency.value
+
+[file other_importer.py]
+def load() -> int:
+    import native
+    return native.get_value()
+
+[file py_dependency.py]
+value = 42
+
+[file py_importer.py]
+def load():
+    from native import get_value
+    return get_value()
+
+[file driver.py]
+from concurrent.futures import ThreadPoolExecutor
+from threading import Barrier
+
+import other_importer
+import py_importer
+
+functions = [other_importer.load, py_importer.load]
+barrier = Barrier(len(functions))
+
+def run(function):
+    barrier.wait()
+    return function()
+
+with ThreadPoolExecutor(max_workers=len(functions)) as executor:
+    futures = [executor.submit(run, function) for function in functions]
+    assert [future.result() for future in futures] == [42] * len(functions)
+
+[case testConcurrentLazyNativeImportAcrossCompilationGroups]
+# separate: [(["native.py", "other_import_a.py"], "target"), (["other_import_b.py"], "importer_b")]
+from time import sleep
+
+sleep(0.05)
+
+def get_value() -> int:
+    return 42
+
+[file other_import_a.py]
+def load() -> int:
+    import native
+    return native.get_value()
+
+[file other_import_b.py]
+def load() -> int:
+    from native import get_value
+    return get_value()
+
+[file driver.py]
+from concurrent.futures import ThreadPoolExecutor
+from threading import Barrier
+
+import other_import_a
+import other_import_b
+
+functions = [other_import_a.load, other_import_b.load]
+barrier = Barrier(len(functions))
+
+def run(function):
+    barrier.wait()
+    return function()
+
+with ThreadPoolExecutor(max_workers=len(functions)) as executor:
+    futures = [executor.submit(run, function) for function in functions]
+    assert [future.result() for future in futures] == [42] * len(functions)
+
+[case testRegularImportWaitsForDirectNativeImport]
+# separate: [(["native.py", "other_importer.py"], "testgroup")]
+from time import sleep
+
+import import_sync
+
+import_sync.direct_started.set()
+assert import_sync.regular_started.wait(timeout=5)
+sleep(0.05)
+
+def get_value() -> int:
+    return 42
+
+[file import_sync.py]
+from threading import Event
+
+direct_started = Event()
+regular_started = Event()
+
+[file other_importer.py]
+def load() -> int:
+    import native
+    return native.get_value()
+
+[file py_importer.py]
+import import_sync
+
+def load():
+    import_sync.regular_started.set()
+    import native
+    return native.get_value()
+
+[file driver.py]
+from concurrent.futures import ThreadPoolExecutor
+
+import import_sync
+import other_importer
+import py_importer
+
+with ThreadPoolExecutor(max_workers=2) as executor:
+    direct_future = executor.submit(other_importer.load)
+    assert import_sync.direct_started.wait(timeout=5)
+    regular_future = executor.submit(py_importer.load)
+    assert direct_future.result(timeout=10) == 42
+    assert regular_future.result(timeout=10) == 42
+
+[case testConcurrentFailedLazyNativeImportRetries]
+# separate: [(["native.py", "other_importer.py"], "testgroup")]
+from time import sleep
+
+import failure_state
+
+failure_state.attempts += 1
+sleep(0.05)
+if failure_state.attempts == 1:
+    raise RuntimeError("first initialization failed")
+
+def get_value() -> int:
+    return 42
+
+[file failure_state.py]
+attempts = 0
+
+[file other_importer.py]
+def load() -> int:
+    from native import get_value
+    return get_value()
+
+[file driver.py]
+from concurrent.futures import ThreadPoolExecutor
+from threading import Barrier
+
+import failure_state
+import other_importer
+
+barrier = Barrier(2)
+
+def run():
+    barrier.wait()
+    return other_importer.load()
+
+with ThreadPoolExecutor(max_workers=2) as executor:
+    futures = [executor.submit(run) for _ in range(2)]
+
+values = []
+errors = []
+for future in futures:
+    try:
+        values.append(future.result())
+    except RuntimeError as error:
+        errors.append(str(error))
+
+assert values == [42]
+assert errors == ["first initialization failed"]
+assert failure_state.attempts == 2
+assert other_importer.load() == 42
+
+[case testConcurrentCircularNativeImports]
+# separate: [(["other_a.py", "other_b.py"], "testgroup")]
+pass
+
+[file import_sync.py]
+from threading import Barrier
+
+barrier = Barrier(2)
+
+[file other_a.py]
+from import_sync import barrier
+
+def value() -> str:
+    return "a"
+
+barrier.wait(timeout=5)
+import other_b
+other_value = other_b.value()
+
+[file other_b.py]
+from import_sync import barrier
+
+def value() -> str:
+    return "b"
+
+barrier.wait(timeout=5)
+import other_a
+other_value = other_a.value()
+
+[file driver.py]
+from concurrent.futures import ThreadPoolExecutor
+import importlib
+
+with ThreadPoolExecutor(max_workers=2) as executor:
+    future_a = executor.submit(importlib.import_module, "other_a")
+    future_b = executor.submit(importlib.import_module, "other_b")
+    other_a = future_a.result(timeout=10)
+    other_b = future_b.result(timeout=10)
+
+assert other_a.other_value == "b"
+assert other_b.other_value == "a"
+
+[case testTopLevelThreadImportsNativeModuleFromSameGroup]
+# separate: [(["native.py", "other_target.py"], "testgroup")]
+from threading import Thread
+
+results: list[int] = []
+
+def load_target() -> None:
+    import other_target
+    results.append(other_target.value)
+
+thread = Thread(target=load_target)
+thread.start()
+thread.join(timeout=5)
+
+assert not thread.is_alive(), "native import blocked on its compilation unit"
+assert results == [42]
+
+[file other_target.py]
+value = 42
+
+[file driver.py]
+import native
+
+assert native.results == [42]
+
+[case testCallFunctionInLazilyImportedModuleThroughAny]
+[file my_lib.py]
+def version() -> str:
+    return "1.0.0"
+
+[file other_pkg/__init__.py]
+
+[file other_pkg/other_callmylib.py]
+import my_lib
+
+def get_version() -> str:
+    return my_lib.version()
+
+[file other_pkg/other_import.py]
+from typing import Any
+
+def lazy_import() -> str:
+    import other_pkg.other_callmylib
+
+    pkg: Any = other_pkg
+    return pkg.other_callmylib.get_version()
+
+[file driver.py]
+from threading import Barrier, Thread
+
+import other_pkg.other_import
+
+def test_lazy_import() -> None:
+    barrier = Barrier(2)
+
+    def run_once() -> None:
+        barrier.wait()
+        assert other_pkg.other_import.lazy_import() == "1.0.0"
+
+    threads = []
+    for _ in range(2):
+        t = Thread(target = run_once)
+        threads.append(t)
+        t.start()
+
+    for t in threads:
+        t.join()
+
+test_lazy_import()
