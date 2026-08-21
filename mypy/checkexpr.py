@@ -5174,8 +5174,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         argument's own type) but absent from types built from annotations.
         """
         return all(
-            isinstance(it.definition, (FuncItem, Decorator, OverloadedFuncDef))
-            for it in tp.items
+            isinstance(it.definition, (FuncItem, Decorator, OverloadedFuncDef)) for it in tp.items
         )
 
     def parse_index_as_type_arguments(self, index: Expression) -> list[Type] | None:
@@ -5219,17 +5218,14 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                 matching.append(applied)
         if not matching:
             self.chk.fail(
-                f"No overload variant accepts {len(args)} type argument{plural_s(len(args))}",
-                ctx,
+                f"No overload variant accepts {len(args)} type argument{plural_s(len(args))}", ctx
             )
             return AnyType(TypeOfAny.from_error)
         if len(matching) == 1:
             return matching[0]
         return Overloaded(matching)
 
-    def subscriptable_own_type_vars(
-        self, tp: CallableType
-    ) -> tuple[int, list[TypeVarLikeType]]:
+    def subscriptable_own_type_vars(self, tp: CallableType) -> tuple[int, list[TypeVarLikeType]]:
         """Return (number of skipped leading class type vars, function's own type vars).
 
         Per PEP 718 binding rules, subscription of a method (including
@@ -5285,9 +5281,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             # Pack arguments around the (single) TypeVarTuple into a tuple,
             # like split_for_callable does for class objects (that code path
             # only supports type objects, so we do it here for functions).
-            tvt_index = next(
-                i for i, v in enumerate(type_vars) if isinstance(v, TypeVarTupleType)
-            )
+            tvt_index = next(i for i, v in enumerate(type_vars) if isinstance(v, TypeVarTupleType))
             n_suffix_fixed = len(type_vars) - tvt_index - 1
             if len(padded) < tvt_index + n_suffix_fixed:
                 if report:
@@ -5302,9 +5296,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             # PEP 696: fill in omitted trailing type arguments from their
             # defaults, so that e.g. for `def g[T, U = int](...)`, `g[str]`
             # binds U to int (defaults may reference earlier type vars).
-            env: dict[TypeVarId, Type] = {
-                v.id: a for v, a in zip(type_vars, padded)
-            }
+            env: dict[TypeVarId, Type] = {v.id: a for v, a in zip(type_vars, padded)}
             for v in type_vars[len(padded) :]:
                 d = expand_type(v.default, env)
                 padded.append(d)
