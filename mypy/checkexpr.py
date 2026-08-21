@@ -65,6 +65,7 @@ from mypy.nodes import (
     Expression,
     FloatExpr,
     FuncDef,
+    FuncItem,
     GeneratorExpr,
     IndexExpr,
     IntExpr,
@@ -4634,7 +4635,20 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             # expression, so re-parse it as one or more type expressions.
             type_args = self.parse_index_as_type_arguments(index)
             if type_args is not None:
-                return self.apply_subscript_to_function(left_type, type_args, e)
+                if self.is_def_defined_function(left_type):
+                    return self.apply_subscript_to_function(left_type, type_args, e)
+                if any(it.variables for it in left_type.items):
+                    # Strict PEP 718 rule: the value is a generic callable,
+                    # but we cannot prove it originates from a `def`, so at
+                    # runtime it may not support subscription (only
+                    # FunctionType and MethodType grow __getitem__).
+                    self.chk.fail(
+                        'Only functions or methods defined with "def" '
+                        "can be subscripted with type arguments",
+                        e,
+                    )
+                    return AnyType(TypeOfAny.from_error)
+                # Not def-defined and not generic: ordinary __getitem__.
 
         if isinstance(left_type, TypeVarType):
             return self.visit_index_with_type(
@@ -5147,6 +5161,22 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         assert isinstance(tvt, TypeVarTupleType)
         start, middle, end = split_with_prefix_and_suffix(tuple(args), prefix, suffix)
         return list(start) + [TupleType(list(middle), tvt.tuple_fallback)] + list(end)
+
+    def is_def_defined_function(self, tp: FunctionLike) -> bool:
+        """Is this callable statically known to originate from a `def`?
+
+        Used by the strict PEP 718 rule: only FunctionType and MethodType
+        gain __getitem__ at runtime, so subscription of other callables
+        (e.g. values merely typed as a generic Callable) would fail even
+        when the type system could make sense of it. We use
+        CallableType.definition as evidence of a `def` origin; note it is
+        preserved through type-preserving decorators (which return the
+        argument's own type) but absent from types built from annotations.
+        """
+        return all(
+            isinstance(it.definition, (FuncItem, Decorator, OverloadedFuncDef))
+            for it in tp.items
+        )
 
     def parse_index_as_type_arguments(self, index: Expression) -> list[Type] | None:
         """Parse the index of a subscript expression as type arguments (PEP 718).
