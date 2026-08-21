@@ -2572,6 +2572,16 @@ MypyFile:1(
     Block:3(
       PassStmt:3())))
 
+[case testSyntaxError10]
+(f() := 1)
+[out]
+1:2: error: Assignment expression target must be an identifier
+MypyFile:1(
+  ExpressionStmt:1(
+    AssignmentExpr:1(
+      NameExpr()
+      IntExpr(1))))
+
 [case testArgConstructorTooManyArgs]
 from typing import Callable
 from mypy_extensions import Arg
