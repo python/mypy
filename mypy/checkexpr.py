@@ -111,7 +111,7 @@ from mypy.nodes import (
     YieldFromExpr,
     get_member_expr_fullname,
 )
-from mypy.options import PRECISE_TUPLE_TYPES
+from mypy.options import PRECISE_TUPLE_TYPES, SUBSCRIPTABLE_FUNCTIONS
 from mypy.plugin import (
     FunctionContext,
     FunctionSigContext,
@@ -211,6 +211,7 @@ from mypy.types_utils import (
 )
 from mypy.typestate import type_state
 from mypy.typevars import fill_typevars
+from mypy.util import plural_s
 from mypy.visitor import ExpressionVisitor
 
 # Type of callback user for checking individual function arguments. See
@@ -4622,6 +4623,19 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             ):
                 return self.named_type("types.GenericAlias")
 
+        if (
+            isinstance(left_type, FunctionLike)
+            and not left_type.is_type_obj()
+            and SUBSCRIPTABLE_FUNCTIONS in self.chk.options.enable_incomplete_feature
+        ):
+            # PEP 718: subscription of a generic function-like value that was
+            # not recognized during semantic analysis (e.g. a bound method or
+            # a variable of Callable type). The index was analyzed as a value
+            # expression, so re-parse it as one or more type expressions.
+            type_args = self.parse_index_as_type_arguments(index)
+            if type_args is not None:
+                return self.apply_subscript_to_function(left_type, type_args, e)
+
         if isinstance(left_type, TypeVarType):
             return self.visit_index_with_type(
                 left_type.values_or_bound(), e, original_type, left_type
@@ -4992,6 +5006,9 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         tp = get_proper_type(self.accept(tapp.expr))
         if isinstance(tp, (CallableType, Overloaded)):
             if not tp.is_type_obj():
+                if SUBSCRIPTABLE_FUNCTIONS in self.chk.options.enable_incomplete_feature:
+                    # PEP 718: subscription of a generic function.
+                    return self.apply_subscript_to_function(tp, tapp.types, tapp)
                 self.chk.fail(message_registry.ONLY_CLASS_APPLICATION, tapp)
             return self.apply_type_arguments_to_callable(tp, tapp.types, tapp)
         if isinstance(tp, AnyType):
@@ -5130,6 +5147,150 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         assert isinstance(tvt, TypeVarTupleType)
         start, middle, end = split_with_prefix_and_suffix(tuple(args), prefix, suffix)
         return list(start) + [TupleType(list(middle), tvt.tuple_fallback)] + list(end)
+
+    def parse_index_as_type_arguments(self, index: Expression) -> list[Type] | None:
+        """Parse the index of a subscript expression as type arguments (PEP 718).
+
+        Returns None if any item cannot be interpreted as a type expression,
+        in which case the caller should fall back to regular __getitem__
+        semantics.
+        """
+        items = index.items if isinstance(index, TupleExpr) else [index]
+        type_args: list[Type] = []
+        for item in items:
+            typ = self.try_parse_as_type_expression(item)
+            if typ is None:
+                return None
+            type_args.append(typ)
+        return type_args
+
+    def apply_subscript_to_function(self, tp: Type, args: Sequence[Type], ctx: Context) -> Type:
+        """Apply type arguments to a generic function (PEP 718).
+
+        Unlike apply_type_arguments_to_callable, this:
+        - requires the callable to actually be generic (subscripting a
+          non-generic function is a type error, even though the runtime
+          permits it);
+        - for overloads, implements the PEP 718 pre-filtering step: only
+          overload items where subscription may succeed (i.e. the number of
+          type arguments fits the item's type parameters) are retained.
+        """
+        tp = get_proper_type(tp)
+        if isinstance(tp, CallableType):
+            result = self.apply_subscript_to_callable_item(tp, args, ctx, report=True)
+            if result is None:
+                return AnyType(TypeOfAny.from_error)
+            return result
+        assert isinstance(tp, Overloaded)
+        matching: list[CallableType] = []
+        for it in tp.items:
+            applied = self.apply_subscript_to_callable_item(it, args, ctx, report=False)
+            if applied is not None:
+                matching.append(applied)
+        if not matching:
+            self.chk.fail(
+                f"No overload variant accepts {len(args)} type argument{plural_s(len(args))}", ctx
+            )
+            return AnyType(TypeOfAny.from_error)
+        if len(matching) == 1:
+            return matching[0]
+        return Overloaded(matching)
+
+    def subscriptable_own_type_vars(self, tp: CallableType) -> tuple[int, list[TypeVarLikeType]]:
+        """Return (number of skipped leading class type vars, function's own type vars).
+
+        Per PEP 718 binding rules, subscription of a method (including
+        classmethods accessed on an unspecialized generic class) binds only
+        the function's own type parameters, never the enclosing class's.
+        Class-level type variables always appear before the function's own
+        in tp.variables.
+        """
+        tvars = list(tp.variables)
+        defn = tp.definition
+        if defn is not None and defn.fullname:
+            # A type variable belongs to the enclosing class if its namespace
+            # is a proper ancestor of the definition's fullname (e.g. T with
+            # namespace "mod.C" for a method "mod.C.cm"). The function's own
+            # type variables have the definition's fullname as namespace, or
+            # an empty namespace for methods accessed on an unspecialized
+            # class object. Class type variables always precede the
+            # function's own, so we take the longest valid suffix.
+            fullname = defn.fullname
+            own_suffix = 0
+            for v in reversed(tvars):
+                ns = v.id.namespace
+                if ns and ns != fullname and fullname.startswith(ns + "."):
+                    break
+                own_suffix += 1
+            if 0 < own_suffix < len(tvars):
+                return len(tvars) - own_suffix, tvars[-own_suffix:]
+        return 0, tvars
+
+    def apply_subscript_to_callable_item(
+        self, it: CallableType, args: Sequence[Type], ctx: Context, *, report: bool
+    ) -> CallableType | None:
+        """Apply PEP 718 subscription args to a single callable, or return None.
+
+        None means this item does not accept this subscription; an error is
+        reported only if report is True.
+        """
+        n_skip, type_vars = self.subscriptable_own_type_vars(it)
+        if not type_vars:
+            if report:
+                self.chk.fail("Cannot subscript a function with no type parameters", ctx)
+            return None
+        min_arg_count = sum(not v.has_default() for v in type_vars)
+        has_type_var_tuple = any(isinstance(v, TypeVarTupleType) for v in type_vars)
+        if not (has_type_var_tuple or min_arg_count <= len(args) <= len(type_vars)):
+            if report:
+                self.msg.incompatible_type_application(
+                    min_arg_count, len(type_vars), len(args), ctx
+                )
+            return None
+        padded: list[Type] = flatten_nested_tuples(args)
+        if has_type_var_tuple:
+            # Pack arguments around the (single) TypeVarTuple into a tuple,
+            # like split_for_callable does for class objects (that code path
+            # only supports type objects, so we do it here for functions).
+            tvt_index = next(i for i, v in enumerate(type_vars) if isinstance(v, TypeVarTupleType))
+            n_suffix_fixed = len(type_vars) - tvt_index - 1
+            if len(padded) < tvt_index + n_suffix_fixed:
+                if report:
+                    self.msg.incompatible_type_application(
+                        tvt_index + n_suffix_fixed, len(type_vars), len(padded), ctx
+                    )
+                return None
+            end = len(padded) - n_suffix_fixed
+            middle = TupleType(padded[tvt_index:end], self.chk.named_type("builtins.tuple"))
+            padded = padded[:tvt_index] + [middle] + padded[end:]
+        elif len(padded) < len(type_vars):
+            # PEP 696: fill in omitted trailing type arguments from their
+            # defaults, so that e.g. for `def g[T, U = int](...)`, `g[str]`
+            # binds U to int (defaults may reference earlier type vars).
+            env: dict[TypeVarId, Type] = {v.id: a for v, a in zip(type_vars, padded)}
+            for v in type_vars[len(padded) :]:
+                d = expand_type(v.default, env)
+                padded.append(d)
+                env[v.id] = d
+        full_args: list[Type | None] = [None] * n_skip
+        full_args.extend(padded)
+        if report:
+            return self.apply_generic_arguments(it, full_args, ctx)
+        # Silent mode (PEP 718 overload pre-filtering): a bound or constraint
+        # violation means this item does not accept the subscription — e.g.
+        # `ser[int]` must skip an overload whose type parameter is bounded by
+        # str. Capture violations instead of reporting them.
+        violations: list[str] = []
+
+        def note_violation(
+            _callable: CallableType, _typ: Type, name: str, _context: Context
+        ) -> None:
+            violations.append(name)
+
+        applied = applytype.apply_generic_arguments(it, full_args, note_violation, ctx)
+        if violations:
+            return None
+        return applied
 
     def apply_type_arguments_to_callable(
         self, tp: Type, args: Sequence[Type], ctx: Context
