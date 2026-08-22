@@ -475,3 +475,10 @@ x = 1 # type: ignore # E: Unused "type: ignore" comment
 x = 1 # type: ignore # E: Unused "type: ignore" comment
 [out]
 main:2: error: Unrecognized option: amongus = True
+
+[case testNewSyntaxOldMypy]
+# flags: --python-version 3.10
+# mypy: ignore-errors=True
+x = t""
+[out version< 3.14]
+main:3: error: Invalid syntax

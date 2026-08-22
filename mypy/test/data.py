@@ -158,8 +158,8 @@ def parse_test_case(case: DataDrivenTestCase) -> None:
             for arg in args:
                 if arg.startswith("version"):
                     compare_op = arg[7:9]
-                    if compare_op not in {">=", "=="}:
-                        _item_fail("Only >= and == version checks are currently supported")
+                    if compare_op not in {">=", "==", "< "}:
+                        _item_fail("Only `>=', `==', and `< ' version checks are currently supported")
                     version_str = arg[9:]
                     try:
                         version = tuple(int(x) for x in version_str.split("."))
@@ -181,6 +181,12 @@ def parse_test_case(case: DataDrivenTestCase) -> None:
                                 f'Only minor or patch version checks are currently supported with "==": {version_str!r}'
                             )
                         version_check = sys.version_info[: len(version)] == version
+                    elif compare_op == "< ":
+                        if version < defaults.PYTHON3_VERSION:
+                            _item_fail(
+                                f"{arg} always false since minimum runtime version is {defaults.PYTHON3_VERSION}"
+                            )
+                        version_check = sys.version_info < version
             if version_check:
                 tmp_output = [expand_variables(line) for line in item.data]
                 if os.path.sep == "\\" and case.normalize_output:
