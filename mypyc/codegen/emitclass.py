@@ -1334,13 +1334,14 @@ def generate_setter(cl: ClassIR, attr: str, rtype: RType, emitter: Emitter) -> N
     #       values is benign.
     always_defined = cl.is_always_defined(attr) and not rtype.is_refcounted
 
-    if rtype.is_refcounted:
-        attr_expr = f"self->{attr_field}"
-        if not always_defined:
-            emitter.emit_undefined_attr_check(rtype, attr_expr, "!=", "self", attr, cl)
-        emitter.emit_dec_ref(f"self->{attr_field}", rtype)
-        if not always_defined:
-            emitter.emit_line("}")
+    def emit_decref_old_value() -> None:
+        if rtype.is_refcounted:
+            attr_expr = f"self->{attr_field}"
+            if not always_defined:
+                emitter.emit_undefined_attr_check(rtype, attr_expr, "!=", "self", attr, cl)
+            emitter.emit_dec_ref(attr_expr, rtype)
+            if not always_defined:
+                emitter.emit_line("}")
 
     if deletable:
         emitter.emit_line("if (value != NULL) {")
@@ -1360,13 +1361,17 @@ def generate_setter(cl: ClassIR, attr: str, rtype: RType, emitter: Emitter) -> N
     else:
         emitter.emit_cast("value", "tmp", rtype, declare_dest=True)
         emitter.emit_lines("if (!tmp)", "    return -1;")
+    # Take ownership of the incoming value before releasing the old one. In
+    # particular, a failed cast must leave the attribute and its reference intact.
     emitter.emit_inc_ref("tmp", rtype)
+    emit_decref_old_value()
     emitter.emit_line(f"self->{attr_field} = tmp;")
     if rtype.error_overlap and not always_defined:
         emitter.emit_attr_bitmap_set("tmp", "self", rtype, cl, attr)
 
     if deletable:
         emitter.emit_line("} else {")
+        emit_decref_old_value()
         emitter.set_undefined_value(f"self->{attr_field}", rtype)
         if rtype.error_overlap:
             emitter.emit_attr_bitmap_clear("self", rtype, cl, attr)

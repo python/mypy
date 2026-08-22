@@ -6219,6 +6219,75 @@ o.v = BIG
 o.v = BIG
 assert sys.getrefcount(BIG) == base, "reassignment leaked refs"
 
+[case testNativeAttrSetterTypeErrorPreservesValue]
+import sys
+from typing import Any
+from testutil import assertRaises
+
+class Fields:
+    def __init__(self, items: list[int], number: int, pair: tuple[int, int]) -> None:
+        self.items = items
+        self.number = number
+        self.pair = pair
+
+class DeletableFields:
+    __deletable__ = ("pair",)
+
+    def __init__(self, pair: tuple[int, int]) -> None:
+        self.pair = pair
+
+def test_type_error_preserves_value() -> None:
+    getrefcount: Any = getattr(sys, "getrefcount")
+    items = [1]
+    shift = 70
+    number = 1 << shift
+    pair_number = 1 << (shift + 1)
+    pair = (pair_number, pair_number)
+    fields = Fields(items, number, pair)
+    dynamic_fields: Any = fields
+    items_refcount = getrefcount(items)
+    number_refcount = getrefcount(number)
+    pair_number_refcount = getrefcount(pair_number)
+
+    with assertRaises(AttributeError):
+        del dynamic_fields.items
+    # Do not make successful pointer assignments before these checks. Free-threaded
+    # builds reclaim the replaced value using a QSBR-delayed decref.
+    with assertRaises(TypeError):
+        dynamic_fields.items = object()
+    with assertRaises(TypeError):
+        dynamic_fields.number = object()
+    with assertRaises(TypeError):
+        dynamic_fields.pair = object()
+
+    assert getrefcount(items) == items_refcount
+    assert getrefcount(number) == number_refcount
+    assert getrefcount(pair_number) == pair_number_refcount
+    assert fields.items is items
+    assert fields.number is number
+    assert fields.pair == pair
+    assert fields.pair[0] is pair_number
+
+def test_deletion_releases_value() -> None:
+    getrefcount: Any = getattr(sys, "getrefcount")
+    shift = 70
+    number = 1 << shift
+    # Single-word reference fields use delayed decrefs on free-threaded builds. An
+    # unboxed tuple instead exercises the synchronous deletion path changed by the fix.
+    pair = (number, number)
+    fields = DeletableFields(pair)
+    dynamic_fields: Any = fields
+    stored_refcount = getrefcount(number)
+
+    del dynamic_fields.pair
+
+    after = getrefcount(number)
+    assert after == stored_refcount - 2, (stored_refcount, after)
+    # Keep the compiled tuple local live across both refcount measurements.
+    assert pair[0] is number
+    with assertRaises(AttributeError):
+        fields.pair
+
 [case testBorrowedFinalAttributeInLambdaAndNestedFunction]
 from typing import Final, Callable
 
