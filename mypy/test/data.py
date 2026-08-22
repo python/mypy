@@ -159,7 +159,9 @@ def parse_test_case(case: DataDrivenTestCase) -> None:
                 if arg.startswith("version"):
                     compare_op = arg[7:9]
                     if compare_op not in {">=", "==", "< "}:
-                        _item_fail("Only `>=', `==', and `< ' version checks are currently supported")
+                        _item_fail(
+                            "Only `>=', `==', and `< ' version checks are currently supported"
+                        )
                     version_str = arg[9:]
                     try:
                         version = tuple(int(x) for x in version_str.split("."))
