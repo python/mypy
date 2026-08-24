@@ -723,6 +723,8 @@ def read_func_def(state: State, data: ReadBuffer) -> FuncDef:
         # TODO: This seems wasteful, can we avoid it?
         func_def.unanalyzed_type = typ.copy_modified()
     expect_end_tag(data)
+    if state.options.include_docstrings:
+        func_def.docstring = get_docstring(body)
     return func_def
 
 
@@ -769,7 +771,17 @@ def read_class_def(state: State, data: ReadBuffer) -> ClassDef:
         )
         check_type_param_defaults(state, type_params, class_def.line, class_def.column)
     expect_end_tag(data)
+    if state.options.include_docstrings:
+        class_def.docstring = get_docstring(body)
     return class_def
+
+
+def get_docstring(body: Block) -> str | None:
+    if body.body and isinstance(body.body[0], ExpressionStmt):
+        expr = body.body[0].expr
+        if isinstance(expr, StrExpr):
+            return expr.value
+    return None
 
 
 def read_type_alias_stmt(state: State, data: ReadBuffer) -> TypeAliasStmt:
