@@ -329,6 +329,9 @@ class ExtClassBuilder(ClassBuilder):
         # Variable declaration with no body
         if isinstance(stmt.rvalue, TempNode):
             return
+        # Native classes use mypyc's own layout, so don't emit __slots__ at runtime.
+        if lvalue.name == "__slots__":
+            return
         # Only treat marked class variables as class variables.
         if not (is_class_var(lvalue) or stmt.is_final_def):
             return
