@@ -85,6 +85,17 @@ A.b = 1
 [builtins fixtures/tuple.pyi]
 
 
+[case testSlotsClassVariableOverride]
+from typing import ClassVar
+
+class Base:
+    __slots__ = ()
+
+class Child(Base):
+    __slots__: ClassVar[tuple[str, ...]] = ()
+[builtins fixtures/tuple.pyi]
+
+
 [case testSlotsDefinitionMultipleVars1]
 class A:
     __slots__ = __fields__ = ("a", "b")
