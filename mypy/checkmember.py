@@ -936,9 +936,12 @@ def analyze_var(
         ):
             # Unwrap nonmember similar to class-level access
             result = p_result.args[0]
+    # A read-only property has already applied descriptor access to its getter
+    # result. Settable properties may represent dataclass-transform descriptors,
+    # which still require the normal descriptor access on instance reads.
     if (
         result
-        and not var.is_property
+        and not (var.is_property and not var.is_settable_property)
         and not (implicit or var.info.is_protocol and is_instance_var(var))
     ):
         result = analyze_descriptor_access(result, mx)
