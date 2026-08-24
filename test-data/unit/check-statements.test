@@ -521,9 +521,11 @@ if object():
 
 [case testRaiseNotImplementedFails]
 if object():
-    raise NotImplemented    # E: Exception must be derived from BaseException; did you mean "NotImplementedError"?
+    raise NotImplemented    # E: Exception must be derived from BaseException \
+                            # E: Exception must be derived from BaseException; did you mean "NotImplementedError"?
 if object():
-    raise NotImplemented()  # E: Exception must be derived from BaseException; did you mean "NotImplementedError"?
+    raise NotImplemented()  # E: Exception must be derived from BaseException; did you mean "NotImplementedError"? \
+                            # E: "NotImplementedType" not callable
 [builtins fixtures/notimplemented.pyi]
 
 [case testTryFinallyStatement]
@@ -851,9 +853,7 @@ def error_in_tuple_union(exc: Tuple[Union[Type[E1], Type[E2]], Union[Type[E3], i
         pass
 [builtins fixtures/tuple.pyi]
 
-[case testExceptWithMultipleTypes6_no_parallel]
-# For no_parallel, see:
-# https://github.com/mypyc/ast_serialize/issues/50
+[case testExceptWithMultipleTypes6]
 from typing import Never
 
 def random() -> bool: ...

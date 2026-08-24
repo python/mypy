@@ -3,7 +3,7 @@ import types
 from collections.abc import Callable, Iterator
 from opcode import *  # `dis` re-exports it as a part of public API
 from typing import IO, Any, Final, NamedTuple, overload
-from typing_extensions import Self, TypeAlias, deprecated, disjoint_base
+from typing_extensions import Self, deprecated, disjoint_base
 
 __all__ = [
     "code_info",
@@ -41,7 +41,7 @@ else:
 
 # Strictly this should not have to include Callable, but mypy doesn't use FunctionType
 # for functions (python/mypy#3171)
-_HaveCodeType: TypeAlias = types.MethodType | types.FunctionType | types.CodeType | type | Callable[..., Any]
+_HaveCodeType = types.MethodType | types.FunctionType | types.CodeType | type | Callable[..., Any]
 
 if sys.version_info >= (3, 11):
     class Positions(NamedTuple):

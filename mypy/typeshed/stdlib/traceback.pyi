@@ -2,8 +2,8 @@ import sys
 from _typeshed import SupportsWrite, Unused
 from collections.abc import Generator, Iterable, Iterator, Mapping
 from types import FrameType, TracebackType
-from typing import Any, ClassVar, Literal, SupportsIndex, overload
-from typing_extensions import Self, TypeAlias, deprecated
+from typing import Any, ClassVar, Literal, SupportsIndex, TypeAlias, overload
+from typing_extensions import Self, deprecated
 
 __all__ = [
     "extract_stack",
@@ -34,49 +34,32 @@ _FrameSummaryTuple: TypeAlias = tuple[str, int, str, str | None]
 
 def print_tb(tb: TracebackType | None, limit: int | None = None, file: SupportsWrite[str] | None = None) -> None: ...
 
-if sys.version_info >= (3, 10):
-    @overload
-    def print_exception(
-        exc: type[BaseException] | None,
-        /,
-        value: BaseException | None = ...,
-        tb: TracebackType | None = ...,
-        limit: int | None = None,
-        file: SupportsWrite[str] | None = None,
-        chain: bool = True,
-    ) -> None: ...
-    @overload
-    def print_exception(
-        exc: BaseException, /, *, limit: int | None = None, file: SupportsWrite[str] | None = None, chain: bool = True
-    ) -> None: ...
-    @overload
-    def format_exception(
-        exc: type[BaseException] | None,
-        /,
-        value: BaseException | None = ...,
-        tb: TracebackType | None = ...,
-        limit: int | None = None,
-        chain: bool = True,
-    ) -> list[str]: ...
-    @overload
-    def format_exception(exc: BaseException, /, *, limit: int | None = None, chain: bool = True) -> list[str]: ...
+@overload
+def print_exception(
+    exc: type[BaseException] | None,
+    /,
+    value: BaseException | None = ...,
+    tb: TracebackType | None = ...,
+    limit: int | None = None,
+    file: SupportsWrite[str] | None = None,
+    chain: bool = True,
+) -> None: ...
+@overload
+def print_exception(
+    exc: BaseException, /, *, limit: int | None = None, file: SupportsWrite[str] | None = None, chain: bool = True
+) -> None: ...
 
-else:
-    def print_exception(
-        etype: type[BaseException] | None,
-        value: BaseException | None,
-        tb: TracebackType | None,
-        limit: int | None = None,
-        file: SupportsWrite[str] | None = None,
-        chain: bool = True,
-    ) -> None: ...
-    def format_exception(
-        etype: type[BaseException] | None,
-        value: BaseException | None,
-        tb: TracebackType | None,
-        limit: int | None = None,
-        chain: bool = True,
-    ) -> list[str]: ...
+@overload
+def format_exception(
+    exc: type[BaseException] | None,
+    /,
+    value: BaseException | None = ...,
+    tb: TracebackType | None = ...,
+    limit: int | None = None,
+    chain: bool = True,
+) -> list[str]: ...
+@overload
+def format_exception(exc: BaseException, /, *, limit: int | None = None, chain: bool = True) -> list[str]: ...
 
 def print_exc(limit: int | None = None, file: SupportsWrite[str] | None = None, chain: bool = True) -> None: ...
 def print_last(limit: int | None = None, file: SupportsWrite[str] | None = None, chain: bool = True) -> None: ...
@@ -91,15 +74,11 @@ if sys.version_info >= (3, 13):
     def format_exception_only(exc: BaseException | None, /, *, show_group: bool = False) -> list[str]: ...
     @overload
     def format_exception_only(exc: Unused, /, value: BaseException | None, *, show_group: bool = False) -> list[str]: ...
-
-elif sys.version_info >= (3, 10):
+else:
     @overload
     def format_exception_only(exc: BaseException | None, /) -> list[str]: ...
     @overload
     def format_exception_only(exc: Unused, /, value: BaseException | None) -> list[str]: ...
-
-else:
-    def format_exception_only(etype: type[BaseException] | None, value: BaseException | None) -> list[str]: ...
 
 def format_exc(limit: int | None = None, chain: bool = True) -> str: ...
 def format_tb(tb: TracebackType | None, limit: int | None = None) -> list[str]: ...
@@ -111,7 +90,7 @@ def walk_tb(tb: TracebackType | None) -> Iterator[tuple[FrameType, int]]: ...
 if sys.version_info >= (3, 11):
     class _ExceptionPrintContext:
         def indent(self) -> str: ...
-        def emit(self, text_gen: str | Iterable[str], margin_char: str | None = None) -> Generator[str, None, None]: ...
+        def emit(self, text_gen: str | Iterable[str], margin_char: str | None = None) -> Generator[str]: ...
 
 class TracebackException:
     __cause__: TracebackException | None
@@ -126,12 +105,10 @@ class TracebackException:
     # These fields only exist for `SyntaxError`s, but there is no way to express that in the type system.
     filename: str
     lineno: str | None
-    if sys.version_info >= (3, 10):
-        end_lineno: str | None
+    end_lineno: str | None
     text: str
     offset: int
-    if sys.version_info >= (3, 10):
-        end_offset: int | None
+    end_offset: int | None
     msg: str
 
     if sys.version_info >= (3, 13):
@@ -173,19 +150,6 @@ class TracebackException:
             max_group_depth: int = 10,
             _seen: set[int] | None = None,
         ) -> None: ...
-    elif sys.version_info >= (3, 10):
-        def __init__(
-            self,
-            exc_type: type[BaseException],
-            exc_value: BaseException,
-            exc_traceback: TracebackType | None,
-            *,
-            limit: int | None = None,
-            lookup_lines: bool = True,
-            capture_locals: bool = False,
-            compact: bool = False,
-            _seen: set[int] | None = None,
-        ) -> None: ...
     else:
         def __init__(
             self,
@@ -196,6 +160,7 @@ class TracebackException:
             limit: int | None = None,
             lookup_lines: bool = True,
             capture_locals: bool = False,
+            compact: bool = False,
             _seen: set[int] | None = None,
         ) -> None: ...
 
@@ -212,7 +177,7 @@ class TracebackException:
             max_group_width: int = 15,
             max_group_depth: int = 10,
         ) -> Self: ...
-    elif sys.version_info >= (3, 10):
+    else:
         @classmethod
         def from_exception(
             cls,
@@ -223,23 +188,18 @@ class TracebackException:
             capture_locals: bool = False,
             compact: bool = False,
         ) -> Self: ...
-    else:
-        @classmethod
-        def from_exception(
-            cls, exc: BaseException, *, limit: int | None = None, lookup_lines: bool = True, capture_locals: bool = False
-        ) -> Self: ...
 
     def __eq__(self, other: object) -> bool: ...
     __hash__: ClassVar[None]  # type: ignore[assignment]
     if sys.version_info >= (3, 11):
-        def format(self, *, chain: bool = True, _ctx: _ExceptionPrintContext | None = None) -> Generator[str, None, None]: ...
+        def format(self, *, chain: bool = True, _ctx: _ExceptionPrintContext | None = None) -> Generator[str]: ...
     else:
-        def format(self, *, chain: bool = True) -> Generator[str, None, None]: ...
+        def format(self, *, chain: bool = True) -> Generator[str]: ...
 
     if sys.version_info >= (3, 13):
-        def format_exception_only(self, *, show_group: bool = False, _depth: int = 0) -> Generator[str, None, None]: ...
+        def format_exception_only(self, *, show_group: bool = False, _depth: int = 0) -> Generator[str]: ...
     else:
-        def format_exception_only(self) -> Generator[str, None, None]: ...
+        def format_exception_only(self) -> Generator[str]: ...
 
     if sys.version_info >= (3, 11):
         def print(self, *, file: SupportsWrite[str] | None = None, chain: bool = True) -> None: ...
@@ -296,6 +256,7 @@ class FrameSummary:
     locals: dict[str, str] | None
     @property
     def line(self) -> str | None: ...
+
     @overload
     def __getitem__(self, pos: Literal[0]) -> str: ...
     @overload
@@ -308,6 +269,7 @@ class FrameSummary:
     def __getitem__(self, pos: SupportsIndex) -> Any: ...
     @overload
     def __getitem__(self, pos: slice[SupportsIndex | None]) -> tuple[Any, ...]: ...
+
     def __iter__(self) -> Iterator[Any]: ...
     def __eq__(self, other: object) -> bool: ...
     def __len__(self) -> Literal[4]: ...

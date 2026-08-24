@@ -91,7 +91,7 @@ L0:
     r0 = x.foo(y)
     return r0
 
-[case testPropertyDerivedGen]
+[case testPropertyDerivedGen_withgil]
 from typing import Callable
 class BaseProperty:
     @property

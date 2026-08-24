@@ -996,7 +996,7 @@ class M(type):
     attr = 'test'
 
 class B:
-    attr = None
+    attr = b'bytes'
 
 class Cls(B, metaclass=M):
     pass

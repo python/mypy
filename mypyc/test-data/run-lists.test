@@ -171,6 +171,68 @@ def test_list_build() -> None:
     l3.append('a')
     assert l3 == ['a']
 
+class C:
+    def __init__(self, s: str) -> None:
+        self.s = s
+
+a = [C("a"), C("b"), C("c")]
+
+def test_get_item() -> None:
+    zero = int()
+    assert a[zero].s == "a"
+    assert a[zero + 1].s == "b"
+    assert a[zero + 2].s == "c"
+    assert a[zero - 1].s == "c"
+    assert a[zero - 2].s == "b"
+    assert a[zero - 3].s == "a"
+    with assertRaises(IndexError):
+        a[zero + 3]
+    with assertRaises(IndexError):
+        a[zero - 4]
+    # TODO: Raise IndexError?
+    with assertRaises(OverflowError):
+        a[zero + 2**90]
+    with assertRaises(OverflowError):
+        a[zero - 2**90]
+
+def test_get_item_literal() -> None:
+    assert a[0].s == "a"
+    assert a[1].s == "b"
+    assert a[2].s == "c"
+    assert a[-1].s == "c"
+    assert a[-2].s == "b"
+    assert a[-3].s == "a"
+    with assertRaises(IndexError):
+        a[3]
+    with assertRaises(IndexError):
+        a[-4]
+    # TODO: Raise IndexError?
+    with assertRaises(OverflowError):
+        a[2**90]
+    with assertRaises(OverflowError):
+        a[-2**90]
+
+def test_set_item() -> None:
+    l = a.copy()
+    zero = int()
+    zero2 = int()
+    l[zero] = C("x")
+    assert l[zero2].s == "x"
+    l[zero + 2] = C("y")
+    assert l[zero2 + 2].s == "y"
+    l[zero - 1] = C("t")
+    assert l[zero2 - 1].s == "t"
+    l[zero - 3] = C("u")
+    assert l[zero2 - 3].s == "u"
+    with assertRaises(IndexError):
+        a[zero + 3] = C("z")
+    with assertRaises(IndexError):
+        a[zero - 4] = C("z")
+    with assertRaises(OverflowError):
+        a[zero + 2**90] = C("z")
+    with assertRaises(OverflowError):
+        a[zero - 2**90] = C("z")
+
 def test_append() -> None:
     l = [1, 2]
     l.append(10)

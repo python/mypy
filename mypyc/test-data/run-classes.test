@@ -956,6 +956,68 @@ except Failure as e:
     assert e.x == 10
 heyo()
 
+[case testSubclassExceptionNoAttributeLeak]
+# Regression test: on Python <3.12, a mypyc-compiled Exception subclass with
+# instance attributes used to leak its __dict__ contents on every destruction
+# because BaseException's inherited dealloc/clear doesn't know about the extra
+# __dict__ slot mypyc appends at tp_dictoffset = sizeof(PyBaseExceptionObject).
+class LeakyErr(Exception):
+    def __init__(self, payload: object) -> None:
+        self.data = payload
+
+[file driver.py]
+import gc
+from native import LeakyErr
+
+class Payload:
+    live = 0
+    def __init__(self) -> None:
+        Payload.live += 1
+    def __del__(self) -> None:
+        Payload.live -= 1
+
+# Each iteration creates a fresh Payload, stashes it on a fresh LeakyErr, and
+# drops both. If the exception's __dict__ leaks, the Payload it references
+# survives — __del__ never runs and Payload.live grows without bound.
+for _ in range(1000):
+    LeakyErr(Payload())
+gc.collect()
+assert Payload.live == 0, f"leaked {Payload.live} payloads"
+
+# Sanity-check the normal raise/catch path still works and attrs are readable.
+try:
+    raise LeakyErr("hi")
+except LeakyErr as e:
+    assert e.data == "hi"
+
+[case testInheritedHeapBaseFinalizerRuns]
+# Regression test: when a mypyc-compiled Exception subclass inherits from an
+# interpreted (heap) base that defines __del__, the base's finalizer must still
+# run. Our custom tp_dealloc bypasses subtype_dealloc, so we must invoke
+# PyObject_CallFinalizerFromDealloc ourselves when tp_finalize is inherited.
+from mypy_extensions import mypyc_attr
+
+events: list[str] = []
+
+@mypyc_attr(native_class=False)
+class HeapError(Exception):
+    def __del__(self) -> None:
+        events.append("base del")
+
+class NativeError(HeapError):
+    def __init__(self, payload: object) -> None:
+        self.own = payload
+
+[file driver.py]
+import gc
+from native import NativeError, events
+
+for _ in range(1):
+    NativeError(object())
+
+gc.collect()
+assert events == ["base del"], events
+
 [case testSubclassDict]
 from typing import Dict
 class WelpDict(Dict[str, int]):
@@ -1113,6 +1175,24 @@ assert f() == 10
 A.x = 200
 assert f() == 200
 
+[case testClassVarDoesNotShadowMethodGlobal]
+from typing import ClassVar
+from testutil import assertRaises
+
+class E(Exception):
+    pass
+
+class C:
+    E: ClassVar[type[E]] = E
+
+    def m(self, b: bytes) -> None:
+        if not b:
+            raise E()
+
+def test_class_var_does_not_shadow_method_global() -> None:
+    with assertRaises(E):
+        C().m(b"")
+
 [case testInitSubclassWithClassVar]
 from typing import ClassVar
 
@@ -1159,7 +1239,7 @@ class B(A):
     y = LOL
     z = None  # type: Optional[str]
     b = True
-    bogus = None  # type: int
+    bogus = None  # type: int  # type: ignore
 
 def g() -> None:
     a = A()
@@ -2807,6 +2887,98 @@ def test_final_attribute() -> None:
     assert C.b['x'] == 'y'
     assert C.a is C.b
 
+[case testFinalInstanceAttributeCannotBeRebound]
+from typing import Any, Final
+
+from testutil import assertRaises
+
+class C:
+    def __init__(self, x: int) -> None:
+        self.x: Final[int] = x
+
+class D(C):
+    def __init__(self, x: int, y: int) -> None:
+        super().__init__(x)
+        self.y: Final[int] = y
+
+def rebind_via_any(o: Any, value: int) -> None:
+    o.x = value
+
+def test_rebind_via_any() -> None:
+    c = C(1)
+    with assertRaises(AttributeError):
+        rebind_via_any(c, 2)
+    assert c.x == 1
+
+def test_rebind_via_setattr() -> None:
+    c = C(1)
+    with assertRaises(AttributeError):
+        setattr(c, "x", 3)
+    assert c.x == 1
+
+def test_rebind_inherited_via_setattr() -> None:
+    d = D(1, 2)
+    # Inherited Final attribute can't be modified.
+    with assertRaises(AttributeError):
+        setattr(d, "x", 3)
+    # The subclass's own Final attribute can't be modified either.
+    with assertRaises(AttributeError):
+        setattr(d, "y", 4)
+    assert d.x == 1
+    assert d.y == 2
+
+[case testFinalRefcountedAttributeRead]
+# Exercises reading Final reference-counted ('PyObject *') attributes, which on
+# free-threaded builds use a faster read path (CPy_GetAttrRefFinal) that skips the
+# concurrent-writer guard, since a Final attribute is never rebound.
+from typing import Final
+
+class C:
+    def __init__(self, s: str, items: list[int]) -> None:
+        self.s: Final = s
+        self.items: Final = items
+
+    def read_s(self) -> str:
+        return self.s
+
+    def read_items(self) -> list[int]:
+        return self.items
+
+    def chained_len(self) -> int:
+        # borrowed intermediate read of a Final attr, then a call on it
+        return len(self.items)
+
+class D(C):
+    def __init__(self, s: str, items: list[int], t: str) -> None:
+        super().__init__(s, items)
+        self.t: Final = t
+
+    def read_inherited(self) -> str:
+        return self.s
+
+def test_read_final_object_attrs() -> None:
+    c = C("hello", [1, 2, 3])
+    # Read via getter (property access) and via native method bodies.
+    assert c.s == "hello"
+    assert c.read_s() == "hello"
+    assert c.items == [1, 2, 3]
+    assert c.read_items() == [1, 2, 3]
+    assert c.chained_len() == 3
+    # Reading repeatedly must not corrupt the refcount / free the value.
+    for _ in range(1000):
+        assert c.read_s() == "hello"
+        assert c.read_items() == [1, 2, 3]
+    assert c.s == "hello"
+    assert c.read_items() is c.items
+
+def test_read_inherited_final_attr() -> None:
+    d = D("a", [4, 5], "b")
+    assert d.s == "a"
+    assert d.t == "b"
+    assert d.read_s() == "a"
+    assert d.read_inherited() == "a"
+    assert d.read_items() == [4, 5]
+
 [case testClassDerivedFromIntEnum]
 from enum import IntEnum, auto
 
@@ -2827,7 +2999,7 @@ from mypy_extensions import u8
 from librt.internal import (
     ReadBuffer, WriteBuffer, write_bool, read_bool, write_str, read_str, write_float, read_float,
     write_int, read_int, write_tag, read_tag, write_bytes, read_bytes,
-    cache_version,
+    cache_version, extract_symbol,
 )
 
 from testutil import assertRaises
@@ -3045,6 +3217,16 @@ def test_buffer_str_size() -> None:
         b = ReadBuffer(b.getvalue())
         assert read_str(b) == s
 
+def test_extract_symbol_sentinel_literal() -> None:
+    data = WriteBuffer()
+    write_tag(data, 8)  # LITERAL_SENTINEL
+    write_str(data, "__main__.MISSING")
+    write_str(data, "MISSING")
+    write_tag(data, 255)  # END_TAG
+
+    payload = data.getvalue()
+    assert extract_symbol(ReadBuffer(payload)) == payload
+
 [file driver.py]
 from native import *
 
@@ -3059,6 +3241,7 @@ test_buffer_str_size()
 test_buffer_int_powers()
 test_positive_long_int_serialized_bytes()
 test_negative_long_int_serialized_bytes()
+test_extract_symbol_sentinel_literal()
 
 def test_buffer_basic_interpreted() -> None:
     b = WriteBuffer()
@@ -3325,20 +3508,28 @@ def test_function():
     assert(isinstance(d.fitem, ForwardDefinedClass))
     assert(isinstance(d.fitems, ForwardDefinedClass))
 
-[case testDelForDictSubclass-xfail]
-# The crash in issue mypy#19175 is fixed.
-# But, for classes that derive from built-in Python classes, user-defined __del__ method is not
-# being invoked.
+[case testDelForDictSubclass]
+events: list[str] = []
+
+class Item:
+    def __del__(self) -> None:
+        events.append("deleting Item")
+
 class DictSubclass(dict):
-    def __del__(self):
-        print("deleting DictSubclass...")
+    def __del__(self) -> None:
+        events.append("deleting DictSubclass")
+
+def test_dict_subclass_dealloc() -> None:
+    d = DictSubclass()
+    d["item"] = Item()
+    del d
 
 [file driver.py]
-import native
-native.DictSubclass()
+from native import events, test_dict_subclass_dealloc
 
-[out]
-deleting DictSubclass...
+test_dict_subclass_dealloc()
+
+assert events == ["deleting DictSubclass", "deleting Item"], events
 
 [case testDel]
 class A:
@@ -4363,7 +4554,7 @@ from __future__ import annotations
 
 from mypy_extensions import mypyc_attr
 
-a = []
+a: list[int] = []
 
 @mypyc_attr(free_list_len=1)
 class Foo:
@@ -5925,3 +6116,347 @@ assert NonExtDict.BASE == {"x": 1}
 assert NonExtDict.EXTENDED == {"x": 1, "y": 2}
 
 assert NonExtChained.Z == {10, 20, 30}
+
+[case testPropertyGetterLeak]
+class Bar:
+    pass
+
+class Foo:
+    def __init__(self) -> None:
+        self.obj: object = Bar()
+
+    @property
+    def val(self) -> object:
+        return self.obj
+
+[file other.py]
+import gc
+from native import Foo, Bar
+
+def check(foo: Foo) -> bool:
+    return isinstance(foo.val, Bar)
+
+def test_property_getter_no_leak() -> None:
+    gc.collect()
+    before = gc.get_objects()
+    for _ in range(100):
+        foo = Foo()
+        check(foo)
+    gc.collect()
+    after = gc.get_objects()
+    diff = len(after) - len(before)
+    assert diff <= 2, diff
+
+test_property_getter_no_leak()
+
+[file driver.py]
+import sys
+from other import check
+from native import Foo
+
+foo = Foo()
+init = sys.getrefcount(foo.obj)
+for _ in range(100):
+    check(foo)
+after = sys.getrefcount(foo.obj)
+assert after - init == 0, f"Leaked {after - init} refs"
+
+[case testNativeAttrSetterRefcountLeak]
+# Setting a native attribute from interpreted code goes through the generated
+# getset descriptor setter. For refcounted unboxed types (heap-boxed ints,
+# tuples with refcounted items) the setter must take exactly one reference to
+# the stored value, not two.
+from dataclasses import dataclass
+from typing import Tuple
+
+@dataclass
+class IntField:
+    v: int
+
+@dataclass
+class TupleField:
+    v: Tuple[int, int]
+
+[file driver.py]
+import sys
+from native import IntField, TupleField
+
+# A heap-boxed int (>= 2**62) is stored as a refcounted PyObject*, unlike small
+# inline-tagged ints, so an over-incref strands a real reference. Compute the
+# values at runtime (not as folded literals): on free-threaded builds code
+# constants are immortal, and getrefcount could not observe a leak on them.
+shift = 70
+BIG = 1 << shift
+
+def check_no_leak(make, value) -> None:
+    base = sys.getrefcount(value)
+    objs = [make(value) for _ in range(100)]
+    alive = sys.getrefcount(value)
+    # Each live instance must hold exactly one reference to the field value.
+    assert alive - base == 100, f"expected 100 live refs, got {alive - base}"
+    del objs
+    after = sys.getrefcount(value)
+    assert after == base, f"leaked {after - base} refs"
+
+# The dataclass-generated __init__ stores self.v = v via the descriptor setter.
+check_no_leak(IntField, BIG)
+
+# Tuple[int, int] is stored as an unboxed RTuple; its boxed-int elements are
+# refcounted, so the setter must not over-incref them either. Use the same int
+# in both slots so each instance holds exactly two references to it.
+ELEM = 1 << (shift + 1)
+base = sys.getrefcount(ELEM)
+objs = [TupleField((ELEM, ELEM)) for _ in range(100)]
+alive = sys.getrefcount(ELEM)
+assert alive - base == 200, f"expected 200 live refs, got {alive - base}"
+del objs
+assert sys.getrefcount(ELEM) == base, f"tuple field leaked {sys.getrefcount(ELEM) - base} refs"
+
+# Re-assigning through the setter must release the previous value too.
+o = IntField(BIG)
+base = sys.getrefcount(BIG)
+o.v = BIG
+o.v = BIG
+assert sys.getrefcount(BIG) == base, "reassignment leaked refs"
+
+[case testNativeAttrSetterTypeErrorPreservesValue]
+import sys
+from typing import Any
+from testutil import assertRaises
+
+class Fields:
+    def __init__(self, items: list[int], number: int, pair: tuple[int, int]) -> None:
+        self.items = items
+        self.number = number
+        self.pair = pair
+
+class DeletableFields:
+    __deletable__ = ("pair",)
+
+    def __init__(self, pair: tuple[int, int]) -> None:
+        self.pair = pair
+
+def test_type_error_preserves_value() -> None:
+    getrefcount: Any = getattr(sys, "getrefcount")
+    items = [1]
+    shift = 70
+    number = 1 << shift
+    pair_number = 1 << (shift + 1)
+    pair = (pair_number, pair_number)
+    fields = Fields(items, number, pair)
+    dynamic_fields: Any = fields
+    items_refcount = getrefcount(items)
+    number_refcount = getrefcount(number)
+    pair_number_refcount = getrefcount(pair_number)
+
+    with assertRaises(AttributeError):
+        del dynamic_fields.items
+    # Do not make successful pointer assignments before these checks. Free-threaded
+    # builds reclaim the replaced value using a QSBR-delayed decref.
+    with assertRaises(TypeError):
+        dynamic_fields.items = object()
+    with assertRaises(TypeError):
+        dynamic_fields.number = object()
+    with assertRaises(TypeError):
+        dynamic_fields.pair = object()
+
+    assert getrefcount(items) == items_refcount
+    assert getrefcount(number) == number_refcount
+    assert getrefcount(pair_number) == pair_number_refcount
+    assert fields.items is items
+    assert fields.number is number
+    assert fields.pair == pair
+    assert fields.pair[0] is pair_number
+
+def test_deletion_releases_value() -> None:
+    getrefcount: Any = getattr(sys, "getrefcount")
+    shift = 70
+    number = 1 << shift
+    # Single-word reference fields use delayed decrefs on free-threaded builds. An
+    # unboxed tuple instead exercises the synchronous deletion path changed by the fix.
+    pair = (number, number)
+    fields = DeletableFields(pair)
+    dynamic_fields: Any = fields
+    stored_refcount = getrefcount(number)
+
+    del dynamic_fields.pair
+
+    after = getrefcount(number)
+    assert after == stored_refcount - 2, (stored_refcount, after)
+    # Keep the compiled tuple local live across both refcount measurements.
+    assert pair[0] is number
+    with assertRaises(AttributeError):
+        fields.pair
+
+[case testBorrowedFinalAttributeInLambdaAndNestedFunction]
+from typing import Final, Callable
+
+class Box:
+    def __init__(self, n: int) -> None:
+        self.n = n
+
+class C:
+    def __init__(self, b: Box) -> None:
+        self.b: Final = b
+
+def use(x: Box, y: Box) -> int:
+    return x.n + y.n
+
+def spend(x: Box) -> Box:
+    # Allocate a lot so a freed Box slot is likely to be reused, turning any
+    # use-after-free of a borrowed attribute into an observable wrong result.
+    junk = [Box(i) for i in range(100)]
+    return Box(x.n + junk[50].n - 50)
+
+def make_lambda() -> Callable[[], int]:
+    # The lambda body creates a C, borrows its final attribute, then calls
+    # spend() (which allocates heavily) before reading the borrow.
+    return lambda: use(C(Box(111)).b, spend(Box(0)))
+
+def make_nested() -> Callable[[], int]:
+    def inner() -> int:
+        return use(C(Box(111)).b, spend(Box(0)))
+    return inner
+
+def test_borrowed_final_attribute_in_lambda() -> None:
+    f = make_lambda()
+    for _ in range(1000):
+        assert f() == 111
+
+def test_borrowed_final_attribute_in_nested_function() -> None:
+    g = make_nested()
+    for _ in range(1000):
+        assert g() == 111
+
+[case testBorrowedFinalAttributeInComprehension]
+from typing import Final
+
+class Box:
+    def __init__(self, n: int) -> None:
+        self.n = n
+
+class C:
+    def __init__(self, b: Box) -> None:
+        self.b: Final = b
+
+def use(x: Box, y: Box) -> int:
+    return x.n + y.n
+
+def spend(x: Box) -> Box:
+    # Allocate a lot so a freed Box slot is likely to be reused, turning any
+    # use-after-free of a borrowed attribute into an observable wrong result.
+    junk = [Box(i) for i in range(100)]
+    return Box(x.n + junk[50].n - 50)
+
+def comp(ns: list[int]) -> list[int]:
+    # Each iteration allocates a fresh C, borrows its final attribute .b, then
+    # calls spend() (which allocates heavily) before reading the borrow. The
+    # borrow container must be kept alive for the current iteration only; if it
+    # is scoped to the whole (comprehension) expression, the refcount pass
+    # dec_refs an uninitialized temporary on the loop back-edge and leaks/uses
+    # freed memory.
+    return [use(C(Box(111)).b, spend(Box(i))) for i in ns]
+
+def test_borrowed_final_attribute_in_comprehension() -> None:
+    for _ in range(1000):
+        assert comp([1, 2, 3, 4, 5]) == [112, 113, 114, 115, 116]
+
+[case testPropertyException]
+from mypy_extensions import i16
+
+from testutil import assertRaises
+
+class T:
+    def __init__(self, val: int) -> None:
+        self._val = val
+        self._val_overlaps: i16 = -1
+        self._tuple_val = (0, 0)
+        self._locked = 0
+
+    @property
+    def val(self) -> int:
+        return self._val
+
+    @val.setter
+    def val(self, x: int) -> None:
+        if x < 0:
+            raise ValueError("No")
+        self._val = x
+
+    @property
+    def val_overlaps(self) -> i16:
+        return self._val_overlaps
+
+    @val_overlaps.setter
+    def val_overlaps(self, x: i16) -> i16:
+        if x > 0:
+            raise ValueError("Invalid")
+        self._val_overlaps = x
+        return self._val_overlaps
+
+    @property
+    def tuple_val(self) -> tuple[int, int]:
+        return self._tuple_val
+
+    @tuple_val.setter
+    def tuple_val(self, x: tuple[int, int]) -> tuple[int, int]:
+        if x[0] < 0:
+            raise ValueError("Invalid tuple")
+        self._tuple_val = x
+        return self._tuple_val
+
+    @property
+    def locked(self) -> int:
+        raise ValueError("Locked")
+
+def test_property_setter_exception() -> None:
+    t = T(1)
+    assert t.val == 1
+    assert t.val_overlaps == -1
+
+    t.val = 2
+    assert t.val == 2
+
+    t.val_overlaps = -113
+    assert t.val_overlaps == -113
+
+    t.val_overlaps = -1
+    assert t.val_overlaps == -1
+
+    t.tuple_val = (1, 2)
+    assert t.tuple_val == (1, 2)
+
+    setattr(t, "val_overlaps", -113)
+    assert t.val_overlaps == -113
+
+    setattr(t, "tuple_val", (3, 4))
+    assert t.tuple_val == (3, 4)
+
+    with assertRaises(ValueError):
+        t.val = -1
+
+    with assertRaises(ValueError):
+        t.val_overlaps = 1
+
+    with assertRaises(ValueError):
+        t.tuple_val = (-1, 0)
+
+    # Generic setattr goes through the Python descriptor setter instead of
+    # calling the native property setter directly through the vtable.
+    with assertRaises(ValueError):
+        setattr(t, "val", -1)
+
+    with assertRaises(ValueError):
+        setattr(t, "val_overlaps", 1)
+
+    with assertRaises(ValueError):
+        setattr(t, "tuple_val", (-1, 0))
+
+def test_property_getter_exception() -> None:
+    t = T(1)
+
+    with assertRaises(ValueError):
+        print(t.locked)
+
+    with assertRaises(ValueError):
+        getattr(t, "locked")

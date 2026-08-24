@@ -297,7 +297,7 @@ class InspectionEngine:
         result = {}
         for base in sorted_bases:
             if not combined_attrs[base]:
-                # Skip bases where everytihng was filtered out.
+                # Skip bases where everything was filtered out.
                 continue
             result[base] = combined_attrs[base]
         return result

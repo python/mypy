@@ -15,6 +15,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import argparse
 
+from mypy.defaults import SQLITE_NUM_SHARDS
 from mypy.metastore import FilesystemMetadataStore, MetadataStore, SqliteMetadataStore
 
 
@@ -27,6 +28,13 @@ def main() -> None:
         help="Convert to a sqlite cache (default: convert from)",
     )
     parser.add_argument(
+        "--num-shards",
+        type=int,
+        default=SQLITE_NUM_SHARDS,
+        dest="num_shards",
+        help=argparse.SUPPRESS,
+    )
+    parser.add_argument(
         "--output_dir",
         action="store",
         default=None,
@@ -37,17 +45,23 @@ def main() -> None:
 
     input_dir = args.input_dir
     output_dir = args.output_dir or input_dir
+    num_shards = args.num_shards
     assert os.path.isdir(output_dir), f"{output_dir} is not a directory"
     if args.to_sqlite:
         input: MetadataStore = FilesystemMetadataStore(input_dir)
-        output: MetadataStore = SqliteMetadataStore(output_dir)
+        output: MetadataStore = SqliteMetadataStore(output_dir, num_shards=num_shards)
     else:
-        fnam = os.path.join(input_dir, "cache.db")
-        msg = f"{fnam} does not exist"
-        if not re.match(r"[0-9]+\.[0-9]+$", os.path.basename(input_dir)):
-            msg += f" (are you missing Python version at the end, e.g. {input_dir}/3.11)"
-        assert os.path.isfile(fnam), msg
-        input, output = SqliteMetadataStore(input_dir), FilesystemMetadataStore(output_dir)
+        if num_shards <= 1:
+            db_files = [os.path.join(input_dir, "cache.db")]
+        else:
+            db_files = [os.path.join(input_dir, f"cache.{i}.db") for i in range(num_shards)]
+        for fnam in db_files:
+            msg = f"{fnam} does not exist"
+            if not re.match(r"[0-9]+\.[0-9]+$", os.path.basename(input_dir)):
+                msg += f" (are you missing Python version at the end, e.g. {input_dir}/3.11)"
+            assert os.path.isfile(fnam), msg
+        input = SqliteMetadataStore(input_dir, num_shards=num_shards)
+        output = FilesystemMetadataStore(output_dir)
 
     for s in input.list_all():
         if s.endswith((".json", ".ff")):

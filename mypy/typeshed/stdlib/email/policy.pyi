@@ -12,6 +12,7 @@ class EmailPolicy(Policy[_MessageT]):
     refold_source: str
     header_factory: Callable[[str, Any], Any]
     content_manager: ContentManager
+
     @overload
     def __init__(
         self: EmailPolicy[EmailMessage],
@@ -46,6 +47,7 @@ class EmailPolicy(Policy[_MessageT]):
         header_factory: Callable[[str, str], str] = ...,
         content_manager: ContentManager = ...,
     ) -> None: ...
+
     def header_source_parse(self, sourcelines: list[str]) -> tuple[str, str]: ...
     def header_store_parse(self, name: str, value: Any) -> tuple[str, Any]: ...
     def header_fetch_parse(self, name: str, value: str) -> Any: ...

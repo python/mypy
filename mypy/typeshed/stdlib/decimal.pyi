@@ -26,11 +26,13 @@ from _decimal import (
 )
 from collections.abc import Container, Sequence
 from types import TracebackType
-from typing import Any, ClassVar, Literal, NamedTuple, final, overload, type_check_only
-from typing_extensions import Self, TypeAlias, disjoint_base
+from typing import Any, ClassVar, Literal, NamedTuple, TypeAlias, final, overload, type_check_only
+from typing_extensions import Self, disjoint_base
 
 if sys.version_info >= (3, 14):
     from _decimal import IEEE_CONTEXT_MAX_BITS as IEEE_CONTEXT_MAX_BITS, IEEEContext as IEEEContext
+if sys.version_info >= (3, 15):
+    from _decimal import SPEC_VERSION as SPEC_VERSION
 
 _Decimal: TypeAlias = Decimal | int
 _DecimalNew: TypeAlias = Decimal | float | str | tuple[int, Sequence[int], int]
@@ -116,10 +118,12 @@ class Decimal:
     def imag(self) -> Decimal: ...
     def conjugate(self) -> Decimal: ...
     def __complex__(self) -> complex: ...
+
     @overload
     def __round__(self) -> int: ...
     @overload
     def __round__(self, ndigits: int, /) -> Decimal: ...
+
     def __floor__(self) -> int: ...
     def __ceil__(self) -> int: ...
     def fma(self, other: _Decimal, third: _Decimal, context: Context | None = None) -> Decimal: ...
@@ -180,7 +184,7 @@ class Context:
     # even settable attributes like `prec` and `rounding`,
     # but that's inexpressible in the stub.
     # Type checkers either ignore it or misinterpret it
-    # if you add a `def __delattr__(self, name: str, /) -> NoReturn` method to the stub
+    # if you add a `def __delattr__(self, name: str, /) -> Never` method to the stub
     prec: int
     rounding: str
     Emin: int

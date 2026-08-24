@@ -1,7 +1,7 @@
 import sys
 from collections.abc import Iterable, Iterator
-from typing import Any, Final, Generic, Literal, TypeVar, overload
-from typing_extensions import Self, TypeAlias
+from typing import Any, Final, Generic, Literal, TypeAlias, TypeVar, overload
+from typing_extensions import Self
 
 # Undocumented length constants
 IPV4LENGTH: Final = 32
@@ -235,7 +235,9 @@ def summarize_address_range(first: IPv6Address, last: IPv6Address) -> Iterator[I
 def summarize_address_range(
     first: IPv4Address | IPv6Address, last: IPv4Address | IPv6Address
 ) -> Iterator[IPv4Network] | Iterator[IPv6Network]: ...
+
 def collapse_addresses(addresses: Iterable[_N]) -> Iterator[_N]: ...
+
 @overload
 def get_mixed_type_key(obj: _A) -> tuple[int, _A]: ...
 @overload

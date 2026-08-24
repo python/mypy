@@ -9,6 +9,7 @@ import mypy.subtypes
 import mypy.typeops
 from mypy.argmap import ArgTypeExpander
 from mypy.erasetype import erase_typevars
+from mypy.expandtype import expand_type_by_instance
 from mypy.maptype import map_instance_to_supertype
 from mypy.nodes import (
     ARG_OPT,
@@ -275,7 +276,11 @@ def infer_constraints_for_callable(
 
 
 def infer_constraints(
-    template: Type, actual: Type, direction: int, skip_neg_op: bool = False
+    template: Type,
+    actual: Type,
+    direction: int,
+    skip_neg_op: bool = False,
+    erase_types: bool = True,
 ) -> list[Constraint]:
     """Infer type constraints.
 
@@ -312,14 +317,14 @@ def infer_constraints(
             # Return early on an empty branch.
             return []
         type_state.inferring.append((template, actual))
-        res = _infer_constraints(template, actual, direction, skip_neg_op)
+        res = _infer_constraints(template, actual, direction, skip_neg_op, erase_types)
         type_state.inferring.pop()
         return res
-    return _infer_constraints(template, actual, direction, skip_neg_op)
+    return _infer_constraints(template, actual, direction, skip_neg_op, erase_types)
 
 
 def _infer_constraints(
-    template: Type, actual: Type, direction: int, skip_neg_op: bool
+    template: Type, actual: Type, direction: int, skip_neg_op: bool, erase_types: bool
 ) -> list[Constraint]:
     orig_template = template
     template = get_proper_type(template)
@@ -424,7 +429,7 @@ def _infer_constraints(
         return []
 
     # Remaining cases are handled by ConstraintBuilderVisitor.
-    return template.accept(ConstraintBuilderVisitor(actual, direction, skip_neg_op))
+    return template.accept(ConstraintBuilderVisitor(actual, direction, skip_neg_op, erase_types))
 
 
 def _is_type_type(tp: ProperType) -> TypeGuard[TypeType | UnionType]:
@@ -659,7 +664,9 @@ class ConstraintBuilderVisitor(TypeVisitor[list[Constraint]]):
     # TODO: The value may be None. Is that actually correct?
     actual: ProperType
 
-    def __init__(self, actual: ProperType, direction: int, skip_neg_op: bool) -> None:
+    def __init__(
+        self, actual: ProperType, direction: int, skip_neg_op: bool, erase_types: bool
+    ) -> None:
         # Direction must be SUBTYPE_OF or SUPERTYPE_OF.
         self.actual = actual
         self.direction = direction
@@ -667,6 +674,10 @@ class ConstraintBuilderVisitor(TypeVisitor[list[Constraint]]):
         # this is used to prevent infinite recursion when both template and actual are
         # generic callables.
         self.skip_neg_op = skip_neg_op
+        # Normally we should erase generic actual type when inferring against type[T]
+        # to avoid leaking type variables, see testGenericClassAsArgumentToType.
+        # The only exception is self-types in generic classes, where we set this to False.
+        self.erase_types = erase_types
 
     # Trivial leaf types
 
@@ -759,13 +770,11 @@ class ConstraintBuilderVisitor(TypeVisitor[list[Constraint]]):
                 and template.type.is_protocol
                 and self.direction == SUPERTYPE_OF
             ):
-                ret_type = get_proper_type(actual.ret_type)
-                if isinstance(ret_type, TupleType):
-                    ret_type = mypy.typeops.tuple_fallback(ret_type)
-                if isinstance(ret_type, Instance):
+                instance_type = actual.get_instance_type(force_fallback=True)
+                if isinstance(instance_type, Instance):
                     res.extend(
                         self.infer_constraints_from_protocol_members(
-                            ret_type, template, ret_type, template, class_obj=True
+                            instance_type, template, instance_type, template, class_obj=True
                         )
                     )
             actual = actual.fallback
@@ -797,7 +806,7 @@ class ConstraintBuilderVisitor(TypeVisitor[list[Constraint]]):
         if isinstance(actual, Instance):
             instance = actual
             erased = erase_typevars(template)
-            assert isinstance(erased, Instance)  # type: ignore[misc]
+            assert isinstance(erased, ProperType) and isinstance(erased, Instance)
             # We always try nominal inference if possible,
             # it is much faster than the structural one.
             if self.direction == SUBTYPE_OF and template.type.has_base(instance.type.fullname):
@@ -996,7 +1005,24 @@ class ConstraintBuilderVisitor(TypeVisitor[list[Constraint]]):
                 res.extend(cb)
             return res
         elif isinstance(actual, TupleType) and self.direction == SUPERTYPE_OF:
-            return infer_constraints(template, mypy.typeops.tuple_fallback(actual), self.direction)
+            instance = mypy.typeops.tuple_fallback(actual)
+            erased = erase_typevars(template)
+            assert isinstance(erased, ProperType) and isinstance(erased, Instance)
+            # Special-case protocols before using fallback to get more precise constraints
+            # for custom tuple types like NamedTuples.
+            if (
+                template.type.is_protocol
+                and self.direction == SUPERTYPE_OF
+                and not any(template == t for t in reversed(template.type.inferring))
+                and mypy.subtypes.is_protocol_implementation(instance, erased, skip=["__call__"])
+            ):
+                template.type.inferring.append(template)
+                res = self.infer_constraints_from_protocol_members(
+                    instance, template, original_actual, template
+                )
+                template.type.inferring.pop()
+                return res
+            return infer_constraints(template, instance, self.direction)
         elif isinstance(actual, TypeVarType):
             if not actual.values and not actual.id.is_meta_var():
                 return infer_constraints(template, actual.upper_bound, self.direction)
@@ -1196,6 +1222,20 @@ class ConstraintBuilderVisitor(TypeVisitor[list[Constraint]]):
         elif isinstance(self.actual, Overloaded):
             return self.infer_against_overloaded(self.actual, template)
         elif isinstance(self.actual, TypeType):
+            # This matches the corresponding logic in subtypes.py.
+            item = self.actual.item
+            if isinstance(item, TupleType):
+                item = mypy.typeops.tuple_fallback(item)
+            if isinstance(item, Instance):
+                constructor = mypy.typeops.type_object_type(item.type)
+                constructor = expand_type_by_instance(constructor, item)
+                # Only consider return type to match historic behavior (see below).
+                if isinstance(constructor, CallableType):
+                    return infer_constraints(
+                        template.ret_type, constructor.ret_type, self.direction
+                    )
+                elif isinstance(constructor, Overloaded):
+                    return self.infer_against_overloaded(constructor, template, ret_only=True)
             return infer_constraints(template.ret_type, self.actual.item, self.direction)
         elif isinstance(self.actual, Instance):
             # Instances with __call__ method defined are considered structural
@@ -1211,7 +1251,7 @@ class ConstraintBuilderVisitor(TypeVisitor[list[Constraint]]):
             return []
 
     def infer_against_overloaded(
-        self, overloaded: Overloaded, template: CallableType
+        self, overloaded: Overloaded, template: CallableType, ret_only: bool = False
     ) -> list[Constraint]:
         # Create constraints by matching an overloaded type against a template.
         # This is tricky to do in general. We cheat by only matching against
@@ -1219,13 +1259,16 @@ class ConstraintBuilderVisitor(TypeVisitor[list[Constraint]]):
         # seems to work somewhat well, but we should really use a more
         # reliable technique.
         item = find_matching_overload_item(overloaded, template)
+        if ret_only:
+            return infer_constraints(template.ret_type, item.ret_type, self.direction)
         return infer_constraints(template, item, self.direction)
 
     def visit_tuple_type(self, template: TupleType) -> list[Constraint]:
         actual = self.actual
         unpack_index = find_unpack_in_list(template.items)
-        is_varlength_tuple = (
-            isinstance(actual, Instance) and actual.type.fullname == "builtins.tuple"
+        # TODO: we may need to be careful with direction to avoid spurious constraints.
+        is_varlength_tuple = isinstance(actual, Instance) and actual.type.has_base(
+            "builtins.tuple"
         )
 
         if isinstance(actual, TupleType) or is_varlength_tuple:
@@ -1237,23 +1280,26 @@ class ConstraintBuilderVisitor(TypeVisitor[list[Constraint]]):
                     unpack_type = template.items[unpack_index]
                     assert isinstance(unpack_type, UnpackType)
                     unpacked_type = get_proper_type(unpack_type.type)
+                    assert isinstance(actual, Instance)  # ensured by is_varlength_tuple == True
+                    mapped = map_instance_to_supertype(
+                        actual, actual.type.get_base("builtins.tuple")
+                    )
                     if isinstance(unpacked_type, TypeVarTupleType):
                         res = [
-                            Constraint(type_var=unpacked_type, op=self.direction, target=actual)
+                            Constraint(type_var=unpacked_type, op=self.direction, target=mapped)
                         ]
                     else:
                         assert (
                             isinstance(unpacked_type, Instance)
                             and unpacked_type.type.fullname == "builtins.tuple"
                         )
-                        res = infer_constraints(unpacked_type, actual, self.direction)
-                    assert isinstance(actual, Instance)  # ensured by is_varlength_tuple == True
+                        res = infer_constraints(unpacked_type, mapped, self.direction)
                     for i, ti in enumerate(template.items):
                         if i == unpack_index:
                             # This one we just handled above.
                             continue
                         # For Tuple[T, *Ts, S] <: tuple[X, ...] infer also T <: X and S <: X.
-                        res.extend(infer_constraints(ti, actual.args[0], self.direction))
+                        res.extend(infer_constraints(ti, mapped.args[0], self.direction))
                     return res
                 else:
                     assert isinstance(actual, TupleType)
@@ -1377,8 +1423,18 @@ class ConstraintBuilderVisitor(TypeVisitor[list[Constraint]]):
 
     def visit_type_type(self, template: TypeType) -> list[Constraint]:
         if isinstance(self.actual, CallableType):
+            if self.actual.is_type_obj():
+                instance_type = self.actual.get_instance_type()
+                if self.erase_types:
+                    instance_type = erase_typevars(instance_type)
+                return infer_constraints(template.item, instance_type, self.direction)
             return infer_constraints(template.item, self.actual.ret_type, self.direction)
         elif isinstance(self.actual, Overloaded):
+            if self.actual.is_type_obj():
+                instance_type = self.actual.items[0].get_instance_type()
+                if self.erase_types:
+                    instance_type = erase_typevars(instance_type)
+                return infer_constraints(template.item, instance_type, self.direction)
             return infer_constraints(template.item, self.actual.items[0].ret_type, self.direction)
         elif isinstance(self.actual, TypeType):
             return infer_constraints(template.item, self.actual.item, self.direction)

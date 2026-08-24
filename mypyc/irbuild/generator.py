@@ -23,6 +23,7 @@ from mypyc.ir.ops import (
     Call,
     Goto,
     Integer,
+    LoadErrorValue,
     MethodCall,
     RaiseStandardError,
     Register,
@@ -49,7 +50,7 @@ from mypyc.irbuild.env_class import (
     load_outer_envs,
     setup_func_for_recursive_call,
 )
-from mypyc.irbuild.nonlocalcontrol import ExceptNonlocalControl
+from mypyc.irbuild.nonlocalcontrol import ExceptNonlocalControl, gen_generator_func_cleanup
 from mypyc.irbuild.prepare import GENERATOR_HELPER_NAME
 from mypyc.primitives.exc_ops import (
     error_catch_op,
@@ -107,6 +108,8 @@ def gen_generator_func_body(builder: IRBuilder, fn_info: FuncInfo, func_reg: Val
         setup_func_for_recursive_call(
             builder, fitem, builder.fn_info.generator_class, prefix=GENERATOR_ATTRIBUTE_PREFIX
         )
+    cleanup_on_error = BasicBlock()
+    builder.builder.push_error_handler(cleanup_on_error)
     create_switch_for_generator_class(builder)
     add_raise_exception_blocks_to_generator_class(builder, fitem.line)
 
@@ -114,6 +117,11 @@ def gen_generator_func_body(builder: IRBuilder, fn_info: FuncInfo, func_reg: Val
 
     builder.accept(fitem.body)
     builder.maybe_add_implicit_return()
+    builder.builder.pop_error_handler()
+
+    builder.activate_block(cleanup_on_error)
+    gen_generator_func_cleanup(builder, fitem.line)
+    builder.add(Return(builder.add(LoadErrorValue(object_rprimitive))))
 
     populate_switch_for_generator_class(builder)
 
@@ -166,6 +174,12 @@ def setup_generator_class(builder: IRBuilder) -> ClassIR:
         builder.fn_info.env_class = generator_class_ir
     else:
         generator_class_ir.attributes[ENV_ATTR_NAME] = RInstance(builder.fn_info.env_class)
+        if not builder.fn_info.fitem.is_coroutine:
+            # After completion generators still need generator.__mypyc_env__ for subsequent
+            # __next__() calls to observe the terminal next-label and raise StopIteration.
+            # Coroutines can't be resumed after completion, so keeping the environment alive
+            # there would just extend local lifetimes unnecessarily.
+            generator_class_ir.attrs_to_keep_alive_on_completion.add(ENV_ATTR_NAME)
 
     builder.classes.append(generator_class_ir)
     return generator_class_ir

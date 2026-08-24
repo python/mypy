@@ -1,4 +1,4 @@
-From ae45edc46f2ca9c939e317648b44ed3372487798 Mon Sep 17 00:00:00 2001
+From 12fb8e77eb5efc5c025d961e04ba7ccef23333bf Mon Sep 17 00:00:00 2001
 From: Shantanu Jain <hauntsaninja@gmail.com>
 Date: Sun, 22 Feb 2026 20:37:48 -0800
 Subject: [PATCH] Temporarily revert contextlib deprecation
@@ -8,19 +8,19 @@ Subject: [PATCH] Temporarily revert contextlib deprecation
  1 file changed, 1 insertion(+), 14 deletions(-)
 
 diff --git a/mypy/typeshed/stdlib/contextlib.pyi b/mypy/typeshed/stdlib/contextlib.pyi
-index 8d5902c46..221102ee2 100644
+index b95c23502..73cdda3b8 100644
 --- a/mypy/typeshed/stdlib/contextlib.pyi
 +++ b/mypy/typeshed/stdlib/contextlib.pyi
 @@ -5,7 +5,7 @@ from abc import ABC, abstractmethod
  from collections.abc import AsyncGenerator, AsyncIterator, Awaitable, Callable, Generator, Iterator
  from types import TracebackType
- from typing import Any, Generic, Protocol, TypeVar, overload, runtime_checkable, type_check_only
--from typing_extensions import ParamSpec, Self, TypeAlias, deprecated
-+from typing_extensions import ParamSpec, Self, TypeAlias
+ from typing import Any, Generic, ParamSpec, Protocol, TypeAlias, TypeVar, overload, runtime_checkable, type_check_only
+-from typing_extensions import Self, deprecated
++from typing_extensions import Self
  
  __all__ = [
-     "contextmanager",
-@@ -86,12 +86,6 @@ class _GeneratorContextManager(
+     "aclosing",
+@@ -84,12 +84,6 @@ class _GeneratorContextManager(
          self, typ: type[BaseException] | None, value: BaseException | None, traceback: TracebackType | None
      ) -> bool | None: ...
  
@@ -32,10 +32,10 @@ index 8d5902c46..221102ee2 100644
 -)
  def contextmanager(func: Callable[_P, Iterator[_T_co]]) -> Callable[_P, _GeneratorContextManager[_T_co]]: ...
  
- if sys.version_info >= (3, 10):
-@@ -118,13 +112,6 @@ else:
-             self, typ: type[BaseException] | None, value: BaseException | None, traceback: TracebackType | None
-         ) -> bool | None: ...
+ _AF = TypeVar("_AF", bound=Callable[..., Awaitable[Any]])
+@@ -107,13 +101,6 @@ class _AsyncGeneratorContextManager(
+         self, typ: type[BaseException] | None, value: BaseException | None, traceback: TracebackType | None
+     ) -> bool | None: ...
  
 -@overload
 -def asynccontextmanager(func: Callable[_P, AsyncGenerator[_T_co]]) -> Callable[_P, _AsyncGeneratorContextManager[_T_co]]: ...
@@ -45,8 +45,8 @@ index 8d5902c46..221102ee2 100644
 -    "Use `-> AsyncGenerator[Foo]` instead."
 -)
  def asynccontextmanager(func: Callable[_P, AsyncIterator[_T_co]]) -> Callable[_P, _AsyncGeneratorContextManager[_T_co]]: ...
+ 
  @type_check_only
- class _SupportsClose(Protocol):
 -- 
-2.53.0
+2.54.0
 

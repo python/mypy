@@ -31,6 +31,7 @@ from mypyc.primitives.registry import (
     custom_primitive_op,
     function_op,
     load_address_op,
+    load_global_op,
     method_op,
 )
 
@@ -52,7 +53,7 @@ not_implemented_op = load_address_op(
 )
 
 # Get the boxed StopAsyncIteration object
-stop_async_iteration_op = load_address_op(
+stop_async_iteration_op = load_global_op(
     name="builtins.StopAsyncIteration", type=object_rprimitive, src="PyExc_StopAsyncIteration"
 )
 
@@ -501,6 +502,14 @@ function_op(
     return_type=uint8_rprimitive,
     c_function_name="cache_version_internal",
     error_kind=ERR_NEVER,
+)
+
+function_op(
+    name="librt.internal.extract_symbol",
+    arg_types=[object_rprimitive],
+    return_type=bytes_rprimitive,
+    c_function_name="extract_symbol_internal",
+    error_kind=ERR_MAGIC,
 )
 
 function_op(

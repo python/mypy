@@ -24,7 +24,6 @@ if sys.version_info >= (3, 12):
         *,
         skip_file_prefixes: tuple[str, ...] = (),
     ) -> None: ...
-
 else:
     @overload
     def warn(message: str, category: type[Warning] | None = None, stacklevel: int = 1, source: Any | None = None) -> None: ...

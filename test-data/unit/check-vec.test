@@ -1,5 +1,4 @@
 [case testVecBasics]
-# flags: --python-version 3.10
 from typing import Optional, Any, TypeVar
 
 from librt.vecs import vec
