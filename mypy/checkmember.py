@@ -936,7 +936,11 @@ def analyze_var(
         ):
             # Unwrap nonmember similar to class-level access
             result = p_result.args[0]
-    if result and not (implicit or var.info.is_protocol and is_instance_var(var)):
+    if (
+        result
+        and not var.is_property
+        and not (implicit or var.info.is_protocol and is_instance_var(var))
+    ):
         result = analyze_descriptor_access(result, mx)
     if hook:
         result = hook(
