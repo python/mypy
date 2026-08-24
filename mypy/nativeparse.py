@@ -1579,7 +1579,14 @@ def read_expression(state: State, data: ReadBuffer) -> Expression:
     elif tag == nodes.ASSIGNMENT_EXPR:
         target = read_expression(state, data)
         value = read_expression(state, data)
-        assert isinstance(target, NameExpr), f"Expected NameExpr for target, got {type(target)}"
+        if not isinstance(target, NameExpr):
+            # The only valid target of ":=" is a plain name, but ruff's error
+            # recovery can produce other targets for invalid code such as
+            # "(f() := 1)". Ruff already reports a syntax error in this case, so
+            # here we just recover with a placeholder name instead of crashing.
+            placeholder = NameExpr("")
+            placeholder.set_line(target)
+            target = placeholder
         expr = AssignmentExpr(target, value)
         read_loc(data, expr)
         expect_end_tag(data)
