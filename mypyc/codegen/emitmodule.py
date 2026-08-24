@@ -1489,15 +1489,19 @@ class GroupGenerator:
         emitter.emit_line("Py_DECREF(shared_lib_file);")
         emitter.emit_line("if (rv < 0) goto fail;")
 
-        # Register in sys.modules early so that circular imports via
-        # CPyImport_ImportNative can detect that this module is already
-        # being initialized and avoid re-executing the module body.
+        # Mark the module as initializing before publishing it so that CPython's
+        # import fast path waits on the module lock. Publishing early also lets
+        # CPyImport_ImportNative detect circular imports.
+        emitter.emit_line(f"if (CPyImport_SetInitializing({module_static}, 1) < 0)")
+        emitter.emit_line("    goto fail;")
         emitter.emit_line(
             f"if (PyObject_SetItem(PyImport_GetModuleDict(), modname, {module_static}) < 0)"
         )
         emitter.emit_line("    goto fail;")
         emitter.emit_line("Py_CLEAR(modname);")
         emitter.emit_lines(f"if ({exec_func}({module_static}) != 0)", "    goto fail;")
+        emitter.emit_line(f"if (CPyImport_SetInitializing({module_static}, 0) < 0)")
+        emitter.emit_line("    goto fail;")
         emitter.emit_line(f"return {module_static};")
         emitter.emit_lines("fail:")
         # Clean up on failure: remove from sys.modules and clear the static
@@ -1505,6 +1509,12 @@ class GroupGenerator:
         emitter.emit_line("{")
         emitter.emit_line("    PyObject *exc_type, *exc_val, *exc_tb;")
         emitter.emit_line("    PyErr_Fetch(&exc_type, &exc_val, &exc_tb);")
+        emitter.emit_line(f"    if ({module_static} != NULL) {{")
+        emitter.emit_line(f"        CPyImport_SetInitializing({module_static}, 0);")
+        emitter.emit_line("        PyErr_Clear();")
+        emitter.emit_line("    }")
+        state = self.import_state_name(module_name)
+        emitter.emit_line(f"    CPyImport_SetInitialized(&{state}, 0);")
         emitter.emit_line("    if (modname == NULL) {")
         emitter.emit_line(f'        modname = PyUnicode_FromString("{module_name}");')
         emitter.emit_line("        if (modname == NULL) CPyError_OutOfMemory();")

@@ -1507,7 +1507,7 @@ static int CPyImport_SetModuleSpec(PyObject *modobj, PyObject *module_name,
 }
 
 // Set module.__spec__._initializing for CPython's import machinery.
-static int CPyImport_SetInitializing(PyObject *module, bool initializing) {
+int CPyImport_SetInitializing(PyObject *module, bool initializing) {
     PyObject *spec = PyObject_GetAttrString(module, "__spec__");
     if (spec == NULL) {
         return -1;
