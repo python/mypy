@@ -162,7 +162,7 @@ class FineGrainedSuite(DataSuite):
         # Treat empty bodies safely for these test cases.
         options.allow_empty_bodies = not testcase.name.endswith("_no_empty")
 
-        if testcase.name.endswith("_old_parser"):
+        if testcase.name.endswith("_old_parser") or testcase.name.endswith("_old_parser_cached"):
             # This test is only for the old parser.
             options.native_parser = False
 

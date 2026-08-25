@@ -1303,11 +1303,11 @@ def define_options(
         dest="local_partial_types",
         help=argparse.SUPPRESS,
     )
-    # --native-parser enables the native parser.
     add_invertible_flag(
-        "--native-parser",
+        "--no-native-parser",
         default=True,
-        help="Enable faster parser that parses directly to mypy AST",
+        dest="native_parser",
+        help="Do not use faster parser that parses directly to mypy AST",
     )
     # --logical-deps adds some more dependencies that are not semantically needed, but
     # may be helpful to determine relative importance of classes and functions for overall
