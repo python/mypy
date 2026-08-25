@@ -53,7 +53,7 @@ L0:
     r0 = PySet_New(l)
     return r0
 
-[case testNewSetFromIterable2]
+[case testNewSetFromIterable2_withgil]
 def f(x: int) -> int:
     return x
 
@@ -273,7 +273,7 @@ L4:
     e = r0
     return 1
 
-[case testNewSetFromIterable3]
+[case testNewSetFromIterable3_withgil]
 def f1(x: int) -> int:
     return x
 

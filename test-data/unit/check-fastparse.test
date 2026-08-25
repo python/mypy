@@ -194,7 +194,7 @@ def f(x, y):  # E: Type signature has too few parameters
 f(1, 2)
 f(1) # E: Missing positional argument "y" in call to "f"
 
-[case testFasterParseTypeErrorCustom_no_native_parse]
+[case testFasterParseTypeErrorCustom]
 
 from typing import TypeVar, Generic
 T = TypeVar('T')
@@ -206,6 +206,17 @@ def f(a: Foo(int)) -> int:
 [out]
 main:7: error: Invalid type comment or annotation
 main:7: note: Suggestion: use Foo[...] instead of Foo(...)
+
+[case testFasterParseCallWithKeywordArgs]
+
+def Foo(sort: bool) -> type:
+    return int
+
+def f(a: Foo(sort=True)) -> int:
+    pass
+[out]
+main:5: error: Invalid type comment or annotation
+main:5: note: Cannot use a function call in a type annotation
 
 [case testFastParseMatMul]
 
@@ -326,7 +337,7 @@ def call() -> str: pass
 [builtins fixtures/module.pyi]
 
 [case testInvalidEscapeSequenceWarningsSuppressed]
-# flags: --python-version 3.14 --enable-incomplete-feature=TypeForm
+# flags: --python-version 3.15
 # Test that SyntaxWarnings for invalid escape sequences are suppressed
 # when parsing potential type expressions containing regex patterns or
 # similar strings. Callable arguments are always potential type expressions.

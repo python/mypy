@@ -1,16 +1,5 @@
 #include "librt_vecs_api.h"
 
-#ifndef MYPYC_EXPERIMENTAL
-
-int
-import_librt_vecs(void)
-{
-    // All librt.vecs features are experimental for now, so don't set up the API here
-    return 0;
-}
-
-#else
-
 VecCapsule *VecApi = NULL;
 VecI64API VecI64Api = {0};
 VecI32API VecI32Api = {0};
@@ -28,9 +17,28 @@ import_librt_vecs(void)
     if (mod == NULL)
         return -1;
     Py_DECREF(mod);  // we import just for the side effect of making the below work.
-    VecApi = PyCapsule_Import("librt.vecs._C_API", 0);
-    if (!VecApi)
+    VecCapsule *capsule = PyCapsule_Import("librt.vecs._C_API", 0);
+    if (!capsule)
         return -1;
+    if (capsule->abi_version() != LIBRT_VECS_ABI_VERSION) {
+        char err[128];
+        snprintf(err, sizeof(err),
+                 "ABI version conflict for librt.vecs, expected %d, found %d",
+                 LIBRT_VECS_ABI_VERSION,
+                 capsule->abi_version());
+        PyErr_SetString(PyExc_ValueError, err);
+        return -1;
+    }
+    if (capsule->api_version() < LIBRT_VECS_API_VERSION) {
+        char err[128];
+        snprintf(err, sizeof(err),
+                 "API version conflict for librt.vecs, expected %d or newer, found %d (hint: upgrade librt)",
+                 LIBRT_VECS_API_VERSION,
+                 capsule->api_version());
+        PyErr_SetString(PyExc_ValueError, err);
+        return -1;
+    }
+    VecApi = capsule;
     VecI64Api = *VecApi->i64;
     VecI32Api = *VecApi->i32;
     VecI16Api = *VecApi->i16;
@@ -41,5 +49,3 @@ import_librt_vecs(void)
     VecNestedApi = *VecApi->nested;
     return 0;
 }
-
-#endif // MYPYC_EXPERIMENTAL

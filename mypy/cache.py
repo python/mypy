@@ -48,7 +48,10 @@ bump CACHE_VERSION below.
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import Any, Final, TypeAlias as _TypeAlias
+from typing import TYPE_CHECKING, Any, Final, TypeAlias as _TypeAlias
+
+if TYPE_CHECKING:
+    from mypy.types import SentinelValue
 
 from librt.internal import (
     ReadBuffer as ReadBuffer,
@@ -69,7 +72,7 @@ from librt.internal import (
 from mypy_extensions import u8
 
 # High-level cache layout format
-CACHE_VERSION: Final = 8
+CACHE_VERSION: Final = 11
 
 # Type used internally to represent errors:
 #   (path, line, column, end_line, end_column, severity, message, code)
@@ -308,6 +311,7 @@ LITERAL_STR: Final[Tag] = 4
 LITERAL_BYTES: Final[Tag] = 5
 LITERAL_FLOAT: Final[Tag] = 6
 LITERAL_COMPLEX: Final[Tag] = 7
+LITERAL_SENTINEL: Final[Tag] = 8
 
 # Collections.
 LIST_GEN: Final[Tag] = 20
@@ -328,7 +332,7 @@ RESERVED: Final[Tag] = 254
 END_TAG: Final[Tag] = 255
 
 
-def read_literal(data: ReadBuffer, tag: Tag) -> int | str | bool | float:
+def read_literal(data: ReadBuffer, tag: Tag) -> int | str | bool | float | SentinelValue:
     if tag == LITERAL_INT:
         return read_int_bare(data)
     elif tag == LITERAL_STR:
@@ -339,12 +343,18 @@ def read_literal(data: ReadBuffer, tag: Tag) -> int | str | bool | float:
         return True
     elif tag == LITERAL_FLOAT:
         return read_float_bare(data)
+    elif tag == LITERAL_SENTINEL:
+        from mypy.types import SentinelValue as _SentinelValue
+
+        return _SentinelValue(read_str_bare(data), read_str_bare(data))
     assert False, f"Unknown literal tag {tag}"
 
 
 # There is an intentional asymmetry between read and write for literals because
 # None and/or complex values are only allowed in some contexts but not in others.
-def write_literal(data: WriteBuffer, value: int | str | bool | float | complex | None) -> None:
+def write_literal(
+    data: WriteBuffer, value: int | str | bool | float | complex | SentinelValue | None
+) -> None:
     if isinstance(value, bool):
         write_bool(data, value)
     elif isinstance(value, int):
@@ -360,8 +370,12 @@ def write_literal(data: WriteBuffer, value: int | str | bool | float | complex |
         write_tag(data, LITERAL_COMPLEX)
         write_float_bare(data, value.real)
         write_float_bare(data, value.imag)
-    else:
+    elif value is None:
         write_tag(data, LITERAL_NONE)
+    else:
+        write_tag(data, LITERAL_SENTINEL)
+        write_str_bare(data, value.fullname)
+        write_str_bare(data, value.name)
 
 
 def read_int(data: ReadBuffer) -> int:
@@ -478,7 +492,7 @@ def write_str_opt_list(data: WriteBuffer, value: list[str | None]) -> None:
         write_str_opt(data, item)
 
 
-Value: _TypeAlias = None | int | str | bool
+Value: _TypeAlias = None | int | float | str | bool
 
 # Our JSON format is somewhat non-standard as we distinguish lists and tuples.
 # This is convenient for some internal things, like mypyc plugin and error serialization.
@@ -508,6 +522,8 @@ def read_json_value(data: ReadBuffer) -> JsonValue:
     if tag == DICT_STR_GEN:
         size = read_int_bare(data)
         return {read_str_bare(data): read_json_value(data) for _ in range(size)}
+    if tag == LITERAL_FLOAT:
+        return read_float_bare(data)
     assert False, f"Invalid JSON tag: {tag}"
 
 
@@ -538,6 +554,9 @@ def write_json_value(data: WriteBuffer, value: JsonValue) -> None:
         for key in sorted(value):
             write_str_bare(data, key)
             write_json_value(data, value[key])
+    elif isinstance(value, float):
+        write_tag(data, LITERAL_FLOAT)
+        write_float_bare(data, value)
     else:
         assert False, f"Invalid JSON value: {value}"
 
@@ -556,6 +575,20 @@ def write_json(data: WriteBuffer, value: dict[str, Any]) -> None:
     for key in sorted(value):
         write_str_bare(data, key)
         write_json_value(data, value[key])
+
+
+def write_flags(data: WriteBuffer, flags: list[bool]) -> None:
+    assert len(flags) <= 26, "This many flags not supported yet"
+    packed = 0
+    for i, flag in enumerate(flags):
+        if flag:
+            packed |= 1 << i
+    write_int(data, packed)
+
+
+def read_flags(data: ReadBuffer, num_flags: int) -> list[bool]:
+    packed = read_int(data)
+    return [(packed & (1 << i)) != 0 for i in range(num_flags)]
 
 
 def write_errors(data: WriteBuffer, errs: list[ErrorTuple]) -> None:

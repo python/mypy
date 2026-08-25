@@ -45,7 +45,6 @@ from mypyc.ir.ops import (
     ComparisonOp,
     GetAttr,
     Integer,
-    LoadAddress,
     LoadLiteral,
     Register,
     Return,
@@ -83,9 +82,13 @@ from mypyc.primitives.dict_ops import (
     dict_new_op,
     exact_dict_set_item_op,
 )
-from mypyc.primitives.generic_ops import generic_getattr, generic_setattr, py_setattr_op
+from mypyc.primitives.generic_ops import (
+    generic_getattr,
+    generic_setattr,
+    py_get_item_op,
+    py_setattr_op,
+)
 from mypyc.primitives.misc_ops import register_function
-from mypyc.primitives.registry import builtin_names
 from mypyc.sametype import is_same_method_signature, is_same_type
 
 # Top-level transform functions
@@ -488,13 +491,29 @@ def handle_ext_method(builder: IRBuilder, cdef: ClassDef, fdef: FuncDef) -> None
     if is_decorated(builder, fdef):
         # Obtain the function name in order to construct the name of the helper function.
         _, _, name = fdef.fullname.rpartition(".")
-        # Read the PyTypeObject representing the class, get the callable object
-        # representing the non-decorated method
+        # Get the callable representing the non-decorated method directly from the type
+        # dictionary. Attribute access would bind a class method before its decorators are
+        # applied, but the decorators need to receive the unbound function.
         typ = builder.load_native_type_object(cdef.fullname)
-        orig_func = builder.py_get_attr(typ, name, fdef.line)
+        type_dict = builder.py_get_attr(typ, "__dict__", fdef.line)
+        orig_func = builder.primitive_op(
+            py_get_item_op, [type_dict, builder.load_str(name)], fdef.line
+        )
 
         # Decorate the non-decorated method
         decorated_func = load_decorated_func(builder, fdef, orig_func)
+
+        # @classmethod and @staticmethod aren't included in fdefs_to_decorators, since
+        # mypy represents them using the function kind. Reapply the outer descriptor
+        # after the other decorators, matching Python's decorator evaluation order.
+        # TODO: Handle cases where @classmethod/@staticmethod are the inner decorator.
+        # See mypyc#1208 for reference.
+        if func_ir.decl.kind == FUNC_CLASSMETHOD:
+            cls_meth = builder.load_module_attr_by_fullname("builtins.classmethod", fdef.line)
+            decorated_func = builder.py_call(cls_meth, [decorated_func], fdef.line)
+        elif func_ir.decl.kind == FUNC_STATICMETHOD:
+            stat_meth = builder.load_module_attr_by_fullname("builtins.staticmethod", fdef.line)
+            decorated_func = builder.py_call(stat_meth, [decorated_func], fdef.line)
 
         # Set the callable object representing the decorated method as an attribute of the
         # extension class.
@@ -935,9 +954,8 @@ def load_type(builder: IRBuilder, typ: TypeInfo, unbounded_type: Type | None, li
     if typ in builder.mapper.type_to_ir:
         class_ir = builder.mapper.type_to_ir[typ]
         class_obj = builder.builder.get_native_type(class_ir)
-    elif typ.fullname in builtin_names:
-        builtin_addr_type, src = builtin_names[typ.fullname]
-        class_obj = builder.add(LoadAddress(builtin_addr_type, src, line))
+    elif builtin := builder.load_builtin(typ.fullname, line):
+        class_obj = builtin
     elif isinstance(unbounded_type, UnboundType):
         path_parts = unbounded_type.name.split(".")
         class_obj = builder.load_global_str(path_parts[0], line)
@@ -1013,8 +1031,8 @@ def gen_calls_to_correct_impl(
         coerced = builder.coerce(ret_val, current_func_decl.sig.ret_type, line)
         builder.add(Return(coerced))
 
-    typ, src = builtin_names["builtins.int"]
-    int_type_obj = builder.add(LoadAddress(typ, src, line))
+    int_type_obj = builder.load_builtin("builtins.int", line)
+    assert int_type_obj
     is_int = builder.builder.type_is_op(impl_to_use, int_type_obj, line)
 
     native_call, non_native_call = BasicBlock(), BasicBlock()

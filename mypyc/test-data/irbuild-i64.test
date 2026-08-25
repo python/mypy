@@ -658,11 +658,13 @@ def h() -> i64:
     return x + y + t[0]
 [out]
 def f(x, y):
-    x, y :: i64
-    r0 :: tuple[i64, i64]
+    x, y, r0, r1 :: i64
+    r2 :: tuple[i64, i64]
 L0:
-    r0 = (x, y)
-    return r0
+    r0 = x
+    r1 = y
+    r2 = (r0, r1)
+    return r2
 def g():
     r0 :: tuple[int, int]
     r1 :: tuple[i64, i64]
@@ -1030,7 +1032,7 @@ L4:
     y = r3
     return y
 
-[case testBorrowOverI64Arithmetic]
+[case testBorrowOverI64Arithmetic_withgil]
 from mypy_extensions import i64
 
 def add_simple(c: C) -> i64:
@@ -1082,7 +1084,7 @@ L0:
     keep_alive d, d
     return r4
 
-[case testBorrowOverI64Bitwise]
+[case testBorrowOverI64Bitwise_withgil]
 from mypy_extensions import i64
 
 def bitwise_simple(c: C) -> i64:
@@ -1134,7 +1136,7 @@ L0:
     keep_alive d, d
     return r4
 
-[case testBorrowOverI64ListGetItem1]
+[case testBorrowOverI64ListGetItem1_withgil]
 from mypy_extensions import i64
 
 def f(n: i64) -> str:
@@ -1166,7 +1168,38 @@ L0:
     keep_alive a, n, r3
     return r5
 
-[case testBorrowOverI64ListGetItem2]
+[case testBorrowOverI64ListGetItem1_nogil]
+from mypy_extensions import i64
+
+def f(n: i64) -> str:
+    a = [C()]
+    return a[n].s
+
+class C:
+    s: str
+[out]
+def f(n):
+    n :: i64
+    r0 :: __main__.C
+    r1 :: list
+    r2 :: ptr
+    a :: list
+    r3 :: object
+    r4 :: __main__.C
+    r5 :: str
+L0:
+    r0 = C()
+    r1 = PyList_New(1)
+    r2 = list_items r1
+    buf_init_item r2, 0, r0
+    keep_alive r1
+    a = r1
+    r3 = CPyList_GetItemInt64(a, n)
+    r4 = cast(__main__.C, r3)
+    r5 = r4.s
+    return r5
+
+[case testBorrowOverI64ListGetItem2_withgil]
 from typing import List
 from mypy_extensions import i64
 
@@ -1186,6 +1219,31 @@ L0:
     r1 = unbox(i64, r0)
     r2 = r1 == 0
     keep_alive a, n
+    if r2 goto L1 else goto L2 :: bool
+L1:
+    return 1
+L2:
+    return 0
+
+[case testBorrowOverI64ListGetItem2_nogil]
+from typing import List
+from mypy_extensions import i64
+
+def f(a: List[i64], n: i64) -> bool:
+    if a[n] == 0:
+        return True
+    return False
+[out]
+def f(a, n):
+    a :: list
+    n :: i64
+    r0 :: object
+    r1 :: i64
+    r2 :: bit
+L0:
+    r0 = CPyList_GetItemInt64(a, n)
+    r1 = unbox(i64, r0)
+    r2 = r1 == 0
     if r2 goto L1 else goto L2 :: bool
 L1:
     return 1
@@ -2012,7 +2070,7 @@ L4:
     r6 = CPyFloat_FromTagged(r3)
     return r6
 
-[case testI64IsinstanceNarrowing]
+[case testI64IsinstanceNarrowing_withgil]
 from typing import Union
 from mypy_extensions import i64
 
@@ -2114,33 +2172,34 @@ L3:
     tt = r10
     return 1
 def g(n):
-    n :: int
-    r0 :: tuple[int, int]
-    r1 :: int
-    r2 :: native_int
-    r3 :: bit
-    r4, r5 :: i64
-    r6 :: ptr
-    r7 :: c_ptr
-    r8 :: i64
-    r9, t :: tuple[i64, i64]
+    n, r0 :: int
+    r1 :: tuple[int, int]
+    r2 :: int
+    r3 :: native_int
+    r4 :: bit
+    r5, r6 :: i64
+    r7 :: ptr
+    r8 :: c_ptr
+    r9 :: i64
+    r10, t :: tuple[i64, i64]
 L0:
-    r0 = (2, n)
-    r1 = r0[1]
-    r2 = r1 & 1
-    r3 = r2 == 0
-    if r3 goto L1 else goto L2 :: bool
+    r0 = n
+    r1 = (2, r0)
+    r2 = r1[1]
+    r3 = r2 & 1
+    r4 = r3 == 0
+    if r4 goto L1 else goto L2 :: bool
 L1:
-    r4 = r1 >> 1
-    r5 = r4
+    r5 = r2 >> 1
+    r6 = r5
     goto L3
 L2:
-    r6 = r1 ^ 1
-    r7 = r6
-    r8 = CPyLong_AsInt64(r7)
-    r5 = r8
-    keep_alive r1
+    r7 = r2 ^ 1
+    r8 = r7
+    r9 = CPyLong_AsInt64(r8)
+    r6 = r9
+    keep_alive r2
 L3:
-    r9 = (1, r5)
-    t = r9
+    r10 = (1, r6)
+    t = r10
     return 1

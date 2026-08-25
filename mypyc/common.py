@@ -24,6 +24,7 @@ TEMP_ATTR_NAME: Final = "__mypyc_temp__"
 LAMBDA_NAME: Final = "__mypyc_lambda__"
 PROPSET_PREFIX: Final = "__mypyc_setter__"
 SELF_NAME: Final = "__mypyc_self__"
+MYPYC_DEFAULTS_SETUP: Final = "__mypyc_defaults_setup"
 GENERATOR_ATTRIBUTE_PREFIX: Final = "__mypyc_generator_attribute__"
 CPYFUNCTION_NAME = "__cpyfunction__"
 
@@ -66,6 +67,14 @@ MIN_LITERAL_SHORT_INT: Final = -MAX_LITERAL_SHORT_INT - 1
 # relevant bitmap.
 BITMAP_TYPE: Final = "uint32_t"
 BITMAP_BITS: Final = 32
+
+# Constant for keeping a (often borrowed) op alive for a short time (a few subexpressions,
+# no arbitrary computation or memory allocations), until flush_keep_alives() is called.
+KEEP_ALIVE_SHORT_LIVED: Final = 0
+# Keep value alive longer, up to until the current top-level expression has been fully
+# evaluated. This allows keeping alive values across function calls and arbitrary
+# computation. Note that some expressions (e.g. lambdas), restrict the scope of borrowing.
+KEEP_ALIVE_WHOLE_EXPRESSION: Final = 1
 
 # Runtime C library files that are always included (some ops may bring
 # extra dependencies via mypyc.ir.deps.SourceDep or mypyc.ir.deps.HeaderDep)

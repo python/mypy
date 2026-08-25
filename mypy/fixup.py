@@ -279,6 +279,8 @@ class TypeFixer(TypeVisitor[None]):
             ct.type_guard.accept(self)
         if ct.type_is is not None:
             ct.type_is.accept(self)
+        if ct.instance_type is not None:
+            ct.instance_type.accept(self)
 
     def visit_overloaded(self, t: Overloaded) -> None:
         for ct in t.items:

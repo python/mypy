@@ -31,6 +31,7 @@ from mypyc.primitives.registry import (
     custom_primitive_op,
     function_op,
     load_address_op,
+    load_global_op,
     method_op,
 )
 
@@ -52,7 +53,7 @@ not_implemented_op = load_address_op(
 )
 
 # Get the boxed StopAsyncIteration object
-stop_async_iteration_op = load_address_op(
+stop_async_iteration_op = load_global_op(
     name="builtins.StopAsyncIteration", type=object_rprimitive, src="PyExc_StopAsyncIteration"
 )
 

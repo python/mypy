@@ -1419,8 +1419,7 @@ class in more recent versions of Python:
 
 .. code-block:: python
 
-   >>> # Only relevant for Python 3.8 and below
-   >>> # If using Python 3.9 or newer, prefer the 'list[int]' syntax
+   >>> # Prefer the 'list[int]' syntax
    >>> from typing import List
    >>> List[int]
    typing.List[int]

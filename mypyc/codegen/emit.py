@@ -2,14 +2,12 @@
 
 from __future__ import annotations
 
-import pprint
 import sys
-import textwrap
 from collections.abc import Callable
 from typing import Final
 
 from mypyc.codegen.cstring import c_string_initializer
-from mypyc.codegen.literals import Literals
+from mypyc.codegen.literals import Literals, literal_sort_key
 from mypyc.common import (
     ATTR_PREFIX,
     BITMAP_BITS,
@@ -24,7 +22,13 @@ from mypyc.common import (
     TYPE_VAR_PREFIX,
 )
 from mypyc.ir.class_ir import ClassIR, all_concrete_classes
-from mypyc.ir.func_ir import FUNC_STATICMETHOD, FuncDecl, FuncIR, get_text_signature
+from mypyc.ir.func_ir import (
+    FUNC_CLASSMETHOD,
+    FUNC_STATICMETHOD,
+    FuncDecl,
+    FuncIR,
+    get_text_signature,
+)
 from mypyc.ir.ops import (
     NAMESPACE_MODULE,
     NAMESPACE_STATIC,
@@ -81,6 +85,18 @@ PREFIX_MAP: Final = {
     NAMESPACE_TYPE: TYPE_PREFIX,
     NAMESPACE_MODULE: MODULE_PREFIX,
     NAMESPACE_TYPE_VAR: TYPE_VAR_PREFIX,
+}
+
+# Map from RVec._ctype to C macro prefix for VEC_*_INCREF/DECREF/BUF macros
+VEC_MACRO_PREFIX: Final = {
+    "VecI64": "VEC_I64",
+    "VecI32": "VEC_I32",
+    "VecI16": "VEC_I16",
+    "VecU8": "VEC_U8",
+    "VecFloat": "VEC_FLOAT",
+    "VecBool": "VEC_BOOL",
+    "VecT": "VEC_T",
+    "VecNested": "VEC_NESTED",
 }
 
 
@@ -225,24 +241,16 @@ class Emitter:
         return ATTR_PREFIX + name
 
     def object_annotation(self, obj: object, line: str) -> str:
-        """Build a C comment with an object's string representation.
+        """Build a C comment with a literal value's string representation.
 
-        If the comment exceeds the line length limit, it's wrapped into a
-        multiline string (with the extra lines indented to be aligned with
-        the first line's comment).
+        This is a debugging aid that makes generated C easier to read.
 
-        If it contains illegal characters, an empty string is returned."""
-        line_width = self._indent + len(line)
-        formatted = pprint.pformat(obj, compact=True, width=max(90 - line_width, 20))
-        if any(x in formatted for x in ("/*", "*/", "\0")):
+        If it contains illegal characters or is too long, return an empty string.
+        """
+        formatted = stable_literal_repr(obj)
+        if any(x in formatted for x in ("/*", "*/", "\0")) or len(formatted) >= 256:
             return ""
-
-        if "\n" in formatted:
-            first_line, rest = formatted.split("\n", maxsplit=1)
-            comment_continued = textwrap.indent(rest, (line_width + 3) * " ")
-            return f" /* {first_line}\n{comment_continued} */"
-        else:
-            return f" /* {formatted} */"
+        return f" /* {formatted} */"
 
     def emit_line(self, line: str = "", *, ann: object = None) -> None:
         if line.startswith("}"):
@@ -314,6 +322,18 @@ class Emitter:
         # See docs above
         return self.get_module_group_prefix(obj.module_name)
 
+    def register_group_dep(self, cl: ClassIR) -> None:
+        """Record `cl`'s defining group as a cross-group dep, if any.
+
+        Call this when emitting code that refers to `cl`'s struct
+        layout: the .c file consuming that layout needs the defining
+        group's `__native_*.h` included, and group_deps drives which
+        headers get pulled in.
+        """
+        target_group = self.context.group_map.get(cl.module_name)
+        if target_group and target_group != self.context.group_name:
+            self.context.group_deps.add(target_group)
+
     def static_name(self, id: str, module: str | None, prefix: str = STATIC_PREFIX) -> str:
         """Create name of a C static variable.
 
@@ -348,7 +368,7 @@ class Emitter:
     def set_undefined_value(self, target: str, rtype: RType) -> None:
         if isinstance(rtype, RVec):
             self.emit_line(f"{target}.len = -1;")
-            self.emit_line(f"{target}.buf = NULL;")
+            self.emit_line(f"{target}.items = NULL;")
         else:
             self.emit_line(f"{target} = {self.c_undefined_value(rtype)};")
 
@@ -368,6 +388,23 @@ class Emitter:
 
     def native_function_name(self, fn: FuncDecl) -> str:
         return f"{NATIVE_PREFIX}{fn.cname(self.names)}"
+
+    def native_function_call(self, fn: FuncDecl) -> str:
+        """Return the C expression for a call to `fn`'s native (CPyDef_) entry.
+
+        For cross-group references under `separate=True`, this prepends the
+        exports-table indirection (e.g. `exports_other.CPyDef_foo`). Same as
+        `native_function_name()` for in-group calls.
+        """
+        return f"{self.get_group_prefix(fn)}{self.native_function_name(fn)}"
+
+    def wrapper_function_call(self, fn: FuncDecl) -> str:
+        """Return the C expression for a call to `fn`'s Python-wrapper (CPyPy_) entry.
+
+        Like `native_function_call`, but for the PyObject-level wrapper that
+        boxes/unboxes arguments. Used from slot generators (tp_init, etc.).
+        """
+        return f"{self.get_group_prefix(fn)}{PREFIX}{fn.cname(self.names)}"
 
     def tuple_c_declaration(self, rtuple: RTuple) -> list[str]:
         result = [
@@ -557,8 +594,8 @@ class Emitter:
             for i, item_type in enumerate(rtype.types):
                 self.emit_inc_ref(f"{dest}.f{i}", item_type)
         elif isinstance(rtype, RVec):
-            # TODO: Only use the X variant if buf can be NULL
-            self.emit_line(f"Py_XINCREF({dest}.buf);")
+            prefix = VEC_MACRO_PREFIX[rtype._ctype]
+            self.emit_line(f"{prefix}_INCREF({dest});")
         elif not rtype.is_unboxed:
             # Always inline, since this is a simple but very hot op
             if rtype.may_be_immortal or not HAVE_IMMORTAL:
@@ -588,11 +625,8 @@ class Emitter:
             for i, item_type in enumerate(rtype.types):
                 self.emit_dec_ref(f"{dest}.f{i}", item_type, is_xdec=is_xdec, rare=rare)
         elif isinstance(rtype, RVec):
-            # TODO: Only use the X variant if buf can be NULL
-            if rare:
-                self.emit_line(f"CPy_XDecRef({dest}.buf);")
-            else:
-                self.emit_line(f"CPy_XDECREF({dest}.buf);")
+            prefix = VEC_MACRO_PREFIX[rtype._ctype]
+            self.emit_line(f"{prefix}_DECREF({dest});")
         elif not rtype.is_unboxed:
             if rare:
                 self.emit_line(f"CPy_{x}DecRef({dest});")
@@ -814,7 +848,7 @@ class Emitter:
                 item_type_c = self.vec_item_type_c(typ)
                 check = (
                     f"(Py_TYPE({src}) == VecTApi.boxed_type && "
-                    f"((VecTObject *){src})->vec.buf->item_type == {item_type_c})"
+                    f"VEC_T_BUF(((VecTObject *){src})->vec)->item_type == {item_type_c})"
                 )
             else:
                 # Nested vec types (vec[vec[...]]). Check boxed type, item type, and depth.
@@ -825,8 +859,8 @@ class Emitter:
                     type_value = self.vec_item_type_c(typ)
                 check = (
                     f"(Py_TYPE({src}) == VecNestedApi.boxed_type && "
-                    f"((VecNestedObject *){src})->vec.buf->item_type == {type_value} && "
-                    f"((VecNestedObject *){src})->vec.buf->depth == {depth})"
+                    f"VEC_NESTED_BUF(((VecNestedObject *){src})->vec)->item_type == {type_value} && "
+                    f"VEC_NESTED_BUF(((VecNestedObject *){src})->vec)->depth == {depth})"
                 )
             if likely:
                 check = f"(likely{check})"
@@ -1267,7 +1301,8 @@ class Emitter:
             for i, item_type in enumerate(rtype.types):
                 self.emit_gc_visit(f"{target}.f{i}", item_type)
         elif isinstance(rtype, RVec):
-            self.emit_line(f"Py_VISIT({target}.buf);")
+            prefix = VEC_MACRO_PREFIX[rtype._ctype]
+            self.emit_line(f"if ({target}.items) {{ Py_VISIT({prefix}_BUF({target})); }}")
         elif self.ctype(rtype) == "PyObject *":
             # The simplest case.
             self.emit_line(f"Py_VISIT({target});")
@@ -1293,7 +1328,11 @@ class Emitter:
             for i, item_type in enumerate(rtype.types):
                 self.emit_gc_clear(f"{target}.f{i}", item_type)
         elif isinstance(rtype, RVec):
-            self.emit_line(f"Py_CLEAR({target}.buf);")
+            prefix = VEC_MACRO_PREFIX[rtype._ctype]
+            self.emit_line(f"if ({target}.items) {{")
+            self.emit_line(f"    Py_DECREF({prefix}_BUF({target}));")
+            self.emit_line(f"    {target}.items = NULL;")
+            self.emit_line("}")
         elif self.ctype(rtype) == "PyObject *" and self.c_undefined_value(rtype) == "NULL":
             # The simplest case.
             self.emit_line(f"Py_CLEAR({target});")
@@ -1386,17 +1425,36 @@ class Emitter:
         cname = f"{PREFIX}{fn.cname(self.names)}"
         wrapper_name = f"{cname}_wrapper"
         cfunc = f"(PyCFunction){cname}"
-        func_flags = "METH_FASTCALL | METH_KEYWORDS"
+        func_flags = ["METH_FASTCALL", "METH_KEYWORDS"]
+        if fn.class_name and fn.decl.kind == FUNC_STATICMETHOD:
+            func_flags.append("METH_STATIC")
+        elif fn.class_name and fn.decl.kind == FUNC_CLASSMETHOD:
+            func_flags.append("METH_CLASS")
         doc = f"PyDoc_STR({native_function_doc_initializer(fn)})"
         has_self_arg = "true" if fn.class_name and fn.decl.kind != FUNC_STATICMETHOD else "false"
 
         code_flags = "CO_COROUTINE"
         self.emit_line(
-            f'PyObject* {wrapper_name} = CPyFunction_New({module}, "{filepath}", "{name}", {cfunc}, {func_flags}, {doc}, {fn.line}, {code_flags}, {has_self_arg});'
+            f'PyObject* {wrapper_name} = CPyFunction_New({module}, "{filepath}", "{name}", {cfunc}, {" | ".join(func_flags)}, {doc}, {fn.line}, {code_flags}, {has_self_arg});'
         )
         self.emit_line(f"if (unlikely(!{wrapper_name}))")
         self.emit_line(error_stmt)
         return wrapper_name
+
+    def emit_base_tp_function_call(
+        self, derived_cl: ClassIR, tp_func: str, args: str, *, prefix: str = ""
+    ) -> None:
+        # Walk past intermediate heap types (Python or mypyc classes) to reach a
+        # static C-level ancestor. Calling a heap type's tp_dealloc/tp_traverse/
+        # tp_clear would dispatch through subtype_dealloc, which uses Py_TYPE(self)
+        # (still our subtype) and re-enters our own function — infinite recursion.
+        type_obj = self.type_struct_name(derived_cl)
+        base_var = f"_base_{tp_func}"
+        self.emit_line(f"PyTypeObject *{base_var} = {type_obj}->tp_base;")
+        self.emit_line(f"while ({base_var}->tp_flags & Py_TPFLAGS_HEAPTYPE) {{")
+        self.emit_line(f"    {base_var} = {base_var}->tp_base;")
+        self.emit_line("}")
+        self.emit_line(f"{prefix}{base_var}->{tp_func}({args});")
 
 
 def c_array_initializer(components: list[str], *, indented: bool = False) -> str:
@@ -1437,3 +1495,21 @@ def native_function_doc_initializer(func: FuncIR) -> str:
         return "NULL"
     docstring = f"{text_sig}\n--\n\n"
     return c_string_initializer(docstring.encode("ascii", errors="backslashreplace"))
+
+
+def stable_literal_repr(obj: object) -> str:
+    """Return a single-line repr of a literal value.
+
+    Behaves like repr() for most values, but renders frozenset members in a
+    deterministic order (frozenset iteration order is hash-seed dependent).
+    """
+    if isinstance(obj, frozenset):
+        if not obj:
+            return "frozenset()"
+        items = ", ".join(stable_literal_repr(item) for item in sorted(obj, key=literal_sort_key))
+        return "frozenset({" + items + "})"
+    elif isinstance(obj, tuple):
+        if len(obj) == 1:
+            return "(" + stable_literal_repr(obj[0]) + ",)"
+        return "(" + ", ".join(stable_literal_repr(item) for item in obj) + ")"
+    return repr(obj)

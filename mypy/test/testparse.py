@@ -60,13 +60,13 @@ def test_parser(testcase: DataDrivenTestCase) -> None:
 
     try:
         errors = Errors(options)
-        n, _ = parse(
+        n = parse(
             bytes(source, "ascii"),
             fnam="main",
             module="__main__",
             errors=errors,
             options=options,
-            file_exists=False,
+            eager=True,
         )
         if errors.is_errors():
             errors.raise_error()
@@ -107,7 +107,7 @@ def test_parse_error(testcase: DataDrivenTestCase) -> None:
             "__main__",
             errors=errors,
             options=options,
-            file_exists=False,
+            eager=True,
         )
         if errors.is_errors():
             errors.raise_error()

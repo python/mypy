@@ -829,14 +829,14 @@ static PyObject *CPyImport_ImportFrom(PyObject *module, PyObject *package_name,
     // check if the imported module has an attribute by that name
     PyObject *x = PyObject_GetAttr(module, import_name);
     if (x == NULL) {
-        // if not, attempt to import a submodule with that name
+        // Attribute lookup failed. The name may still be a submodule that's
+        // been imported already; look it up directly in sys.modules.
         PyObject *fullmodname = PyUnicode_FromFormat("%U.%U", package_name, import_name);
         if (fullmodname == NULL) {
             goto fail;
         }
-
-        // The following code is a simplification of cpython/import.c/PyImport_GetModule()
-        x = PyObject_GetItem(module, fullmodname);
+        PyErr_Clear();
+        x = PyImport_GetModule(fullmodname);
         Py_DECREF(fullmodname);
         if (x == NULL) {
             goto fail;
@@ -847,12 +847,13 @@ static PyObject *CPyImport_ImportFrom(PyObject *module, PyObject *package_name,
 fail:
     PyErr_Clear();
     PyObject *package_path = PyModule_GetFilenameObject(module);
+    PyObject *path_for_msg = package_path != NULL ? package_path : Py_None;
     PyObject *errmsg = PyUnicode_FromFormat("cannot import name %R from %R (%S)",
-                                            import_name, package_name, package_path);
+                                            import_name, package_name, path_for_msg);
     // NULL checks for errmsg and package_name done by PyErr_SetImportError.
     PyErr_SetImportError(errmsg, package_name, package_path);
-    Py_DECREF(package_path);
-    Py_DECREF(errmsg);
+    Py_XDECREF(package_path);
+    Py_XDECREF(errmsg);
     return NULL;
 }
 
@@ -1157,6 +1158,9 @@ void CPyTrace_LogEvent(const char *location, const char *line, const char *op, c
 typedef struct {
     PyObject_HEAD
     PyObject *name;
+#if CPY_3_15_FEATURES
+    PyObject *qualname;
+#endif
     PyObject *type_params;
     PyObject *compute_value;
     PyObject *value;
@@ -1221,6 +1225,47 @@ static int CPyImport_InitSpecClasses(void) {
     return 0;
 }
 
+// Set __package__ before executing the module body so it is available
+// during module initialization. For a package, __package__ is the module
+// name itself. For a non-package submodule "a.b.c", it is "a.b". For a
+// top-level non-package module, it is "".
+static int CPyImport_SetModulePackage(PyObject *modobj, PyObject *module_name,
+                                      Py_ssize_t is_package) {
+    PyObject *pkg = NULL;
+    int rc = PyObject_GetOptionalAttrString(modobj, "__package__", &pkg);
+    if (rc < 0) {
+        return -1;
+    }
+    if (pkg != NULL && pkg != Py_None) {
+        Py_DECREF(pkg);
+        return 0;
+    }
+    Py_XDECREF(pkg);
+
+    PyObject *package_name = NULL;
+    if (is_package) {
+        package_name = module_name;
+        Py_INCREF(package_name);
+    } else {
+        Py_ssize_t name_len = PyUnicode_GetLength(module_name);
+        if (name_len < 0) {
+            return -1;
+        }
+        Py_ssize_t dot = PyUnicode_FindChar(module_name, '.', 0, name_len, -1);
+        if (dot >= 0) {
+            package_name = PyUnicode_Substring(module_name, 0, dot);
+        } else {
+            package_name = PyUnicode_FromString("");
+        }
+    }
+    if (package_name == NULL) {
+        return -1;
+    }
+    rc = PyObject_SetAttrString(modobj, "__package__", package_name);
+    Py_DECREF(package_name);
+    return rc;
+}
+
 // Derive and set __file__ on modobj from the shared library path, module name,
 // and extension suffix. Returns 0 on success, -1 on error.
 static int CPyImport_SetModuleFile(PyObject *modobj, PyObject *module_name,
@@ -1236,12 +1281,17 @@ static int CPyImport_SetModuleFile(PyObject *modobj, PyObject *module_name,
         Py_DECREF(file);
         return 0;
     }
-    // Derive __file__ from the shared library's __file__ (for its
-    // directory), the module name (dots -> path separators), and the
-    // extension suffix.  E.g. for module "a.b.c", shared lib
-    // "/path/to/group__mypyc.cpython-312-x86_64-linux-gnu.so",
-    // suffix ".cpython-312-x86_64-linux-gnu.so":
-    //   => "/path/to/a/b/c.cpython-312-x86_64-linux-gnu.so"
+    // Derive __file__ from the shared lib's directory, the module
+    // name, and the extension suffix. Two layouts:
+    //
+    //  Monolithic: one shared lib above the package tree holds many
+    //    modules, so append the full dotted module path.
+    //  separate=True: each module has its own "<segment>__mypyc.so"
+    //    next to the module, so dirname(shared_lib) is already inside
+    //    the parent package. Append only the last segment.
+    //
+    // Detect the separate=True case by matching the shared lib's
+    // basename against "<last_segment>__mypyc<ext>".
     PyObject *derived_file = NULL;
     if (shared_lib_file != NULL && shared_lib_file != Py_None &&
             PyUnicode_Check(shared_lib_file)) {
@@ -1269,30 +1319,65 @@ static int CPyImport_SetModuleFile(PyObject *modobj, PyObject *module_name,
         if (module_path == NULL) {
             return -1;
         }
+
+        // Compute the module's last dotted segment for the separate=True check.
+        Py_ssize_t name_len = PyUnicode_GetLength(module_name);
+        Py_ssize_t last_dot = PyUnicode_FindChar(module_name, '.', 0, name_len, -1);
+        PyObject *last_segment;
+        if (last_dot >= 0) {
+            last_segment = PyUnicode_Substring(module_name, last_dot + 1, name_len);
+        } else {
+            last_segment = module_name;
+            Py_INCREF(last_segment);
+        }
+        if (last_segment == NULL) {
+            Py_DECREF(module_path);
+            return -1;
+        }
+        // Compare shared_lib_file basename against "<last_segment>__mypyc<ext>".
+        PyObject *expected_basename = PyUnicode_FromFormat(
+            "%U__mypyc%U", last_segment, ext_suffix);
+        PyObject *actual_basename;
+        if (sep >= 0) {
+            actual_basename = PyUnicode_Substring(shared_lib_file, sep + 1, sf_len);
+        } else {
+            actual_basename = shared_lib_file;
+            Py_INCREF(actual_basename);
+        }
+        int is_per_module_lib = 0;
+        if (expected_basename != NULL && actual_basename != NULL) {
+            is_per_module_lib =
+                (PyUnicode_Compare(expected_basename, actual_basename) == 0);
+        }
+        Py_XDECREF(expected_basename);
+        Py_XDECREF(actual_basename);
+
         // For packages, __file__ should point to __init__<ext>,
         // e.g. "a/b/__init__.cpython-312-x86_64-linux-gnu.so".
+        PyObject *file_path = is_per_module_lib ? last_segment : module_path;
         if (sep >= 0) {
             PyObject *dir = PyUnicode_Substring(shared_lib_file, 0, sep);
             if (dir != NULL) {
                 if (is_package) {
                     derived_file = PyUnicode_FromFormat(
                         "%U%c%U%c__init__%U", dir, (int)sep_char,
-                        module_path, (int)sep_char, ext_suffix);
+                        file_path, (int)sep_char, ext_suffix);
                 } else {
                     derived_file = PyUnicode_FromFormat(
                         "%U%c%U%U", dir, (int)sep_char,
-                        module_path, ext_suffix);
+                        file_path, ext_suffix);
                 }
                 Py_DECREF(dir);
             }
         } else {
             if (is_package) {
                 derived_file = PyUnicode_FromFormat(
-                    "%U%c__init__%U", module_path, (int)SEP[0], ext_suffix);
+                    "%U%c__init__%U", file_path, (int)SEP[0], ext_suffix);
             } else {
-                derived_file = PyUnicode_FromFormat("%U%U", module_path, ext_suffix);
+                derived_file = PyUnicode_FromFormat("%U%U", file_path, ext_suffix);
             }
         }
+        Py_DECREF(last_segment);
         Py_DECREF(module_path);
     }
     if (derived_file == NULL && !PyErr_Occurred()) {
@@ -1505,47 +1590,7 @@ PyObject *CPyImport_ImportNative(PyObject *module_name,
         goto fail;
     }
 
-    // Set __package__ before executing the module body so it is available
-    // during module initialization. For a package, __package__ is the module
-    // name itself. For a non-package submodule "a.b.c", it is "a.b". For a
-    // top-level non-package module, it is "".
-    {
-        PyObject *pkg = NULL;
-        if (PyObject_GetOptionalAttrString(modobj, "__package__", &pkg) < 0) {
-            goto fail;
-        }
-        if (pkg == NULL || pkg == Py_None) {
-            Py_XDECREF(pkg);
-            PyObject *package_name;
-            if (is_package) {
-                package_name = module_name;
-                Py_INCREF(package_name);
-            } else if (dot >= 0) {
-                package_name = PyUnicode_Substring(module_name, 0, dot);
-            } else {
-                package_name = PyUnicode_FromString("");
-                if (package_name == NULL) {
-                    CPyError_OutOfMemory();
-                }
-            }
-            if (PyObject_SetAttrString(modobj, "__package__", package_name) < 0) {
-                Py_DECREF(package_name);
-                goto fail;
-            }
-            Py_DECREF(package_name);
-        } else {
-            Py_DECREF(pkg);
-        }
-    }
-
-    if (CPyImport_SetModuleFile(modobj, module_name, shared_lib_file, ext_suffix,
-                                 is_package) < 0) {
-        goto fail;
-    }
-    if (is_package && CPyImport_SetModulePath(modobj) < 0) {
-        goto fail;
-    }
-    if (CPyImport_SetModuleSpec(modobj, module_name, is_package) < 0) {
+    if (CPyImport_SetDunderAttrs(modobj, module_name, shared_lib_file, ext_suffix, is_package) < 0) {
         goto fail;
     }
 
@@ -1573,8 +1618,32 @@ fail:
     PyErr_Restore(exc_type, exc_val, exc_tb);
     Py_XDECREF(parent_module);
     Py_XDECREF(child_name);
-    Py_DECREF(modobj);
+    Py_CLEAR(*module_static);
     return NULL;
+}
+
+int CPyImport_SetDunderAttrs(PyObject *module, PyObject *module_name, PyObject *shared_lib_file,
+                             PyObject *ext_suffix, Py_ssize_t is_package)
+{
+    int res = CPyImport_SetModulePackage(module, module_name, is_package);
+    if (res < 0) {
+        return res;
+    }
+
+    res = CPyImport_SetModuleFile(module, module_name, shared_lib_file, ext_suffix,
+                                  is_package);
+    if (res < 0) {
+        return res;
+    }
+
+    if (is_package) {
+        res = CPyImport_SetModulePath(module);
+        if (res < 0) {
+            return res;
+        }
+    }
+
+    return CPyImport_SetModuleSpec(module, module_name, is_package);
 }
 
 #if CPY_3_14_FEATURES

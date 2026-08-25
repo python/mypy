@@ -4,10 +4,8 @@
 int
 import_librt_strings(void);
 
-#ifdef MYPYC_EXPERIMENTAL
-
-#include <stdbool.h>
 #include <Python.h>
+#include <stdbool.h>
 #include "librt_strings.h"
 
 extern void *LibRTStrings_API[LIBRT_STRINGS_API_LEN];
@@ -35,7 +33,5 @@ static inline bool CPyBytesWriter_Check(PyObject *obj) {
 static inline bool CPyStringWriter_Check(PyObject *obj) {
     return Py_TYPE(obj) == LibRTStrings_StringWriter_type_internal();
 }
-
-#endif  // MYPYC_EXPERIMENTAL
 
 #endif  // LIBRT_STRINGS_API_H

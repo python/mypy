@@ -3,8 +3,8 @@ from _collections_abc import dict_keys, dict_values
 from _typeshed import Incomplete, ReadableBuffer, SupportsRead, SupportsWrite
 from collections.abc import Iterable, Sequence
 from types import TracebackType
-from typing import Any, ClassVar, Generic, Literal, NoReturn, Protocol, TypeVar, overload, type_check_only
-from typing_extensions import Self, TypeAlias
+from typing import Any, ClassVar, Generic, Literal, Protocol, TypeAlias, TypeVar, overload, type_check_only
+from typing_extensions import Never, Self
 from xml.dom.minicompat import EmptyNodeList, NodeList
 from xml.dom.xmlbuilder import DocumentLS, DOMImplementationLS
 from xml.sax.xmlreader import XMLReader
@@ -52,6 +52,7 @@ def parse(
     file: str | SupportsRead[ReadableBuffer | str], parser: XMLReader | None = None, bufsize: int | None = None
 ) -> Document: ...
 def parseString(string: str | ReadableBuffer, parser: XMLReader | None = None) -> Document: ...
+
 @overload
 def getDOMImplementation(features: None = None) -> DOMImplementation: ...
 @overload
@@ -89,10 +90,12 @@ class Node(xml.dom.Node):
     @property
     def localName(self) -> str | None: ...  # non-null only for Element and Attr
     def __bool__(self) -> Literal[True]: ...
+
     @overload
     def toxml(self, encoding: str, standalone: bool | None = None) -> bytes: ...
     @overload
     def toxml(self, encoding: None = None, standalone: bool | None = None) -> str: ...
+
     @overload
     def toprettyxml(
         self,
@@ -122,6 +125,7 @@ class Node(xml.dom.Node):
         encoding: str,
         standalone: bool | None = None,
     ) -> bytes: ...
+
     def hasChildNodes(self) -> bool: ...
     def insertBefore(  # type: ignore[misc]
         self: _NodesWithChildren,  # pyright: ignore[reportGeneralTypeIssues]
@@ -131,6 +135,7 @@ class Node(xml.dom.Node):
     def appendChild(  # type: ignore[misc]
         self: _NodesWithChildren, node: _ChildNodePlusFragmentVar  # pyright: ignore[reportGeneralTypeIssues]
     ) -> _ChildNodePlusFragmentVar: ...
+
     @overload
     def replaceChild(  # type: ignore[misc]
         self: _NodesWithChildren, newChild: DocumentFragment, oldChild: _ChildNodeVar
@@ -139,6 +144,7 @@ class Node(xml.dom.Node):
     def replaceChild(  # type: ignore[misc]
         self: _NodesWithChildren, newChild: _NodesThatAreChildren, oldChild: _ChildNodeVar
     ) -> _ChildNodeVar | None: ...
+
     def removeChild(self: _NodesWithChildren, oldChild: _ChildNodeVar) -> _ChildNodeVar: ...  # type: ignore[misc]  # pyright: ignore[reportGeneralTypeIssues]
     def normalize(self: _NodesWithChildren) -> None: ...  # type: ignore[misc]  # pyright: ignore[reportGeneralTypeIssues]
     def cloneNode(self, deep: bool) -> Self | None: ...
@@ -178,10 +184,12 @@ class DocumentFragment(Node):
         self, newChild: _DFChildrenPlusFragment, refChild: _DocumentFragmentChildren | None
     ) -> _DFChildrenPlusFragment: ...
     def appendChild(self, node: _DFChildrenPlusFragment) -> _DFChildrenPlusFragment: ...  # type: ignore[override]
+
     @overload  # type: ignore[override]
     def replaceChild(self, newChild: DocumentFragment, oldChild: _DFChildrenVar) -> _DFChildrenVar | DocumentFragment: ...
     @overload
     def replaceChild(self, newChild: _DocumentFragmentChildren, oldChild: _DFChildrenVar) -> _DFChildrenVar | None: ...  # type: ignore[override]
+
     def removeChild(self, oldChild: _DFChildrenVar) -> _DFChildrenVar: ...  # type: ignore[override]
 
 _AttrChildrenVar = TypeVar("_AttrChildrenVar", bound=_AttrChildren)
@@ -223,10 +231,12 @@ class Attr(Node):
     def schemaType(self) -> TypeInfo: ...
     def insertBefore(self, newChild: _AttrChildrenPlusFragment, refChild: _AttrChildren | None) -> _AttrChildrenPlusFragment: ...  # type: ignore[override]
     def appendChild(self, node: _AttrChildrenPlusFragment) -> _AttrChildrenPlusFragment: ...  # type: ignore[override]
+
     @overload  # type: ignore[override]
     def replaceChild(self, newChild: DocumentFragment, oldChild: _AttrChildrenVar) -> _AttrChildrenVar | DocumentFragment: ...
     @overload
     def replaceChild(self, newChild: _AttrChildren, oldChild: _AttrChildrenVar) -> _AttrChildrenVar | None: ...  # type: ignore[override]
+
     def removeChild(self, oldChild: _AttrChildrenVar) -> _AttrChildrenVar: ...  # type: ignore[override]
 
 # In the DOM, this interface isn't specific to Attr, but our implementation is
@@ -339,12 +349,14 @@ class Element(Node):
         self, newChild: _ElementChildrenPlusFragment, refChild: _ElementChildren | None
     ) -> _ElementChildrenPlusFragment: ...
     def appendChild(self, node: _ElementChildrenPlusFragment) -> _ElementChildrenPlusFragment: ...  # type: ignore[override]
+
     @overload  # type: ignore[override]
     def replaceChild(
         self, newChild: DocumentFragment, oldChild: _ElementChildrenVar
     ) -> _ElementChildrenVar | DocumentFragment: ...
     @overload
     def replaceChild(self, newChild: _ElementChildren, oldChild: _ElementChildrenVar) -> _ElementChildrenVar | None: ...  # type: ignore[override]
+
     def removeChild(self, oldChild: _ElementChildrenVar) -> _ElementChildrenVar: ...  # type: ignore[override]
 
 class Childless:
@@ -355,14 +367,14 @@ class Childless:
     def firstChild(self) -> None: ...
     @property
     def lastChild(self) -> None: ...
-    def appendChild(self, node: _NodesThatAreChildren | DocumentFragment) -> NoReturn: ...
+    def appendChild(self, node: _NodesThatAreChildren | DocumentFragment) -> Never: ...
     def hasChildNodes(self) -> Literal[False]: ...
     def insertBefore(
         self, newChild: _NodesThatAreChildren | DocumentFragment, refChild: _NodesThatAreChildren | None
-    ) -> NoReturn: ...
-    def removeChild(self, oldChild: _NodesThatAreChildren) -> NoReturn: ...
+    ) -> Never: ...
+    def removeChild(self, oldChild: _NodesThatAreChildren) -> Never: ...
     def normalize(self) -> None: ...
-    def replaceChild(self, newChild: _NodesThatAreChildren | DocumentFragment, oldChild: _NodesThatAreChildren) -> NoReturn: ...
+    def replaceChild(self, newChild: _NodesThatAreChildren | DocumentFragment, oldChild: _NodesThatAreChildren) -> Never: ...
 
 class ProcessingInstruction(Childless, Node):
     __slots__ = ("target", "data")
@@ -489,10 +501,10 @@ class ReadOnlySequentialNamedNodeMap(Generic[_N]):
     def getNamedItemNS(self, namespaceURI: str | None, localName: str) -> _N | None: ...
     def __getitem__(self, name_or_tuple: str | _NSName) -> _N | None: ...
     def item(self, index: int) -> _N | None: ...
-    def removeNamedItem(self, name: str) -> NoReturn: ...
-    def removeNamedItemNS(self, namespaceURI: str | None, localName: str) -> NoReturn: ...
-    def setNamedItem(self, node: Node) -> NoReturn: ...
-    def setNamedItemNS(self, node: Node) -> NoReturn: ...
+    def removeNamedItem(self, name: str) -> Never: ...
+    def removeNamedItemNS(self, namespaceURI: str | None, localName: str) -> Never: ...
+    def setNamedItem(self, node: Node) -> Never: ...
+    def setNamedItemNS(self, node: Node) -> Never: ...
     @property
     def length(self) -> int: ...
 
@@ -556,10 +568,10 @@ class Entity(Identified, Node):
     notationName: str | None
 
     def __init__(self, name: str, publicId: str | None, systemId: str | None, notation: str | None) -> None: ...
-    def appendChild(self, newChild: _EntityChildren) -> NoReturn: ...  # type: ignore[override]
-    def insertBefore(self, newChild: _EntityChildren, refChild: _EntityChildren | None) -> NoReturn: ...  # type: ignore[override]
-    def removeChild(self, oldChild: _EntityChildren) -> NoReturn: ...  # type: ignore[override]
-    def replaceChild(self, newChild: _EntityChildren, oldChild: _EntityChildren) -> NoReturn: ...  # type: ignore[override]
+    def appendChild(self, newChild: _EntityChildren) -> Never: ...  # type: ignore[override]
+    def insertBefore(self, newChild: _EntityChildren, refChild: _EntityChildren | None) -> Never: ...  # type: ignore[override]
+    def removeChild(self, oldChild: _EntityChildren) -> Never: ...  # type: ignore[override]
+    def replaceChild(self, newChild: _EntityChildren, oldChild: _EntityChildren) -> Never: ...  # type: ignore[override]
 
 class Notation(Identified, Childless, Node):
     nodeType: ClassVar[Literal[12]]
@@ -661,15 +673,18 @@ class Document(Node, DocumentLS):
         encoding: str | None = None,
         standalone: bool | None = None,
     ) -> None: ...
+
     @overload
     def renameNode(self, n: Element, namespaceURI: str, name: str) -> Element: ...
     @overload
     def renameNode(self, n: Attr, namespaceURI: str, name: str) -> Attr: ...
     @overload
     def renameNode(self, n: Element | Attr, namespaceURI: str, name: str) -> Element | Attr: ...
+
     def insertBefore(
         self, newChild: _DocumentChildrenPlusFragment, refChild: _DocumentChildren | None  # type: ignore[override]
     ) -> _DocumentChildrenPlusFragment: ...
+
     @overload  # type: ignore[override]
     def replaceChild(
         self, newChild: DocumentFragment, oldChild: _DocumentChildrenVar

@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+from collections.abc import Collection
+from typing import cast
+
 from mypyc.analysis.dataflow import AnalysisResult, analyze_live_regs, get_cfg
 from mypyc.common import TEMP_ATTR_NAME
 from mypyc.ir.class_ir import ClassIR
@@ -13,6 +16,7 @@ from mypyc.ir.ops import (
     GetAttr,
     IncRef,
     LoadErrorValue,
+    Op,
     Register,
     SetAttr,
     Value,
@@ -29,6 +33,19 @@ def insert_spills(ir: FuncIR, env: ClassIR) -> None:
     entry_live = {op for op in entry_live if not isinstance(op, Register)}
 
     ir.blocks = spill_regs(ir.blocks, env, entry_live, live, ir.arg_regs[0])
+
+
+def sort_values(values: Collection[Op], blocks: list[BasicBlock]) -> list[Op]:
+    if len(values) > 1:
+        order = {}
+        i = 0
+        for block in blocks:
+            for op in block.ops:
+                order[op] = i
+                i += 1
+        return sorted(values, key=lambda v: order[v])
+    else:
+        return list(values)
 
 
 def spill_regs(
@@ -48,7 +65,9 @@ def spill_regs(
         env_reg = self_reg
 
     spill_locs = {}
-    for i, val in enumerate(to_spill):
+    # Sort values to make the order deterministic. All the spilled values are
+    # known to be Op instances, so the cast is safe.
+    for i, val in enumerate(sort_values(cast(set[Op], to_spill), blocks)):
         name = f"{TEMP_ATTR_NAME}2_{i}"
         env.attributes[name] = val.type
         if val.type.error_overlap:

@@ -126,7 +126,7 @@ def singledispatch_register_callback(ctx: MethodContext) -> Type:
 
         # is_subtype doesn't work when the right type is Overloaded, so we need the
         # actual type
-        register_type = first_arg_type.items[0].ret_type
+        register_type = first_arg_type.items[0].get_instance_type()
         type_args = RegisterCallableInfo(register_type, ctx.type)
         register_callable = make_fake_register_class_instance(ctx.api, type_args)
         return register_callable

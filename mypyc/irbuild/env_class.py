@@ -17,7 +17,7 @@ non-locals is via an instance of an environment class. Example:
 
 from __future__ import annotations
 
-from mypy.nodes import Argument, FuncDef, SymbolNode, Var
+from mypy.nodes import Argument, FuncDef, FuncItem, SymbolNode, Var
 from mypyc.common import (
     BITMAP_BITS,
     ENV_ATTR_NAME,
@@ -60,6 +60,8 @@ def setup_env_class(builder: IRBuilder) -> ClassIR:
         # If the function is nested, its environment class must contain an environment
         # attribute pointing to its encapsulating functions' environment class.
         env_class.attributes[ENV_ATTR_NAME] = RInstance(builder.fn_infos[-2].env_class)
+        if builder.fn_info.contains_nested:
+            env_class.attrs_to_keep_alive_on_completion.add(ENV_ATTR_NAME)
     env_class.mro = [env_class]
     builder.fn_info.env_class = env_class
     builder.classes.append(env_class)
@@ -229,7 +231,17 @@ def add_args_to_env(
                 rtype = builder.type_to_rtype(arg.variable.type)
                 assert base is not None, "base cannot be None for adding nonlocal args"
                 builder.add_var_to_env_class(
-                    arg.variable, rtype, base, reassign=reassign, prefix=prefix
+                    arg.variable,
+                    rtype,
+                    base,
+                    reassign=reassign,
+                    keep_alive_on_completion=(
+                        is_free_variable(builder, arg.variable)
+                        or is_free_variable_in_nested_func(
+                            builder, builder.fn_info.fitem, arg.variable
+                        )
+                    ),
+                    prefix=prefix,
                 )
 
 
@@ -256,7 +268,12 @@ def add_vars_to_env(builder: IRBuilder, prefix: str = "") -> None:
             if isinstance(var, Var):
                 rtype = builder.type_to_rtype(var.type)
                 builder.add_var_to_env_class(
-                    var, rtype, env_for_func, reassign=False, prefix=prefix
+                    var,
+                    rtype,
+                    env_for_func,
+                    reassign=False,
+                    keep_alive_on_completion=True,
+                    prefix=prefix,
                 )
 
     if builder.fn_info.fitem in builder.encapsulating_funcs:
@@ -267,10 +284,16 @@ def add_vars_to_env(builder: IRBuilder, prefix: str = "") -> None:
                 # the same name and signature across conditional blocks
                 # will generate different callable classes, so the callable
                 # class that gets instantiated must be generic.
+                nested_prefix = prefix
                 if nested_fn.is_generator or nested_fn.is_coroutine:
-                    prefix = GENERATOR_ATTRIBUTE_PREFIX
+                    nested_prefix = GENERATOR_ATTRIBUTE_PREFIX
                 builder.add_var_to_env_class(
-                    nested_fn, object_rprimitive, env_for_func, reassign=False, prefix=prefix
+                    nested_fn,
+                    object_rprimitive,
+                    env_for_func,
+                    reassign=False,
+                    keep_alive_on_completion=is_free_variable(builder, nested_fn),
+                    prefix=nested_prefix,
                 )
 
 
@@ -308,3 +331,14 @@ def setup_func_for_recursive_call(
 def is_free_variable(builder: IRBuilder, symbol: SymbolNode) -> bool:
     fitem = builder.fn_info.fitem
     return fitem in builder.free_variables and symbol in builder.free_variables[fitem]
+
+
+def is_free_variable_in_nested_func(
+    builder: IRBuilder, fitem: FuncItem, symbol: SymbolNode
+) -> bool:
+    for nested in builder.encapsulating_funcs.get(fitem, []):
+        if symbol in builder.free_variables.get(nested, set()):
+            return True
+        if is_free_variable_in_nested_func(builder, nested, symbol):
+            return True
+    return False

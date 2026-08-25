@@ -211,6 +211,11 @@ def test_urlsafe_b64decode_errors() -> None:
     for b in b"eA", b"eA=", b"eHk":
         with assertRaises(ValueError):
             b64decode(b)
+[out version>=3.15]
+driver.py:28: FutureWarning: invalid character '+' in URL-safe Base64 data will be discarded in future Python versions
+  test_func()
+driver.py:28: FutureWarning: invalid character '/' in URL-safe Base64 data will be discarded in future Python versions
+  test_func()
 
 [case testBase64UsedAtTopLevelOnly_librt]
 from librt.base64 import b64encode

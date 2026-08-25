@@ -31,16 +31,7 @@ def is_whl_or_tar(name: str) -> bool:
 
 
 def item_ok_for_pypi(name: str) -> bool:
-    if not is_whl_or_tar(name):
-        return False
-
-    name = name.removesuffix(".tar.gz")
-    name = name.removesuffix(".whl")
-
-    if name.endswith("wasm32"):
-        return False
-
-    return True
+    return is_whl_or_tar(name)
 
 
 def get_release_for_tag(tag: str) -> dict[str, Any]:

@@ -67,9 +67,6 @@ class NewTypeAnalyzer:
         name = var_name
         # OK, now we know this is a NewType. But the base type may be not ready yet,
         # add placeholder as we do for ClassDef.
-
-        if self.api.is_func_scope():
-            name += "@" + str(s.line)
         fullname = self.api.qualified_name(name)
 
         if not call.analyzed or isinstance(call.analyzed, NewTypeExpr) and not call.analyzed.info:
@@ -134,8 +131,8 @@ class NewTypeAnalyzer:
         else:
             call.analyzed.info.bases = newtype_class_info.bases
         self.api.add_symbol(var_name, call.analyzed.info, s)
-        if self.api.is_func_scope():
-            self.api.add_symbol_skip_local(name, call.analyzed.info)
+        if self.api.is_nested_within_func_scope():
+            self.api.add_global_symbol(var_name, s, call.analyzed.info)
         newtype_class_info.line = s.line
         return True
 

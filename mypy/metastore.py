@@ -17,7 +17,7 @@ from abc import abstractmethod
 from collections.abc import Iterable
 from typing import TYPE_CHECKING, Any
 
-from mypy.util import os_path_join
+from mypy.util import hash_path_stem, os_path_join
 
 if TYPE_CHECKING:
     # We avoid importing sqlite3 unless we are using it so we can mostly work
@@ -64,6 +64,14 @@ class MetadataStore:
         there is no guarantee that changes are not made until it is
         called.
         """
+
+    def commit_path(self, name: str) -> None:
+        """Commit changes related to a specific cache path.
+
+        For sharded stores, this commits only the shard containing the path.
+        Default implementation commits everything.
+        """
+        self.commit()
 
     @abstractmethod
     def list_all(self) -> Iterable[str]: ...
@@ -169,23 +177,43 @@ def connect_db(db_file: str, set_journal_mode: bool) -> sqlite3.Connection:
 
 
 class SqliteMetadataStore(MetadataStore):
-    def __init__(self, cache_dir_prefix: str, set_journal_mode: bool = False) -> None:
+    def __init__(
+        self, cache_dir_prefix: str, set_journal_mode: bool = False, num_shards: int = 1
+    ) -> None:
         # We check startswith instead of equality because the version
         # will have already been appended by the time the cache dir is
         # passed here.
-        self.db = None
+        self.dbs: list[sqlite3.Connection] = []
+        self.num_shards = num_shards
+        self.dirty_shards: set[int] = set()
         if cache_dir_prefix.startswith(os.devnull):
             return
 
         os.makedirs(cache_dir_prefix, exist_ok=True)
-        self.db = connect_db(os_path_join(cache_dir_prefix, "cache.db"), set_journal_mode)
+        if num_shards <= 1:
+            self.dbs.append(
+                connect_db(os_path_join(cache_dir_prefix, "cache.db"), set_journal_mode)
+            )
+        else:
+            for i in range(num_shards):
+                self.dbs.append(
+                    connect_db(os_path_join(cache_dir_prefix, f"cache.{i}.db"), set_journal_mode)
+                )
+
+    def _shard_index(self, name: str) -> int:
+        if self.num_shards <= 1:
+            return 0
+        return hash_path_stem(name) % self.num_shards
+
+    def _db_for(self, name: str) -> sqlite3.Connection:
+        if not self.dbs:
+            raise FileNotFoundError()
+        return self.dbs[self._shard_index(name)]
 
     def _query(self, name: str, field: str) -> Any:
         # Raises FileNotFound for consistency with the file system version
-        if not self.db:
-            raise FileNotFoundError()
-
-        cur = self.db.execute(f"SELECT {field} FROM files2 WHERE path = ?", (name,))
+        db = self._db_for(name)
+        cur = db.execute(f"SELECT {field} FROM files2 WHERE path = ?", (name,))
         results = cur.fetchall()
         if not results:
             raise FileNotFoundError()
@@ -205,39 +233,46 @@ class SqliteMetadataStore(MetadataStore):
     def write(self, name: str, data: bytes, mtime: float | None = None) -> bool:
         import sqlite3
 
-        if not self.db:
+        if not self.dbs:
             return False
         try:
             if mtime is None:
                 mtime = time.time()
-            self.db.execute(
+            db = self._db_for(name)
+            db.execute(
                 "INSERT OR REPLACE INTO files2(path, mtime, data) VALUES(?, ?, ?)",
                 (name, mtime, data),
             )
+            self.dirty_shards.add(self._shard_index(name))
         except sqlite3.OperationalError:
             return False
         return True
 
     def remove(self, name: str) -> None:
-        if not self.db:
-            raise FileNotFoundError()
-
-        self.db.execute("DELETE FROM files2 WHERE path = ?", (name,))
+        db = self._db_for(name)
+        db.execute("DELETE FROM files2 WHERE path = ?", (name,))
+        self.dirty_shards.add(self._shard_index(name))
 
     def commit(self) -> None:
-        if self.db:
-            self.db.commit()
+        for i in self.dirty_shards:
+            self.dbs[i].commit()
+        self.dirty_shards.clear()
+
+    def commit_path(self, name: str) -> None:
+        i = self._shard_index(name)
+        if i in self.dirty_shards:
+            self.dbs[i].commit()
+            self.dirty_shards.discard(i)
 
     def list_all(self) -> Iterable[str]:
-        if self.db:
-            for row in self.db.execute("SELECT path FROM files2"):
+        for db in self.dbs:
+            for row in db.execute("SELECT path FROM files2"):
                 yield row[0]
 
     def close(self) -> None:
-        if self.db:
-            db = self.db
-            self.db = None
+        for db in self.dbs:
             db.close()
+        self.dbs.clear()
 
     def __del__(self) -> None:
         self.close()

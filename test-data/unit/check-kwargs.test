@@ -495,6 +495,21 @@ def f(a: int, *, b: str) -> None:
     pass
 f(1)  # E: Missing named argument "b" for "f"
 
+[case testTooManyPositionalArgumentsFromOtherModule]
+import m
+m.f(1, 2)
+[file m.py]
+def f(a: int, *, b: int) -> None:
+    pass
+[out]
+main:2: error: Too many positional arguments for "f"
+main:2: note: "f" defined in "m"
+
+[case testTooManyPositionalArgumentsForSameModule]
+def f(a: int, *, b: int) -> None:
+    pass
+f(1, 2)  # E: Too many positional arguments for "f"
+
 [case testStarArgsAndKwArgsSpecialCase]
 from typing import Dict, Mapping
 

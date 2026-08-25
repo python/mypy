@@ -37,10 +37,12 @@ def get_target_type(
     report_incompatible_typevar_value: Callable[[CallableType, Type, str, Context], None],
     context: Context,
     skip_unsatisfied: bool,
+    id_to_type: dict[TypeVarId, Type],
 ) -> Type | None:
     p_type = get_proper_type(type)
-    if isinstance(p_type, UninhabitedType) and tvar.has_default():
-        return tvar.default
+    if isinstance(p_type, UninhabitedType) and p_type.ambiguous and tvar.has_default():
+        # Gradually expand defaults, as they may depend on previous type variables.
+        return expand_type(tvar.default, id_to_type)
     if isinstance(tvar, ParamSpecType):
         return type
     if isinstance(tvar, TypeVarTupleType):
@@ -113,7 +115,13 @@ def apply_generic_arguments(
             continue
 
         target_type = get_target_type(
-            tvar, type, callable, report_incompatible_typevar_value, context, skip_unsatisfied
+            tvar,
+            type,
+            callable,
+            report_incompatible_typevar_value,
+            context,
+            skip_unsatisfied,
+            id_to_type,
         )
         if target_type is not None:
             id_to_type[tvar.id] = target_type
@@ -171,11 +179,17 @@ def apply_generic_arguments(
         assert isinstance(typ, TypeVarLikeType)
         remaining_tvars.append(typ)
 
+    instance_type = None
+    if callable.instance_type is not None:
+        instance_type = expand_type(callable.instance_type, id_to_type)
+        assert isinstance(instance_type, ProperType)
+
     return callable.copy_modified(
         ret_type=expand_type(callable.ret_type, id_to_type),
         variables=remaining_tvars,
         type_guard=type_guard,
         type_is=type_is,
+        instance_type=instance_type,
     )
 
 
