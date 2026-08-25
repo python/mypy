@@ -618,15 +618,15 @@ section of the command line docs.
     :type: boolean
     :default: True
 
-    Effectively disables checking of optional
+    When set to ``false``, effectively disables checking of optional
     types and ``None`` values. With this option, mypy doesn't
     generally check the use of ``None`` values -- it is treated
     as compatible with every type.
 
     .. warning::
 
-        ``strict_optional = false`` is evil. Avoid using it and definitely do
-        not use it without understanding what it does.
+        ``strict_optional = false`` is not recommended. See
+        :ref:`strict_optional` for an explanation of its behavior.
 
 
 Configuring warnings
