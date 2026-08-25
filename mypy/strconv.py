@@ -594,6 +594,9 @@ class StrConv(NodeVisitor[str]):
     def visit_newtype_expr(self, o: mypy.nodes.NewTypeExpr) -> str:
         return f"NewTypeExpr:{o.line}({o.name}, {self.dump([o.old_type], o)})"
 
+    def visit_sentinel_expr(self, o: mypy.nodes.SentinelExpr) -> str:
+        return f"SentinelExpr:{o.line}({o.info.fullname})"
+
     def visit_lambda_expr(self, o: mypy.nodes.LambdaExpr) -> str:
         a = self.func_helper(o)
         return self.dump(a, o)

@@ -85,6 +85,7 @@ from mypy.nodes import (
     PromoteExpr,
     RefExpr,
     RevealExpr,
+    SentinelExpr,
     SetComprehension,
     SetExpr,
     SliceExpr,
@@ -6455,6 +6456,9 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
 
     def visit_newtype_expr(self, e: NewTypeExpr) -> Type:
         return AnyType(TypeOfAny.special_form)
+
+    def visit_sentinel_expr(self, e: SentinelExpr) -> Type:
+        return Instance(e.info, [], line=e.line, column=e.column)
 
     def visit_namedtuple_expr(self, e: NamedTupleExpr) -> Type:
         tuple_type = e.info.tuple_type

@@ -156,6 +156,7 @@ from mypy.nodes import (
     RefExpr,
     ReturnStmt,
     RevealExpr,
+    SentinelExpr,
     SetComprehension,
     SetExpr,
     SliceExpr,
@@ -290,7 +291,6 @@ from mypy.types import (
     ParamSpecType,
     PlaceholderType,
     ProperType,
-    SentinelValue,
     TrivialSyntheticTypeTranslator,
     TupleType,
     Type,
@@ -3435,15 +3435,31 @@ class SemanticAnalyzer(
         typ = self.named_type_or_none(callee.fullname)
         if typ is None:
             return None
-        name = f"{self.type.name}.{var.name}" if self.type is not None else var.name
-        return typ.copy_modified(
-            last_known_value=LiteralType(
-                SentinelValue(var.fullname, name),
-                fallback=typ,
-                line=rvalue.line,
-                column=rvalue.column,
-            )
+
+        # Give this sentinel its own synthetic nominal type (like NewType), rather than
+        # tagging the shared sentinel/Sentinel class with a Literal[...] value: a sentinel
+        # has no way to identify itself other than this type, unlike e.g. an enum member.
+        # The mangled name avoids colliding with the Var of the same name in this scope.
+        mangled_name = f"{var.name}'"
+        info = self.basic_new_typeinfo(mangled_name, typ, rvalue.line)
+        info.is_sentinel = True
+
+        # Insert directly rather than via add_symbol(): redefining the sentinel Var (e.g.
+        # reassigning MISSING = sentinel(...) again) is already reported once for the Var
+        # itself, and would otherwise also be (redundantly) reported for this mangled name.
+        symbol_table = self.type.names if self.type is not None else self.globals
+        symbol_table[mangled_name] = SymbolTableNode(
+            kind=MDEF if self.type is not None else GDEF,
+            node=info,
+            module_public=False,
+            module_hidden=True,
         )
+
+        # Redirect type-checking of this call expression to visit_sentinel_expr, so its
+        # type is this synthetic class rather than whatever ordinary call-checking
+        # against sentinel's/Sentinel's __init__ signature would otherwise produce.
+        rvalue.analyzed = SentinelExpr(info, line=rvalue.line, column=rvalue.column)
+        return Instance(info, [], line=rvalue.line, column=rvalue.column)
 
     def analyze_identity_global_assignment(self, s: AssignmentStmt) -> bool:
         """Special case 'X = X' in global scope.
@@ -4816,7 +4832,6 @@ class SemanticAnalyzer(
                     var.is_final
                     and isinstance(typ, Instance)
                     and typ.last_known_value
-                    and not isinstance(typ.last_known_value.value, SentinelValue)
                     and (not self.type or not self.type.is_enum)
                 ):
                     var.final_value = typ.last_known_value.value

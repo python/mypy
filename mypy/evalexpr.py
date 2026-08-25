@@ -186,6 +186,9 @@ class _NodeEvaluator(ExpressionVisitor[object]):
     def visit_newtype_expr(self, o: mypy.nodes.NewTypeExpr) -> object:
         return UNKNOWN
 
+    def visit_sentinel_expr(self, o: mypy.nodes.SentinelExpr) -> object:
+        return UNKNOWN
+
     def visit__promote_expr(self, o: mypy.nodes.PromoteExpr) -> object:
         return UNKNOWN
 

@@ -158,7 +158,6 @@ from mypy.types import (
     ParamSpecType,
     PartialType,
     ProperType,
-    SentinelValue,
     TupleType,
     Type,
     TypeAliasType,
@@ -975,7 +974,13 @@ class TypeTriggersVisitor(TypeVisitor[list[str]]):
         return get_type_triggers(typ, self.use_logical_deps, self.seen_aliases)
 
     def visit_instance(self, typ: Instance) -> list[str]:
-        trigger = make_trigger(typ.type.fullname)
+        if typ.type.is_sentinel:
+            # The synthetic per-declaration class has a mangled fullname (see
+            # semanal.py's sentinel_type_for_var) that doesn't correspond to any
+            # externally visible symbol; trigger on the sentinel Var's fullname instead.
+            trigger = make_trigger(typ.type.fullname.removesuffix("'"))
+        else:
+            trigger = make_trigger(typ.type.fullname)
         triggers = [trigger]
         for arg in typ.args:
             triggers.extend(self.get_type_triggers(arg))
@@ -1097,10 +1102,7 @@ class TypeTriggersVisitor(TypeVisitor[list[str]]):
         return triggers
 
     def visit_literal_type(self, typ: LiteralType) -> list[str]:
-        triggers = self.get_type_triggers(typ.fallback)
-        if isinstance(typ.value, SentinelValue):
-            triggers.append(make_trigger(typ.value.fullname))
-        return triggers
+        return self.get_type_triggers(typ.fallback)
 
     def visit_unbound_type(self, typ: UnboundType) -> list[str]:
         return []

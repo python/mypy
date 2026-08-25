@@ -192,6 +192,10 @@ class ExpressionVisitor(Generic[T]):
         pass
 
     @abstractmethod
+    def visit_sentinel_expr(self, o: mypy.nodes.SentinelExpr, /) -> T:
+        pass
+
+    @abstractmethod
     def visit__promote_expr(self, o: mypy.nodes.PromoteExpr, /) -> T:
         pass
 
@@ -601,6 +605,9 @@ class NodeVisitor(Generic[T], ExpressionVisitor[T], StatementVisitor[T], Pattern
         raise NotImplementedError()
 
     def visit_newtype_expr(self, o: mypy.nodes.NewTypeExpr, /) -> T:
+        raise NotImplementedError()
+
+    def visit_sentinel_expr(self, o: mypy.nodes.SentinelExpr, /) -> T:
         raise NotImplementedError()
 
     def visit__promote_expr(self, o: mypy.nodes.PromoteExpr, /) -> T:

@@ -69,6 +69,7 @@ from mypy.nodes import (
     RefExpr,
     ReturnStmt,
     RevealExpr,
+    SentinelExpr,
     SetComprehension,
     SetExpr,
     SliceExpr,
@@ -696,6 +697,9 @@ class TransformVisitor(NodeVisitor[Node]):
         res = NewTypeExpr(node.name, node.old_type, line=node.line, column=node.column)
         res.info = node.info
         return res
+
+    def visit_sentinel_expr(self, node: SentinelExpr) -> SentinelExpr:
+        return SentinelExpr(node.info, line=node.line, column=node.column)
 
     def visit_namedtuple_expr(self, node: NamedTupleExpr) -> NamedTupleExpr:
         return NamedTupleExpr(node.info)

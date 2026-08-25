@@ -98,12 +98,7 @@ JsonDict: _TypeAlias = dict[str, Any]
 #
 # Note: Float values are only used internally. They are not accepted within
 # Literal[...].
-class SentinelValue(NamedTuple):
-    fullname: str
-    name: str
-
-
-LiteralValue: _TypeAlias = int | str | bool | float | SentinelValue
+LiteralValue: _TypeAlias = int | str | bool | float
 
 
 TUPLE_NAMES: Final = ("builtins.tuple", "typing.Tuple")
@@ -123,6 +118,18 @@ SENTINEL_TYPE_NAMES: Final = (
     "typing_extensions.sentinel",
     "typing_extensions.Sentinel",
 )
+
+
+def sentinel_display_name(info: mypy.nodes.TypeInfo) -> str:
+    """User-facing name for a synthetic per-declaration sentinel class.
+
+    Its fullname is mangled (see semanal.py's sentinel_type_for_var) to avoid
+    colliding with the Var of the same name; this strips that mangling marker
+    and the module prefix, e.g. "mod.Cls.IN_CLASS'" -> "Cls.IN_CLASS".
+    """
+    name = info.fullname.removesuffix("'")
+    return name.removeprefix(f"{info.module_name}.")
+
 
 TYPED_NAMEDTUPLE_NAMES: Final = ("typing.NamedTuple", "typing_extensions.NamedTuple")
 
@@ -3354,15 +3361,11 @@ class LiteralType(ProperType):
     #       almost no test cases where we would redundantly compute
     #       `can_be_false`/`can_be_true`.
     def can_be_false_default(self) -> bool:
-        if isinstance(self.value, SentinelValue):
-            return False
         if self.fallback.type.is_enum:
             return self.fallback.can_be_false
         return not self.value
 
     def can_be_true_default(self) -> bool:
-        if isinstance(self.value, SentinelValue):
-            return True
         if self.fallback.type.is_enum:
             return self.fallback.can_be_true
         return bool(self.value)
@@ -3383,9 +3386,6 @@ class LiteralType(ProperType):
     def is_enum_literal(self) -> bool:
         return self.fallback.type.is_enum
 
-    def is_sentinel_literal(self) -> bool:
-        return isinstance(self.value, SentinelValue)
-
     def value_repr(self) -> str:
         """Returns the string representation of the underlying type.
 
@@ -3393,9 +3393,6 @@ class LiteralType(ProperType):
         except it includes some additional logic to correctly handle cases
         where the value is a string, byte string, a unicode string, or an enum.
         """
-        if isinstance(self.value, SentinelValue):
-            return self.value.name
-
         raw = repr(self.value)
         fallback_name = self.fallback.type.fullname
 
@@ -3414,19 +3411,16 @@ class LiteralType(ProperType):
             return raw
 
     def serialize(self) -> JsonDict | str:
-        value: LiteralValue | JsonDict = self.value
-        if isinstance(value, SentinelValue):
-            value = {".class": "SentinelValue", "fullname": value.fullname, "name": value.name}
-        return {".class": "LiteralType", "value": value, "fallback": self.fallback.serialize()}
+        return {
+            ".class": "LiteralType",
+            "value": self.value,
+            "fallback": self.fallback.serialize(),
+        }
 
     @classmethod
     def deserialize(cls, data: JsonDict) -> LiteralType:
         assert data[".class"] == "LiteralType"
-        value = data["value"]
-        if isinstance(value, dict):
-            assert value[".class"] == "SentinelValue"
-            value = SentinelValue(value["fullname"], value["name"])
-        return LiteralType(value=value, fallback=Instance.deserialize(data["fallback"]))
+        return LiteralType(value=data["value"], fallback=Instance.deserialize(data["fallback"]))
 
     def write(self, data: WriteBuffer) -> None:
         write_tag(data, LITERAL_TYPE)
@@ -3888,7 +3882,9 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
         fullname = t.type.fullname
         if not self.options.reveal_verbose_types and fullname.startswith("builtins."):
             fullname = t.type.name
-        if t.last_known_value and not t.args:
+        if t.type.is_sentinel:
+            s = sentinel_display_name(t.type)
+        elif t.last_known_value and not t.args:
             # Instances with a literal fallback should never be generic. If they are,
             # something went wrong so we fall back to showing the full Instance repr.
             s = f"{t.last_known_value.accept(self)}?"
@@ -4044,7 +4040,7 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
                         )
                     else:
                         vs.append(
-                            f"{var.name}{f' = {var.default.accept(self)}' if var.has_default()  else ''}"
+                            f"{var.name}{f' = {var.default.accept(self)}' if var.has_default() else ''}"
                         )
                 else:
                     # For other TypeVarLikeTypes, use the name and default
@@ -4103,8 +4099,6 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
         return repr(t.literal_value)
 
     def visit_literal_type(self, t: LiteralType, /) -> str:
-        if isinstance(t.value, SentinelValue):
-            return t.value_repr()
         return f"Literal[{t.value_repr()}]"
 
     def visit_union_type(self, t: UnionType, /) -> str:

@@ -103,6 +103,7 @@ from mypy.types import (
     flatten_nested_unions,
     get_proper_type,
     get_proper_types,
+    sentinel_display_name,
 )
 from mypy.typetraverser import TypeTraverserVisitor
 from mypy.util import plural_s, unmangle
@@ -2722,7 +2723,9 @@ def format_type_inner(
         if itype.type.fullname == "typing._SpecialForm":
             # This is not a real type but used for some typing-related constructs.
             return "<typing special form>"
-        if verbosity >= 2 or (fullnames and itype.type.fullname in fullnames):
+        if itype.type.is_sentinel:
+            base_str = sentinel_display_name(itype.type)
+        elif verbosity >= 2 or (fullnames and itype.type.fullname in fullnames):
             base_str = itype.type.fullname
         else:
             base_str = itype.type.name
@@ -2783,8 +2786,6 @@ def format_type_inner(
                 modifier += "="
             items.append(f"{item_name!r}{modifier}: {format(item_type)}")
         return f"TypedDict({{{', '.join(items)}}})"
-    elif isinstance(typ, LiteralType) and typ.is_sentinel_literal():
-        return format_literal_value(typ)
     elif isinstance(typ, LiteralType):
         return f"Literal[{format_literal_value(typ)}]"
     elif isinstance(typ, UnionType):
@@ -2792,9 +2793,6 @@ def format_type_inner(
         if not isinstance(typ, UnionType):
             return format(typ)
         literal_items, union_items = separate_union_literals(typ)
-        sentinel_items = [item for item in literal_items if item.is_sentinel_literal()]
-        literal_items = [item for item in literal_items if not item.is_sentinel_literal()]
-        union_items = [*sentinel_items, *union_items]
 
         # Coalesce multiple Literal[] members. This also changes output order.
         # If there's just one Literal item, retain the original ordering.

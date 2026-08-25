@@ -10,6 +10,7 @@ from mypy.nodes import (
     NamedTupleExpr,
     NewTypeExpr,
     PromoteExpr,
+    SentinelExpr,
     TypeAlias,
     TypeAliasExpr,
     TypeAliasStmt,
@@ -94,6 +95,10 @@ class MixedTraverserVisitor(TraverserVisitor, TypeTraverserVisitor):
         if o.info:
             self.process_type_info(o.info)
         self.visit_optional_type(o.old_type)
+
+    def visit_sentinel_expr(self, o: SentinelExpr, /) -> None:
+        super().visit_sentinel_expr(o)
+        self.process_type_info(o.info)
 
     # Statements
 

@@ -36,6 +36,7 @@ from mypy.nodes import (
     ParamSpecExpr,
     PromoteExpr,
     RevealExpr,
+    SentinelExpr,
     SetComprehension,
     SetExpr,
     SliceExpr,
@@ -309,6 +310,9 @@ class _Hasher(ExpressionVisitor[Key | None]):
         return None
 
     def visit_newtype_expr(self, e: NewTypeExpr) -> None:
+        return None
+
+    def visit_sentinel_expr(self, e: SentinelExpr) -> None:
         return None
 
     def visit__promote_expr(self, e: PromoteExpr) -> None:

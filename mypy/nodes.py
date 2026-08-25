@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import sys
 from abc import abstractmethod
 from collections import defaultdict
 from collections.abc import Callable, Iterator, Sequence
@@ -78,6 +79,11 @@ from mypy.modules_state import modules_state
 from mypy.options import Options
 from mypy.util import is_sunder, is_typeshed_file, short_type
 from mypy.visitor import ExpressionVisitor, NodeVisitor, StatementVisitor
+
+if sys.version_info >= (3, 12):
+    from typing import override
+else:
+    from typing_extensions import override
 
 if TYPE_CHECKING:
     from mypy.patterns import Pattern
@@ -1646,9 +1652,7 @@ class Var(SymbolNode):
         if tag == LITERAL_COMPLEX:
             v.final_value = complex(read_float_bare(data), read_float_bare(data))
         elif tag != LITERAL_NONE:
-            val = read_literal(data, tag)
-            assert not isinstance(val, mypy.types.SentinelValue)
-            v.final_value = val
+            v.final_value = read_literal(data, tag)
         assert read_tag(data) == END_TAG
         return v
 
@@ -3544,6 +3548,30 @@ class NewTypeExpr(Expression):
         return visitor.visit_newtype_expr(self)
 
 
+class SentinelExpr(Expression):
+    """PEP 661 sentinel()/Sentinel() call expression.
+
+    Marks the rvalue of a sentinel declaration (`X = sentinel("X")`) so that its type
+    is the synthetic per-declaration class in `info`, rather than whatever ordinary
+    call-checking against sentinel's/Sentinel's __init__ signature would produce.
+    """
+
+    __slots__ = ("info",)
+
+    __match_args__ = ("info",)
+
+    # The synthesized class representing this specific sentinel.
+    info: TypeInfo
+
+    def __init__(self, info: TypeInfo, line: int, column: int) -> None:
+        super().__init__(line=line, column=column)
+        self.info = info
+
+    @override
+    def accept(self, visitor: ExpressionVisitor[T]) -> T:
+        return visitor.visit_sentinel_expr(self)
+
+
 class AwaitExpr(Expression):
     """Await expression (await ...)."""
 
@@ -3666,6 +3694,7 @@ class TypeInfo(SymbolNode):
         "is_named_tuple",
         "typeddict_type",
         "is_newtype",
+        "is_sentinel",
         "is_intersection",
         "metadata",
         "alt_promote",
@@ -3806,6 +3835,9 @@ class TypeInfo(SymbolNode):
     # Is this a newtype type?
     is_newtype: bool
 
+    # Is this a synthetic type generated for a PEP 661 sentinel()/Sentinel() declaration?
+    is_sentinel: bool
+
     # Is this a synthesized intersection type?
     is_intersection: bool
 
@@ -3860,6 +3892,7 @@ class TypeInfo(SymbolNode):
         "meta_fallback_to_any",
         "is_named_tuple",
         "is_newtype",
+        "is_sentinel",
         "is_protocol",
         "runtime_protocol",
         "is_final",
@@ -3907,6 +3940,7 @@ class TypeInfo(SymbolNode):
         self.is_named_tuple = False
         self.typeddict_type = None
         self.is_newtype = False
+        self.is_sentinel = False
         self.is_intersection = False
         self.metadata = {}
         self.self_type = None
@@ -4350,6 +4384,7 @@ class TypeInfo(SymbolNode):
                 self.meta_fallback_to_any,
                 self.is_named_tuple,
                 self.is_newtype,
+                self.is_sentinel,
                 self.is_protocol,
                 self.runtime_protocol,
                 self.is_final,
@@ -4423,12 +4458,13 @@ class TypeInfo(SymbolNode):
             ti.meta_fallback_to_any,
             ti.is_named_tuple,
             ti.is_newtype,
+            ti.is_sentinel,
             ti.is_protocol,
             ti.runtime_protocol,
             ti.is_final,
             ti.is_disjoint_base,
             ti.is_intersection,
-        ) = read_flags(data, num_flags=11)
+        ) = read_flags(data, num_flags=12)
         ti.metadata = read_json(data)
         tag = read_tag(data)
         if tag != LITERAL_NONE:

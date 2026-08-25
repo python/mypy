@@ -60,6 +60,7 @@ from mypy.nodes import (
     RaiseStmt,
     ReturnStmt,
     RevealExpr,
+    SentinelExpr,
     SetComprehension,
     SetExpr,
     SliceExpr,
@@ -360,6 +361,9 @@ class IRBuilderVisitor(IRVisitor):
         assert False, "can't compile analysis-only expressions"
 
     def visit_newtype_expr(self, o: NewTypeExpr) -> Value:
+        assert False, "can't compile analysis-only expressions"
+
+    def visit_sentinel_expr(self, o: SentinelExpr) -> Value:
         assert False, "can't compile analysis-only expressions"
 
     def visit_temp_node(self, o: TempNode) -> Value:

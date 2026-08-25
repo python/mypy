@@ -62,6 +62,7 @@ from mypy.nodes import (
     RaiseStmt,
     ReturnStmt,
     RevealExpr,
+    SentinelExpr,
     SetComprehension,
     SetExpr,
     SliceExpr,
@@ -503,6 +504,9 @@ class TraverserVisitor(NodeVisitor[None]):
     def visit_newtype_expr(self, o: NewTypeExpr, /) -> None:
         return None
 
+    def visit_sentinel_expr(self, o: SentinelExpr, /) -> None:
+        return None
+
     def visit__promote_expr(self, o: PromoteExpr, /) -> None:
         return None
 
@@ -894,6 +898,11 @@ class ExtendedTraverserVisitor(TraverserVisitor):
         if not self.visit(o):
             return
         super().visit_newtype_expr(o)
+
+    def visit_sentinel_expr(self, o: SentinelExpr, /) -> None:
+        if not self.visit(o):
+            return
+        super().visit_sentinel_expr(o)
 
     def visit_await_expr(self, o: AwaitExpr, /) -> None:
         if not self.visit(o):
