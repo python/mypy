@@ -672,7 +672,7 @@ def read_func_def(state: State, data: ReadBuffer) -> FuncDef:
     name = read_str(data)
     arguments, has_ann = read_parameters(state, data)
 
-    if special_function_elide_names(name):
+    if state.options.pos_only_special_methods and special_function_elide_names(name):
         for arg in arguments:
             arg.pos_only = True
 
