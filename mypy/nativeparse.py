@@ -672,7 +672,7 @@ def read_func_def(state: State, data: ReadBuffer) -> FuncDef:
     name = read_str(data)
     arguments, has_ann = read_parameters(state, data)
 
-    if special_function_elide_names(name):
+    if state.options.pos_only_special_methods and special_function_elide_names(name):
         for arg in arguments:
             arg.pos_only = True
 
@@ -723,6 +723,8 @@ def read_func_def(state: State, data: ReadBuffer) -> FuncDef:
         # TODO: This seems wasteful, can we avoid it?
         func_def.unanalyzed_type = typ.copy_modified()
     expect_end_tag(data)
+    if state.options.include_docstrings:
+        func_def.docstring = get_docstring(body)
     return func_def
 
 
@@ -769,7 +771,17 @@ def read_class_def(state: State, data: ReadBuffer) -> ClassDef:
         )
         check_type_param_defaults(state, type_params, class_def.line, class_def.column)
     expect_end_tag(data)
+    if state.options.include_docstrings:
+        class_def.docstring = get_docstring(body)
     return class_def
+
+
+def get_docstring(body: Block) -> str | None:
+    if body.body and isinstance(body.body[0], ExpressionStmt):
+        expr = body.body[0].expr
+        if isinstance(expr, StrExpr):
+            return expr.value
+    return None
 
 
 def read_type_alias_stmt(state: State, data: ReadBuffer) -> TypeAliasStmt:
@@ -1579,7 +1591,14 @@ def read_expression(state: State, data: ReadBuffer) -> Expression:
     elif tag == nodes.ASSIGNMENT_EXPR:
         target = read_expression(state, data)
         value = read_expression(state, data)
-        assert isinstance(target, NameExpr), f"Expected NameExpr for target, got {type(target)}"
+        if not isinstance(target, NameExpr):
+            # The only valid target of ":=" is a plain name, but ruff's error
+            # recovery can produce other targets for invalid code such as
+            # "(f() := 1)". Ruff already reports a syntax error in this case, so
+            # here we just recover with a placeholder name instead of crashing.
+            placeholder = NameExpr("")
+            placeholder.set_line(target)
+            target = placeholder
         expr = AssignmentExpr(target, value)
         read_loc(data, expr)
         expect_end_tag(data)

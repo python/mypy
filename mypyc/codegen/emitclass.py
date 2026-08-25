@@ -253,6 +253,9 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
     vtable_name = f"{name_prefix}_vtable"
     traverse_name = f"{name_prefix}_traverse"
     clear_name = emitter.native_function_name(cl.clear)
+    clear_subtype_name = f"{clear_name}_subtype"
+    clear_on_completion_name = emitter.native_function_name(cl.clear_on_completion)
+    clear_on_completion_subtype_name = f"{clear_on_completion_name}_subtype"
     dealloc_name = f"{name_prefix}_dealloc"
     methods_name = f"{name_prefix}_methods"
     vtable_setup_name = f"{name_prefix}_trait_vtable_setup"
@@ -353,13 +356,38 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
         if not cl.is_acyclic:
             generate_traverse_for_class(cl, traverse_name, emitter)
             emit_line()
-        generate_clear_for_class(cl, cl.clear, emitter)
+        subtype_clear_name = None
+        if cl.builtin_base:
+            # During dealloc, the object has refcount 0, and builtin tp_clear
+            # implementations are not generally valid to call in that state. In
+            # particular, dict.tp_clear notifies watchers and requires a live
+            # object. Split subtype-owned clearing from base-owned clearing so
+            # tp_clear can still delegate to the base, while tp_dealloc only
+            # clears mypyc-owned state before delegating to the base deallocator.
+            generate_subtype_clear_for_class(cl, clear_subtype_name, emitter)
+            emit_line()
+            subtype_clear_name = clear_subtype_name
+        generate_clear_for_class(cl, cl.clear, emitter, subtype_clear_name=subtype_clear_name)
         emit_line()
+        if cl.builtin_base:
+            generate_subtype_clear_for_class(
+                cl,
+                clear_on_completion_subtype_name,
+                emitter,
+                skip_attrs=cl.attrs_to_keep_alive_on_completion,
+            )
+            emit_line()
+            subtype_clear_name = clear_on_completion_subtype_name
         generate_clear_for_class(
-            cl, cl.clear_on_completion, emitter, skip_attrs=cl.attrs_to_keep_alive_on_completion
+            cl,
+            cl.clear_on_completion,
+            emitter,
+            subtype_clear_name=subtype_clear_name,
+            skip_attrs=cl.attrs_to_keep_alive_on_completion,
         )
         emit_line()
-        generate_dealloc_for_class(cl, dealloc_name, clear_name, bool(del_method), emitter)
+        dealloc_clear_name = clear_subtype_name if cl.builtin_base else clear_name
+        generate_dealloc_for_class(cl, dealloc_name, dealloc_clear_name, bool(del_method), emitter)
         emit_line()
     if generate_full:
         assert cl.setup is not None
@@ -905,12 +933,41 @@ def generate_traverse_for_class(cl: ClassIR, func_name: str, emitter: Emitter) -
 
 
 def generate_clear_for_class(
-    cl: ClassIR, func_decl: FuncDecl, emitter: Emitter, skip_attrs: set[str] | None = None
+    cl: ClassIR,
+    func_decl: FuncDecl,
+    emitter: Emitter,
+    subtype_clear_name: str | None = None,
+    skip_attrs: set[str] | None = None,
 ) -> None:
     if skip_attrs is None:
         skip_attrs = set()
     emitter.emit_line("static " + native_function_header(func_decl, emitter))
     emitter.emit_line("{")
+    if subtype_clear_name is not None:
+        emitter.emit_line(f"int32_t res = {subtype_clear_name}(cpy_r_self);")
+        emitter.emit_line("if (res != 0) return res;")
+        emitter.emit_base_tp_function_call(
+            cl, "tp_clear", "(PyObject *)cpy_r_self", prefix="return "
+        )
+    else:
+        generate_subtype_clear_body(cl, emitter, skip_attrs)
+        emitter.emit_line("return 0;")
+    emitter.emit_line("}")
+
+
+def generate_subtype_clear_for_class(
+    cl: ClassIR, func_name: str, emitter: Emitter, skip_attrs: set[str] | None = None
+) -> None:
+    if skip_attrs is None:
+        skip_attrs = set()
+    emitter.emit_line(f"static int32_t {func_name}(PyObject *cpy_r_self)")
+    emitter.emit_line("{")
+    generate_subtype_clear_body(cl, emitter, skip_attrs)
+    emitter.emit_line("return 0;")
+    emitter.emit_line("}")
+
+
+def generate_subtype_clear_body(cl: ClassIR, emitter: Emitter, skip_attrs: set[str]) -> None:
     emitter.emit_line(
         f"{cl.struct_name(emitter.names)} *self = "
         f"({cl.struct_name(emitter.names)} *)cpy_r_self;"
@@ -921,8 +978,6 @@ def generate_clear_for_class(
                 continue
             emitter.emit_gc_clear(f"self->{emitter.attr(attr)}", rtype)
     base_args = "(PyObject *)self"
-    if cl.builtin_base:
-        emitter.emit_base_tp_function_call(cl, "tp_clear", base_args)
     if has_managed_dict(cl, emitter):
         emitter.emit_line(f"PyObject_ClearManagedDict({base_args});")
     elif cl.has_dict:
@@ -932,8 +987,6 @@ def generate_clear_for_class(
         emitter.emit_gc_clear(
             f"*((PyObject **)((char *)self + sizeof(PyObject *) + {base_size}))", object_rprimitive
         )
-    emitter.emit_line("return 0;")
-    emitter.emit_line("}")
 
 
 def generate_dealloc_for_class(
@@ -1281,13 +1334,14 @@ def generate_setter(cl: ClassIR, attr: str, rtype: RType, emitter: Emitter) -> N
     #       values is benign.
     always_defined = cl.is_always_defined(attr) and not rtype.is_refcounted
 
-    if rtype.is_refcounted:
-        attr_expr = f"self->{attr_field}"
-        if not always_defined:
-            emitter.emit_undefined_attr_check(rtype, attr_expr, "!=", "self", attr, cl)
-        emitter.emit_dec_ref(f"self->{attr_field}", rtype)
-        if not always_defined:
-            emitter.emit_line("}")
+    def emit_decref_old_value() -> None:
+        if rtype.is_refcounted:
+            attr_expr = f"self->{attr_field}"
+            if not always_defined:
+                emitter.emit_undefined_attr_check(rtype, attr_expr, "!=", "self", attr, cl)
+            emitter.emit_dec_ref(attr_expr, rtype)
+            if not always_defined:
+                emitter.emit_line("}")
 
     if deletable:
         emitter.emit_line("if (value != NULL) {")
@@ -1307,13 +1361,17 @@ def generate_setter(cl: ClassIR, attr: str, rtype: RType, emitter: Emitter) -> N
     else:
         emitter.emit_cast("value", "tmp", rtype, declare_dest=True)
         emitter.emit_lines("if (!tmp)", "    return -1;")
+    # Take ownership of the incoming value before releasing the old one. In
+    # particular, a failed cast must leave the attribute and its reference intact.
     emitter.emit_inc_ref("tmp", rtype)
+    emit_decref_old_value()
     emitter.emit_line(f"self->{attr_field} = tmp;")
     if rtype.error_overlap and not always_defined:
         emitter.emit_attr_bitmap_set("tmp", "self", rtype, cl, attr)
 
     if deletable:
         emitter.emit_line("} else {")
+        emit_decref_old_value()
         emitter.set_undefined_value(f"self->{attr_field}", rtype)
         if rtype.error_overlap:
             emitter.emit_attr_bitmap_clear("self", rtype, cl, attr)

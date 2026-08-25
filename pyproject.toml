@@ -6,7 +6,7 @@ requires = [
     "setuptools >= 77.0.3",
     # the following is from mypy-requirements.txt/setup.py
     "typing_extensions>=4.6.0; python_version<'3.15'",
-    "typing_extensions>=4.14.0; python_version>='3.15'",
+    "typing_extensions>=4.16.0; python_version>='3.15'",
     "mypy_extensions>=1.0.0",
     "pathspec>=1.0.0",
     "tomli>=1.1.0; python_version<'3.11'",
