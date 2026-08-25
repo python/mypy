@@ -206,3 +206,13 @@ def func(d: dict[str, str]) -> None:
     var = d.get("key", Unknown)
     assert_type(var, str | Unknown)
 [builtins fixtures/dict-full.pyi]
+
+[case testSentinelPreservedInErrorMessages]
+from typing_extensions import sentinel
+
+Unknown = sentinel("Unknown")
+
+def func(d: dict[str, str]) -> None:
+    var = d.get("key", Unknown)
+    x: int = var  # E: Incompatible types in assignment (expression has type "str | Unknown", variable has type "int")
+[builtins fixtures/dict-full.pyi]
