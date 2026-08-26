@@ -965,6 +965,7 @@ class GroupGenerator:
             f"{lock_api} = CPyModuleLockAPI_Alloc();",
             f"if ({lock_api} == NULL) goto fail;",
             "}",
+            "if (intern_strings() < 0) goto fail;",
             "if (CPyGlobalsInit() < 0) goto fail;",
             "",
         )
@@ -1290,7 +1291,8 @@ class GroupGenerator:
         impl_name = f"{exec_name}__impl"
         module_static = self.module_internal_static_name(module_name, emitter)
         emitter.emit_lines(f"static int {impl_name}(PyObject *module)", "{")
-        emitter.emit_line("intern_strings();")
+        if not self.use_shared_lib:
+            emitter.emit_lines("if (intern_strings() < 0)", "    return -1;")
         if self.compiler_options.depends_on_librt_internal:
             emitter.emit_line("if (import_librt_internal() < 0) {")
             emitter.emit_line("return -1;")
