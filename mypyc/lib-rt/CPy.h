@@ -1073,7 +1073,8 @@ PyObject *CPyImport_ImportNative(PyObject *module_name,
                                  Py_ssize_t is_package);
 int CPyImport_Exec(PyObject *module, const char *module_name,
                    int (*exec_fn)(PyObject *), CPyImportState *state);
-int CPyImport_SetInitializing(PyObject *module, bool initializing);
+PyObject *CPyImport_BeginInitializing(PyObject *module);
+int CPyImport_EndInitializing(PyObject *spec);
 int CPyImport_SetDunderAttrs(PyObject *module, PyObject *module_name, PyObject *shared_lib_file,
                              PyObject *ext_suffix, Py_ssize_t is_package);
 

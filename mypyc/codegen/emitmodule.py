@@ -1446,6 +1446,7 @@ class GroupGenerator:
         module_static = self.module_internal_static_name(module_name, emitter)
 
         emitter.emit_line("PyObject* modname = NULL;")
+        emitter.emit_line("PyObject *initializing_spec = NULL;")
         emitter.emit_lines(
             f"if ({module_static}) {{",
             f"Py_INCREF({module_static});",
@@ -1494,7 +1495,8 @@ class GroupGenerator:
         # Mark the module as initializing before publishing it so that CPython's
         # import fast path waits on the module lock. Publishing early also lets
         # CPyImport_ImportNative detect circular imports.
-        emitter.emit_line(f"if (CPyImport_SetInitializing({module_static}, 1) < 0)")
+        emitter.emit_line(f"initializing_spec = CPyImport_BeginInitializing({module_static});")
+        emitter.emit_line("if (initializing_spec == NULL)")
         emitter.emit_line("    goto fail;")
         emitter.emit_line(
             f"if (PyObject_SetItem(PyImport_GetModuleDict(), modname, {module_static}) < 0)"
@@ -1502,7 +1504,9 @@ class GroupGenerator:
         emitter.emit_line("    goto fail;")
         emitter.emit_line("Py_CLEAR(modname);")
         emitter.emit_lines(f"if ({exec_func}({module_static}) != 0)", "    goto fail;")
-        emitter.emit_line(f"if (CPyImport_SetInitializing({module_static}, 0) < 0)")
+        emitter.emit_line("rv = CPyImport_EndInitializing(initializing_spec);")
+        emitter.emit_line("initializing_spec = NULL;")
+        emitter.emit_line("if (rv < 0)")
         emitter.emit_line("    goto fail;")
         emitter.emit_line(f"return {module_static};")
         emitter.emit_lines("fail:")
@@ -1511,8 +1515,8 @@ class GroupGenerator:
         emitter.emit_line("{")
         emitter.emit_line("    PyObject *exc_type, *exc_val, *exc_tb;")
         emitter.emit_line("    PyErr_Fetch(&exc_type, &exc_val, &exc_tb);")
-        emitter.emit_line(f"    if ({module_static} != NULL) {{")
-        emitter.emit_line(f"        CPyImport_SetInitializing({module_static}, 0);")
+        emitter.emit_line("    if (initializing_spec != NULL) {")
+        emitter.emit_line("        CPyImport_EndInitializing(initializing_spec);")
         emitter.emit_line("        PyErr_Clear();")
         emitter.emit_line("    }")
         state = self.import_state_name(module_name)

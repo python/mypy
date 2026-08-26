@@ -2568,3 +2568,73 @@ with ThreadPoolExecutor(max_workers=2) as executor:
 
 assert other_importer.load_target() == 42
 assert getrefcount(modules["native"]) == getrefcount(modules["other_target"])
+
+[case testNativeModuleCanReplaceSpecDuringRegularImport]
+assert __spec__ is not None
+body_spec = __spec__
+__spec__ = None
+value = 42
+
+[file driver.py]
+import native
+
+assert native.value == 42
+assert native.body_spec._initializing is False
+
+[case testNativeModuleCanReplaceSpecDuringDirectImport]
+# separate: [(["native.py", "other_importer.py"], "testgroup")]
+assert __spec__ is not None
+body_spec = __spec__
+__spec__ = None
+value = 42
+
+[file other_importer.py]
+def load() -> int:
+    import native
+    return native.value
+
+[file driver.py]
+import other_importer
+
+assert other_importer.load() == 42
+assert __import__("native").__spec__ is None
+assert __import__("native").body_spec._initializing is False
+
+[case testNativeModuleReplacingSpecClearsOriginalSpecOnFailure]
+# separate: [(["native.py", "other_importer.py"], "testgroup")]
+import spec_state
+
+assert __spec__ is not None
+spec_state.specs.append(__spec__)
+__spec__ = None
+raise RuntimeError("initialization failed")
+
+[file spec_state.py]
+from typing import Any
+
+specs: list[Any] = []
+
+[file other_importer.py]
+def load() -> None:
+    import native
+
+[file driver.py]
+import sys
+
+import other_importer
+import spec_state
+
+from testutil import assertRaises
+
+with assertRaises(RuntimeError, "initialization failed"):
+    other_importer.load()
+
+assert spec_state.specs[0]._initializing is False
+assert "native" not in sys.modules
+
+with assertRaises(RuntimeError, "initialization failed"):
+    import native
+
+assert len(spec_state.specs) == 2
+assert spec_state.specs[1]._initializing is False
+assert "native" not in sys.modules

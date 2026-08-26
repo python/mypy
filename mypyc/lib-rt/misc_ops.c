@@ -1507,14 +1507,22 @@ static int CPyImport_SetModuleSpec(PyObject *modobj, PyObject *module_name,
     return 0;
 }
 
-// Set module.__spec__._initializing for CPython's import machinery.
-int CPyImport_SetInitializing(PyObject *module, bool initializing) {
+// Mark module's current spec as initializing and return an owned reference.
+PyObject *CPyImport_BeginInitializing(PyObject *module) {
     PyObject *spec = PyObject_GetAttrString(module, "__spec__");
     if (spec == NULL) {
-        return -1;
+        return NULL;
     }
-    int result = PyObject_SetAttrString(spec, "_initializing",
-                                       initializing ? Py_True : Py_False);
+    if (PyObject_SetAttrString(spec, "_initializing", Py_True) < 0) {
+        Py_DECREF(spec);
+        return NULL;
+    }
+    return spec;
+}
+
+// Clear initializing on spec and consume its reference.
+int CPyImport_EndInitializing(PyObject *spec) {
+    int result = PyObject_SetAttrString(spec, "_initializing", Py_False);
     Py_DECREF(spec);
     return result;
 }
@@ -1609,7 +1617,9 @@ PyObject *CPyImport_ImportNative(PyObject *module_name,
                                  Py_ssize_t is_package) {
     PyObject *parent_module = NULL;
     PyObject *child_name = NULL;
+    PyObject *initializing_spec = NULL;
     PyObject *exc_type, *exc_val, *exc_tb;
+    int end_result;
     // Import the parent package first to preserve import ordering semantics.
     if (CPyImport_ImportParent(module_name, &parent_module, &child_name) < 0) {
         return NULL;
@@ -1695,7 +1705,8 @@ PyObject *CPyImport_ImportNative(PyObject *module_name,
         goto fail;
     }
 
-    if (CPyImport_SetInitializing(modobj, true) < 0) {
+    initializing_spec = CPyImport_BeginInitializing(modobj);
+    if (initializing_spec == NULL) {
         goto fail;
     }
 
@@ -1708,7 +1719,9 @@ PyObject *CPyImport_ImportNative(PyObject *module_name,
         goto fail;
     }
 
-    if (CPyImport_SetInitializing(modobj, false) < 0) {
+    end_result = CPyImport_EndInitializing(initializing_spec);
+    initializing_spec = NULL;
+    if (end_result < 0) {
         goto fail;
     }
 
@@ -1722,8 +1735,10 @@ fail:
     // Clean up on failure so that a subsequent import attempt will retry
     // initialization.
     PyErr_Fetch(&exc_type, &exc_val, &exc_tb);
-    CPyImport_SetInitializing(modobj, false);
-    PyErr_Clear();
+    if (initializing_spec != NULL) {
+        CPyImport_EndInitializing(initializing_spec);
+        PyErr_Clear();
+    }
     PyObject_DelItem(module_dict, module_name);
     PyErr_Clear();
     PyErr_Restore(exc_type, exc_val, exc_tb);
