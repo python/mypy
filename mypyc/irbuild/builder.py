@@ -85,7 +85,6 @@ from mypyc.errors import Errors
 from mypyc.ir.class_ir import ClassIR, NonExtClassInfo
 from mypyc.ir.func_ir import INVALID_FUNC_DEF, FuncDecl, FuncIR, FuncSignature, RuntimeArg
 from mypyc.ir.ops import (
-    NAMESPACE_MODULE,
     NAMESPACE_TYPE_VAR,
     NO_TRACEBACK_LINE_NO,
     Assign,
@@ -169,6 +168,8 @@ from mypyc.primitives.list_ops import (
 from mypyc.primitives.misc_ops import (
     check_unpack_count_op,
     get_module_dict_op,
+    import_cache_get_op,
+    import_cache_set_op,
     import_op,
     native_import_is_initialized_op,
     native_import_op,
@@ -526,6 +527,9 @@ class IRBuilder:
         self.imports[module] = None
 
         needs_import, out = BasicBlock(), BasicBlock()
+        module_cache = self.add(
+            LoadAddress(object_pointer_rprimitive, f"{MODULE_PREFIX}{exported_name(module)}")
+        )
         is_native_module = self.is_native_module(module)
         is_same_group_native = is_native_module and self.is_same_group_module(module)
         import_state: Value | None = None
@@ -550,7 +554,7 @@ class IRBuilder:
             # path so that its per-module lock waits for initialization.
             self.goto(needs_import)
         else:
-            self.check_if_module_loaded(module, line, needs_import, out, import_state)
+            self.check_if_module_loaded(module_cache, line, needs_import, out, import_state)
 
         self.activate_block(needs_import)
         if is_same_group_native:
@@ -599,25 +603,25 @@ class IRBuilder:
         else:
             # Import using generic Python C API
             value = self.call_c(import_op, [self.load_str(module, line)], line)
-        self.add(InitStatic(value, module, namespace=NAMESPACE_MODULE))
+        self.call_c(import_cache_set_op, [module_cache, value], line)
         self.goto_and_activate(out)
 
     def check_if_module_loaded(
         self,
-        id: str,
+        module_cache: Value,
         line: int,
         needs_import: BasicBlock,
         out: BasicBlock,
         import_state: Value | None = None,
     ) -> None:
-        """Generate code that checks if the module `id` has been loaded yet.
+        """Generate code that checks if a module cache has been populated.
 
         Arguments:
-            id: name of module to check if imported
+            module_cache: address of the module cache to check
             line: line number that the import occurs on
             needs_import: the BasicBlock that is run if the module has not been loaded yet
             out: the BasicBlock that is run if the module has already been loaded"""
-        first_load = self.load_module(id)
+        first_load = self.call_c(import_cache_get_op, [module_cache], line)
         comparison = self.translate_is_op(first_load, self.none_object(line), "is not", line)
         if import_state is None:
             self.add_bool_branch(comparison, out, needs_import)

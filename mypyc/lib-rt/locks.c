@@ -96,3 +96,28 @@ void CPyImport_SetInitialized(CPyImportState *state, bool initialized) {
     __atomic_store_n(&state->initialized, initialized, __ATOMIC_RELEASE);
 #endif
 }
+
+PyObject *CPyImport_GetModuleCache(CPyModule **cache) {
+#ifdef _WIN32
+    return InterlockedCompareExchangePointer((PVOID volatile *)cache, NULL, NULL);
+#else
+    return (PyObject *)__atomic_load_n(cache, __ATOMIC_ACQUIRE);
+#endif
+}
+
+void CPyImport_SetModuleCache(CPyModule **cache, PyObject *module) {
+    Py_INCREF(module);
+#ifdef _WIN32
+    PVOID previous = InterlockedCompareExchangePointer(
+        (PVOID volatile *)cache, module, Py_None);
+    if (previous != Py_None) {
+        Py_DECREF(module);
+    }
+#else
+    CPyModule *expected = (CPyModule *)Py_None;
+    if (!__atomic_compare_exchange_n(cache, &expected, (CPyModule *)module, false,
+                                     __ATOMIC_RELEASE, __ATOMIC_ACQUIRE)) {
+        Py_DECREF(module);
+    }
+#endif
+}

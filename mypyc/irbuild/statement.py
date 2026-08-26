@@ -58,7 +58,6 @@ from mypyc.ir.ops import (
     BasicBlock,
     Branch,
     Call,
-    InitStatic,
     Integer,
     LoadAddress,
     LoadErrorValue,
@@ -127,6 +126,7 @@ from mypyc.primitives.misc_ops import (
     check_stop_op,
     coro_op,
     get_native_attrs_op,
+    import_cache_set_op,
     import_from_many_op,
     import_many_op,
     import_op,
@@ -597,7 +597,9 @@ def transform_import_from_buckets(
                 line,
             )
     if module is not None:
-        builder.add(InitStatic(module, module_id, namespace=NAMESPACE_MODULE))
+        mod_static = LoadStatic(object_rprimitive, module_id, namespace=NAMESPACE_MODULE)
+        module_cache = builder.add(LoadAddress(object_pointer_rprimitive, mod_static))
+        builder.call_c(import_cache_set_op, [module_cache, module], line)
 
 
 def transform_import_all(builder: IRBuilder, node: ImportAll) -> None:

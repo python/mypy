@@ -2526,3 +2526,45 @@ def test_lazy_import() -> None:
         t.join()
 
 test_lazy_import()
+
+[case testConcurrentNativeImportDoesNotLeakCacheReference]
+# separate: [(["native.py", "other_target.py", "other_importer.py"], "testgroup")]
+from time import sleep
+
+sleep(0.05)
+
+def value() -> int:
+    return 42
+
+[file other_target.py]
+def value() -> int:
+    return 42
+
+[file other_importer.py]
+def load_native() -> int:
+    import native
+    return native.value()
+
+def load_target() -> int:
+    import other_target
+    return other_target.value()
+
+[file driver.py]
+from concurrent.futures import ThreadPoolExecutor
+from sys import getrefcount, modules
+from threading import Barrier
+
+import other_importer
+
+barrier = Barrier(2)
+
+def load_native() -> int:
+    barrier.wait()
+    return other_importer.load_native()
+
+with ThreadPoolExecutor(max_workers=2) as executor:
+    futures = [executor.submit(load_native) for _ in range(2)]
+    assert [future.result() for future in futures] == [42, 42]
+
+assert other_importer.load_target() == 42
+assert getrefcount(modules["native"]) == getrefcount(modules["other_target"])

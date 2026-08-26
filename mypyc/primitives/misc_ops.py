@@ -166,6 +166,21 @@ native_import_is_initialized_op = custom_op(
     error_kind=ERR_NEVER,
 )
 
+import_cache_get_op = custom_op(
+    arg_types=[object_pointer_rprimitive],
+    return_type=object_rprimitive,
+    c_function_name="CPyImport_GetModuleCache",
+    error_kind=ERR_NEVER,
+    is_borrowed=True,
+)
+
+import_cache_set_op = custom_op(
+    arg_types=[object_pointer_rprimitive, object_rprimitive],
+    return_type=void_rtype,
+    c_function_name="CPyImport_SetModuleCache",
+    error_kind=ERR_NEVER,
+)
+
 # Table-driven import op.
 import_many_op = custom_op(
     arg_types=[

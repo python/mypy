@@ -43,6 +43,8 @@ int CPyImport_AcquireLock(CPyModuleLockAPI *api, PyObject *module_name,
 int CPyImport_ReleaseLock(PyObject *module_lock);
 bool CPyImport_IsInitialized(const CPyImportState *state);
 void CPyImport_SetInitialized(CPyImportState *state, bool initialized);
+PyObject *CPyImport_GetModuleCache(CPyModule **cache);
+void CPyImport_SetModuleCache(CPyModule **cache, PyObject *module);
 
 
 // Naming conventions:
