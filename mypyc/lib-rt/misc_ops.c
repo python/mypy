@@ -1584,27 +1584,16 @@ static int CPyImport_ReleaseLockPreservingException(PyObject *module_lock) {
     return result;
 }
 
-// Execute a module once and publish completion; caller holds the module lock.
-int CPyImport_Exec(PyObject *module, const char *module_name,
-                   int (*exec_fn)(PyObject *), CPyImportState *state) {
+// Execute a module once; caller holds the module lock.
+int CPyImport_Exec(PyObject *module, int (*exec_fn)(PyObject *), CPyImportState *state) {
     if (CPyImport_IsInitialized(state)) {
         return 0;
-    }
-    PyObject *name = PyUnicode_FromString(module_name);
-    if (name == NULL) {
-        return -1;
     }
 
     int result = exec_fn(module);
     if (result == 0) {
-        // Match CPython import semantics: publish parent.child only after the
-        // child module finished executing successfully.
-        result = CPyImport_SetParentAttr(module, name);
-    }
-    if (result == 0) {
         CPyImport_SetInitialized(state, true);
     }
-    Py_DECREF(name);
     return result;
 }
 
@@ -1722,6 +1711,12 @@ PyObject *CPyImport_ImportNative(PyObject *module_name,
     end_result = CPyImport_EndInitializing(initializing_spec);
     initializing_spec = NULL;
     if (end_result < 0) {
+        goto fail;
+    }
+
+    // Direct imports must publish parent.child themselves; normal extension
+    // loading leaves this to importlib.
+    if (CPyImport_SetParentAttr(modobj, module_name) < 0) {
         goto fail;
     }
 

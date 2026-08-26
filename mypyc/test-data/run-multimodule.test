@@ -2638,3 +2638,113 @@ with assertRaises(RuntimeError, "initialization failed"):
 assert len(spec_state.specs) == 2
 assert spec_state.specs[1]._initializing is False
 assert "native" not in sys.modules
+
+[case testNormalNativeImportPublishesParentAttributeOnce]
+pass
+
+[file pkg/__init__.py]
+from sys import modules
+from types import ModuleType
+from typing import Any
+
+child_setattr_calls = 0
+
+class TrackingModule(ModuleType):
+    def __setattr__(self, name: str, value: Any) -> None:
+        if name == "other_child":
+            self.child_setattr_calls += 1
+        ModuleType.__setattr__(self, name, value)
+
+modules[__name__].__class__ = TrackingModule
+
+[file pkg/other_child.py]
+value = 42
+
+[file driver.py]
+import importlib
+import pkg
+
+child = importlib.import_module("pkg.other_child")
+
+assert child.value == 42
+assert pkg.other_child is child
+assert pkg.child_setattr_calls == 1
+
+[file sys/__init__.pyi]
+modules: dict[str, object]
+
+[case testNormalNativeImportWarnsWhenParentRejectsAttribute]
+pass
+
+[file pkg/__init__.py]
+from sys import modules
+from types import ModuleType
+from typing import Any
+
+class RejectingModule(ModuleType):
+    def __setattr__(self, name: str, value: Any) -> None:
+        if name == "other_child":
+            raise AttributeError("child rejected")
+        ModuleType.__setattr__(self, name, value)
+
+modules[__name__].__class__ = RejectingModule
+
+[file pkg/other_child.py]
+value = 42
+
+[file driver.py]
+import importlib
+import sys
+import warnings
+
+import pkg
+
+with warnings.catch_warnings(record=True) as caught:
+    warnings.simplefilter("always")
+    child = importlib.import_module("pkg.other_child")
+
+assert child.value == 42
+assert sys.modules["pkg.other_child"] is child
+assert not hasattr(pkg, "other_child")
+assert len(caught) == 1
+assert caught[0].category is ImportWarning
+
+[file sys/__init__.pyi]
+modules: dict[str, object]
+
+[case testDirectNativeImportPublishesParentAttributeOnce]
+# separate: [(["native.py", "pkg/other_child.py"], "testgroup")]
+def load() -> int:
+    import pkg.other_child
+    return pkg.other_child.value
+
+[file pkg/__init__.py]
+from sys import modules
+from types import ModuleType
+from typing import Any
+
+child_setattr_calls = 0
+
+class TrackingModule(ModuleType):
+    def __setattr__(self, name: str, value: Any) -> None:
+        if name == "other_child":
+            self.child_setattr_calls += 1
+        ModuleType.__setattr__(self, name, value)
+
+modules[__name__].__class__ = TrackingModule
+
+[file pkg/other_child.py]
+value = 42
+
+[file driver.py]
+import sys
+
+import native
+import pkg
+
+assert native.load() == 42
+assert pkg.other_child is sys.modules["pkg.other_child"]
+assert pkg.child_setattr_calls == 1
+
+[file sys/__init__.pyi]
+modules: dict[str, object]

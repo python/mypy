@@ -1387,10 +1387,7 @@ class GroupGenerator:
 
         state = self.import_state_name(module_name)
         emitter.emit_lines(
-            declaration,
-            "{",
-            f'return CPyImport_Exec(module, "{module_name}", {impl_name}, &{state});',
-            "}",
+            declaration, "{", f"return CPyImport_Exec(module, {impl_name}, &{state});", "}"
         )
 
     def emit_init_only_func(self, emitter: Emitter, module_name: str, module_prefix: str) -> None:
