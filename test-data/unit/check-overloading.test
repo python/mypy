@@ -2047,6 +2047,64 @@ c: List[Any]
 reveal_type(foo(c))  # N: Revealed type is "Any"
 [builtins fixtures/list.pyi]
 
+[case testOverloadNestedAnyInDictValues]
+from typing import Any, overload
+
+@overload
+def f(s: dict[str, int]) -> int: ...
+@overload
+def f(s: object) -> object: ...
+def f(s): pass
+
+d: dict[str, Any]
+reveal_type(f(d))  # N: Revealed type is "Any"
+[builtins fixtures/dict.pyi]
+
+[case testOverloadNestedAnyInFixedTuple]
+from typing import Any, overload
+
+@overload
+def g(s: tuple[int, int]) -> str: ...  # E: Overloaded function signatures 1 and 2 overlap with incompatible return types
+@overload
+def g(s: object) -> int: ...
+def g(s): pass
+
+t: tuple[Any, int]
+reveal_type(g(t))  # N: Revealed type is "Any"
+[builtins fixtures/tuple.pyi]
+
+[case testOverloadNestedAnyOnMethod]
+from typing import Any, Sequence, overload
+
+class Box:
+    @overload
+    def get(self, key: Sequence[int]) -> int: ...
+    @overload
+    def get(self, key: object) -> object: ...
+    def get(self, key): pass
+
+nested_any: Sequence[Any]
+reveal_type(Box().get(nested_any))  # N: Revealed type is "Any"
+
+[case testOverloadNestedAnyViaTypeAliasStillFirstMatch]
+# Type aliases currently hide Any from the overload-ambiguity check because
+# alias targets store Any as a special form (#15630). This is not the #21768
+# rule and is left unchanged; do not "fix" #21768 by assuming aliases agree.
+from typing import Any, Sequence, overload
+
+Nested = Sequence[Any]
+
+@overload
+def f(s: Sequence[int]) -> int: ...
+@overload
+def f(s: object) -> object: ...
+def f(s): pass
+
+direct: Sequence[Any]
+aliased: Nested
+reveal_type(f(direct))  # N: Revealed type is "Any"
+reveal_type(f(aliased))  # N: Revealed type is "builtins.int"
+
 [case testOverloadOnOverloadWithType]
 from typing import Any, Type, TypeVar, overload
 from mod import MyInt
