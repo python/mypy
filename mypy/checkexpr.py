@@ -6858,6 +6858,8 @@ def any_causes_overload_ambiguity(
     This includes nested Any, such as Sequence[Any] or list[Any], not just a
     top-level Any. A nested Any can materialize as different concrete types, so
     if several overloads remain and their return types differ, the result is Any.
+    (If every materialization matched an earlier overload, the spec would drop
+    later ones; this helper over-approximates that case as ambiguous.)
 
     Note that this sometimes returns True even if there is no ambiguity, since a correct
     implementation would be complex (and the call would be imprecisely typed due to Any

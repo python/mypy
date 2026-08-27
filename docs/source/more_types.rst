@@ -407,9 +407,9 @@ mypy will make the inferred type also be ``Any``:
 
     nested_any: list[Any] = some_dynamic_function()
 
-    # output2_nested is also 'Any'. A nested Any can stand for different
-    # concrete types (here, either list[int] or list[str]), so the call
-    # is ambiguous in the same way as a top-level Any.
+    # output2_nested is also 'Any'. A list[Any] is not "really" a list[int]:
+    # it can hold strings, and list[str] selects the other overload. The
+    # call is therefore ambiguous in the same way as a top-level Any.
     output2_nested = summarize(nested_any)
 
 Second, if multiple variants match due to one or more of the arguments

@@ -1981,6 +1981,72 @@ nested_any: Sequence[Any]
 reveal_type(f(concrete))  # N: Revealed type is "builtins.str"
 reveal_type(f(nested_any))  # N: Revealed type is "Any"
 
+[case testOverloadNestedAnyInhabitationCounterexample]
+# Picking the Sequence[int] overload for Sequence[Any] is unsound:
+# a Sequence[str] inhabits Sequence[Any], and that call takes the object
+# overload (int), not str. See typing spec overload call evaluation step 5.
+from typing import Any, Sequence, overload
+
+@overload
+def f(s: Sequence[int]) -> str: ...  # E: Overloaded function signatures 1 and 2 overlap with incompatible return types
+@overload
+def f(s: object) -> int: ...
+def f(s): pass
+
+as_str: Sequence[str]
+nested_any: Sequence[Any] = as_str
+reveal_type(f(as_str))  # N: Revealed type is "builtins.int"
+reveal_type(f(nested_any))  # N: Revealed type is "Any"
+
+[case testOverloadNestedAnyOnlyOneOverloadMatches]
+# Nested Any is not a blunt "always Any" switch. If only one overload
+# is compatible, that overload wins even when the argument contains Any.
+from typing import Any, Sequence, overload
+
+@overload
+def f(s: Sequence[int]) -> str: ...
+@overload
+def f(s: str) -> int: ...
+def f(s): pass
+
+nested_any: Sequence[Any]
+reveal_type(f(nested_any))  # N: Revealed type is "builtins.str"
+reveal_type(f("x"))  # N: Revealed type is "builtins.int"
+
+[case testOverloadNestedAnySpecExampleThreeOverloads]
+# Spec step-5 example: every materialization of list[Any] matches the
+# first or second overload, so the Any fallback is dropped. The first
+# two remain with different returns, so the call is still Any.
+# Picking the first overload here would be the #21768 "fix" and is wrong.
+from typing import Any, overload
+
+@overload
+def example(x: list[int]) -> int: ...
+@overload
+def example(x: list[Any]) -> str: ...
+@overload
+def example(x: Any) -> bytes: ...
+def example(x): pass
+
+a: list[Any]
+reveal_type(example(a))  # N: Revealed type is "Any"
+
+[case testOverloadNestedAnyMatchesExistingListMatrix]
+# Already locked in by testOverloadsUsingAny: invariant list[int]/list[str]
+# with a list[Any] argument is Any. Repeated here next to the #21768 cases
+# so that matrix cannot drift from the Sequence[Any] rule.
+from typing import Any, List, overload
+
+@overload
+def foo(x: List[int]) -> int: ...
+@overload
+def foo(x: List[str]) -> str: ...
+def foo(x): pass
+
+c: List[Any]
+reveal_type(foo(c))  # N: Revealed type is "Any"
+[builtins fixtures/list.pyi]
+
 [case testOverloadOnOverloadWithType]
 from typing import Any, Type, TypeVar, overload
 from mod import MyInt
