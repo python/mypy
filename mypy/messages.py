@@ -2712,6 +2712,12 @@ def format_type_inner(
 
     if isinstance(typ, Instance):
         itype = typ
+        if itype.last_known_value is not None and itype.last_known_value.is_sentinel_literal():
+            # Sentinel values (PEP 661) have no other way to identify themselves
+            # than via their literal, so use it instead of the shared fallback
+            # class name (unlike other literals, sentinels are always formatted
+            # this way, e.g. "MISSING" rather than "Literal[MISSING]").
+            return format_literal_value(itype.last_known_value)
         # Get the short name of the type.
         if itype.type.fullname == "types.ModuleType":
             # Make some common error messages simpler and tidier.
@@ -3525,6 +3531,12 @@ def ignore_last_known_values(t: UnionType) -> Type:
     seen_instances = set()
     for item in t.items:
         if isinstance(item, ProperType) and isinstance(item, Instance):
+            if item.last_known_value is not None and item.last_known_value.is_sentinel_literal():
+                # Sentinel values (PEP 661) have no other way to identify themselves
+                # than via their literal, unlike e.g. enum members, so it must be
+                # preserved (see mypy/erasetype.py for the same exemption).
+                union_items.append(item)
+                continue
             erased = item.copy_modified(last_known_value=None)
             if erased in seen_instances:
                 continue
