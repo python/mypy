@@ -6855,6 +6855,10 @@ def any_causes_overload_ambiguity(
 ) -> bool:
     """May an argument containing 'Any' cause ambiguous result type on call to overloaded function?
 
+    This includes nested Any, such as Sequence[Any] or list[Any], not just a
+    top-level Any. A nested Any can materialize as different concrete types, so
+    if several overloads remain and their return types differ, the result is Any.
+
     Note that this sometimes returns True even if there is no ambiguity, since a correct
     implementation would be complex (and the call would be imprecisely typed due to Any
     types anyway).

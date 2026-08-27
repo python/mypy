@@ -1906,6 +1906,81 @@ a: Any
 reveal_type(f(a))     # N: Revealed type is "def (*Any, **Any) -> Any"
 reveal_type(f(a)(a))  # N: Revealed type is "Any"
 
+[case testOverloadNestedAnyInGenericArgumentIsAmbiguous]
+# https://github.com/python/mypy/issues/21768
+# Nested Any is treated like top-level Any for overload matching.
+# Sequence[Any] can materialize as Sequence[int] (first overload) or as
+# another sequence type (only the object overload), so the result is Any.
+from typing import Any, Mapping, Sequence, overload
+
+@overload
+def f(s: Sequence[int]) -> int: ...
+@overload
+def f(s: object) -> object: ...
+def f(s): pass
+
+concrete: Sequence[int]
+nested_any: Sequence[Any]
+top_level_any: Any
+reveal_type(f(concrete))  # N: Revealed type is "builtins.int"
+reveal_type(f(nested_any))  # N: Revealed type is "Any"
+reveal_type(f(top_level_any))  # N: Revealed type is "Any"
+
+@overload
+def g(s: Mapping[str, int]) -> int: ...
+@overload
+def g(s: object) -> object: ...
+def g(s): pass
+
+mapping_any: Mapping[str, Any]
+reveal_type(g(mapping_any))  # N: Revealed type is "Any"
+
+[case testOverloadNestedAnyUnambiguousWhenReturnsMatch]
+# If remaining overloads agree on the return type, nested Any is not ambiguous.
+from typing import Any, Sequence, overload
+
+@overload
+def f(s: Sequence[int]) -> str: ...
+@overload
+def f(s: object) -> str: ...
+def f(s): pass
+
+nested_any: Sequence[Any]
+reveal_type(f(nested_any))  # N: Revealed type is "builtins.str"
+
+[case testOverloadNestedAnyDoesNotForceAnyWhenOtherArgSelects]
+# Nested Any does not collapse the result when it does not itself cause
+# multiple overloads with differing returns to remain.
+from typing import Any, Sequence, overload
+
+@overload
+def f(x: Sequence[int], y: int) -> int: ...
+@overload
+def f(x: Sequence[int], y: str) -> str: ...
+def f(x, y): pass
+
+nested_any: Sequence[Any]
+reveal_type(f(nested_any, 1))  # N: Revealed type is "builtins.int"
+reveal_type(f(nested_any, "x"))  # N: Revealed type is "builtins.str"
+a: Any
+reveal_type(f(nested_any, a))  # N: Revealed type is "Any"
+
+[case testOverloadNestedAnyWithIncompatibleOverlappingReturns]
+# Issue 21768's original pair also has unsafely overlapping returns.
+# The overlap error is separate; the call-site result is still Any.
+from typing import Any, Sequence, overload
+
+@overload
+def f(s: Sequence[int]) -> str: ...  # E: Overloaded function signatures 1 and 2 overlap with incompatible return types
+@overload
+def f(s: object) -> int: ...
+def f(s): pass
+
+concrete: Sequence[int]
+nested_any: Sequence[Any]
+reveal_type(f(concrete))  # N: Revealed type is "builtins.str"
+reveal_type(f(nested_any))  # N: Revealed type is "Any"
+
 [case testOverloadOnOverloadWithType]
 from typing import Any, Type, TypeVar, overload
 from mod import MyInt
