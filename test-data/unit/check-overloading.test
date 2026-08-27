@@ -2086,10 +2086,9 @@ class Box:
 nested_any: Sequence[Any]
 reveal_type(Box().get(nested_any))  # N: Revealed type is "Any"
 
-[case testOverloadNestedAnyViaTypeAliasStillFirstMatch]
-# Type aliases currently hide Any from the overload-ambiguity check because
-# alias targets store Any as a special form (#15630). This is not the #21768
-# rule and is left unchanged; do not "fix" #21768 by assuming aliases agree.
+[case testOverloadNestedAnyViaTypeAliasIsAmbiguous]
+# A type alias must not hide nested Any from overload matching. Alias targets
+# store written Any as a special form; that is still Any (#15630, #21768).
 from typing import Any, Sequence, overload
 
 Nested = Sequence[Any]
@@ -2103,7 +2102,43 @@ def f(s): pass
 direct: Sequence[Any]
 aliased: Nested
 reveal_type(f(direct))  # N: Revealed type is "Any"
-reveal_type(f(aliased))  # N: Revealed type is "builtins.int"
+reveal_type(f(aliased))  # N: Revealed type is "Any"
+
+[case testOverloadBareAnyTypeAliasIsAmbiguous]
+# https://github.com/python/mypy/issues/15630
+from typing import Any, overload
+
+TypeSpec = Any
+
+@overload
+def f(x: int) -> int: ...
+@overload
+def f(x: object) -> object: ...
+def f(x): pass
+
+a: Any
+b: TypeSpec
+reveal_type(f(a))  # N: Revealed type is "Any"
+reveal_type(f(b))  # N: Revealed type is "Any"
+
+[case testOverloadBareAnyTypeAliasDoesNotPickFirstForIdentity]
+# The #15630 reproducer: an alias to Any must not pick the first overload.
+from typing import Any, Union, overload
+
+@overload
+def my_origin(x: type) -> type: ...
+@overload
+def my_origin(x: Any) -> Any: ...
+def my_origin(x):
+    return x
+
+TypeSpec = Any
+
+def call_any(spec: Any) -> bool:
+    return my_origin(spec) is Union
+
+def call_alias(spec: TypeSpec) -> bool:
+    return my_origin(spec) is Union
 
 [case testOverloadOnOverloadWithType]
 from typing import Any, Type, TypeVar, overload

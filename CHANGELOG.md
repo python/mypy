@@ -10,6 +10,10 @@
 
 - Clarify that nested `Any` in an overload argument is ambiguous, the same as a top-level `Any` (PR [21897](https://github.com/python/mypy/pull/21897))
 
+### Other Notable Fixes and Improvements
+
+- Treat type aliases that expand to `Any` (or a type containing `Any`) as ambiguous in overload matching, matching a written `Any` (PR [21897](https://github.com/python/mypy/pull/21897))
+
 ## Mypy 2.3
 
 We've just uploaded mypy 2.3.0 to the Python Package Index ([PyPI](https://pypi.org/project/mypy/)).
