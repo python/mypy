@@ -7,4 +7,7 @@
 // Construct empty bytearray
 PyObject *CPyByteArray_New(void);
 
+// Construct a bytearray from a bytes slice, avoiding an intermediate bytes object.
+PyObject *CPyByteArray_FromBytesSlice(PyObject *obj, CPyTagged start, CPyTagged end);
+
 #endif

@@ -9,7 +9,13 @@ from __future__ import annotations
 
 from mypyc.ir.deps import BYTEARRAY_EXTRA_OPS
 from mypyc.ir.ops import ERR_MAGIC, ERR_NEVER
-from mypyc.ir.rtypes import bit_rprimitive, bytearray_rprimitive, object_rprimitive
+from mypyc.ir.rtypes import (
+    bit_rprimitive,
+    bytearray_rprimitive,
+    bytes_rprimitive,
+    int_rprimitive,
+    object_rprimitive,
+)
 from mypyc.primitives.registry import custom_primitive_op, function_op, load_address_op
 
 # Get the 'bytearray' type object.
@@ -22,6 +28,16 @@ function_op(
     return_type=bytearray_rprimitive,
     c_function_name="PyByteArray_FromObject",
     error_kind=ERR_MAGIC,
+)
+
+# bytearray(bytes[start:end])
+bytearray_from_bytes_slice_op = custom_primitive_op(
+    name="bytearray_from_bytes_slice",
+    arg_types=[bytes_rprimitive, int_rprimitive, int_rprimitive],
+    return_type=bytearray_rprimitive,
+    c_function_name="CPyByteArray_FromBytesSlice",
+    error_kind=ERR_MAGIC,
+    dependencies=[BYTEARRAY_EXTRA_OPS],
 )
 
 # bytearray() -- construct empty bytearray
