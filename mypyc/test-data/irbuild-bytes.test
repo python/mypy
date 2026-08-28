@@ -102,6 +102,15 @@ L0:
 [case testBytearrayFromBytesSlice]
 def f(a: bytes, start: int, end: int) -> bytearray:
     return bytearray(a[start:end])
+
+def from_start(a: bytes, start: int) -> bytearray:
+    return bytearray(a[start:])
+
+def to_end(a: bytes, end: int) -> bytearray:
+    return bytearray(a[:end])
+
+def full(a: bytes) -> bytearray:
+    return bytearray(a[:])
 [out]
 def f(a, start, end):
     a :: bytes
@@ -110,6 +119,31 @@ def f(a, start, end):
 L0:
     r0 = CPyByteArray_FromBytesSlice(a, start, end)
     return r0
+def from_start(a, start):
+    a :: bytes
+    start, r0 :: int
+    r1 :: bytearray
+L0:
+    r0 = <error> :: int
+    r1 = CPyByteArray_FromBytesSlice(a, start, r0)
+    return r1
+def to_end(a, end):
+    a :: bytes
+    end, r0 :: int
+    r1 :: bytearray
+L0:
+    r0 = <error> :: int
+    r1 = CPyByteArray_FromBytesSlice(a, r0, end)
+    return r1
+def full(a):
+    a :: bytes
+    r0, r1 :: int
+    r2 :: bytearray
+L0:
+    r0 = <error> :: int
+    r1 = <error> :: int
+    r2 = CPyByteArray_FromBytesSlice(a, r0, r1)
+    return r2
 
 [case testBytearrayFromBytesSliceFixedWidth_64bit]
 from mypy_extensions import i32, i64

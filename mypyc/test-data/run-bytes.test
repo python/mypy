@@ -299,10 +299,33 @@ def from_slice_step(b: bytes, start: int, end: int, step: int) -> bytearray:
 def from_slice_any(b: bytes, start: Any, end: Any) -> bytearray:
     return bytearray(b[start:end])
 
+def from_start(b: bytes, start: int) -> bytearray:
+    return bytearray(b[start:])
+
+def to_end(b: bytes, end: int) -> bytearray:
+    return bytearray(b[:end])
+
+def from_start_i64(b: bytes, start: i64) -> bytearray:
+    return bytearray(b[start:])
+
+def to_end_i32(b: bytes, end: i32) -> bytearray:
+    return bytearray(b[:end])
+
+def full(b: bytes) -> bytearray:
+    return bytearray(b[:])
+
+def from_start_calls(source: Callable[[], bytes], start: Callable[[], int]) -> bytearray:
+    return bytearray(source()[start():])
+
+def to_end_calls(source: Callable[[], bytes], end: Callable[[], int]) -> bytearray:
+    return bytearray(source()[:end()])
+
 [file driver.py]
 from native import (
     from_slice, from_slice_i64, from_slice_i32, from_slice_calls,
     from_slice_step, from_slice_any,
+    from_start, to_end, from_start_i64, to_end_i32, full,
+    from_start_calls, to_end_calls,
 )
 from testutil import assertRaises
 
@@ -320,6 +343,29 @@ for f, large_indices in [
                 assert result == bytearray(b[start:end]), (b, start, end, result)
                 assert result is not f(b, start, end)
 
+for f, is_start, large_indices in [
+    (from_start, True, [-2**100, -2**63, 2**63, 2**100]),
+    (to_end, False, [-2**100, -2**63, 2**63, 2**100]),
+    (from_start_i64, True, [-2**63, 2**63 - 1]),
+    (to_end_i32, False, [-2**31, 2**31 - 1]),
+]:
+    for b in [b'', b'abcdefg', b'\x00\xff\x80\x00abc']:
+        for n in small_indices + large_indices:
+            result = f(b, n)
+            expected = bytearray(b[n:] if is_start else b[:n])
+            assert type(result) is bytearray
+            assert result == expected, (b, n, result)
+            assert result is not f(b, n)
+
+for b in [b'', b'abcdefg', b'\x00\xff\x80']:
+    result = full(b)
+    assert type(result) is bytearray
+    assert result == b
+    assert result is not full(b)
+    if result:
+        result[0] = 1
+        assert full(b) == b
+
 b = b'abcdefg'
 result = from_slice(b, 1, 4)
 result[0] = 0
@@ -327,27 +373,31 @@ assert b == b'abcdefg'
 assert from_slice(b, 1, 4) == b'bcd'
 
 # A bytes subclass can override slicing, including returning a different type.
+# Omitted bounds must remain None in a subclass's __getitem__.
 class SubBytes(bytes):
     def __getitem__(self, key):
-        assert key == slice(start, end)
+        assert key == expected_slice
         return [0, 255, 128]
-
-for start, end in [(1, 4), (-5, -1), (0, 2**100)]:
-    assert from_slice(SubBytes(b), start, end) == bytearray([0, 255, 128])
 
 class BadSlice(bytes):
     def __getitem__(self, key):
         raise ValueError('slice failed')
 
-with assertRaises(ValueError, 'slice failed'):
-    from_slice(BadSlice(b), 1, 4)
-
 class BadResult(bytes):
     def __getitem__(self, key):
         return object()
 
-with assertRaises(TypeError):
-    from_slice(BadResult(b), 1, 4)
+cases = [(from_slice, (start, end), slice(start, end))
+         for start, end in [(1, 4), (-5, -1), (0, 2**100)]]
+cases.append((full, (), slice(None)))
+for n in small_indices + [-2**100, 2**100]:
+    cases.extend([(from_start, (n,), slice(n, None)), (to_end, (n,), slice(None, n))])
+for f, args, expected_slice in cases:
+    assert f(SubBytes(b), *args) == bytearray([0, 255, 128])
+    with assertRaises(ValueError, 'slice failed'):
+        f(BadSlice(b), *args)
+    with assertRaises(TypeError):
+        f(BadResult(b), *args)
 
 # Evaluate the source and both bounds exactly once, in order, on either path.
 def argument(name, value, fail=False):
@@ -373,6 +423,18 @@ for fail_at in range(3):
     with assertRaises(ValueError, names[fail_at]):
         from_slice_calls(*args)
     assert calls == names[:fail_at + 1]
+
+for f, direct in [(from_start_calls, from_start), (to_end_calls, to_end)]:
+    for n in [2, -2, 2**100]:
+        for fail in [False, True]:
+            calls = []
+            args = [argument('source', b), argument('bound', n, fail)]
+            if fail:
+                with assertRaises(ValueError, 'bound'):
+                    f(*args)
+            else:
+                assert f(*args) == direct(b, n)
+            assert calls == ['source', 'bound']
 
 # Unsupported forms must retain the ordinary constructor and slicing behavior.
 for step in [-2, -1, 1, 2]:

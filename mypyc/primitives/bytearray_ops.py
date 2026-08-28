@@ -31,6 +31,7 @@ function_op(
 )
 
 # bytearray(bytes[start:end])
+# Omitted bounds use the tagged integer error value.
 bytearray_from_bytes_slice_op = custom_primitive_op(
     name="bytearray_from_bytes_slice",
     arg_types=[bytes_rprimitive, int_rprimitive, int_rprimitive],

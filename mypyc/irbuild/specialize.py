@@ -42,6 +42,7 @@ from mypyc.ir.ops import (
     Call,
     Extend,
     Integer,
+    LoadErrorValue,
     PrimitiveDescription,
     RaiseStandardError,
     Register,
@@ -365,16 +366,21 @@ def translate_bytearray_from_bytes_slice(
     if (
         not isinstance(index, SliceExpr)
         or index.stride is not None
-        or index.begin_index is None
-        or index.end_index is None
-        or not is_any_int(builder.node_type(index.begin_index))
-        or not is_any_int(builder.node_type(index.end_index))
+        or (index.begin_index is not None and not is_any_int(builder.node_type(index.begin_index)))
+        or (index.end_index is not None and not is_any_int(builder.node_type(index.end_index)))
     ):
         return None
 
     obj = builder.accept(arg.base)
-    start = builder.accept(index.begin_index)
-    end = builder.accept(index.end_index)
+    # Use the default-argument sentinel so subclass slicing still receives None.
+    if index.begin_index is None:
+        start = builder.add(LoadErrorValue(int_rprimitive, is_borrowed=True))
+    else:
+        start = builder.accept(index.begin_index)
+    if index.end_index is None:
+        end = builder.add(LoadErrorValue(int_rprimitive, is_borrowed=True))
+    else:
+        end = builder.accept(index.end_index)
     return builder.primitive_op(bytearray_from_bytes_slice_op, [obj, start, end], expr.line)
 
 

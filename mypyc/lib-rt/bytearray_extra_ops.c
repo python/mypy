@@ -5,10 +5,13 @@ PyObject *CPyByteArray_New(void) {
 }
 
 PyObject *CPyByteArray_FromBytesSlice(PyObject *obj, CPyTagged start, CPyTagged end) {
-    if (PyBytes_CheckExact(obj) && CPyTagged_CheckShort(start) && CPyTagged_CheckShort(end)) {
-        Py_ssize_t startn = CPyTagged_ShortAsSsize_t(start);
-        Py_ssize_t endn = CPyTagged_ShortAsSsize_t(end);
-        if (0 <= startn && startn <= endn && endn <= PyBytes_GET_SIZE(obj)) {
+    if (PyBytes_CheckExact(obj)
+            && (start == CPY_INT_TAG || CPyTagged_CheckShort(start))
+            && (end == CPY_INT_TAG || CPyTagged_CheckShort(end))) {
+        Py_ssize_t size = PyBytes_GET_SIZE(obj);
+        Py_ssize_t startn = start == CPY_INT_TAG ? 0 : CPyTagged_ShortAsSsize_t(start);
+        Py_ssize_t endn = end == CPY_INT_TAG ? size : CPyTagged_ShortAsSsize_t(end);
+        if (0 <= startn && startn <= endn && endn <= size) {
             return PyByteArray_FromStringAndSize(PyBytes_AS_STRING(obj) + startn, endn - startn);
         }
     }
