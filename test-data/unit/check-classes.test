@@ -8593,7 +8593,7 @@ plain_var: int
 class Foo:
     import mod
 
-reveal_type(Foo.mod)  # N: Revealed type is "builtins.object"
+reveal_type(Foo.mod)  # N: Revealed type is "types.ModuleType"
 reveal_type(Foo.mod.foo)  # N: Revealed type is "builtins.int"
 [file mod.py]
 foo: int
