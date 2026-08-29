@@ -1,4 +1,5 @@
 # Minimal set of builtins required to work with Enums
+import types
 from typing import TypeVar, Generic, Iterator, Sequence, overload, Iterable
 
 T = TypeVar('T')
@@ -16,7 +17,6 @@ class str:
     def __iter__(self) -> Iterator[str]: pass
 
 class dict: pass
-class ellipsis: pass
 
 class list(Sequence[T]):
     @overload

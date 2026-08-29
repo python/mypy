@@ -1,4 +1,5 @@
 # Builtins stub used to support attrs plugin tests.
+import types
 from typing import Union, overload, Generic, Sequence, TypeVar, Type, Iterable, Iterator
 
 class object:
@@ -24,7 +25,6 @@ class complex:
     def __init__(self, real: str = ...) -> None: ...
 
 class str: pass
-class ellipsis: pass
 class list: pass
 class dict: pass
 

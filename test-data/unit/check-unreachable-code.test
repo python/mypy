@@ -759,7 +759,7 @@ reveal_type('')  # No error here :-)
 
 [case testUnreachableAfterToplevelAssertImport]
 import foo
-foo.bar()  # E: "object" has no attribute "bar"
+foo.bar()  # E: Module has no attribute "bar"
 [file foo.py]
 import sys
 assert sys.platform == 'lol'

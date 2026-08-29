@@ -9,7 +9,7 @@
 import m
 # This used to cause a crash since types.ModuleType is not available
 # by default. We fall back to 'object' now.
-m.x # E: "object" has no attribute "x"
+m.x # E: Module has no attribute "x"
 [file m.py]
 
 [case testSetMissingFromStubs]

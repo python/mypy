@@ -1,6 +1,7 @@
 # Builtins stub used to support *args, **kwargs.
 
 import _typeshed
+import types
 from typing import TypeVar, Generic, Iterable, Sequence, Tuple, Dict, Any, overload, Mapping
 
 Tco = TypeVar('Tco', covariant=True)
@@ -32,4 +33,3 @@ class str: pass
 class bytes: pass
 class bool: pass
 class function: pass
-class ellipsis: pass

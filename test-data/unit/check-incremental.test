@@ -5546,7 +5546,7 @@ import p.util
 class N(p.util.Test):
     ...
 [out2]
-tmp/a.py:2: error: "object" has no attribute "N"
+tmp/a.py:2: error: Module has no attribute "N"
 
 [case testIncrementalIndirectSkipWarnUnused]
 # flags: --follow-imports=skip --warn-unused-ignores
@@ -5801,7 +5801,7 @@ class C:
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 [out2]
-tmp/a.py:2: error: "object" has no attribute "xyz"
+tmp/a.py:2: error: Module has no attribute "xyz"
 
 [case testIncrementalInvalidNamedTupleInUnannotatedFunction]
 # flags: --disable-error-code=annotation-unchecked
@@ -7553,9 +7553,9 @@ from pkg import submod
 [file pkg/submod.pyi]
 def foo() -> None: pass
 [out]
-tmp/a.py:3: error: "object" has no attribute "submod"
+tmp/a.py:3: error: Module has no attribute "submod"
 [out2]
-tmp/a.py:3: error: "object" has no attribute "submod"
+tmp/a.py:3: error: Module has no attribute "submod"
 
 [case testIncrementalAccessSubmoduleWithoutExplicitImportNested]
 import a
@@ -7608,9 +7608,9 @@ from pandas.core.dtypes.dtypes import X
 [file pandas/core/dtypes/dtypes.py]
 X = 0
 [out]
-tmp/a.py:6: error: "object" has no attribute "dtypes"
+tmp/a.py:6: error: Module has no attribute "dtypes"
 [out2]
-tmp/a.py:2: error: "object" has no attribute "dtypes"
+tmp/a.py:2: error: Module has no attribute "dtypes"
 
 [case testStarImportCycleRedefinition]
 import m
