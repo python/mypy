@@ -474,6 +474,82 @@ reveal_type(x)  # N: Revealed type is "builtins.str"
 [builtins fixtures/ops.pyi]
 [out]
 
+[case testCustomSysPlatformMembershipTuple]
+# flags: --platform linux
+import sys
+if sys.platform in ('linux', 'darwin'):
+    x = "foo"
+else:
+    x = 3
+reveal_type(x)  # N: Revealed type is "builtins.str"
+
+if sys.platform not in ('win32', 'cygwin'):
+    y = "foo"
+else:
+    y = 3
+reveal_type(y)  # N: Revealed type is "builtins.str"
+
+if sys.platform in ('win32', 'cygwin'):
+    z = "foo"
+else:
+    z = 3
+reveal_type(z)  # N: Revealed type is "builtins.int"
+
+if sys.platform not in ('linux', 'darwin'):
+    w = "foo"
+else:
+    w = 3
+reveal_type(w)  # N: Revealed type is "builtins.int"
+[builtins fixtures/ops.pyi]
+[out]
+
+[case testCustomSysPlatformMembershipSet]
+# flags: --platform linux
+import sys
+if sys.platform in {'linux', 'darwin'}:
+    x = "foo"
+else:
+    x = 3
+reveal_type(x)  # N: Revealed type is "builtins.str"
+
+if sys.platform not in {'linux', 'darwin'}:
+    y = "foo"
+else:
+    y = 3
+reveal_type(y)  # N: Revealed type is "builtins.int"
+[builtins fixtures/set.pyi]
+[out]
+
+[case testSysPlatformMembershipUnknown]
+import sys
+
+platform = sys.platform
+if sys.platform in ('linux', platform):
+    def f() -> int: return 0
+else:
+    def f() -> str: return ''  # E: All conditional function variants must have identical signatures \
+                               # N: Original: \
+                               # N:     def f() -> int \
+                               # N: Redefinition: \
+                               # N:     def f() -> str
+[builtins fixtures/ops.pyi]
+[out]
+
+[case testSysPlatformMembershipListIsUnknown]
+# flags: --platform linux
+import sys
+
+if sys.platform in ['linux', 'darwin']:
+    def f() -> int: return 0
+else:
+    def f() -> str: return ''  # E: All conditional function variants must have identical signatures \
+                               # N: Original: \
+                               # N:     def f() -> int \
+                               # N: Redefinition: \
+                               # N:     def f() -> str
+[builtins fixtures/list.pyi]
+[out]
+
 [case testShortCircuitInExpression]
 import typing
 def make() -> bool: pass
