@@ -1904,6 +1904,10 @@ def exclude_from_backups(target_dir: str) -> None:
 
 def create_metastore(options: Options, parallel_worker: bool) -> MetadataStore:
     """Create the appropriate metadata store."""
+    if not options.incremental:
+        # When incremental mode is disabled, use a no-op store to avoid
+        # creating a .mypy_cache directory.
+        return FilesystemMetadataStore(os.devnull)
     if options.sqlite_cache:
         mds: MetadataStore = SqliteMetadataStore(
             _cache_dir_prefix(options),
