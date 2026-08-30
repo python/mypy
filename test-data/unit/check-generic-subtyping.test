@@ -514,7 +514,7 @@ class E: pass
 [builtins fixtures/tuple.pyi]
 [out]
 
-[case testSubtypingWithTypeImplementingGenericABCViaInheritance2-skip]
+[case testSubtypingWithTypeImplementingGenericABCViaInheritance2-xfail]
 from typing import TypeVar, Generic
 T = TypeVar('T')
 class I(Generic[T]): pass
