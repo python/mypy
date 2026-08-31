@@ -1585,13 +1585,28 @@ static int CPyImport_ReleaseLockPreservingException(PyObject *module_lock) {
 }
 
 // Execute a module once; caller holds the module lock.
-int CPyImport_Exec(PyObject *module, int (*exec_fn)(PyObject *), CPyImportState *state) {
+int CPyImport_Exec(PyObject *module, int (*exec_fn)(PyObject *), CPyImportState *state,
+                   CPyModule **module_cache) {
     if (CPyImport_IsInitialized(state)) {
-        return 0;
+        const char *module_name = PyModule_GetName(module);
+        if (module_name != NULL) {
+            PyErr_Format(PyExc_ImportError,
+                         "native module '%s' does not support reinitialization",
+                         module_name);
+        }
+        return -1;
     }
 
     int result = exec_fn(module);
     if (result == 0) {
+        // Keep the cache lazy. A normal shim import should not populate it, since
+        // the first compiled native import must still validate sys.modules. If a
+        // compiled import already populated the cache (including with a partial
+        // module during a circular import), refresh it to this instance.
+        PyObject *cached_module = CPyImport_GetModuleCache(module_cache);
+        if (cached_module != NULL && cached_module != Py_None) {
+            CPyImport_ReplaceModuleCache(module_cache, module);
+        }
         CPyImport_SetInitialized(state, true);
     }
     return result;
@@ -1737,8 +1752,8 @@ fail:
     PyObject_DelItem(module_dict, module_name);
     PyErr_Clear();
     PyErr_Restore(exc_type, exc_val, exc_tb);
-    Py_CLEAR(*module_static);
     CPyImport_SetInitialized(state, false);
+    Py_CLEAR(*module_static);
     CPyImport_ReleaseLockPreservingException(module_lock);
     return NULL;
 }

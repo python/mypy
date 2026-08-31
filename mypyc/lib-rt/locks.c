@@ -89,11 +89,32 @@ bool CPyImport_IsInitialized(const CPyImportState *state) {
 #endif
 }
 
+bool CPyImport_IsInitializedForModule(const CPyImportState *state, PyObject *module,
+                                      CPyModule **module_cache) {
+    // Read initialized before re-reading the cache. If a retry completed after
+    // the caller's first cache load, this load rejects its stale pointer.
+    return CPyImport_IsInitialized(state)
+        && CPyImport_GetModuleCache(module_cache) == module;
+}
+
 void CPyImport_SetInitialized(CPyImportState *state, bool initialized) {
 #ifdef _WIN32
     InterlockedExchange((volatile LONG *)&state->initialized, initialized);
 #else
     __atomic_store_n(&state->initialized, initialized, __ATOMIC_RELEASE);
+#endif
+}
+
+static void CPyImport_DecRefOld(PyObject *previous) {
+    if (previous == NULL) {
+        return;
+    }
+#ifdef Py_GIL_DISABLED
+    // Atomic loads return borrowed references, so defer releasing the old
+    // reference until concurrent readers have passed a quiescent point.
+    CPy_DecRefAttrOld(previous);
+#else
+    Py_DECREF(previous);
 #endif
 }
 
@@ -120,4 +141,18 @@ void CPyImport_SetModuleCache(CPyModule **cache, PyObject *module) {
         Py_DECREF(module);
     }
 #endif
+}
+
+void CPyImport_ReplaceModuleCache(CPyModule **cache, PyObject *module) {
+    Py_INCREF(module);
+    CPyModule *previous;
+#ifdef _WIN32
+    previous = InterlockedExchangePointer((PVOID volatile *)cache, module);
+#else
+    previous = __atomic_exchange_n(cache, (CPyModule *)module, __ATOMIC_ACQ_REL);
+#endif
+    if (previous == NULL || previous == (CPyModule *)Py_None) {
+        return;
+    }
+    CPyImport_DecRefOld((PyObject *)previous);
 }

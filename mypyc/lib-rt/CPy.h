@@ -42,9 +42,12 @@ int CPyImport_AcquireLock(CPyModuleLockAPI *api, PyObject *module_name,
                           PyObject **module_lock);
 int CPyImport_ReleaseLock(PyObject *module_lock);
 bool CPyImport_IsInitialized(const CPyImportState *state);
+bool CPyImport_IsInitializedForModule(const CPyImportState *state, PyObject *module,
+                                      CPyModule **module_cache);
 void CPyImport_SetInitialized(CPyImportState *state, bool initialized);
 PyObject *CPyImport_GetModuleCache(CPyModule **cache);
 void CPyImport_SetModuleCache(CPyModule **cache, PyObject *module);
+void CPyImport_ReplaceModuleCache(CPyModule **cache, PyObject *module);
 
 
 // Naming conventions:
@@ -1071,7 +1074,8 @@ PyObject *CPyImport_ImportNative(PyObject *module_name,
                                  CPyImportState *state, CPyModuleLockAPI *lock_api,
                                  PyObject *shared_lib_file, PyObject *ext_suffix,
                                  Py_ssize_t is_package);
-int CPyImport_Exec(PyObject *module, int (*exec_fn)(PyObject *), CPyImportState *state);
+int CPyImport_Exec(PyObject *module, int (*exec_fn)(PyObject *), CPyImportState *state,
+                   CPyModule **module_cache);
 PyObject *CPyImport_BeginInitializing(PyObject *module);
 int CPyImport_EndInitializing(PyObject *spec);
 int CPyImport_SetDunderAttrs(PyObject *module, PyObject *module_name, PyObject *shared_lib_file,

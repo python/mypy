@@ -2415,6 +2415,93 @@ assert errors == ["first initialization failed"]
 assert failure_state.attempts == 2
 assert other_importer.load() == 42
 
+[case testFailedConcurrentCircularNativeImportRefreshesCache]
+# separate: [(["native.py", "other_a.py", "other_b.py"], "testgroup")]
+pass
+
+[file import_sync.py]
+from threading import Event
+
+a_started = Event()
+b_started = Event()
+a_importing_b = Event()
+b_waiting_for_driver = Event()
+b_may_import_a = Event()
+
+[file failure_state.py]
+attempts = 0
+
+[file other_a.py]
+import failure_state
+
+failure_state.attempts += 1
+if failure_state.attempts == 1:
+    import import_sync
+
+    import_sync.a_started.set()
+    assert import_sync.b_started.wait(timeout=5)
+    import_sync.a_importing_b.set()
+    import other_b
+    raise RuntimeError("first initialization failed")
+
+value = 42
+
+[file other_b.py]
+import import_sync
+
+import_sync.b_started.set()
+assert import_sync.a_started.wait(timeout=5)
+assert import_sync.a_importing_b.wait(timeout=5)
+import_sync.b_waiting_for_driver.set()
+assert import_sync.b_may_import_a.wait(timeout=5)
+import other_a
+
+saw_partial_a = not hasattr(other_a, "value")
+
+def get_a_value() -> int:
+    return other_a.value
+
+[file driver.py]
+from concurrent.futures import ThreadPoolExecutor
+import importlib
+from time import monotonic, sleep
+
+from testutil import assertRaises
+
+import failure_state
+import import_sync
+import native  # Preload the compilation group's shared library.
+
+with ThreadPoolExecutor(max_workers=2) as executor:
+    future_a = executor.submit(importlib.import_module, "other_a")
+    assert import_sync.a_started.wait(timeout=5)
+    future_b = executor.submit(importlib.import_module, "other_b")
+    assert import_sync.a_importing_b.wait(timeout=5)
+    assert import_sync.b_waiting_for_driver.wait(timeout=5)
+
+    # Wait until other_a is blocked on other_b's module lock. Letting other_b
+    # import other_a then deterministically closes the lock cycle and returns
+    # other_a's partial module.
+    bootstrap = importlib.import_module("importlib._bootstrap")
+    lock = bootstrap._get_module_lock("other_b")
+    deadline = monotonic() + 5
+    while not lock.waiters and monotonic() < deadline:
+        sleep(0.001)
+    has_waiter = bool(lock.waiters)
+    import_sync.b_may_import_a.set()
+    assert has_waiter
+
+    with assertRaises(RuntimeError, "first initialization failed"):
+        future_a.result(timeout=10)
+    other_b = future_b.result(timeout=10)
+
+assert failure_state.attempts == 1
+assert other_b.saw_partial_a
+other_a = importlib.import_module("other_a")
+assert failure_state.attempts == 2
+assert other_a.value == 42
+assert other_b.get_a_value() == 42
+
 [case testConcurrentCircularNativeImports]
 # separate: [(["other_a.py", "other_b.py"], "testgroup")]
 pass
@@ -2456,6 +2543,33 @@ with ThreadPoolExecutor(max_workers=2) as executor:
 
 assert other_a.other_value == "b"
 assert other_b.other_value == "a"
+
+[case testNativeModuleReimportBehavior]
+value = 42
+
+def get_value() -> int:
+    return value
+
+[file driver.py]
+import importlib
+import sys
+
+from testutil import assertRaises
+
+import native
+
+first = native
+assert first.get_value() == 42
+del sys.modules["native"]
+if hasattr(sys, "_is_gil_enabled") and not sys._is_gil_enabled():
+    with assertRaises(ImportError, "native module 'native' does not support reinitialization"):
+        importlib.import_module("native")
+    assert "native" not in sys.modules
+else:
+    # Legacy single-phase initialization returns the original module object.
+    second = importlib.import_module("native")
+    assert second is first
+assert first.get_value() == 42
 
 [case testTopLevelThreadImportsNativeModuleFromSameGroup]
 # separate: [(["native.py", "other_target.py"], "testgroup")]

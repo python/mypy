@@ -160,9 +160,9 @@ native_import_op = custom_op(
 )
 
 native_import_is_initialized_op = custom_op(
-    arg_types=[c_pointer_rprimitive],
+    arg_types=[c_pointer_rprimitive, object_rprimitive, object_pointer_rprimitive],
     return_type=bit_rprimitive,
-    c_function_name="CPyImport_IsInitialized",
+    c_function_name="CPyImport_IsInitializedForModule",
     error_kind=ERR_NEVER,
 )
 

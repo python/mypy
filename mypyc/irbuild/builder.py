@@ -629,7 +629,9 @@ class IRBuilder:
             check_initialized = BasicBlock()
             self.add_bool_branch(comparison, check_initialized, needs_import)
             self.activate_block(check_initialized)
-            initialized = self.call_c(native_import_is_initialized_op, [import_state], line)
+            initialized = self.call_c(
+                native_import_is_initialized_op, [import_state, first_load, module_cache], line
+            )
             self.add_bool_branch(initialized, out, needs_import)
 
     def get_module(self, module: str, line: int) -> Value:

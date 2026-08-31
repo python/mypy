@@ -1290,6 +1290,8 @@ class GroupGenerator:
         emitter.context.declarations[exec_name] = HeaderDeclaration(declaration + ";")
         impl_name = f"{exec_name}__impl"
         module_static = self.module_internal_static_name(module_name, emitter)
+        state = self.import_state_name(module_name)
+        module_cache = emitter.static_name(module_name, None, prefix=MODULE_PREFIX)
         emitter.emit_lines(f"static int {impl_name}(PyObject *module)", "{")
         if not self.use_shared_lib:
             emitter.emit_lines("if (intern_strings() < 0)", "    return -1;")
@@ -1385,9 +1387,11 @@ class GroupGenerator:
         emitter.emit_line("return -1;")
         emitter.emit_line("}")
 
-        state = self.import_state_name(module_name)
         emitter.emit_lines(
-            declaration, "{", f"return CPyImport_Exec(module, {impl_name}, &{state});", "}"
+            declaration,
+            "{",
+            f"return CPyImport_Exec(module, {impl_name}, &{state}, &{module_cache});",
+            "}",
         )
 
     def emit_init_only_func(self, emitter: Emitter, module_name: str, module_prefix: str) -> None:
