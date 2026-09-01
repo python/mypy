@@ -181,6 +181,7 @@ from typing_extensions import sentinel, assert_type
 MISSING = sentinel("MISSING")
 ALIAS = MISSING
 
+# The value still identifies as the same sentinel...
 assert_type(ALIAS, MISSING)
 
 def func(x: int | MISSING = MISSING) -> None:
