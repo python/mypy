@@ -160,3 +160,19 @@ ConcretePattern: TypeAlias = (
     | MappingPattern
     | ClassPattern
 )
+
+
+def get_irrefutable_pattern(pattern: Pattern) -> AsPattern | None:
+    """Return the capture or wildcard pattern that makes this pattern irrefutable.
+
+    An irrefutable pattern matches any subject: a capture pattern, a wildcard
+    pattern, an as pattern whose subpattern is irrefutable, or an or pattern
+    whose last alternative is irrefutable. Returns None for refutable patterns.
+    """
+    if isinstance(pattern, AsPattern):
+        if pattern.pattern is None:
+            return pattern
+        return get_irrefutable_pattern(pattern.pattern)
+    if isinstance(pattern, OrPattern):
+        return get_irrefutable_pattern(pattern.patterns[-1])
+    return None
