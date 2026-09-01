@@ -4005,3 +4005,120 @@ def enum_then_dummy_class(arg: DummyClass | Literal[MyEnum.RELEVANT]):
         case _:
             pass  # E: Statement is unreachable
 [builtins fixtures/tuple.pyi]
+
+
+[case testMatchIrrefutablePatternNotLastCase]
+# Irrefutable patterns before the last case are a SyntaxError at runtime
+def capture(x: int) -> None:
+    match x:
+        case y:  # E: Name capture "y" makes remaining patterns unreachable
+            pass
+        case 1:
+            pass
+
+def wildcard(x: int) -> None:
+    match x:
+        case _:  # E: Wildcard pattern makes remaining patterns unreachable
+            pass
+        case 1:
+            pass
+
+def as_capture(x: int) -> None:
+    match x:
+        case (y as z):  # E: Name capture "y" makes remaining patterns unreachable
+            pass
+        case 1:
+            pass
+
+def or_ending_irrefutable(x: int) -> None:
+    match x:
+        case 1 | _:  # E: Wildcard pattern makes remaining patterns unreachable
+            pass
+        case 2:
+            pass
+[builtins fixtures/tuple.pyi]
+
+[case testMatchIrrefutablePatternAllowed]
+def capture_last(x: int) -> None:
+    match x:
+        case 1:
+            pass
+        case y:
+            pass
+
+def wildcard_last(x: int) -> None:
+    match x:
+        case 1:
+            pass
+        case _:
+            pass
+
+def check(v: int) -> bool: ...
+
+def guarded_capture(x: int) -> None:
+    match x:
+        case y if check(y):
+            pass
+        case _:
+            pass
+
+def guarded_wildcard(x: int) -> None:
+    match x:
+        case _ if check(x):
+            pass
+        case 1:
+            pass
+
+def matches_anything_but_refutable(x: int) -> None:
+    match x:
+        case int():
+            pass
+        case _:
+            pass
+[builtins fixtures/tuple.pyi]
+
+[case testMatchIrrefutableOrPatternAlternativeNotLast]
+# An irrefutable or pattern alternative is only allowed in the last position,
+# even in the last case, in a guarded case, or nested in another pattern
+def wildcard_alternative_last_case(x: int) -> None:
+    match x:
+        case 1:
+            pass
+        case _ | 2:  # E: Wildcard pattern makes remaining patterns unreachable
+            pass
+
+def check(v: int) -> bool: ...
+
+def wildcard_alternative_guarded(x: int) -> None:
+    match x:
+        case _ | 1 if check(x):  # E: Wildcard pattern makes remaining patterns unreachable
+            pass
+        case 2:
+            pass
+
+def nested_in_sequence(x: object) -> None:
+    match x:
+        case [_ | 1, y]:  # E: Wildcard pattern makes remaining patterns unreachable
+            pass
+
+def nested_in_or(x: int) -> None:
+    match x:
+        case 1 | (2 | _) | 3:  # E: Wildcard pattern makes remaining patterns unreachable
+            pass
+
+def or_ending_irrefutable_last_case(x: int) -> None:
+    match x:
+        case 1:
+            pass
+        case 2 | _:
+            pass
+[builtins fixtures/tuple.pyi]
+
+[case testMatchIrrefutablePatternUncheckedFunction]
+def f(x):
+    match x:
+        case y:  # E: Name capture "y" makes remaining patterns unreachable
+            pass
+        case 1:
+            pass
+[builtins fixtures/tuple.pyi]

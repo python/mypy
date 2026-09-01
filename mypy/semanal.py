@@ -207,6 +207,7 @@ from mypy.patterns import (
     SingletonPattern,
     StarredPattern,
     ValuePattern,
+    get_irrefutable_pattern,
 )
 from mypy.plugin import (
     ClassDefContext,
@@ -5785,11 +5786,27 @@ class SemanticAnalyzer(
         infer_reachability_of_match_statement(s, self.options)
         s.subject.accept(self)
         for i in range(len(s.patterns)):
+            # An unguarded irrefutable pattern is only allowed in the last case,
+            # otherwise the remaining cases could never match. CPython rejects
+            # such match statements at compile time with a SyntaxError.
+            if i < len(s.patterns) - 1 and s.guards[i] is None:
+                irrefutable = get_irrefutable_pattern(s.patterns[i])
+                if irrefutable is not None:
+                    self.fail_irrefutable_pattern(irrefutable)
             s.patterns[i].accept(self)
             guard = s.guards[i]
             if guard is not None:
                 guard.accept(self)
             self.visit_block(s.bodies[i])
+
+    def fail_irrefutable_pattern(self, pattern: AsPattern) -> None:
+        if pattern.name is None:
+            msg = message_registry.WILDCARD_MAKES_REMAINING_UNREACHABLE
+        else:
+            msg = message_registry.NAME_CAPTURE_MAKES_REMAINING_UNREACHABLE.format(
+                pattern.name.name
+            )
+        self.fail(msg, pattern, serious=True)
 
     def visit_type_alias_stmt(self, s: TypeAliasStmt) -> None:
         if s.invalid_recursive_alias:
@@ -6555,6 +6572,13 @@ class SemanticAnalyzer(
             self.analyze_lvalue(p.name)
 
     def visit_or_pattern(self, p: OrPattern) -> None:
+        # An irrefutable alternative is only allowed in the last position,
+        # regardless of where the or pattern appears. CPython rejects other
+        # placements at compile time with a SyntaxError.
+        for pattern in p.patterns[:-1]:
+            irrefutable = get_irrefutable_pattern(pattern)
+            if irrefutable is not None:
+                self.fail_irrefutable_pattern(irrefutable)
         for pattern in p.patterns:
             pattern.accept(self)
 
