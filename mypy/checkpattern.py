@@ -605,7 +605,7 @@ class PatternChecker(PatternVisitor[PatternType]):
                 if not is_uninhabited(pattern_type.type):
                     return PatternType(
                         pattern_type.type,
-                        join_types(rest_type, pattern_type.rest_type),
+                        make_simplified_union([rest_type, pattern_type.rest_type]),
                         pattern_type.captures,
                     )
                 captures = pattern_type.captures
