@@ -1905,6 +1905,32 @@ match m:
     case b:
         reveal_type(b)  # N: Revealed type is "builtins.int"
 
+[case testMatchClassPatternLiteralNegativeNarrowing]
+# flags: --strict-equality --warn-unreachable
+# See: https://github.com/python/mypy/issues/21780
+
+from typing import reveal_type, NoReturn
+
+def assert_never(x: NoReturn) -> None: ...
+
+def f(x: int | tuple[int, int] | None) -> float | None:
+    match x:
+        case None:
+            reveal_type(x) # N: Revealed type is "None"
+            return None
+        case int(0):
+            reveal_type(x) # N: Revealed type is "Literal[0]"
+            return 0.0
+        case int(bits):
+            reveal_type(x) # N: Revealed type is "builtins.int"
+            return bits / 8.0
+        case int(bits), int(seconds):
+            reveal_type(x) # N: Revealed type is "tuple[builtins.int, builtins.int]"
+            return bits / 8.0 / seconds
+        case _:
+            assert_never(x) # E: Statement is unreachable
+[builtins fixtures/ops.pyi]
+
 [case testMatchExhaustiveReturn]
 # flags: --strict-equality --warn-unreachable
 def foo(value) -> int:
