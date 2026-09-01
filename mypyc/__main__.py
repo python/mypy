@@ -5,9 +5,12 @@ Usage:
     $ mypyc foo.py [...]
     $ python3 -c 'import foo'  # Uses compiled 'foo'
 
+    $ python3 -m mypyc cgen [--target-dir DIR] SOURCE...  # See mypyc.cgen
 
-This is just a thin wrapper that generates a setup.py file that uses
-mypycify, suitable for prototyping and testing.
+The default invocation is just a thin wrapper that generates a setup.py
+file that uses mypycify, suitable for prototyping and testing. The 'cgen'
+subcommand instead emits C code and JSON build metadata for use with
+build systems other than setuptools.
 """
 
 from __future__ import annotations
@@ -37,6 +40,12 @@ setup(
 
 
 def main() -> None:
+    if len(sys.argv) > 1 and sys.argv[1] == "cgen":
+        from mypyc.cgen import main as cgen_main
+
+        cgen_main(sys.argv[2:])
+        return
+
     build_dir = "build"  # can this be overridden??
     try:
         os.mkdir(build_dir)
