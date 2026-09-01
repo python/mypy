@@ -520,34 +520,46 @@ reveal_type(y)  # N: Revealed type is "builtins.int"
 [builtins fixtures/set.pyi]
 [out]
 
+[case testCustomSysPlatformMembershipList]
+# flags: --platform linux
+import sys
+if sys.platform in ['linux', 'darwin']:
+    x = "foo"
+else:
+    x = 3
+reveal_type(x)  # N: Revealed type is "builtins.str"
+
+if sys.platform not in ['linux', 'darwin']:
+    y = "foo"
+else:
+    y = 3
+reveal_type(y)  # N: Revealed type is "builtins.int"
+[builtins fixtures/list.pyi]
+[out]
+
 [case testSysPlatformMembershipUnknown]
+# flags: --platform linux
 import sys
 
 platform = sys.platform
 if sys.platform in ('linux', platform):
-    def f() -> int: return 0
+    y = "foo"
 else:
-    def f() -> str: return ''  # E: All conditional function variants must have identical signatures \
-                               # N: Original: \
-                               # N:     def f() -> int \
-                               # N: Redefinition: \
-                               # N:     def f() -> str
+    y = 3  # E: Incompatible types in assignment (expression has type "int", variable has type "str")
+reveal_type(y)  # N: Revealed type is "builtins.str"
 [builtins fixtures/ops.pyi]
 [out]
 
-[case testSysPlatformMembershipListIsUnknown]
+[case testSysPlatformMembershipDictIsUnknown]
 # flags: --platform linux
 import sys
 
-if sys.platform in ['linux', 'darwin']:
-    def f() -> int: return 0
+if sys.platform in {'linux': 'hi', 'darwin': 'bye'}:
+    y = "foo"
 else:
-    def f() -> str: return ''  # E: All conditional function variants must have identical signatures \
-                               # N: Original: \
-                               # N:     def f() -> int \
-                               # N: Redefinition: \
-                               # N:     def f() -> str
-[builtins fixtures/list.pyi]
+    y = 3  # E: Incompatible types in assignment (expression has type "int", variable has type "str")
+reveal_type(y)  # N: Revealed type is "builtins.str"
+[builtins fixtures/dict.pyi]
 [out]
 
 [case testShortCircuitInExpression]

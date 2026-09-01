@@ -19,6 +19,7 @@ from mypy.nodes import (
     ImportFrom,
     IndexExpr,
     IntExpr,
+    ListExpr,
     MatchStmt,
     MemberExpr,
     NameExpr,
@@ -306,7 +307,7 @@ def contains_int_or_tuple_of_ints(expr: Expression) -> None | int | tuple[int, .
 
 
 def contains_tuple_or_set_of_strings(expr: Expression) -> tuple[str, ...] | None:
-    if isinstance(expr, (TupleExpr, SetExpr)) and all(
+    if isinstance(expr, (TupleExpr, SetExpr, ListExpr)) and all(
         isinstance(item, StrExpr) for item in expr.items
     ):
         return tuple(item.value for item in expr.items if isinstance(item, StrExpr))
