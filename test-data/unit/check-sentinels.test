@@ -224,8 +224,7 @@ X = sentinel("X")
 
 def inspect_sentinel(arg: sentinel) -> None: ...
 
-reveal_type(X)  # N: Revealed type is "X?"
+reveal_type(X)  # N: Revealed type is "X"
 reveal_type(inspect_sentinel)  # N: Revealed type is "def (arg: typing_extensions.Sentinel)"
 inspect_sentinel(arg=X)
-
 [builtins fixtures/tuple.pyi]

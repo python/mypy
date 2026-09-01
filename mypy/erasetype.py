@@ -246,10 +246,6 @@ class LastKnownValueEraser(TypeTranslator):
     def visit_instance(self, t: Instance) -> Type:
         if not t.last_known_value and not t.args:
             return t
-        if t.last_known_value is not None and t.last_known_value.is_sentinel_literal():
-            # Sentinel values (PEP 661) have no other way to identify themselves than
-            # via their literal, unlike e.g. enum members, so it must be preserved.
-            return t
         return t.copy_modified(args=[a.accept(self) for a in t.args], last_known_value=None)
 
     def visit_type_alias_type(self, t: TypeAliasType) -> Type:

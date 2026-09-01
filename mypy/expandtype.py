@@ -244,10 +244,6 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
             t = t.copy_modified(upper_bound=t.upper_bound.accept(self))
         repl = self.variables.get(t.id, t)
         if isinstance(repl, ProperType) and isinstance(repl, Instance):
-            if repl.last_known_value is not None and repl.last_known_value.is_sentinel_literal():
-                # Sentinel values (PEP 661) have no other way to identify themselves than
-                # via their literal, unlike e.g. enum members, so it must survive expansion.
-                return repl
             # TODO: do we really need to do this?
             # If I try to remove this special-casing ~40 tests fail on reveal_type().
             return repl.copy_modified(last_known_value=None)
