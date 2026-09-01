@@ -1104,10 +1104,8 @@ c: dict[x:y]
 [builtins fixtures/dict.pyi]
 [out]
 main:2:14: error: Invalid type comment or annotation  [valid-type]
-main:2:14: note: did you mean to use ',' instead of ':' ?
 main:3:4: error: "dict" expects 2 type arguments, but 1 given  [type-arg]
 main:3:9: error: Invalid type comment or annotation  [valid-type]
-main:3:9: note: did you mean to use ',' instead of ':' ?
 
 [case testSliceInDictTyping]
 # flags: --show-column-numbers
@@ -1118,11 +1116,8 @@ c: Dict[x:y]
 [builtins fixtures/dict.pyi]
 [out]
 main:3:14: error: Invalid type comment or annotation  [valid-type]
-main:3:14: note: did you mean to use ',' instead of ':' ?
 main:4:4: error: "dict" expects 2 type arguments, but 1 given  [type-arg]
 main:4:9: error: Invalid type comment or annotation  [valid-type]
-main:4:9: note: did you mean to use ',' instead of ':' ?
-
 
 [case testSliceInCustomTensorType]
 # syntactically mimics torchtyping.TensorType

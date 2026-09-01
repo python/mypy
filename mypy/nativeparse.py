@@ -125,6 +125,7 @@ from mypy.nodes import (
     WithStmt,
     YieldExpr,
     YieldFromExpr,
+    check_param_names,
 )
 from mypy.options import Options
 from mypy.patterns import (
@@ -628,6 +629,11 @@ def read_parameters(state: State, data: ReadBuffer) -> tuple[list[Argument], boo
         set_line_column_range(var, arg)
         arguments.append(arg)
 
+    def fail_arg(msg: str, ctx: Argument) -> None:
+        # To match the old parser (for now).
+        state.add_error(msg, ctx.line, ctx.column, blocker=True, code="syntax")
+
+    check_param_names([arg.variable.name for arg in arguments], arguments, fail_arg)
     return arguments, has_ann
 
 
@@ -636,6 +642,22 @@ def check_type_param_defaults(
 ) -> None:
     if any(p.default is not None for p in type_params):
         state.check_min_version("Type parameter defaults", (3, 13), line, column)
+
+
+def check_type_param_values(
+    state: State, type_params: list[TypeParam], line: int, column: int
+) -> None:
+    for type_param in type_params:
+        if len(type_param.values) == 1:
+            state.add_error(
+                message_registry.TYPE_VAR_TOO_FEW_CONSTRAINED_TYPES.value,
+                line,
+                column,
+                blocker=False,
+                code="misc",
+            )
+            # For compatibility with old parser.
+            type_param.values = []
 
 
 def read_type_params(state: State, data: ReadBuffer) -> list[TypeParam]:
@@ -716,6 +738,7 @@ def read_func_def(state: State, data: ReadBuffer) -> FuncDef:
             "Improved type parameter syntax", (3, 12), func_def.line, func_def.column
         )
         check_type_param_defaults(state, type_params, func_def.line, func_def.column)
+        check_type_param_values(state, type_params, func_def.line, func_def.column)
     if typ:
         typ.line = func_def.line
         typ.column = func_def.column
@@ -770,6 +793,7 @@ def read_class_def(state: State, data: ReadBuffer) -> ClassDef:
             "Improved type parameter syntax", (3, 12), class_def.line, class_def.column
         )
         check_type_param_defaults(state, type_params, class_def.line, class_def.column)
+        check_type_param_values(state, type_params, class_def.line, class_def.column)
     expect_end_tag(data)
     if state.options.include_docstrings:
         class_def.docstring = get_docstring(body)
@@ -836,6 +860,7 @@ def read_type_alias_stmt(state: State, data: ReadBuffer) -> TypeAliasStmt:
     read_loc(data, stmt)
     state.check_min_version('"type" statements', (3, 12), stmt.line, stmt.column)
     check_type_param_defaults(state, type_params, stmt.line, stmt.column)
+    check_type_param_values(state, type_params, stmt.line, stmt.column)
     expect_end_tag(data)
     return stmt
 
