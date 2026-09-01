@@ -1,0 +1,1 @@
+EXAMPLE_CONST: int = 42
