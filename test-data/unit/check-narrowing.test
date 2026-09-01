@@ -3052,6 +3052,21 @@ def check_d(arg: D[T]) -> None:
 [builtins fixtures/tuple.pyi]
 
 
+[case testIsinstanceNarrowingWithSelfTypeInClassmethod]
+from typing_extensions import Self
+
+class Foo:
+    @classmethod
+    def foo_1(cls, x: Self | float) -> None:
+        assert isinstance(x, cls)
+        reveal_type(x)  # N: Revealed type is "Self`0"
+
+    @classmethod
+    def foo_2(cls, x: Self | float) -> None:
+        assert not isinstance(x, cls)
+        reveal_type(x)  # N: Revealed type is "builtins.float"
+[builtins fixtures/isinstancelist.pyi]
+
 [case testNarrowingUnionMixins]
 # flags: --strict-equality --warn-unreachable
 class Base: ...
