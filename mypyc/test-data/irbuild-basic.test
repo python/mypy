@@ -516,78 +516,81 @@ def hello() -> None:
 
 [out]
 def __top_level__():
-    r0, r1 :: object
-    r2 :: bit
-    r3 :: str
-    r4 :: object
-    r5, r6, r7, r8 :: object_ptr
-    r9 :: object_ptr[4]
-    r10 :: c_ptr
-    r11 :: native_int[4]
-    r12 :: c_ptr
-    r13 :: object
-    r14 :: dict
-    r15, r16 :: str
-    r17 :: bit
-    r18 :: str
-    r19 :: dict
-    r20 :: str
-    r21 :: i32
-    r22 :: bit
-    r23 :: object_ptr
-    r24 :: object_ptr[1]
-    r25 :: c_ptr
-    r26 :: native_int[1]
-    r27 :: c_ptr
-    r28 :: object
-    r29 :: dict
-    r30, r31 :: str
-    r32 :: bit
-    r33 :: object
-    r34 :: str
-    r35, r36 :: object
+    r0 :: object_ptr
+    r1, r2 :: object
+    r3 :: bit
+    r4 :: str
+    r5 :: object
+    r6, r7, r8, r9 :: object_ptr
+    r10 :: object_ptr[4]
+    r11 :: c_ptr
+    r12 :: native_int[4]
+    r13 :: c_ptr
+    r14 :: object
+    r15 :: dict
+    r16, r17 :: str
+    r18 :: bit
+    r19 :: str
+    r20 :: dict
+    r21 :: str
+    r22 :: i32
+    r23 :: bit
+    r24 :: object_ptr
+    r25 :: object_ptr[1]
+    r26 :: c_ptr
+    r27 :: native_int[1]
+    r28 :: c_ptr
+    r29 :: object
+    r30 :: dict
+    r31, r32 :: str
+    r33 :: bit
+    r34 :: object
+    r35 :: str
+    r36, r37 :: object
 L0:
-    r0 = builtins :: module
-    r1 = load_address _Py_NoneStruct
-    r2 = r0 != r1
-    if r2 goto L2 else goto L1 :: bool
+    r0 = load_address CPyModule_builtins
+    r1 = CPyImport_GetModuleCache(r0)
+    r2 = load_address _Py_NoneStruct
+    r3 = r1 != r2
+    if r3 goto L2 else goto L1 :: bool
 L1:
-    r3 = 'builtins'
-    r4 = PyImport_Import(r3)
-    builtins = r4 :: module
+    r4 = 'builtins'
+    r5 = PyImport_Import(r4)
+    CPyImport_SetModuleCache(r0, r5)
 L2:
-    r5 = load_address sys :: module
-    r6 = load_address enum :: module
-    r7 = load_address collections.abc :: module
+    r6 = load_address sys :: module
+    r7 = load_address enum :: module
     r8 = load_address collections.abc :: module
-    r9 = [r5, r6, r7, r8]
-    r10 = load_address r9
-    r11 = [1, 2, 3, 4]
-    r12 = load_address r11
-    r13 = (('sys', 'sys', 'sys'), ('enum', 'enum', 'enum2'), ('collections.abc', 'collections', 'collections'), ('collections.abc', 'collections.abc', 'abc2'))
-    r14 = __main__.globals :: static
-    r15 = 'main'
-    r16 = '<module>'
-    r17 = CPyImport_ImportMany(r13, r10, r14, r15, r16, r12)
-    r18 = 'filler'
-    r19 = __main__.globals :: static
-    r20 = '_'
-    r21 = CPyDict_SetItem(r19, r20, r18)
-    r22 = r21 >= 0 :: signed
-    r23 = load_address single :: module
-    r24 = [r23]
-    r25 = load_address r24
-    r26 = [6]
-    r27 = load_address r26
-    r28 = (('single', 'single', 'single'),)
-    r29 = __main__.globals :: static
-    r30 = 'main'
-    r31 = '<module>'
-    r32 = CPyImport_ImportMany(r28, r25, r29, r30, r31, r27)
-    r33 = single :: module
-    r34 = 'hello'
-    r35 = CPyObject_GetAttr(r33, r34)
-    r36 = PyObject_Vectorcall(r35, 0, 0, 0)
+    r9 = load_address collections.abc :: module
+    r10 = [r6, r7, r8, r9]
+    r11 = load_address r10
+    r12 = [1, 2, 3, 4]
+    r13 = load_address r12
+    r14 = (('sys', 'sys', 'sys'), ('enum', 'enum', 'enum2'), ('collections.abc', 'collections', 'collections'), ('collections.abc', 'collections.abc', 'abc2'))
+    r15 = __main__.globals :: static
+    r16 = 'main'
+    r17 = '<module>'
+    r18 = CPyImport_ImportMany(r14, r11, r15, r16, r17, r13)
+    r19 = 'filler'
+    keep_alive r0
+    r20 = __main__.globals :: static
+    r21 = '_'
+    r22 = CPyDict_SetItem(r20, r21, r19)
+    r23 = r22 >= 0 :: signed
+    r24 = load_address single :: module
+    r25 = [r24]
+    r26 = load_address r25
+    r27 = [6]
+    r28 = load_address r27
+    r29 = (('single', 'single', 'single'),)
+    r30 = __main__.globals :: static
+    r31 = 'main'
+    r32 = '<module>'
+    r33 = CPyImport_ImportMany(r29, r26, r30, r31, r32, r28)
+    r34 = single :: module
+    r35 = 'hello'
+    r36 = CPyObject_GetAttr(r34, r35)
+    r37 = PyObject_Vectorcall(r36, 0, 0, 0)
     return 1
 
 [case testFromImport_toplevel]
@@ -643,37 +646,44 @@ L0:
     r19 = CPyTagged_Add(r13, r18)
     return r19
 def __top_level__():
-    r0, r1 :: object
-    r2 :: bit
-    r3 :: str
-    r4, r5 :: object
-    r6 :: str
-    r7 :: dict
-    r8, r9, r10 :: object
-    r11 :: str
-    r12 :: dict
-    r13 :: object
+    r0 :: object_ptr
+    r1, r2 :: object
+    r3 :: bit
+    r4 :: str
+    r5, r6 :: object
+    r7 :: str
+    r8 :: dict
+    r9 :: object
+    r10 :: object_ptr
+    r11, r12 :: object
+    r13 :: str
+    r14 :: dict
+    r15 :: object
+    r16 :: object_ptr
 L0:
-    r0 = builtins :: module
-    r1 = load_address _Py_NoneStruct
-    r2 = r0 != r1
-    if r2 goto L2 else goto L1 :: bool
+    r0 = load_address CPyModule_builtins
+    r1 = CPyImport_GetModuleCache(r0)
+    r2 = load_address _Py_NoneStruct
+    r3 = r1 != r2
+    if r3 goto L2 else goto L1 :: bool
 L1:
-    r3 = 'builtins'
-    r4 = PyImport_Import(r3)
-    builtins = r4 :: module
+    r4 = 'builtins'
+    r5 = PyImport_Import(r4)
+    CPyImport_SetModuleCache(r0, r5)
 L2:
-    r5 = ('g', 'h')
-    r6 = 'testmodule'
-    r7 = __main__.globals :: static
-    r8 = CPyImport_ImportFromMany(r6, r5, r5, r7)
-    testmodule = r8 :: module
-    r9 = ('h',)
-    r10 = ('two',)
-    r11 = 'testmodule'
-    r12 = __main__.globals :: static
-    r13 = CPyImport_ImportFromMany(r11, r9, r10, r12)
-    testmodule = r13 :: module
+    r6 = ('g', 'h')
+    r7 = 'testmodule'
+    r8 = __main__.globals :: static
+    r9 = CPyImport_ImportFromMany(r7, r6, r6, r8)
+    r10 = load_address testmodule :: module
+    CPyImport_SetModuleCache(r10, r9)
+    r11 = ('h',)
+    r12 = ('two',)
+    r13 = 'testmodule'
+    r14 = __main__.globals :: static
+    r15 = CPyImport_ImportFromMany(r13, r11, r12, r14)
+    r16 = load_address testmodule :: module
+    CPyImport_SetModuleCache(r16, r15)
     return 1
 
 [case testPrintFullname]
@@ -1448,52 +1458,55 @@ L0:
     keep_alive r7
     return 1
 def __top_level__():
-    r0, r1 :: object
-    r2 :: bit
-    r3 :: str
-    r4 :: object
-    r5 :: dict
-    r6 :: str
-    r7 :: object
-    r8 :: i32
-    r9 :: bit
-    r10 :: dict
-    r11 :: str
-    r12 :: object
-    r13 :: int
-    r14 :: object
-    r15 :: str
-    r16, r17 :: object
-    r18 :: object[1]
-    r19 :: object_ptr
-    r20 :: object
+    r0 :: object_ptr
+    r1, r2 :: object
+    r3 :: bit
+    r4 :: str
+    r5 :: object
+    r6 :: dict
+    r7 :: str
+    r8 :: object
+    r9 :: i32
+    r10 :: bit
+    r11 :: dict
+    r12 :: str
+    r13 :: object
+    r14 :: int
+    r15 :: object
+    r16 :: str
+    r17, r18 :: object
+    r19 :: object[1]
+    r20 :: object_ptr
+    r21 :: object
 L0:
-    r0 = builtins :: module
-    r1 = load_address _Py_NoneStruct
-    r2 = r0 != r1
-    if r2 goto L2 else goto L1 :: bool
+    r0 = load_address CPyModule_builtins
+    r1 = CPyImport_GetModuleCache(r0)
+    r2 = load_address _Py_NoneStruct
+    r3 = r1 != r2
+    if r3 goto L2 else goto L1 :: bool
 L1:
-    r3 = 'builtins'
-    r4 = PyImport_Import(r3)
-    builtins = r4 :: module
+    r4 = 'builtins'
+    r5 = PyImport_Import(r4)
+    CPyImport_SetModuleCache(r0, r5)
 L2:
-    r5 = __main__.globals :: static
-    r6 = 'x'
-    r7 = object 1
-    r8 = CPyDict_SetItem(r5, r6, r7)
-    r9 = r8 >= 0 :: signed
-    r10 = __main__.globals :: static
-    r11 = 'x'
-    r12 = CPyDict_GetItem(r10, r11)
-    r13 = unbox(int, r12)
-    r14 = builtins :: module
-    r15 = 'print'
-    r16 = CPyObject_GetAttr(r14, r15)
-    r17 = box(int, r13)
-    r18 = [r17]
-    r19 = load_address r18
-    r20 = PyObject_Vectorcall(r16, r19, 1, 0)
-    keep_alive r17
+    keep_alive r0
+    r6 = __main__.globals :: static
+    r7 = 'x'
+    r8 = object 1
+    r9 = CPyDict_SetItem(r6, r7, r8)
+    r10 = r9 >= 0 :: signed
+    r11 = __main__.globals :: static
+    r12 = 'x'
+    r13 = CPyDict_GetItem(r11, r12)
+    r14 = unbox(int, r13)
+    r15 = builtins :: module
+    r16 = 'print'
+    r17 = CPyObject_GetAttr(r15, r16)
+    r18 = box(int, r14)
+    r19 = [r18]
+    r20 = load_address r19
+    r21 = PyObject_Vectorcall(r17, r20, 1, 0)
+    keep_alive r18
     return 1
 
 [case testCallOverloaded]
@@ -2150,161 +2163,166 @@ Bar = NewType('Bar', Foo)
 y = Bar([1,2,3])
 [out]
 def __top_level__():
-    r0, r1 :: object
-    r2 :: bit
-    r3 :: str
-    r4, r5 :: object
-    r6 :: str
-    r7 :: dict
-    r8 :: object
-    r9, r10 :: str
-    r11 :: object
-    r12 :: tuple[str, object]
+    r0 :: object_ptr
+    r1, r2 :: object
+    r3 :: bit
+    r4 :: str
+    r5, r6 :: object
+    r7 :: str
+    r8 :: dict
+    r9 :: object
+    r10 :: object_ptr
+    r11, r12 :: str
     r13 :: object
-    r14 :: str
+    r14 :: tuple[str, object]
     r15 :: object
-    r16 :: tuple[str, object]
+    r16 :: str
     r17 :: object
-    r18 :: tuple[object, object]
+    r18 :: tuple[str, object]
     r19 :: object
-    r20 :: dict
-    r21 :: str
-    r22 :: object
-    r23 :: object[2]
-    r24 :: object_ptr
-    r25 :: object
-    r26 :: dict
-    r27 :: str
-    r28 :: i32
-    r29 :: bit
-    r30 :: str
-    r31 :: dict
+    r20 :: tuple[object, object]
+    r21 :: object
+    r22 :: dict
+    r23 :: str
+    r24 :: object
+    r25 :: object[2]
+    r26 :: object_ptr
+    r27 :: object
+    r28 :: dict
+    r29 :: str
+    r30 :: i32
+    r31 :: bit
     r32 :: str
-    r33, r34 :: object
-    r35 :: object[2]
-    r36 :: object_ptr
-    r37 :: object
-    r38 :: tuple
-    r39 :: dict
-    r40 :: str
-    r41 :: i32
-    r42 :: bit
-    r43 :: dict
-    r44 :: str
-    r45, r46, r47 :: object
-    r48 :: dict
-    r49 :: str
-    r50 :: i32
-    r51 :: bit
-    r52 :: str
-    r53 :: dict
+    r33 :: dict
+    r34 :: str
+    r35, r36 :: object
+    r37 :: object[2]
+    r38 :: object_ptr
+    r39 :: object
+    r40 :: tuple
+    r41 :: dict
+    r42 :: str
+    r43 :: i32
+    r44 :: bit
+    r45 :: dict
+    r46 :: str
+    r47, r48, r49 :: object
+    r50 :: dict
+    r51 :: str
+    r52 :: i32
+    r53 :: bit
     r54 :: str
-    r55 :: object
-    r56 :: dict
-    r57 :: str
-    r58 :: object
-    r59 :: object[2]
-    r60 :: object_ptr
-    r61 :: object
-    r62 :: dict
-    r63 :: str
-    r64 :: i32
-    r65 :: bit
-    r66 :: list
-    r67, r68, r69 :: object
-    r70 :: ptr
-    r71 :: dict
-    r72 :: str
-    r73 :: i32
-    r74 :: bit
+    r55 :: dict
+    r56 :: str
+    r57 :: object
+    r58 :: dict
+    r59 :: str
+    r60 :: object
+    r61 :: object[2]
+    r62 :: object_ptr
+    r63 :: object
+    r64 :: dict
+    r65 :: str
+    r66 :: i32
+    r67 :: bit
+    r68 :: list
+    r69, r70, r71 :: object
+    r72 :: ptr
+    r73 :: dict
+    r74 :: str
+    r75 :: i32
+    r76 :: bit
 L0:
-    r0 = builtins :: module
-    r1 = load_address _Py_NoneStruct
-    r2 = r0 != r1
-    if r2 goto L2 else goto L1 :: bool
+    r0 = load_address CPyModule_builtins
+    r1 = CPyImport_GetModuleCache(r0)
+    r2 = load_address _Py_NoneStruct
+    r3 = r1 != r2
+    if r3 goto L2 else goto L1 :: bool
 L1:
-    r3 = 'builtins'
-    r4 = PyImport_Import(r3)
-    builtins = r4 :: module
+    r4 = 'builtins'
+    r5 = PyImport_Import(r4)
+    CPyImport_SetModuleCache(r0, r5)
 L2:
-    r5 = ('List', 'NewType', 'NamedTuple')
-    r6 = 'typing'
-    r7 = __main__.globals :: static
-    r8 = CPyImport_ImportFromMany(r6, r5, r5, r7)
-    typing = r8 :: module
-    r9 = 'Lol'
-    r10 = 'a'
-    r11 = load_address PyLong_Type
-    r12 = (r10, r11)
-    r13 = box(tuple[str, object], r12)
-    r14 = 'b'
-    r15 = load_address PyUnicode_Type
-    r16 = (r14, r15)
-    r17 = box(tuple[str, object], r16)
-    r18 = (r13, r17)
-    r19 = box(tuple[object, object], r18)
-    r20 = __main__.globals :: static
-    r21 = 'NamedTuple'
-    r22 = CPyDict_GetItem(r20, r21)
-    r23 = [r9, r19]
-    r24 = load_address r23
-    r25 = PyObject_Vectorcall(r22, r24, 2, 0)
-    keep_alive r9, r19
-    r26 = __main__.globals :: static
-    r27 = 'Lol'
-    r28 = CPyDict_SetItem(r26, r27, r25)
-    r29 = r28 >= 0 :: signed
-    r30 = ''
-    r31 = __main__.globals :: static
-    r32 = 'Lol'
-    r33 = CPyDict_GetItem(r31, r32)
-    r34 = object 1
-    r35 = [r34, r30]
-    r36 = load_address r35
-    r37 = PyObject_Vectorcall(r33, r36, 2, 0)
-    keep_alive r34, r30
-    r38 = cast(tuple, r37)
-    r39 = __main__.globals :: static
-    r40 = 'x'
-    r41 = CPyDict_SetItem(r39, r40, r38)
-    r42 = r41 >= 0 :: signed
-    r43 = __main__.globals :: static
-    r44 = 'List'
-    r45 = CPyDict_GetItem(r43, r44)
-    r46 = load_address PyLong_Type
-    r47 = PyObject_GetItem(r45, r46)
-    r48 = __main__.globals :: static
-    r49 = 'Foo'
-    r50 = CPyDict_SetItem(r48, r49, r47)
-    r51 = r50 >= 0 :: signed
-    r52 = 'Bar'
-    r53 = __main__.globals :: static
-    r54 = 'Foo'
-    r55 = CPyDict_GetItem(r53, r54)
-    r56 = __main__.globals :: static
-    r57 = 'NewType'
-    r58 = CPyDict_GetItem(r56, r57)
-    r59 = [r52, r55]
-    r60 = load_address r59
-    r61 = PyObject_Vectorcall(r58, r60, 2, 0)
-    keep_alive r52, r55
-    r62 = __main__.globals :: static
-    r63 = 'Bar'
-    r64 = CPyDict_SetItem(r62, r63, r61)
-    r65 = r64 >= 0 :: signed
-    r66 = PyList_New(3)
-    r67 = object 1
-    r68 = object 2
-    r69 = object 3
-    r70 = list_items r66
-    buf_init_item r70, 0, r67
-    buf_init_item r70, 1, r68
-    buf_init_item r70, 2, r69
-    keep_alive r66
-    r71 = __main__.globals :: static
-    r72 = 'y'
-    r73 = CPyDict_SetItem(r71, r72, r66)
-    r74 = r73 >= 0 :: signed
+    r6 = ('List', 'NewType', 'NamedTuple')
+    r7 = 'typing'
+    r8 = __main__.globals :: static
+    r9 = CPyImport_ImportFromMany(r7, r6, r6, r8)
+    r10 = load_address typing :: module
+    CPyImport_SetModuleCache(r10, r9)
+    r11 = 'Lol'
+    keep_alive r0
+    r12 = 'a'
+    r13 = load_address PyLong_Type
+    r14 = (r12, r13)
+    r15 = box(tuple[str, object], r14)
+    r16 = 'b'
+    r17 = load_address PyUnicode_Type
+    r18 = (r16, r17)
+    r19 = box(tuple[str, object], r18)
+    r20 = (r15, r19)
+    r21 = box(tuple[object, object], r20)
+    r22 = __main__.globals :: static
+    r23 = 'NamedTuple'
+    r24 = CPyDict_GetItem(r22, r23)
+    r25 = [r11, r21]
+    r26 = load_address r25
+    r27 = PyObject_Vectorcall(r24, r26, 2, 0)
+    keep_alive r11, r21
+    r28 = __main__.globals :: static
+    r29 = 'Lol'
+    r30 = CPyDict_SetItem(r28, r29, r27)
+    r31 = r30 >= 0 :: signed
+    r32 = ''
+    r33 = __main__.globals :: static
+    r34 = 'Lol'
+    r35 = CPyDict_GetItem(r33, r34)
+    r36 = object 1
+    r37 = [r36, r32]
+    r38 = load_address r37
+    r39 = PyObject_Vectorcall(r35, r38, 2, 0)
+    keep_alive r36, r32
+    r40 = cast(tuple, r39)
+    r41 = __main__.globals :: static
+    r42 = 'x'
+    r43 = CPyDict_SetItem(r41, r42, r40)
+    r44 = r43 >= 0 :: signed
+    r45 = __main__.globals :: static
+    r46 = 'List'
+    r47 = CPyDict_GetItem(r45, r46)
+    r48 = load_address PyLong_Type
+    r49 = PyObject_GetItem(r47, r48)
+    r50 = __main__.globals :: static
+    r51 = 'Foo'
+    r52 = CPyDict_SetItem(r50, r51, r49)
+    r53 = r52 >= 0 :: signed
+    r54 = 'Bar'
+    r55 = __main__.globals :: static
+    r56 = 'Foo'
+    r57 = CPyDict_GetItem(r55, r56)
+    r58 = __main__.globals :: static
+    r59 = 'NewType'
+    r60 = CPyDict_GetItem(r58, r59)
+    r61 = [r54, r57]
+    r62 = load_address r61
+    r63 = PyObject_Vectorcall(r60, r62, 2, 0)
+    keep_alive r54, r57
+    r64 = __main__.globals :: static
+    r65 = 'Bar'
+    r66 = CPyDict_SetItem(r64, r65, r63)
+    r67 = r66 >= 0 :: signed
+    r68 = PyList_New(3)
+    r69 = object 1
+    r70 = object 2
+    r71 = object 3
+    r72 = list_items r68
+    buf_init_item r72, 0, r69
+    buf_init_item r72, 1, r70
+    buf_init_item r72, 2, r71
+    keep_alive r68
+    r73 = __main__.globals :: static
+    r74 = 'y'
+    r75 = CPyDict_SetItem(r73, r74, r68)
+    r76 = r75 >= 0 :: signed
     return 1
 
 [case testChainedConditional]
@@ -2644,68 +2662,72 @@ L0:
     r26 = PyObject_Vectorcall(d, 0, 0, 0)
     return 1
 def __top_level__():
-    r0, r1 :: object
-    r2 :: bit
-    r3 :: str
-    r4, r5 :: object
-    r6 :: str
-    r7 :: dict
-    r8 :: object
-    r9 :: dict
-    r10 :: str
-    r11 :: object
-    r12 :: dict
-    r13 :: str
-    r14 :: object
-    r15 :: object[1]
-    r16 :: object_ptr
-    r17 :: object
-    r18 :: dict
-    r19 :: str
-    r20 :: object
-    r21 :: object[1]
-    r22 :: object_ptr
-    r23 :: object
-    r24 :: dict
-    r25 :: str
-    r26 :: i32
-    r27 :: bit
+    r0 :: object_ptr
+    r1, r2 :: object
+    r3 :: bit
+    r4 :: str
+    r5, r6 :: object
+    r7 :: str
+    r8 :: dict
+    r9 :: object
+    r10 :: object_ptr
+    r11 :: dict
+    r12 :: str
+    r13 :: object
+    r14 :: dict
+    r15 :: str
+    r16 :: object
+    r17 :: object[1]
+    r18 :: object_ptr
+    r19 :: object
+    r20 :: dict
+    r21 :: str
+    r22 :: object
+    r23 :: object[1]
+    r24 :: object_ptr
+    r25 :: object
+    r26 :: dict
+    r27 :: str
+    r28 :: i32
+    r29 :: bit
 L0:
-    r0 = builtins :: module
-    r1 = load_address _Py_NoneStruct
-    r2 = r0 != r1
-    if r2 goto L2 else goto L1 :: bool
+    r0 = load_address CPyModule_builtins
+    r1 = CPyImport_GetModuleCache(r0)
+    r2 = load_address _Py_NoneStruct
+    r3 = r1 != r2
+    if r3 goto L2 else goto L1 :: bool
 L1:
-    r3 = 'builtins'
-    r4 = PyImport_Import(r3)
-    builtins = r4 :: module
+    r4 = 'builtins'
+    r5 = PyImport_Import(r4)
+    CPyImport_SetModuleCache(r0, r5)
 L2:
-    r5 = ('Callable',)
-    r6 = 'typing'
-    r7 = __main__.globals :: static
-    r8 = CPyImport_ImportFromMany(r6, r5, r5, r7)
-    typing = r8 :: module
-    r9 = __main__.globals :: static
-    r10 = 'c'
-    r11 = CPyDict_GetItem(r9, r10)
-    r12 = __main__.globals :: static
-    r13 = 'b'
-    r14 = CPyDict_GetItem(r12, r13)
-    r15 = [r11]
-    r16 = load_address r15
-    r17 = PyObject_Vectorcall(r14, r16, 1, 0)
-    keep_alive r11
-    r18 = __main__.globals :: static
-    r19 = 'a'
-    r20 = CPyDict_GetItem(r18, r19)
-    r21 = [r17]
-    r22 = load_address r21
-    r23 = PyObject_Vectorcall(r20, r22, 1, 0)
-    keep_alive r17
-    r24 = __main__.globals :: static
-    r25 = 'c'
-    r26 = PyDict_SetItem(r24, r25, r23)
-    r27 = r26 >= 0 :: signed
+    r6 = ('Callable',)
+    r7 = 'typing'
+    r8 = __main__.globals :: static
+    r9 = CPyImport_ImportFromMany(r7, r6, r6, r8)
+    r10 = load_address typing :: module
+    CPyImport_SetModuleCache(r10, r9)
+    r11 = __main__.globals :: static
+    r12 = 'c'
+    r13 = CPyDict_GetItem(r11, r12)
+    r14 = __main__.globals :: static
+    r15 = 'b'
+    r16 = CPyDict_GetItem(r14, r15)
+    r17 = [r13]
+    r18 = load_address r17
+    r19 = PyObject_Vectorcall(r16, r18, 1, 0)
+    keep_alive r13
+    r20 = __main__.globals :: static
+    r21 = 'a'
+    r22 = CPyDict_GetItem(r20, r21)
+    r23 = [r19]
+    r24 = load_address r23
+    r25 = PyObject_Vectorcall(r22, r24, 1, 0)
+    keep_alive r19
+    r26 = __main__.globals :: static
+    r27 = 'c'
+    r28 = PyDict_SetItem(r26, r27, r25)
+    r29 = r28 >= 0 :: signed
     return 1
 
 [case testDecoratorsSimple_toplevel]
@@ -2785,28 +2807,32 @@ L0:
     g = r2
     return g
 def __top_level__():
-    r0, r1 :: object
-    r2 :: bit
-    r3 :: str
-    r4, r5 :: object
-    r6 :: str
-    r7 :: dict
-    r8 :: object
+    r0 :: object_ptr
+    r1, r2 :: object
+    r3 :: bit
+    r4 :: str
+    r5, r6 :: object
+    r7 :: str
+    r8 :: dict
+    r9 :: object
+    r10 :: object_ptr
 L0:
-    r0 = builtins :: module
-    r1 = load_address _Py_NoneStruct
-    r2 = r0 != r1
-    if r2 goto L2 else goto L1 :: bool
+    r0 = load_address CPyModule_builtins
+    r1 = CPyImport_GetModuleCache(r0)
+    r2 = load_address _Py_NoneStruct
+    r3 = r1 != r2
+    if r3 goto L2 else goto L1 :: bool
 L1:
-    r3 = 'builtins'
-    r4 = PyImport_Import(r3)
-    builtins = r4 :: module
+    r4 = 'builtins'
+    r5 = PyImport_Import(r4)
+    CPyImport_SetModuleCache(r0, r5)
 L2:
-    r5 = ('Callable',)
-    r6 = 'typing'
-    r7 = __main__.globals :: static
-    r8 = CPyImport_ImportFromMany(r6, r5, r5, r7)
-    typing = r8 :: module
+    r6 = ('Callable',)
+    r7 = 'typing'
+    r8 = __main__.globals :: static
+    r9 = CPyImport_ImportFromMany(r7, r6, r6, r8)
+    r10 = load_address typing :: module
+    CPyImport_SetModuleCache(r10, r9)
     return 1
 
 [case testAnyAllG]
@@ -3291,103 +3317,110 @@ x = 1
 [out]
 def root():
     r0 :: dict
-    r1, r2 :: object
-    r3 :: bit
-    r4 :: str
-    r5 :: object
-    r6 :: str
-    r7 :: dict
-    r8 :: str
-    r9 :: object
-    r10 :: i32
-    r11 :: bit
-    r12 :: dict
-    r13, r14 :: object
-    r15 :: bit
-    r16 :: str
-    r17 :: object
+    r1 :: object_ptr
+    r2, r3 :: object
+    r4 :: bit
+    r5 :: str
+    r6 :: object
+    r7 :: str
+    r8 :: dict
+    r9 :: str
+    r10 :: object
+    r11 :: i32
+    r12 :: bit
+    r13 :: dict
+    r14 :: object_ptr
+    r15, r16 :: object
+    r17 :: bit
     r18 :: str
-    r19 :: dict
+    r19 :: object
     r20 :: str
-    r21 :: object
-    r22 :: i32
-    r23 :: bit
+    r21 :: dict
+    r22 :: str
+    r23 :: object
+    r24 :: i32
+    r25 :: bit
 L0:
     r0 = __main__.globals :: static
-    r1 = dataclasses :: module
-    r2 = load_address _Py_NoneStruct
-    r3 = r1 != r2
-    if r3 goto L2 else goto L1 :: bool
+    r1 = load_address CPyModule_dataclasses
+    r2 = CPyImport_GetModuleCache(r1)
+    r3 = load_address _Py_NoneStruct
+    r4 = r2 != r3
+    if r4 goto L2 else goto L1 :: bool
 L1:
-    r4 = 'dataclasses'
-    r5 = PyImport_Import(r4)
-    dataclasses = r5 :: module
+    r5 = 'dataclasses'
+    r6 = PyImport_Import(r5)
+    CPyImport_SetModuleCache(r1, r6)
 L2:
-    r6 = 'dataclasses'
-    r7 = PyImport_GetModuleDict()
-    r8 = 'dataclasses'
-    r9 = CPyDict_GetItem(r7, r8)
-    r10 = CPyDict_SetItem(r0, r6, r9)
-    r11 = r10 >= 0 :: signed
-    r12 = __main__.globals :: static
-    r13 = enum :: module
-    r14 = load_address _Py_NoneStruct
-    r15 = r13 != r14
-    if r15 goto L4 else goto L3 :: bool
+    r7 = 'dataclasses'
+    r8 = PyImport_GetModuleDict()
+    r9 = 'dataclasses'
+    r10 = CPyDict_GetItem(r8, r9)
+    r11 = CPyDict_SetItem(r0, r7, r10)
+    r12 = r11 >= 0 :: signed
+    r13 = __main__.globals :: static
+    r14 = load_address CPyModule_enum
+    r15 = CPyImport_GetModuleCache(r14)
+    r16 = load_address _Py_NoneStruct
+    r17 = r15 != r16
+    if r17 goto L4 else goto L3 :: bool
 L3:
-    r16 = 'enum'
-    r17 = PyImport_Import(r16)
-    enum = r17 :: module
-L4:
     r18 = 'enum'
-    r19 = PyImport_GetModuleDict()
+    r19 = PyImport_Import(r18)
+    CPyImport_SetModuleCache(r14, r19)
+L4:
     r20 = 'enum'
-    r21 = CPyDict_GetItem(r19, r20)
-    r22 = CPyDict_SetItem(r12, r18, r21)
-    r23 = r22 >= 0 :: signed
+    r21 = PyImport_GetModuleDict()
+    r22 = 'enum'
+    r23 = CPyDict_GetItem(r21, r22)
+    r24 = CPyDict_SetItem(r13, r20, r23)
+    r25 = r24 >= 0 :: signed
     return 1
 def submodule():
     r0 :: dict
-    r1, r2 :: object
-    r3 :: bit
-    r4 :: str
-    r5 :: object
-    r6 :: str
-    r7 :: dict
-    r8 :: str
-    r9 :: object
-    r10 :: i32
-    r11 :: bit
-    r12 :: dict
-    r13 :: str
-    r14 :: object
-    r15 :: str
-    r16 :: object
-    r17 :: int
+    r1 :: object_ptr
+    r2, r3 :: object
+    r4 :: bit
+    r5 :: str
+    r6 :: object
+    r7 :: str
+    r8 :: dict
+    r9 :: str
+    r10 :: object
+    r11 :: i32
+    r12 :: bit
+    r13 :: dict
+    r14 :: str
+    r15 :: object
+    r16 :: str
+    r17 :: object
+    r18 :: int
 L0:
     r0 = __main__.globals :: static
-    r1 = p.m :: module
-    r2 = load_address _Py_NoneStruct
-    r3 = r1 != r2
-    if r3 goto L2 else goto L1 :: bool
+    r1 = load_address CPyModule_p___m
+    r2 = CPyImport_GetModuleCache(r1)
+    r3 = load_address _Py_NoneStruct
+    r4 = r2 != r3
+    if r4 goto L2 else goto L1 :: bool
 L1:
-    r4 = 'p.m'
-    r5 = PyImport_Import(r4)
-    p.m = r5 :: module
+    r5 = 'p.m'
+    r6 = PyImport_Import(r5)
+    CPyImport_SetModuleCache(r1, r6)
 L2:
-    r6 = 'p'
-    r7 = PyImport_GetModuleDict()
-    r8 = 'p'
-    r9 = CPyDict_GetItem(r7, r8)
-    r10 = CPyDict_SetItem(r0, r6, r9)
-    r11 = r10 >= 0 :: signed
-    r12 = PyImport_GetModuleDict()
-    r13 = 'p'
-    r14 = CPyDict_GetItem(r12, r13)
-    r15 = 'x'
-    r16 = CPyObject_GetAttr(r14, r15)
-    r17 = unbox(int, r16)
-    return r17
+    r7 = 'p'
+    r8 = PyImport_GetModuleDict()
+    r9 = 'p'
+    r10 = CPyDict_GetItem(r8, r9)
+    r11 = CPyDict_SetItem(r0, r7, r10)
+    r12 = r11 >= 0 :: signed
+    r13 = PyImport_GetModuleDict()
+    r14 = 'p'
+    r15 = CPyDict_GetItem(r13, r14)
+    keep_alive r1
+    r16 = 'x'
+    r17 = CPyObject_GetAttr(r15, r16)
+    r18 = unbox(int, r17)
+    return r18
 
 [case testIsinstanceBool]
 def f(x: object) -> bool:
