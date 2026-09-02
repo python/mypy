@@ -363,7 +363,8 @@ class TraverserVisitor(NodeVisitor[None]):
             index.accept(self)
             for cond in conditions:
                 cond.accept(self)
-        o.key.accept(self)
+        if o.key is not None:
+            o.key.accept(self)
         o.value.accept(self)
 
     def visit_list_comprehension(self, o: ListComprehension, /) -> None:
