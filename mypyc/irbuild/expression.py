@@ -1419,7 +1419,11 @@ def _dict_comp_body(builder: IRBuilder, o: DictionaryComprehension) -> Value:
     loop_params = list(zip(o.indices, o.sequences, o.condlists, o.is_async))
 
     def gen_inner_stmts() -> None:
-        k = builder.accept(o.key)
+        if o.key is not None:
+            k = builder.accept(o.key)
+        else:
+            builder.error("PEP 798 is not supported yet", o.line)
+            k = builder.none()
         v = builder.accept(o.value)
         builder.call_c(exact_dict_set_item_op, [builder.read(d, o.line), k, v], o.line)
 

@@ -3422,13 +3422,14 @@ class SemanticAnalyzer(
         assert isinstance(lvalue, NameExpr)
         if not isinstance(lvalue.node, Var):
             return
+        lvalue.is_special_form = True
         var = lvalue.node
         var.is_sentinel = True
         typ = self.sentinel_type_for_var(var, s.rvalue)
         if typ is not None:
             s.type = typ
 
-    def sentinel_type_for_var(self, var: Var, rvalue: Expression) -> Instance | None:
+    def sentinel_type_for_var(self, var: Var, rvalue: Expression) -> LiteralType | None:
         assert isinstance(rvalue, CallExpr)
         callee = rvalue.callee
         assert isinstance(callee, RefExpr)
@@ -3436,13 +3437,8 @@ class SemanticAnalyzer(
         if typ is None:
             return None
         name = f"{self.type.name}.{var.name}" if self.type is not None else var.name
-        return typ.copy_modified(
-            last_known_value=LiteralType(
-                SentinelValue(var.fullname, name),
-                fallback=typ,
-                line=rvalue.line,
-                column=rvalue.column,
-            )
+        return LiteralType(
+            SentinelValue(var.fullname, name), fallback=typ, line=rvalue.line, column=rvalue.column
         )
 
     def analyze_identity_global_assignment(self, s: AssignmentStmt) -> bool:
@@ -6465,7 +6461,8 @@ class SemanticAnalyzer(
 
         with self.enter(expr):
             self.analyze_comp_for(expr)
-            expr.key.accept(self)
+            if expr.key is not None:
+                expr.key.accept(self)
             expr.value.accept(self)
         self.analyze_comp_for_2(expr)
 

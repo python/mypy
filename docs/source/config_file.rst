@@ -1211,7 +1211,6 @@ These options may only be set in the global section (``[mypy]``).
 
     Warns about per-module sections in the config file that do not
     match any files processed when invoking mypy.
-    (This requires turning off incremental mode using :confval:`incremental = False <incremental>`.)
 
 .. confval:: verbosity
 

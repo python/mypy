@@ -181,11 +181,50 @@ from typing_extensions import sentinel, assert_type
 MISSING = sentinel("MISSING")
 ALIAS = MISSING
 
-assert_type(ALIAS, sentinel)
+# The value still identifies as the same sentinel...
+assert_type(ALIAS, MISSING)
 
 def func(x: int | MISSING = MISSING) -> None:
     pass
 
 func(MISSING)
-func(ALIAS)  # E: Argument 1 to "func" has incompatible type "Sentinel"; expected "int | MISSING"
+func(ALIAS)
+
+# ...but the reassignment does not make ALIAS usable as a type alias.
+def uses_alias_as_type(x: ALIAS) -> None:  # E: Variable "__main__.ALIAS" is not valid as a type \
+        # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
+    pass
+[builtins fixtures/tuple.pyi]
+
+[case testSentinelPreservedThroughGenericSubstitution]
+from typing import assert_type
+from typing_extensions import sentinel
+
+Unknown = sentinel("Unknown")
+
+def func(d: dict[str, str]) -> None:
+    var = d.get("key", Unknown)
+    assert_type(var, str | Unknown)
+[builtins fixtures/dict-full.pyi]
+
+[case testSentinelPreservedInErrorMessages]
+from typing_extensions import sentinel
+
+Unknown = sentinel("Unknown")
+
+def func(d: dict[str, str]) -> None:
+    var = d.get("key", Unknown)
+    x: int = var  # E: Incompatible types in assignment (expression has type "str | Unknown", variable has type "int")
+[builtins fixtures/dict-full.pyi]
+
+[case testAssignSentinel]
+from typing_extensions import sentinel
+
+X = sentinel("X")
+
+def inspect_sentinel(arg: sentinel) -> None: ...
+
+reveal_type(X)  # N: Revealed type is "X"
+reveal_type(inspect_sentinel)  # N: Revealed type is "def (arg: typing_extensions.Sentinel)"
+inspect_sentinel(arg=X)
 [builtins fixtures/tuple.pyi]
