@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import unittest
-from unittest.mock import patch
 
 from mypyc.analysis.attrdefined import detect_undefined_bitmap
 from mypyc.codegen.emit import Emitter, EmitterContext
@@ -12,6 +11,7 @@ from mypyc.codegen.emitclass import (
     setter_name,
     slot_key,
 )
+from mypyc.common import IS_FREE_THREADED
 from mypyc.ir.class_ir import ClassIR
 from mypyc.ir.rtypes import int32_rprimitive, object_rprimitive
 from mypyc.namegen import NameGenerator
@@ -44,16 +44,18 @@ class TestEmitClass(unittest.TestCase):
 
         assert getter_name(cls, "down", generator) == "testing___SomeClass_get_down"
 
+    @unittest.skipUnless(IS_FREE_THREADED, "requires a free threaded build")
     def test_free_threaded_ref_attribute_getter_and_setter_use_owner(self) -> None:
+        # Note: We can't monkey patch IS_FREE_THREADED to test this on a build with
+        # the GIL enabled, since monkey patching doesn't work if mypyc is compiled.
         cl = ClassIR("A", "mod")
         cl.attributes = {"o": object_rprimitive}
         cl.deletable = ["o"]
         cl.mro = cl.base_mro = [cl]
         emitter = Emitter(EmitterContext(NameGenerator([["mod"]]), True))
 
-        with patch("mypyc.codegen.emitclass.IS_FREE_THREADED", True):
-            generate_getter(cl, "o", object_rprimitive, emitter)
-            generate_setter(cl, "o", object_rprimitive, emitter)
+        generate_getter(cl, "o", object_rprimitive, emitter)
+        generate_setter(cl, "o", object_rprimitive, emitter)
 
         generated = "".join(emitter.fragments)
         assert "CPy_GetAttrRef((PyObject *)self, (PyObject **)&self->_o)" in generated
