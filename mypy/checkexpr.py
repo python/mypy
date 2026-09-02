@@ -241,6 +241,75 @@ OVERLAPPING_BYTES_ALLOWLIST: Final = {
     "builtins.bytearray",
     "builtins.memoryview",
 }
+UNSAFE_DATETIME_COMPARISONS: Final = {"<", "<=", ">", ">="}
+DATETIME_TYPE_FULLNAMES: Final = {"datetime.date", "datetime.datetime"}
+
+
+def has_type_component(
+    typ: Type,
+    fullname: str,
+    method: str,
+    excluded_fullname: str | None = None,
+    *,
+    allow_subclasses: bool = True,
+) -> bool:
+    """Return whether a type contains an instance derived from the given class."""
+    typ = get_proper_type(typ)
+    if isinstance(typ, Instance):
+        info = typ.type
+        if not allow_subclasses:
+            while info.is_newtype:
+                assert len(info.bases) == 1
+                info = info.bases[0].type
+        matches = info.has_base(fullname) if allow_subclasses else info.fullname == fullname
+        excluded = excluded_fullname is not None and (
+            info.has_base(excluded_fullname)
+            if allow_subclasses
+            else info.fullname == excluded_fullname
+        )
+        if not matches or excluded:
+            return False
+        for base in typ.type.mro:
+            if method in base.names:
+                return base.fullname in DATETIME_TYPE_FULLNAMES
+        return True
+    if isinstance(typ, UnionType):
+        return any(
+            has_type_component(
+                item, fullname, method, excluded_fullname, allow_subclasses=allow_subclasses
+            )
+            for item in typ.relevant_items()
+        )
+    if isinstance(typ, TypeVarType):
+        return has_type_component(
+            erase_to_union_or_bound(typ),
+            fullname,
+            method,
+            excluded_fullname,
+            allow_subclasses=allow_subclasses,
+        )
+    return False
+
+
+def is_unsafe_datetime_pair(
+    left: Type, right: Type, operator: str, *, check_date_subclasses_on_left: bool = True
+) -> bool:
+    """Return whether the types contain both date-only and datetime components."""
+    method = operators.op_methods[operator]
+    reverse_method = operators.reverse_op_methods[method]
+    return (
+        has_type_component(
+            left,
+            "datetime.date",
+            method,
+            "datetime.datetime",
+            allow_subclasses=check_date_subclasses_on_left,
+        )
+        and has_type_component(right, "datetime.datetime", reverse_method)
+    ) or (
+        has_type_component(left, "datetime.datetime", method)
+        and has_type_component(right, "datetime.date", reverse_method, "datetime.datetime")
+    )
 
 
 class TooManyUnions(Exception):
@@ -3686,26 +3755,35 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
 
         if e.op in operators.op_methods:
             method = operators.op_methods[e.op]
-            if use_reverse is UseReverse.DEFAULT or use_reverse is UseReverse.NEVER:
-                result, method_type = self.check_op(
-                    method,
-                    base_type=left_type,
-                    arg=e.right,
-                    context=e,
-                    allow_reverse=use_reverse is UseReverse.DEFAULT,
-                )
-            elif use_reverse is UseReverse.ALWAYS:
-                result, method_type = self.check_op(
-                    # The reverse operator here gives better error messages:
-                    operators.reverse_op_methods[method],
-                    base_type=self.accept(e.right),
-                    arg=e.left,
-                    context=e,
-                    allow_reverse=False,
-                )
-            else:
-                assert_never(use_reverse)
+            check_unsafe_datetime = e.op == "-" and self.msg.errors.is_error_code_enabled(
+                codes.OPERATOR
+            )
+            w = ErrorWatcher(self.msg.errors) if check_unsafe_datetime else None
+            with w if w is not None else nullcontext():
+                if use_reverse is UseReverse.DEFAULT or use_reverse is UseReverse.NEVER:
+                    result, method_type = self.check_op(
+                        method,
+                        base_type=left_type,
+                        arg=e.right,
+                        context=e,
+                        allow_reverse=use_reverse is UseReverse.DEFAULT,
+                    )
+                elif use_reverse is UseReverse.ALWAYS:
+                    result, method_type = self.check_op(
+                        # The reverse operator here gives better error messages:
+                        operators.reverse_op_methods[method],
+                        base_type=self.accept(e.right),
+                        arg=e.left,
+                        context=e,
+                        allow_reverse=False,
+                    )
+                else:
+                    assert_never(use_reverse)
             e.method_type = method_type
+            if w is not None and not w.has_new_errors():
+                right_type = self.chk.lookup_type(e.right)
+                if is_unsafe_datetime_pair(left_type, right_type, e.op):
+                    self.msg.unsupported_operand_types(e.op, left_type, right_type, e)
             return result
         else:
             raise RuntimeError(f"Unknown operator {e.op}")
@@ -3827,6 +3905,20 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                         method, left_type, right, e, allow_reverse=True
                     )
                     e.method_types.append(method_type)
+
+                if (
+                    operator in UNSAFE_DATETIME_COMPARISONS
+                    and not w.has_new_errors()
+                    and self.msg.errors.is_error_code_enabled(codes.OPERATOR)
+                ):
+                    right_type = self.chk.lookup_type(right)
+                    if is_unsafe_datetime_pair(
+                        left_type,
+                        right_type,
+                        operator,
+                        check_date_subclasses_on_left=self.chk.options.python_version >= (3, 13),
+                    ):
+                        self.msg.unsupported_operand_types(operator, left_type, right_type, e)
 
                 # Only show dangerous overlap if there are no other errors. See
                 # testCustomEqCheckStrictEquality for an example.
