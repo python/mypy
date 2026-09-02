@@ -6461,7 +6461,8 @@ class SemanticAnalyzer(
 
         with self.enter(expr):
             self.analyze_comp_for(expr)
-            expr.key.accept(self)
+            if expr.key is not None:
+                expr.key.accept(self)
             expr.value.accept(self)
         self.analyze_comp_for_2(expr)
 

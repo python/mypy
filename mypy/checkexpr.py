@@ -6012,6 +6012,9 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                 name="<dictionary-comprehension>",
                 variables=[ktdef, vtdef],
             )
+            if e.key is None:
+                self.chk.fail("PEP 798 is not supported yet", e)
+                return AnyType(TypeOfAny.from_error)
             return self.check_call(
                 constructor, [e.key, e.value], [nodes.ARG_POS, nodes.ARG_POS], e
             )[0]

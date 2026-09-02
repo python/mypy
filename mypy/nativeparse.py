@@ -295,7 +295,7 @@ def parse_to_binary_ast(
         platform=options.platform,
         always_true=options.always_true,
         always_false=options.always_false,
-        cache_version=3,
+        cache_version=4,
     )
     return (
         ast_bytes,
@@ -1564,7 +1564,11 @@ def read_expression(state: State, data: ReadBuffer) -> Expression:
         expect_end_tag(data)
         return expr
     elif tag == nodes.DICT_COMPREHENSION:
-        key = read_expression(state, data)
+        has_key = read_bool(data)
+        if has_key:
+            key = read_expression(state, data)
+        else:
+            key = None
         value = read_expression(state, data)
         n_generators = read_int(data)
         indices = [read_expression(state, data) for _ in range(n_generators)]
