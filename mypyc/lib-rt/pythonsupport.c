@@ -12,7 +12,13 @@
 // incref or validation fails, take the owner's critical section, reload the field,
 // and take a reference while the value cannot be replaced. _Py_XNewRefWithLock
 // also sets maybe-weakref lazily, so later cross-thread reads generally use the
-// lock-free shared-refcount path.
+// lock-free shared-refcount path. Returns NULL if the field is NULL on reload.
+//
+// The reload is deliberately relaxed, where CPython 3.14 uses a consume load in the
+// equivalent locked read (_PyObject_TryGetInstanceAttribute): acquiring the owner's
+// critical section already pairs with CPy_SetAttrRef's release store, and a value
+// published by CPy_InitAttrRef is ordered by the publication of the owner itself
+// (see CPy_InitAttrRef).
 CPy_NOINLINE
 CPy_COLD
 PyObject *CPy_GetAttrRefSlow(PyObject *v, PyObject *owner, PyObject **field) {

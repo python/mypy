@@ -47,7 +47,30 @@ extern "C" {
 // incref runs (use-after-free). We avoid that with an optimistic try-incref,
 // validating the field when taking a shared reference. If no reference can be
 // secured that way, the fallback takes the same per-object lock as CPy_SetAttrRef
-// and reloads the field before taking a reference.
+// and reloads the field before taking a reference. This mirrors CPython's own
+// instance attribute read (in CPython 3.14: _Py_TryIncrefCompare, then a locked
+// reload -- see _PyObject_TryGetInstanceAttribute in Objects/dictobject.c).
+//
+// The load and _Py_TryIncrefFast can therefore touch a 'v' that a concurrent
+// CPy_SetAttrRef has already decrefed to zero and freed, since that decref is a
+// plain Py_XDECREF. Two invariants make that safe, and they are what let
+// CPy_SetAttrRef free the old value immediately instead of deferring it. Both were
+// verified against CPython 3.14 and depend on interpreter internals, so they must
+// be rechecked when adding support for a new Python version:
+//   - Reading the header of a freed object cannot fault. All three object heaps
+//     set 'page_use_qsbr' (see Python/pystate.c), so a freed block's page is not
+//     unmapped or handed to another size class while any thread is attached.
+//   - _Py_TryIncrefFast cannot succeed on stale memory. The current thread does
+//     not allocate between the field load and the try-incref, so the block cannot
+//     have been reused for an object owned by this thread; a freed block reads
+//     ob_tid as 0 or as mimalloc's free-list pointer (which overwrites only the
+//     first word, i.e. ob_tid) and ob_ref_local as 0, so neither the
+//     owned-by-this-thread test nor the immortal test can fire.
+// If the block was reused for a live object at the same address, that object is
+// either the field's current value (so returning it is correct) or the field
+// validation fails and the provisional reference is dropped again, leaving its
+// refcount unchanged. ob_ref_shared of a freed block is 0 or _Py_REF_MERGED, so
+// _Py_TryIncRefShared fails on it and the reader falls into the locked path.
 //
 // The hot path is lock-free and intentionally small: _Py_TryIncrefFast handles
 // values owned by this thread and immortal values. Everything colder -- the
@@ -58,6 +81,11 @@ extern "C" {
 // so subsequent reads generally succeed through the lock-free shared-refcount
 // path. The default (GIL) build keeps the plain load + incref generated inline by
 // mypyc.
+//
+// Note that observing a non-NULL 'v' does not guarantee a non-NULL result: 'v' is
+// only a provisional read, and if the attribute is deleted before a reference to it
+// can be secured, this returns NULL and the caller raises AttributeError. That is a
+// legal outcome for a racing read, since it is ordered after the delete.
 CPy_COLD PyObject *CPy_GetAttrRefSlow(PyObject *v, PyObject *owner, PyObject **field);
 
 static inline PyObject *CPy_GetAttrRef(PyObject *owner, PyObject **field) {
@@ -80,9 +108,9 @@ static inline PyObject *CPy_GetAttrRef(PyObject *owner, PyObject **field) {
 // holds a strong reference for the object's whole lifetime, and any thread reading
 // it necessarily holds 'self', which keeps the value alive. So the try-incref +
 // _Py_XNewRefWithLock fallback are unnecessary here -- a plain load + Py_INCREF is
-// safe. A cross-thread Py_INCREF is an unconditional
-// atomic add on ob_ref_shared, so (unlike CPy_GetAttrRef's try-incref) it needs no
-// maybe-weakref and has no slow path. The load is relaxed rather than acquire: the
+// safe. A cross-thread Py_INCREF is an unconditional atomic add on ob_ref_shared
+// (CPython 3.14), so (unlike CPy_GetAttrRef's try-incref) it needs no maybe-weakref
+// and has no slow path. The load is relaxed rather than acquire: the
 // reader reached 'self' through a synchronization edge (self's own publication)
 // that already ordered the construction stores before it, exactly as with
 // CPy_InitAttrRef's relaxed store. Relaxed keeps it TSan-clean at zero cost (plain
@@ -103,9 +131,24 @@ static inline PyObject *CPy_GetAttrRefFinal(PyObject **field) {
 // CPy_GetAttrRef's fallback path. A lock-free reader either secures a local or
 // immortal reference directly, or secures a shared reference and validates the
 // field. Otherwise it reloads the field under this lock. Thus once the replacement
-// is published, the old field reference can be decrefed normally; no QSBR-delayed
-// decref is needed. Decref outside the critical section so an arbitrary destructor
-// does not run while the owner is locked.
+// is published, the old field reference can be decrefed immediately, even if a
+// reader is still dereferencing the old value (see CPy_GetAttrRef for why touching
+// a freed value there is safe). Decref outside the critical section so an
+// arbitrary destructor does not run while the owner is locked -- the equivalent in
+// CPython 3.14 (store_instance_attr_lock_held) decrefs with the lock still held.
+//
+// Caveat (based on CPython 3.14 internals): this takes 'owner->ob_mutex', which for
+// a native class with a built-in base is the same mutex CPython uses for that
+// container's own critical sections, and CPython runs arbitrary Python code under it
+// (e.g. _PyDict_SetItem_LockHeld calls __hash__/__eq__ while holding CS(dict)).
+// Re-entering a critical section on the same object is only free when the held
+// section is the top-most one; with an unrelated section still active in between,
+// the thread parks, detaches, has this mutex released by
+// _PyCriticalSection_SuspendAll, then re-locked by _PyCriticalSection_Resume, and
+// parks again. Reaching that needs a callback under
+// two nested critical sections to assign an attribute of the outer object; the
+// helpers here can't cause it on their own, since they only ever hold this one
+// mutex (so there is also no lock-ordering deadlock).
 static inline void CPy_SetAttrRef(PyObject *owner, PyObject **field, PyObject *value) {
     PyObject *old;
     Py_BEGIN_CRITICAL_SECTION(owner);

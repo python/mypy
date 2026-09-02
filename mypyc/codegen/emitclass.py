@@ -1197,8 +1197,9 @@ def generate_getter(cl: ClassIR, attr: str, rtype: RType, emitter: Emitter) -> N
         #
         # Final attributes are never rebound (no setter), so there is no concurrent
         # writer to race with: a plain load + incref is safe. Use the cheaper
-        # CPy_GetAttrRefFinal, which skips the try-incref and _Py_NewRefWithLock
-        # slow path entirely (an unconditional Py_INCREF needs no maybe-weakref).
+        # CPy_GetAttrRefFinal, which skips the try-incref and the locked
+        # _Py_XNewRefWithLock fallback entirely (an unconditional Py_INCREF needs no
+        # maybe-weakref).
         # This getter is generated per defining class, so a direct membership test
         # matches the read-only getset table above (no need to walk the MRO).
         if attr in cl.final_attributes:
@@ -1253,11 +1254,12 @@ def generate_setter(cl: ClassIR, attr: str, rtype: RType, emitter: Emitter) -> N
         emitter.emit_line("}")
 
     if IS_FREE_THREADED and is_simple_refcounted_pointer(rtype):
-        # In free-threaded builds, publish the new value atomically via
-        # CPy_SetAttrRef so a concurrent reader (see CPy_GetAttrRef) never sees a
-        # torn pointer or a freed old value. CPy_SetAttrRef steals its value and
-        # reclaims the old one, so we cast/type-check the incoming value, take a
-        # new reference (the setter only borrows 'value'), then hand it over.
+        # In free-threaded builds, publish the new value via CPy_SetAttrRef, which
+        # takes the owner's critical section so a concurrent reader (see
+        # CPy_GetAttrRef) can always secure a reference to the value it observes,
+        # even though the old value is decrefed right away. CPy_SetAttrRef steals its
+        # value and reclaims the old one, so we cast/type-check the incoming value,
+        # take a new reference (the setter only borrows 'value'), then hand it over.
         # A NULL value deletes the attribute (reclaims the old value, stores NULL).
         if deletable:
             emitter.emit_line("if (value != NULL) {")
