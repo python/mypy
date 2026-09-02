@@ -10,12 +10,12 @@ x = None # type: a + b  # E: Invalid type comment or annotation
 -- Function type comments are attributed to the function def line.
 -- This happens in both parsers.
 [case testFastParseFunctionAnnotationSyntaxError]
-def f():  # E: Syntax error in type comment "None -> None" # N: Suggestion: wrap argument types in parentheses
+def f():  # E: Syntax error in type comment "None -> None"
   # type: None -> None
   pass
 
 [case testFastParseFunctionAnnotationSyntaxErrorSpaces]
-def f():  # E: Syntax error in type comment "None -> None" # N: Suggestion: wrap argument types in parentheses
+def f():  # E: Syntax error in type comment "None -> None"
   # type:             None -> None
   pass
 

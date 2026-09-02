@@ -532,6 +532,6 @@ a.f(1)
 [file a.py.2]
 def f(x: str) -> None: ...
 [out]
-main:3: error: "object" has no attribute "f"
+main:3: error: Module has no attribute "f"
 ==
 main:3: error: Argument 1 to "f" has incompatible type "int"; expected "str"

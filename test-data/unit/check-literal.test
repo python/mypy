@@ -579,10 +579,10 @@ reveal_type(d)      # N: Revealed type is "Any"
 
 [case testLiteralDisallowFloatsAndComplex]
 from typing import Literal
-a1: Literal[3.14]    # E: Parameter 1 of Literal[...] cannot be of type "float"
-b1: 3.14             # E: Invalid type: float literals cannot be used as a type
-c1: Literal[3j]      # E: Parameter 1 of Literal[...] cannot be of type "complex"
-d1: 3j               # E: Invalid type: complex literals cannot be used as a type
+a1: Literal[3.14]    # E: Invalid type: Literal[...] cannot contain arbitrary expressions
+b1: 3.14             # E: Invalid type comment or annotation
+c1: Literal[3j]      # E: Invalid type: Literal[...] cannot contain arbitrary expressions
+d1: 3j               # E: Invalid type comment or annotation
 
 a2t = Literal[3.14]  # E: Parameter 1 of Literal[...] cannot be of type "float"
 b2t = 3.14
