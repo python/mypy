@@ -1577,6 +1577,9 @@ def read_expression(state: State, data: ReadBuffer) -> Expression:
         is_async = [read_bool(data) for _ in range(n_generators)]
         expr = DictionaryComprehension(key, value, indices, sequences, condlists, is_async)
         read_loc(data, expr)
+        if key is None:
+            # TODO: add similar check to other kinds of comprehensions.
+            state.check_min_version("Unpacking in comprehensions", (3, 15), expr.line, expr.column)
         expect_end_tag(data)
         return expr
     elif tag == nodes.SET_COMPREHENSION:
