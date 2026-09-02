@@ -1717,7 +1717,7 @@ MypyFile:1(
   ExpressionStmt:2(
     BytesExpr(foobar))
   ExpressionStmt:3(
-    BytesExpr(x\\n\\\')))
+    BytesExpr(x\\n\\')))
 
 [case testBytesLiteralWithEscapes]
 b'\r\n\t\x2f\xbe'
