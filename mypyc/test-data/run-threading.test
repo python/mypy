@@ -63,6 +63,73 @@ def test_concurrent_native_attribute_get_set() -> None:
         thread.join()
     assert box.item.value >= 0
 
+[case testConcurrentNativeAttributeDelete]
+from typing import Any
+import threading
+
+class Item:
+    def __init__(self, value: int) -> None:
+        self.value = value
+
+class DelBox:
+    __deletable__ = ["item"]
+
+    def __init__(self) -> None:
+        self.item = Item(0)
+
+def native_setter(box: DelBox, count: int) -> None:
+    for i in range(count):
+        box.item = Item(i)
+
+def native_deleter(box: DelBox, count: int) -> None:
+    for _ in range(count):
+        try:
+            del box.item
+        except AttributeError:
+            pass
+
+def native_reader(box: DelBox, count: int) -> None:
+    for _ in range(count):
+        try:
+            item = box.item
+        except AttributeError:
+            continue
+        assert item.value >= 0
+
+def dynamic_deleter(box: Any, count: int) -> None:
+    for _ in range(count):
+        try:
+            del box.item
+        except AttributeError:
+            pass
+
+def dynamic_reader(box: Any, count: int) -> None:
+    for _ in range(count):
+        try:
+            item = box.item
+        except AttributeError:
+            continue
+        assert item.value >= 0
+
+def test_concurrent_native_attribute_delete() -> None:
+    # A deleted attribute is the only way a read that already observed a live value
+    # can still fail: the optimistic incref can miss and the locked reload then sees
+    # NULL, so the read raises AttributeError (see CPy_GetAttrRefSlow). Readers here
+    # must therefore tolerate AttributeError, but never see a freed or torn value.
+    box = DelBox()
+    count = 10_000
+    threads = [
+        threading.Thread(target=native_setter, args=(box, count)),
+        threading.Thread(target=native_deleter, args=(box, count)),
+        threading.Thread(target=native_reader, args=(box, count)),
+        threading.Thread(target=dynamic_deleter, args=(box, count)),
+        threading.Thread(target=dynamic_reader, args=(box, count)),
+    ]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join()
+
 [case testLockBasics_librt]
 from typing import Any
 from testutil import assertRaises
