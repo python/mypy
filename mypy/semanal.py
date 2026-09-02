@@ -4644,6 +4644,7 @@ class SemanticAnalyzer(
             assert self.type is not None
             v.info = self.type
             v.is_initialized_in_class = True
+            v.is_classvar = name == "__slots__"
             v.allow_incompatible_override = name in ALLOW_INCOMPATIBLE_OVERRIDE
         if kind != LDEF:
             v._fullname = self.qualified_name(name)

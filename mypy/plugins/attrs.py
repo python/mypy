@@ -960,7 +960,9 @@ def _add_slots(ctx: mypy.plugin.ClassDefContext, attributes: list[Attribute]) ->
         [ctx.api.named_type("builtins.str") for _ in attributes],
         fallback=ctx.api.named_type("builtins.tuple"),
     )
-    add_attribute_to_class(api=ctx.api, cls=ctx.cls, name="__slots__", typ=slots_type)
+    add_attribute_to_class(
+        api=ctx.api, cls=ctx.cls, name="__slots__", typ=slots_type, is_classvar=True
+    )
 
 
 def _add_match_args(ctx: mypy.plugin.ClassDefContext, attributes: list[Attribute]) -> None:
