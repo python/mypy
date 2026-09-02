@@ -540,6 +540,14 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
         # example when type-checking class decorators.
         self.allow_abstract_call = False
 
+        # When checking one of the copies `expand_typevars` makes of a method for a
+        # class with a value-restricted type variable, this holds the self/cls type
+        # with that substitution already applied. `super()` (see `_super_arg_types`
+        # in checkexpr.py) consults this instead of recomputing an unsubstituted self
+        # type from the class's TypeInfo, so inherited members are checked against
+        # the same value substitution as the rest of the expanded copy.
+        self.expanding_self_type: ProperType | None = None
+
         # Child checker objects for specific AST node types
         self._expr_checker = mypy.checkexpr.ExpressionChecker(
             self, self.msg, self.plugin, per_line_checking_time_ns
@@ -1454,7 +1462,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
         self.check_typevar_defaults(typ.variables)
         expanded = self.expand_typevars(defn, typ)
         original_typ = typ
-        for item, typ in expanded:
+        for item, typ, typevar_mapping in expanded:
             old_binder = self.binder
             self.binder = ConditionalTypeBinder(self.options)
             with self.binder.top_frame_context():
@@ -1541,29 +1549,33 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                             n.node = v
                             self.binder.assign_type(n, v.type, v.type)
 
-                with self.scope.push_function(defn):
-                    # We suppress reachability warnings for empty generator functions
-                    # (return; yield) which have a "yield" that's unreachable by definition
-                    # since it's only there to promote the function into a generator function.
-                    #
-                    # We also suppress reachability warnings when we use TypeVars with value
-                    # restrictions: we only want to report a warning if a certain statement is
-                    # marked as being suppressed in *all* of the expansions, but we currently
-                    # have no good way of doing this.
-                    #
-                    # TODO: Find a way of working around this limitation
-                    if _is_empty_generator_function(item) or len(expanded) >= 2:
-                        self.binder.suppress_unreachable_warnings()
-                    # When checking a third-party library, we can skip function body,
-                    # if during semantic analysis we found that there are no attributes
-                    # defined via self here.
-                    if (
-                        not self.can_skip_diagnostics
-                        or self.options.preserve_asts
-                        or not isinstance(defn, FuncDef)
-                        or defn.def_or_infer_vars
-                    ):
-                        self.accept(item.body)
+                self.expanding_self_type = self.self_type_for_expansion(defn, typevar_mapping)
+                try:
+                    with self.scope.push_function(defn):
+                        # We suppress reachability warnings for empty generator functions
+                        # (return; yield) which have a "yield" that's unreachable by definition
+                        # since it's only there to promote the function into a generator function.
+                        #
+                        # We also suppress reachability warnings when we use TypeVars with value
+                        # restrictions: we only want to report a warning if a certain statement is
+                        # marked as being suppressed in *all* of the expansions, but we currently
+                        # have no good way of doing this.
+                        #
+                        # TODO: Find a way of working around this limitation
+                        if _is_empty_generator_function(item) or len(expanded) >= 2:
+                            self.binder.suppress_unreachable_warnings()
+                        # When checking a third-party library, we can skip function body,
+                        # if during semantic analysis we found that there are no attributes
+                        # defined via self here.
+                        if (
+                            not self.can_skip_diagnostics
+                            or self.options.preserve_asts
+                            or not isinstance(defn, FuncDef)
+                            or defn.def_or_infer_vars
+                        ):
+                            self.accept(item.body)
+                finally:
+                    self.expanding_self_type = None
                 unreachable = self.binder.is_unreachable()
                 if new_frame is not None:
                     self.binder.pop_frame(True, 0)
@@ -2275,7 +2287,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
 
     def expand_typevars(
         self, defn: FuncItem, typ: CallableType
-    ) -> list[tuple[FuncItem, CallableType]]:
+    ) -> list[tuple[FuncItem, CallableType, dict[TypeVarId, Type]]]:
         # TODO use generator
         subst: list[list[tuple[TypeVarId, Type]]] = []
         tvars = list(typ.variables) or []
@@ -2289,13 +2301,37 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
         # value restricted type variables. (Except when running mypyc,
         # where we need one canonical version of the function.)
         if subst and not (self.options.mypyc or self.options.inspections):
-            result: list[tuple[FuncItem, CallableType]] = []
+            result: list[tuple[FuncItem, CallableType, dict[TypeVarId, Type]]] = []
             for substitutions in itertools.product(*subst):
                 mapping = dict(substitutions)
-                result.append((expand_func(defn, mapping), expand_type(typ, mapping)))
+                result.append((expand_func(defn, mapping), expand_type(typ, mapping), mapping))
             return result
         else:
-            return [(defn, typ)]
+            return [(defn, typ, {})]
+
+    def self_type_for_expansion(
+        self, defn: FuncItem, mapping: dict[TypeVarId, Type]
+    ) -> ProperType | None:
+        """Compute self/cls's type for one of `expand_typevars`'s substituted copies.
+
+        `expand_func` only rewrites types already present somewhere in `defn`'s
+        AST, so an implicit (unannotated) self/cls argument is left with no
+        type at all, and even an explicitly annotated one is read from `defn`
+        -- not the substituted copy -- by callers like `_super_arg_types` in
+        checkexpr.py, since `check_func_def` pushes `defn`, not the copy, onto
+        the checker scope. Returns `None` when there's no substitution to
+        apply (`mapping` empty) or no self/cls argument to compute a type for.
+        """
+        if not mapping or not defn.info or not defn.has_self_or_cls_argument:
+            return None
+        if not defn.arguments:
+            return None
+        self_type: ProperType | None = get_proper_type(defn.arguments[0].variable.type)
+        if self_type is None:
+            self_type = fill_typevars(defn.info)
+            if defn.is_class or defn.name == "__new__":
+                self_type = TypeType.make_normalized(self_type)
+        return expand_type(self_type, mapping)
 
     def check_explicit_override_decorator(
         self,
