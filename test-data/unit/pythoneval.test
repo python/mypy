@@ -2310,3 +2310,21 @@ type Alias[T] = list[T]
 def g[T = int](x: T) -> T: ...
 [out]
 _testNativeParserPEP695InStubNoVersionError.py:3: note: Revealed type is "def [T] (x: T) -> T"
+
+[case testNoCrashOnFixedTupleUnpackInGenericInferenceContext]
+# https://github.com/python/mypy/issues/21933
+# flags: --python-version=3.12
+from collections import deque
+
+type Inner = tuple[int, str]
+type Outer = tuple[bool, *Inner]
+
+
+class K(Base):
+    q: deque[Outer] = deque()
+    reveal_type(q)
+
+
+class Base: ...
+[out]
+_testNoCrashOnFixedTupleUnpackInGenericInferenceContext.py:11: note: Revealed type is "collections.deque[tuple[bool, *tuple[int, str]]]"
