@@ -322,9 +322,10 @@ class FunctionEmitterVisitor(OpVisitor[None]):
     def emit_exclusive_resume_enter(self, fn: FuncIR) -> None:
         """Claim the receiver's exclusive-resume token, or fail without running the body.
 
-        Rejecting a concurrent (or reentrant) resume is required for correctness, not
-        just fidelity to CPython: the body's attribute accesses are only safe on
-        free-threaded builds because at most one thread is inside it at a time.
+        Rejecting a reentrant (or concurrent) resume matches CPython, which raises
+        ValueError for an already-executing generator. On free-threaded builds it is
+        also required for correctness: the body's attribute accesses are only safe
+        there because at most one thread is inside the body at a time.
         """
         cl = self.exclusive_resume_class
         assert cl is not None
@@ -341,8 +342,9 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         """Drop the exclusive-resume token before leaving the generator body.
 
         Every exit goes through a Return op (error exits included), so this covers
-        suspension, completion and exceptions alike. The release also publishes
-        everything the body stored to the next thread that resumes the generator.
+        suspension, completion and exceptions alike. On free-threaded builds the
+        release also publishes everything the body stored to the next thread that
+        resumes the generator.
         """
         assert self.exclusive_resume_token is not None
         self.emit_line(f"CPyGen_Exit({self.exclusive_resume_token});")

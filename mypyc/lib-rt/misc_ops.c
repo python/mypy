@@ -22,9 +22,9 @@ PyObject *CPy_GetCoro(PyObject *obj)
     }
 }
 
-#ifdef Py_GIL_DISABLED
 // Report a failed attempt to claim a generator's exclusive-resume token (see
-// CPyGen_TryEnter).
+// CPyGen_TryEnter). These are the messages CPython uses; there is no third case
+// for async generators, since mypyc doesn't compile those.
 PyObject *CPyGen_AlreadyExecutingError(int is_coroutine)
 {
     PyErr_SetString(PyExc_ValueError,
@@ -32,7 +32,6 @@ PyObject *CPyGen_AlreadyExecutingError(int is_coroutine)
                                  : "generator already executing");
     return NULL;
 }
-#endif
 
 PyObject *CPyIter_Send(PyObject *iter, PyObject *val)
 {

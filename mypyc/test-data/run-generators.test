@@ -1002,3 +1002,46 @@ def test_borrow_across_yield_from() -> None:
             assert False
 
 [typing fixtures/typing-full.pyi]
+
+[case testReentrantResume]
+from typing import Any, Iterator, Optional
+
+box: list[Optional[Iterator[int]]] = [None]
+
+def self_resuming() -> Iterator[int]:
+    g = box[0]
+    assert g is not None
+    yield next(g)
+
+def test_reentrant_next() -> None:
+    g = self_resuming()
+    box[0] = g
+    try:
+        next(g)
+    except ValueError as e:
+        assert str(e) == "generator already executing", str(e)
+    else:
+        assert False
+    # The generator was left in a completed state by the propagating exception.
+    try:
+        next(g)
+    except StopIteration:
+        pass
+    else:
+        assert False
+
+cbox: list[Any] = [None]
+
+async def self_sending() -> int:
+    cbox[0].send(None)
+    return 1
+
+def test_reentrant_send_to_coroutine() -> None:
+    c: Any = self_sending()
+    cbox[0] = c
+    try:
+        c.send(None)
+    except ValueError as e:
+        assert str(e) == "coroutine already executing", str(e)
+    else:
+        assert False

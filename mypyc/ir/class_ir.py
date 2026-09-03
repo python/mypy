@@ -252,8 +252,8 @@ class ClassIR:
 
         # If True, this is a generated generator/coroutine class, and resuming an
         # instance that is already executing is rejected via a token in the object
-        # (see uses_exclusive_resume()). Only set on free-threaded builds, where
-        # this also makes attributes private to the token holder.
+        # (see uses_exclusive_resume()). On free-threaded builds this additionally
+        # makes the attributes private to the token holder.
         self.exclusive_resume = False
 
     def __repr__(self) -> str:
@@ -319,10 +319,12 @@ class ClassIR:
         The generated helper method claims the token on entry and drops it at every
         exit, so a resume of an already-executing generator fails instead of running
         the body again -- whether the resume is reentrant (a generator resuming itself,
-        as in CPython) or from another thread. Since only the token holder is inside
-        the body, the instance attributes are private to it and can use plain
-        (non-atomic) loads and stores even on free-threaded builds. That only holds if
-        nothing outside the helper can touch the attributes, hence the getseters check.
+        as CPython also rejects) or from another thread. On free-threaded builds this
+        additionally means the instance attributes are private to the token holder, so
+        the body can access them with plain (non-atomic) loads and stores. That only
+        holds if nothing outside the helper can touch the attributes, hence the
+        getseters check. The check is only needed for that reasoning, but it's applied
+        in GIL builds as well, so that both builds agree on which classes carry a token.
         """
         return self.exclusive_resume and not self.needs_getseters_table
 
