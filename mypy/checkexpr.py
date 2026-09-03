@@ -6645,9 +6645,23 @@ class HasAnyType(types.BoolTypeQuery):
     def __init__(self, ignore_in_type_obj: bool) -> None:
         super().__init__(types.ANY_STRATEGY)
         self.ignore_in_type_obj = ignore_in_type_obj
+        # Alias targets store a written `Any` as TypeOfAny.special_form.
+        # Count those as real Any while expanding aliases, so Nested = Sequence[Any]
+        # matches a direct Sequence[Any] for overload ambiguity.
+        self.count_alias_special_form_any = False
 
     def visit_any(self, t: AnyType) -> bool:
-        return t.type_of_any != TypeOfAny.special_form  # special forms are not real Any types
+        if t.type_of_any == TypeOfAny.special_form:
+            return self.count_alias_special_form_any
+        return True
+
+    def visit_type_alias_type(self, t: TypeAliasType) -> bool:
+        old = self.count_alias_special_form_any
+        self.count_alias_special_form_any = True
+        try:
+            return super().visit_type_alias_type(t)
+        finally:
+            self.count_alias_special_form_any = old
 
     def visit_callable_type(self, t: CallableType) -> bool:
         if self.ignore_in_type_obj and t.is_type_obj():
@@ -6861,6 +6875,13 @@ def any_causes_overload_ambiguity(
     arg_names: Sequence[str | None] | None,
 ) -> bool:
     """May an argument containing 'Any' cause ambiguous result type on call to overloaded function?
+
+    This includes nested Any, such as Sequence[Any] or list[Any], not just a
+    top-level Any, and the same types reached through a type alias. A nested
+    Any can materialize as different concrete types, so if several overloads
+    remain and their return types differ, the result is Any.
+    (If every materialization matched an earlier overload, the spec would drop
+    later ones; this helper over-approximates that case as ambiguous.)
 
     Note that this sometimes returns True even if there is no ambiguity, since a correct
     implementation would be complex (and the call would be imprecisely typed due to Any

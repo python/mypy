@@ -394,8 +394,10 @@ will have an inferred type of ``float``. The implementer is responsible
 for making sure ``summarize`` breaks ties in the same way at runtime.
 
 However, there are two exceptions to the "pick the first match" rule.
-First, if multiple variants match due to an argument being of type
-``Any``, mypy will make the inferred type also be ``Any``:
+First, if multiple variants match because an argument has type ``Any``
+or *contains* ``Any`` (for example ``list[Any]`` or ``Sequence[Any]``,
+including via a type alias), mypy will make the inferred type also be
+``Any``:
 
 .. code-block:: python
 
@@ -403,6 +405,18 @@ First, if multiple variants match due to an argument being of type
 
     # output2 is of type 'Any'
     output2 = summarize(dynamic_var)
+
+    nested_any: list[Any] = some_dynamic_function()
+
+    # output2_nested is also 'Any'. A list[Any] is not "really" a list[int]:
+    # it can hold strings, and list[str] selects the other overload. The
+    # call is therefore ambiguous in the same way as a top-level Any.
+    output2_nested = summarize(nested_any)
+
+    Nested = list[Any]
+    aliased: Nested = some_dynamic_function()
+    # output2_alias is also 'Any': a type alias does not hide the nested Any.
+    output2_alias = summarize(aliased)
 
 Second, if multiple variants match due to one or more of the arguments
 being a union, mypy will make the inferred type be the union of the
