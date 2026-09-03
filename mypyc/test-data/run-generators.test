@@ -1138,3 +1138,66 @@ def test_generator_method_override_still_works() -> None:
     box[0] = g
     with assertRaises(ValueError, "generator already executing"):
         next(g)
+
+[case testYieldFromNativeGeneratorInInterpretedCode]
+from typing import Generator
+
+def native(n: int) -> Generator[int, int, str]:
+    x = yield n
+    yield x + 1
+    return "done"
+
+def exhausted() -> Generator[int, None, int]:
+    yield 1
+    return 5
+
+def raises_stop_iteration() -> Generator[int, None, object]:
+    if int() == 1:
+        yield 1
+    raise StopIteration("seven")
+
+def native_yield_from_stop_iteration() -> Generator[int, None, object]:
+    x = yield from raises_stop_iteration()
+    return x
+
+[file driver.py]
+# Interpreted 'yield from' drives native generators through the C-level
+# am_send slot (PyIter_Send), which reports completion without raising
+# StopIteration.
+from native import (
+    native, exhausted, raises_stop_iteration, native_yield_from_stop_iteration
+)
+
+def outer(gen):
+    x = yield from gen
+    return x
+
+def run(gen, sends):
+    g = outer(gen)
+    yields = []
+    try:
+        value = g.send(None)
+        for s in sends:
+            yields.append(value)
+            value = g.send(s)
+        yields.append(value)
+    except StopIteration as e:
+        return yields, e.value
+    assert False, "generator did not stop"
+
+assert run(native(1), [10, None]) == ([1, 11], "done")
+
+# An already exhausted native generator completes with None, like a
+# CPython generator does.
+g = exhausted()
+assert next(g) == 1
+try:
+    next(g)
+except StopIteration as e:
+    assert e.value == 5
+assert run(g, []) == ([], None)
+
+# StopIteration raised in a generator body is treated as a return value by
+# 'yield from', both in interpreted and in native code.
+assert run(raises_stop_iteration(), []) == ([], "seven")
+assert run(native_yield_from_stop_iteration(), []) == ([], "seven")

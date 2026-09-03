@@ -595,6 +595,45 @@ def generate_len_wrapper(cl: ClassIR, fn: FuncIR, emitter: Emitter) -> str:
     return name
 
 
+def generate_am_send_wrapper(cl: ClassIR, fn: FuncIR, emitter: Emitter) -> str:
+    """Generate an am_send slot for a generator class based on the generator helper method.
+
+    This implements the C-level send protocol (used by PyIter_Send), which reports
+    normal completion without raising StopIteration.
+    """
+    name = f"{DUNDER_PREFIX}am_send{cl.name_prefix(emitter.names)}"
+    emitter.emit_line(
+        f"static PySendResult {name}(PyObject *self, PyObject *arg, PyObject **result) {{"
+    )
+    emitter.emit_line("PyObject *stop_iter_value = NULL;")
+    emitter.emit_line(
+        "PyObject *retval = {}{}{}(self, Py_None, Py_None, Py_None, arg, &stop_iter_value);".format(
+            emitter.get_group_prefix(fn.decl), NATIVE_PREFIX, fn.cname(emitter.names)
+        )
+    )
+    emitter.emit_line("if (retval != NULL) {")
+    emitter.emit_line("*result = retval;")
+    emitter.emit_line("return PYGEN_NEXT;")
+    emitter.emit_line("}")
+    emitter.emit_line("if (stop_iter_value == NULL) {")
+    # The helper raised an exception instead of using the out parameter. A
+    # StopIteration still signals normal completion (e.g. if the generator has
+    # already completed, or if the body raised StopIteration explicitly).
+    emitter.emit_line("if (PyErr_ExceptionMatches(PyExc_StopIteration)) {")
+    emitter.emit_line("stop_iter_value = CPy_FetchStopIterationValue();")
+    emitter.emit_line("}")
+    emitter.emit_line("if (stop_iter_value == NULL) {")
+    emitter.emit_line("*result = NULL;")
+    emitter.emit_line("return PYGEN_ERROR;")
+    emitter.emit_line("}")
+    emitter.emit_line("}")
+    emitter.emit_line("*result = stop_iter_value;")
+    emitter.emit_line("return PYGEN_RETURN;")
+    emitter.emit_line("}")
+
+    return name
+
+
 def generate_bool_wrapper(cl: ClassIR, fn: FuncIR, emitter: Emitter) -> str:
     """Generates a wrapper for native __bool__ methods."""
     name = f"{DUNDER_PREFIX}{fn.name}{cl.name_prefix(emitter.names)}"

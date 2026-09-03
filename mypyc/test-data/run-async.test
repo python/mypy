@@ -2498,3 +2498,66 @@ def test_close_suspended_native_child() -> None:
     coro.close()
 
 [typing fixtures/typing-full.pyi]
+
+[case testRunAsyncNativeCoroutineDrivenByInterpretedCode]
+from typing import Any, Generator
+
+class Suspend:
+    def __await__(self) -> Generator[Any, Any, None]:
+        yield None
+
+async def inc(x: int) -> int:
+    return x + 1
+
+async def suspend_then_inc(x: int) -> int:
+    await Suspend()
+    return x + 1
+
+async def nested(x: int) -> int:
+    return await suspend_then_inc(x) + await inc(x)
+
+class MyError(Exception):
+    pass
+
+async def fails() -> int:
+    await Suspend()
+    raise MyError()
+
+[file driver.py]
+# Interpreted 'await' and asyncio drive native coroutines through the C-level
+# am_send slot (PyIter_Send), which reports completion without raising
+# StopIteration.
+import asyncio
+
+from native import inc, suspend_then_inc, nested, fails, MyError
+
+async def main() -> None:
+    assert await inc(1) == 2
+    assert await suspend_then_inc(1) == 2
+    assert await nested(3) == 8
+    assert await asyncio.gather(inc(5), nested(5)) == [6, 12]
+    try:
+        await fails()
+    except MyError:
+        pass
+    else:
+        assert False
+
+asyncio.run(main())
+
+# Resuming a completed native coroutine raises StopIteration.
+coro = inc(1)
+try:
+    coro.send(None)
+except StopIteration as e:
+    assert e.value == 2
+else:
+    assert False
+try:
+    coro.send(None)
+except StopIteration:
+    pass
+else:
+    assert False
+
+[typing fixtures/typing-full.pyi]

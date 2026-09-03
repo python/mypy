@@ -28,7 +28,7 @@ from mypy.nodes import (
     Var,
 )
 from mypy.types import LiteralType, TupleType, get_proper_type, get_proper_types
-from mypyc.common import IS_FREE_THREADED
+from mypyc.common import GENERATOR_HELPER_NAME, IS_FREE_THREADED
 from mypyc.ir.ops import (
     ERR_NEVER,
     BasicBlock,
@@ -68,7 +68,6 @@ from mypyc.ir.rtypes import (
 )
 from mypyc.irbuild.builder import IRBuilder
 from mypyc.irbuild.constant_fold import constant_fold_expr
-from mypyc.irbuild.prepare import GENERATOR_HELPER_NAME
 from mypyc.irbuild.targets import AssignmentTarget, AssignmentTargetTuple
 from mypyc.irbuild.vec import vec_append, vec_create, vec_get_item_unsafe, vec_init_item_unsafe
 from mypyc.primitives.dict_ops import (
