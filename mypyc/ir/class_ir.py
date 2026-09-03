@@ -164,6 +164,16 @@ class ClassIR:
         self.attrs_to_keep_alive_on_completion: set[str] = set()
         # Final attributes defined in the class (not inherited)
         self.final_attributes: set[str] = set()
+        # Class-body Final attributes defined in the class (not inherited).
+        #
+        # These are "X: Final = <value>" declarations in the class body, as opposed to
+        # "self.x: Final = ..." assignments in __init__ (which live in 'attributes' and
+        # 'final_attributes'). They are deliberately *not* in 'attributes': they get no
+        # slot in the instance struct. Instead the value is stored once in a module-level
+        # static named "<class>.<attr>" and reads are either constant folded or loaded
+        # from that static. The value is also set on the type object, so dynamic access
+        # from interpreted code resolves through the class dict as usual.
+        self.class_final_attributes: dict[str, RType] = {}
         # Deletable attributes
         self.deletable: list[str] = []
         # We populate method_types with the signatures of every method before
@@ -302,6 +312,25 @@ class ClassIR:
                 return False
         return False
 
+    def class_final_attr_details(self, name: str) -> tuple[RType, ClassIR] | None:
+        """Look up a (possibly inherited) class-body Final attribute.
+
+        Returns the attribute type and the class that defines it, or None if this
+        class has no such attribute. The defining class is what identifies the
+        static holding the value, so callers need it to build the static's name.
+
+        Deliberately kept out of attr_details()/has_attr(): these attributes have no
+        instance slot, so callers that want to read or write one must not treat them
+        as ordinary attributes.
+        """
+        for ir in self.mro:
+            if name in ir.class_final_attributes:
+                return ir.class_final_attributes[name], ir
+            if name in ir.attributes or name in ir.property_types:
+                # Shadowed by a real attribute or property closer in the MRO.
+                return None
+        return None
+
     def method_decl(self, name: str) -> FuncDecl:
         for ir in self.mro:
             if name in ir.method_decls:
@@ -435,6 +464,9 @@ class ClassIR:
             "attributes": [(k, t.serialize()) for k, t in self.attributes.items()],
             "attrs_to_keep_alive_on_completion": sorted(self.attrs_to_keep_alive_on_completion),
             "final_attributes": sorted(self.final_attributes),
+            "class_final_attributes": [
+                (k, t.serialize()) for k, t in self.class_final_attributes.items()
+            ],
             # We try to serialize a name reference, but if the decl isn't in methods
             # then we can't be sure that will work so we serialize the whole decl.
             "method_decls": [
@@ -499,6 +531,9 @@ class ClassIR:
         ir.attributes = {k: deserialize_type(t, ctx) for k, t in data["attributes"]}
         ir.attrs_to_keep_alive_on_completion = set(data["attrs_to_keep_alive_on_completion"])
         ir.final_attributes = set(data["final_attributes"])
+        ir.class_final_attributes = {
+            k: deserialize_type(t, ctx) for k, t in data["class_final_attributes"]
+        }
         ir.method_decls = {
             k: ctx.functions[v].decl if isinstance(v, str) else FuncDecl.deserialize(v, ctx)
             for k, v in data["method_decls"]

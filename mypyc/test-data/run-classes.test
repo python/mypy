@@ -2800,6 +2800,16 @@ def test_final_attribute() -> None:
     assert C.A == -1
     assert C.a == [-1]
 
+def test_final_attribute_through_instance() -> None:
+    assert C().A == -1
+    assert C().a == [-1]
+
+def test_final_attribute_not_per_instance() -> None:
+    # A class-body Final has a single value shared by every instance, so a
+    # mutable one must not be rebuilt per instance.
+    assert C().a is C.a
+    assert C().a is C().a
+
 [case testClassWithFinalDecorator]
 from typing import final
 
@@ -6460,3 +6470,211 @@ def test_property_getter_exception() -> None:
 
     with assertRaises(ValueError):
         getattr(t, "locked")
+
+[case testClassBodyFinalAttributeNoInstanceSlot]
+from typing import Any, Final, final
+
+from testutil import assertRaises
+
+calls: list[int] = []
+
+def make() -> int:
+    calls.append(1)
+    return 3
+
+class C:
+    LITERAL: Final = 23
+    COMPUTED: Final = make()
+    ITEMS: Final = [1, 2]
+
+    def literal(self) -> int:
+        return self.LITERAL
+
+    def computed(self) -> int:
+        return self.COMPUTED
+
+    def items(self) -> list[int]:
+        return self.ITEMS
+
+class Sub(C):
+    def inherited(self) -> int:
+        return self.LITERAL + self.COMPUTED
+
+@final
+class Sealed:
+    X: Final = 5
+
+    def get(self) -> int:
+        return self.X
+
+def test_native_read() -> None:
+    assert C().literal() == 23
+    assert C().computed() == 3
+    assert C().items() == [1, 2]
+    assert Sealed().get() == 5
+
+def test_inherited_read() -> None:
+    assert Sub().inherited() == 26
+    assert Sub().literal() == 23
+    assert Sub.LITERAL == 23
+    assert Sub().LITERAL == 23
+
+def test_initializer_evaluated_once() -> None:
+    # The class body runs once, so a side-effecting initializer must not be
+    # re-evaluated for each instance.
+    C()
+    C()
+    assert len(calls) == 1
+
+def test_no_instance_slot() -> None:
+    # Class-body Finals are not instance state, so they are absent from
+    # __mypyc_attrs__ (which drives pickling).
+    t: Any = C
+    assert 'LITERAL' not in t.__mypyc_attrs__
+    assert 'COMPUTED' not in t.__mypyc_attrs__
+    assert 'ITEMS' not in t.__mypyc_attrs__
+
+def test_dynamic_read_via_any() -> None:
+    o: Any = C()
+    assert o.LITERAL == 23
+    assert o.COMPUTED == 3
+    assert o.ITEMS == [1, 2]
+    assert getattr(o, 'LITERAL') == 23
+    s: Any = Sub()
+    assert s.LITERAL == 23
+    assert s.COMPUTED == 3
+
+def test_dynamic_read_through_class() -> None:
+    t: Any = C
+    assert t.LITERAL == 23
+    assert t.COMPUTED == 3
+    assert t.ITEMS == [1, 2]
+    assert getattr(t, 'COMPUTED') == 3
+
+def test_dynamic_read_matches_native() -> None:
+    o: Any = C()
+    assert o.ITEMS is C().items()
+    assert o.COMPUTED == C().computed()
+
+def test_cannot_rebind_via_any() -> None:
+    o: Any = C()
+    with assertRaises(AttributeError):
+        o.LITERAL = 1
+    assert o.LITERAL == 23
+    with assertRaises(AttributeError):
+        setattr(o, 'COMPUTED', 1)
+    assert o.COMPUTED == 3
+
+[case testClassBodyFinalAttributeInTrait]
+from mypy_extensions import trait
+from typing import Any, Final
+
+def make() -> int:
+    return 7
+
+@trait
+class T:
+    LITERAL: Final = 23
+    COMPUTED: Final = make()
+
+    def literal(self) -> int:
+        return self.LITERAL
+
+class C(T):
+    def computed(self) -> int:
+        return self.COMPUTED
+
+def test_trait_final() -> None:
+    assert C().literal() == 23
+    assert C().computed() == 7
+    assert T.LITERAL == 23
+    assert C.COMPUTED == 7
+
+def test_trait_final_via_any() -> None:
+    o: Any = C()
+    assert o.LITERAL == 23
+    assert o.COMPUTED == 7
+
+[case testDataclassFinalAttributeKeepsInstanceSlot]
+from dataclasses import dataclass
+from typing import Any, Final
+
+@dataclass
+class C:
+    X: Final = 23
+    y: int = 1
+
+def test_dataclass_final_keeps_instance_slot() -> None:
+    # Final in a dataclass body declares a field, so it must keep its instance
+    # slot: the interpreted __init__/__eq__/__repr__ that dataclasses generates
+    # reach for it. (Instantiating such a class is separately broken -- the Final
+    # getset has no setter, so the generated __init__ can't assign it -- so this
+    # only checks that the slot is still there.)
+    t: Any = C
+    assert 'X' in t.__mypyc_attrs__
+    assert 'y' in t.__mypyc_attrs__
+
+[case testClassBodyFinalAttributeOfNativeIntType]
+from mypy_extensions import i64
+from typing import Any, Final
+
+def make() -> i64:
+    return -113
+
+class C:
+    # Native int types overlap with the error sentinel used by Final statics, so
+    # these keep their instance slot. See ai/bug-final-static-error-overlap.md.
+    N: Final = make()
+
+    def get(self) -> i64:
+        return self.N
+
+def test_native_int_final() -> None:
+    assert C().get() == -113
+    o: Any = C()
+    assert o.N == -113
+
+[case testClassBodyFinalAttributeThroughUnionAndAny]
+from typing import Any, Final, Union
+
+class C:
+    X: Final = 23
+
+class D:
+    X: Final = 24
+
+class E(C):
+    pass
+
+def through_union_same_decl(x: Union[C, E]) -> int:
+    # Both items inherit the same declaration, so this can use C's value.
+    return x.X
+
+def through_union_different_decls(x: Union[C, D]) -> int:
+    # The value differs per item, so this must read the attribute per object.
+    return x.X
+
+def through_any(x: Any) -> Any:
+    return x.X
+
+def through_narrowing(x: object) -> int:
+    assert isinstance(x, C)
+    return x.X
+
+def test_union_same_decl() -> None:
+    assert through_union_same_decl(C()) == 23
+    assert through_union_same_decl(E()) == 23
+
+def test_union_different_decls() -> None:
+    assert through_union_different_decls(C()) == 23
+    assert through_union_different_decls(D()) == 24
+
+def test_any() -> None:
+    assert through_any(C()) == 23
+    assert through_any(D()) == 24
+    assert through_any(E()) == 23
+    assert through_any(C) == 23
+
+def test_narrowing() -> None:
+    assert through_narrowing(C()) == 23
+    assert through_narrowing(E()) == 23

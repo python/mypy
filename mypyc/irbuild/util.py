@@ -35,7 +35,7 @@ from mypy.semanal import refers_to_fullname
 from mypy.types import FINAL_DECORATOR_NAMES
 from mypyc.errors import Errors
 from mypyc.ir.class_ir import ClassIR
-from mypyc.ir.rtypes import is_none_rprimitive, is_object_rprimitive, is_optional_type
+from mypyc.ir.rtypes import RType, is_none_rprimitive, is_object_rprimitive, is_optional_type
 
 MYPYC_ATTRS: Final[frozenset[MypycAttr]] = frozenset(
     ["native_class", "allow_interpreted_subclasses", "serializable", "free_list_len", "acyclic"]
@@ -105,6 +105,44 @@ def dataclass_type(cdef: ClassDef) -> str | None:
         if typ is not None:
             return typ
     return None
+
+
+def is_class_body_final(var: Var, ir: ClassIR, cdef: ClassDef, attr_rtype: RType) -> bool:
+    """Whether a class member should be stored as a class-level Final instead of
+    an instance attribute.
+
+    These are "X: Final = <value>" declarations in the class body. The value is the
+    same for every instance, so giving each instance a struct slot wastes memory and
+    forces the initializer to be re-evaluated per construction. Instead we let the
+    existing final-name machinery own it: the value is stored once in a module-level
+    static and set on the type object (see ExtClassBuilder.add_attr), and reads are
+    constant folded or loaded from the static.
+
+    See ClassIR.class_final_attributes.
+    """
+    if not var.is_final or not var.has_explicit_value:
+        return False
+    if var.final_set_in_init:
+        # "self.x: Final = ..." in __init__ genuinely varies per instance.
+        return False
+    if not ir.is_ext_class or ir.builtin_base:
+        # No instance struct to save a slot in, and non-extension classes already
+        # keep class-level values in the class dict.
+        return False
+    if dataclass_type(cdef) is not None:
+        # The field is load-bearing: the interpreted __init__ that dataclasses (or
+        # attrs) generates assigns it, and __eq__/__repr__/fields() read it.
+        return False
+    if attr_rtype.error_overlap:
+        # A static of such a type can't distinguish "unset" from a value equal to
+        # the error sentinel, which would turn a valid read into a spurious
+        # NameError. See ai/bug-final-static-error-overlap.md.
+        return False
+    if ir.allow_interpreted_subclasses:
+        # An interpreted subclass can shadow the name in its own class dict, which
+        # native reads of a folded or static value would not see.
+        return False
+    return True
 
 
 def _defaults_skip(stmt: AssignmentStmt, cls_type: str | None) -> bool:

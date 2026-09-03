@@ -250,3 +250,83 @@ L0:
     r3 = 'a'
     r4 = PyUnicode_Concat(r2, r3)
     return r4
+
+[case testClassBodyFinalConstantFoldedThroughInstance]
+from typing import Final
+
+class C:
+    X: Final = 23
+
+    def get(self) -> int:
+        return self.X
+
+class D(C):
+    def get_inherited(self) -> int:
+        return self.X
+
+def f(c: C) -> int:
+    return c.X
+[out]
+def C.get(self):
+    self :: __main__.C
+L0:
+    return 46
+def D.get_inherited(self):
+    self :: __main__.D
+L0:
+    return 46
+def f(c):
+    c :: __main__.C
+L0:
+    return 46
+
+[case testClassBodyFinalReadFromStaticThroughInstance]
+from typing import Final
+
+def make() -> int:
+    return 3
+
+class C:
+    X: Final = make()
+
+    def get(self) -> int:
+        return self.X
+[out]
+def make():
+L0:
+    return 6
+def C.get(self):
+    self :: __main__.C
+    r0 :: int
+    r1 :: bool
+L0:
+    r0 = __main__.C.X :: static
+    if is_error(r0) goto L1 else goto L2
+L1:
+    r1 = raise NameError('value for final name "X" was not set')
+    unreachable
+L2:
+    return r0
+
+[case testInstanceFinalStillUsesAttribute]
+from typing import Final
+
+class C:
+    def __init__(self, x: int) -> None:
+        self.x: Final = x
+
+    def get(self) -> int:
+        return self.x
+[out]
+def C.__init__(self, x):
+    self :: __main__.C
+    x :: int
+L0:
+    self.x = x
+    return 1
+def C.get(self):
+    self :: __main__.C
+    r0 :: int
+L0:
+    r0 = self.x
+    return r0

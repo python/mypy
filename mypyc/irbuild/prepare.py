@@ -75,6 +75,7 @@ from mypyc.irbuild.util import (
     default_attr_name,
     get_func_def,
     get_mypyc_attrs,
+    is_class_body_final,
     is_dataclass,
     is_extension_class,
     is_trait,
@@ -637,6 +638,11 @@ def prepare_methods_and_attributes(
             assert node.node.type, "Class member %s missing type" % name
             if not node.node.is_classvar and name not in ("__slots__", "__deletable__"):
                 attr_rtype = mapper.type_to_rtype(node.node.type)
+                if is_class_body_final(node.node, ir, cdef, attr_rtype):
+                    # No instance slot: the value lives in a module-level static
+                    # and on the type object. See ClassIR.class_final_attributes.
+                    ir.class_final_attributes[name] = attr_rtype
+                    continue
                 if ir.is_trait and attr_rtype.error_overlap:
                     # Traits don't have attribute definedness bitmaps, so use
                     # property accessor methods to access attributes that need them.
