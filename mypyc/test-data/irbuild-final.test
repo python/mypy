@@ -330,3 +330,26 @@ def C.get(self):
 L0:
     r0 = self.x
     return r0
+
+[case testClassBodyFinalNotOptimizedInBuiltinBaseSubclass]
+from typing import Final
+
+class MyError(Exception):
+    # Deliberately not turned into a class-level Final, since an interpreted subclass
+    # can shadow it. See is_class_body_final() in mypyc/irbuild/util.py.
+    CODE: Final = 5
+
+    def get(self) -> int:
+        return self.CODE
+[out]
+def MyError.get(self):
+    self :: __main__.MyError
+    r0 :: str
+    r1 :: object
+    r2 :: int
+L0:
+    r0 = 'CODE'
+    r1 = CPyObject_GetAttr(self, r0)
+    r2 = unbox(int, r1)
+    return r2
+

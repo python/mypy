@@ -123,9 +123,13 @@ def is_class_body_final(var: Var, ir: ClassIR, cdef: ClassDef, attr_rtype: RType
     if var.final_set_in_init:
         # "self.x: Final = ..." in __init__ varies per instance.
         return False
-    if not ir.is_ext_class or ir.builtin_base:
-        # No instance struct to save a slot in, and non-extension classes already
-        # keep class-level values in the class dict.
+    if not ir.is_ext_class:
+        # Non-extension classes keep class-level values in the class dict anyway.
+        return False
+    if ir.builtin_base:
+        # These can be subclassed from Python (we install no tp_new to reject it),
+        # and such instances reach native code, so this has the same shadowing
+        # hazard as allow_interpreted_subclasses below.
         return False
     if dataclass_type(cdef) is not None:
         # Dataclass attribute definitions are special.
