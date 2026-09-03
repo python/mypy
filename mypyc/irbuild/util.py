@@ -127,9 +127,9 @@ def is_class_body_final(var: Var, ir: ClassIR, cdef: ClassDef, attr_rtype: RType
         # Non-extension classes keep class-level values in the class dict anyway.
         return False
     if ir.builtin_base:
-        # These can be subclassed from Python (we install no tp_new to reject it),
-        # and such instances reach native code, so this has the same shadowing
-        # hazard as allow_interpreted_subclasses below.
+        # These have no attribute slots at all (see prepare_methods_and_attributes),
+        # so reads go through the class dict and honour shadowing by an interpreted
+        # subclass, which folding would break.
         return False
     if dataclass_type(cdef) is not None:
         # Dataclass attribute definitions are special.
@@ -139,10 +139,6 @@ def is_class_body_final(var: Var, ir: ClassIR, cdef: ClassDef, attr_rtype: RType
         # the error sentinel.
         #
         # TODO: Support thesse by having a separate initialized flag
-        return False
-    if ir.allow_interpreted_subclasses:
-        # An interpreted subclass can shadow the name in its own class dict, which
-        # native reads of a folded or static value would not see.
         return False
     return True
 
