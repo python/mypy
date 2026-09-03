@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from mypy.nodes import CONTRAVARIANT, COVARIANT, INVARIANT
-from mypy.subtypes import is_subtype
+from mypy.subtypes import is_proper_subtype, is_subtype, restrict_subtype_away
 from mypy.test.helpers import Suite
 from mypy.test.typefixture import InterfaceTypeFixture, TypeFixture
 from mypy.types import Instance, TupleType, Type, UninhabitedType, UnpackType
@@ -277,6 +277,74 @@ class SubtypingSuite(Suite):
     def test_fallback_not_subtype_of_tuple(self) -> None:
         self.assert_not_subtype(self.fx.a, TupleType([self.fx.b], fallback=self.fx.a))
 
+    def test_literal(self) -> None:
+        str1 = self.fx.lit_str1
+        str2 = self.fx.lit_str2
+        str1_inst = self.fx.lit_str1_inst
+        str2_inst = self.fx.lit_str2_inst
+        str_type = self.fx.str_type
+
+        # other operand is the fallback type
+        # "x"  ≲ str  -> YES
+        # str  ≲ "x"  -> NO
+        # "x"? ≲ str  -> YES
+        # str  ≲ "x"? -> YES
+        self.assert_subtype(str1, str_type)
+        self.assert_not_subtype(str_type, str1)
+        self.assert_subtype(str1_inst, str_type)
+        self.assert_subtype(str_type, str1_inst)
+
+        # other operand is the same literal
+        # "x"  ≲ "x"  -> YES
+        # "x"  ≲ "x"? -> YES
+        # "x"? ≲ "x"  -> YES
+        # "x"? ≲ "x"? -> YES
+        self.assert_subtype(str1, str1)
+        self.assert_subtype(str1, str1_inst)
+        self.assert_subtype(str1_inst, str1)
+        self.assert_subtype(str1_inst, str1_inst)
+
+        # other operand is a different literal
+        # "x"  ≲ "y"  -> NO
+        # "x"  ≲ "y"? -> YES
+        # "x"? ≲ "y"  -> NO
+        # "x"? ≲ "y"? -> YES
+        self.assert_not_subtype(str1, str2)
+        self.assert_subtype(str1, str2_inst)
+        self.assert_not_subtype(str1_inst, str2)
+        self.assert_subtype(str1_inst, str2_inst)
+
+        # check proper subtyping
+        # other operand is the fallback type
+        # "x"  <: str  -> YES
+        # str  <: "x"  -> NO
+        # "x"? <: str  -> YES
+        # str  <: "x"? -> NO
+        self.assert_proper_subtype(str1, str_type)
+        self.assert_not_proper_subtype(str_type, str1)
+        self.assert_proper_subtype(str1_inst, str_type)
+        self.assert_not_proper_subtype(str_type, str1_inst)
+
+        # other operand is the same literal
+        # "x"  <: "x"  -> YES
+        # "x"  <: "x"? -> YES
+        # "x"? <: "x"  -> NO
+        # "x"? <: "x"? -> YES
+        self.assert_proper_subtype(str1, str1)
+        self.assert_proper_subtype(str1, str1_inst)
+        self.assert_not_proper_subtype(str1_inst, str1)
+        self.assert_proper_subtype(str1_inst, str1_inst)
+
+        # other operand is a different literal
+        # "x"  <: "y"  -> NO
+        # "x"  <: "y"? -> NO
+        # "x"? <: "y"  -> NO
+        # "x"? <: "y"? -> NO
+        self.assert_not_proper_subtype(str1, str2)
+        self.assert_not_proper_subtype(str1, str2_inst)
+        self.assert_not_proper_subtype(str1_inst, str2)
+        self.assert_not_proper_subtype(str1_inst, str2_inst)
+
     # IDEA: Maybe add these test cases (they are tested pretty well in type
     #       checker tests already):
     #  * more interface subtyping test cases
@@ -286,6 +354,12 @@ class SubtypingSuite(Suite):
     #  * None type
     #  * any type
     #  * generic function types
+
+    def assert_proper_subtype(self, s: Type, t: Type) -> None:
+        assert is_proper_subtype(s, t), f"{s} not proper subtype of {t}"
+
+    def assert_not_proper_subtype(self, s: Type, t: Type) -> None:
+        assert not is_proper_subtype(s, t), f"{s} not proper subtype of {t}"
 
     def assert_subtype(self, s: Type, t: Type) -> None:
         assert is_subtype(s, t), f"{s} not subtype of {t}"
@@ -304,3 +378,53 @@ class SubtypingSuite(Suite):
     def assert_unrelated(self, s: Type, t: Type) -> None:
         self.assert_not_subtype(s, t)
         self.assert_not_subtype(t, s)
+
+
+class RestrictionSuite(Suite):
+    # Tests for type restrictions "A - B", i.e. ``T <: A and not T <: B``.
+
+    def setUp(self) -> None:
+        self.fx = TypeFixture()
+
+    def assert_restriction(self, s: Type, t: Type, expected: Type) -> None:
+        actual = restrict_subtype_away(s, t)
+        msg = f"restrict_subtype_away({s}, {t}) == {{}} ({{}} expected)"
+        self.assertEqual(actual, expected, msg=msg.format(actual, expected))
+
+    def test_literal(self) -> None:
+        str1 = self.fx.lit_str1
+        str2 = self.fx.lit_str2
+        str1_inst = self.fx.lit_str1_inst
+        str2_inst = self.fx.lit_str2_inst
+        str_type = self.fx.str_type
+        uninhabited = self.fx.uninhabited
+
+        # other operand is the fallback type
+        # "x" - str -> Never
+        # str - "x" -> str
+        # "x"? - str  -> Never
+        # str  - "x"? -> Never
+        self.assert_restriction(str1, str_type, uninhabited)
+        self.assert_restriction(str_type, str1, str_type)
+        self.assert_restriction(str1_inst, str_type, uninhabited)
+        self.assert_restriction(str_type, str1_inst, uninhabited)
+
+        # other operand is the same literal
+        # "x"  - "x"  -> Never
+        # "x"  - "x"? -> Never
+        # "x"? - "x"  -> Never
+        # "x"? - "x"? -> Never
+        self.assert_restriction(str1, str1, uninhabited)
+        self.assert_restriction(str1, str1_inst, uninhabited)
+        self.assert_restriction(str1_inst, str1, uninhabited)
+        self.assert_restriction(str1_inst, str1_inst, uninhabited)
+
+        # other operand is a different literal
+        # "x"  - "y"  -> "x"
+        # "x"  - "y"? -> Never
+        # "x"? - "y"  -> "x"?
+        # "x"? - "y"? -> Never
+        self.assert_restriction(str1, str2, str1)
+        self.assert_restriction(str1, str2_inst, uninhabited)
+        self.assert_restriction(str1_inst, str2, str1_inst)
+        self.assert_restriction(str1_inst, str2_inst, uninhabited)
