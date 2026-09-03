@@ -250,14 +250,10 @@ class ClassIR:
         # Name of the function if this a callable class representing a coroutine.
         self.coroutine_name: str | None = None
 
-        # If True, this is a generated generator/coroutine class whose instances may
-        # only ever be executed by one thread at a time, and this is enforced at
-        # runtime by an exclusive-resume token in the object (see
-        # uses_exclusive_resume() and mypyc/codegen/emitfunc.py). All the attributes
-        # are then private to whoever holds the token, which lets attribute access
-        # in the generator body skip the concurrency-safe (atomic) attribute
-        # operations that free-threaded builds otherwise need. Only ever set on
-        # free-threaded builds, since there is nothing to gain under the GIL.
+        # If True, this is a generated generator/coroutine class, and resuming an
+        # instance that is already executing is rejected via a token in the object
+        # (see uses_exclusive_resume()). Only set on free-threaded builds, where
+        # this also makes attributes private to the token holder.
         self.exclusive_resume = False
 
     def __repr__(self) -> str:
@@ -318,14 +314,15 @@ class ClassIR:
         return self.needs_getseters or not self.is_generated or self.has_dict
 
     def uses_exclusive_resume(self) -> bool:
-        """Is execution of this generator class serialized by an exclusive-resume token?
+        """Is execution of this generator class guarded by an exclusive-resume token?
 
-        If so, the generated helper method claims the token on entry and drops it at
-        every exit, so while the body runs no other thread can touch the instance's
-        attributes. Attribute access in the body can then use plain (non-atomic)
-        loads and stores even on free-threaded builds. That reasoning breaks if
-        anything outside the helper can read or write the attributes concurrently,
-        which is why getseters must not be generated for the class.
+        The generated helper method claims the token on entry and drops it at every
+        exit, so a resume of an already-executing generator fails instead of running
+        the body again -- whether the resume is reentrant (a generator resuming itself,
+        as in CPython) or from another thread. Since only the token holder is inside
+        the body, the instance attributes are private to it and can use plain
+        (non-atomic) loads and stores even on free-threaded builds. That only holds if
+        nothing outside the helper can touch the attributes, hence the getseters check.
         """
         return self.exclusive_resume and not self.needs_getseters_table
 

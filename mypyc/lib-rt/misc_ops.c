@@ -24,10 +24,7 @@ PyObject *CPy_GetCoro(PyObject *obj)
 
 #ifdef Py_GIL_DISABLED
 // Report a failed attempt to claim a generator's exclusive-resume token (see
-// CPyGen_TryEnter): some other thread, or this one reentrantly, is already
-// running the body. Always returns NULL, so a helper method can tail-return it.
-// Out of line since every generated helper method has one of these, and the
-// messages match what CPython's own generators and coroutines raise.
+// CPyGen_TryEnter).
 PyObject *CPyGen_AlreadyExecutingError(int is_coroutine)
 {
     PyErr_SetString(PyExc_ValueError,
