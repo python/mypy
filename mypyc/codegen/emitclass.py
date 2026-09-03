@@ -485,7 +485,14 @@ def generate_object_struct(cl: ClassIR, emitter: Emitter) -> None:
     lines += ["typedef struct {", "PyObject_HEAD", "CPyVTableItem *vtable;"]
     if cl.has_method("__call__"):
         lines.append("vectorcallfunc vectorcall;")
-    if cl.uses_running_flag():
+    # A base and its subclasses must agree about the flag, or the structs stop being
+    # layout compatible and inherited methods read attributes at the wrong offsets.
+    # Generator classes only ever inherit from generator classes (see
+    # adjust_generator_classes_of_methods), and all of those have the flag.
+    assert all(
+        base.has_running_flag == cl.has_running_flag for base in cl.base_mro
+    ), f"{cl.name} disagrees with a base class about the running flag"
+    if cl.has_running_flag:
         # Running flag. Not an IR attribute: it is invisible to the GC,
         # to tp_clear and to attribute definedness analysis, and it is never read
         # outside the generated helper method's entry and exits.

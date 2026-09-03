@@ -473,15 +473,15 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         transform_member_expr in irbuild), whose values live as long as their container.
         The default (GIL) build always takes the plain-load path and increfs separately.
 
-        Attributes of a generator class with a running flag are likewise read with a
-        plain load: no concurrent writer can exist, since only the thread holding the
-        flag runs the generator body (see ClassIR.uses_running_flag).
+        Thread-confined attributes are likewise read with a plain load: no concurrent
+        writer can exist, since they are only reachable from a generator body that just
+        one thread at a time can run (see ClassIR.attrs_are_thread_confined).
         """
         use_get_attr_ref = (
             IS_FREE_THREADED
             and is_simple_refcounted_pointer(attr_rtype)
             and not op.is_borrowed
-            and not cl.uses_running_flag()
+            and not cl.attrs_are_thread_confined()
         )
         if use_get_attr_ref and cl.is_final_attr(op.attr):
             self.emitter.emit_line(f"{dest} = CPy_GetAttrRefFinal((PyObject **)&{attr_expr});")
@@ -642,13 +642,13 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         elif (
             IS_FREE_THREADED
             and is_simple_refcounted_pointer(attr_rtype)
-            and not cl.uses_running_flag()
+            and not cl.attrs_are_thread_confined()
         ):
             # In free-threaded builds, publishing a single reference-counted
             # 'PyObject *' field must be atomic so a concurrent reader (see
             # CPy_GetAttrRef) never observes a torn pointer or a freed value.
-            # Generator classes with a running flag are exempt: no other thread
-            # can read or write the field while the flag holder runs, so a plain
+            # Thread-confined attributes are exempt: no other thread can read or
+            # write the field while the generator body runs, so a plain
             # store and an immediate decref of the old value are safe (and let the
             # old value be freed inline rather than through the QSBR queue).
             # Both helpers steal the reference to src.

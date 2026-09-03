@@ -250,11 +250,20 @@ class ClassIR:
         # Name of the function if this a callable class representing a coroutine.
         self.coroutine_name: str | None = None
 
-        # If True, this is a generated generator/coroutine class, and entering an
-        # instance that is already executing is rejected using a running flag in
-        # the object (see uses_running_flag()). On free-threaded builds this
-        # additionally makes the attributes private to the flag holder.
+        # If True, this is a generated generator/coroutine class whose instances have
+        # a running flag: the generator helper method claims it on entry and clears it
+        # at every exit, so entering an instance that is already executing fails
+        # instead of running the body again (matching CPython). Set for all generator
+        # classes, since reentrant and concurrent entry must be rejected either way.
         self.has_running_flag = False
+
+        # If True, this is a generated generator/coroutine class that holds the
+        # function's locals directly, instead of pointing to a separate environment
+        # class. Nothing outside the generator body can then reach those attributes:
+        # merging only happens when no nested function can capture a local. Combined
+        # with the running flag this makes them thread-confined -- see
+        # attrs_are_thread_confined().
+        self.has_private_attrs = False
 
     def __repr__(self) -> str:
         return (
@@ -313,20 +322,20 @@ class ClassIR:
         """Do we generate a tp_getset table exposing the attributes to Python?"""
         return self.needs_getseters or not self.is_generated or self.has_dict
 
-    def uses_running_flag(self) -> bool:
-        """Is execution of this generator class guarded by a running flag?
+    def attrs_are_thread_confined(self) -> bool:
+        """Can only one thread at a time reach this class's attributes?
 
-        The generated helper method claims the flag on entry and clears it at every
-        exit, so entering an already-executing generator fails instead of running the
-        body again -- whether the entry is reentrant (a generator resuming itself, as
-        CPython also rejects) or from another thread. On free-threaded builds this
-        additionally means the instance attributes are private to the flag holder, so
-        the body can access them with plain (non-atomic) loads and stores. That only
-        holds if nothing outside the helper can touch the attributes, hence the
-        getseters check. The check is only needed for that reasoning, but it's applied
-        in GIL builds as well, so that both builds agree on which classes have a flag.
+        True for a generator class that holds its locals directly (has_private_attrs)
+        and serializes execution with a running flag: the attributes are then reachable
+        only from the generator body, and only the flag holder runs the body. On
+        free-threaded builds such attributes can use plain (non-atomic) loads and
+        stores. Generator classes with a separate environment class don't qualify:
+        their locals live in an object that escaped nested functions can also touch,
+        even while the generator is suspended, so the running flag says nothing about
+        them. Getseters would expose the attributes to arbitrary code too, so they
+        must not be generated.
         """
-        return self.has_running_flag and not self.needs_getseters_table
+        return self.has_private_attrs and self.has_running_flag and not self.needs_getseters_table
 
     def method_decl(self, name: str) -> FuncDecl:
         for ir in self.mro:
@@ -497,6 +506,7 @@ class ClassIR:
             "env_user_function": self.env_user_function.id if self.env_user_function else None,
             "reuse_freed_instance": self.reuse_freed_instance,
             "has_running_flag": self.has_running_flag,
+            "has_private_attrs": self.has_private_attrs,
             "is_acyclic": self.is_acyclic,
             "is_enum": self.is_enum,
             "is_coroutine": self.coroutine_name,
@@ -561,6 +571,7 @@ class ClassIR:
         )
         ir.reuse_freed_instance = data["reuse_freed_instance"]
         ir.has_running_flag = data["has_running_flag"]
+        ir.has_private_attrs = data["has_private_attrs"]
         ir.is_acyclic = data.get("is_acyclic", False)
         ir.is_enum = data["is_enum"]
         ir.coroutine_name = data["is_coroutine"]

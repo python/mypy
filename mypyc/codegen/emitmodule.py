@@ -711,7 +711,7 @@ class GroupGenerator:
             # Generator classes whose helper method must claim the running flag.
             # Collected after generating the classes, since that's where the flag
             # field is added to the object struct.
-            running_flag_classes = {cl.name: cl for cl in module.classes if cl.uses_running_flag()}
+            running_flag_classes = {cl.name: cl for cl in module.classes if cl.has_running_flag}
 
             # Generate Python extension module definitions and module initialization functions.
             self.generate_module_def(emitter, module_name, module)
