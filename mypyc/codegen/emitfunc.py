@@ -136,12 +136,6 @@ def generate_native_function(
     module_name: str,
     exclusive_resume_class: ClassIR | None = None,
 ) -> None:
-    """Emit the C body of a native function.
-
-    If 'exclusive_resume_class' is set, this is the generator helper method of that
-    class, and the body is wrapped in the class's exclusive-resume token (see
-    ClassIR.uses_exclusive_resume).
-    """
     declarations = Emitter(emitter.context)
     names = generate_names_for_ir(fn.arg_regs, fn.blocks)
     body = Emitter(emitter.context, names)
