@@ -166,6 +166,36 @@ static inline void CPy_SetAttrRef(PyObject **field, PyObject *value) {
 static inline void CPy_InitAttrRef(PyObject **field, PyObject *value) {
     _Py_atomic_store_ptr_relaxed(field, value);
 }
+
+// Exclusive-resume token of a generated generator/coroutine object.
+//
+// A generator has exactly one legitimate driver at a time: resuming one that is
+// already executing is an error in every Python implementation. Generated helper
+// methods claim the token on entry and drop it at every exit, which buys two
+// things on free-threaded builds:
+//
+//   - Mutual exclusion. While the body runs, no other thread can be inside it,
+//     so the object's private attributes are thread-confined and their loads and
+//     stores need not be atomic (mypyc emits the same plain accesses as under the
+//     GIL). One RMW per resume replaces one atomic operation per attribute access.
+//   - Publication. The release on suspension pairs with the acquire on the next
+//     resume, so a generator that migrates between threads (the normal case for
+//     an asyncio task on a thread pool) sees everything the previous thread
+//     stored, including values written with plain stores.
+//
+// The token must be a real atomic read-modify-write, not a load followed by a
+// store: two threads calling send() concurrently would both pass a non-atomic
+// test and then race on non-atomic fields, which is a memory-safety bug rather
+// than merely a confused generator. The exchange is sequentially consistent,
+// which implies the acquire we need. Its cost is one uncontended local RMW on a
+// line the resume is about to write anyway.
+static inline int CPyGen_TryEnter(uint32_t *running) {
+    return _Py_atomic_exchange_uint32(running, 1) == 0;
+}
+
+static inline void CPyGen_Exit(uint32_t *running) {
+    _Py_atomic_store_uint32_release(running, 0);
+}
 #endif
 
 PyObject* update_bases(PyObject *bases);

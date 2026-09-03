@@ -75,7 +75,7 @@ from mypyc.ir.ops import DeserMaps, LoadLiteral
 from mypyc.ir.rtypes import RType
 from mypyc.irbuild.main import build_ir
 from mypyc.irbuild.mapper import Mapper
-from mypyc.irbuild.prepare import load_type_map
+from mypyc.irbuild.prepare import GENERATOR_HELPER_NAME, load_type_map
 from mypyc.namegen import NameGenerator, exported_name
 from mypyc.options import CompilerOptions
 from mypyc.transform.copy_propagation import do_copy_propagation
@@ -708,12 +708,28 @@ class GroupGenerator:
                 if cl.is_ext_class:
                     generate_class(cl, module_name, emitter)
 
+            # Generator classes whose helper method must claim an exclusive-resume
+            # token. Collected after generating the classes, since that's where the
+            # token field is added to the object struct.
+            exclusive_resume_classes = {
+                cl.name: cl for cl in module.classes if cl.uses_exclusive_resume()
+            }
+
             # Generate Python extension module definitions and module initialization functions.
             self.generate_module_def(emitter, module_name, module)
 
             for fn in module.functions:
                 emitter.emit_line()
-                generate_native_function(fn, emitter, self.source_paths[module_name], module_name)
+                exclusive_resume_class = None
+                if fn.decl.name == GENERATOR_HELPER_NAME and fn.class_name is not None:
+                    exclusive_resume_class = exclusive_resume_classes.get(fn.class_name)
+                generate_native_function(
+                    fn,
+                    emitter,
+                    self.source_paths[module_name],
+                    module_name,
+                    exclusive_resume_class,
+                )
                 if fn.name != TOP_LEVEL_NAME and not fn.internal:
                     emitter.emit_line()
                     if is_fastcall_supported(fn, emitter.capi_version):

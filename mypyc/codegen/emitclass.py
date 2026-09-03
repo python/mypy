@@ -29,6 +29,7 @@ from mypyc.common import (
     BITMAP_BITS,
     BITMAP_TYPE,
     CPYFUNCTION_NAME,
+    EXCLUSIVE_RESUME_FIELD,
     IS_FREE_THREADED,
     MYPYC_DEFAULTS_SETUP,
     NATIVE_PREFIX,
@@ -264,7 +265,7 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
     fields: dict[str, str] = {"tp_name": f'"{name}"'}
 
     generate_full = not cl.is_trait and not cl.builtin_base
-    needs_getseters = cl.needs_getseters or not cl.is_generated or cl.has_dict
+    needs_getseters = cl.needs_getseters_table
 
     if not cl.builtin_base:
         fields["tp_new"] = new_name
@@ -484,6 +485,11 @@ def generate_object_struct(cl: ClassIR, emitter: Emitter) -> None:
     lines += ["typedef struct {", "PyObject_HEAD", "CPyVTableItem *vtable;"]
     if cl.has_method("__call__"):
         lines.append("vectorcallfunc vectorcall;")
+    if cl.uses_exclusive_resume():
+        # Exclusive-resume token. Not an IR attribute: it is invisible to the GC,
+        # to tp_clear and to attribute definedness analysis, and it is never read
+        # outside the generated helper method's entry and exits.
+        lines.append(f"uint32_t {EXCLUSIVE_RESUME_FIELD};")
     bitmap_attrs = []
     for base in reversed(cl.base_mro):
         if not base.is_trait:

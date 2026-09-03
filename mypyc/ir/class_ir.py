@@ -250,6 +250,16 @@ class ClassIR:
         # Name of the function if this a callable class representing a coroutine.
         self.coroutine_name: str | None = None
 
+        # If True, this is a generated generator/coroutine class whose instances may
+        # only ever be executed by one thread at a time, and this is enforced at
+        # runtime by an exclusive-resume token in the object (see
+        # uses_exclusive_resume() and mypyc/codegen/emitfunc.py). All the attributes
+        # are then private to whoever holds the token, which lets attribute access
+        # in the generator body skip the concurrency-safe (atomic) attribute
+        # operations that free-threaded builds otherwise need. Only ever set on
+        # free-threaded builds, since there is nothing to gain under the GIL.
+        self.exclusive_resume = False
+
     def __repr__(self) -> str:
         return (
             "ClassIR("
@@ -301,6 +311,23 @@ class ClassIR:
             if name in ir.property_types:
                 return False
         return False
+
+    @property
+    def needs_getseters_table(self) -> bool:
+        """Do we generate a tp_getset table exposing the attributes to Python?"""
+        return self.needs_getseters or not self.is_generated or self.has_dict
+
+    def uses_exclusive_resume(self) -> bool:
+        """Is execution of this generator class serialized by an exclusive-resume token?
+
+        If so, the generated helper method claims the token on entry and drops it at
+        every exit, so while the body runs no other thread can touch the instance's
+        attributes. Attribute access in the body can then use plain (non-atomic)
+        loads and stores even on free-threaded builds. That reasoning breaks if
+        anything outside the helper can read or write the attributes concurrently,
+        which is why getseters must not be generated for the class.
+        """
+        return self.exclusive_resume and not self.needs_getseters_table
 
     def method_decl(self, name: str) -> FuncDecl:
         for ir in self.mro:
@@ -470,6 +497,7 @@ class ClassIR:
             "init_self_leak": self.init_self_leak,
             "env_user_function": self.env_user_function.id if self.env_user_function else None,
             "reuse_freed_instance": self.reuse_freed_instance,
+            "exclusive_resume": self.exclusive_resume,
             "is_acyclic": self.is_acyclic,
             "is_enum": self.is_enum,
             "is_coroutine": self.coroutine_name,
@@ -533,6 +561,7 @@ class ClassIR:
             ctx.functions[data["env_user_function"]] if data["env_user_function"] else None
         )
         ir.reuse_freed_instance = data["reuse_freed_instance"]
+        ir.exclusive_resume = data["exclusive_resume"]
         ir.is_acyclic = data.get("is_acyclic", False)
         ir.is_enum = data["is_enum"]
         ir.coroutine_name = data["is_coroutine"]

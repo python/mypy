@@ -28,6 +28,11 @@ MYPYC_DEFAULTS_SETUP: Final = "__mypyc_defaults_setup"
 GENERATOR_ATTRIBUTE_PREFIX: Final = "__mypyc_generator_attribute__"
 CPYFUNCTION_NAME = "__cpyfunction__"
 
+# C struct field of a generator object that holds the exclusive-resume token (see
+# ClassIR.uses_exclusive_resume). This is not an IR-level attribute, so it can't
+# collide with one: those are all prefixed with ATTR_PREFIX.
+EXCLUSIVE_RESUME_FIELD: Final = "mypyc_running"
+
 # Max short int we accept as a literal is based on 32-bit platforms,
 # so that we can just always emit the same code.
 

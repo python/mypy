@@ -13,6 +13,7 @@ from mypyc.codegen.emit import (
     c_array_initializer,
 )
 from mypyc.common import (
+    EXCLUSIVE_RESUME_FIELD,
     GENERATOR_ATTRIBUTE_PREFIX,
     HAVE_IMMORTAL,
     IS_FREE_THREADED,
@@ -129,12 +130,24 @@ def native_function_header(fn: FuncDecl, emitter: Emitter) -> str:
 
 
 def generate_native_function(
-    fn: FuncIR, emitter: Emitter, source_path: str, module_name: str
+    fn: FuncIR,
+    emitter: Emitter,
+    source_path: str,
+    module_name: str,
+    exclusive_resume_class: ClassIR | None = None,
 ) -> None:
+    """Emit the C body of a native function.
+
+    If 'exclusive_resume_class' is set, this is the generator helper method of that
+    class, and the body is wrapped in the class's exclusive-resume token (see
+    ClassIR.uses_exclusive_resume).
+    """
     declarations = Emitter(emitter.context)
     names = generate_names_for_ir(fn.arg_regs, fn.blocks)
     body = Emitter(emitter.context, names)
-    visitor = FunctionEmitterVisitor(body, declarations, source_path, module_name)
+    visitor = FunctionEmitterVisitor(
+        body, declarations, source_path, module_name, exclusive_resume_class
+    )
 
     declarations.emit_line(f"{native_function_header(fn.decl, emitter)} {{")
     body.indent()
@@ -183,6 +196,11 @@ def generate_native_function(
             if not is_next_block or is_problematic_op:
                 fn.blocks[target.label].referenced = True
 
+    if exclusive_resume_class is not None:
+        # Emitted before the first label, so resumes enter here but internal jumps
+        # back to the first block (if any) don't.
+        visitor.emit_exclusive_resume_enter(fn)
+
     common = frequently_executed_blocks(fn.blocks[0])
 
     for i in range(len(blocks)):
@@ -209,13 +227,23 @@ def generate_native_function(
 
 class FunctionEmitterVisitor(OpVisitor[None]):
     def __init__(
-        self, emitter: Emitter, declarations: Emitter, source_path: str, module_name: str
+        self,
+        emitter: Emitter,
+        declarations: Emitter,
+        source_path: str,
+        module_name: str,
+        exclusive_resume_class: ClassIR | None = None,
     ) -> None:
         self.emitter = emitter
         self.names = emitter.names
         self.declarations = declarations
         self.source_path = source_path
         self.module_name = module_name
+        # Set if we are emitting the generator helper method of this class, which
+        # must hold the class's exclusive-resume token while it runs.
+        self.exclusive_resume_class = exclusive_resume_class
+        # C expression for the address of that token, set up on function entry
+        self.exclusive_resume_token: str | None = None
         self.literals = emitter.context.literals
         self.rare = False
         # Next basic block to be processed after the current one (if any), set by caller
@@ -291,8 +319,38 @@ class FunctionEmitterVisitor(OpVisitor[None]):
 
             self.emit_lines("} else", "    goto %s;" % self.label(false))
 
+    def emit_exclusive_resume_enter(self, fn: FuncIR) -> None:
+        """Claim the receiver's exclusive-resume token, or fail without running the body.
+
+        Rejecting a concurrent (or reentrant) resume is required for correctness, not
+        just fidelity to CPython: the body's attribute accesses are only safe on
+        free-threaded builds because at most one thread is inside it at a time.
+        """
+        cl = self.exclusive_resume_class
+        assert cl is not None
+        struct = cl.struct_name(self.names)
+        self_str = self.reg(fn.arg_regs[0])
+        self.exclusive_resume_token = f"&(({struct} *){self_str})->{EXCLUSIVE_RESUME_FIELD}"
+        token = self.exclusive_resume_token
+        is_coroutine = 1 if cl.has_method("__await__") else 0
+        self.emit_line(f"if (unlikely(!CPyGen_TryEnter({token}))) {{")
+        self.emit_line(f"return CPyGen_AlreadyExecutingError({is_coroutine});")
+        self.emit_line("}")
+
+    def emit_exclusive_resume_exit(self) -> None:
+        """Drop the exclusive-resume token before leaving the generator body.
+
+        Every exit goes through a Return op (error exits included), so this covers
+        suspension, completion and exceptions alike. The release also publishes
+        everything the body stored to the next thread that resumes the generator.
+        """
+        assert self.exclusive_resume_token is not None
+        self.emit_line(f"CPyGen_Exit({self.exclusive_resume_token});")
+
     def visit_return(self, op: Return) -> None:
         value_str = self.reg(op.value)
+        if self.exclusive_resume_class is not None:
+            self.emit_exclusive_resume_exit()
         self.emit_line("return %s;" % value_str)
 
     def visit_tuple_set(self, op: TupleSet) -> None:
@@ -418,9 +476,16 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         for attributes safe to borrow on free-threaded builds (Final and vec attrs -- see
         transform_member_expr in irbuild), whose values live as long as their container.
         The default (GIL) build always takes the plain-load path and increfs separately.
+
+        Attributes of a generator class with exclusive resume are likewise read with a
+        plain load: no concurrent writer can exist, since only the thread holding the
+        token runs the generator body (see ClassIR.uses_exclusive_resume).
         """
         use_get_attr_ref = (
-            IS_FREE_THREADED and is_simple_refcounted_pointer(attr_rtype) and not op.is_borrowed
+            IS_FREE_THREADED
+            and is_simple_refcounted_pointer(attr_rtype)
+            and not op.is_borrowed
+            and not cl.uses_exclusive_resume()
         )
         if use_get_attr_ref and cl.is_final_attr(op.attr):
             self.emitter.emit_line(f"{dest} = CPy_GetAttrRefFinal((PyObject **)&{attr_expr});")
@@ -578,10 +643,18 @@ class FunctionEmitterVisitor(OpVisitor[None]):
             )
             self.emit_line(f"{dest} = 1;")
             self.emitter.emit_error_check(tmp, ret_type, f"{dest} = 0;")
-        elif IS_FREE_THREADED and is_simple_refcounted_pointer(attr_rtype):
+        elif (
+            IS_FREE_THREADED
+            and is_simple_refcounted_pointer(attr_rtype)
+            and not cl.uses_exclusive_resume()
+        ):
             # In free-threaded builds, publishing a single reference-counted
             # 'PyObject *' field must be atomic so a concurrent reader (see
             # CPy_GetAttrRef) never observes a torn pointer or a freed value.
+            # Generator classes with exclusive resume are exempt: no other thread
+            # can read or write the field while the token holder runs, so a plain
+            # store and an immediate decref of the old value are safe (and let the
+            # old value be freed inline rather than through the QSBR queue).
             # Both helpers steal the reference to src.
             attr_expr = self.get_attr_expr(obj, op, decl_cl)
             if op.is_init:
