@@ -29,12 +29,12 @@ from mypyc.common import (
     BITMAP_BITS,
     BITMAP_TYPE,
     CPYFUNCTION_NAME,
-    EXCLUSIVE_RESUME_FIELD,
     IS_FREE_THREADED,
     MYPYC_DEFAULTS_SETUP,
     NATIVE_PREFIX,
     PREFIX,
     REG_PREFIX,
+    RUNNING_FIELD,
     short_id_from_name,
 )
 from mypyc.ir.class_ir import ClassIR, VTableEntries
@@ -485,11 +485,11 @@ def generate_object_struct(cl: ClassIR, emitter: Emitter) -> None:
     lines += ["typedef struct {", "PyObject_HEAD", "CPyVTableItem *vtable;"]
     if cl.has_method("__call__"):
         lines.append("vectorcallfunc vectorcall;")
-    if cl.uses_exclusive_resume():
-        # Exclusive-resume token. Not an IR attribute: it is invisible to the GC,
+    if cl.uses_running_flag():
+        # Running flag. Not an IR attribute: it is invisible to the GC,
         # to tp_clear and to attribute definedness analysis, and it is never read
         # outside the generated helper method's entry and exits.
-        lines.append(f"uint32_t {EXCLUSIVE_RESUME_FIELD};")
+        lines.append(f"uint32_t {RUNNING_FIELD};")
     bitmap_attrs = []
     for base in reversed(cl.base_mro):
         if not base.is_trait:

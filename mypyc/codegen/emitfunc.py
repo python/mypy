@@ -13,12 +13,12 @@ from mypyc.codegen.emit import (
     c_array_initializer,
 )
 from mypyc.common import (
-    EXCLUSIVE_RESUME_FIELD,
     GENERATOR_ATTRIBUTE_PREFIX,
     HAVE_IMMORTAL,
     IS_FREE_THREADED,
     NATIVE_PREFIX,
     REG_PREFIX,
+    RUNNING_FIELD,
 )
 from mypyc.ir.class_ir import ClassIR
 from mypyc.ir.func_ir import FUNC_CLASSMETHOD, FUNC_STATICMETHOD, FuncDecl, FuncIR, all_values
@@ -134,13 +134,13 @@ def generate_native_function(
     emitter: Emitter,
     source_path: str,
     module_name: str,
-    exclusive_resume_class: ClassIR | None = None,
+    running_flag_class: ClassIR | None = None,
 ) -> None:
     declarations = Emitter(emitter.context)
     names = generate_names_for_ir(fn.arg_regs, fn.blocks)
     body = Emitter(emitter.context, names)
     visitor = FunctionEmitterVisitor(
-        body, declarations, source_path, module_name, exclusive_resume_class
+        body, declarations, source_path, module_name, running_flag_class
     )
 
     declarations.emit_line(f"{native_function_header(fn.decl, emitter)} {{")
@@ -190,10 +190,10 @@ def generate_native_function(
             if not is_next_block or is_problematic_op:
                 fn.blocks[target.label].referenced = True
 
-    if exclusive_resume_class is not None:
+    if running_flag_class is not None:
         # Emitted before the first label, so resumes enter here but internal jumps
         # back to the first block (if any) don't.
-        visitor.emit_exclusive_resume_enter(fn)
+        visitor.emit_claim_running_flag(fn)
 
     common = frequently_executed_blocks(fn.blocks[0])
 
@@ -226,7 +226,7 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         declarations: Emitter,
         source_path: str,
         module_name: str,
-        exclusive_resume_class: ClassIR | None = None,
+        running_flag_class: ClassIR | None = None,
     ) -> None:
         self.emitter = emitter
         self.names = emitter.names
@@ -234,10 +234,10 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         self.source_path = source_path
         self.module_name = module_name
         # Set if we are emitting the generator helper method of this class, which
-        # must hold the class's exclusive-resume token while it runs.
-        self.exclusive_resume_class = exclusive_resume_class
-        # C expression for the address of that token, set up on function entry
-        self.exclusive_resume_token: str | None = None
+        # must hold the instance's running flag while it runs.
+        self.running_flag_class = running_flag_class
+        # C expression for the address of that flag, set up on function entry
+        self.running_flag_ptr: str | None = None
         self.literals = emitter.context.literals
         self.rare = False
         # Next basic block to be processed after the current one (if any), set by caller
@@ -313,40 +313,40 @@ class FunctionEmitterVisitor(OpVisitor[None]):
 
             self.emit_lines("} else", "    goto %s;" % self.label(false))
 
-    def emit_exclusive_resume_enter(self, fn: FuncIR) -> None:
-        """Claim the receiver's exclusive-resume token, or fail without running the body.
+    def emit_claim_running_flag(self, fn: FuncIR) -> None:
+        """Claim the receiver's running flag, or fail without running the body.
 
-        Rejecting a reentrant (or concurrent) resume matches CPython, which raises
+        Rejecting a reentrant (or concurrent) entry matches CPython, which raises
         ValueError for an already-executing generator. On free-threaded builds it is
         also required for correctness: the body's attribute accesses are only safe
         there because at most one thread is inside the body at a time.
         """
-        cl = self.exclusive_resume_class
+        cl = self.running_flag_class
         assert cl is not None
         struct = cl.struct_name(self.names)
         self_str = self.reg(fn.arg_regs[0])
-        self.exclusive_resume_token = f"&(({struct} *){self_str})->{EXCLUSIVE_RESUME_FIELD}"
-        token = self.exclusive_resume_token
+        self.running_flag_ptr = f"&(({struct} *){self_str})->{RUNNING_FIELD}"
+        flag = self.running_flag_ptr
         is_coroutine = 1 if cl.has_method("__await__") else 0
-        self.emit_line(f"if (unlikely(!CPyGen_TryEnter({token}))) {{")
+        self.emit_line(f"if (unlikely(!CPyGen_TryEnter({flag}))) {{")
         self.emit_line(f"return CPyGen_AlreadyExecutingError({is_coroutine});")
         self.emit_line("}")
 
-    def emit_exclusive_resume_exit(self) -> None:
-        """Drop the exclusive-resume token before leaving the generator body.
+    def emit_release_running_flag(self) -> None:
+        """Clear the running flag before leaving the generator body.
 
         Every exit goes through a Return op (error exits included), so this covers
-        suspension, completion and exceptions alike. On free-threaded builds the
-        release also publishes everything the body stored to the next thread that
+        suspension, completion and exceptions alike. On free-threaded builds clearing
+        the flag also publishes everything the body stored to the next thread that
         resumes the generator.
         """
-        assert self.exclusive_resume_token is not None
-        self.emit_line(f"CPyGen_Exit({self.exclusive_resume_token});")
+        assert self.running_flag_ptr is not None
+        self.emit_line(f"CPyGen_Exit({self.running_flag_ptr});")
 
     def visit_return(self, op: Return) -> None:
         value_str = self.reg(op.value)
-        if self.exclusive_resume_class is not None:
-            self.emit_exclusive_resume_exit()
+        if self.running_flag_class is not None:
+            self.emit_release_running_flag()
         self.emit_line("return %s;" % value_str)
 
     def visit_tuple_set(self, op: TupleSet) -> None:
@@ -473,15 +473,15 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         transform_member_expr in irbuild), whose values live as long as their container.
         The default (GIL) build always takes the plain-load path and increfs separately.
 
-        Attributes of a generator class with exclusive resume are likewise read with a
+        Attributes of a generator class with a running flag are likewise read with a
         plain load: no concurrent writer can exist, since only the thread holding the
-        token runs the generator body (see ClassIR.uses_exclusive_resume).
+        flag runs the generator body (see ClassIR.uses_running_flag).
         """
         use_get_attr_ref = (
             IS_FREE_THREADED
             and is_simple_refcounted_pointer(attr_rtype)
             and not op.is_borrowed
-            and not cl.uses_exclusive_resume()
+            and not cl.uses_running_flag()
         )
         if use_get_attr_ref and cl.is_final_attr(op.attr):
             self.emitter.emit_line(f"{dest} = CPy_GetAttrRefFinal((PyObject **)&{attr_expr});")
@@ -642,13 +642,13 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         elif (
             IS_FREE_THREADED
             and is_simple_refcounted_pointer(attr_rtype)
-            and not cl.uses_exclusive_resume()
+            and not cl.uses_running_flag()
         ):
             # In free-threaded builds, publishing a single reference-counted
             # 'PyObject *' field must be atomic so a concurrent reader (see
             # CPy_GetAttrRef) never observes a torn pointer or a freed value.
-            # Generator classes with exclusive resume are exempt: no other thread
-            # can read or write the field while the token holder runs, so a plain
+            # Generator classes with a running flag are exempt: no other thread
+            # can read or write the field while the flag holder runs, so a plain
             # store and an immediate decref of the old value are safe (and let the
             # old value be freed inline rather than through the QSBR queue).
             # Both helpers steal the reference to src.

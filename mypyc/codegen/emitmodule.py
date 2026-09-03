@@ -708,27 +708,21 @@ class GroupGenerator:
                 if cl.is_ext_class:
                     generate_class(cl, module_name, emitter)
 
-            # Generator classes whose helper method must claim an exclusive-resume
-            # token. Collected after generating the classes, since that's where the
-            # token field is added to the object struct.
-            exclusive_resume_classes = {
-                cl.name: cl for cl in module.classes if cl.uses_exclusive_resume()
-            }
+            # Generator classes whose helper method must claim the running flag.
+            # Collected after generating the classes, since that's where the flag
+            # field is added to the object struct.
+            running_flag_classes = {cl.name: cl for cl in module.classes if cl.uses_running_flag()}
 
             # Generate Python extension module definitions and module initialization functions.
             self.generate_module_def(emitter, module_name, module)
 
             for fn in module.functions:
                 emitter.emit_line()
-                exclusive_resume_class = None
+                running_flag_class = None
                 if fn.decl.name == GENERATOR_HELPER_NAME and fn.class_name is not None:
-                    exclusive_resume_class = exclusive_resume_classes.get(fn.class_name)
+                    running_flag_class = running_flag_classes.get(fn.class_name)
                 generate_native_function(
-                    fn,
-                    emitter,
-                    self.source_paths[module_name],
-                    module_name,
-                    exclusive_resume_class,
+                    fn, emitter, self.source_paths[module_name], module_name, running_flag_class
                 )
                 if fn.name != TOP_LEVEL_NAME and not fn.internal:
                     emitter.emit_line()

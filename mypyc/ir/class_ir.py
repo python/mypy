@@ -250,11 +250,11 @@ class ClassIR:
         # Name of the function if this a callable class representing a coroutine.
         self.coroutine_name: str | None = None
 
-        # If True, this is a generated generator/coroutine class, and resuming an
-        # instance that is already executing is rejected via a token in the object
-        # (see uses_exclusive_resume()). On free-threaded builds this additionally
-        # makes the attributes private to the token holder.
-        self.exclusive_resume = False
+        # If True, this is a generated generator/coroutine class, and entering an
+        # instance that is already executing is rejected using a running flag in
+        # the object (see uses_running_flag()). On free-threaded builds this
+        # additionally makes the attributes private to the flag holder.
+        self.has_running_flag = False
 
     def __repr__(self) -> str:
         return (
@@ -313,20 +313,20 @@ class ClassIR:
         """Do we generate a tp_getset table exposing the attributes to Python?"""
         return self.needs_getseters or not self.is_generated or self.has_dict
 
-    def uses_exclusive_resume(self) -> bool:
-        """Is execution of this generator class guarded by an exclusive-resume token?
+    def uses_running_flag(self) -> bool:
+        """Is execution of this generator class guarded by a running flag?
 
-        The generated helper method claims the token on entry and drops it at every
-        exit, so a resume of an already-executing generator fails instead of running
-        the body again -- whether the resume is reentrant (a generator resuming itself,
-        as CPython also rejects) or from another thread. On free-threaded builds this
-        additionally means the instance attributes are private to the token holder, so
+        The generated helper method claims the flag on entry and clears it at every
+        exit, so entering an already-executing generator fails instead of running the
+        body again -- whether the entry is reentrant (a generator resuming itself, as
+        CPython also rejects) or from another thread. On free-threaded builds this
+        additionally means the instance attributes are private to the flag holder, so
         the body can access them with plain (non-atomic) loads and stores. That only
         holds if nothing outside the helper can touch the attributes, hence the
         getseters check. The check is only needed for that reasoning, but it's applied
-        in GIL builds as well, so that both builds agree on which classes carry a token.
+        in GIL builds as well, so that both builds agree on which classes have a flag.
         """
-        return self.exclusive_resume and not self.needs_getseters_table
+        return self.has_running_flag and not self.needs_getseters_table
 
     def method_decl(self, name: str) -> FuncDecl:
         for ir in self.mro:
@@ -496,7 +496,7 @@ class ClassIR:
             "init_self_leak": self.init_self_leak,
             "env_user_function": self.env_user_function.id if self.env_user_function else None,
             "reuse_freed_instance": self.reuse_freed_instance,
-            "exclusive_resume": self.exclusive_resume,
+            "has_running_flag": self.has_running_flag,
             "is_acyclic": self.is_acyclic,
             "is_enum": self.is_enum,
             "is_coroutine": self.coroutine_name,
@@ -560,7 +560,7 @@ class ClassIR:
             ctx.functions[data["env_user_function"]] if data["env_user_function"] else None
         )
         ir.reuse_freed_instance = data["reuse_freed_instance"]
-        ir.exclusive_resume = data["exclusive_resume"]
+        ir.has_running_flag = data["has_running_flag"]
         ir.is_acyclic = data.get("is_acyclic", False)
         ir.is_enum = data["is_enum"]
         ir.coroutine_name = data["is_coroutine"]

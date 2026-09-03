@@ -13,11 +13,7 @@ from __future__ import annotations
 from collections.abc import Callable
 
 from mypy.nodes import ARG_OPT, FuncDef, Var
-from mypyc.common import (
-    ENV_ATTR_NAME,
-    GENERATOR_ATTRIBUTE_PREFIX,
-    NEXT_LABEL_ATTR_NAME,
-)
+from mypyc.common import ENV_ATTR_NAME, GENERATOR_ATTRIBUTE_PREFIX, NEXT_LABEL_ATTR_NAME
 from mypyc.ir.class_ir import ClassIR
 from mypyc.ir.func_ir import FuncDecl, FuncIR
 from mypyc.ir.ops import (
@@ -179,11 +175,10 @@ def setup_generator_class(builder: IRBuilder) -> ClassIR:
         # The locals live directly in the generator object, and since the environment
         # wasn't split out, no nested function can capture them: every attribute is
         # private to the code running the state machine. We can therefore guard
-        # execution with a single exclusive-resume token, which rejects resuming an
-        # already-executing generator (matching CPython) and, on free-threaded
-        # builds, also lets the body use plain attribute access (see
-        # ClassIR.uses_exclusive_resume).
-        generator_class_ir.exclusive_resume = True
+        # execution with a running flag, which rejects entering an already-executing
+        # generator (matching CPython) and, on free-threaded builds, also lets the
+        # body use plain attribute access (see ClassIR.uses_running_flag).
+        generator_class_ir.has_running_flag = True
     else:
         generator_class_ir.attributes[ENV_ATTR_NAME] = RInstance(builder.fn_info.env_class)
         if not builder.fn_info.fitem.is_coroutine:
