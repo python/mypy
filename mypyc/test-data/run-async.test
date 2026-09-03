@@ -2409,3 +2409,92 @@ async def test_borrow_final_attr_across_await_after_comprehension() -> None:
 async def sleep(t: float) -> None: ...
 
 [typing fixtures/typing-full.pyi]
+
+[case testRunAsyncResumedNativeAwait]
+from typing import Any, Generator
+
+from testutil import assertRaises
+
+class MyError(Exception):
+    pass
+
+class Suspend:
+    """Awaitable that suspends the given number of times before returning."""
+
+    def __init__(self, n: int) -> None:
+        self.n = n
+
+    def __await__(self) -> Generator[Any, Any, int]:
+        i = 0
+        while i < self.n:
+            yield i
+            i += 1
+        return self.n
+
+async def child(n: int) -> int:
+    total = await Suspend(n)
+    return total + 1
+
+async def parent(n: int) -> int:
+    # Statically known native child that suspends before completing, so the
+    # await loop must resume it after a suspension.
+    return await child(n) + 10
+
+async def grandparent(n: int) -> int:
+    return await parent(n) + 100
+
+async def tuple_child(n: int) -> tuple[int, str]:
+    await Suspend(n)
+    return (n, "x")
+
+async def tuple_parent(n: int) -> tuple[int, str]:
+    return await tuple_child(n)
+
+async def raising_child(n: int) -> int:
+    await Suspend(n)
+    raise MyError()
+
+async def raising_parent(n: int) -> int:
+    return await raising_child(n)
+
+async def catching_parent(n: int) -> int:
+    try:
+        return await raising_child(n)
+    except MyError:
+        return -1
+
+def drive(coro: Any) -> Any:
+    """Drive a coroutine to completion without an event loop."""
+    steps = 0
+    while True:
+        try:
+            coro.send(None)
+        except StopIteration as e:
+            return e.value
+        steps += 1
+        assert steps < 100
+
+def test_resumed_native_await() -> None:
+    for n in range(5):
+        assert drive(parent(n)) == n + 11
+        assert drive(grandparent(n)) == n + 111
+        assert drive(tuple_parent(n)) == (n, "x")
+
+def test_resumed_native_await_exception() -> None:
+    for n in range(5):
+        with assertRaises(MyError):
+            drive(raising_parent(n))
+        assert drive(catching_parent(n)) == -1
+
+def test_throw_into_suspended_native_child() -> None:
+    coro = parent(3)
+    coro.send(None)
+    with assertRaises(MyError):
+        coro.throw(MyError())
+
+def test_close_suspended_native_child() -> None:
+    coro = parent(3)
+    coro.send(None)
+    coro.close()
+
+[typing fixtures/typing-full.pyi]
