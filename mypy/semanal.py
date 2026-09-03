@@ -771,6 +771,23 @@ class SemanticAnalyzer(
                     self.defer()
                     return
                 typ = inst
+            elif name == "__loader__":
+                if self.options.use_builtins_fixtures:
+                    inst = self.named_type_or_none("builtins.object")
+                else:
+                    inst = self.named_type_or_none("_typeshed.importlib.LoaderProtocol")
+                if inst is None:
+                    if (
+                        self.final_iteration
+                        or self.options.clone_for_module("_typeshed.importlib").follow_imports
+                        == "skip"
+                    ):
+                        inst = self.named_type_or_none("builtins.object")
+                        assert inst is not None, "Cannot find builtins.object"
+                    else:
+                        self.defer()
+                        return
+                typ = UnionType.make_union([inst, NoneType()])
             elif name == "__spec__":
                 if self.options.use_builtins_fixtures:
                     inst = self.named_type_or_none("builtins.object")
