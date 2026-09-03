@@ -162,17 +162,10 @@ class ClassIR:
         # Attributes that must survive generator/coroutine completion because
         # escaped nested functions may still read them as closure variables.
         self.attrs_to_keep_alive_on_completion: set[str] = set()
-        # Final attributes defined in the class (not inherited)
+        # Final attributes initialized in the __init__ method (not inherited)
         self.final_attributes: set[str] = set()
-        # Class-body Final attributes defined in the class (not inherited).
-        #
-        # These are "X: Final = <value>" declarations in the class body, as opposed to
-        # "self.x: Final = ..." assignments in __init__ (which live in 'attributes' and
-        # 'final_attributes'). They are deliberately *not* in 'attributes': they get no
-        # slot in the instance struct. Instead the value is stored once in a module-level
-        # static named "<class>.<attr>" and reads are either constant folded or loaded
-        # from that static. The value is also set on the type object, so dynamic access
-        # from interpreted code resolves through the class dict as usual.
+        # Final attributes defined in class body as "X: Final = <value>" (not inherited).
+        # They get no slot in the instance struct. The value lives in a module-level static.
         self.class_final_attributes: dict[str, RType] = {}
         # Deletable attributes
         self.deletable: list[str] = []
