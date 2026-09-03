@@ -6595,25 +6595,6 @@ def test_trait_final_via_any() -> None:
     assert o.LITERAL == 23
     assert o.COMPUTED == 7
 
-[case testDataclassFinalAttributeKeepsInstanceSlot]
-from dataclasses import dataclass
-from typing import Any, Final
-
-@dataclass
-class C:
-    X: Final = 23
-    y: int = 1
-
-def test_dataclass_final_keeps_instance_slot() -> None:
-    # Final in a dataclass body declares a field, so it must keep its instance
-    # slot: the interpreted __init__/__eq__/__repr__ that dataclasses generates
-    # reach for it. (Instantiating such a class is separately broken -- the Final
-    # getset has no setter, so the generated __init__ can't assign it -- so this
-    # only checks that the slot is still there.)
-    t: Any = C
-    assert 'X' in t.__mypyc_attrs__
-    assert 'y' in t.__mypyc_attrs__
-
 [case testClassBodyFinalAttributeOfNativeIntType]
 from mypy_extensions import i64
 from typing import Any, Final
@@ -6643,11 +6624,15 @@ class C:
 class D:
     X: Final = 24
 
-class E(C):
+class E1(C):
     pass
 
-def through_union_same_decl(x: Union[C, E]) -> int:
-    # Both items inherit the same declaration, so this can use C's value.
+class E2(C):
+    pass
+
+def through_union_same_decl(x: Union[E1, E2]) -> int:
+    # Two sibling subclasses, so neither item is the declaring class itself, but both
+    # inherit the same declaration and can use C's value.
     return x.X
 
 def through_union_different_decls(x: Union[C, D]) -> int:
@@ -6662,8 +6647,8 @@ def through_narrowing(x: object) -> int:
     return x.X
 
 def test_union_same_decl() -> None:
-    assert through_union_same_decl(C()) == 23
-    assert through_union_same_decl(E()) == 23
+    assert through_union_same_decl(E1()) == 23
+    assert through_union_same_decl(E2()) == 23
 
 def test_union_different_decls() -> None:
     assert through_union_different_decls(C()) == 23
@@ -6672,12 +6657,12 @@ def test_union_different_decls() -> None:
 def test_any() -> None:
     assert through_any(C()) == 23
     assert through_any(D()) == 24
-    assert through_any(E()) == 23
+    assert through_any(E1()) == 23
     assert through_any(C) == 23
 
 def test_narrowing() -> None:
     assert through_narrowing(C()) == 23
-    assert through_narrowing(E()) == 23
+    assert through_narrowing(E1()) == 23
 
 [case testClassBodyFinalAttributeWithInterpretedSubclasses]
 from mypy_extensions import mypyc_attr

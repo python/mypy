@@ -353,3 +353,24 @@ L0:
     r2 = unbox(int, r1)
     return r2
 
+[case testClassBodyFinalThroughUnion]
+from typing import Final, Union
+
+class C:
+    X: Final = 23
+
+class E1(C):
+    pass
+
+class E2(C):
+    pass
+
+def same_decl(x: Union[E1, E2]) -> int:
+    # Neither item is the declaring class itself, but both inherit the same
+    # declaration, so this can still be folded.
+    return x.X
+[out]
+def same_decl(x):
+    x :: union[__main__.E1, __main__.E2]
+L0:
+    return 46
