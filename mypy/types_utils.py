@@ -154,6 +154,10 @@ def is_self_type_like(typ: Type, *, is_classmethod: bool) -> bool:
 def store_argument_type(
     defn: FuncItem, i: int, typ: CallableType, named_type: Callable[[str, list[Type]], Instance]
 ) -> None:
+    # Expanding an unpacked tuple can add synthetic positional arguments to
+    # the callable type without adding corresponding AST arguments.
+    if i >= len(defn.arguments):
+        return
     arg_type = typ.arg_types[i]
     if typ.arg_kinds[i] == ARG_STAR:
         if isinstance(arg_type, ParamSpecType):
