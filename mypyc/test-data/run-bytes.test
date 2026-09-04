@@ -329,7 +329,7 @@ from native import (
 )
 from testutil import assertRaises
 
-small_indices = [-100, -8, -7, -1, 0, 1, 3, 6, 7, 8, 100]
+small_indices = [-100, -8, -7, -5, -3, -1, 0, 1, 3, 6, 7, 8, 100]
 for f, large_indices in [
     (from_slice, [-2**100, -2**63, 2**63, 2**100]),
     (from_slice_i64, [-2**63, 2**63 - 1]),
@@ -408,7 +408,7 @@ def argument(name, value, fail=False):
         return value
     return call
 
-for start, end in [(1, 4), (-5, 2**100)]:
+for start, end in [(1, 4), (1, -1), (-5, 4), (-5, -1), (-5, 2**100)]:
     calls = []
     assert from_slice_calls(
         argument('source', b), argument('start', start), argument('end', end)
