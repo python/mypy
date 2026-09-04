@@ -9727,3 +9727,32 @@ def f() -> None:
     class X:
         ...
     undefined  # E: Name "undefined" is not defined
+
+[case testPropertyReturningFunctionType]
+from types import FunctionType
+
+class FuncWrap:
+    def __init__(self, func: object) -> None:
+        if not isinstance(func, FunctionType):
+            raise TypeError()
+        self._func = func
+
+    @property
+    def __func__(self) -> FunctionType:
+        return self._func
+
+def good() -> int:
+    return 1
+
+wrapped = FuncWrap(good)
+assert isinstance(wrapped.__func__, FunctionType)
+[builtins fixtures/property-function.pyi]
+[file types.pyi]
+from typing import final
+
+@final
+class FunctionType:
+    def __get__(self, instance: object, owner: type | None = ...) -> MethodType: ...
+
+@final
+class MethodType: ...

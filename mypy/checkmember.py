@@ -936,7 +936,18 @@ def analyze_var(
         ):
             # Unwrap nonmember similar to class-level access
             result = p_result.args[0]
-    if result and not (implicit or var.info.is_protocol and is_instance_var(var)):
+    dataclass_metadata = var.info.metadata.get("dataclass", {})
+    is_dataclass_field = any(
+        attribute.get("name") == name for attribute in dataclass_metadata.get("attributes", [])
+    )
+    # A read-only property has already applied descriptor access to its getter
+    # result. Dataclass fields are represented as synthetic properties, but
+    # their descriptor access still needs to happen on instance reads.
+    if (
+        result
+        and not (var.is_property and not var.is_settable_property and not is_dataclass_field)
+        and not (implicit or var.info.is_protocol and is_instance_var(var))
+    ):
         result = analyze_descriptor_access(result, mx)
     if hook:
         result = hook(
