@@ -1549,6 +1549,19 @@ reveal_type(D.meth())  # N: Revealed type is "__main__.D"
 reveal_type(D.bad())  # N: Revealed type is "Never"
 [builtins fixtures/classmethod.pyi]
 
+[case testTypingSelfAnnotatedType]
+# See: https://github.com/python/mypy/issues/21917
+
+from typing import Self
+from typing_extensions import Annotated
+
+class C:
+    def foo(self: Annotated[Self, "some_metadata"], x: int) -> None:
+        ...
+
+reveal_type(C.foo) # N: Revealed type is "def [Self <: __main__.C] (self: Self`2, x: builtins.int)"
+[builtins fixtures/tuple.pyi]
+
 [case testTypingSelfOverload]
 from typing import Self, overload, Union
 
