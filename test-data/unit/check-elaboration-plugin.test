@@ -1,0 +1,39 @@
+[case testElaboratesAnyReturn]
+from typing import Any
+
+def bad(x: int) -> Any:
+    return str(x)
+
+reveal_type(bad(1))  # N: Revealed type is "builtins.str"
+value: int = bad(1)  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+
+[case testElaboratesIgnoresBadAnnot]
+from typing import Any
+
+def unused(x: int) -> Any:
+    return "hello"
+
+reveal_type(unused(1)) # N: Revealed type is "builtins.str"
+value: int = bad(1) # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+
+[case testElaboratesAttribute]
+from typing import Any
+
+class Settings:
+    retries: Any = "3"
+
+reveal_type(Settings().retries)  # N: Revealed type is "builtins.str"
+retries: int = Settings().retries  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+
+
+[case testElaboratesNestedCallableReturn]
+from typing import Any, Callable
+
+handlers: dict[str, Callable[[bytes], Any]] = {
+    "decode": lambda data: "decoded"
+}
+
+result = handlers["decode"](b"hello")
+
+reveal_type(result)  # N: Revealed type is "builtins.str"
+value: bytes = result  # E: Incompatible types in assignment (expression has type "str", variable has type "bytes")
