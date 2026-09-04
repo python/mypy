@@ -250,19 +250,19 @@ class ClassIR:
         # Name of the function if this a callable class representing a coroutine.
         self.coroutine_name: str | None = None
 
-        # If True, this is a generated generator/coroutine class whose instances have
-        # a running flag: the generator helper method claims it on entry and clears it
-        # at every exit, so entering an instance that is already executing fails
-        # instead of running the body again (matching CPython). Set for all generator
-        # classes, since reentrant and concurrent entry must be rejected either way.
+        # If True, instances of this generated generator/coroutine class have a running
+        # flag: the generator helper method claims it on entry and clears it at every
+        # exit, so entering an instance that is already executing fails instead of
+        # running the body again, like in CPython. Set for all generator classes, since
+        # reentrant and concurrent entry must be rejected either way.
         self.has_running_flag = False
 
-        # If True, this is a generated generator/coroutine class that holds the
-        # function's locals directly, instead of pointing to a separate environment
-        # class. Nothing outside the generator body can then reach those attributes:
-        # merging only happens when no nested function can capture a local. Combined
-        # with the running flag this makes them thread-confined -- see
-        # attrs_are_thread_confined().
+        # If True, this generated generator/coroutine class holds the function's locals
+        # directly instead of pointing to a separate environment class. Nothing outside
+        # the generator body can reach those attributes then, since the classes are only
+        # merged if no nested function can capture a local. Together with the running
+        # flag this makes the attributes thread-confined (see
+        # attrs_are_thread_confined).
         self.has_private_attrs = False
 
     def __repr__(self) -> str:
@@ -326,14 +326,15 @@ class ClassIR:
         """Can only one thread at a time reach this class's attributes?
 
         True for a generator class that holds its locals directly (has_private_attrs)
-        and serializes execution with a running flag: the attributes are then reachable
-        only from the generator body, and only the flag holder runs the body. On
+        and serializes execution with a running flag: the attributes are then only
+        reachable from the generator body, and only the flag holder runs the body. On
         free-threaded builds such attributes can use plain (non-atomic) loads and
-        stores. Generator classes with a separate environment class don't qualify:
-        their locals live in an object that escaped nested functions can also touch,
-        even while the generator is suspended, so the running flag says nothing about
-        them. Getseters would expose the attributes to arbitrary code too, so they
-        must not be generated.
+        stores.
+
+        Generator classes with a separate environment class don't qualify, since their
+        locals live in an object that escaped nested functions can also touch, even
+        while the generator is suspended. Getseters must not be generated either, as
+        they would expose the attributes to arbitrary code.
         """
         return self.has_private_attrs and self.has_running_flag and not self.needs_getseters_table
 

@@ -22,9 +22,9 @@ PyObject *CPy_GetCoro(PyObject *obj)
     }
 }
 
-// Report a failed attempt to claim a generator's running flag (see
-// CPyGen_TryEnter). These are the messages CPython uses; there is no third case
-// for async generators, since mypyc doesn't compile those.
+// Report a failed attempt to claim a generator's running flag (see CPyGen_TryEnter).
+// These are the messages CPython uses. There is no third case for async generators,
+// since mypyc doesn't support those.
 PyObject *CPyGen_AlreadyExecutingError(int is_coroutine)
 {
     PyErr_SetString(PyExc_ValueError,
