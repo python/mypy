@@ -24,7 +24,11 @@ def make() -> str:
 
 def outer():
     def nested(value: str):
-        return make() + (yield value)
+        for item in [value]:
+            # The loop iterator uses IR-builder-managed spill slots, while the
+            # result of make() is spilled later by the spill transform.
+            return make() + (yield item)
+        return "unreachable"
     return nested("right")
 """
         module, _, _, _ = build_ir_for_single_file2(source.splitlines())
@@ -41,6 +45,7 @@ def outer():
         # is protected by the running flag and can use plain attribute access.
         assert frame.attrs_are_thread_confined()
         assert NEXT_LABEL_ATTR_NAME in frame.attributes
+        assert any(name.startswith(TEMP_ATTR_NAME + "1_") for name in frame.attributes)
         assert any(name.startswith(TEMP_ATTR_NAME + "2_") for name in frame.attributes)
 
         # Source-level variables stay in the shared environment.

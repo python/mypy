@@ -303,7 +303,7 @@ class IRBuilder:
         # Whether the current top-level expression contains a suspension point
         # (await, yield or yield from). A whole-expression borrow can't span such a
         # point, since the borrowed value (and its root) live in registers that are
-        # not spilled into the generator environment across the suspend.
+        # not spilled into the generator frame across the suspend.
         self.expr_has_suspend = False
         # Saved expression state for enclosing functions (see enter()/leave()).
         self.expression_depth_stack: list[int] = []
@@ -1046,14 +1046,17 @@ class IRBuilder:
         self.nonlocal_control.pop()
 
     def make_spill_target(self, type: RType) -> AssignmentTarget:
-        """Moves a given Value instance into the generator class' environment class."""
-        name = f"{TEMP_ATTR_NAME}{self.temp_counter}"
+        """Moves a given Value instance into the private generator frame."""
+        frame = self.fn_info.generator_class
+        # Generator classes for overriding methods can inherit from one another. Include the
+        # owning class name so unrelated helper spills don't alias an inherited struct field.
+        name = f"{TEMP_ATTR_NAME}1_{frame.ir.name}_{self.temp_counter}"
         self.temp_counter += 1
-        target = self.add_var_to_env_class(Var(name), type, self.fn_info.generator_class)
+        target = self.add_var_to_class(Var(name), type, frame.ir, frame.self_reg)
         return target
 
     def spill(self, value: Value) -> AssignmentTarget:
-        """Moves a given Value instance into the generator class' environment class."""
+        """Moves a given Value instance into the private generator frame."""
         target = self.make_spill_target(value.type)
         # Shouldn't be able to fail
         self.assign(target, value, NO_TRACEBACK_LINE_NO)
@@ -1061,7 +1064,7 @@ class IRBuilder:
 
     def maybe_spill(self, value: Value) -> Value | AssignmentTarget:
         """
-        Moves a given Value instance into the environment class for generator functions. For
+        Moves a given Value instance into the private frame for generator functions. For
         non-generator functions, leaves the Value instance as it is.
 
         Returns an AssignmentTarget associated with the Value for generator functions and the
@@ -1073,7 +1076,7 @@ class IRBuilder:
 
     def maybe_spill_assignable(self, value: Value) -> Register | AssignmentTarget:
         """
-        Moves a given Value instance into the environment class for generator functions. For
+        Moves a given Value instance into the private frame for generator functions. For
         non-generator functions, allocate a temporary Register.
 
         Returns an AssignmentTarget associated with the Value for generator functions and an
@@ -1633,24 +1636,45 @@ class IRBuilder:
         keep_alive_on_completion: bool = False,
         prefix: str = "",
     ) -> AssignmentTarget:
-        # First, define the variable name as an attribute of the environment class, and then
-        # construct a target for that attribute.
+        return self.add_var_to_class(
+            var,
+            rtype,
+            self.fn_info.env_class,
+            base.curr_env_reg,
+            reassign=reassign,
+            always_defined=always_defined,
+            keep_alive_on_completion=keep_alive_on_completion,
+            prefix=prefix,
+        )
+
+    def add_var_to_class(
+        self,
+        var: SymbolNode,
+        rtype: RType,
+        cls: ClassIR,
+        base: Value,
+        reassign: bool = False,
+        always_defined: bool = False,
+        keep_alive_on_completion: bool = False,
+        prefix: str = "",
+    ) -> AssignmentTarget:
+        """Declare an attribute on a class and construct a target using an explicit base."""
         name = prefix + remangle_redefinition_name(var.name)
-        self.fn_info.env_class.attributes[name] = rtype
+        cls.attributes[name] = rtype
         if keep_alive_on_completion:
-            self.fn_info.env_class.attrs_to_keep_alive_on_completion.add(name)
+            cls.attrs_to_keep_alive_on_completion.add(name)
         if always_defined:
-            self.fn_info.env_class.attrs_with_defaults.add(name)
-        attr_target = AssignmentTargetAttr(base.curr_env_reg, name)
+            cls.attrs_with_defaults.add(name)
+        attr_target = AssignmentTargetAttr(base, name)
 
         if reassign:
             # Read the local definition of the variable, and set the corresponding attribute of
-            # the environment class' variable to be that value.
+            # the class' variable to be that value.
             reg = self.read(self.lookup(var), self.fn_info.fitem.line)
-            self.add(SetAttr(base.curr_env_reg, name, reg, self.fn_info.fitem.line))
+            self.add(SetAttr(base, name, reg, self.fn_info.fitem.line))
 
         # Override the local definition of the variable to instead point at the variable in
-        # the environment class.
+        # the class.
         return self.add_target(var, attr_target)
 
     def is_builtin_ref_expr(self, expr: RefExpr) -> bool:

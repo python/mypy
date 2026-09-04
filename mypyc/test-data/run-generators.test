@@ -772,9 +772,12 @@ def make() -> str:
 
 def outer() -> Generator[str, str, str]:
     def nested(value: str) -> Generator[str, str, str]:
-        # The result of make() is a compiler-generated temporary live across
-        # the yield. The source argument stays in the separate environment.
-        return make() + (yield value)
+        for item in [value]:
+            # The loop iterator and the result of make() are compiler-generated
+            # temporaries live across the yield. The source bindings stay in the
+            # separate environment.
+            return make() + (yield item)
+        return "unreachable"
 
     return nested("right")
 
