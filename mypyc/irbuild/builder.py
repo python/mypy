@@ -169,6 +169,7 @@ from mypyc.primitives.misc_ops import (
     check_unpack_count_op,
     get_module_dict_op,
     import_cache_get_op,
+    import_cache_set_if_initialized_op,
     import_cache_set_op,
     import_op,
     native_import_is_initialized_op,
@@ -548,13 +549,7 @@ class IRBuilder:
                 )
             else:
                 module_lock_api = Integer(0, c_pointer_rprimitive)
-        if is_native_module and not is_same_group_native:
-            # A sys.modules entry may still be executing in another thread. For
-            # native modules in another compilation group, use CPython's import
-            # path so that its per-module lock waits for initialization.
-            self.goto(needs_import)
-        else:
-            self.check_if_module_loaded(module_cache, line, needs_import, out, import_state)
+        self.check_if_module_loaded(module_cache, line, needs_import, out, import_state)
 
         self.activate_block(needs_import)
         if is_same_group_native:
@@ -603,7 +598,10 @@ class IRBuilder:
         else:
             # Import using generic Python C API
             value = self.call_c(import_op, [self.load_str(module, line)], line)
-        self.call_c(import_cache_set_op, [module_cache, value], line)
+        cache_set_op = (
+            import_cache_set_op if is_same_group_native else import_cache_set_if_initialized_op
+        )
+        self.call_c(cache_set_op, [module_cache, value], line)
         self.goto_and_activate(out)
 
     def check_if_module_loaded(

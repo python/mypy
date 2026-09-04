@@ -126,6 +126,23 @@ PyObject *CPyImport_GetModuleCache(CPyModule **cache) {
 #endif
 }
 
+static bool CPyImport_IsModuleInitializing(PyObject *module) {
+    PyObject *spec = PyObject_GetAttrString(module, "__spec__");
+    if (spec == NULL) {
+        PyErr_Clear();
+        return false;
+    }
+    PyObject *initializing = PyObject_GetAttrString(spec, "_initializing");
+    Py_DECREF(spec);
+    if (initializing == NULL) {
+        PyErr_Clear();
+        return false;
+    }
+    bool result = Py_IsTrue(initializing);
+    Py_DECREF(initializing);
+    return result;
+}
+
 void CPyImport_SetModuleCache(CPyModule **cache, PyObject *module) {
     Py_INCREF(module);
 #ifdef _WIN32
@@ -141,6 +158,17 @@ void CPyImport_SetModuleCache(CPyModule **cache, PyObject *module) {
         Py_DECREF(module);
     }
 #endif
+}
+
+void CPyImport_SetModuleCacheIfInitialized(CPyModule **cache, PyObject *module) {
+    // PyImport_Import can return a partially initialized module to break an
+    // import-lock deadlock. Don't let that object bypass synchronization on a
+    // later generic import; retry through the import machinery until
+    // initialization has finished. Same-group native imports use the regular
+    // setter because their execution path replaces cached partial modules.
+    if (!CPyImport_IsModuleInitializing(module)) {
+        CPyImport_SetModuleCache(cache, module);
+    }
 }
 
 void CPyImport_ReplaceModuleCache(CPyModule **cache, PyObject *module) {

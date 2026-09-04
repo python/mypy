@@ -2318,6 +2318,92 @@ with ThreadPoolExecutor(max_workers=len(functions)) as executor:
     futures = [executor.submit(run, function) for function in functions]
     assert [future.result() for future in futures] == [42] * len(functions)
 
+[case testTopLevelCrossGroupImportWaitsAfterCircularImport]
+# separate: [(["other_target.py"], "target_group"), (["other_blocker.py", "other_top_level_importer.py"], "importer_group")]
+pass
+
+[file other_target.py]
+import import_sync
+
+import_sync.target_started.set()
+assert import_sync.blocker_started.wait(timeout=5)
+import_sync.target_importing_blocker.set()
+import other_blocker
+import_sync.target_waiting_to_finish.set()
+assert import_sync.target_may_finish.wait(timeout=5)
+
+value = 42
+
+[file other_blocker.py]
+import import_sync
+
+import_sync.blocker_started.set()
+assert import_sync.blocker_may_import_target.wait(timeout=5)
+import other_target
+
+saw_partial_target = not hasattr(other_target, "value")
+
+[file other_top_level_importer.py]
+import import_sync
+
+import_sync.top_level_started.set()
+import other_target
+
+saw_partial_target = not hasattr(other_target, "value")
+
+[file import_sync.py]
+from threading import Event
+
+target_started = Event()
+blocker_started = Event()
+target_importing_blocker = Event()
+blocker_may_import_target = Event()
+target_waiting_to_finish = Event()
+top_level_started = Event()
+target_may_finish = Event()
+
+[file driver.py]
+from concurrent.futures import ThreadPoolExecutor
+import importlib
+from time import monotonic, sleep
+
+import import_sync
+
+with ThreadPoolExecutor(max_workers=3) as executor:
+    target_future = executor.submit(importlib.import_module, "other_target")
+    assert import_sync.target_started.wait(timeout=5)
+    blocker_future = executor.submit(importlib.import_module, "other_blocker")
+    assert import_sync.target_importing_blocker.wait(timeout=5)
+
+    bootstrap = importlib.import_module("importlib._bootstrap")
+    blocker_lock = bootstrap._get_module_lock("other_blocker")
+    deadline = monotonic() + 5
+    while not blocker_lock.waiters and monotonic() < deadline:
+        sleep(0.001)
+    target_was_waiting = bool(blocker_lock.waiters)
+    import_sync.blocker_may_import_target.set()
+    assert target_was_waiting
+
+    blocker = blocker_future.result(timeout=10)
+    assert blocker.saw_partial_target
+    assert import_sync.target_waiting_to_finish.wait(timeout=5)
+
+    top_level_future = executor.submit(importlib.import_module, "other_top_level_importer")
+    assert import_sync.top_level_started.wait(timeout=5)
+    target_lock = bootstrap._get_module_lock("other_target")
+    deadline = monotonic() + 5
+    while not target_lock.waiters and not top_level_future.done() and monotonic() < deadline:
+        sleep(0.001)
+    top_level_waited = bool(target_lock.waiters)
+    import_sync.target_may_finish.set()
+
+    target = target_future.result(timeout=10)
+    top_level_importer = top_level_future.result(timeout=10)
+
+assert top_level_waited
+assert target.value == 42
+assert not top_level_importer.saw_partial_target
+
 [case testRegularImportWaitsForDirectNativeImport]
 # separate: [(["native.py", "other_importer.py"], "testgroup")]
 from time import sleep

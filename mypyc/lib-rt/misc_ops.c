@@ -777,7 +777,7 @@ static bool import_single(PyObject *mod_id, PyObject **mod_static,
         if (mod == NULL) {
             return false;
         }
-        CPyImport_SetModuleCache((CPyModule **)mod_static, mod);
+        CPyImport_SetModuleCacheIfInitialized((CPyModule **)mod_static, mod);
         Py_DECREF(mod);
     }
 
@@ -1778,14 +1778,14 @@ fail:
     // Clean up on failure so that a subsequent import attempt will retry
     // initialization.
     PyErr_Fetch(&exc_type, &exc_val, &exc_tb);
+    CPyImport_SetInitialized(state, false);
+    PyObject_DelItem(module_dict, module_name);
+    PyErr_Clear();
     if (initializing_spec != NULL) {
         CPyImport_EndInitializing(initializing_spec);
         PyErr_Clear();
     }
-    PyObject_DelItem(module_dict, module_name);
-    PyErr_Clear();
     PyErr_Restore(exc_type, exc_val, exc_tb);
-    CPyImport_SetInitialized(state, false);
     Py_CLEAR(*module_static);
     CPyImport_ReleaseLockPreservingException(module_lock);
     return NULL;

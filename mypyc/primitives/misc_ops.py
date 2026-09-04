@@ -181,6 +181,13 @@ import_cache_set_op = custom_op(
     error_kind=ERR_NEVER,
 )
 
+import_cache_set_if_initialized_op = custom_op(
+    arg_types=[object_pointer_rprimitive, object_rprimitive],
+    return_type=void_rtype,
+    c_function_name="CPyImport_SetModuleCacheIfInitialized",
+    error_kind=ERR_NEVER,
+)
+
 # Table-driven import op.
 import_many_op = custom_op(
     arg_types=[
