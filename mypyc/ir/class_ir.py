@@ -254,7 +254,7 @@ class ClassIR:
         self.has_running_flag = False
 
         # Does this generator object contain its merged environment?
-        self.has_private_attrs = False
+        self.has_merged_generator_env = False
 
     def __repr__(self) -> str:
         return (
@@ -321,7 +321,11 @@ class ClassIR:
         A separate environment does not qualify because captured locals may be accessed
         by nested functions.
         """
-        return self.has_private_attrs and self.has_running_flag and not self.needs_getseters_table
+        return (
+            self.has_merged_generator_env
+            and self.has_running_flag
+            and not self.needs_getseters_table
+        )
 
     def method_decl(self, name: str) -> FuncDecl:
         for ir in self.mro:
@@ -492,7 +496,7 @@ class ClassIR:
             "env_user_function": self.env_user_function.id if self.env_user_function else None,
             "reuse_freed_instance": self.reuse_freed_instance,
             "has_running_flag": self.has_running_flag,
-            "has_private_attrs": self.has_private_attrs,
+            "has_merged_generator_env": self.has_merged_generator_env,
             "is_acyclic": self.is_acyclic,
             "is_enum": self.is_enum,
             "is_coroutine": self.coroutine_name,
@@ -557,7 +561,7 @@ class ClassIR:
         )
         ir.reuse_freed_instance = data["reuse_freed_instance"]
         ir.has_running_flag = data["has_running_flag"]
-        ir.has_private_attrs = data["has_private_attrs"]
+        ir.has_merged_generator_env = data["has_merged_generator_env"]
         ir.is_acyclic = data.get("is_acyclic", False)
         ir.is_enum = data["is_enum"]
         ir.coroutine_name = data["is_coroutine"]

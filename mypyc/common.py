@@ -28,7 +28,7 @@ MYPYC_DEFAULTS_SETUP: Final = "__mypyc_defaults_setup"
 GENERATOR_ATTRIBUTE_PREFIX: Final = "__mypyc_generator_attribute__"
 CPYFUNCTION_NAME = "__cpyfunction__"
 
-# Lacks the suffix added to user attribute fields, so it cannot collide with one.
+# Omits the prefix added to user attribute fields, so it cannot collide with one.
 RUNNING_FIELD: Final = "mypyc_running"
 
 # Max short int we accept as a literal is based on 32-bit platforms,

@@ -174,7 +174,7 @@ def setup_generator_class(builder: IRBuilder) -> ClassIR:
     if builder.fn_info.can_merge_generator_and_env_classes():
         builder.fn_info.env_class = generator_class_ir
         # The merged environment can be thread-confined; see attrs_are_thread_confined.
-        generator_class_ir.has_private_attrs = True
+        generator_class_ir.has_merged_generator_env = True
     else:
         generator_class_ir.attributes[ENV_ATTR_NAME] = RInstance(builder.fn_info.env_class)
         if not builder.fn_info.fitem.is_coroutine:
