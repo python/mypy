@@ -166,6 +166,37 @@ static inline void CPy_SetAttrRef(PyObject **field, PyObject *value) {
 static inline void CPy_InitAttrRef(PyObject **field, PyObject *value) {
     _Py_atomic_store_ptr_relaxed(field, value);
 }
+
+#endif
+
+// Generated generator and coroutine helpers claim this flag while executing,
+// rejecting reentrant or concurrent resumes.
+//
+// On free-threaded builds, the atomic exchange provides mutual exclusion and acquire
+// ordering; the release store publishes body writes to the next resume. This also
+// permits plain access to private generator attributes. Claiming must be a single
+// atomic operation, or two threads could both observe a clear flag and enter. Under
+// the GIL, plain accesses suffice.
+#ifdef Py_GIL_DISABLED
+static inline int CPyGen_TryEnter(uint32_t *running) {
+    return _Py_atomic_exchange_uint32(running, 1) == 0;
+}
+
+static inline void CPyGen_Exit(uint32_t *running) {
+    _Py_atomic_store_uint32_release(running, 0);
+}
+#else
+static inline int CPyGen_TryEnter(uint32_t *running) {
+    if (*running) {
+        return 0;
+    }
+    *running = 1;
+    return 1;
+}
+
+static inline void CPyGen_Exit(uint32_t *running) {
+    *running = 0;
+}
 #endif
 
 PyObject* update_bases(PyObject *bases);

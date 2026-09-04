@@ -22,6 +22,15 @@ PyObject *CPy_GetCoro(PyObject *obj)
     }
 }
 
+// Raise CPython-compatible errors after a failed CPyGen_TryEnter.
+PyObject *CPyGen_AlreadyExecutingError(int is_coroutine)
+{
+    PyErr_SetString(PyExc_ValueError,
+                    is_coroutine ? "coroutine already executing"
+                                 : "generator already executing");
+    return NULL;
+}
+
 PyObject *CPyIter_Send(PyObject *iter, PyObject *val)
 {
     // Do a send, or a next if second arg is None.

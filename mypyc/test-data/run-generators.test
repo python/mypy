@@ -1002,3 +1002,75 @@ def test_borrow_across_yield_from() -> None:
             assert False
 
 [typing fixtures/typing-full.pyi]
+
+[case testReentrantResume]
+from typing import Any, Iterator, Optional
+from testutil import assertRaises
+
+box: list[Optional[Iterator[int]]] = [None]
+
+def self_resuming() -> Iterator[int]:
+    g = box[0]
+    assert g is not None
+    yield next(g)
+
+def test_reentrant_next() -> None:
+    g = self_resuming()
+    box[0] = g
+    with assertRaises(ValueError, "generator already executing"):
+        next(g)
+    # The generator was left in a completed state by the propagating exception.
+    with assertRaises(StopIteration):
+        next(g)
+
+cbox: list[Any] = [None]
+
+async def self_sending() -> int:
+    cbox[0].send(None)
+    return 1
+
+def test_reentrant_send_to_coroutine() -> None:
+    c: Any = self_sending()
+    cbox[0] = c
+    with assertRaises(ValueError, "coroutine already executing"):
+        c.send(None)
+
+[case testReentrantResumeWithSeparateEnvironment]
+from typing import Any, Iterator, Optional
+from testutil import assertRaises
+
+def outer() -> int:
+    box: list[Any] = []
+
+    def nested() -> Iterator[int]:
+        # Captures 'box', so the environment is a separate class and the locals
+        # are not private to the generator object. The running flag still applies.
+        yield next(box[0])
+
+    g = nested()
+    box.append(g)
+    return next(g)
+
+def test_reentrant_next_in_nested_generator() -> None:
+    with assertRaises(ValueError, "generator already executing"):
+        outer()
+
+class Base:
+    def gen(self) -> Iterator[int]:
+        yield 1
+
+class Derived(Base):
+    def gen(self) -> Iterator[int]:
+        g = box[0]
+        assert g is not None
+        yield next(g)
+
+box: list[Optional[Iterator[int]]] = [None]
+
+def test_generator_method_override_still_works() -> None:
+    assert list(Base().gen()) == [1]
+    b: Base = Derived()
+    g = b.gen()
+    box[0] = g
+    with assertRaises(ValueError, "generator already executing"):
+        next(g)

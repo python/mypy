@@ -18,6 +18,7 @@ from mypyc.common import (
     IS_FREE_THREADED,
     NATIVE_PREFIX,
     REG_PREFIX,
+    RUNNING_FIELD,
 )
 from mypyc.ir.class_ir import ClassIR
 from mypyc.ir.func_ir import FUNC_CLASSMETHOD, FUNC_STATICMETHOD, FuncDecl, FuncIR, all_values
@@ -129,12 +130,18 @@ def native_function_header(fn: FuncDecl, emitter: Emitter) -> str:
 
 
 def generate_native_function(
-    fn: FuncIR, emitter: Emitter, source_path: str, module_name: str
+    fn: FuncIR,
+    emitter: Emitter,
+    source_path: str,
+    module_name: str,
+    running_flag_class: ClassIR | None = None,
 ) -> None:
     declarations = Emitter(emitter.context)
     names = generate_names_for_ir(fn.arg_regs, fn.blocks)
     body = Emitter(emitter.context, names)
-    visitor = FunctionEmitterVisitor(body, declarations, source_path, module_name)
+    visitor = FunctionEmitterVisitor(
+        body, declarations, source_path, module_name, running_flag_class
+    )
 
     declarations.emit_line(f"{native_function_header(fn.decl, emitter)} {{")
     body.indent()
@@ -183,6 +190,10 @@ def generate_native_function(
             if not is_next_block or is_problematic_op:
                 fn.blocks[target.label].referenced = True
 
+    if running_flag_class is not None:
+        # Place this before all labels so it runs on resume, but not on internal jumps.
+        visitor.emit_claim_running_flag(fn)
+
     common = frequently_executed_blocks(fn.blocks[0])
 
     for i in range(len(blocks)):
@@ -209,13 +220,21 @@ def generate_native_function(
 
 class FunctionEmitterVisitor(OpVisitor[None]):
     def __init__(
-        self, emitter: Emitter, declarations: Emitter, source_path: str, module_name: str
+        self,
+        emitter: Emitter,
+        declarations: Emitter,
+        source_path: str,
+        module_name: str,
+        running_flag_class: ClassIR | None = None,
     ) -> None:
         self.emitter = emitter
         self.names = emitter.names
         self.declarations = declarations
         self.source_path = source_path
         self.module_name = module_name
+        # Set while emitting a generator helper protected by its running flag.
+        self.running_flag_class = running_flag_class
+        self.running_flag_ptr: str | None = None
         self.literals = emitter.context.literals
         self.rare = False
         # Next basic block to be processed after the current one (if any), set by caller
@@ -291,8 +310,28 @@ class FunctionEmitterVisitor(OpVisitor[None]):
 
             self.emit_lines("} else", "    goto %s;" % self.label(false))
 
+    def emit_claim_running_flag(self, fn: FuncIR) -> None:
+        """Claim the generator's running flag or raise ValueError."""
+        cl = self.running_flag_class
+        assert cl is not None
+        struct = cl.struct_name(self.names)
+        self_str = self.reg(fn.arg_regs[0])
+        self.running_flag_ptr = f"&(({struct} *){self_str})->{RUNNING_FIELD}"
+        flag = self.running_flag_ptr
+        is_coroutine = 1 if cl.has_method("__await__") else 0
+        self.emit_line(f"if (unlikely(!CPyGen_TryEnter({flag}))) {{")
+        self.emit_line(f"return CPyGen_AlreadyExecutingError({is_coroutine});")
+        self.emit_line("}")
+
+    def emit_release_running_flag(self) -> None:
+        """Release the flag; every helper exit is represented by Return."""
+        assert self.running_flag_ptr is not None
+        self.emit_line(f"CPyGen_Exit({self.running_flag_ptr});")
+
     def visit_return(self, op: Return) -> None:
         value_str = self.reg(op.value)
+        if self.running_flag_class is not None:
+            self.emit_release_running_flag()
         self.emit_line("return %s;" % value_str)
 
     def visit_tuple_set(self, op: TupleSet) -> None:
@@ -418,9 +457,15 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         for attributes safe to borrow on free-threaded builds (Final and vec attrs -- see
         transform_member_expr in irbuild), whose values live as long as their container.
         The default (GIL) build always takes the plain-load path and increfs separately.
+
+        Thread-confined attributes also use plain loads; see
+        ClassIR.attrs_are_thread_confined.
         """
         use_get_attr_ref = (
-            IS_FREE_THREADED and is_simple_refcounted_pointer(attr_rtype) and not op.is_borrowed
+            IS_FREE_THREADED
+            and is_simple_refcounted_pointer(attr_rtype)
+            and not op.is_borrowed
+            and not cl.attrs_are_thread_confined()
         )
         if use_get_attr_ref and cl.is_final_attr(op.attr):
             self.emitter.emit_line(f"{dest} = CPy_GetAttrRefFinal((PyObject **)&{attr_expr});")
@@ -578,7 +623,11 @@ class FunctionEmitterVisitor(OpVisitor[None]):
             )
             self.emit_line(f"{dest} = 1;")
             self.emitter.emit_error_check(tmp, ret_type, f"{dest} = 0;")
-        elif IS_FREE_THREADED and is_simple_refcounted_pointer(attr_rtype):
+        elif (
+            IS_FREE_THREADED
+            and is_simple_refcounted_pointer(attr_rtype)
+            and not cl.attrs_are_thread_confined()
+        ):
             # In free-threaded builds, publishing a single reference-counted
             # 'PyObject *' field must be atomic so a concurrent reader (see
             # CPy_GetAttrRef) never observes a torn pointer or a freed value.
