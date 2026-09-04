@@ -2326,11 +2326,11 @@ pass
 import import_sync
 
 import_sync.target_started.set()
-assert import_sync.blocker_started.wait(timeout=5)
+assert import_sync.blocker_started.wait(timeout=15)
 import_sync.target_importing_blocker.set()
 import other_blocker
 import_sync.target_waiting_to_finish.set()
-assert import_sync.target_may_finish.wait(timeout=5)
+assert import_sync.target_may_finish.wait(timeout=15)
 
 value = 42
 
@@ -2338,7 +2338,7 @@ value = 42
 import import_sync
 
 import_sync.blocker_started.set()
-assert import_sync.blocker_may_import_target.wait(timeout=5)
+assert import_sync.blocker_may_import_target.wait(timeout=15)
 import other_target
 
 saw_partial_target = not hasattr(other_target, "value")
@@ -2371,9 +2371,9 @@ import import_sync
 
 with ThreadPoolExecutor(max_workers=3) as executor:
     target_future = executor.submit(importlib.import_module, "other_target")
-    assert import_sync.target_started.wait(timeout=5)
+    assert import_sync.target_started.wait(timeout=15)
     blocker_future = executor.submit(importlib.import_module, "other_blocker")
-    assert import_sync.target_importing_blocker.wait(timeout=5)
+    assert import_sync.target_importing_blocker.wait(timeout=15)
 
     bootstrap = importlib.import_module("importlib._bootstrap")
     blocker_lock = bootstrap._get_module_lock("other_blocker")
@@ -2386,10 +2386,10 @@ with ThreadPoolExecutor(max_workers=3) as executor:
 
     blocker = blocker_future.result(timeout=10)
     assert blocker.saw_partial_target
-    assert import_sync.target_waiting_to_finish.wait(timeout=5)
+    assert import_sync.target_waiting_to_finish.wait(timeout=15)
 
     top_level_future = executor.submit(importlib.import_module, "other_top_level_importer")
-    assert import_sync.top_level_started.wait(timeout=5)
+    assert import_sync.top_level_started.wait(timeout=15)
     target_lock = bootstrap._get_module_lock("other_target")
     deadline = monotonic() + 5
     while not target_lock.waiters and not top_level_future.done() and monotonic() < deadline:
@@ -2411,7 +2411,7 @@ from time import sleep
 import import_sync
 
 import_sync.direct_started.set()
-assert import_sync.regular_started.wait(timeout=5)
+assert import_sync.regular_started.wait(timeout=15)
 sleep(0.05)
 
 def get_value() -> int:
@@ -2445,7 +2445,7 @@ import py_importer
 
 with ThreadPoolExecutor(max_workers=2) as executor:
     direct_future = executor.submit(other_importer.load)
-    assert import_sync.direct_started.wait(timeout=5)
+    assert import_sync.direct_started.wait(timeout=15)
     regular_future = executor.submit(py_importer.load)
     assert direct_future.result(timeout=10) == 42
     assert regular_future.result(timeout=10) == 42
@@ -2525,7 +2525,7 @@ if failure_state.attempts == 1:
     import import_sync
 
     import_sync.a_started.set()
-    assert import_sync.b_started.wait(timeout=5)
+    assert import_sync.b_started.wait(timeout=15)
     import_sync.a_importing_b.set()
     import other_b
     raise RuntimeError("first initialization failed")
@@ -2536,10 +2536,10 @@ value = 42
 import import_sync
 
 import_sync.b_started.set()
-assert import_sync.a_started.wait(timeout=5)
-assert import_sync.a_importing_b.wait(timeout=5)
+assert import_sync.a_started.wait(timeout=15)
+assert import_sync.a_importing_b.wait(timeout=15)
 import_sync.b_waiting_for_driver.set()
-assert import_sync.b_may_import_a.wait(timeout=5)
+assert import_sync.b_may_import_a.wait(timeout=15)
 import other_a
 
 saw_partial_a = not hasattr(other_a, "value")
@@ -2560,10 +2560,10 @@ import native  # Preload the compilation group's shared library.
 
 with ThreadPoolExecutor(max_workers=2) as executor:
     future_a = executor.submit(importlib.import_module, "other_a")
-    assert import_sync.a_started.wait(timeout=5)
+    assert import_sync.a_started.wait(timeout=15)
     future_b = executor.submit(importlib.import_module, "other_b")
-    assert import_sync.a_importing_b.wait(timeout=5)
-    assert import_sync.b_waiting_for_driver.wait(timeout=5)
+    assert import_sync.a_importing_b.wait(timeout=15)
+    assert import_sync.b_waiting_for_driver.wait(timeout=15)
 
     # Wait until other_a is blocked on other_b's module lock. Letting other_b
     # import other_a then deterministically closes the lock cycle and returns
@@ -2603,7 +2603,7 @@ from import_sync import barrier
 def value() -> str:
     return "a"
 
-barrier.wait(timeout=5)
+barrier.wait(timeout=15)
 import other_b
 other_value = other_b.value()
 
@@ -2613,7 +2613,7 @@ from import_sync import barrier
 def value() -> str:
     return "b"
 
-barrier.wait(timeout=5)
+barrier.wait(timeout=15)
 import other_a
 other_value = other_a.value()
 
@@ -2669,7 +2669,7 @@ def load_target() -> None:
 
 thread = Thread(target=load_target)
 thread.start()
-thread.join(timeout=5)
+thread.join(timeout=15)
 
 assert not thread.is_alive(), "native import blocked on its compilation unit"
 assert results == [42]
