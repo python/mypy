@@ -123,7 +123,7 @@ PyObject *CPyImport_GetModuleCache(CPyModule **cache) {
 #endif
 }
 
-static bool CPyImport_IsModuleInitializing(PyObject *module) {
+bool CPyImport_IsModuleInitializing(PyObject *module) {
     PyObject *spec = PyObject_GetAttrString(module, "__spec__");
     if (spec == NULL) {
         PyErr_Clear();

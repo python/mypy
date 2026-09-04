@@ -41,6 +41,7 @@ void CPyModuleLockAPI_Free(CPyModuleLockAPI *api);
 int CPyImport_AcquireLock(CPyModuleLockAPI *api, PyObject *module_name,
                           PyObject **module_lock);
 int CPyImport_ReleaseLock(PyObject *module_lock);
+bool CPyImport_IsModuleInitializing(PyObject *module);
 bool CPyImport_IsInitialized(const CPyImportState *state);
 bool CPyImport_IsInitializedForModule(const CPyImportState *state, PyObject *module,
                                       CPyModule **module_cache);
@@ -1072,6 +1073,7 @@ PyObject *CPyImport_ImportNative(PyObject *module_name,
                                  PyObject *(*init_only_fn)(void),
                                  int (*exec_fn)(PyObject *),
                                  CPyModule **module_static,
+                                 CPyModule **module_cache,
                                  CPyImportState *state, CPyModuleLockAPI *lock_api,
                                  PyObject *shared_lib_file, PyObject *ext_suffix,
                                  Py_ssize_t is_package);

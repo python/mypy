@@ -587,6 +587,7 @@ class IRBuilder:
                     init_only_func,
                     exec_func,
                     module_internal_static,
+                    module_cache,
                     import_state,
                     module_lock_api,
                     shared_lib_file,

@@ -140,13 +140,14 @@ import_op = custom_op(
 
 # Import a native same-group module directly via C-level init/exec functions.
 native_import_op = custom_op(
-    # (module name, init-only function, exec function, module static,
-    #  import state, compilation-unit lock, shared lib __file__, ext suffix,
-    #  is_package)
+    # (module name, init-only function, exec function, internal module static,
+    #  import cache, import state, compilation-unit lock, shared lib __file__,
+    #  ext suffix, is_package)
     arg_types=[
         str_rprimitive,
         c_pointer_rprimitive,
         c_pointer_rprimitive,
+        object_pointer_rprimitive,
         object_pointer_rprimitive,
         c_pointer_rprimitive,
         c_pointer_rprimitive,

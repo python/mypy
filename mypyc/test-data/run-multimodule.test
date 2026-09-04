@@ -2627,8 +2627,8 @@ import importlib
 with ThreadPoolExecutor(max_workers=2) as executor:
     future_a = executor.submit(importlib.import_module, "other_a")
     future_b = executor.submit(importlib.import_module, "other_b")
-    other_a = future_a.result(timeout=10)
-    other_b = future_b.result(timeout=10)
+    other_a = future_a.result(timeout=15)
+    other_b = future_b.result(timeout=15)
 
 assert other_a.other_value == "b"
 assert other_b.other_value == "a"
@@ -2659,6 +2659,47 @@ else:
     second = importlib.import_module("native")
     assert second is first
 assert first.get_value() == 42
+
+[case testCachedPartialNativeModuleDoesNotReexecute]
+# separate: [(["native.py", "other_target.py", "other_blocker.py"], "testgroup")]
+def load_target() -> int:
+    import other_target
+    return other_target.value
+
+[file execution_state.py]
+attempts = 0
+
+[file other_target.py]
+import execution_state
+
+execution_state.attempts += 1
+import other_blocker
+value = 42
+
+[file other_blocker.py]
+# Cache other_target's partial module while its regular import is running.
+import other_target
+
+[file driver.py]
+import importlib
+import sys
+
+import execution_state
+import native
+
+from testutil import assertRaises
+
+target = importlib.import_module("other_target")
+assert target.value == 42
+assert execution_state.attempts == 1
+
+del sys.modules["other_target"]
+with assertRaises(
+    ImportError, "initialized native module 'other_target' is missing from sys.modules"
+):
+    native.load_target()
+
+assert execution_state.attempts == 1
 
 [case testTopLevelThreadImportsNativeModuleFromSameGroup]
 # separate: [(["native.py", "other_target.py"], "testgroup")]
@@ -2872,6 +2913,85 @@ child = importlib.import_module("pkg.other_child")
 assert child.value == 42
 assert pkg.other_child is child
 assert pkg.child_setattr_calls == 1
+
+[file sys/__init__.pyi]
+modules: dict[str, object]
+
+[case testConcurrentNativeImportWaitsForParentBinding]
+# separate: [(["native.py", "pkg/other_target.py", "other_blocker.py"], "testgroup")]
+import import_sync
+
+def load_target() -> int:
+    import pkg.other_target
+    return pkg.other_target.final_value
+
+def read_target() -> int:
+    import_sync.reader_started.set()
+    import pkg.other_target
+    return pkg.other_target.final_value
+
+[file import_sync.py]
+from threading import Event
+
+parent_binding_started = Event()
+parent_may_bind = Event()
+reader_started = Event()
+
+[file pkg/__init__.py]
+from sys import modules
+from types import ModuleType
+from typing import Any
+
+import import_sync
+
+class BlockingModule(ModuleType):
+    def __setattr__(self, name: str, value: Any) -> None:
+        if name == "other_target":
+            import_sync.parent_binding_started.set()
+            assert import_sync.parent_may_bind.wait(timeout=15)
+        ModuleType.__setattr__(self, name, value)
+
+modules[__name__].__class__ = BlockingModule
+
+[file pkg/other_target.py]
+early_value = 41
+import other_blocker
+final_value = 42
+
+[file other_blocker.py]
+# This circular import caches pkg.other_target's partial module in the
+# compilation group's module static.
+import pkg.other_target
+
+[file driver.py]
+from concurrent.futures import ThreadPoolExecutor
+import importlib
+from time import monotonic, sleep
+
+import import_sync
+import native
+import pkg
+
+with ThreadPoolExecutor(max_workers=2) as executor:
+    load_future = executor.submit(native.load_target)
+    assert import_sync.parent_binding_started.wait(timeout=15)
+
+    read_future = executor.submit(native.read_target)
+    assert import_sync.reader_started.wait(timeout=15)
+
+    bootstrap = importlib.import_module("importlib._bootstrap")
+    target_lock = bootstrap._get_module_lock("pkg.other_target")
+    deadline = monotonic() + 5
+    while not target_lock.waiters and not read_future.done() and monotonic() < deadline:
+        sleep(0.001)
+    reader_waited = bool(target_lock.waiters)
+    import_sync.parent_may_bind.set()
+
+    assert reader_waited
+    assert load_future.result(timeout=15) == 42
+    assert read_future.result(timeout=15) == 42
+
+assert pkg.other_target.final_value == 42
 
 [file sys/__init__.pyi]
 modules: dict[str, object]

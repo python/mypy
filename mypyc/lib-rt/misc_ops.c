@@ -1605,6 +1605,38 @@ static int CPyImport_SetParentAttr(PyObject *module, PyObject *module_name) {
     return result;
 }
 
+// Check whether a dotted module is already bound to its parent. A top-level
+// module has no parent binding to wait for.
+static int CPyImport_IsBoundToParent(PyObject *module, PyObject *module_name) {
+    PyObject *parent_name;
+    PyObject *child_name;
+    if (CPyImport_SplitName(module_name, &parent_name, &child_name) < 0) {
+        return -1;
+    }
+    if (parent_name == NULL) {
+        return 1;
+    }
+    PyObject *parent_module = PyObject_GetItem(PyImport_GetModuleDict(), parent_name);
+    Py_DECREF(parent_name);
+    if (parent_module == NULL) {
+        Py_DECREF(child_name);
+        return -1;
+    }
+    PyObject *child = PyObject_GetAttr(parent_module, child_name);
+    Py_DECREF(parent_module);
+    Py_DECREF(child_name);
+    if (child == NULL) {
+        if (PyErr_ExceptionMatches(PyExc_AttributeError)) {
+            PyErr_Clear();
+            return 0;
+        }
+        return -1;
+    }
+    int result = child == module;
+    Py_DECREF(child);
+    return result;
+}
+
 static int CPyImport_ReleaseLockPreservingException(PyObject *module_lock) {
     PyObject *exc_type, *exc_val, *exc_tb;
     PyErr_Fetch(&exc_type, &exc_val, &exc_tb);
@@ -1619,7 +1651,9 @@ static int CPyImport_ReleaseLockPreservingException(PyObject *module_lock) {
 // Execute a module once; caller holds the module lock.
 int CPyImport_Exec(PyObject *module, int (*exec_fn)(PyObject *), CPyImportState *state,
                    CPyModule **module_cache) {
-    if (CPyImport_IsInitialized(state)) {
+    PyObject *cached_module = CPyImport_GetModuleCache(module_cache);
+    if (CPyImport_IsInitialized(state) ||
+            (cached_module == module && !CPyImport_IsModuleInitializing(module))) {
         const char *module_name = PyModule_GetName(module);
         if (module_name != NULL) {
             PyErr_Format(PyExc_ImportError,
@@ -1631,15 +1665,19 @@ int CPyImport_Exec(PyObject *module, int (*exec_fn)(PyObject *), CPyImportState 
 
     int result = exec_fn(module);
     if (result == 0) {
+        cached_module = CPyImport_GetModuleCache(module_cache);
         // Keep the cache lazy. A normal shim import should not populate it, since
         // the first compiled native import must still validate sys.modules. If a
         // compiled import already populated the cache (including with a partial
-        // module during a circular import), refresh it to this instance.
-        PyObject *cached_module = CPyImport_GetModuleCache(module_cache);
+        // module during a circular import), refresh it to this instance but wait
+        // for import finalization before publishing initialized.
         if (cached_module != NULL && cached_module != Py_None) {
             CPyImport_ReplaceModuleCache(module_cache, module);
+        } else {
+            // No compiled import can take the cache fast path yet, so publishing
+            // before the caller finishes import finalization is not observable.
+            CPyImport_SetInitialized(state, true);
         }
-        CPyImport_SetInitialized(state, true);
     }
     return result;
 }
@@ -1648,6 +1686,7 @@ PyObject *CPyImport_ImportNative(PyObject *module_name,
                                  PyObject *(*init_only_fn)(void),
                                  int (*exec_fn)(PyObject *),
                                  CPyModule **module_static,
+                                 CPyModule **module_cache,
                                  CPyImportState *state, CPyModuleLockAPI *lock_api,
                                  PyObject *shared_lib_file, PyObject *ext_suffix,
                                  Py_ssize_t is_package) {
@@ -1694,6 +1733,20 @@ PyObject *CPyImport_ImportNative(PyObject *module_name,
     if (existing != NULL) {
         if (*module_static != NULL) {
             if (existing == (PyObject *)*module_static) {
+                // Acquiring the module lock synchronizes with a regular import.
+                // A recursive acquisition can still happen during finalization,
+                // so also verify the spec and parent binding before publishing.
+                if (CPyImport_GetModuleCache(module_cache) == existing &&
+                        !CPyImport_IsModuleInitializing(existing)) {
+                    int is_bound = CPyImport_IsBoundToParent(existing, module_name);
+                    if (is_bound < 0) {
+                        CPyImport_ReleaseLockPreservingException(module_lock);
+                        return NULL;
+                    }
+                    if (is_bound) {
+                        CPyImport_SetInitialized(state, true);
+                    }
+                }
                 Py_INCREF(existing);
                 if (CPyImport_ReleaseLock(module_lock) < 0) {
                     Py_DECREF(existing);
@@ -1713,7 +1766,8 @@ PyObject *CPyImport_ImportNative(PyObject *module_name,
         return NULL;
     }
 
-    if (CPyImport_IsInitialized(state)) {
+    if (CPyImport_IsInitialized(state) ||
+            CPyImport_GetModuleCache(module_cache) == (PyObject *)*module_static) {
         PyErr_Format(PyExc_ImportError,
                      "initialized native module '%U' is missing from sys.modules",
                      module_name);
@@ -1760,7 +1814,9 @@ PyObject *CPyImport_ImportNative(PyObject *module_name,
 
     // Direct imports must publish parent.child themselves; normal extension
     // loading leaves this to importlib.
-    if (CPyImport_SetParentAttr(modobj, module_name) < 0) {
+    int parent_result = CPyImport_SetParentAttr(modobj, module_name);
+    CPyImport_SetInitialized(state, true);
+    if (parent_result < 0) {
         // The module finished initializing before parent binding was attempted,
         // so preserve it even if the warning is promoted to an exception or
         // setting the attribute fails with an exception other than AttributeError.
