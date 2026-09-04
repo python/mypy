@@ -1005,6 +1005,7 @@ def test_borrow_across_yield_from() -> None:
 
 [case testReentrantResume]
 from typing import Any, Iterator, Optional
+from testutil import assertRaises
 
 box: list[Optional[Iterator[int]]] = [None]
 
@@ -1016,19 +1017,11 @@ def self_resuming() -> Iterator[int]:
 def test_reentrant_next() -> None:
     g = self_resuming()
     box[0] = g
-    try:
+    with assertRaises(ValueError, "generator already executing"):
         next(g)
-    except ValueError as e:
-        assert str(e) == "generator already executing", str(e)
-    else:
-        assert False
     # The generator was left in a completed state by the propagating exception.
-    try:
+    with assertRaises(StopIteration):
         next(g)
-    except StopIteration:
-        pass
-    else:
-        assert False
 
 cbox: list[Any] = [None]
 
@@ -1039,15 +1032,12 @@ async def self_sending() -> int:
 def test_reentrant_send_to_coroutine() -> None:
     c: Any = self_sending()
     cbox[0] = c
-    try:
+    with assertRaises(ValueError, "coroutine already executing"):
         c.send(None)
-    except ValueError as e:
-        assert str(e) == "coroutine already executing", str(e)
-    else:
-        assert False
 
 [case testReentrantResumeWithSeparateEnvironment]
 from typing import Any, Iterator, Optional
+from testutil import assertRaises
 
 def outer() -> int:
     box: list[Any] = []
@@ -1062,12 +1052,8 @@ def outer() -> int:
     return next(g)
 
 def test_reentrant_next_in_nested_generator() -> None:
-    try:
+    with assertRaises(ValueError, "generator already executing"):
         outer()
-    except ValueError as e:
-        assert str(e) == "generator already executing", str(e)
-    else:
-        assert False
 
 class Base:
     def gen(self) -> Iterator[int]:
@@ -1086,9 +1072,5 @@ def test_generator_method_override_still_works() -> None:
     b: Base = Derived()
     g = b.gen()
     box[0] = g
-    try:
+    with assertRaises(ValueError, "generator already executing"):
         next(g)
-    except ValueError as e:
-        assert str(e) == "generator already executing", str(e)
-    else:
-        assert False
