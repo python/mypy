@@ -772,12 +772,16 @@ CPy_Super(PyObject *builtins, PyObject *self) {
 
 static bool import_single(PyObject *mod_id, PyObject **mod_static,
                           PyObject *globals_id, PyObject *globals_name, PyObject *globals) {
-    if (Py_IsNone(CPyImport_GetModuleCache((CPyModule **)mod_static))) {
+    PyObject *cached = CPyImport_GetModuleCacheForImport((CPyModule **)mod_static, mod_id);
+    if (cached == NULL) {
+        return false;
+    }
+    if (Py_IsNone(cached)) {
         CPyModule *mod = PyImport_Import(mod_id);
         if (mod == NULL) {
             return false;
         }
-        CPyImport_SetModuleCacheIfInitialized((CPyModule **)mod_static, mod);
+        CPyImport_ReplaceModuleCache((CPyModule **)mod_static, mod);
         Py_DECREF(mod);
     }
 

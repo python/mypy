@@ -46,8 +46,8 @@ bool CPyImport_IsInitializedForModule(const CPyImportState *state, PyObject *mod
                                       CPyModule **module_cache);
 void CPyImport_SetInitialized(CPyImportState *state, bool initialized);
 PyObject *CPyImport_GetModuleCache(CPyModule **cache);
+PyObject *CPyImport_GetModuleCacheForImport(CPyModule **cache, PyObject *module_name);
 void CPyImport_SetModuleCache(CPyModule **cache, PyObject *module);
-void CPyImport_SetModuleCacheIfInitialized(CPyModule **cache, PyObject *module);
 void CPyImport_ReplaceModuleCache(CPyModule **cache, PyObject *module);
 
 

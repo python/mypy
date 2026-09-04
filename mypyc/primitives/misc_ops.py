@@ -174,6 +174,14 @@ import_cache_get_op = custom_op(
     is_borrowed=True,
 )
 
+import_cache_get_for_import_op = custom_op(
+    arg_types=[object_pointer_rprimitive, str_rprimitive],
+    return_type=object_rprimitive,
+    c_function_name="CPyImport_GetModuleCacheForImport",
+    error_kind=ERR_MAGIC,
+    is_borrowed=True,
+)
+
 import_cache_set_op = custom_op(
     arg_types=[object_pointer_rprimitive, object_rprimitive],
     return_type=void_rtype,
@@ -181,10 +189,10 @@ import_cache_set_op = custom_op(
     error_kind=ERR_NEVER,
 )
 
-import_cache_set_if_initialized_op = custom_op(
+import_cache_replace_op = custom_op(
     arg_types=[object_pointer_rprimitive, object_rprimitive],
     return_type=void_rtype,
-    c_function_name="CPyImport_SetModuleCacheIfInitialized",
+    c_function_name="CPyImport_ReplaceModuleCache",
     error_kind=ERR_NEVER,
 )
 

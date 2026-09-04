@@ -196,9 +196,9 @@ class D(C, S, Generic[T]):
 [out]
 def __top_level__():
     r0 :: object_ptr
-    r1, r2 :: object
-    r3 :: bit
-    r4 :: str
+    r1 :: str
+    r2, r3 :: object
+    r4 :: bit
     r5, r6 :: object
     r7 :: str
     r8 :: dict
@@ -267,14 +267,14 @@ def __top_level__():
     r79 :: bool
 L0:
     r0 = load_address builtins :: module
-    r1 = CPyImport_GetModuleCache(r0)
-    r2 = load_address _Py_NoneStruct
-    r3 = r1 != r2
-    if r3 goto L2 else goto L1 :: bool
+    r1 = 'builtins'
+    r2 = CPyImport_GetModuleCacheForImport(r0, r1)
+    r3 = load_address _Py_NoneStruct
+    r4 = r2 != r3
+    if r4 goto L2 else goto L1 :: bool
 L1:
-    r4 = 'builtins'
-    r5 = PyImport_Import(r4)
-    CPyImport_SetModuleCacheIfInitialized(r0, r5)
+    r5 = PyImport_Import(r1)
+    CPyImport_ReplaceModuleCache(r0, r5)
 L2:
     r6 = ('TypeVar', 'Generic')
     r7 = 'typing'
@@ -3022,9 +3022,9 @@ class Ext:
 [out]
 def __top_level__():
     r0 :: object_ptr
-    r1, r2 :: object
-    r3 :: bit
-    r4 :: str
+    r1 :: str
+    r2, r3 :: object
+    r4 :: bit
     r5, r6 :: object
     r7 :: str
     r8 :: dict
@@ -3068,14 +3068,14 @@ def __top_level__():
     r49 :: bool
 L0:
     r0 = load_address builtins :: module
-    r1 = CPyImport_GetModuleCache(r0)
-    r2 = load_address _Py_NoneStruct
-    r3 = r1 != r2
-    if r3 goto L2 else goto L1 :: bool
+    r1 = 'builtins'
+    r2 = CPyImport_GetModuleCacheForImport(r0, r1)
+    r3 = load_address _Py_NoneStruct
+    r4 = r2 != r3
+    if r4 goto L2 else goto L1 :: bool
 L1:
-    r4 = 'builtins'
-    r5 = PyImport_Import(r4)
-    CPyImport_SetModuleCacheIfInitialized(r0, r5)
+    r5 = PyImport_Import(r1)
+    CPyImport_ReplaceModuleCache(r0, r5)
 L2:
     r6 = ('ClassVar', 'Set')
     r7 = 'typing'
@@ -3137,9 +3137,9 @@ class NonExt:
 [out]
 def __top_level__():
     r0 :: object_ptr
-    r1, r2 :: object
-    r3 :: bit
-    r4 :: str
+    r1 :: str
+    r2, r3 :: object
+    r4 :: bit
     r5, r6 :: object
     r7 :: str
     r8 :: dict
@@ -3215,14 +3215,14 @@ def __top_level__():
     r88 :: object
 L0:
     r0 = load_address builtins :: module
-    r1 = CPyImport_GetModuleCache(r0)
-    r2 = load_address _Py_NoneStruct
-    r3 = r1 != r2
-    if r3 goto L2 else goto L1 :: bool
+    r1 = 'builtins'
+    r2 = CPyImport_GetModuleCacheForImport(r0, r1)
+    r3 = load_address _Py_NoneStruct
+    r4 = r2 != r3
+    if r4 goto L2 else goto L1 :: bool
 L1:
-    r4 = 'builtins'
-    r5 = PyImport_Import(r4)
-    CPyImport_SetModuleCacheIfInitialized(r0, r5)
+    r5 = PyImport_Import(r1)
+    CPyImport_ReplaceModuleCache(r0, r5)
 L2:
     r6 = ('ClassVar', 'Set')
     r7 = 'typing'

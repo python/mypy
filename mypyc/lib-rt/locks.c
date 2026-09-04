@@ -140,6 +140,26 @@ static bool CPyImport_IsModuleInitializing(PyObject *module) {
     return result;
 }
 
+PyObject *CPyImport_GetModuleCacheForImport(CPyModule **cache, PyObject *module_name) {
+    PyObject *cached = CPyImport_GetModuleCache(cache);
+    if (cached == Py_None) {
+        return Py_None;
+    }
+
+    // Generic imports may cache a partial module so compiled references after
+    // the import can use the value returned by CPython to break an import-lock
+    // deadlock. Such a module must not take the fast path on a later import.
+    // Comparing with sys.modules also rejects a partial module left behind in
+    // this cache after its initialization failed.
+    PyObject *current = PyImport_GetModule(module_name);
+    if (current == NULL) {
+        return PyErr_Occurred() ? NULL : Py_None;
+    }
+    bool valid = current == cached && !CPyImport_IsModuleInitializing(current);
+    Py_DECREF(current);
+    return valid ? cached : Py_None;
+}
+
 void CPyImport_SetModuleCache(CPyModule **cache, PyObject *module) {
     Py_INCREF(module);
 #if PY_VERSION_HEX >= 0x030D0000
@@ -154,17 +174,6 @@ void CPyImport_SetModuleCache(CPyModule **cache, PyObject *module) {
         Py_DECREF(module);
     }
 #endif
-}
-
-void CPyImport_SetModuleCacheIfInitialized(CPyModule **cache, PyObject *module) {
-    // PyImport_Import can return a partially initialized module to break an
-    // import-lock deadlock. Don't let that object bypass synchronization on a
-    // later generic import; retry through the import machinery until
-    // initialization has finished. Same-group native imports use the regular
-    // setter because their execution path replaces cached partial modules.
-    if (!CPyImport_IsModuleInitializing(module)) {
-        CPyImport_SetModuleCache(cache, module);
-    }
 }
 
 void CPyImport_ReplaceModuleCache(CPyModule **cache, PyObject *module) {

@@ -2325,6 +2325,7 @@ pass
 [file other_target.py]
 import import_sync
 
+early_value = 41
 import_sync.target_started.set()
 assert import_sync.blocker_started.wait(timeout=15)
 import_sync.target_importing_blocker.set()
@@ -2342,6 +2343,7 @@ assert import_sync.blocker_may_import_target.wait(timeout=15)
 import other_target
 
 saw_partial_target = not hasattr(other_target, "value")
+partial_value = other_target.early_value
 
 [file other_top_level_importer.py]
 import import_sync
@@ -2386,6 +2388,7 @@ with ThreadPoolExecutor(max_workers=3) as executor:
 
     blocker = blocker_future.result(timeout=10)
     assert blocker.saw_partial_target
+    assert blocker.partial_value == 41
     assert import_sync.target_waiting_to_finish.wait(timeout=15)
 
     top_level_future = executor.submit(importlib.import_module, "other_top_level_importer")
