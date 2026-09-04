@@ -279,11 +279,11 @@ def compile_scc_to_ir(
     if errors.num_errors > 0:
         return modules
 
-    env_user_functions = {}
+    generator_spill_owners = {}
     for module in modules.values():
         for cls in module.classes:
             if cls.env_user_function:
-                env_user_functions[cls.env_user_function] = cls
+                generator_spill_owners[cls.env_user_function] = cls
 
     for module in modules.values():
         module_path = result.graph[module.fullname].xpath
@@ -296,8 +296,8 @@ def compile_scc_to_ir(
                 # Insert reference count handling.
                 insert_ref_count_opcodes(fn)
 
-                if fn in env_user_functions:
-                    insert_spills(fn, env_user_functions[fn])
+                if fn in generator_spill_owners:
+                    insert_spills(fn, generator_spill_owners[fn])
 
                 if compiler_options.log_trace:
                     insert_event_trace_logging(fn, compiler_options)

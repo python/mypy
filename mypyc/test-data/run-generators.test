@@ -763,6 +763,57 @@ def test_basic() -> None:
     assert yields == ('foo',)
     assert val == 3, val
 
+[case testNestedGeneratorPrivateSpill]
+from typing import Generator
+from testutil import run_generator
+
+def make() -> str:
+    return "left"
+
+def outer() -> Generator[str, str, str]:
+    def nested(value: str) -> Generator[str, str, str]:
+        # The result of make() is a compiler-generated temporary live across
+        # the yield. The source argument stays in the separate environment.
+        return make() + (yield value)
+
+    return nested("right")
+
+def test_nested_generator_private_spill() -> None:
+    yields, value = run_generator(outer(), ["sent"])
+    assert yields == ("right",)
+    assert value == "leftsent"
+
+[case testGeneratorOverridePrivateSpills]
+from typing import Generator
+
+def make_text() -> str:
+    return "base"
+
+def make_number() -> int:
+    return 42
+
+class Base:
+    def gen(self) -> Generator[None, None, object]:
+        # The call result is live across the yield.
+        return (make_text(), (yield None))[0]
+
+class Derived(Base):
+    def gen(self) -> Generator[None, None, object]:
+        # This spill has a different native representation from Base.gen's spill.
+        return (make_number(), (yield None))[0]
+
+def run(g: Generator[None, None, object]) -> object:
+    assert next(g) is None
+    try:
+        next(g)
+    except StopIteration as e:
+        return e.value
+    assert False
+
+def test_generator_override_private_spills() -> None:
+    assert run(Base().gen()) == "base"
+    assert run(Derived().gen()) == 42
+
 [case testGeneratorReuse]
 from typing import Iterator, Any
 
