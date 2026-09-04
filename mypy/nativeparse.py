@@ -295,7 +295,7 @@ def parse_to_binary_ast(
         platform=options.platform,
         always_true=options.always_true,
         always_false=options.always_false,
-        cache_version=4,
+        cache_version=5,
     )
     return (
         ast_bytes,
@@ -1348,6 +1348,7 @@ def read_expression(state: State, data: ReadBuffer) -> Expression:
         return ce
     elif tag == nodes.STR_EXPR:
         se = StrExpr(read_str(data))
+        se.has_surrogates = read_bool(data)
         read_loc(data, se)
         expect_end_tag(data)
         return se
@@ -1437,7 +1438,7 @@ def read_expression(state: State, data: ReadBuffer) -> Expression:
                 s = StrExpr(read_str(data))
                 read_loc(data, s)
                 fitems.append(s)
-        expr = build_fstring_join(data, fitems)
+        expr = build_fstring_join(data, fitems, set_has_surrogates=True)
         expect_end_tag(data)
         return expr
     elif tag == nodes.LIST_COMPREHENSION:
@@ -1534,6 +1535,7 @@ def read_expression(state: State, data: ReadBuffer) -> Expression:
                 read_loc(data, s)
                 titems.append(s)
         expr = TemplateStrExpr(titems)
+        expr.has_surrogates = read_bool(data)
         read_loc(data, expr)
         state.check_min_version(
             "t-strings", (3, 14), expr.line, expr.column, enforce_in_stubs=True
@@ -1660,16 +1662,30 @@ def read_fstring_items(state: State, data: ReadBuffer) -> Expression:
     return build_fstring_join(data, items)
 
 
-def build_fstring_join(data: ReadBuffer, items: list[Expression]) -> Expression:
+def build_fstring_join(
+    data: ReadBuffer, items: list[Expression], set_has_surrogates: bool = False
+) -> Expression:
     items = collapse_consecutive_str_items(items)
     if len(items) == 1:
         expr = items[0]
+        if set_has_surrogates:
+            if isinstance(expr, StrExpr):
+                target = expr
+            else:
+                assert isinstance(expr, CallExpr) and isinstance(expr.callee, MemberExpr)
+                # It doesn't really matter where to set the surrogates flag,
+                # so we set it on the outermost format string.
+                target = expr.callee.expr
+                assert isinstance(target, StrExpr)
+            target.has_surrogates = read_bool(data)
         read_loc(data, expr)
         return expr
     args = ListExpr(items)
     str_expr = StrExpr("")
     member = MemberExpr(str_expr, "join")
     call = CallExpr(member, [args], [ARG_POS], [None])
+    if set_has_surrogates:
+        str_expr.has_surrogates = read_bool(data)
     read_loc(data, call)
     set_line_column(args, call)
     set_line_column(str_expr, call)
