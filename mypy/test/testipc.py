@@ -102,7 +102,7 @@ class IPCTests(TestCase):
     # This is really slow, so it is skipped, but can be enabled if
     # needed to debug IPC issues.
     @pytest.mark.skip
-    def test_connect_alot(self) -> None:
+    def test_connect_a_lot(self) -> None:
         t0 = time.time()
         for i in range(1000):
             try:
