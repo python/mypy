@@ -20,15 +20,17 @@ hackily decide based on whether setuptools has been imported already.
 
 from __future__ import annotations
 
+import copy
 import hashlib
 import os.path
 import re
 import sys
+import sysconfig
 import time
 from collections.abc import Iterable
+from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, NamedTuple, NoReturn, cast
 
-import mypyc.build_setup  # noqa: F401
 from mypy.build import BuildSource
 from mypy.errors import CompileError
 from mypy.fscache import FileSystemCache
@@ -37,7 +39,7 @@ from mypy.options import Options
 from mypy.util import write_junit_xml
 from mypyc.annotate import generate_annotated_html
 from mypyc.codegen import emitmodule
-from mypyc.common import IS_FREE_THREADED, RUNTIME_C_FILES, shared_lib_name
+from mypyc.common import EXT_SUFFIX, IS_FREE_THREADED, RUNTIME_C_FILES, shared_lib_name
 from mypyc.errors import Errors
 from mypyc.ir.deps import SourceDep
 from mypyc.ir.pprint import format_modules
@@ -152,14 +154,15 @@ if TYPE_CHECKING:
 
         Extension: TypeAlias = _setuptools_Extension | _distutils_Extension
 
-if sys.version_info >= (3, 12):
-    # From setuptools' monkeypatch
-    from distutils import ccompiler, sysconfig  # type: ignore[import-not-found]
-else:
-    from distutils import ccompiler, sysconfig
-
 
 def get_extension() -> type[Extension]:
+    # The build_setup monkeypatch (per-file compile flags) must be active
+    # before any extension is compiled. It requires distutils, which on
+    # Python 3.12+ is only available through setuptools, so this is lazy:
+    # build paths that don't construct setuptools extensions (cgen) don't
+    # need setuptools at all.
+    import mypyc.build_setup  # noqa: F401
+
     # We can work with either setuptools or distutils, and pick setuptools
     # if it has been imported.
     use_setuptools = "setuptools" in sys.modules
@@ -180,6 +183,7 @@ def get_extension() -> type[Extension]:
 def setup_mypycify_vars() -> None:
     """Rewrite a bunch of config vars in pretty dubious ways."""
     # There has to be a better approach to this.
+    from distutils import sysconfig
 
     # The vars can contain ints but we only work with str ones
     vars = cast(dict[str, str], sysconfig.get_config_vars())
@@ -451,7 +455,8 @@ def write_file(path: str, contents: str) -> None:
     except OSError:
         old_contents = None
     if old_contents != encoded_contents:
-        os.makedirs(os.path.dirname(path), exist_ok=True)
+        if os.path.dirname(path):
+            os.makedirs(os.path.dirname(path), exist_ok=True)
         with open(path, "wb") as g:
             g.write(encoded_contents)
 
@@ -672,20 +677,53 @@ def resolve_cfile_deps(
             if candidate in resolved:
                 break
             resolved.add(candidate)
-            # Recurse only into headers. Some lib-rt sources are pulled in as `#include "init.c"` etc.;
-            # those do not resolve under target_dir so they get filtered out before we would try to scan
-            # them, but the .h guard is a cheap belt-and-braces.
-            if candidate.endswith(".h"):
-                try:
-                    with open(candidate, encoding="utf-8") as f:
-                        header_contents = f.read()
-                except OSError:
-                    header_contents = ""
-                sub_dir = os.path.dirname(candidate)
-                for sub_angled, sub in _extract_includes(header_contents):
-                    worklist.append((sub_dir, sub_angled, sub))
+            # Recurse into any resolved file: generated headers include each other, and lib-rt
+            # sources may be pulled in as `#include "init.c"` once the runtime has been copied
+            # into target_dir.
+            try:
+                with open(candidate, encoding="utf-8") as f:
+                    header_contents = f.read()
+            except OSError:
+                continue
+            sub_dir = os.path.dirname(candidate)
+            for sub_angled, sub in _extract_includes(header_contents):
+                worklist.append((sub_dir, sub_angled, sub))
             break
     return resolved
+
+
+def _copy_runtime_files(
+    compiler_options: CompilerOptions, source_deps: list[SourceDep]
+) -> tuple[list[str], list[str]]:
+    """Copy the runtime library and source dep files into target_dir.
+
+    Returns (runtime_c_files, extra_include_dirs). If the runtime library is
+    directly #included instead (CompilerOptions.include_runtime_files),
+    nothing is copied.
+    """
+    build_dir = compiler_options.target_dir
+    shared_cfilenames = []
+    include_dirs = set()
+    if not compiler_options.include_runtime_files:
+        files_to_copy = list(RUNTIME_C_FILES)
+        for source_dep in source_deps:
+            files_to_copy.append(source_dep.path)
+            files_to_copy.append(source_dep.get_header())
+            include_dirs.update(source_dep.include_dirs)
+
+        if compiler_options.depends_on_librt_internal:
+            files_to_copy.append("internal/librt_internal_api.h")
+            files_to_copy.append("internal/librt_internal_api.c")
+            include_dirs.add("internal")
+
+        for name in files_to_copy:
+            rt_file = os.path.join(build_dir, name)
+            with open(os.path.join(include_dir(), name), encoding="utf-8") as f:
+                write_file(rt_file, f.read())
+            if name.endswith(".c"):
+                shared_cfilenames.append(rt_file)
+
+    return shared_cfilenames, [os.path.join(include_dir(), dir) for dir in include_dirs]
 
 
 def mypyc_build(
@@ -755,14 +793,18 @@ def mypyc_build(
             # For fully-cached groups ctext is empty; read the on-disk .c so the dep resolver
             # can walk its transitive header chain and populate Extension.depends. Otherwise,
             # cross-group export-table header changes (e.g. a new class shifting struct offsets)
-            # won't trigger a recompile of this cached consumer's .o.
+            # won't trigger a recompile of this cached consumer's .o. If the read fails, fall
+            # back to no deps (missing a rebuild trigger is better than crashing).
             if not ctext and os.path.exists(cfile):
                 try:
                     with open(cfile, encoding="utf-8") as _f:
                         ctext = _f.read()
                 except OSError:
-                    pass
-            per_cfile_deps.append((cfile, get_header_deps([(cfile, ctext)])))
+                    ctext = ""
+            if ctext:
+                per_cfile_deps.append((cfile, get_header_deps([(cfile, ctext)])))
+            else:
+                per_cfile_deps.append((cfile, []))
         pending.append(per_cfile_deps)
 
     # Second pass: assemble each group's .c filenames and resolve transitive deps now that every group's
@@ -782,11 +824,235 @@ def mypyc_build(
     return groups, group_cfilenames, source_deps
 
 
+@dataclass(frozen=True)
+class GroupSpec:
+    """A group of modules compiled into one C extension unit.
+
+    group_name is None only for a standalone group containing a single
+    top-level module (no shared library). Otherwise it is the group name
+    used for the shared library module (via shared_lib_name) and for the
+    names of the generated C files.
+
+    modules are the dotted Python module names in the group.
+
+    c_files are the generated .c files of the group (absolute paths),
+    excluding runtime files and shims. depends are the header files the
+    generated code includes (absolute paths), for build systems that
+    track rebuilds.
+
+    shims maps the extension module name of each shim (e.g. "pkg.__init__"
+    for a package's __init__.py) to its generated .c file. It is empty
+    unless a shared library is used.
+    """
+
+    group_name: str | None
+    modules: list[str]
+    c_files: list[str]
+    depends: list[str]
+    shims: dict[str, str] = field(default_factory=dict)
+
+
+@dataclass(frozen=True)
+class GeneratedC:
+    """The result of generate_c_sources.
+
+    All generated C files (group sources, runtime library, shims) have been
+    written into target_dir by the time this is returned. compiler_options
+    is the (adjusted) options the generation ran with.
+    """
+
+    target_dir: str
+    compiler_options: CompilerOptions
+    groups: list[GroupSpec]
+    # Runtime library .c files copied into target_dir. Empty if the runtime
+    # is directly #included instead (CompilerOptions.include_runtime_files).
+    runtime_c_files: list[str]
+    # Additional include directories (under mypyc/lib-rt) required to compile
+    # the generated code, e.g. for source deps of primitive operations.
+    extra_include_dirs: list[str]
+
+
+@dataclass(frozen=True)
+class ExtensionSpec:
+    """A backend-neutral description of one C extension module to build.
+
+    module is the full dotted name of the extension module; for a package's
+    __init__ this follows the setuptools convention of "pkg.__init__".
+    out_path is where the built file must end up (relative to the root of
+    the installation target, e.g. site-packages), including the platform
+    extension suffix.
+
+    cflags are compiler flags required by the generated code; link_args are
+    the linker flags needed to produce a loadable extension module on this
+    platform. Backends are additionally responsible for the platform's
+    standard Python extension linking (e.g. on Windows, linking against
+    the interpreter's import library).
+    """
+
+    module: str
+    out_path: str
+    sources: list[str]
+    include_dirs: list[str]
+    depends: list[str]
+    cflags: list[str]
+    link_args: list[str]
+
+
+def _extension_output_path(module: str) -> str:
+    return os.path.join(*module.split(".")) + EXT_SUFFIX
+
+
+def _platform_link_args() -> list[str]:
+    """Link flags needed to produce a loadable extension module on this platform.
+
+    Derived from the linker command Python itself was configured with, minus
+    the compiler invocation (e.g. '-bundle -undefined dynamic_lookup' on macOS,
+    '-shared' on Linux). Empty when the platform doesn't define one.
+    """
+    ldshared = str(sysconfig.get_config_var("LDSHARED") or "")
+    if not ldshared:
+        return []
+    return ldshared.split()[1:]
+
+
+def generate_c_sources(
+    paths: list[str],
+    compiler_options: CompilerOptions,
+    *,
+    separate: bool | list[tuple[list[str], str | None]] | None = None,
+    only_compile_paths: Iterable[str] | None = None,
+) -> GeneratedC:
+    """Run mypyc's frontend and C generation, without any build system.
+
+    This drives the mypy cgen CLI: it type checks the sources, generates C
+    code, and writes everything (group sources, runtime library, shims) into
+    compiler_options.target_dir. Use extension_build_specs on the result to
+    get buildable units for a build system of the caller's choice.
+
+    The 'separate' argument controls how modules are assigned to compilation
+    groups, with the same meaning as in mypycify. If None (the default),
+    CompilerOptions.separate is used as-is; passing a value overrides it.
+
+    No caching is performed: callers are responsible for deciding when to
+    regenerate (e.g. by hashing the input sources themselves).
+    """
+    options = copy.copy(compiler_options)
+    if separate is not None:
+        options.separate = separate is not False
+        options.global_opts = not options.separate
+
+    groups, group_cfilenames, source_deps = mypyc_build(
+        paths,
+        only_compile_paths=only_compile_paths,
+        compiler_options=options,
+        separate=separate if separate is not None else options.separate,
+    )
+    assert len(groups) == len(group_cfilenames)
+
+    shared_cfilenames, extra_include_dirs = _copy_runtime_files(options, source_deps)
+
+    group_specs = []
+    for (group_sources, lib_name), (cfilenames, deps) in zip(groups, group_cfilenames):
+        shims = {}
+        if lib_name is not None:
+            for source in group_sources:
+                shim = generate_c_extension_shim(
+                    source.module, source.module.split(".")[-1], options.target_dir, lib_name
+                )
+                ext_module = source.module
+                if is_package_source(source):
+                    ext_module += ".__init__"
+                shims[ext_module] = shim
+        group_specs.append(
+            GroupSpec(
+                group_name=lib_name,
+                modules=[source.module for source in group_sources],
+                c_files=cfilenames,
+                depends=deps,
+                shims=shims,
+            )
+        )
+
+    return GeneratedC(
+        target_dir=options.target_dir,
+        compiler_options=options,
+        groups=group_specs,
+        runtime_c_files=shared_cfilenames,
+        extra_include_dirs=extra_include_dirs,
+    )
+
+
+def extension_build_specs(
+    result: GeneratedC, *, opt_level: str | None = None, debug_level: str | None = None
+) -> list[ExtensionSpec]:
+    """Turn the output of generate_c_sources into buildable extension specs.
+
+    Each spec describes one extension module: what to compile, with which
+    include directories and flags, and where the built file must be placed.
+    The result is pure data — building it is up to the caller's build system.
+
+    opt_level and debug_level have the same meaning as in mypycify. If None
+    (the default), no optimization or debug flags are emitted and the
+    caller's build system controls them.
+    """
+    options = result.compiler_options
+    cflags = get_cflags(
+        opt_level=opt_level,
+        debug_level=debug_level,
+        multi_file=options.multi_file,
+        experimental_features=options.experimental_features,
+        log_trace=options.log_trace,
+    )
+    link_args = _platform_link_args()
+
+    specs = []
+    for group in result.groups:
+        if group.group_name is not None:
+            lib_module = shared_lib_name(group.group_name)
+            specs.append(
+                ExtensionSpec(
+                    module=lib_module,
+                    out_path=_extension_output_path(lib_module),
+                    sources=group.c_files + result.runtime_c_files,
+                    include_dirs=[include_dir(), result.target_dir] + result.extra_include_dirs,
+                    depends=group.depends,
+                    cflags=cflags,
+                    link_args=link_args,
+                )
+            )
+            for ext_module, shim_file in group.shims.items():
+                specs.append(
+                    ExtensionSpec(
+                        module=ext_module,
+                        out_path=_extension_output_path(ext_module),
+                        sources=[shim_file],
+                        include_dirs=[],
+                        depends=[],
+                        cflags=cflags,
+                        link_args=link_args,
+                    )
+                )
+        else:
+            assert len(group.modules) == 1
+            specs.append(
+                ExtensionSpec(
+                    module=group.modules[0],
+                    out_path=_extension_output_path(group.modules[0]),
+                    sources=group.c_files + result.runtime_c_files,
+                    include_dirs=[include_dir()] + result.extra_include_dirs,
+                    depends=group.depends,
+                    cflags=cflags,
+                    link_args=link_args,
+                )
+            )
+    return specs
+
+
 def get_cflags(
     *,
     compiler_type: str | None = None,
-    opt_level: str = "3",
-    debug_level: str = "1",
+    opt_level: str | None = None,
+    debug_level: str | None = None,
     multi_file: bool = False,
     experimental_features: bool = False,
     log_trace: bool = False,
@@ -795,8 +1061,10 @@ def get_cflags(
 
     Args:
         compiler_type: Compiler type, e.g. "unix" or "msvc". If None, detected automatically.
-        opt_level: Optimization level as string ("0", "1", "2", or "3").
-        debug_level: Debug level as string ("0", "1", "2", or "3").
+        opt_level: Optimization level as string ("0", "1", "2", or "3"), or None to not
+            emit any optimization flags (the caller's build system controls them).
+        debug_level: Debug level as string ("0", "1", "2", or "3"), or None to not
+            emit any debug flags.
         multi_file: Whether multi-file compilation mode is enabled.
         experimental_features: Whether experimental features are enabled.
         log_trace: Whether trace logging is enabled.
@@ -805,15 +1073,17 @@ def get_cflags(
         List of compiler flags.
     """
     if compiler_type is None:
-        compiler: Any = ccompiler.new_compiler()
-        sysconfig.customize_compiler(compiler)
-        compiler_type = compiler.compiler_type
+        # This mirrors what distutils would pick, without needing distutils
+        # (which isn't available without setuptools on Python 3.12+).
+        compiler_type = "msvc" if sys.platform == "win32" else "unix"
 
     cflags: list[str] = []
     if compiler_type == "unix":
+        if opt_level is not None:
+            cflags.append(f"-O{opt_level}")
+        if debug_level is not None:
+            cflags.append(f"-g{debug_level}")
         cflags += [
-            f"-O{opt_level}",
-            f"-g{debug_level}",
             "-Werror",
             "-Wno-unused-function",
             "-Wno-unused-label",
@@ -843,19 +1113,17 @@ def get_cflags(
     elif compiler_type == "msvc":
         # msvc doesn't have levels, '/O2' is full and '/Od' is disable
         if opt_level == "0":
-            opt_level = "d"
             cflags.append("/UNDEBUG")
+            cflags.append("/Od")
         elif opt_level in ("1", "2", "3"):
-            opt_level = "2"
+            cflags.append("/O2")
         if debug_level == "0":
-            debug_level = "NONE"
+            cflags.append("/DEBUG:NONE")
         elif debug_level == "1":
-            debug_level = "FASTLINK"
+            cflags.append("/DEBUG:FASTLINK")
         elif debug_level in ("2", "3"):
-            debug_level = "FULL"
+            cflags.append("/DEBUG:FULL")
         cflags += [
-            f"/O{opt_level}",
-            f"/DEBUG:{debug_level}",
             "/wd4102",  # unreferenced label
             "/wd4101",  # unreferenced local variable
             "/wd4146",  # negating unsigned int
@@ -983,6 +1251,9 @@ def mypycify(
     # Mess around with setuptools and actually get the thing built
     setup_mypycify_vars()
 
+    # On 3.12+ this comes from setuptools' bundled distutils
+    from distutils import ccompiler, sysconfig
+
     # Create a compiler object so we can make decisions based on what
     # compiler is being used. typeshed is missing some attributes on the
     # compiler object so we give it type Any
@@ -1000,34 +1271,12 @@ def mypycify(
         log_trace=log_trace,
     )
 
-    # If configured to (defaults to yes in multi-file mode), copy the
-    # runtime library in. Otherwise it just gets #included to save on
-    # compiler invocations.
-    shared_cfilenames = []
-    include_dirs = set()
-    if not compiler_options.include_runtime_files:
-        # Collect all files to copy: runtime files + conditional source files
-        files_to_copy = list(RUNTIME_C_FILES)
-        for source_dep in source_deps:
-            files_to_copy.append(source_dep.path)
-            files_to_copy.append(source_dep.get_header())
-            include_dirs.update(source_dep.include_dirs)
-
-        if compiler_options.depends_on_librt_internal:
-            files_to_copy.append("internal/librt_internal_api.h")
-            files_to_copy.append("internal/librt_internal_api.c")
-            include_dirs.add("internal")
-
-        # Copy all files
-        for name in files_to_copy:
-            rt_file = os.path.join(build_dir, name)
-            with open(os.path.join(include_dir(), name), encoding="utf-8") as f:
-                write_file(rt_file, f.read())
-            if name.endswith(".c"):
-                shared_cfilenames.append(rt_file)
+    # If configured to (defaults to yes in multi-file mode), the runtime
+    # library gets directly #included; otherwise it's copied in and linked
+    # separately to save on compiler invocations.
+    shared_cfilenames, extra_include_dirs = _copy_runtime_files(compiler_options, source_deps)
 
     extensions = []
-    extra_include_dirs = [os.path.join(include_dir(), dir) for dir in include_dirs]
     for (group_sources, lib_name), (cfilenames, deps) in zip(groups, group_cfilenames):
         if lib_name:
             extensions.extend(
