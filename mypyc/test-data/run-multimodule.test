@@ -2787,6 +2787,57 @@ assert pkg.child_setattr_calls == 1
 [file sys/__init__.pyi]
 modules: dict[str, object]
 
+[case testDirectNativeImportWarnsWhenParentRejectsAttribute]
+# separate: [(["native.py", "pkg/other_child.py"], "testgroup")]
+def load() -> int:
+    from pkg.other_child import value
+    return value
+
+[file pkg/__init__.py]
+from sys import modules
+from types import ModuleType
+from typing import Any
+
+child_executions = 0
+
+class RejectingModule(ModuleType):
+    def __setattr__(self, name: str, value: Any) -> None:
+        if name == "other_child":
+            raise AttributeError("child rejected")
+        ModuleType.__setattr__(self, name, value)
+
+modules[__name__].__class__ = RejectingModule
+
+[file pkg/other_child.py]
+import pkg
+
+pkg.child_executions += 1
+value = 42
+
+[file driver.py]
+import sys
+import warnings
+
+import native
+import pkg
+
+with warnings.catch_warnings(record=True) as caught:
+    warnings.simplefilter("always")
+    assert native.load() == 42
+    assert native.load() == 42
+
+assert "pkg.other_child" in sys.modules
+assert not hasattr(pkg, "other_child")
+assert pkg.child_executions == 1
+assert len(caught) == 1
+assert caught[0].category is ImportWarning
+assert str(caught[0].message) == (
+    "Cannot set an attribute on 'pkg' for child module 'other_child'"
+)
+
+[file sys/__init__.pyi]
+modules: dict[str, object]
+
 [case testNormalNativeImportWarnsWhenParentRejectsAttribute]
 pass
 
