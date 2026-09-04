@@ -6,6 +6,7 @@ import sysconfig
 from typing import Any, Final
 
 from mypy.util import unnamed_function
+from mypyc.namegen import exported_name
 
 PREFIX: Final = "CPyPy_"  # Python wrappers
 NATIVE_PREFIX: Final = "CPyDef_"  # Native functions etc.
@@ -29,6 +30,27 @@ SELF_NAME: Final = "__mypyc_self__"
 MYPYC_DEFAULTS_SETUP: Final = "__mypyc_defaults_setup"
 GENERATOR_ATTRIBUTE_PREFIX: Final = "__mypyc_generator_attribute__"
 CPYFUNCTION_NAME = "__cpyfunction__"
+
+
+def module_import_state_name(module_name: str) -> str:
+    return f"{IMPORT_STATE_PREFIX}{exported_name(module_name)}"
+
+
+def module_lock_api_name(group_name: str) -> str:
+    return f"{MODULE_LOCK_API_PREFIX}{exported_name(group_name)}"
+
+
+def module_init_only_name(module_name: str) -> str:
+    return f"CPyInitOnly_{exported_name(module_name)}"
+
+
+def module_init_name(module_name: str) -> str:
+    return f"CPyInit_{exported_name(module_name)}"
+
+
+def module_exec_name(module_name: str) -> str:
+    return f"CPyExec_{exported_name(module_name)}"
+
 
 # Max short int we accept as a literal is based on 32-bit platforms,
 # so that we can just always emit the same code.

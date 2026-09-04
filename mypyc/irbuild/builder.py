@@ -70,14 +70,15 @@ from mypyc.common import (
     BITMAP_BITS,
     EXT_SUFFIX,
     GENERATOR_ATTRIBUTE_PREFIX,
-    IMPORT_STATE_PREFIX,
     IS_FREE_THREADED,
     KEEP_ALIVE_SHORT_LIVED,
     KEEP_ALIVE_WHOLE_EXPRESSION,
-    MODULE_LOCK_API_PREFIX,
-    MODULE_PREFIX,
     SELF_NAME,
     TEMP_ATTR_NAME,
+    module_exec_name,
+    module_import_state_name,
+    module_init_only_name,
+    module_lock_api_name,
     shared_lib_name,
 )
 from mypyc.crash import catch_errors
@@ -85,6 +86,7 @@ from mypyc.errors import Errors
 from mypyc.ir.class_ir import ClassIR, NonExtClassInfo
 from mypyc.ir.func_ir import INVALID_FUNC_DEF, FuncDecl, FuncIR, FuncSignature, RuntimeArg
 from mypyc.ir.ops import (
+    NAMESPACE_MODULE,
     NAMESPACE_TYPE_VAR,
     NO_TRACEBACK_LINE_NO,
     Assign,
@@ -155,7 +157,6 @@ from mypyc.irbuild.targets import (
 )
 from mypyc.irbuild.util import bytes_from_str, is_constant
 from mypyc.irbuild.vec import vec_set_item
-from mypyc.namegen import exported_name
 from mypyc.options import CompilerOptions
 from mypyc.primitives.dict_ops import dict_get_item_op, dict_set_item_op
 from mypyc.primitives.generic_ops import iter_op, next_op, py_setattr_op
@@ -528,24 +529,20 @@ class IRBuilder:
         self.imports[module] = None
 
         needs_import, out = BasicBlock(), BasicBlock()
-        module_cache = self.add(
-            LoadAddress(object_pointer_rprimitive, f"{MODULE_PREFIX}{exported_name(module)}")
-        )
+        module_static = LoadStatic(object_rprimitive, module, namespace=NAMESPACE_MODULE)
+        module_cache = self.add(LoadAddress(object_pointer_rprimitive, module_static))
         is_native_module = self.is_native_module(module)
-        is_same_group_native = is_native_module and self.is_same_group_module(module)
+        group_name = self.mapper.group_map.get(self.module_name)
+        is_same_group_native = is_native_module and self.mapper.group_map.get(module) == group_name
         import_state: Value | None = None
         module_lock_api: Value | None = None
         if is_same_group_native:
             import_state = self.add(
-                LoadAddress(c_pointer_rprimitive, f"{IMPORT_STATE_PREFIX}{exported_name(module)}")
+                LoadAddress(c_pointer_rprimitive, module_import_state_name(module))
             )
-            group_name = self.mapper.group_map.get(self.module_name)
             if group_name is not None:
                 module_lock_api = self.add(
-                    LoadGlobal(
-                        c_pointer_rprimitive,
-                        f"{MODULE_LOCK_API_PREFIX}{exported_name(group_name)}",
-                    )
+                    LoadGlobal(c_pointer_rprimitive, module_lock_api_name(group_name))
                 )
             else:
                 module_lock_api = Integer(0, c_pointer_rprimitive)
@@ -557,18 +554,17 @@ class IRBuilder:
             assert module_lock_api is not None
             # Use custom import machinery for native-to-native imports in the same group
             init_only_func = self.add(
-                LoadGlobal(c_pointer_rprimitive, f"CPyInitOnly_{exported_name(module)}")
+                LoadGlobal(c_pointer_rprimitive, module_init_only_name(module))
             )
-            exec_func = self.add(
-                LoadGlobal(c_pointer_rprimitive, f"CPyExec_{exported_name(module)}")
-            )
-            module_static = self.add(
+            exec_func = self.add(LoadGlobal(c_pointer_rprimitive, module_exec_name(module)))
+            module_internal_static = self.add(
                 LoadAddress(
                     object_pointer_rprimitive,
-                    f"{MODULE_PREFIX}{exported_name(module + '__internal')}",
+                    LoadStatic(
+                        object_rprimitive, module + "__internal", namespace=NAMESPACE_MODULE
+                    ),
                 )
             )
-            group_name = self.mapper.group_map.get(self.module_name)
             if group_name is not None:
                 shared_lib_mod_name = shared_lib_name(group_name)
                 mod_dict = self.call_c(get_module_dict_op, [], line)
@@ -586,7 +582,7 @@ class IRBuilder:
                     self.load_str(module, line),
                     init_only_func,
                     exec_func,
-                    module_static,
+                    module_internal_static,
                     import_state,
                     module_lock_api,
                     shared_lib_file,

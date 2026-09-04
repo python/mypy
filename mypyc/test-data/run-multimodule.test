@@ -2988,12 +2988,27 @@ modules[__name__].__class__ = TrackingModule
 value = 42
 
 [file driver.py]
+import builtins
 import sys
 
 import native
 import pkg
 
-assert native.load() == 42
+original_import = builtins.__import__
+parent_imports = 0
+def tracking_import(name, globals=None, locals=None, fromlist=(), level=0):
+    global parent_imports
+    if name == "pkg":
+        parent_imports += 1
+    return original_import(name, globals, locals, fromlist, level)
+
+builtins.__import__ = tracking_import
+try:
+    assert native.load() == 42
+finally:
+    builtins.__import__ = original_import
+
+assert parent_imports == 1
 assert pkg.other_child is sys.modules["pkg.other_child"]
 assert pkg.child_setattr_calls == 1
 

@@ -548,7 +548,7 @@ def __top_level__():
     r35 :: str
     r36, r37 :: object
 L0:
-    r0 = load_address CPyModule_builtins
+    r0 = load_address builtins :: module
     r1 = CPyImport_GetModuleCache(r0)
     r2 = load_address _Py_NoneStruct
     r3 = r1 != r2
@@ -556,7 +556,7 @@ L0:
 L1:
     r4 = 'builtins'
     r5 = PyImport_Import(r4)
-    CPyImport_SetModuleCache(r0, r5)
+    CPyImport_SetModuleCacheIfInitialized(r0, r5)
 L2:
     r6 = load_address sys :: module
     r7 = load_address enum :: module
@@ -661,7 +661,7 @@ def __top_level__():
     r15 :: object
     r16 :: object_ptr
 L0:
-    r0 = load_address CPyModule_builtins
+    r0 = load_address builtins :: module
     r1 = CPyImport_GetModuleCache(r0)
     r2 = load_address _Py_NoneStruct
     r3 = r1 != r2
@@ -669,7 +669,7 @@ L0:
 L1:
     r4 = 'builtins'
     r5 = PyImport_Import(r4)
-    CPyImport_SetModuleCache(r0, r5)
+    CPyImport_SetModuleCacheIfInitialized(r0, r5)
 L2:
     r6 = ('g', 'h')
     r7 = 'testmodule'
@@ -1479,7 +1479,7 @@ def __top_level__():
     r20 :: object_ptr
     r21 :: object
 L0:
-    r0 = load_address CPyModule_builtins
+    r0 = load_address builtins :: module
     r1 = CPyImport_GetModuleCache(r0)
     r2 = load_address _Py_NoneStruct
     r3 = r1 != r2
@@ -1487,7 +1487,7 @@ L0:
 L1:
     r4 = 'builtins'
     r5 = PyImport_Import(r4)
-    CPyImport_SetModuleCache(r0, r5)
+    CPyImport_SetModuleCacheIfInitialized(r0, r5)
 L2:
     keep_alive r0
     r6 = __main__.globals :: static
@@ -2233,7 +2233,7 @@ def __top_level__():
     r75 :: i32
     r76 :: bit
 L0:
-    r0 = load_address CPyModule_builtins
+    r0 = load_address builtins :: module
     r1 = CPyImport_GetModuleCache(r0)
     r2 = load_address _Py_NoneStruct
     r3 = r1 != r2
@@ -2241,7 +2241,7 @@ L0:
 L1:
     r4 = 'builtins'
     r5 = PyImport_Import(r4)
-    CPyImport_SetModuleCache(r0, r5)
+    CPyImport_SetModuleCacheIfInitialized(r0, r5)
 L2:
     r6 = ('List', 'NewType', 'NamedTuple')
     r7 = 'typing'
@@ -2691,7 +2691,7 @@ def __top_level__():
     r28 :: i32
     r29 :: bit
 L0:
-    r0 = load_address CPyModule_builtins
+    r0 = load_address builtins :: module
     r1 = CPyImport_GetModuleCache(r0)
     r2 = load_address _Py_NoneStruct
     r3 = r1 != r2
@@ -2699,7 +2699,7 @@ L0:
 L1:
     r4 = 'builtins'
     r5 = PyImport_Import(r4)
-    CPyImport_SetModuleCache(r0, r5)
+    CPyImport_SetModuleCacheIfInitialized(r0, r5)
 L2:
     r6 = ('Callable',)
     r7 = 'typing'
@@ -2817,7 +2817,7 @@ def __top_level__():
     r9 :: object
     r10 :: object_ptr
 L0:
-    r0 = load_address CPyModule_builtins
+    r0 = load_address builtins :: module
     r1 = CPyImport_GetModuleCache(r0)
     r2 = load_address _Py_NoneStruct
     r3 = r1 != r2
@@ -2825,7 +2825,7 @@ L0:
 L1:
     r4 = 'builtins'
     r5 = PyImport_Import(r4)
-    CPyImport_SetModuleCache(r0, r5)
+    CPyImport_SetModuleCacheIfInitialized(r0, r5)
 L2:
     r6 = ('Callable',)
     r7 = 'typing'
@@ -3342,7 +3342,7 @@ def root():
     r25 :: bit
 L0:
     r0 = __main__.globals :: static
-    r1 = load_address CPyModule_dataclasses
+    r1 = load_address dataclasses :: module
     r2 = CPyImport_GetModuleCache(r1)
     r3 = load_address _Py_NoneStruct
     r4 = r2 != r3
@@ -3350,7 +3350,7 @@ L0:
 L1:
     r5 = 'dataclasses'
     r6 = PyImport_Import(r5)
-    CPyImport_SetModuleCache(r1, r6)
+    CPyImport_SetModuleCacheIfInitialized(r1, r6)
 L2:
     r7 = 'dataclasses'
     r8 = PyImport_GetModuleDict()
@@ -3359,7 +3359,7 @@ L2:
     r11 = CPyDict_SetItem(r0, r7, r10)
     r12 = r11 >= 0 :: signed
     r13 = __main__.globals :: static
-    r14 = load_address CPyModule_enum
+    r14 = load_address enum :: module
     r15 = CPyImport_GetModuleCache(r14)
     r16 = load_address _Py_NoneStruct
     r17 = r15 != r16
@@ -3367,7 +3367,7 @@ L2:
 L3:
     r18 = 'enum'
     r19 = PyImport_Import(r18)
-    CPyImport_SetModuleCache(r14, r19)
+    CPyImport_SetModuleCacheIfInitialized(r14, r19)
 L4:
     r20 = 'enum'
     r21 = PyImport_GetModuleDict()
@@ -3397,7 +3397,7 @@ def submodule():
     r18 :: int
 L0:
     r0 = __main__.globals :: static
-    r1 = load_address CPyModule_p___m
+    r1 = load_address p.m :: module
     r2 = CPyImport_GetModuleCache(r1)
     r3 = load_address _Py_NoneStruct
     r4 = r2 != r3
@@ -3405,7 +3405,7 @@ L0:
 L1:
     r5 = 'p.m'
     r6 = PyImport_Import(r5)
-    CPyImport_SetModuleCache(r1, r6)
+    CPyImport_SetModuleCacheIfInitialized(r1, r6)
 L2:
     r7 = 'p'
     r8 = PyImport_GetModuleDict()

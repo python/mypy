@@ -1551,52 +1551,52 @@ static int CPyImport_SplitName(PyObject *module_name, PyObject **parent_name,
     return 0;
 }
 
-// Import module_name's parent and return owned parent and child-name references.
-// Both outputs are NULL for a top-level module.
-static int CPyImport_ImportParent(PyObject *module_name, PyObject **parent_module,
-                                  PyObject **child_name) {
+// Import module_name's parent, if any.
+static int CPyImport_ImportParent(PyObject *module_name) {
     PyObject *parent_name;
-    *parent_module = NULL;
-    if (CPyImport_SplitName(module_name, &parent_name, child_name) < 0) {
+    PyObject *child_name;
+    if (CPyImport_SplitName(module_name, &parent_name, &child_name) < 0) {
+        return -1;
+    }
+    Py_XDECREF(child_name);
+    if (parent_name == NULL) {
+        return 0;
+    }
+    PyObject *parent_module = PyImport_Import(parent_name);
+    Py_DECREF(parent_name);
+    if (parent_module == NULL) {
+        return -1;
+    }
+    Py_DECREF(parent_module);
+    return 0;
+}
+
+// Bind the module under its child name on the current parent in sys.modules.
+static int CPyImport_SetParentAttr(PyObject *module, PyObject *module_name) {
+    PyObject *parent_name;
+    PyObject *child_name;
+    if (CPyImport_SplitName(module_name, &parent_name, &child_name) < 0) {
         return -1;
     }
     if (parent_name == NULL) {
         return 0;
     }
-    *parent_module = PyImport_Import(parent_name);
-    Py_DECREF(parent_name);
-    if (*parent_module == NULL) {
-        Py_CLEAR(*child_name);
-        return -1;
-    }
-    return 0;
-}
-
-// Import module_name's parent and bind the module under its child name.
-static int CPyImport_SetParentAttr(PyObject *module, PyObject *module_name) {
-    PyObject *parent_module;
-    PyObject *child_name;
-    if (CPyImport_ImportParent(module_name, &parent_module, &child_name) < 0) {
-        return -1;
-    }
+    PyObject *parent_module = PyObject_GetItem(PyImport_GetModuleDict(), parent_name);
     if (parent_module == NULL) {
-        return 0;
+        Py_DECREF(parent_name);
+        Py_DECREF(child_name);
+        return -1;
     }
     int result = PyObject_SetAttr(parent_module, child_name, module);
+    Py_DECREF(parent_module);
     if (result < 0 && PyErr_ExceptionMatches(PyExc_AttributeError)) {
         PyErr_Clear();
-        PyObject *parent_name;
-        PyObject *warning_child_name;
-        if (CPyImport_SplitName(module_name, &parent_name, &warning_child_name) == 0) {
-            result = PyErr_WarnFormat(
-                PyExc_ImportWarning, 1,
-                "Cannot set an attribute on %R for child module %R",
-                parent_name, warning_child_name);
-            Py_XDECREF(parent_name);
-            Py_XDECREF(warning_child_name);
-        }
+        result = PyErr_WarnFormat(
+            PyExc_ImportWarning, 1,
+            "Cannot set an attribute on %R for child module %R",
+            parent_name, child_name);
     }
-    Py_DECREF(parent_module);
+    Py_DECREF(parent_name);
     Py_DECREF(child_name);
     return result;
 }
@@ -1647,17 +1647,14 @@ PyObject *CPyImport_ImportNative(PyObject *module_name,
                                  CPyImportState *state, CPyModuleLockAPI *lock_api,
                                  PyObject *shared_lib_file, PyObject *ext_suffix,
                                  Py_ssize_t is_package) {
-    PyObject *parent_module = NULL;
-    PyObject *child_name = NULL;
     PyObject *initializing_spec = NULL;
     PyObject *exc_type, *exc_val, *exc_tb;
     int end_result;
+
     // Import the parent package first to preserve import ordering semantics.
-    if (CPyImport_ImportParent(module_name, &parent_module, &child_name) < 0) {
+    if (CPyImport_ImportParent(module_name) < 0) {
         return NULL;
     }
-    Py_XDECREF(parent_module);
-    Py_XDECREF(child_name);
 
     // Create the module object without executing the module body.
     // CPyInitOnly_* uses an internal static to cache the module object.

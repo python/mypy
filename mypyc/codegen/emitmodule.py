@@ -47,14 +47,17 @@ from mypyc.codegen.emitwrapper import (
 from mypyc.codegen.literals import Literals
 from mypyc.common import (
     EXT_SUFFIX,
-    IMPORT_STATE_PREFIX,
     IS_FREE_THREADED,
-    MODULE_LOCK_API_PREFIX,
     MODULE_PREFIX,
     PREFIX,
     RUNTIME_C_FILES,
     TOP_LEVEL_NAME,
     TYPE_VAR_PREFIX,
+    module_exec_name,
+    module_import_state_name,
+    module_init_name,
+    module_init_only_name,
+    module_lock_api_name,
     shared_lib_name,
     short_id_from_name,
 )
@@ -658,13 +661,6 @@ class GroupGenerator:
         # probably want to enable it always, but we'll wait until it's stable.
         self.multi_phase_init = IS_FREE_THREADED
 
-    def import_state_name(self, module_name: str) -> str:
-        return f"{IMPORT_STATE_PREFIX}{exported_name(module_name)}"
-
-    def module_lock_api_name(self) -> str:
-        assert self.group_name is not None
-        return f"{MODULE_LOCK_API_PREFIX}{exported_name(self.group_name)}"
-
     @property
     def group_suffix(self) -> str:
         return "_" + exported_name(self.group_name) if self.group_name else ""
@@ -959,7 +955,7 @@ class GroupGenerator:
             "",
         )
 
-        lock_api = self.module_lock_api_name()
+        lock_api = module_lock_api_name(self.group_name)
         emitter.emit_lines(
             f"if ({lock_api} == NULL) {{",
             f"{lock_api} = CPyModuleLockAPI_Alloc();",
@@ -1004,20 +1000,16 @@ class GroupGenerator:
         for mod in self.modules:
             name = exported_name(mod)
             if self.multi_phase_init:
-                capsule_func_prefix = "CPyExec_"
+                capsule_func_name = module_exec_name(mod)
                 capsule_name_prefix = "exec_"
-                emitter.emit_line(f"extern int CPyExec_{name}(PyObject *);")
+                emitter.emit_line(f"extern int {capsule_func_name}(PyObject *);")
             else:
-                capsule_func_prefix = "CPyInit_"
+                capsule_func_name = module_init_name(mod)
                 capsule_name_prefix = "init_"
-                emitter.emit_line(f"extern PyObject *CPyInit_{name}(void);")
+                emitter.emit_line(f"extern PyObject *{capsule_func_name}(void);")
             emitter.emit_lines(
-                'capsule = PyCapsule_New((void *){}{}, "{}.{}{}", NULL);'.format(
-                    capsule_func_prefix,
-                    name,
-                    shared_lib_name(self.group_name),
-                    capsule_name_prefix,
-                    name,
+                'capsule = PyCapsule_New((void *){}, "{}.{}{}", NULL);'.format(
+                    capsule_func_name, shared_lib_name(self.group_name), capsule_name_prefix, name
                 ),
                 "if (!capsule) {",
                 "goto fail;",
@@ -1179,7 +1171,7 @@ class GroupGenerator:
         self, emitter: Emitter, module_prefix: str, module_name: str
     ) -> None:
         name = f"{module_prefix}_slots"
-        exec_name = f"CPyExec_{exported_name(module_name)}"
+        exec_name = module_exec_name(module_name)
 
         emitter.emit_line(f"static PyModuleDef_Slot {name}[] = {{")
         emitter.emit_line(f"{{Py_mod_exec, {exec_name}}},")
@@ -1285,12 +1277,12 @@ class GroupGenerator:
         exec function for each module and these will be called by the shims
         via Capsules.
         """
-        exec_name = f"CPyExec_{exported_name(module_name)}"
+        exec_name = module_exec_name(module_name)
         declaration = f"int {exec_name}(PyObject *module)"
         emitter.context.declarations[exec_name] = HeaderDeclaration(declaration + ";")
         impl_name = f"{exec_name}__impl"
         module_static = self.module_internal_static_name(module_name, emitter)
-        state = self.import_state_name(module_name)
+        state = module_import_state_name(module_name)
         module_cache = emitter.static_name(module_name, None, prefix=MODULE_PREFIX)
         emitter.emit_lines(f"static int {impl_name}(PyObject *module)", "{")
         if not self.use_shared_lib:
@@ -1400,7 +1392,7 @@ class GroupGenerator:
         This allows the caller to set up attributes like __file__ and __package__
         before the module body runs. Used for same-group native imports.
         """
-        init_only_name = f"CPyInitOnly_{exported_name(module_name)}"
+        init_only_name = module_init_only_name(module_name)
         init_only_decl = f"PyObject *{init_only_name}(void)"
         emitter.context.declarations[init_only_name] = HeaderDeclaration(init_only_decl + ";")
         module_static = self.module_internal_static_name(module_name, emitter)
@@ -1423,12 +1415,10 @@ class GroupGenerator:
     ) -> None:
         if not self.use_shared_lib:
             declaration = f"PyMODINIT_FUNC PyInit_{module_name}(void)"
-            impl_declaration = declaration
         else:
-            n = f"CPyInit_{exported_name(module_name)}"
+            n = module_init_name(module_name)
             declaration = f"PyObject *{n}(void)"
             emitter.context.declarations[n] = HeaderDeclaration(declaration + ";")
-            impl_declaration = declaration
 
         if self.multi_phase_init:
             emitter.emit_lines(declaration, "{")
@@ -1437,13 +1427,13 @@ class GroupGenerator:
             emitter.emit_line("}")
             return
 
-        exec_func = f"CPyExec_{exported_name(module_name)}"
+        exec_func = module_exec_name(module_name)
 
         if self.use_shared_lib:
             self.emit_init_only_func(emitter, module_name, module_prefix)
 
         # Emit CPyInit_* / PyInit_* which creates the module and executes the body.
-        emitter.emit_lines(impl_declaration, "{")
+        emitter.emit_lines(declaration, "{")
         module_static = self.module_internal_static_name(module_name, emitter)
 
         emitter.emit_line("PyObject* modname = NULL;")
@@ -1516,7 +1506,7 @@ class GroupGenerator:
         emitter.emit_line("{")
         emitter.emit_line("    PyObject *exc_type, *exc_val, *exc_tb;")
         emitter.emit_line("    PyErr_Fetch(&exc_type, &exc_val, &exc_tb);")
-        state = self.import_state_name(module_name)
+        state = module_import_state_name(module_name)
         emitter.emit_line(f"    CPyImport_SetInitialized(&{state}, 0);")
         emitter.emit_line("    if (modname == NULL) {")
         emitter.emit_line(f'        modname = PyUnicode_FromString("{module_name}");')
@@ -1611,7 +1601,7 @@ class GroupGenerator:
         if module_name in self.modules:
             internal_static_name = self.module_internal_static_name(module_name, emitter)
             self.declare_global("CPyModule *", internal_static_name, initializer="NULL")
-            state_name = self.import_state_name(module_name)
+            state_name = module_import_state_name(module_name)
             if state_name not in self.context.declarations:
                 self.context.declarations[state_name] = HeaderDeclaration(
                     f"CPyImportState {state_name};", defn=[f"CPyImportState {state_name} = {{0}};"]
@@ -1621,7 +1611,8 @@ class GroupGenerator:
         self.simple_inits.append((static_name, "Py_None"))
 
     def declare_module_lock_api(self) -> None:
-        name = self.module_lock_api_name()
+        assert self.group_name is not None
+        name = module_lock_api_name(self.group_name)
         if name not in self.context.declarations:
             self.context.declarations[name] = HeaderDeclaration(
                 f"CPyModuleLockAPI *{name};", defn=[f"CPyModuleLockAPI *{name} = NULL;"]

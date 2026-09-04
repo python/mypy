@@ -25,7 +25,6 @@ def f(a):
 L0:
     a.x = 2; r0 = is_error
     return 1
-
 [case testUserClassInList_withgil]
 class C:
     x: int
@@ -267,7 +266,7 @@ def __top_level__():
     r78 :: bit
     r79 :: bool
 L0:
-    r0 = load_address CPyModule_builtins
+    r0 = load_address builtins :: module
     r1 = CPyImport_GetModuleCache(r0)
     r2 = load_address _Py_NoneStruct
     r3 = r1 != r2
@@ -275,7 +274,7 @@ L0:
 L1:
     r4 = 'builtins'
     r5 = PyImport_Import(r4)
-    CPyImport_SetModuleCache(r0, r5)
+    CPyImport_SetModuleCacheIfInitialized(r0, r5)
 L2:
     r6 = ('TypeVar', 'Generic')
     r7 = 'typing'
@@ -3068,7 +3067,7 @@ def __top_level__():
     r48 :: bit
     r49 :: bool
 L0:
-    r0 = load_address CPyModule_builtins
+    r0 = load_address builtins :: module
     r1 = CPyImport_GetModuleCache(r0)
     r2 = load_address _Py_NoneStruct
     r3 = r1 != r2
@@ -3076,7 +3075,7 @@ L0:
 L1:
     r4 = 'builtins'
     r5 = PyImport_Import(r4)
-    CPyImport_SetModuleCache(r0, r5)
+    CPyImport_SetModuleCacheIfInitialized(r0, r5)
 L2:
     r6 = ('ClassVar', 'Set')
     r7 = 'typing'
@@ -3215,7 +3214,7 @@ def __top_level__():
     r87 :: bit
     r88 :: object
 L0:
-    r0 = load_address CPyModule_builtins
+    r0 = load_address builtins :: module
     r1 = CPyImport_GetModuleCache(r0)
     r2 = load_address _Py_NoneStruct
     r3 = r1 != r2
@@ -3223,7 +3222,7 @@ L0:
 L1:
     r4 = 'builtins'
     r5 = PyImport_Import(r4)
-    CPyImport_SetModuleCache(r0, r5)
+    CPyImport_SetModuleCacheIfInitialized(r0, r5)
 L2:
     r6 = ('ClassVar', 'Set')
     r7 = 'typing'
