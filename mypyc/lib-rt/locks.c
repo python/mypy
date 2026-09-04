@@ -1,9 +1,5 @@
 #include "CPy.h"
 
-#ifdef _WIN32
-#include <windows.h>
-#endif
-
 struct CPyModuleLockAPI {
     PyObject *get_module_lock;
     PyObject *deadlock_error;
@@ -80,12 +76,13 @@ int CPyImport_ReleaseLock(PyObject *module_lock) {
     return 0;
 }
 
+// CPython exposes pyatomic.h through Python.h starting in 3.13. Older supported
+// versions are GIL-only, so plain accesses provide the same serialization there.
 bool CPyImport_IsInitialized(const CPyImportState *state) {
-#ifdef _WIN32
-    return InterlockedCompareExchange(
-        (volatile LONG *)&state->initialized, 0, 0) != 0;
+#if PY_VERSION_HEX >= 0x030D0000
+    return _Py_atomic_load_int32(&state->initialized) != 0;
 #else
-    return __atomic_load_n(&state->initialized, __ATOMIC_ACQUIRE) != 0;
+    return state->initialized != 0;
 #endif
 }
 
@@ -98,10 +95,10 @@ bool CPyImport_IsInitializedForModule(const CPyImportState *state, PyObject *mod
 }
 
 void CPyImport_SetInitialized(CPyImportState *state, bool initialized) {
-#ifdef _WIN32
-    InterlockedExchange((volatile LONG *)&state->initialized, initialized);
+#if PY_VERSION_HEX >= 0x030D0000
+    _Py_atomic_store_int32(&state->initialized, initialized);
 #else
-    __atomic_store_n(&state->initialized, initialized, __ATOMIC_RELEASE);
+    state->initialized = initialized;
 #endif
 }
 
@@ -119,10 +116,10 @@ static void CPyImport_DecRefOld(PyObject *previous) {
 }
 
 PyObject *CPyImport_GetModuleCache(CPyModule **cache) {
-#ifdef _WIN32
-    return InterlockedCompareExchangePointer((PVOID volatile *)cache, NULL, NULL);
+#if PY_VERSION_HEX >= 0x030D0000
+    return (PyObject *)_Py_atomic_load_ptr_acquire(cache);
 #else
-    return (PyObject *)__atomic_load_n(cache, __ATOMIC_ACQUIRE);
+    return (PyObject *)*cache;
 #endif
 }
 
@@ -145,16 +142,15 @@ static bool CPyImport_IsModuleInitializing(PyObject *module) {
 
 void CPyImport_SetModuleCache(CPyModule **cache, PyObject *module) {
     Py_INCREF(module);
-#ifdef _WIN32
-    PVOID previous = InterlockedCompareExchangePointer(
-        (PVOID volatile *)cache, module, Py_None);
-    if (previous != Py_None) {
+#if PY_VERSION_HEX >= 0x030D0000
+    CPyModule *expected = (CPyModule *)Py_None;
+    if (!_Py_atomic_compare_exchange_ptr(cache, &expected, module)) {
         Py_DECREF(module);
     }
 #else
-    CPyModule *expected = (CPyModule *)Py_None;
-    if (!__atomic_compare_exchange_n(cache, &expected, (CPyModule *)module, false,
-                                     __ATOMIC_RELEASE, __ATOMIC_ACQUIRE)) {
+    if (*cache == (CPyModule *)Py_None) {
+        *cache = (CPyModule *)module;
+    } else {
         Py_DECREF(module);
     }
 #endif
@@ -174,10 +170,11 @@ void CPyImport_SetModuleCacheIfInitialized(CPyModule **cache, PyObject *module) 
 void CPyImport_ReplaceModuleCache(CPyModule **cache, PyObject *module) {
     Py_INCREF(module);
     CPyModule *previous;
-#ifdef _WIN32
-    previous = InterlockedExchangePointer((PVOID volatile *)cache, module);
+#if PY_VERSION_HEX >= 0x030D0000
+    previous = (CPyModule *)_Py_atomic_exchange_ptr(cache, module);
 #else
-    previous = __atomic_exchange_n(cache, (CPyModule *)module, __ATOMIC_ACQ_REL);
+    previous = *cache;
+    *cache = (CPyModule *)module;
 #endif
     if (previous == NULL || previous == (CPyModule *)Py_None) {
         return;
