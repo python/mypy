@@ -464,8 +464,8 @@ The following flags adjust how mypy handles values of type ``None``.
 
     .. warning::
 
-        ``--no-strict-optional`` is evil. Avoid using it and definitely do
-        not use it without understanding what it does.
+        ``--no-strict-optional`` is not recommended. See
+        :ref:`strict_optional` for an explanation of its behavior.
 
 
 .. _configuring-warnings:
