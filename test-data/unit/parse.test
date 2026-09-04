@@ -948,20 +948,18 @@ MypyFile:1(
 [case testNotAsBinaryOp]
 x not y
 [out]
-main:1: error: Invalid syntax
-[out version==3.10.0]
-main:1: error: Invalid syntax. Perhaps you forgot a comma?
+main:1: error: Simple statements must be separated by newlines or semicolons
 
 [case testNotIs]
-x not is y # E: Invalid syntax
+x not is y
 [out]
+main:1: error: Simple statements must be separated by newlines or semicolons
+main:1: error: Expected an identifier, but found a keyword `is` that cannot be used here
 
 [case testBinaryNegAsBinaryOp]
 1 ~ 2
 [out]
-main:1: error: Invalid syntax
-[out version==3.10.0]
-main:1: error: Invalid syntax. Perhaps you forgot a comma?
+main:1: error: Simple statements must be separated by newlines or semicolons
 
 [case testSliceInList]
 x = [1, 2][1:2]

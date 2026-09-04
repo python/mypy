@@ -1478,7 +1478,7 @@ if int():
     b = (x for x in a)  # E: Generator has incompatible item type "Callable[[], str]"; expected "Callable[[], int]"
 [builtins fixtures/list.pyi]
 
-[case testGeneratorNoSpuriousError_no_native_parse]
+[case testGeneratorNoSpuriousError]
 from typing import Iterable, overload
 
 @overload
@@ -1493,8 +1493,8 @@ take_iterable(reveal_type(1 for _ in [])) # N: Revealed type is "typing.Generato
 # NOTE: Type is revealed for every overload tried
 # TODO: Overload shouldn't fail if expression contains an error that shouldn't affect the inferred type.
 take_iterable(reveal_type(1 if (-"") else 1 for _ in [])) # N: Revealed type is "typing.Generator[builtins.int, None, None]" \
-                                                          # N: Revealed type is "typing.Generator[builtins.bool, None, None]" \
                                                           # E: Generator has incompatible item type "int"; expected "bool" \
+                                                          # N: Revealed type is "typing.Generator[builtins.bool, None, None]" \
                                                           # E: Unsupported operand type for unary - ("str")
 
 [builtins fixtures/for.pyi]
@@ -1937,13 +1937,12 @@ None == None
 None < None  # E: Unsupported left operand type for < ("None")
 [builtins fixtures/ops.pyi]
 
-[case testDictWithStarExpr_no_native_parse]
-
-b = {'z': 26, *a}  # E: Invalid syntax
+[case testDictWithStarExpr]
+b = {'z': 26, *a}  # E: Starred expression cannot be used here \
+                   # E: Expected `:`, found `}`
 [builtins fixtures/dict.pyi]
 
 [case testDictWithStarStarExpr]
-
 from typing import Dict, Iterable
 
 class Thing:
