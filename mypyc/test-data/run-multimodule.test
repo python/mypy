@@ -2048,3 +2048,60 @@ from mypy_extensions import mypyc_attr
 class CompiledBase:
     def value(self) -> int:
         raise NotImplementedError
+
+[case testMultiModuleClassBodyFinal]
+from typing import Any
+from other import Base
+
+class Sub(Base):
+    def sub_literal(self) -> int:
+        return self.LITERAL
+
+    def sub_computed(self) -> int:
+        return self.COMPUTED
+
+def read_through_instance(b: Base) -> int:
+    return b.LITERAL + b.COMPUTED
+
+def read_through_class() -> int:
+    return Base.LITERAL + Base.COMPUTED
+
+[file other.py]
+from typing import Final
+
+def make() -> int:
+    return 7
+
+class Base:
+    LITERAL: Final = 23
+    COMPUTED: Final = make()
+    ITEMS: Final = [1, 2]
+
+    def base_literal(self) -> int:
+        return self.LITERAL
+
+    def base_computed(self) -> int:
+        return self.COMPUTED
+
+[file driver.py]
+from typing import Any
+from native import Sub, read_through_instance, read_through_class
+from other import Base
+
+# Reading a class-body Final defined in another module, both constant folded
+# (LITERAL) and loaded from that module's static (COMPUTED).
+assert read_through_instance(Base()) == 30
+assert read_through_class() == 30
+assert Sub().sub_literal() == 23
+assert Sub().sub_computed() == 7
+assert Sub().base_literal() == 23
+assert Sub().base_computed() == 7
+
+# Dynamic access resolves through the class dict in either module.
+o: Any = Sub()
+assert o.LITERAL == 23
+assert o.COMPUTED == 7
+assert o.ITEMS == [1, 2]
+b: Any = Base()
+assert b.COMPUTED == 7
+assert b.ITEMS is Base.ITEMS
