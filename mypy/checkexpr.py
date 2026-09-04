@@ -5850,7 +5850,16 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             method = self.chk.scope.current_function()
             assert method is not None
             if method.arguments:
-                instance_type: Type = method.arguments[0].variable.type or current_type
+                # If we're currently checking one of the copies `expand_typevars`
+                # makes for a class with a value-restricted type variable, use the
+                # already-substituted self type computed for this copy -- the
+                # scope always holds the original (unexpanded) function, so its
+                # own self argument's type (annotated or not) is never substituted.
+                instance_type: Type = (
+                    self.chk.expanding_self_type
+                    or method.arguments[0].variable.type
+                    or current_type
+                )
             else:
                 self.chk.fail(message_registry.SUPER_ENCLOSING_POSITIONAL_ARGS_REQUIRED, e)
                 return AnyType(TypeOfAny.from_error)
