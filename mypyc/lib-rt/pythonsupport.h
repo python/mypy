@@ -169,34 +169,14 @@ static inline void CPy_InitAttrRef(PyObject **field, PyObject *value) {
 
 #endif
 
-// Running flag of a generated generator/coroutine object.
+// Generated generator and coroutine helpers claim this flag while executing,
+// rejecting reentrant or concurrent resumes.
 //
-// A generator has exactly one legitimate driver at a time: resuming one that is
-// already executing is an error in every Python implementation. Generated helper
-// methods claim the flag on entry and clear it at every exit, rejecting both a
-// reentrant entry (the generator resuming itself, directly or indirectly) and a
-// concurrent one from another thread. This mirrors what CPython's own generators do
-// with gi_frame_state == FRAME_EXECUTING.
-//
-// On free-threaded builds the flag additionally buys:
-//
-//   - Mutual exclusion. No other thread can be inside the body while it runs, so the
-//     object's private attributes are thread-confined and their loads and stores need
-//     not be atomic (mypyc emits the same plain accesses as under the GIL). One RMW
-//     per resume replaces one atomic operation per attribute access.
-//   - Publication. The release on suspension pairs with the acquire on the next
-//     resume, so a generator that migrates between threads (the normal case for an
-//     asyncio task on a thread pool) sees everything the previous thread stored,
-//     including values written with plain stores.
-//
-// There the flag must be claimed with a real atomic read-modify-write, not a load
-// followed by a store: two threads calling send() concurrently would both pass a
-// non-atomic test and then race on non-atomic fields, which is a memory-safety bug
-// rather than merely a confused generator. The exchange is sequentially consistent,
-// which implies the acquire we need, and costs one uncontended local RMW on a line
-// the resume is about to write anyway.
-//
-// Under the GIL a plain load and store suffice.
+// On free-threaded builds, the atomic exchange provides mutual exclusion and acquire
+// ordering; the release store publishes body writes to the next resume. This also
+// permits plain access to private generator attributes. Claiming must be a single
+// atomic operation, or two threads could both observe a clear flag and enter. Under
+// the GIL, plain accesses suffice.
 #ifdef Py_GIL_DISABLED
 static inline int CPyGen_TryEnter(uint32_t *running) {
     return _Py_atomic_exchange_uint32(running, 1) == 0;

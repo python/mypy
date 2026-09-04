@@ -28,9 +28,7 @@ MYPYC_DEFAULTS_SETUP: Final = "__mypyc_defaults_setup"
 GENERATOR_ATTRIBUTE_PREFIX: Final = "__mypyc_generator_attribute__"
 CPYFUNCTION_NAME = "__cpyfunction__"
 
-# C struct field of a generator object that holds the running flag (see
-# ClassIR.has_running_flag). This isn't an IR-level attribute, so it can't collide
-# with one: those are all prefixed with ATTR_PREFIX.
+# Lacks the suffix added to user attribute fields, so it cannot collide with one.
 RUNNING_FIELD: Final = "mypyc_running"
 
 # Max short int we accept as a literal is based on 32-bit platforms,

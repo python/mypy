@@ -191,8 +191,7 @@ def generate_native_function(
                 fn.blocks[target.label].referenced = True
 
     if running_flag_class is not None:
-        # Emitted before the first label, so every resume runs it, while internal
-        # jumps back to the first block don't.
+        # Place this before all labels so it runs on resume, but not on internal jumps.
         visitor.emit_claim_running_flag(fn)
 
     common = frequently_executed_blocks(fn.blocks[0])
@@ -233,10 +232,8 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         self.declarations = declarations
         self.source_path = source_path
         self.module_name = module_name
-        # Set if we're emitting the generator helper method of this class, which must
-        # hold the instance's running flag while it runs.
+        # Set while emitting a generator helper protected by its running flag.
         self.running_flag_class = running_flag_class
-        # C expression for the address of that flag, set up on function entry
         self.running_flag_ptr: str | None = None
         self.literals = emitter.context.literals
         self.rare = False
@@ -314,13 +311,7 @@ class FunctionEmitterVisitor(OpVisitor[None]):
             self.emit_lines("} else", "    goto %s;" % self.label(false))
 
     def emit_claim_running_flag(self, fn: FuncIR) -> None:
-        """Claim the receiver's running flag, or fail without running the body.
-
-        Rejecting reentrant and concurrent entry matches CPython, which raises
-        ValueError for an already-executing generator. On free-threaded builds it's
-        also needed for correctness: the body's attribute accesses are only safe
-        because at most one thread is inside the body at a time.
-        """
+        """Claim the generator's running flag or raise ValueError."""
         cl = self.running_flag_class
         assert cl is not None
         struct = cl.struct_name(self.names)
@@ -333,13 +324,7 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         self.emit_line("}")
 
     def emit_release_running_flag(self) -> None:
-        """Clear the running flag before leaving the generator body.
-
-        Every exit goes through a Return op, error exits included, so this covers
-        suspension, completion and exceptions alike. On free-threaded builds clearing
-        the flag also publishes everything the body stored to the next thread that
-        resumes the generator.
-        """
+        """Release the flag; every helper exit is represented by Return."""
         assert self.running_flag_ptr is not None
         self.emit_line(f"CPyGen_Exit({self.running_flag_ptr});")
 
@@ -473,9 +458,8 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         transform_member_expr in irbuild), whose values live as long as their container.
         The default (GIL) build always takes the plain-load path and increfs separately.
 
-        Thread-confined attributes also use a plain load: they are only reachable from
-        a generator body that just one thread at a time can run, so there can be no
-        concurrent writer (see ClassIR.attrs_are_thread_confined).
+        Thread-confined attributes also use plain loads; see
+        ClassIR.attrs_are_thread_confined.
         """
         use_get_attr_ref = (
             IS_FREE_THREADED
@@ -647,9 +631,6 @@ class FunctionEmitterVisitor(OpVisitor[None]):
             # In free-threaded builds, publishing a single reference-counted
             # 'PyObject *' field must be atomic so a concurrent reader (see
             # CPy_GetAttrRef) never observes a torn pointer or a freed value.
-            # Thread-confined attributes are exempt: no other thread can read or write
-            # the field while the generator body runs, so a plain store and an
-            # immediate decref of the old value are safe.
             # Both helpers steal the reference to src.
             attr_expr = self.get_attr_expr(obj, op, decl_cl)
             if op.is_init:

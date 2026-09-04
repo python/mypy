@@ -170,15 +170,10 @@ def setup_generator_class(builder: IRBuilder) -> ClassIR:
     mapper = builder.mapper
     assert isinstance(builder.fn_info.fitem, FuncDef), builder.fn_info.fitem
     generator_class_ir = mapper.fdef_to_generator[builder.fn_info.fitem]
-    # Reject entering a generator that is already executing, like CPython does.
     generator_class_ir.has_running_flag = True
     if builder.fn_info.can_merge_generator_and_env_classes():
         builder.fn_info.env_class = generator_class_ir
-        # The locals live directly in the generator object, and since the environment
-        # wasn't split out, no nested function can capture them -- every attribute is
-        # only reachable from the generator body. Together with the running flag this
-        # lets free-threaded builds use plain attribute access in the body (see
-        # ClassIR.attrs_are_thread_confined).
+        # The merged environment can be thread-confined; see attrs_are_thread_confined.
         generator_class_ir.has_private_attrs = True
     else:
         generator_class_ir.attributes[ENV_ATTR_NAME] = RInstance(builder.fn_info.env_class)

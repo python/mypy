@@ -250,19 +250,10 @@ class ClassIR:
         # Name of the function if this a callable class representing a coroutine.
         self.coroutine_name: str | None = None
 
-        # If True, instances of this generated generator/coroutine class have a running
-        # flag: the generator helper method claims it on entry and clears it at every
-        # exit, so entering an instance that is already executing fails instead of
-        # running the body again, like in CPython. Set for all generator classes, since
-        # reentrant and concurrent entry must be rejected either way.
+        # Does this generator or coroutine helper serialize execution using an instance flag?
         self.has_running_flag = False
 
-        # If True, this generated generator/coroutine class holds the function's locals
-        # directly instead of pointing to a separate environment class. Nothing outside
-        # the generator body can reach those attributes then, since the classes are only
-        # merged if no nested function can capture a local. Together with the running
-        # flag this makes the attributes thread-confined (see
-        # attrs_are_thread_confined).
+        # Does this generator object contain its merged environment?
         self.has_private_attrs = False
 
     def __repr__(self) -> str:
@@ -323,18 +314,12 @@ class ClassIR:
         return self.needs_getseters or not self.is_generated or self.has_dict
 
     def attrs_are_thread_confined(self) -> bool:
-        """Can only one thread at a time reach this class's attributes?
+        """Can these attributes safely use plain access in free-threaded builds?
 
-        True for a generator class that holds its locals directly (has_private_attrs)
-        and serializes execution with a running flag: the attributes are then only
-        reachable from the generator body, and only the flag holder runs the body. On
-        free-threaded builds such attributes can use plain (non-atomic) loads and
-        stores.
-
-        Generator classes with a separate environment class don't qualify, since their
-        locals live in an object that escaped nested functions can also touch, even
-        while the generator is suspended. Getseters must not be generated either, as
-        they would expose the attributes to arbitrary code.
+        This requires locals to live directly in the generator object, execution to be
+        serialized by its running flag, and no Python getseters exposing the attributes.
+        A separate environment does not qualify because captured locals may be accessed
+        by nested functions.
         """
         return self.has_private_attrs and self.has_running_flag and not self.needs_getseters_table
 
