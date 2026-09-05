@@ -1251,21 +1251,22 @@ def generate_getter(cl: ClassIR, attr: str, rtype: RType, emitter: Emitter) -> N
     attr_expr = f"self->{attr_field}"
 
     if IS_FREE_THREADED and is_simple_refcounted_pointer(rtype):
-        # In free-threaded builds, load the attribute and take a new reference
-        # atomically to avoid a use-after-free race with a concurrent setter.
+        # In free-threaded builds, load the attribute and take a new reference with
+        # an optimistic validated incref to avoid racing with a concurrent setter.
         # CPy_GetAttrRef returns NULL if the attribute is undefined (NULL field),
         # which is exactly the error/undefined value for a 'PyObject *' field.
         #
         # Final attributes are never rebound (no setter), so there is no concurrent
         # writer to race with: a plain load + incref is safe. Use the cheaper
-        # CPy_GetAttrRefFinal, which skips the try-incref and _Py_NewRefWithLock
-        # slow path entirely (an unconditional Py_INCREF needs no maybe-weakref).
+        # CPy_GetAttrRefFinal, which skips the try-incref and the locked
+        # _Py_XNewRefWithLock fallback entirely (an unconditional Py_INCREF needs no
+        # maybe-weakref).
         # This getter is generated per defining class, so a direct membership test
         # matches the read-only getset table above (no need to walk the MRO).
         if attr in cl.final_attributes:
             getattr_ref = f"CPy_GetAttrRefFinal((PyObject **)&{attr_expr})"
         else:
-            getattr_ref = f"CPy_GetAttrRef((PyObject **)&{attr_expr})"
+            getattr_ref = f"CPy_GetAttrRef((PyObject *)self, (PyObject **)&{attr_expr})"
         emitter.emit_line(f"PyObject *retval = {getattr_ref};")
         emitter.emit_line("if (unlikely(retval == NULL)) {")
         emitter.emit_line("PyErr_SetString(PyExc_AttributeError,")
@@ -1314,11 +1315,12 @@ def generate_setter(cl: ClassIR, attr: str, rtype: RType, emitter: Emitter) -> N
         emitter.emit_line("}")
 
     if IS_FREE_THREADED and is_simple_refcounted_pointer(rtype):
-        # In free-threaded builds, publish the new value atomically via
-        # CPy_SetAttrRef so a concurrent reader (see CPy_GetAttrRef) never sees a
-        # torn pointer or a freed old value. CPy_SetAttrRef steals its value and
-        # reclaims the old one, so we cast/type-check the incoming value, take a
-        # new reference (the setter only borrows 'value'), then hand it over.
+        # In free-threaded builds, publish the new value via CPy_SetAttrRef, which
+        # takes the owner's critical section so a concurrent reader (see
+        # CPy_GetAttrRef) can always secure a reference to the value it observes,
+        # even though the old value is decrefed right away. CPy_SetAttrRef steals its
+        # value and reclaims the old one, so we cast/type-check the incoming value,
+        # take a new reference (the setter only borrows 'value'), then hand it over.
         # A NULL value deletes the attribute (reclaims the old value, stores NULL).
         if deletable:
             emitter.emit_line("if (value != NULL) {")
@@ -1328,10 +1330,14 @@ def generate_setter(cl: ClassIR, attr: str, rtype: RType, emitter: Emitter) -> N
             emitter.emit_cast("value", "tmp", rtype, declare_dest=True)
             emitter.emit_lines("if (!tmp)", "    return -1;")
         emitter.emit_inc_ref("tmp", rtype)
-        emitter.emit_line(f"CPy_SetAttrRef((PyObject **)&self->{attr_field}, tmp);")
+        emitter.emit_line(
+            f"CPy_SetAttrRef((PyObject *)self, (PyObject **)&self->{attr_field}, tmp);"
+        )
         if deletable:
             emitter.emit_line("} else {")
-            emitter.emit_line(f"CPy_SetAttrRef((PyObject **)&self->{attr_field}, NULL);")
+            emitter.emit_line(
+                f"CPy_SetAttrRef((PyObject *)self, (PyObject **)&self->{attr_field}, NULL);"
+            )
             emitter.emit_line("}")
         emitter.emit_line("return 0;")
         emitter.emit_line("}")
