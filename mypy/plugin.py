@@ -137,6 +137,8 @@ from mypy.nodes import (
     MypyFile,
     SymbolTableNode,
     TypeInfo,
+    FuncDef,
+    ReturnStmt
 )
 from mypy.options import Options
 from mypy.types import (
@@ -516,6 +518,35 @@ class DynamicClassDefContext(NamedTuple):
     name: str  # The name this class is being assigned to
     api: SemanticAnalyzerPluginInterface
 
+# A context for a function hook signature after available after decl.
+class FunctionDefContext(NamedTuple):
+    definition: FuncDef
+    declared_signature: CallableType
+    api: SemanticAnalyzerPluginInterface
+
+class ReturnSite(NamedTuple):
+    statement: ReturnStmt
+    inferred_type: Type
+
+# A context for a function hook after the body is checked.
+class FunctionBodyContext(NamedTuple):
+    definition: FuncDef
+    declared_signature: CallableType # preserves the user annotations
+    inferred_return_type: Type # inferred from return exprs in func, can be None
+    return_sites: tuple[ReturnSite, ...]
+    can_fall_through: bool # tracks definitions with multiple exists (e.g early returns)
+    api: CheckerPluginInterface
+
+# None here means inferred function return type is not propagated
+class FunctionBodyResult(NamedTuple):
+    refined_return: Type | None = None
+
+# Supplying this callback tells mypy that this body's inferred information may affect the function's published signature.
+class FunctionDefHookResult(NamedTuple):
+    after_body: FunctionBodyHook | None = None
+
+FunctionBodyHook = Callable[[FunctionBodyContext], FunctionBodyResult]
+FunctionDefHook = Callable[[FunctionDefContext], FunctionDefHookResult]
 
 @mypyc_attr(allow_interpreted_subclasses=True)
 class Plugin(CommonPluginApi):
@@ -816,6 +847,14 @@ class Plugin(CommonPluginApi):
         For such definition, this hook will be called with 'lib.dynamic_class'.
         The plugin should create the corresponding TypeInfo, and place it into a relevant
         symbol table, e.g. using ctx.api.add_symbol_table_node().
+        """
+        return None
+
+    def get_function_def_hook(
+      self, fullname: str
+    ) -> FunctionDefHook:
+        """FILL
+
         """
         return None
 
