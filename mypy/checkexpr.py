@@ -4861,14 +4861,37 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         )
         target_type = expr.type
         options = self.chk.options
+
+        redundant_source_type = source_type
+
+        if options.warn_redundant_casts:
+            cast_context = self.type_context[-1]
+
+            with self.msg.filter_errors() as local_errors:
+                with (
+                    self.chk.local_type_map,
+                    self.chk.binder.frame_context(can_skip=False, discard=True),
+                ):
+                    inferred_source_type = self.accept(
+                        expr.expr,
+                        type_context=cast_context,
+                        allow_none_return=True,
+                        always_allow_any=True,
+                    )
+
+            if not local_errors.has_new_errors():
+                redundant_source_type = inferred_source_type
+
         if (
             options.warn_redundant_casts
             and not is_same_type(target_type, AnyType(TypeOfAny.special_form))
-            and is_same_type(source_type, target_type)
+            and is_same_type(redundant_source_type, target_type)
         ):
             self.msg.redundant_cast(target_type, expr)
+
         if options.disallow_any_unimported and has_any_from_unimported_type(target_type):
             self.msg.unimported_type_becomes_any("Target type of cast", target_type, expr)
+
         check_for_explicit_any(
             target_type, self.chk.options, self.chk.is_typeshed_stub, self.msg, context=expr
         )
