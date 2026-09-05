@@ -923,6 +923,9 @@ class ChainedPlugin(Plugin):
     def get_function_hook(self, fullname: str) -> Callable[[FunctionContext], Type] | None:
         return self._find_hook(lambda plugin: plugin.get_function_hook(fullname))
 
+    def get_function_def_hook(self, fullname:str) -> Callable[[FunctionDefContext], FunctionDefHookResult] | None:
+        return self._find_hook(lambda plugin: plugin.get_function_def_hook(fullname))
+
     def get_method_signature_hook(
         self, fullname: str
     ) -> Callable[[MethodSigContext], FunctionLike] | None:
