@@ -246,6 +246,7 @@ from mypy.typeops import (
     false_only,
     fixup_partial_type,
     function_type,
+    is_flag_enum_type,
     is_literal_type_like,
     is_singleton_equality_type,
     is_singleton_identity_type,
@@ -7074,6 +7075,15 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                 target_type = operand_types[j]
                 if should_coerce_literals:
                     target_type = coerce_to_literal(target_type)
+
+                # A Flag value can hold any combination of members, so the declared
+                # members are not an exhaustive set of values: ruling out e.g.
+                # `Programs.P2` does not rule out `Programs.P1 | Programs.P2`. Narrowing
+                # by member equality is therefore unsound for Flag enums.
+                if is_flag_enum_type(get_proper_type(expr_type)) or is_flag_enum_type(
+                    get_proper_type(target_type)
+                ):
+                    continue
 
                 # Morally what we want to do is narrow for each branch based on:
                 # `if_type, else_type = conditional_types(expr_type, target)`
