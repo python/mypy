@@ -7,6 +7,7 @@ from collections.abc import Callable
 from typing import Final
 
 from mypy.nodes import (
+    ARG_NAMED,
     ARG_POS,
     EXCLUDED_ENUM_ATTRIBUTES,
     TYPE_VAR_TUPLE_KIND,
@@ -267,6 +268,8 @@ class NonExtClassBuilder(ClassBuilder):
     def create_non_ext_info(self) -> NonExtClassInfo:
         non_ext_bases = populate_non_ext_bases(self.builder, self.cdef)
         non_ext_metaclass = find_non_ext_metaclass(self.builder, self.cdef, non_ext_bases)
+        # Class header expressions are evaluated before invoking __prepare__.
+        self.class_keyword_values = load_class_keyword_values(self.builder, self.cdef)
         non_ext_dict = setup_non_ext_dict(
             self.builder, self.cdef, non_ext_metaclass, non_ext_bases
         )
@@ -287,7 +290,9 @@ class NonExtClassBuilder(ClassBuilder):
 
     def finalize(self, ir: ClassIR) -> None:
         # Dynamically create the class via the type constructor
-        non_ext_class = load_non_ext_class(self.builder, ir, self.non_ext, self.cdef.line)
+        non_ext_class = load_non_ext_class(
+            self.builder, ir, self.non_ext, self.class_keyword_values, self.cdef.line
+        )
         non_ext_class = load_decorated_class(self.builder, self.cdef, non_ext_class)
 
         # Try to avoid contention when using free threading.
@@ -318,6 +323,8 @@ class ExtClassBuilder(ClassBuilder):
         super().__init__(builder, cdef)
         # If the class is not decorated, generate an extension class for it.
         self.type_obj: Value = allocate_class(builder, cdef)
+        # Class header expressions are evaluated before the class body runs.
+        self.class_keyword_values = load_class_keyword_values(builder, cdef)
 
     def class_body_obj(self) -> Value | None:
         return self.type_obj
@@ -342,7 +349,14 @@ class ExtClassBuilder(ClassBuilder):
 
     def finalize(self, ir: ClassIR) -> None:
         # Call __init_subclass__ after class attributes have been set
-        self.builder.call_c(py_init_subclass_op, [self.type_obj], self.cdef.line)
+        class_kwargs = self.builder.call_c(dict_new_op, [], self.cdef.line)
+        for name, value in self.class_keyword_values:
+            self.builder.call_c(
+                exact_dict_set_item_op,
+                [class_kwargs, self.builder.load_str(name), value],
+                self.cdef.line,
+            )
+        self.builder.call_c(py_init_subclass_op, [self.type_obj, class_kwargs], self.cdef.line)
 
         # Under separate compilation, prepare.py pre-registers the decl iff
         # the class has its own default attribute assignments to emit, so we
@@ -904,16 +918,37 @@ def gen_glue_ne_method(builder: IRBuilder, cls: ClassIR, line: int) -> None:
 
 
 def load_non_ext_class(
-    builder: IRBuilder, ir: ClassIR, non_ext: NonExtClassInfo, line: int
+    builder: IRBuilder,
+    ir: ClassIR,
+    non_ext: NonExtClassInfo,
+    class_keyword_values: list[tuple[str, Value]],
+    line: int,
 ) -> Value:
     cls_name = builder.load_str(ir.name)
 
     add_dunders_to_non_ext_dict(builder, non_ext, line)
 
+    args = [cls_name, non_ext.bases, non_ext.dict]
+    arg_kinds = [ARG_POS] * len(args)
+    arg_names: list[str | None] = [None] * len(args)
+    for name, value in class_keyword_values:
+        args.append(value)
+        arg_kinds.append(ARG_NAMED)
+        arg_names.append(name)
+
     class_type_obj = builder.py_call(
-        non_ext.metaclass, [cls_name, non_ext.bases, non_ext.dict], line
+        non_ext.metaclass, args, line, arg_kinds=arg_kinds, arg_names=arg_names
     )
     return class_type_obj
+
+
+def load_class_keyword_values(builder: IRBuilder, cdef: ClassDef) -> list[tuple[str, Value]]:
+    """Evaluate class definition keyword arguments, excluding ``metaclass``."""
+    return [
+        (name, builder.accept(value))
+        for name, value in cdef.keywords.items()
+        if name != "metaclass"
+    ]
 
 
 def load_decorated_class(builder: IRBuilder, cdef: ClassDef, type_obj: Value) -> Value:
