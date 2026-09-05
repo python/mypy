@@ -308,6 +308,7 @@ class SuggestionEngine:
         try:
             yield
         finally:
+            self.manager.errors.reset()
             self.reload(self.graph[module])
 
     @contextmanager
