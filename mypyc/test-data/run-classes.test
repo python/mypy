@@ -1226,6 +1226,36 @@ assert GrandChild.required == 10, f"expected 10, got {GrandChild.required}"
 assert NoOverride.name == "base"
 assert NoOverride.required == 4, f"expected 4, got {NoOverride.required}"
 
+[case testInitSubclassWithClassKeywords]
+from mypy_extensions import mypyc_attr
+
+native_seen: dict[str, object] = {}
+
+class NativeBase:
+    def __init_subclass__(cls, **kwargs: object) -> None:
+        global native_seen
+        native_seen = kwargs
+
+class NativeChild(NativeBase, marker=1, label="native"):
+    pass
+
+non_ext_seen: dict[str, object] = {}
+
+@mypyc_attr(native_class=False)
+class NonExtBase:
+    def __init_subclass__(cls, **kwargs: object) -> None:
+        global non_ext_seen
+        non_ext_seen = kwargs
+
+class NonExtChild(NonExtBase, marker=2, label="non-ext"):
+    pass
+
+def test_native_class_keywords() -> None:
+    assert native_seen == {"marker": 1, "label": "native"}
+
+def test_non_ext_class_keywords() -> None:
+    assert non_ext_seen == {"marker": 2, "label": "non-ext"}
+
 [case testDefaultVars]
 from typing import Optional
 class A:

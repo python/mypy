@@ -229,39 +229,42 @@ def __top_level__():
     r35 :: str
     r36 :: i32
     r37 :: bit
-    r38 :: bool
-    r39 :: object
-    r40 :: str
-    r41, r42 :: object
-    r43 :: str
-    r44 :: tuple
-    r45 :: i32
-    r46 :: bit
-    r47 :: dict
-    r48 :: str
-    r49 :: i32
-    r50 :: bit
-    r51 :: bool
-    r52, r53 :: object
-    r54 :: dict
-    r55 :: str
-    r56 :: object
-    r57 :: dict
-    r58 :: str
-    r59, r60 :: object
-    r61 :: tuple
-    r62 :: str
-    r63, r64 :: object
-    r65, r66 :: bool
-    r67, r68 :: str
-    r69 :: tuple
-    r70 :: i32
-    r71 :: bit
-    r72 :: dict
-    r73 :: str
-    r74 :: i32
-    r75 :: bit
-    r76 :: bool
+    r38 :: dict
+    r39 :: bool
+    r40 :: object
+    r41 :: str
+    r42, r43 :: object
+    r44 :: str
+    r45 :: tuple
+    r46 :: i32
+    r47 :: bit
+    r48 :: dict
+    r49 :: str
+    r50 :: i32
+    r51 :: bit
+    r52 :: dict
+    r53 :: bool
+    r54, r55 :: object
+    r56 :: dict
+    r57 :: str
+    r58 :: object
+    r59 :: dict
+    r60 :: str
+    r61, r62 :: object
+    r63 :: tuple
+    r64 :: str
+    r65, r66 :: object
+    r67, r68 :: bool
+    r69, r70 :: str
+    r71 :: tuple
+    r72 :: i32
+    r73 :: bit
+    r74 :: dict
+    r75 :: str
+    r76 :: i32
+    r77 :: bit
+    r78 :: dict
+    r79 :: bool
 L0:
     r0 = builtins :: module
     r1 = load_address _Py_NoneStruct
@@ -309,47 +312,50 @@ L2:
     r35 = 'C'
     r36 = PyDict_SetItem(r34, r35, r27)
     r37 = r36 >= 0 :: signed
-    r38 = CPy_InitSubclass(r27)
-    r39 = <error> :: object
-    r40 = '__main__'
-    r41 = __main__.S_template :: type
-    r42 = CPyType_FromTemplate(r41, r39, r40)
-    r43 = '__mypyc_attrs__'
-    r44 = CPyTuple_LoadEmptyTupleConstant()
-    r45 = PyObject_SetAttr(r42, r43, r44)
-    r46 = r45 >= 0 :: signed
-    __main__.S = r42 :: type
-    r47 = __main__.globals :: static
-    r48 = 'S'
-    r49 = PyDict_SetItem(r47, r48, r42)
-    r50 = r49 >= 0 :: signed
-    r51 = CPy_InitSubclass(r42)
-    r52 = __main__.C :: type
-    r53 = __main__.S :: type
-    r54 = __main__.globals :: static
-    r55 = 'Generic'
-    r56 = CPyDict_GetItem(r54, r55)
-    r57 = __main__.globals :: static
-    r58 = 'T'
-    r59 = CPyDict_GetItem(r57, r58)
-    r60 = PyObject_GetItem(r56, r59)
-    r61 = PyTuple_Pack(3, r52, r53, r60)
-    r62 = '__main__'
-    r63 = __main__.D_template :: type
-    r64 = CPyType_FromTemplate(r63, r61, r62)
-    r65 = D_trait_vtable_setup()
-    r66 = D_coroutine_setup(r64)
-    r67 = '__mypyc_attrs__'
-    r68 = '__dict__'
-    r69 = PyTuple_Pack(1, r68)
-    r70 = PyObject_SetAttr(r64, r67, r69)
-    r71 = r70 >= 0 :: signed
-    __main__.D = r64 :: type
-    r72 = __main__.globals :: static
-    r73 = 'D'
-    r74 = PyDict_SetItem(r72, r73, r64)
-    r75 = r74 >= 0 :: signed
-    r76 = CPy_InitSubclass(r64)
+    r38 = PyDict_New()
+    r39 = CPy_InitSubclass(r27, r38)
+    r40 = <error> :: object
+    r41 = '__main__'
+    r42 = __main__.S_template :: type
+    r43 = CPyType_FromTemplate(r42, r40, r41)
+    r44 = '__mypyc_attrs__'
+    r45 = CPyTuple_LoadEmptyTupleConstant()
+    r46 = PyObject_SetAttr(r43, r44, r45)
+    r47 = r46 >= 0 :: signed
+    __main__.S = r43 :: type
+    r48 = __main__.globals :: static
+    r49 = 'S'
+    r50 = PyDict_SetItem(r48, r49, r43)
+    r51 = r50 >= 0 :: signed
+    r52 = PyDict_New()
+    r53 = CPy_InitSubclass(r43, r52)
+    r54 = __main__.C :: type
+    r55 = __main__.S :: type
+    r56 = __main__.globals :: static
+    r57 = 'Generic'
+    r58 = CPyDict_GetItem(r56, r57)
+    r59 = __main__.globals :: static
+    r60 = 'T'
+    r61 = CPyDict_GetItem(r59, r60)
+    r62 = PyObject_GetItem(r58, r61)
+    r63 = PyTuple_Pack(3, r54, r55, r62)
+    r64 = '__main__'
+    r65 = __main__.D_template :: type
+    r66 = CPyType_FromTemplate(r65, r63, r64)
+    r67 = D_trait_vtable_setup()
+    r68 = D_coroutine_setup(r66)
+    r69 = '__mypyc_attrs__'
+    r70 = '__dict__'
+    r71 = PyTuple_Pack(1, r70)
+    r72 = PyObject_SetAttr(r66, r69, r71)
+    r73 = r72 >= 0 :: signed
+    __main__.D = r66 :: type
+    r74 = __main__.globals :: static
+    r75 = 'D'
+    r76 = PyDict_SetItem(r74, r75, r66)
+    r77 = r76 >= 0 :: signed
+    r78 = PyDict_New()
+    r79 = CPy_InitSubclass(r66, r78)
     return 1
 
 [case testIsInstance]
@@ -3055,7 +3061,8 @@ def __top_level__():
     r44 :: str
     r45 :: i32
     r46 :: bit
-    r47 :: bool
+    r47 :: dict
+    r48 :: bool
 L0:
     r0 = builtins :: module
     r1 = load_address _Py_NoneStruct
@@ -3110,7 +3117,8 @@ L2:
     r44 = 'B'
     r45 = PyObject_SetAttr(r34, r44, r43)
     r46 = r45 >= 0 :: signed
-    r47 = CPy_InitSubclass(r12)
+    r47 = PyDict_New()
+    r48 = CPy_InitSubclass(r12, r47)
     return 1
 
 [case testClassVarSelfReferenceNonExt_withgil_toplevel]
