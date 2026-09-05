@@ -347,8 +347,8 @@ error:
 // Call __init_subclass__ on the appropriate base class of type.
 // This is separated from CPyType_FromTemplate so that class attributes
 // can be set before __init_subclass__ is called.
-bool CPy_InitSubclass(PyObject *type) {
-    if (init_subclass((PyTypeObject *)type, NULL)) {
+bool CPy_InitSubclass(PyObject *type, PyObject *kwds) {
+    if (init_subclass((PyTypeObject *)type, kwds)) {
         return false;
     }
     return true;
