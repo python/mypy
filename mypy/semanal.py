@@ -1779,6 +1779,7 @@ class SemanticAnalyzer(
                     dec.func.abstract_status = IS_ABSTRACT
                 elif refers_to_fullname(d, "functools.cached_property"):
                     dec.var.is_settable_property = True
+                    dec.is_cached_property = True
                 self.check_decorated_function_is_method("property", dec)
             elif refers_to_fullname(d, "typing.no_type_check"):
                 dec.var.type = AnyType(TypeOfAny.special_form)
