@@ -134,11 +134,11 @@ from mypy.nodes import (
     ClassDef,
     Context,
     Expression,
+    FuncDef,
     MypyFile,
+    ReturnStmt,
     SymbolTableNode,
     TypeInfo,
-    FuncDef,
-    ReturnStmt
 )
 from mypy.options import Options
 from mypy.types import (
@@ -518,35 +518,42 @@ class DynamicClassDefContext(NamedTuple):
     name: str  # The name this class is being assigned to
     api: SemanticAnalyzerPluginInterface
 
+
 # A context for a function hook signature after available after decl.
 class FunctionDefContext(NamedTuple):
     definition: FuncDef
     declared_signature: CallableType
     api: SemanticAnalyzerPluginInterface
 
+
 class ReturnSite(NamedTuple):
     statement: ReturnStmt
     inferred_type: Type
 
+
 # A context for a function hook after the body is checked.
 class FunctionBodyContext(NamedTuple):
     definition: FuncDef
-    declared_signature: CallableType # preserves the user annotations
-    inferred_return_type: Type # inferred from return exprs in func, can be None
+    declared_signature: CallableType  # preserves the user annotations
+    inferred_return_type: Type  # inferred from return exprs in func, can be None
     return_sites: tuple[ReturnSite, ...]
-    can_fall_through: bool # tracks definitions with multiple exists (e.g early returns)
+    can_fall_through: bool  # tracks definitions with multiple exists (e.g early returns)
     api: CheckerPluginInterface
+
 
 # None here means inferred function return type is not propagated
 class FunctionBodyResult(NamedTuple):
     refined_return: Type | None = None
 
+
 # Supplying this callback tells mypy that this body's inferred information may affect the function's published signature.
 class FunctionDefHookResult(NamedTuple):
     after_body: FunctionBodyHook | None = None
 
-FunctionBodyHook = Callable[[FunctionBodyContext], FunctionBodyResult]
-FunctionDefHook = Callable[[FunctionDefContext], FunctionDefHookResult]
+
+FunctionBodyHook = Callable[[FunctionBodyContext], FunctionBodyResult | None]
+FunctionDefHook = Callable[[FunctionDefContext], FunctionDefHookResult | None]
+
 
 @mypyc_attr(allow_interpreted_subclasses=True)
 class Plugin(CommonPluginApi):
@@ -850,11 +857,14 @@ class Plugin(CommonPluginApi):
         """
         return None
 
-    def get_function_def_hook(
-      self, fullname: str
-    ) -> FunctionDefHook:
-        """FILL
+    def get_function_def_hook(self, fullname: str) -> FunctionDefHook:
+        """Implement domain specific type checking logic of a function
+        or method definition.
 
+        The callback runs after its declared signature has been analyzed,
+        but before its body is finalized.
+
+        TODO: point to examples.
         """
         return None
 
@@ -923,7 +933,9 @@ class ChainedPlugin(Plugin):
     def get_function_hook(self, fullname: str) -> Callable[[FunctionContext], Type] | None:
         return self._find_hook(lambda plugin: plugin.get_function_hook(fullname))
 
-    def get_function_def_hook(self, fullname:str) -> Callable[[FunctionDefContext], FunctionDefHookResult] | None:
+    def get_function_def_hook(
+        self, fullname: str
+    ) -> Callable[[FunctionDefContext], FunctionDefHookResult] | None:
         return self._find_hook(lambda plugin: plugin.get_function_def_hook(fullname))
 
     def get_method_signature_hook(

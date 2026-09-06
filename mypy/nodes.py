@@ -720,6 +720,7 @@ class FuncBase(Node):
     __slots__ = (
         "type",
         "unanalyzed_type",
+        "plugin_effective_type",
         "info",
         "is_property",
         "is_class",  # Uses "@classmethod" (explicit or implicit)
@@ -738,6 +739,8 @@ class FuncBase(Node):
         self.type: mypy.types.ProperType | None = None
         # Original, not semantically analyzed type (used for reprocessing)
         self.unanalyzed_type: mypy.types.ProperType | None = None
+        # Inferred types from return sites (used for elaboration)
+        self.plugin_effective_type: mypy.types.ProperType | None
         # If method, reference to TypeInfo
         self.info = FUNC_NO_INFO
         self.is_property = False
@@ -5018,9 +5021,9 @@ class SymbolTableNode:
                     and fullname != prefix + "." + name
                     and not (isinstance(self.node, Var) and self.node.from_module_getattr)
                 ):
-                    assert not isinstance(
-                        self.node, PlaceholderNode
-                    ), f"Definition of {fullname} is unexpectedly incomplete"
+                    assert not isinstance(self.node, PlaceholderNode), (
+                        f"Definition of {fullname} is unexpectedly incomplete"
+                    )
                     data["cross_ref"] = fullname
                     return data
             data["node"] = self.node.serialize()
@@ -5071,9 +5074,9 @@ class SymbolTableNode:
                     and fullname != prefix + "." + name
                     and not (isinstance(self.node, Var) and self.node.from_module_getattr)
                 ):
-                    assert not isinstance(
-                        self.node, PlaceholderNode
-                    ), f"Definition of {fullname} is unexpectedly incomplete"
+                    assert not isinstance(self.node, PlaceholderNode), (
+                        f"Definition of {fullname} is unexpectedly incomplete"
+                    )
                     cross_ref = fullname
 
         write_str_opt(data, cross_ref)

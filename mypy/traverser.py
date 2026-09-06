@@ -964,6 +964,38 @@ def has_return_statement(fdef: FuncBase) -> bool:
     return seeker.found
 
 
+class AlwaysExits(TraverserVisitor):
+    def __init__(self) -> None:
+        self.exists = False
+
+    def always_exits(self, stmt: Statement | Block) -> bool:
+        if isinstance(stmt, Block):
+            return any(self.always_exits(s) for s in stmt.body)
+        if isinstance(stmt, (ReturnStmt | RaiseStmt)):
+            return True
+        if isinstance(stmt, IfStmt):
+            if stmt.else_body is None:
+                return False
+            return all(self.always_exits(b) for b in stmt.body) and self.always_exits(
+                stmt.else_body
+            )
+        if isinstance(stmt, WithStmt):
+            return self.always_exits(stmt.body)
+        return False
+
+    def visit_block(self, o: Block) -> None:
+        self.exits = self.always_exits(o)
+
+
+def can_fall_through(body: Block) -> bool:
+    """Whether the function body may complete without an explicit return
+    or raise on some path, i.e. whether an implicit `return None` is
+    possible."""
+    seeker = AlwaysExits()
+    body.accept(seeker)
+    return not seeker.exists
+
+
 class NameAndMemberCollector(TraverserVisitor):
     def __init__(self) -> None:
         super().__init__()

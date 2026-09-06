@@ -212,7 +212,13 @@ from mypy.nodes import (
 from mypy.operators import flip_ops, int_op_to_method, neg_ops
 from mypy.options import PRECISE_TUPLE_TYPES, Options
 from mypy.patterns import AsPattern, StarredPattern
-from mypy.plugin import Plugin
+from mypy.plugin import (
+    FunctionBodyContext,
+    FunctionBodyHook,
+    FunctionDefContext,
+    Plugin,
+    ReturnSite,
+)
 from mypy.plugins import dataclasses as dataclasses_plugin
 from mypy.scope import Scope
 from mypy.semanal import is_trivial_body, refers_to_fullname, set_callable_name
@@ -232,7 +238,12 @@ from mypy.subtypes import (
     restrict_subtype_away,
     unify_generic_callable,
 )
-from mypy.traverser import TraverserVisitor, all_return_statements, has_return_statement
+from mypy.traverser import (
+    TraverserVisitor,
+    all_return_statements,
+    can_fall_through,
+    has_return_statement,
+)
 from mypy.treetransform import TransformVisitor
 from mypy.typeanal import check_for_explicit_any, has_any_from_unimported_type, make_optional_type
 from mypy.typeops import (
@@ -332,6 +343,14 @@ class DeferredNode(NamedTuple):
 class FineGrainedDeferredNode(NamedTuple):
     node: FineGrainedDeferredNodeType
     active_typeinfo: TypeInfo | None
+
+
+# Solely a plugin extension that tracks extra info internally while mypy visits a function body
+class ActiveFunctionHook(NamedTuple):
+    defn: FuncDef
+    declared_signature: CallableType
+    callback: FunctionBodyHook
+    return_sites: list[ReturnSite]
 
 
 # Data structure returned by find_isinstance_check representing
@@ -461,7 +480,10 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
 
     # Plugin that provides special type checking rules for specific library
     # functions such as open(), etc.
+    # and private attributes to support elaboration
     plugin: Plugin
+    _function_body_hooks: list[ActiveFunctionHook]
+    _changed_plugin_signatures: set[str]
 
     # A helper state to produce unique temporary names on demand.
     _unique_id: int
@@ -512,6 +534,8 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
         self.inferred_attribute_types = None
         self.allow_constructor_cache = True
         self.local_type_map = LocalTypeMap(self)
+        self._function_body_hooks = []
+        self._changed_plugin_signatures = set()
 
         self.can_skip_diagnostics: Final = (
             self.options.ignore_errors
@@ -1333,6 +1357,81 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
             # Treat `Iterator[X]` as a shorthand for `Generator[X, Any, None]`.
             return NoneType()
 
+    def record_plugin_return(self, statement: ReturnStmt, inferred_type: Type) -> None:
+        if not self._function_body_hooks:
+            return
+
+        active = self._function_body_hooks[-1]
+
+        # TODO: add test case
+        if self.scope.current_function() is not active.definition:
+            return
+
+        active.return_sites.append(
+            ReturnSite(
+                statement=statement,
+                inferred_type=inferred_type,
+            )
+        )
+
+    def publish_plugin_refinement(
+        self, defn: FuncDef, declared: CallableType, refined_return: Type
+    ) -> None:
+        new_signature = declared.copy_modified(ret_type=refined_return)
+
+        old_signature = defn.plugin_effective_type or declared
+
+        # TODO: check for subtype instead?
+        if is_same_type(old_signature, new_signature):
+            return
+
+        defn.plugin_effective_type = new_signature
+        self._changed_plugin_signatures.add(defn.fullname)
+
+    # TODO: add test for this: mult caged returns, naked returns
+    def finish_function_body_hook(self, active: ActiveFunctionHook) -> None:
+        inferred_typ = make_simplified_union([site.inferred_type for site in active.return_sites])
+
+        can_fall = can_fall_through(active.definition)
+        if can_fall:
+            inferred_typ = make_simplified_union([inferred_typ, NoneType()])
+
+        result = active.callback(
+            FunctionBodyContext(
+                definition=active.definition,
+                declared_signature=active.declared_signature,
+                inferred_return_type=inferred_typ,
+                return_sites=tuple(active.return_sites),
+                can_fall_through=can_fall,
+                api=self,
+            )
+        )
+
+        if result is not None and result.refined_return_type is not None:
+            self.publish_plugin_refinement(
+                active.definition,
+                active.declared_signature,
+                result.refined_return_type,
+            )
+
+    @contextmanager
+    def function_def_hook(self, defn: FuncDef) -> Iterator[None]:
+        active: ActiveFunctionHook | None = None
+        hook = self.plugin.get_function_def_hook(defn.fullname)
+        if hook is not None:
+            after_body = hook(FunctionDefContext(defn, defn.type, self))
+            if after_body is not None:
+                active = ActiveFunctionHook(defn, defn.type, after_body, [])
+                self._function_body_hooks.append(active)
+        try:
+            yield
+        finally:
+            if active is not None:
+                assert self._function_body_hooks[-1] is active
+                self._function_body_hooks.pop()
+                if not self.current_node_deferred:
+                    self.finish_function_body_hook(active)
+
     def visit_func_def(self, defn: FuncDef) -> None:
         # Type check initialization expressions as part of top-level.
         if not self.can_skip_diagnostics:
@@ -1346,7 +1445,11 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
         self.visit_func_def_impl(defn)
 
     def visit_func_def_impl(self, defn: FuncDef) -> None:
-        with self.tscope.function_scope(defn), self.set_recurse_into_functions():
+        with (
+            self.tscope.function_scope(defn),
+            self.set_recurse_into_functions(),
+            self.function_def_hook(defn),
+        ):
             self.check_func_item(defn, name=defn.name)
             if not self.can_skip_diagnostics:
                 if defn.info:
@@ -2338,8 +2441,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
             and (self.options.check_untyped_defs or not defn.is_dynamic())
             and (
                 # don't check override for synthesized __replace__ methods from dataclasses
-                defn.name != "__replace__"
-                or defn.info.metadata.get("dataclass_tag") is None
+                defn.name != "__replace__" or defn.info.metadata.get("dataclass_tag") is None
             )
         )
         found_method_base_classes: list[TypeInfo] = []
@@ -4621,7 +4723,8 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
             self.store_type(lvalue, lvalue_type)
         elif isinstance(lvalue, (TupleExpr, ListExpr)):
             types = [
-                self.check_lvalue(sub_expr)[0] or
+                self.check_lvalue(sub_expr)[0]
+                or
                 # This type will be used as a context for further inference of rvalue,
                 # we put Uninhabited if there is no information available from lvalue.
                 UninhabitedType(ambiguous=True)
@@ -5322,6 +5425,8 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                             s.expr, return_type, allow_none_return=allow_none_func_call
                         )
                     )
+
+                self.record_plugin_return(s, typ)
                 # Treat NotImplemented as having type Any, consistent with its
                 # definition in typeshed prior to python/typeshed#4222.
                 if isinstance(typ, Instance) and typ.type.fullname in NOT_IMPLEMENTED_TYPE_NAMES:
@@ -8184,6 +8289,10 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
         return self.analyze_iterable_item_type_without_expression(it, context)[1]
 
     def function_type(self, func: FuncBase) -> FunctionLike:
+        # TODO: should I be constructing a callable type?
+        if func.plugin_effective_type is not None:
+            return func.plugin_effective_type
+
         typ = function_type(func, self.named_type("builtins.function"))
         if (
             isinstance(func, FuncItem)
