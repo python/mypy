@@ -1364,7 +1364,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
         active = self._function_body_hooks[-1]
 
         # TODO: add test case
-        if self.scope.current_function() is not active.definition:
+        if self.scope.current_function() is not active.defn:
             return
 
         active.return_sites.append(
@@ -1392,13 +1392,13 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
     def finish_function_body_hook(self, active: ActiveFunctionHook) -> None:
         inferred_typ = make_simplified_union([site.inferred_type for site in active.return_sites])
 
-        can_fall = can_fall_through(active.definition)
+        can_fall = can_fall_through(active.defn.body)
         if can_fall:
             inferred_typ = make_simplified_union([inferred_typ, NoneType()])
 
         result = active.callback(
             FunctionBodyContext(
-                definition=active.definition,
+                definition=active.defn,
                 declared_signature=active.declared_signature,
                 inferred_return_type=inferred_typ,
                 return_sites=tuple(active.return_sites),
@@ -1407,21 +1407,27 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
             )
         )
 
-        if result is not None and result.refined_return_type is not None:
+        if result is not None and result.refined_return is not None:
             self.publish_plugin_refinement(
-                active.definition,
+                active.defn,
                 active.declared_signature,
-                result.refined_return_type,
+                result.refined_return,
             )
+
+    def take_changed_plugin_signatures(self) -> set[str]:
+        """Return and clear public signatures changed by function-body plugins."""
+        changed = self._changed_plugin_signatures
+        self._changed_plugin_signatures = set()
+        return changed
 
     @contextmanager
     def function_def_hook(self, defn: FuncDef) -> Iterator[None]:
         active: ActiveFunctionHook | None = None
         hook = self.plugin.get_function_def_hook(defn.fullname)
-        if hook is not None:
-            after_body = hook(FunctionDefContext(defn, defn.type, self))
-            if after_body is not None:
-                active = ActiveFunctionHook(defn, defn.type, after_body, [])
+        if hook is not None and isinstance(defn.type, CallableType):
+            hook_result = hook(FunctionDefContext(defn, defn.type, self))
+            if hook_result is not None and hook_result.after_body is not None:
+                active = ActiveFunctionHook(defn, defn.type, hook_result.after_body, [])
                 self._function_body_hooks.append(active)
         try:
             yield

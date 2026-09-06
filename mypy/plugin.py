@@ -523,7 +523,7 @@ class DynamicClassDefContext(NamedTuple):
 class FunctionDefContext(NamedTuple):
     definition: FuncDef
     declared_signature: CallableType
-    api: SemanticAnalyzerPluginInterface
+    api: CheckerPluginInterface
 
 
 class ReturnSite(NamedTuple):
@@ -857,7 +857,7 @@ class Plugin(CommonPluginApi):
         """
         return None
 
-    def get_function_def_hook(self, fullname: str) -> FunctionDefHook:
+    def get_function_def_hook(self, fullname: str) -> FunctionDefHook | None:
         """Implement domain specific type checking logic of a function
         or method definition.
 

@@ -984,7 +984,7 @@ class AlwaysExits(TraverserVisitor):
         return False
 
     def visit_block(self, o: Block) -> None:
-        self.exits = self.always_exits(o)
+        self.exists = self.always_exits(o)
 
 
 def can_fall_through(body: Block) -> bool:
