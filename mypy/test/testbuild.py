@@ -18,7 +18,7 @@ class _StuckProcess:
     def wait(self, timeout: float | None = None) -> int:
         self.wait_calls += 1
         if self.wait_calls == 1:
-            raise subprocess.TimeoutExpired(["mypy-worker"], timeout)
+            raise subprocess.TimeoutExpired(["mypy-worker"], timeout or 0.0)
         return 0
 
     def terminate(self) -> None:
@@ -31,7 +31,7 @@ class _StuckProcess:
 class WorkerTest(unittest.TestCase):
     def test_close_terminates_worker_after_shutdown_timeout(self) -> None:
         process = _StuckProcess()
-        with mock.patch.object(build.subprocess, "Popen", return_value=process):
+        with mock.patch.object(subprocess, "Popen", return_value=process):
             worker = build.WorkerClient("worker-status.json", "options", {})
             worker.close()
 
