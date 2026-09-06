@@ -12,14 +12,13 @@
 def f()
   pass
 [out]
-file:1: error: Expected ':'
+file:1: error: Expected ':', found newline
 
 [case testUnexpectedIndent]
 1
  2
 [out]
 file:2: error: Unexpected indentation
-file:2: error: Expected a statement
 
 [case testInconsistentIndent]
 if x:
@@ -27,7 +26,6 @@ if x:
    1
 [out]
 file:3: error: Unexpected indentation
-file:3: error: Expected a statement
 
 [case testInconsistentIndent2]
 if x:
@@ -100,6 +98,12 @@ file:1: error: Expected one or more keyword parameter after `*` separator
 
 [case testInvalidFuncDefArgs1]
 def f(x = y, x): pass
+[out]
+file:1: error: Duplicate parameter "x" in function definition
+file:1: error: Parameter without a default cannot follow a parameter with a default
+
+[case testInvalidFuncDefArgs2]
+def f(x = y, z): pass
 [out]
 file:1: error: Parameter without a default cannot follow a parameter with a default
 
@@ -385,31 +389,32 @@ x[:,:
 [out]
 file:1: error: Unexpected EOF while parsing
 
-[case testInvalidEncoding]
+-- TODO: new parser only suports UTF-8 and ignores coding declarations
+[case testInvalidEncoding_old_parser]
 # foo
 # coding: uft-8
 [out]
 file:0: error: Unknown encoding: uft-8
 
-[case testInvalidEncoding2]
+[case testInvalidEncoding2_old_parser]
 # coding=Uft.8
 [out]
 file:0: error: Unknown encoding: Uft.8
 
-[case testInvalidEncoding3]
+[case testInvalidEncoding3_old_parser]
 #!/usr/bin python
 # vim: set fileencoding=uft8 :
 [out]
 file:0: error: Unknown encoding: uft8
 
-[case testDoubleEncoding]
+[case testDoubleEncoding_old_parser]
 # coding: uft8
 # coding: utf8
 # The first coding cookie should be used and fail.
 [out]
 file:0: error: Unknown encoding: uft8
 
-[case testDoubleEncoding2]
+[case testDoubleEncoding2_old_parser]
 # Again the first cookie should be used and fail.
 # coding: uft8
 # coding: utf8
@@ -437,7 +442,9 @@ file:1: error: Expected `else`, found `]`
 [case testTupleArgListInPython3]
 def f(x, (y, z)): pass
 [out]
-file:1: error: Invalid syntax
+file:1: error: Expected `)`, found `(`
+file:1: error: Expected newline, found `)`
+file:1: error: Expected a statement
 
 [case testBackquoteInPython3]
 `1 + 2`

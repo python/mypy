@@ -100,6 +100,9 @@ def test_parse_error(testcase: DataDrivenTestCase) -> None:
             options.python_version = defaults.PYTHON3_VERSION
         if options.python_version != sys.version_info[:2]:
             skip()
+        if testcase.name.endswith("_old_parser"):
+            # This test is only for the old parser.
+            options.native_parser = False
         # Compile temporary file. The test file contains non-ASCII characters.
         errors = Errors(options)
         parse(
