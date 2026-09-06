@@ -318,7 +318,14 @@ class WorkerClient:
         try:
             self.proc.wait(timeout=WORKER_SHUTDOWN_TIMEOUT)
         except subprocess.TimeoutExpired:
-            pass
+            # A worker may still be processing a request when an early build
+            # failure starts cleanup. Make sure it cannot outlive this build.
+            self.proc.terminate()
+            try:
+                self.proc.wait(timeout=WORKER_SHUTDOWN_TIMEOUT)
+            except subprocess.TimeoutExpired:
+                self.proc.kill()
+                self.proc.wait()
         if os.path.isfile(self.status_file):
             os.unlink(self.status_file)
 
