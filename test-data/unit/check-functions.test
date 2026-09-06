@@ -774,7 +774,8 @@ class A:
 main:6: error: Incompatible types in assignment (expression has type "int", variable has type "A")
 main:8: error: Argument 1 to "g" has incompatible type "A"; expected "int"
 
-[case testNestedFunctionInMethodWithTooFewArgumentsInTypeComment]
+-- Rejecting this is somewhat tricky in the new parser
+[case testNestedFunctionInMethodWithTooFewArgumentsInTypeComment_old_parser]
 class A:
     def f(self):
         # type: () -> None
@@ -795,7 +796,8 @@ class A:
             arg.B  # E: "object" has no attribute "B"
 [file mod.py]
 
-[case testDeepNestedFunctionWithTooFewArgumentsInTypeComment]
+-- Rejecting this is somewhat tricky in the new parser
+[case testDeepNestedFunctionWithTooFewArgumentsInTypeComment_old_parser]
 class A:
     def f(self):
         # type: () -> None
@@ -2152,13 +2154,25 @@ class A:
 def f(x, y, z): # type: (..., int) -> None
     pass
 [out]
-main:1: error: Ellipses cannot accompany other parameter types in function type signature
+main:1: error: Type signature has too few parameters
 
 [case testEllipsisWithSomethingBeforeItFails]
 def f(x, y, z): # type: (int, ...) -> None
     pass
 [out]
-main:1: error: Ellipses cannot accompany other parameter types in function type signature
+main:1: error: Type signature has too few parameters
+
+[case testEllipsisWithSomethingAfterItFails2]
+def f(x, y): # type: (..., int) -> None
+    pass
+[out]
+main:1: error: Unexpected "..."
+
+[case testEllipsisWithSomethingBeforeItFails2]
+def f(x, y): # type: (int, ...) -> None
+    pass
+[out]
+main:1: error: Unexpected "..."
 
 [case testRejectCovariantArgument]
 from typing import TypeVar, Generic

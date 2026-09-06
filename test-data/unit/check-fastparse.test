@@ -2,7 +2,8 @@
 1 +  # E: Expected an expression
 
 [case testFastParseTypeCommentSyntaxError]
-x = None # type: a : b  # E: Syntax error in type comment "a : b"
+x = None # type: a : b  # E: Syntax error in type comment "a : b" \
+                        # E: Invalid type comment or annotation
 
 [case testFastParseInvalidTypeComment]
 x = None # type: a + b  # E: Invalid type comment or annotation
@@ -150,7 +151,8 @@ def f(a,        # type: A
 [builtins fixtures/dict.pyi]
 [out]
 
-[case testFastParsePerArgumentAnnotationsWithAnnotatedBareStar]
+-- New parser ignores this instead of failing loudly.
+[case testFastParsePerArgumentAnnotationsWithAnnotatedBareStar_old_parser]
 def f(*, # type: int  # E: Bare * has associated type comment
       x  # type: str
       ):

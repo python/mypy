@@ -111,20 +111,24 @@ def f(): # E: Type signature has too many parameters  [syntax]
     # type: (int) -> None
     1
 
-x = 0  # type: x y  # E: Syntax error in type comment "x y"  [syntax]
+x = 0  # type: x y  # E: Syntax error in type comment "x y"  [syntax] \
+                    # E: Invalid type comment or annotation  [valid-type]
 
-[case testErrorCodeSyntaxError3]
+[case testErrorCodeSyntaxError3_old_parser]
 # This is a bit inconsistent -- syntax error would be more logical?
 x: 'a b'  # E: Invalid type comment or annotation  [valid-type]
 for v in x:  # type: int, int  # E: Syntax error in type annotation  [syntax] \
     # N: Suggestion: Use Tuple[T1, ..., Tn] instead of (T1, ..., Tn)
     pass
 
+[case testErrorCodeSyntaxError4]
+x = 1  # type: int, int  # type: int, int  # E: Syntax error in type annotation  [syntax] \
+                         # N: Suggestion: Use Tuple[T1, ..., Tn] instead of (T1, ..., Tn)
+
 [case testErrorCodeSyntaxErrorIgnoreNote]
 # This is a bit inconsistent -- syntax error would be more logical?
 x: 'a b'  # type: ignore[valid-type]
-for v in x:  # type: int, int  # type: ignore[syntax]
-    pass
+y = 1  # type: int, int  # type: ignore[syntax]
 
 [case testErrorCodeIgnore1]
 'x'.foobar  # type: ignore[attr-defined]

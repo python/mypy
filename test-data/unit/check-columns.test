@@ -347,6 +347,7 @@ if int():
     xyz = 0  # type: blurbnard blarb
 [out]
 main:3:5: error: Syntax error in type comment "blurbnard blarb"
+main:3:5: error: Invalid type comment or annotation
 
 [case testColumnProperty]
 class A:
