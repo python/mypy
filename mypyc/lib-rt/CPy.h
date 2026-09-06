@@ -658,6 +658,7 @@ PyObject *CPyObject_GetAttr3(PyObject *v, PyObject *name, PyObject *defl);
 PyObject *CPyIter_Next(PyObject *iter);
 PyObject *CPyNumber_Power(PyObject *base, PyObject *index);
 PyObject *CPyNumber_InPlacePower(PyObject *base, PyObject *index);
+// An omitted slice bound is represented by CPY_INT_TAG.
 PyObject *CPyObject_GetSlice(PyObject *obj, CPyTagged start, CPyTagged end);
 
 
@@ -990,6 +991,7 @@ static inline PyObject *CPy_TYPE(PyObject *obj) {
 
 PyObject *CPy_CalculateMetaclass(PyObject *type, PyObject *o);
 PyObject *CPy_GetCoro(PyObject *obj);
+PyObject *CPyGen_AlreadyExecutingError(int is_coroutine);
 PyObject *CPyIter_Send(PyObject *iter, PyObject *val);
 int CPy_YieldFromErrorHandle(PyObject *iter, PyObject **outp);
 PyObject *CPy_FetchStopIterationValue(void);

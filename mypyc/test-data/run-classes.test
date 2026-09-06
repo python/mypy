@@ -2800,6 +2800,16 @@ def test_final_attribute() -> None:
     assert C.A == -1
     assert C.a == [-1]
 
+def test_final_attribute_through_instance() -> None:
+    assert C().A == -1
+    assert C().a == [-1]
+
+def test_final_attribute_not_per_instance() -> None:
+    # A class-body Final has a single value shared by every instance, so a
+    # mutable one must not be rebuilt per instance.
+    assert C().a is C.a
+    assert C().a is C().a
+
 [case testClassWithFinalDecorator]
 from typing import final
 
@@ -6460,3 +6470,248 @@ def test_property_getter_exception() -> None:
 
     with assertRaises(ValueError):
         getattr(t, "locked")
+
+[case testClassBodyFinalAttributeNoInstanceSlot]
+from typing import Any, Final, final
+
+from testutil import assertRaises
+
+calls: list[int] = []
+
+def make() -> int:
+    calls.append(1)
+    return 3
+
+class C:
+    LITERAL: Final = 23
+    COMPUTED: Final = make()
+    ITEMS: Final = [1, 2]
+
+    def literal(self) -> int:
+        return self.LITERAL
+
+    def computed(self) -> int:
+        return self.COMPUTED
+
+    def items(self) -> list[int]:
+        return self.ITEMS
+
+class Sub(C):
+    def inherited(self) -> int:
+        return self.LITERAL + self.COMPUTED
+
+@final
+class Sealed:
+    X: Final = 5
+
+    def get(self) -> int:
+        return self.X
+
+def test_native_read() -> None:
+    assert C().literal() == 23
+    assert C().computed() == 3
+    assert C().items() == [1, 2]
+    assert Sealed().get() == 5
+
+def test_inherited_read() -> None:
+    assert Sub().inherited() == 26
+    assert Sub().literal() == 23
+    assert Sub.LITERAL == 23
+    assert Sub().LITERAL == 23
+
+def test_initializer_evaluated_once() -> None:
+    # The class body runs once, so a side-effecting initializer must not be
+    # re-evaluated for each instance.
+    C()
+    C()
+    assert len(calls) == 1
+
+def test_no_instance_slot() -> None:
+    # Class-body Finals are not instance state, so they are absent from
+    # __mypyc_attrs__ (which drives pickling).
+    t: Any = C
+    assert 'LITERAL' not in t.__mypyc_attrs__
+    assert 'COMPUTED' not in t.__mypyc_attrs__
+    assert 'ITEMS' not in t.__mypyc_attrs__
+
+def test_dynamic_read_via_any() -> None:
+    o: Any = C()
+    assert o.LITERAL == 23
+    assert o.COMPUTED == 3
+    assert o.ITEMS == [1, 2]
+    assert getattr(o, 'LITERAL') == 23
+    s: Any = Sub()
+    assert s.LITERAL == 23
+    assert s.COMPUTED == 3
+
+def test_dynamic_read_through_class() -> None:
+    t: Any = C
+    assert t.LITERAL == 23
+    assert t.COMPUTED == 3
+    assert t.ITEMS == [1, 2]
+    assert getattr(t, 'COMPUTED') == 3
+
+def test_dynamic_read_matches_native() -> None:
+    o: Any = C()
+    assert o.ITEMS is C().items()
+    assert o.COMPUTED == C().computed()
+
+def test_cannot_rebind_via_any() -> None:
+    o: Any = C()
+    with assertRaises(AttributeError):
+        o.LITERAL = 1
+    assert o.LITERAL == 23
+    with assertRaises(AttributeError):
+        setattr(o, 'COMPUTED', 1)
+    assert o.COMPUTED == 3
+
+[case testClassBodyFinalAttributeInTrait]
+from mypy_extensions import trait
+from typing import Any, Final
+
+def make() -> int:
+    return 7
+
+@trait
+class T:
+    LITERAL: Final = 23
+    COMPUTED: Final = make()
+
+    def literal(self) -> int:
+        return self.LITERAL
+
+class C(T):
+    def computed(self) -> int:
+        return self.COMPUTED
+
+def test_trait_final() -> None:
+    assert C().literal() == 23
+    assert C().computed() == 7
+    assert T.LITERAL == 23
+    assert C.COMPUTED == 7
+
+def test_trait_final_via_any() -> None:
+    o: Any = C()
+    assert o.LITERAL == 23
+    assert o.COMPUTED == 7
+
+[case testClassBodyFinalAttributeOfNativeIntType]
+from mypy_extensions import i64
+from typing import Any, Final
+
+def make() -> i64:
+    return -113
+
+class C:
+    # Native int types overlap with the error sentinel used by Final statics, so
+    # these keep their instance slot.
+    N: Final = make()
+
+    def get(self) -> i64:
+        return self.N
+
+def test_native_int_final() -> None:
+    assert C().get() == -113
+    o: Any = C()
+    assert o.N == -113
+
+[case testClassBodyFinalAttributeThroughUnionAndAny]
+from typing import Any, Final, Union
+
+class C:
+    X: Final = 23
+
+class D:
+    X: Final = 24
+
+class E1(C):
+    pass
+
+class E2(C):
+    pass
+
+def through_union_same_decl(x: Union[E1, E2]) -> int:
+    # Two sibling subclasses, so neither item is the declaring class itself, but both
+    # inherit the same declaration and can use C's value.
+    return x.X
+
+def through_union_different_decls(x: Union[C, D]) -> int:
+    # The value differs per item, so this must read the attribute per object.
+    return x.X
+
+def through_any(x: Any) -> Any:
+    return x.X
+
+def through_narrowing(x: object) -> int:
+    assert isinstance(x, C)
+    return x.X
+
+def test_union_same_decl() -> None:
+    assert through_union_same_decl(E1()) == 23
+    assert through_union_same_decl(E2()) == 23
+
+def test_union_different_decls() -> None:
+    assert through_union_different_decls(C()) == 23
+    assert through_union_different_decls(D()) == 24
+
+def test_any() -> None:
+    assert through_any(C()) == 23
+    assert through_any(D()) == 24
+    assert through_any(E1()) == 23
+    assert through_any(C) == 23
+
+def test_narrowing() -> None:
+    assert through_narrowing(C()) == 23
+    assert through_narrowing(E1()) == 23
+
+[case testClassBodyFinalAttributeWithInterpretedSubclasses]
+from mypy_extensions import mypyc_attr
+from typing import Any, Final
+
+@mypyc_attr(allow_interpreted_subclasses=True)
+class C:
+    plain: int = 7
+    LITERAL: Final = 5
+    ITEMS: Final = [0] * 100
+
+    def __init__(self) -> None:
+        self.inst = 1
+
+    def read_plain(self) -> int:
+        return self.plain
+
+    def read_inst(self) -> int:
+        return self.inst
+
+    def read_literal(self) -> int:
+        return self.LITERAL
+
+    def read_items(self) -> list[int]:
+        return self.ITEMS
+
+def make_shadowing_subclass() -> Any:
+    type2: Any = type
+    return type2('Sub', (C,), {'plain': 99, 'inst': 98, 'LITERAL': 97, 'ITEMS': [1]})
+
+def test_no_instance_slot() -> None:
+    t: Any = C
+    assert 'plain' in t.__mypyc_attrs__
+    assert 'inst' in t.__mypyc_attrs__
+    assert 'LITERAL' not in t.__mypyc_attrs__
+    assert 'ITEMS' not in t.__mypyc_attrs__
+
+def test_initializer_evaluated_once() -> None:
+    # Not re-evaluated per instance, and native and interpreted reads agree.
+    assert C().read_items() is C().read_items()
+    assert C().read_items() is C.ITEMS
+    assert C().read_items() is C().ITEMS
+
+def test_interpreted_subclass_shadowing() -> None:
+    # A class-dict entry in an interpreted subclass shadows only interpreted reads.
+    # This matches how plain and __init__-assigned attributes already behave.
+    o = make_shadowing_subclass()()
+    assert (o.read_plain(), o.plain) == (7, 99)
+    assert (o.read_inst(), o.inst) == (1, 98)
+    assert (o.read_literal(), o.LITERAL) == (5, 97)
+    assert o.read_items() is C.ITEMS
+    assert o.ITEMS == [1]
