@@ -740,7 +740,7 @@ class FuncBase(Node):
         # Original, not semantically analyzed type (used for reprocessing)
         self.unanalyzed_type: mypy.types.ProperType | None = None
         # Inferred types from return sites (used for elaboration)
-        self.plugin_effective_type: mypy.types.ProperType | None = None
+        self.plugin_effective_type: mypy.types.FunctionLike | None = None
         # If method, reference to TypeInfo
         self.info = FUNC_NO_INFO
         self.is_property = False
