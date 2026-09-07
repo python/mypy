@@ -122,7 +122,7 @@ for v in x:  # type: int, int  # E: Syntax error in type annotation  [syntax] \
     pass
 
 [case testErrorCodeSyntaxError4]
-x = 1  # type: int, int  # type: int, int  # E: Syntax error in type annotation  [syntax] \
+x = 1  # type: int, int  # E: Syntax error in type annotation  [syntax] \
                          # N: Suggestion: Use Tuple[T1, ..., Tn] instead of (T1, ..., Tn)
 
 [case testErrorCodeSyntaxErrorIgnoreNote]
@@ -284,9 +284,9 @@ import nostub  # type: ignore[import]
 from defusedxml import xyz  # type: ignore[import]
 
 [case testErrorCodeBadIgnore]
-import nostub # type: ignore xyz  # E: Invalid "type: ignore" comment  [syntax] \
-                                  # E: Cannot find implementation or library stub for module named "nostub"  [import-not-found] \
-                                  # N: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
+import nostub # type: ignore xyz  # E: Cannot find implementation or library stub for module named "nostub"  [import-not-found] \
+                                  # N: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports \
+                                  # E: Invalid "type: ignore" comment  [syntax]
 import nostub # type: ignore[  # E: Invalid "type: ignore" comment  [syntax]
 import nostub # type: ignore[foo  # E: Invalid "type: ignore" comment  [syntax]
 import nostub # type: ignore[foo,  # E: Invalid "type: ignore" comment  [syntax]
@@ -312,9 +312,9 @@ def f(x,  # type: int  # type: ignore[
     # type: (...) -> None
     pass
 [out]
-main:2: error: Invalid "type: ignore" comment  [syntax]
 main:2: error: Cannot find implementation or library stub for module named "nostub"  [import-not-found]
 main:2: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
+main:2: error: Invalid "type: ignore" comment  [syntax]
 main:3: error: Invalid "type: ignore" comment  [syntax]
 main:4: error: Invalid "type: ignore" comment  [syntax]
 main:5: error: Invalid "type: ignore" comment  [syntax]
@@ -852,8 +852,8 @@ main:2: error: Name "y" is not defined  [name-defined]
 x = y  # type: int  # type: ignored[foo]
 x = y  # type: int  # type: ignored [foo]
 [out]
-main:1: error: Syntax error in type comment "int"  [syntax]
-main:2: error: Syntax error in type comment "int"  [syntax]
+main:1: error: Multiple type comments on the same line  [syntax]
+main:2: error: Multiple type comments on the same line  [syntax]
 
 [case testErrorCode__exit__Return]
 class InvalidReturn:

@@ -12,7 +12,7 @@
 def f()
   pass
 [out]
-file:1: error: Expected ':', found newline
+file:1: error: Expected `:`, found newline
 
 [case testUnexpectedIndent]
 1
