@@ -437,8 +437,9 @@ def setup_env_for_generator_class(builder: IRBuilder) -> None:
     else:
         cls.curr_env_reg = load_outer_env(builder, cls.self_reg, builder.symtables[-1])
 
-    # The continuation label is only accessed by the serialized generator helper, so keep it
-    # on the private generator frame rather than a potentially shared closure environment.
+    # The continuation label identifies where execution resumes when the generator is next
+    # advanced. Only the serialized generator helper accesses it, so keep it on the private
+    # generator frame instead of a potentially shared closure environment.
     cls.ir.attributes[NEXT_LABEL_ATTR_NAME] = int32_rprimitive
     cls.ir.attrs_with_defaults.add(NEXT_LABEL_ATTR_NAME)
     next_label_target = AssignmentTargetAttr(cls.self_reg, NEXT_LABEL_ATTR_NAME)
