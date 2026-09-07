@@ -386,6 +386,25 @@ def test_tuple_i64() -> None:
     tt: Tuple[i64, i64] = x
     assert tt == (1, 2)
 
+def as_mixed_i64_tuple(value: Any) -> tuple[str, i64]:
+    return value
+
+def as_i64_pair(value: Any) -> tuple[i64, i64]:
+    return value
+
+def as_nested_i64_tuple(value: Any) -> tuple[str, tuple[i64, i64]]:
+    return value
+
+def test_tuple_i64_unbox_error() -> None:
+    too_large = 1 << 63
+    message = "int too large to convert to i64"
+    with assertRaises(ValueError, message):
+        as_mixed_i64_tuple(("x", too_large))
+    with assertRaises(ValueError, message):
+        as_i64_pair((0, too_large))
+    with assertRaises(ValueError, message):
+        as_nested_i64_tuple(("x", (0, too_large)))
+
 def test_list_set_item() -> None:
     a: List[i64] = [0, 2, 6]
     z: i64 = int()
