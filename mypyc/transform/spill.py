@@ -21,6 +21,7 @@ from mypyc.ir.ops import (
     SetAttr,
     Value,
 )
+from mypyc.namegen import exported_name
 
 
 def insert_spills(ir: FuncIR, frame: ClassIR) -> None:
@@ -60,8 +61,9 @@ def spill_regs(
     # known to be Op instances, so the cast is safe.
     for i, val in enumerate(sort_values(cast(set[Op], to_spill), blocks)):
         # Generator classes for overriding methods can inherit from one another. Include the
-        # owning class name so unrelated helper spills don't alias an inherited struct field.
-        name = f"{TEMP_ATTR_NAME}2_{frame.name}_{i}"
+        # module-qualified owning class name so unrelated helper spills don't alias an inherited
+        # struct field.
+        name = f"{TEMP_ATTR_NAME}2_{exported_name(frame.fullname)}_{i}"
         frame.attributes[name] = val.type
         if val.type.error_overlap:
             # We can safely treat as always initialized, since the type has no pointers.
