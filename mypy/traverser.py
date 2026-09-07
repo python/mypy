@@ -968,7 +968,7 @@ class AlwaysExits(TraverserVisitor):
     def __init__(self) -> None:
         self.exists = False
 
-    def always_exits(self, stmt: Statement | Block) -> bool:
+    def always_exits(self, stmt: Node) -> bool:
         if isinstance(stmt, Block):
             return any(self.always_exits(s) for s in stmt.body)
         if isinstance(stmt, (ReturnStmt | RaiseStmt)):
