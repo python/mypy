@@ -1,4 +1,5 @@
 [case testI64BasicOps]
+import sys
 from typing import List, Any, Tuple, Union
 
 from mypy_extensions import i64, i32, i16
@@ -395,6 +396,12 @@ def as_i64_pair(value: Any) -> tuple[i64, i64]:
 def as_nested_i64_tuple(value: Any) -> tuple[str, tuple[i64, i64]]:
     return value
 
+def as_ref_i64_ref_tuple(value: Any) -> tuple[object, i64, object]:
+    return value
+
+def accept_ref_i64_ref_tuple(value: tuple[object, i64, object]) -> None:
+    pass
+
 def test_tuple_i64_unbox_error() -> None:
     too_large = 1 << 63
     message = "int too large to convert to i64"
@@ -404,6 +411,22 @@ def test_tuple_i64_unbox_error() -> None:
         as_i64_pair((0, too_large))
     with assertRaises(ValueError, message):
         as_nested_i64_tuple(("x", (0, too_large)))
+
+    getrefcount: Any = getattr(sys, "getrefcount")
+    first = object()
+    last = object()
+    first_refcount = getrefcount(first)
+    last_refcount = getrefcount(last)
+    with assertRaises(ValueError, message):
+        as_ref_i64_ref_tuple((first, too_large, last))
+    assert getrefcount(first) == first_refcount
+    assert getrefcount(last) == last_refcount
+
+    dynamic_accept: Any = accept_ref_i64_ref_tuple
+    with assertRaises(TypeError):
+        dynamic_accept((first, too_large, last))
+    assert getrefcount(first) == first_refcount
+    assert getrefcount(last) == last_refcount
 
 def test_list_set_item() -> None:
     a: List[i64] = [0, 2, 6]
