@@ -99,6 +99,106 @@ L0:
     r0 = CPyBytes_GetSlice(a, start, end)
     return r0
 
+[case testBytearrayFromBytesSlice]
+def f(a: bytes, start: int, end: int) -> bytearray:
+    return bytearray(a[start:end])
+
+def from_start(a: bytes, start: int) -> bytearray:
+    return bytearray(a[start:])
+
+def to_end(a: bytes, end: int) -> bytearray:
+    return bytearray(a[:end])
+
+def full(a: bytes) -> bytearray:
+    return bytearray(a[:])
+[out]
+def f(a, start, end):
+    a :: bytes
+    start, end :: int
+    r0 :: bytearray
+L0:
+    r0 = CPyByteArray_FromBytesSlice(a, start, end)
+    return r0
+def from_start(a, start):
+    a :: bytes
+    start, r0 :: int
+    r1 :: bytearray
+L0:
+    r0 = <error> :: int
+    r1 = CPyByteArray_FromBytesSlice(a, start, r0)
+    return r1
+def to_end(a, end):
+    a :: bytes
+    end, r0 :: int
+    r1 :: bytearray
+L0:
+    r0 = <error> :: int
+    r1 = CPyByteArray_FromBytesSlice(a, r0, end)
+    return r1
+def full(a):
+    a :: bytes
+    r0, r1 :: int
+    r2 :: bytearray
+L0:
+    r0 = <error> :: int
+    r1 = <error> :: int
+    r2 = CPyByteArray_FromBytesSlice(a, r0, r1)
+    return r2
+
+[case testBytearrayFromBytesSliceFixedWidth_64bit]
+from mypy_extensions import i32, i64
+
+def f(a: bytes, start: i32, end: i64) -> bytearray:
+    return bytearray(a[start:end])
+[out]
+def f(a, start, end):
+    a :: bytes
+    start :: i32
+    end :: i64
+    r0 :: native_int
+    r1 :: int
+    r2, r3 :: bit
+    r4, r5, r6 :: int
+    r7 :: bytearray
+L0:
+    r0 = extend signed start: i32 to native_int
+    r1 = r0 << 1
+    r2 = end <= 4611686018427387903 :: signed
+    if r2 goto L1 else goto L2 :: bool
+L1:
+    r3 = end >= -4611686018427387904 :: signed
+    if r3 goto L3 else goto L2 :: bool
+L2:
+    r4 = CPyTagged_FromInt64(end)
+    r5 = r4
+    goto L4
+L3:
+    r6 = end << 1
+    r5 = r6
+L4:
+    r7 = CPyByteArray_FromBytesSlice(a, r1, r5)
+    return r7
+
+[case testBytearrayFromBytesSliceWithStep]
+def f(a: bytes, start: int, end: int, step: int) -> bytearray:
+    return bytearray(a[start:end:step])
+[out]
+def f(a, start, end, step):
+    a :: bytes
+    start, end, step :: int
+    r0, r1, r2, r3, r4 :: object
+    r5 :: bytes
+    r6 :: bytearray
+L0:
+    r0 = box(int, start)
+    r1 = box(int, end)
+    r2 = box(int, step)
+    r3 = PySlice_New(r0, r1, r2)
+    r4 = PyObject_GetItem(a, r3)
+    r5 = cast(bytes, r4)
+    r6 = PyByteArray_FromObject(r5)
+    return r6
+
 [case testBytesIndex]
 from mypy_extensions import i64
 

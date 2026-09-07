@@ -253,6 +253,12 @@ class ClassIR:
         # Name of the function if this a callable class representing a coroutine.
         self.coroutine_name: str | None = None
 
+        # Does this generator or coroutine helper serialize execution using an instance flag?
+        self.has_running_flag = False
+
+        # Does this generator object contain its merged environment?
+        self.has_merged_generator_env = False
+
     def __repr__(self) -> str:
         return (
             "ClassIR("
@@ -304,6 +310,25 @@ class ClassIR:
             if name in ir.property_types:
                 return False
         return False
+
+    @property
+    def needs_getseters_table(self) -> bool:
+        """Do we generate a tp_getset table exposing the attributes to Python?"""
+        return self.needs_getseters or not self.is_generated or self.has_dict
+
+    def attrs_are_thread_confined(self) -> bool:
+        """Can these attributes safely use plain access in free-threaded builds?
+
+        This requires locals to live directly in the generator object, execution to be
+        serialized by its running flag, and no Python getseters exposing the attributes.
+        A separate environment does not qualify because captured locals may be accessed
+        by nested functions.
+        """
+        return (
+            self.has_merged_generator_env
+            and self.has_running_flag
+            and not self.needs_getseters_table
+        )
 
     def class_final_attr_details(self, name: str) -> tuple[RType, ClassIR] | None:
         """Look up a (possibly inherited) class-body Final attribute.
@@ -495,6 +520,8 @@ class ClassIR:
             "init_self_leak": self.init_self_leak,
             "env_user_function": self.env_user_function.id if self.env_user_function else None,
             "reuse_freed_instance": self.reuse_freed_instance,
+            "has_running_flag": self.has_running_flag,
+            "has_merged_generator_env": self.has_merged_generator_env,
             "is_acyclic": self.is_acyclic,
             "is_enum": self.is_enum,
             "is_coroutine": self.coroutine_name,
@@ -561,6 +588,8 @@ class ClassIR:
             ctx.functions[data["env_user_function"]] if data["env_user_function"] else None
         )
         ir.reuse_freed_instance = data["reuse_freed_instance"]
+        ir.has_running_flag = data["has_running_flag"]
+        ir.has_merged_generator_env = data["has_merged_generator_env"]
         ir.is_acyclic = data.get("is_acyclic", False)
         ir.is_enum = data["is_enum"]
         ir.coroutine_name = data["is_coroutine"]

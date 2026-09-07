@@ -34,6 +34,7 @@ from mypyc.common import (
     NATIVE_PREFIX,
     PREFIX,
     REG_PREFIX,
+    RUNNING_FIELD,
     short_id_from_name,
 )
 from mypyc.ir.class_ir import ClassIR, VTableEntries
@@ -264,7 +265,7 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
     fields: dict[str, str] = {"tp_name": f'"{name}"'}
 
     generate_full = not cl.is_trait and not cl.builtin_base
-    needs_getseters = cl.needs_getseters or not cl.is_generated or cl.has_dict
+    needs_getseters = cl.needs_getseters_table
 
     if not cl.builtin_base:
         fields["tp_new"] = new_name
@@ -484,6 +485,13 @@ def generate_object_struct(cl: ClassIR, emitter: Emitter) -> None:
     lines += ["typedef struct {", "PyObject_HEAD", "CPyVTableItem *vtable;"]
     if cl.has_method("__call__"):
         lines.append("vectorcallfunc vectorcall;")
+    # The flag affects attribute offsets, so concrete bases must agree on its presence.
+    assert all(
+        base.has_running_flag == cl.has_running_flag for base in cl.base_mro
+    ), f"{cl.name} disagrees with a base class about the running flag"
+    if cl.has_running_flag:
+        # This implementation field is intentionally absent from the IR attributes.
+        lines.append(f"uint32_t {RUNNING_FIELD};")
     bitmap_attrs = []
     for base in reversed(cl.base_mro):
         if not base.is_trait:
