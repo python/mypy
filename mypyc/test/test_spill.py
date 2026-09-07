@@ -15,6 +15,9 @@ from mypyc.transform.spill import insert_spills
 
 class TestSpill(unittest.TestCase):
     def test_separate_generator_environment_keeps_private_frame_state(self) -> None:
+        # A nested generator needs a separate environment. Since make() is
+        # evaluated before the yield, its result must be spilled across the
+        # suspension point by the post-IRBuild spill pass.
         source = """\
 def make() -> str:
     return "left"
@@ -34,7 +37,11 @@ def outer():
         assert isinstance(env_type, RInstance)
         environment = env_type.class_ir
 
+        # Private generator resume state lives on the generator frame, which
+        # is protected by the running flag and can use plain attribute access.
         assert frame.attrs_are_thread_confined()
         assert NEXT_LABEL_ATTR_NAME in frame.attributes
         assert any(name.startswith(TEMP_ATTR_NAME + "2_") for name in frame.attributes)
+
+        # Source-level variables stay in the shared environment.
         assert GENERATOR_ATTRIBUTE_PREFIX + "value" in environment.attributes
