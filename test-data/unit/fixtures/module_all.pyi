@@ -16,5 +16,4 @@ class list(Generic[_T], Sequence[_T]):
     def remove(self, x: _T): pass
     def __add__(self, rhs: Sequence[_T]) -> list[_T]: pass
 class tuple(Generic[_T]): pass
-class ellipsis: pass
 class dict: pass

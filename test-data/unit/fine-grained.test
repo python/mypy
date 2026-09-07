@@ -493,7 +493,7 @@ x = 3
 ==
 ==
 ==
-a.py:3: error: "object" has no attribute "whatever"
+a.py:3: error: Module has no attribute "whatever"
 
 [case testAddedIgnoreWithMissingImports]
 import a
@@ -2654,7 +2654,7 @@ from typing import Generic, TypeVar
 T = TypeVar('T')
 class C(Generic[T]): pass
 [out]
-main:4: error: "object" has no attribute "C"
+main:4: error: Module has no attribute "C"
 ==
 main:4: error: Need type annotation for "x"
 
@@ -11854,7 +11854,7 @@ def loads() -> None: ...
 [file pkg/sub.pyi.2]
 [out]
 ==
-main:3: error: "object" has no attribute "loads"
+main:3: error: Module has no attribute "loads"
 
 [case testStarExportedNameDeleted2]
 import pkg
@@ -11870,7 +11870,7 @@ class C: pass
 [file pkg/sub.pyi.2]
 [out]
 ==
-main:3: error: "object" has no attribute "C"
+main:3: error: Module has no attribute "C"
 
 [case testStarExportedNameDeleted3]
 from pkg import loads
@@ -11902,7 +11902,7 @@ x = 1
 [file pkg/sub.pyi.2]
 [out]
 ==
-main:3: error: "object" has no attribute "x"
+main:3: error: Module has no attribute "x"
 
 [case testStarExportedNameDeleted5]
 from pkg import sub

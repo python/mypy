@@ -31,6 +31,7 @@ MYPYC_DEFAULTS_SETUP: Final = "__mypyc_defaults_setup"
 GENERATOR_ATTRIBUTE_PREFIX: Final = "__mypyc_generator_attribute__"
 CPYFUNCTION_NAME = "__cpyfunction__"
 
+<<<<<<< HEAD
 
 def module_import_state_name(module_name: str) -> str:
     return f"{IMPORT_STATE_PREFIX}{exported_name(module_name)}"
@@ -51,6 +52,10 @@ def module_init_name(module_name: str) -> str:
 def module_exec_name(module_name: str) -> str:
     return f"CPyExec_{exported_name(module_name)}"
 
+=======
+# Omits the prefix added to user attribute fields, so it cannot collide with one.
+RUNNING_FIELD: Final = "mypyc_running"
+>>>>>>> master
 
 # Max short int we accept as a literal is based on 32-bit platforms,
 # so that we can just always emit the same code.

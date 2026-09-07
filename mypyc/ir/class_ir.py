@@ -162,8 +162,11 @@ class ClassIR:
         # Attributes that must survive generator/coroutine completion because
         # escaped nested functions may still read them as closure variables.
         self.attrs_to_keep_alive_on_completion: set[str] = set()
-        # Final attributes defined in the class (not inherited)
+        # Final attributes initialized in the __init__ method (not inherited)
         self.final_attributes: set[str] = set()
+        # Final attributes defined in class body as "X: Final = <value>" (not inherited).
+        # They get no slot in the instance struct. The value lives in a module-level static.
+        self.class_final_attributes: dict[str, RType] = {}
         # Deletable attributes
         self.deletable: list[str] = []
         # We populate method_types with the signatures of every method before
@@ -250,6 +253,12 @@ class ClassIR:
         # Name of the function if this a callable class representing a coroutine.
         self.coroutine_name: str | None = None
 
+        # Does this generator or coroutine helper serialize execution using an instance flag?
+        self.has_running_flag = False
+
+        # Does this generator object contain its merged environment?
+        self.has_merged_generator_env = False
+
     def __repr__(self) -> str:
         return (
             "ClassIR("
@@ -301,6 +310,44 @@ class ClassIR:
             if name in ir.property_types:
                 return False
         return False
+
+    @property
+    def needs_getseters_table(self) -> bool:
+        """Do we generate a tp_getset table exposing the attributes to Python?"""
+        return self.needs_getseters or not self.is_generated or self.has_dict
+
+    def attrs_are_thread_confined(self) -> bool:
+        """Can these attributes safely use plain access in free-threaded builds?
+
+        This requires locals to live directly in the generator object, execution to be
+        serialized by its running flag, and no Python getseters exposing the attributes.
+        A separate environment does not qualify because captured locals may be accessed
+        by nested functions.
+        """
+        return (
+            self.has_merged_generator_env
+            and self.has_running_flag
+            and not self.needs_getseters_table
+        )
+
+    def class_final_attr_details(self, name: str) -> tuple[RType, ClassIR] | None:
+        """Look up a (possibly inherited) class-body Final attribute.
+
+        Returns the attribute type and the class that defines it, or None if this
+        class has no such attribute. The defining class is what identifies the
+        static holding the value, so callers need it to build the static's name.
+
+        Deliberately kept out of attr_details()/has_attr(): these attributes have no
+        instance slot, so callers that want to read or write one must not treat them
+        as ordinary attributes.
+        """
+        for ir in self.mro:
+            if name in ir.class_final_attributes:
+                return ir.class_final_attributes[name], ir
+            if name in ir.attributes or name in ir.property_types:
+                # Shadowed by a real attribute or property closer in the MRO.
+                return None
+        return None
 
     def method_decl(self, name: str) -> FuncDecl:
         for ir in self.mro:
@@ -435,6 +482,9 @@ class ClassIR:
             "attributes": [(k, t.serialize()) for k, t in self.attributes.items()],
             "attrs_to_keep_alive_on_completion": sorted(self.attrs_to_keep_alive_on_completion),
             "final_attributes": sorted(self.final_attributes),
+            "class_final_attributes": [
+                (k, t.serialize()) for k, t in self.class_final_attributes.items()
+            ],
             # We try to serialize a name reference, but if the decl isn't in methods
             # then we can't be sure that will work so we serialize the whole decl.
             "method_decls": [
@@ -470,6 +520,8 @@ class ClassIR:
             "init_self_leak": self.init_self_leak,
             "env_user_function": self.env_user_function.id if self.env_user_function else None,
             "reuse_freed_instance": self.reuse_freed_instance,
+            "has_running_flag": self.has_running_flag,
+            "has_merged_generator_env": self.has_merged_generator_env,
             "is_acyclic": self.is_acyclic,
             "is_enum": self.is_enum,
             "is_coroutine": self.coroutine_name,
@@ -499,6 +551,9 @@ class ClassIR:
         ir.attributes = {k: deserialize_type(t, ctx) for k, t in data["attributes"]}
         ir.attrs_to_keep_alive_on_completion = set(data["attrs_to_keep_alive_on_completion"])
         ir.final_attributes = set(data["final_attributes"])
+        ir.class_final_attributes = {
+            k: deserialize_type(t, ctx) for k, t in data["class_final_attributes"]
+        }
         ir.method_decls = {
             k: ctx.functions[v].decl if isinstance(v, str) else FuncDecl.deserialize(v, ctx)
             for k, v in data["method_decls"]
@@ -533,6 +588,8 @@ class ClassIR:
             ctx.functions[data["env_user_function"]] if data["env_user_function"] else None
         )
         ir.reuse_freed_instance = data["reuse_freed_instance"]
+        ir.has_running_flag = data["has_running_flag"]
+        ir.has_merged_generator_env = data["has_merged_generator_env"]
         ir.is_acyclic = data.get("is_acyclic", False)
         ir.is_enum = data["is_enum"]
         ir.coroutine_name = data["is_coroutine"]

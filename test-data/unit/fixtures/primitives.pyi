@@ -1,5 +1,6 @@
 # builtins stub with non-generic primitive types
 import _typeshed
+import types
 from typing import Generic, TypeVar, Sequence, Iterator, Mapping, Iterable, Tuple, Union
 
 T = TypeVar('T')
@@ -69,7 +70,6 @@ class set(Iterable[T]):
 class frozenset(Iterable[T]):
     def __iter__(self) -> Iterator[T]: pass
 class function: pass
-class ellipsis: pass
 
 class range(Sequence[int]):
     def __init__(self, __x: int, __y: int = ..., __z: int = ...) -> None: pass

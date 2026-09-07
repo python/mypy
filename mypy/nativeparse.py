@@ -287,7 +287,7 @@ def parse_to_binary_ast(
         platform=options.platform,
         always_true=options.always_true,
         always_false=options.always_false,
-        cache_version=3,
+        cache_version=4,
     )
     return (
         ast_bytes,
@@ -664,7 +664,7 @@ def read_func_def(state: State, data: ReadBuffer) -> FuncDef:
     name = read_str(data)
     arguments, has_ann = read_parameters(state, data)
 
-    if special_function_elide_names(name):
+    if state.options.pos_only_special_methods and special_function_elide_names(name):
         for arg in arguments:
             arg.pos_only = True
 
@@ -715,6 +715,8 @@ def read_func_def(state: State, data: ReadBuffer) -> FuncDef:
         # TODO: This seems wasteful, can we avoid it?
         func_def.unanalyzed_type = typ.copy_modified()
     expect_end_tag(data)
+    if state.options.include_docstrings:
+        func_def.docstring = get_docstring(body)
     return func_def
 
 
@@ -761,7 +763,17 @@ def read_class_def(state: State, data: ReadBuffer) -> ClassDef:
         )
         check_type_param_defaults(state, type_params, class_def.line, class_def.column)
     expect_end_tag(data)
+    if state.options.include_docstrings:
+        class_def.docstring = get_docstring(body)
     return class_def
+
+
+def get_docstring(body: Block) -> str | None:
+    if body.body and isinstance(body.body[0], ExpressionStmt):
+        expr = body.body[0].expr
+        if isinstance(expr, StrExpr):
+            return expr.value
+    return None
 
 
 def read_type_alias_stmt(state: State, data: ReadBuffer) -> TypeAliasStmt:
@@ -1544,7 +1556,11 @@ def read_expression(state: State, data: ReadBuffer) -> Expression:
         expect_end_tag(data)
         return expr
     elif tag == nodes.DICT_COMPREHENSION:
-        key = read_expression(state, data)
+        has_key = read_bool(data)
+        if has_key:
+            key = read_expression(state, data)
+        else:
+            key = None
         value = read_expression(state, data)
         n_generators = read_int(data)
         indices = [read_expression(state, data) for _ in range(n_generators)]
@@ -1553,6 +1569,9 @@ def read_expression(state: State, data: ReadBuffer) -> Expression:
         is_async = [read_bool(data) for _ in range(n_generators)]
         expr = DictionaryComprehension(key, value, indices, sequences, condlists, is_async)
         read_loc(data, expr)
+        if key is None:
+            # TODO: add similar check to other kinds of comprehensions.
+            state.check_min_version("Unpacking in comprehensions", (3, 15), expr.line, expr.column)
         expect_end_tag(data)
         return expr
     elif tag == nodes.SET_COMPREHENSION:

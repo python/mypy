@@ -3066,7 +3066,7 @@ class DictionaryComprehension(Expression):
 
     __match_args__ = ("key", "value", "indices", "sequences", "condlists")
 
-    key: Expression
+    key: Expression | None
     value: Expression
     sequences: list[Expression]
     condlists: list[list[Expression]]
@@ -3075,7 +3075,7 @@ class DictionaryComprehension(Expression):
 
     def __init__(
         self,
-        key: Expression,
+        key: Expression | None,
         value: Expression,
         indices: list[Lvalue],
         sequences: list[Expression],

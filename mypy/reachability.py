@@ -19,10 +19,12 @@ from mypy.nodes import (
     ImportFrom,
     IndexExpr,
     IntExpr,
+    ListExpr,
     MatchStmt,
     MemberExpr,
     NameExpr,
     OpExpr,
+    SetExpr,
     SliceExpr,
     StrExpr,
     TupleExpr,
@@ -232,19 +234,27 @@ def consider_sys_platform(expr: Expression, platform: str) -> int:
     # - sys.platform == 'linux'
     # - sys.platform != 'win32'
     # - sys.platform.startswith('win')
+    # - sys.platform in {'linux', 'darwin'}
+    # - sys.platform not in ('win32', 'cygwin')
     if isinstance(expr, ComparisonExpr):
         # Let's not yet support chained comparisons.
         if len(expr.operators) > 1:
             return TRUTH_VALUE_UNKNOWN
         op = expr.operators[0]
-        if op not in ("==", "!="):
-            return TRUTH_VALUE_UNKNOWN
         if not is_sys_attr(expr.operands[0], "platform"):
             return TRUTH_VALUE_UNKNOWN
         right = expr.operands[1]
-        if not isinstance(right, StrExpr):
+        if op in ("==", "!=") and isinstance(right, StrExpr):
+            return fixed_comparison(platform, op, right.value)
+        if op not in ("in", "not in"):
             return TRUTH_VALUE_UNKNOWN
-        return fixed_comparison(platform, op, right.value)
+        items = contains_tuple_or_set_of_strings(right)
+        if items is None:
+            return TRUTH_VALUE_UNKNOWN
+        result = platform in items
+        if op == "not in":
+            result = not result
+        return ALWAYS_TRUE if result else ALWAYS_FALSE
     elif isinstance(expr, CallExpr):
         if not isinstance(expr.callee, MemberExpr):
             return TRUTH_VALUE_UNKNOWN
@@ -293,6 +303,14 @@ def contains_int_or_tuple_of_ints(expr: Expression) -> None | int | tuple[int, .
                     return None
                 thing.append(x.value)
             return tuple(thing)
+    return None
+
+
+def contains_tuple_or_set_of_strings(expr: Expression) -> tuple[str, ...] | None:
+    if isinstance(expr, (TupleExpr, SetExpr, ListExpr)) and all(
+        isinstance(item, StrExpr) for item in expr.items
+    ):
+        return tuple(item.value for item in expr.items if isinstance(item, StrExpr))
     return None
 
 

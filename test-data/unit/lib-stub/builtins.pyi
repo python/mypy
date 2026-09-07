@@ -3,6 +3,7 @@
 # Use [builtins fixtures/...pyi] if you need more features.
 
 import _typeshed
+import types
 
 class object:
     def __init__(self) -> None: pass
@@ -21,7 +22,6 @@ class bytes: pass
 
 class function:
     __name__: str
-class ellipsis: pass
 
 from typing import Generic, Iterator, Sequence, TypeVar
 _T = TypeVar('_T')

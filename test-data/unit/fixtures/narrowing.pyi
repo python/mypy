@@ -1,4 +1,5 @@
 # Builtins stub used in check-narrowing test cases.
+import types
 from typing import Generic, Sequence, Tuple, Type, TypeVar, Union, Iterable
 
 
@@ -12,7 +13,6 @@ class object:
 class type: pass
 class tuple(Sequence[Tco], Generic[Tco]): pass
 class function: pass
-class ellipsis: pass
 class int: pass
 class str: pass
 class float: pass

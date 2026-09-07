@@ -1,5 +1,5 @@
 from typing import Any, Dict, Generic, TypeVar, Sequence
-from types import ModuleType
+from types import ModuleType, EllipsisType
 
 T = TypeVar('T')
 S = TypeVar('S')
@@ -16,7 +16,6 @@ class str: pass
 class bool: pass
 class tuple(Generic[T]): pass
 class dict(Generic[T, S]): pass
-class ellipsis: pass
 
 classmethod = object()
 staticmethod = object()

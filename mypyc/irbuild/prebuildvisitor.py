@@ -43,7 +43,8 @@ def _comprehension_has_lambda(node: GeneratorExpr | DictionaryComprehension) -> 
     if isinstance(node, GeneratorExpr):
         node.left_expr.accept(checker)
     else:
-        node.key.accept(checker)
+        if node.key is not None:
+            node.key.accept(checker)
         node.value.accept(checker)
     for conds in node.condlists:
         for cond in conds:

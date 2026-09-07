@@ -1,6 +1,7 @@
 # Fixture for for-else tests with exceptions
 # Combines needed elements from primitives.pyi and exception.pyi
 
+import types
 from typing import Generic, Iterator, Mapping, Sequence, TypeVar
 
 T = TypeVar('T')
@@ -36,7 +37,6 @@ class dict(Mapping[T, V]):
     def __iter__(self) -> Iterator[T]: pass
 class tuple(Generic[T]):
     def __contains__(self, other: object) -> bool: pass
-class ellipsis: pass
 
 class BaseException:
     def __init__(self, *args: object) -> None: ...

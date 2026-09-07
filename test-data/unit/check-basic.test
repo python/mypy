@@ -461,8 +461,8 @@ def typeddict() -> Sequence[D]:
     x = [{'x': 0}]  # type: List[a.D]
     return x  # E: Incompatible return value type (got "list[a.D]", expected "Sequence[b.D]")
 
-a = (a.A(), A())
-a.x  # E: "tuple[a.A, b.A]" has no attribute "x"
+a = (a.A(), A())  # E: Incompatible types in assignment (expression has type "tuple[a.A, b.A]", variable has type Module)
+a.x  # E: Module has no attribute "x"
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-full.pyi]
 

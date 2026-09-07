@@ -1036,4 +1036,4 @@ def f(x: MISSING) -> None:
     pass
 [builtins fixtures/tuple.pyi]
 [out]
-<m.MISSING> -> <m.MISSING>, <m.f>, m, m.f
+<m.MISSING> -> <m.f>, m, m.f

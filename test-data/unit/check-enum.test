@@ -2558,7 +2558,7 @@ class Pet(Enum):
     CAT = ...
     DOG: str = ...  # E: Enum members must be left unannotated \
                     # N: See https://typing.readthedocs.io/en/latest/spec/enums.html#defining-members \
-                    # E: Incompatible types in assignment (expression has type "ellipsis", variable has type "str")
+                    # E: Incompatible types in assignment (expression has type "EllipsisType", variable has type "str")
 [builtins fixtures/enum.pyi]
 
 [case testEnumValueWithPlaceholderNodeType]
@@ -2736,23 +2736,23 @@ class FromStub(Enum):
     FOO = ...
 
 reveal_type(FromStub.FOO)  # N: Revealed type is "Literal[__main__.FromStub.FOO]?"
-reveal_type(FromStub.FOO.value)  # N: Revealed type is "builtins.ellipsis"
+reveal_type(FromStub.FOO.value)  # N: Revealed type is "types.EllipsisType"
 reveal_type(FromStub.FOO._value_)  # N: Revealed type is "builtins.int"
 
 class InheritedStr(StrEnum):
     FOO = ...
 
 reveal_type(InheritedStr.FOO)  # N: Revealed type is "Literal[__main__.InheritedStr.FOO]?"
-reveal_type(InheritedStr.FOO.value)  # N: Revealed type is "builtins.ellipsis"
-reveal_type(InheritedStr.FOO._value_)  # N: Revealed type is "builtins.ellipsis"
+reveal_type(InheritedStr.FOO.value)  # N: Revealed type is "types.EllipsisType"
+reveal_type(InheritedStr.FOO._value_)  # N: Revealed type is "types.EllipsisType"
 
 class Wrapper:
     class Nested(StrEnum):
         FOO = ...
 
 reveal_type(Wrapper.Nested.FOO)  # N: Revealed type is "Literal[__main__.Wrapper.Nested.FOO]?"
-reveal_type(Wrapper.Nested.FOO.value)  # N: Revealed type is "builtins.ellipsis"
-reveal_type(Wrapper.Nested.FOO._value_)  # N: Revealed type is "builtins.ellipsis"
+reveal_type(Wrapper.Nested.FOO.value)  # N: Revealed type is "types.EllipsisType"
+reveal_type(Wrapper.Nested.FOO._value_)  # N: Revealed type is "types.EllipsisType"
 [builtins fixtures/enum.pyi]
 
 [case testStrEnumEqualityReachability]
