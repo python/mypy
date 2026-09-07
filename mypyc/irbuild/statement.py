@@ -1351,30 +1351,46 @@ def emit_yield_from_or_await(
 
     stop_block, main_block, done_block = BasicBlock(), BasicBlock(), BasicBlock()
 
-    if isinstance(iter_reg.type, RInstance) and iter_reg.type.class_ir.has_method(helper_method):
+    fast_path = isinstance(iter_reg.type, RInstance) and iter_reg.type.class_ir.has_method(
+        helper_method
+    )
+
+    # Register where a native child stores its return value instead of raising
+    # StopIteration (only used on the fast path).
+    stop_iter_val = Register(object_rprimitive) if fast_path else None
+
+    def native_step(sent: Value) -> Value:
+        """Advance a native generator/coroutine child by calling its helper directly.
+
+        Returns the value yielded by the child, or NULL if the child completed or
+        raised. On normal completion the return value is stored in stop_iter_val,
+        which is set to the error value if a real exception was raised instead.
+        """
+        assert stop_iter_val is not None
+        obj = builder.read(iter_reg, line)
+        nn = builder.none_object()
+        err = builder.add(LoadErrorValue(object_rprimitive, undefines=True))
+        builder.assign(stop_iter_val, err, line)
+        ptr = builder.add(LoadAddress(object_pointer_rprimitive, stop_iter_val))
+        m = MethodCall(obj, helper_method, [nn, nn, nn, sent, ptr], line)
+        # Generators have custom error handling, so disable normal error handling.
+        m.error_kind = ERR_NEVER
+        return builder.add(m)
+
+    if fast_path:
         # Second fast path optimization: call helper directly (see also comment above).
         #
         # Calling a generated generator, so avoid raising StopIteration by passing
         # an extra PyObject ** argument to helper where the stop iteration value is stored.
-        fast_path = True
-        obj = builder.read(iter_reg, line)
-        nn = builder.none_object()
-        stop_iter_val = Register(object_rprimitive)
-        err = builder.add(LoadErrorValue(object_rprimitive, undefines=True))
-        builder.assign(stop_iter_val, err, line)
-        ptr = builder.add(LoadAddress(object_pointer_rprimitive, stop_iter_val))
-        m = MethodCall(obj, helper_method, [nn, nn, nn, nn, ptr], line)
-        # Generators have custom error handling, so disable normal error handling.
-        m.error_kind = ERR_NEVER
-        _y_init = builder.add(m)
+        _y_init = native_step(builder.none_object())
     else:
-        fast_path = False
         _y_init = builder.call_c(next_raw_op, [builder.read(iter_reg, line)], line)
 
     builder.add(Branch(_y_init, stop_block, main_block, Branch.IS_ERROR))
 
     builder.activate_block(stop_block)
     if fast_path:
+        assert stop_iter_val is not None
         builder.primitive_op(propagate_if_error_op, [stop_iter_val], line)
         builder.assign(result, stop_iter_val, line)
     else:
@@ -1423,11 +1439,18 @@ def emit_yield_from_or_await(
         builder.nonlocal_control[-1].gen_break(builder, line)
 
     def else_body() -> None:
-        # Do a next() or a .send(). It will return NULL on exception
-        # but it won't automatically propagate.
-        _y = builder.call_c(
-            send_op, [builder.read(iter_reg, line), builder.read(received_reg, line)], line
-        )
+        # This path runs when the parent's yield is resumed normally via next() or send().
+        # An exception injected via throw() or close() takes the except_body path instead.
+        if fast_path:
+            # Reuse the direct helper call on resumes as well, so that native-to-native
+            # completion doesn't have to go through .send() and StopIteration.
+            _y = native_step(builder.read(received_reg, line))
+        else:
+            # Do a next() or a .send(). It will return NULL on exception
+            # but it won't automatically propagate.
+            _y = builder.call_c(
+                send_op, [builder.read(iter_reg, line), builder.read(received_reg, line)], line
+            )
         ok, stop = BasicBlock(), BasicBlock()
         builder.add(Branch(_y, stop, ok, Branch.IS_ERROR))
 
@@ -1436,10 +1459,17 @@ def emit_yield_from_or_await(
         builder.assign(to_yield_reg, _y, line)
         builder.nonlocal_control[-1].gen_continue(builder, line)
 
-        # Try extracting a return value from a StopIteration and return it.
-        # If it wasn't, this rereaises the exception.
         builder.activate_block(stop)
-        builder.assign(result, builder.call_c(check_stop_op, [], line), line)
+        if fast_path:
+            assert stop_iter_val is not None
+            # The child either returned a value through the out pointer, or raised
+            # a real exception (in which case this propagates it).
+            builder.primitive_op(propagate_if_error_op, [stop_iter_val], line)
+            builder.assign(result, stop_iter_val, line)
+        else:
+            # Try extracting a return value from a StopIteration and return it.
+            # If it wasn't, this rereaises the exception.
+            builder.assign(result, builder.call_c(check_stop_op, [], line), line)
         builder.nonlocal_control[-1].gen_break(builder, line)
 
     builder.push_loop_stack(loop_block, done_block)
