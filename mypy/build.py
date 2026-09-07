@@ -1415,7 +1415,8 @@ class BuildManager:
             #   * Heap key is *negative* size (so that larger SCCs appear first).
             #   * Each batch must have at least one item.
             #   * Adding another SCC to batch should not exceed maximum allowed size.
-            size_in_batch - self.scc_queue[0][0] <= max_size_in_batch or not batch
+            size_in_batch - self.scc_queue[0][0] <= max_size_in_batch
+            or not batch
         ):
             size_key, _, scc = heappop(self.scc_queue)
             size_in_batch -= size_key
@@ -3099,9 +3100,9 @@ class State:
             assert self.path is not None
             _, data_file, _ = get_cache_names(self.id, self.path, self.manager.options)
         else:
-            assert self.meta is not None, (
-                "Internal error: this method must be called only for cached modules"
-            )
+            assert (
+                self.meta is not None
+            ), "Internal error: this method must be called only for cached modules"
             data_file = self.meta.data_file
 
         data: bytes | dict[str, Any] | None
@@ -3603,9 +3604,9 @@ class State:
         dep_prios = self.dependency_priorities()
         dep_lines = self.dependency_lines()
         assert self.source_hash is not None
-        assert len(set(self.dependencies)) == len(self.dependencies), (
-            f"Duplicates in dependencies list for {self.id} ({self.dependencies})"
-        )
+        assert len(set(self.dependencies)) == len(
+            self.dependencies
+        ), f"Duplicates in dependencies list for {self.id} ({self.dependencies})"
         new_interface_hash, meta_tuple = write_cache(
             self.id,
             self.path,

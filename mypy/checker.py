@@ -1366,12 +1366,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
         if self.scope.current_function() is not active.defn:
             return
 
-        active.return_sites.append(
-            ReturnSite(
-                statement=statement,
-                inferred_type=inferred_type,
-            )
-        )
+        active.return_sites.append(ReturnSite(statement=statement, inferred_type=inferred_type))
 
     def publish_plugin_refinement(
         self, defn: FuncDef, declared: CallableType, refined_return: Type
@@ -1406,9 +1401,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
 
         if result is not None and result.refined_return is not None:
             self.publish_plugin_refinement(
-                active.defn,
-                active.declared_signature,
-                result.refined_return,
+                active.defn, active.declared_signature, result.refined_return
             )
 
     def take_changed_plugin_signatures(self) -> set[str]:
@@ -2444,7 +2437,8 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
             and (self.options.check_untyped_defs or not defn.is_dynamic())
             and (
                 # don't check override for synthesized __replace__ methods from dataclasses
-                defn.name != "__replace__" or defn.info.metadata.get("dataclass_tag") is None
+                defn.name != "__replace__"
+                or defn.info.metadata.get("dataclass_tag") is None
             )
         )
         found_method_base_classes: list[TypeInfo] = []
@@ -4726,8 +4720,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
             self.store_type(lvalue, lvalue_type)
         elif isinstance(lvalue, (TupleExpr, ListExpr)):
             types = [
-                self.check_lvalue(sub_expr)[0]
-                or
+                self.check_lvalue(sub_expr)[0] or
                 # This type will be used as a context for further inference of rvalue,
                 # we put Uninhabited if there is no information available from lvalue.
                 UninhabitedType(ambiguous=True)
