@@ -1439,6 +1439,8 @@ def emit_yield_from_or_await(
         builder.nonlocal_control[-1].gen_break(builder, line)
 
     def else_body() -> None:
+        # This path runs when the parent's yield is resumed normally via next() or send().
+        # An exception injected via throw() or close() takes the except_body path instead.
         if fast_path:
             # Reuse the direct helper call on resumes as well, so that native-to-native
             # completion doesn't have to go through .send() and StopIteration.
