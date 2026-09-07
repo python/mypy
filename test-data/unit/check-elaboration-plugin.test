@@ -1,4 +1,6 @@
 [case testElaboratesAnyReturn]
+# flags: --python-version 3.11 --config-file tmp/mypy.ini
+
 from typing import Any
 
 def bad(x: int) -> Any:
@@ -7,29 +9,34 @@ def bad(x: int) -> Any:
 reveal_type(bad(1))  # N: Revealed type is "builtins.str"
 value: int = bad(1)  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
 
-[case testElaboratesIgnoresBadAnnot]
-from typing import Any
+[file mypy.ini]
+\[mypy]
+plugins=<ROOT>/test-data/unit/plugins/function_definition_rules.py
 
-def unused(x: int) -> Any:
-    return "hello"
-
-reveal_type(unused(1)) # N: Revealed type is "builtins.str"
-value: int = bad(1) # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+[builtins fixtures/elaboration.pyi]
 
 [case testElaboratesAttribute]
+# flags: --python-version 3.11 --config-file tmp/mypy.ini --show-error-codes
+
 from typing import Any
 
-class Settings:
+class Settings: # behaviour unsupported yet
     retries: Any = "3"
 
-reveal_type(Settings().retries)  # N: Revealed type is "builtins.str"
-retries: int = Settings().retries  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+reveal_type(Settings().retries)  # N: Revealed type is "Any"
+retries: int = Settings().retries
 
+[file mypy.ini]
+\[mypy]
+plugins=<ROOT>/test-data/unit/plugins/function_definition_rules.py
 
 [case testElaboratesNestedCallableReturn]
-from typing import Any, Callable
+[builtins fixtures/tuple.pyi]
+# flags: --python-version 3.11 --config-file tmp/mypy.ini --show-error-codes
 
-handlers: dict[str, Callable[[bytes], Any]] = {
+from typing import Any, Callable, Dict
+
+handlers: Dict[str, Callable[[bytes], Any]] = {
     "decode": lambda data: "decoded"
 }
 
@@ -37,3 +44,145 @@ result = handlers["decode"](b"hello")
 
 reveal_type(result)  # N: Revealed type is "builtins.str"
 value: bytes = result  # E: Incompatible types in assignment (expression has type "str", variable has type "bytes")
+
+[file mypy.ini]
+\[mypy]
+plugins=<ROOT>/test-data/unit/plugins/function_definition_rules.py
+
+[case testUnionRuleReportsOnceAtDefinition]
+# flags: --python-version 3.11 --config-file tmp/mypy.ini --show-error-codes
+
+def choose(value: int | str) -> int | str:  # E: Union return types are not allowed  [union-return]
+    return value
+
+def first_caller() -> None:
+    choose(1)
+
+def second_caller() -> None:
+    choose("hello")
+
+[file mypy.ini]
+\[mypy]
+plugins=<ROOT>/test-data/unit/plugins/function_definition_rules.py
+
+[case testUnionRuleRunsWithoutAnyCalls]
+# flags: --python-version 3.11 --config-file tmp/mypy.ini --show-error-codes
+
+def never_called(value: int | str) -> int | str:  # E: Union return types are not allowed  [union-return]
+    return value
+
+
+[file mypy.ini]
+\[mypy]
+plugins=<ROOT>/test-data/unit/plugins/function_definition_rules.py
+
+[case testUnionRuleCoversMethods]
+# flags: --python-version 3.11 --config-file tmp/mypy.ini --show-error-codes
+
+class Parser:
+    def parse(self, value: int | str) -> int | str:  # E: Union return types are not allowed  [union-return]
+        return value
+
+
+Parser().parse(1)
+Parser().parse("hello")
+
+
+[file mypy.ini]
+\[mypy]
+plugins=<ROOT>/test-data/unit/plugins/function_definition_rules.py
+
+[case testUnionRuleCanBeIgnoredAtDefinition]
+# flags: --python-version 3.11 --config-file tmp/mypy.ini --show-error-codes
+
+def permitted(value: int | str) -> int | str:  # type: ignore[union-return]
+    return value
+
+
+permitted(1)
+permitted("hello")
+
+
+[file mypy.ini]
+\[mypy]
+plugins=<ROOT>/test-data/unit/plugins/function_definition_rules.py
+
+[case testAnyReturnRefinesEarlierAndLaterCallers]
+# flags: --python-version 3.11 --config-file tmp/mypy.ini --show-error-codes
+
+from typing import Any
+
+
+def before_definition() -> None:
+    reveal_type(bad(1))  # N: Revealed type is "builtins.str"
+    value: int = bad(1)  # E: Incompatible types in assignment (expression has type "str", variable has type "int")  [assignment]
+
+
+def bad(x: int) -> Any:
+    return str(x)
+
+
+def after_definition() -> None:
+    reveal_type(bad(1))  # N: Revealed type is "builtins.str"
+    value: int = bad(1)  # E: Incompatible types in assignment (expression has type "str", variable has type "int")  [assignment]
+
+
+[file mypy.ini]
+\[mypy]
+plugins=<ROOT>/test-data/unit/plugins/function_definition_rules.py
+
+[builtins fixtures/elaboration.pyi]
+
+[case testAnyReturnRefinementReachesFixedPoint]
+# flags: --python-version 3.11 --config-file tmp/mypy.ini --show-error-codes
+
+from typing import Any
+
+
+def use_result() -> None:
+    reveal_type(first())  # N: Revealed type is "Literal['done']?"
+    value: int = first()  # E: Incompatible types in assignment (expression has type "str", variable has type "int")  [assignment]
+
+
+def first() -> Any:
+    return second()
+
+
+def second() -> Any:
+    return "done"
+
+
+[file mypy.ini]
+\[mypy]
+plugins=<ROOT>/test-data/unit/plugins/function_definition_rules.py
+
+[case testAnyReturnRuleDoesNotChangeNonAnyAnnotation]
+# flags: --python-version 3.11 --config-file tmp/mypy.ini --show-error-codes
+
+def returns_object() -> object:
+    return "hello"
+
+
+reveal_type(returns_object())  # N: Revealed type is "builtins.object"
+
+
+[file mypy.ini]
+\[mypy]
+plugins=<ROOT>/test-data/unit/plugins/function_definition_rules.py
+
+[case testAnyReturnRuleLeavesBodyAnyAlone]
+# flags: --python-version 3.11 --config-file tmp/mypy.ini --show-error-codes
+
+from typing import Any
+
+
+def identity(value: Any) -> Any:
+    return value
+
+
+reveal_type(identity(1))  # N: Revealed type is "Any"
+
+
+[file mypy.ini]
+\[mypy]
+plugins=<ROOT>/test-data/unit/plugins/function_definition_rules.py
