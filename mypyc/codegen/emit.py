@@ -1018,12 +1018,13 @@ class Emitter:
         error = error or AssignHandler()
         # TODO: Verify refcount handling.
         if isinstance(error, AssignHandler):
-            failure = f"{dest} = {self.c_error_value(typ)};"
+            error_action = f"{dest} = {self.c_error_value(typ)};"
         elif isinstance(error, GotoHandler):
-            failure = "goto %s;" % error.label
+            error_action = "goto %s;" % error.label
         else:
             assert isinstance(error, ReturnHandler), error
-            failure = "return %s;" % error.value
+            error_action = "return %s;" % error.value
+        failure = error_action
         if raise_exception:
             raise_exc = f'CPy_TypeError("{self.pretty_name(typ)}", {src}); '
             failure = raise_exc + failure
@@ -1098,14 +1099,12 @@ class Emitter:
             self.declare_tuple_struct(typ)
             if declare_dest:
                 self.emit_line(f"{self.ctype(typ)} {dest};")
-            # HACK: The error handling for unboxing tuples is busted
-            # and instead of fixing it I am just wrapping it in the
-            # cast code which I think is right. This is not good.
             if optional:
                 self.emit_line(f"if ({src} == NULL) {{")
                 self.emit_line(f"{dest} = {self.c_error_value(typ)};")
                 self.emit_line("} else {")
 
+            item_error_labels: list[tuple[str, int]] = []
             cast_temp = self.temp_name()
             self.emit_tuple_cast(
                 src, cast_temp, typ, declare_dest=True, error=error, src_type=None
@@ -1126,12 +1125,18 @@ class Emitter:
                 temp2 = self.temp_name()
                 # Unbox or check the item.
                 if item_type.is_unboxed:
+                    item_error_label = self.new_label()
+                    item_error_labels.append((item_error_label, i))
                     self.emit_unbox(
                         temp,
                         temp2,
                         item_type,
-                        raise_exception=raise_exception,
-                        error=error,
+                        # The tuple cast has already checked the item type. In the
+                        # normal AssignHandler case, preserve conversion errors such
+                        # as an integer overflow instead of replacing them with a
+                        # TypeError.
+                        raise_exception=raise_exception and not isinstance(error, AssignHandler),
+                        error=GotoHandler(item_error_label),
                         declare_dest=True,
                         borrow=borrow,
                     )
@@ -1141,6 +1146,20 @@ class Emitter:
                     self.emit_cast(temp, temp2, item_type, declare_dest=True)
                 self.emit_line(f"{dest}.f{i} = {temp2};")
             self.emit_line("}")
+            if item_error_labels:
+                done_label = self.new_label()
+                self.emit_line(f"goto {done_label};")
+                for item_error_label, failed_item in item_error_labels:
+                    self.emit_label(item_error_label)
+                    # The failed field has not been assigned yet, but earlier fields
+                    # may own references that must be released before propagating.
+                    if not borrow:
+                        for previous_index, previous_type in enumerate(typ.types[:failed_item]):
+                            self.emit_dec_ref(f"{dest}.f{previous_index}", previous_type)
+                    self.emit_line(error_action)
+                    if isinstance(error, AssignHandler):
+                        self.emit_line(f"goto {done_label};")
+                self.emit_label(done_label)
             if optional:
                 self.emit_line("}")
         elif isinstance(typ, RVec):
