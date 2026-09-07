@@ -1,4 +1,5 @@
 [case testElaboratesAnyReturn]
+[builtins fixtures/elaboration.pyi]
 # flags: --python-version 3.11 --config-file tmp/mypy.ini
 
 from typing import Any
@@ -13,18 +14,18 @@ value: int = bad(1)  # E: Incompatible types in assignment (expression has type 
 \[mypy]
 plugins=<ROOT>/test-data/unit/plugins/function_definition_rules.py
 
-[builtins fixtures/elaboration.pyi]
-
-[case testElaboratesAttribute]
+[case testUnionFromIssue]
 # flags: --python-version 3.11 --config-file tmp/mypy.ini --show-error-codes
+def some_method_with_union_return(some_input: str | int) -> str | int:  # E: Union return types are not allowed  [union-return]
+    return some_input
 
-from typing import Any
 
-class Settings: # behaviour unsupported yet
-    retries: Any = "3"
+def some_other_method() -> None:
+    some_method_with_union_return(5)
 
-reveal_type(Settings().retries)  # N: Revealed type is "Any"
-retries: int = Settings().retries
+
+def another_method() -> None:
+    some_method_with_union_return("foo")
 
 [file mypy.ini]
 \[mypy]
