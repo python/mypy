@@ -3381,7 +3381,7 @@ MypyFile:1(
 [case testParseExtendedSlicing4]
 m[*index, :]
 [out]
-main:1: error: Invalid syntax
+main:1: error: Star unpack syntax: requires Python 3.11 or newer (current target: Python 3.10)
 [out version>=3.11]
 MypyFile:1(
   ExpressionStmt:1(

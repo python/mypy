@@ -920,7 +920,7 @@ def read_try_stmt(state: State, data: ReadBuffer) -> TryStmt:
     return stmt
 
 
-def read_type(state: State, data: ReadBuffer) -> Type:
+def read_type(state: State, data: ReadBuffer, always_allow_star: bool = False) -> Type:
     tag = read_tag(data)
     if tag == types.UNBOUND_TYPE:
         name = read_str(data)
@@ -981,7 +981,7 @@ def read_type(state: State, data: ReadBuffer) -> Type:
     elif tag == types.LIST_TYPE:
         expect_tag(data, LIST_GEN)
         n = read_int_bare(data)
-        items = [read_type(state, data) for i in range(n)]
+        items = [read_type(state, data, always_allow_star=True) for i in range(n)]
         type_list = TypeList(items)
         read_loc(data, type_list)
         expect_end_tag(data)
@@ -1051,7 +1051,7 @@ def read_type(state: State, data: ReadBuffer) -> Type:
         from_star_syntax = read_bool(data)
         unpack = UnpackType(inner_type, from_star_syntax=from_star_syntax)
         read_loc(data, unpack)
-        if from_star_syntax:
+        if from_star_syntax and not always_allow_star:
             state.check_min_version("Star unpack syntax", (3, 11), unpack.line, unpack.column)
         expect_end_tag(data)
         return unpack
@@ -1397,6 +1397,12 @@ def read_expression(state: State, data: ReadBuffer) -> Expression:
         base = read_expression(state, data)
         index = read_expression(state, data)
         expr = IndexExpr(base, index)
+        if (
+            isinstance(index, StarExpr)
+            or isinstance(index, TupleExpr)
+            and any(isinstance(it, StarExpr) for it in index.items)
+        ):
+            state.check_min_version("Star unpack syntax", (3, 11), index.line, index.column)
         read_loc(data, expr)
         expect_end_tag(data)
         return expr
