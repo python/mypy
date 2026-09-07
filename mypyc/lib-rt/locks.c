@@ -86,20 +86,38 @@ bool CPyImport_IsInitialized(const CPyImportState *state) {
 #endif
 }
 
-bool CPyImport_IsInitializedForModule(const CPyImportState *state, PyObject *module,
-                                      CPyModule **module_cache) {
-    // Read initialized before re-reading the cache. If a retry completed after
-    // the caller's first cache load, this load rejects its stale pointer.
-    return CPyImport_IsInitialized(state)
-        && CPyImport_GetModuleCache(module_cache) == module;
-}
-
 void CPyImport_SetInitialized(CPyImportState *state, bool initialized) {
 #if PY_VERSION_HEX >= 0x030D0000
     _Py_atomic_store_int32(&state->initialized, initialized);
 #else
     state->initialized = initialized;
 #endif
+}
+
+bool CPyImport_IsExecuted(const CPyImportState *state) {
+#if PY_VERSION_HEX >= 0x030D0000
+    return _Py_atomic_load_int32(&state->executed) != 0;
+#else
+    return state->executed != 0;
+#endif
+}
+
+void CPyImport_SetExecuted(CPyImportState *state) {
+#if PY_VERSION_HEX >= 0x030D0000
+    _Py_atomic_store_int32(&state->executed, true);
+#else
+    state->executed = true;
+#endif
+}
+
+static PyObject *CPyImport_DecodeModuleCache(CPyModuleCache cached) {
+    return (PyObject *)(cached & ~CPY_MODULE_CACHE_UNVERIFIED);
+}
+
+static CPyModuleCache CPyImport_EncodeModuleCache(PyObject *module, bool unverified) {
+    CPyModuleCache cached = (CPyModuleCache)module;
+    assert((cached & CPY_MODULE_CACHE_UNVERIFIED) == 0);
+    return cached | (unverified ? CPY_MODULE_CACHE_UNVERIFIED : 0);
 }
 
 static void CPyImport_DecRefOld(PyObject *previous) {
@@ -112,14 +130,6 @@ static void CPyImport_DecRefOld(PyObject *previous) {
     CPy_DecRefAttrOld(previous);
 #else
     Py_DECREF(previous);
-#endif
-}
-
-PyObject *CPyImport_GetModuleCache(CPyModule **cache) {
-#if PY_VERSION_HEX >= 0x030D0000
-    return (PyObject *)_Py_atomic_load_ptr_acquire(cache);
-#else
-    return (PyObject *)*cache;
 #endif
 }
 
@@ -140,53 +150,113 @@ bool CPyImport_IsModuleInitializing(PyObject *module) {
     return result;
 }
 
-PyObject *CPyImport_GetModuleCacheForImport(CPyModule **cache, PyObject *module_name) {
-    PyObject *cached = CPyImport_GetModuleCache(cache);
-    if (cached == Py_None) {
-        return Py_None;
-    }
+PyObject *CPyImport_GetModuleCacheForImport(CPyModuleCache *cache, PyObject *module_name) {
+    for (;;) {
+        CPyModuleCache cached_value = CPyImport_LoadModuleCache(cache);
+        PyObject *cached = CPyImport_DecodeModuleCache(cached_value);
+        if (cached == Py_None) {
+            return Py_None;
+        }
 
-    // Generic imports may cache a partial module so compiled references after
-    // the import can use the value returned by CPython to break an import-lock
-    // deadlock. Such a module must not take the fast path on a later import.
-    // Comparing with sys.modules also rejects a partial module left behind in
-    // this cache after its initialization failed.
-    PyObject *current = PyImport_GetModule(module_name);
-    if (current == NULL) {
-        return PyErr_Occurred() ? NULL : Py_None;
+        // An untagged module has already been verified. This is the steady-state
+        // fast path and avoids consulting sys.modules or the module spec again.
+        if ((cached_value & CPY_MODULE_CACHE_UNVERIFIED) == 0) {
+            return cached;
+        }
+
+        // Generic imports may cache a partial module so compiled references after
+        // the import can use the value returned by CPython to break an import-lock
+        // deadlock. Such a module must not take the fast path on a later import.
+        // Comparing with sys.modules also rejects a partial module left behind in
+        // this cache after its initialization failed.
+        PyObject *current = PyImport_GetModule(module_name);
+        if (current == NULL) {
+            return PyErr_Occurred() ? NULL : Py_None;
+        }
+        bool valid = current == cached && !CPyImport_IsModuleInitializing(current);
+        Py_DECREF(current);
+        if (!valid) {
+            return Py_None;
+        }
+
+        // Clearing the tag changes only the cache metadata and does not transfer
+        // a reference. Retry if another thread replaced the cache: generated code
+        // reloads the cache after this check, so only the value whose tag we
+        // successfully cleared may take the fast path.
+#if PY_VERSION_HEX >= 0x030D0000
+        CPyModuleCache expected = cached_value;
+        if (_Py_atomic_compare_exchange_uintptr(cache, &expected, (CPyModuleCache)cached)) {
+            return cached;
+        }
+#else
+        if (*cache == cached_value) {
+            *cache = (CPyModuleCache)cached;
+            return cached;
+        }
+#endif
     }
-    bool valid = current == cached && !CPyImport_IsModuleInitializing(current);
-    Py_DECREF(current);
-    return valid ? cached : Py_None;
 }
 
-void CPyImport_SetModuleCache(CPyModule **cache, PyObject *module) {
-    Py_INCREF(module);
+static void CPyImport_ReplaceModuleCacheValue(CPyModuleCache *cache, PyObject *module,
+                                              bool unverified) {
+    CPyModuleCache desired = CPyImport_EncodeModuleCache(module, unverified);
 #if PY_VERSION_HEX >= 0x030D0000
-    CPyModule *expected = (CPyModule *)Py_None;
-    if (!_Py_atomic_compare_exchange_ptr(cache, &expected, module)) {
-        Py_DECREF(module);
+    for (;;) {
+        CPyModuleCache previous = CPyImport_LoadModuleCache(cache);
+        if (previous == desired) {
+            return;
+        }
+        CPyModuleCache expected = previous;
+        PyObject *previous_module = CPyImport_DecodeModuleCache(previous);
+        if (previous_module == module) {
+            // Verification is monotonic for a particular module object. A
+            // thread that observed it while it was still initializing must not
+            // re-tag it after another thread has verified completion.
+            if ((previous & CPY_MODULE_CACHE_UNVERIFIED) == 0) {
+                return;
+            }
+            // Only the tag is changing, so the cache retains its existing
+            // reference to module.
+            if (_Py_atomic_compare_exchange_uintptr(cache, &expected, desired)) {
+                return;
+            }
+        } else {
+            Py_INCREF(module);
+            if (_Py_atomic_compare_exchange_uintptr(cache, &expected, desired)) {
+                if (previous_module != NULL && previous_module != Py_None) {
+                    CPyImport_DecRefOld(previous_module);
+                }
+                return;
+            }
+            Py_DECREF(module);
+        }
     }
 #else
-    if (*cache == (CPyModule *)Py_None) {
-        *cache = (CPyModule *)module;
-    } else {
-        Py_DECREF(module);
-    }
-#endif
-}
-
-void CPyImport_ReplaceModuleCache(CPyModule **cache, PyObject *module) {
-    Py_INCREF(module);
-    CPyModule *previous;
-#if PY_VERSION_HEX >= 0x030D0000
-    previous = (CPyModule *)_Py_atomic_exchange_ptr(cache, module);
-#else
-    previous = *cache;
-    *cache = (CPyModule *)module;
-#endif
-    if (previous == NULL || previous == (CPyModule *)Py_None) {
+    CPyModuleCache previous = *cache;
+    PyObject *previous_module = CPyImport_DecodeModuleCache(previous);
+    if (previous_module == module) {
+        if ((previous & CPY_MODULE_CACHE_UNVERIFIED) != 0) {
+            *cache = desired;
+        }
         return;
     }
-    CPyImport_DecRefOld((PyObject *)previous);
+    Py_INCREF(module);
+    *cache = desired;
+    if (previous_module == NULL || previous_module == Py_None) {
+        return;
+    }
+    CPyImport_DecRefOld(previous_module);
+#endif
+}
+
+void CPyImport_ReplaceModuleCache(CPyModuleCache *cache, PyObject *module) {
+    CPyImport_ReplaceModuleCacheValue(cache, module, false);
+}
+
+void CPyImport_ReplaceModuleCacheUnverified(CPyModuleCache *cache, PyObject *module) {
+    CPyImport_ReplaceModuleCacheValue(cache, module, true);
+}
+
+void CPyImport_ReplaceModuleCacheForImport(CPyModuleCache *cache, PyObject *module) {
+    CPyImport_ReplaceModuleCacheValue(cache, module, CPyImport_IsModuleInitializing(module));
 }

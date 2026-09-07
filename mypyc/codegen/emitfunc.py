@@ -24,6 +24,7 @@ from mypyc.ir.class_ir import ClassIR
 from mypyc.ir.func_ir import FUNC_CLASSMETHOD, FUNC_STATICMETHOD, FuncDecl, FuncIR, all_values
 from mypyc.ir.ops import (
     ERR_FALSE,
+    NAMESPACE_MODULE,
     NAMESPACE_TYPE,
     Assign,
     AssignMulti,
@@ -674,6 +675,8 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         name = self.emitter.static_name(op.identifier, op.module_name, prefix)
         if op.namespace == NAMESPACE_TYPE:
             name = "(PyObject *)%s" % name
+        elif op.namespace == NAMESPACE_MODULE:
+            name = f"CPyImport_GetModuleCache(&{name})"
         self.emit_line(f"{dest} = {name};", ann=op.ann)
 
     def visit_init_static(self, op: InitStatic) -> None:

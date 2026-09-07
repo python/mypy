@@ -1513,8 +1513,6 @@ class GroupGenerator:
         emitter.emit_line("{")
         emitter.emit_line("    PyObject *exc_type, *exc_val, *exc_tb;")
         emitter.emit_line("    PyErr_Fetch(&exc_type, &exc_val, &exc_tb);")
-        state = module_import_state_name(module_name)
-        emitter.emit_line(f"    CPyImport_SetInitialized(&{state}, 0);")
         emitter.emit_line("    if (modname == NULL) {")
         emitter.emit_line(f'        modname = PyUnicode_FromString("{module_name}");')
         emitter.emit_line("        if (modname == NULL) CPyError_OutOfMemory();")
@@ -1614,8 +1612,8 @@ class GroupGenerator:
                     f"CPyImportState {state_name};", defn=[f"CPyImportState {state_name} = {{0}};"]
                 )
         static_name = emitter.static_name(module_name, None, prefix=MODULE_PREFIX)
-        self.declare_global("CPyModule *", static_name)
-        self.simple_inits.append((static_name, "Py_None"))
+        self.declare_global("CPyModuleCache ", static_name)
+        self.simple_inits.append((static_name, "(CPyModuleCache)Py_None"))
 
     def declare_module_lock_api(self) -> None:
         assert self.group_name is not None

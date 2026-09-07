@@ -195,7 +195,7 @@ class D(C, S, Generic[T]):
 
 [out]
 def __top_level__():
-    r0 :: object_ptr
+    r0 :: c_ptr
     r1 :: str
     r2, r3 :: object
     r4 :: bit
@@ -203,12 +203,12 @@ def __top_level__():
     r7 :: str
     r8 :: dict
     r9 :: object
-    r10 :: object_ptr
+    r10 :: c_ptr
     r11 :: object
     r12 :: str
     r13 :: dict
     r14 :: object
-    r15 :: object_ptr
+    r15 :: c_ptr
     r16 :: str
     r17 :: dict
     r18 :: str
@@ -274,20 +274,20 @@ L0:
     if r4 goto L2 else goto L1 :: bool
 L1:
     r5 = PyImport_Import(r1)
-    CPyImport_ReplaceModuleCache(r0, r5)
+    CPyImport_ReplaceModuleCacheForImport(r0, r5)
 L2:
     r6 = ('TypeVar', 'Generic')
     r7 = 'typing'
     r8 = __main__.globals :: static
     r9 = CPyImport_ImportFromMany(r7, r6, r6, r8)
     r10 = load_address typing :: module
-    CPyImport_SetModuleCache(r10, r9)
+    CPyImport_ReplaceModuleCacheForImport(r10, r9)
     r11 = ('trait',)
     r12 = 'mypy_extensions'
     r13 = __main__.globals :: static
     r14 = CPyImport_ImportFromMany(r12, r11, r11, r13)
     r15 = load_address mypy_extensions :: module
-    CPyImport_SetModuleCache(r15, r14)
+    CPyImport_ReplaceModuleCacheForImport(r15, r14)
     r16 = 'T'
     keep_alive r0
     r17 = __main__.globals :: static
@@ -3021,7 +3021,7 @@ class Ext:
     B: ClassVar[Set[int]] = A | {3}
 [out]
 def __top_level__():
-    r0 :: object_ptr
+    r0 :: c_ptr
     r1 :: str
     r2, r3 :: object
     r4 :: bit
@@ -3029,7 +3029,7 @@ def __top_level__():
     r7 :: str
     r8 :: dict
     r9 :: object
-    r10 :: object_ptr
+    r10 :: c_ptr
     r11 :: object
     r12 :: str
     r13, r14 :: object
@@ -3075,14 +3075,14 @@ L0:
     if r4 goto L2 else goto L1 :: bool
 L1:
     r5 = PyImport_Import(r1)
-    CPyImport_ReplaceModuleCache(r0, r5)
+    CPyImport_ReplaceModuleCacheForImport(r0, r5)
 L2:
     r6 = ('ClassVar', 'Set')
     r7 = 'typing'
     r8 = __main__.globals :: static
     r9 = CPyImport_ImportFromMany(r7, r6, r6, r8)
     r10 = load_address typing :: module
-    CPyImport_SetModuleCache(r10, r9)
+    CPyImport_ReplaceModuleCacheForImport(r10, r9)
     r11 = <error> :: object
     r12 = '__main__'
     r13 = __main__.Ext_template :: type
@@ -3136,7 +3136,7 @@ class NonExt:
     B: ClassVar[Set[str]] = A | {"b"}
 [out]
 def __top_level__():
-    r0 :: object_ptr
+    r0 :: c_ptr
     r1 :: str
     r2, r3 :: object
     r4 :: bit
@@ -3144,12 +3144,12 @@ def __top_level__():
     r7 :: str
     r8 :: dict
     r9 :: object
-    r10 :: object_ptr
+    r10 :: c_ptr
     r11 :: object
     r12 :: str
     r13 :: dict
     r14 :: object
-    r15 :: object_ptr
+    r15 :: c_ptr
     r16 :: tuple
     r17, r18 :: object
     r19 :: str
@@ -3222,20 +3222,20 @@ L0:
     if r4 goto L2 else goto L1 :: bool
 L1:
     r5 = PyImport_Import(r1)
-    CPyImport_ReplaceModuleCache(r0, r5)
+    CPyImport_ReplaceModuleCacheForImport(r0, r5)
 L2:
     r6 = ('ClassVar', 'Set')
     r7 = 'typing'
     r8 = __main__.globals :: static
     r9 = CPyImport_ImportFromMany(r7, r6, r6, r8)
     r10 = load_address typing :: module
-    CPyImport_SetModuleCache(r10, r9)
+    CPyImport_ReplaceModuleCacheForImport(r10, r9)
     r11 = ('mypyc_attr',)
     r12 = 'mypy_extensions'
     r13 = __main__.globals :: static
     r14 = CPyImport_ImportFromMany(r12, r11, r11, r13)
     r15 = load_address mypy_extensions :: module
-    CPyImport_SetModuleCache(r15, r14)
+    CPyImport_ReplaceModuleCacheForImport(r15, r14)
     r16 = CPyTuple_LoadEmptyTupleConstant()
     r17 = load_address PyType_Type
     r18 = CPy_CalculateMetaclass(r17, r16)

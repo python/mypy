@@ -28,6 +28,7 @@ typedef struct CPyModuleLockAPI CPyModuleLockAPI;
 
 typedef struct {
     int32_t initialized;
+    int32_t executed;
 } CPyImportState;
 
 enum {
@@ -43,13 +44,28 @@ int CPyImport_AcquireLock(CPyModuleLockAPI *api, PyObject *module_name,
 int CPyImport_ReleaseLock(PyObject *module_lock);
 bool CPyImport_IsModuleInitializing(PyObject *module);
 bool CPyImport_IsInitialized(const CPyImportState *state);
-bool CPyImport_IsInitializedForModule(const CPyImportState *state, PyObject *module,
-                                      CPyModule **module_cache);
 void CPyImport_SetInitialized(CPyImportState *state, bool initialized);
-PyObject *CPyImport_GetModuleCache(CPyModule **cache);
-PyObject *CPyImport_GetModuleCacheForImport(CPyModule **cache, PyObject *module_name);
-void CPyImport_SetModuleCache(CPyModule **cache, PyObject *module);
-void CPyImport_ReplaceModuleCache(CPyModule **cache, PyObject *module);
+bool CPyImport_IsExecuted(const CPyImportState *state);
+void CPyImport_SetExecuted(CPyImportState *state);
+
+#define CPY_MODULE_CACHE_UNVERIFIED ((CPyModuleCache)1)
+
+static inline CPyModuleCache CPyImport_LoadModuleCache(CPyModuleCache *cache) {
+#if PY_VERSION_HEX >= 0x030D0000
+    return _Py_atomic_load_uintptr_acquire(cache);
+#else
+    return *cache;
+#endif
+}
+
+static inline PyObject *CPyImport_GetModuleCache(CPyModuleCache *cache) {
+    return (PyObject *)(CPyImport_LoadModuleCache(cache) & ~CPY_MODULE_CACHE_UNVERIFIED);
+}
+
+PyObject *CPyImport_GetModuleCacheForImport(CPyModuleCache *cache, PyObject *module_name);
+void CPyImport_ReplaceModuleCache(CPyModuleCache *cache, PyObject *module);
+void CPyImport_ReplaceModuleCacheUnverified(CPyModuleCache *cache, PyObject *module);
+void CPyImport_ReplaceModuleCacheForImport(CPyModuleCache *cache, PyObject *module);
 
 
 // Naming conventions:
@@ -1065,7 +1081,7 @@ PyObject *CPy_Super(PyObject *builtins, PyObject *self);
 PyObject *CPy_CallReverseOpMethod(PyObject *left, PyObject *right, const char *op,
                                   PyObject *method);
 
-bool CPyImport_ImportMany(PyObject *modules, CPyModule **statics[], PyObject *globals,
+bool CPyImport_ImportMany(PyObject *modules, CPyModuleCache *statics[], PyObject *globals,
                           PyObject *tb_path, PyObject *tb_function, Py_ssize_t *tb_lines);
 PyObject *CPyImport_ImportFromMany(PyObject *mod_id, PyObject *names, PyObject *as_names,
                                    PyObject *globals);
@@ -1075,12 +1091,12 @@ PyObject *CPyImport_ImportNative(PyObject *module_name,
                                  PyObject *(*init_only_fn)(void),
                                  int (*exec_fn)(PyObject *),
                                  CPyModule **module_static,
-                                 CPyModule **module_cache,
+                                 CPyModuleCache *module_cache,
                                  CPyImportState *state, CPyModuleLockAPI *lock_api,
                                  PyObject *shared_lib_file, PyObject *ext_suffix,
                                  Py_ssize_t is_package);
 int CPyImport_Exec(PyObject *module, int (*exec_fn)(PyObject *), CPyImportState *state,
-                   CPyModule **module_cache);
+                   CPyModuleCache *module_cache);
 PyObject *CPyImport_BeginInitializing(PyObject *module);
 int CPyImport_EndInitializing(PyObject *spec);
 int CPyImport_SetDunderAttrs(PyObject *module, PyObject *module_name, PyObject *shared_lib_file,

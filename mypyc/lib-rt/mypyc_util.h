@@ -130,6 +130,11 @@ typedef size_t CPyPtr;
 
 typedef PyObject CPyModule;
 
+// Module caches use the low bit to distinguish a module that may still be
+// initializing from one whose initialization has been verified. PyObject
+// pointers are aligned, so the low bit is otherwise unused.
+typedef uintptr_t CPyModuleCache;
+
 // Tag bit used for long integers
 #define CPY_INT_TAG 1
 

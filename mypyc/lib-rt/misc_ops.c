@@ -779,9 +779,9 @@ CPy_Super(PyObject *builtins, PyObject *self) {
     return result;
 }
 
-static bool import_single(PyObject *mod_id, PyObject **mod_static,
+static bool import_single(PyObject *mod_id, CPyModuleCache *mod_static,
                           PyObject *globals_id, PyObject *globals_name, PyObject *globals) {
-    PyObject *cached = CPyImport_GetModuleCacheForImport((CPyModule **)mod_static, mod_id);
+    PyObject *cached = CPyImport_GetModuleCacheForImport(mod_static, mod_id);
     if (cached == NULL) {
         return false;
     }
@@ -790,7 +790,7 @@ static bool import_single(PyObject *mod_id, PyObject **mod_static,
         if (mod == NULL) {
             return false;
         }
-        CPyImport_ReplaceModuleCache((CPyModule **)mod_static, mod);
+        CPyImport_ReplaceModuleCacheForImport(mod_static, mod);
         Py_DECREF(mod);
     }
 
@@ -809,7 +809,7 @@ static bool import_single(PyObject *mod_id, PyObject **mod_static,
 }
 
 // Table-driven import helper. See transform_import() in irbuild for the details.
-bool CPyImport_ImportMany(PyObject *modules, CPyModule **statics[], PyObject *globals,
+bool CPyImport_ImportMany(PyObject *modules, CPyModuleCache *statics[], PyObject *globals,
                           PyObject *tb_path, PyObject *tb_function, Py_ssize_t *tb_lines) {
     for (Py_ssize_t i = 0; i < PyTuple_GET_SIZE(modules); i++) {
         PyObject *module = PyTuple_GET_ITEM(modules, i);
@@ -1659,10 +1659,8 @@ static int CPyImport_ReleaseLockPreservingException(PyObject *module_lock) {
 
 // Execute a module once; caller holds the module lock.
 int CPyImport_Exec(PyObject *module, int (*exec_fn)(PyObject *), CPyImportState *state,
-                   CPyModule **module_cache) {
-    PyObject *cached_module = CPyImport_GetModuleCache(module_cache);
-    if (CPyImport_IsInitialized(state) ||
-            (cached_module == module && !CPyImport_IsModuleInitializing(module))) {
+                   CPyModuleCache *module_cache) {
+    if (CPyImport_IsExecuted(state)) {
         const char *module_name = PyModule_GetName(module);
         if (module_name != NULL) {
             PyErr_Format(PyExc_ImportError,
@@ -1674,19 +1672,19 @@ int CPyImport_Exec(PyObject *module, int (*exec_fn)(PyObject *), CPyImportState 
 
     int result = exec_fn(module);
     if (result == 0) {
-        cached_module = CPyImport_GetModuleCache(module_cache);
+        PyObject *cached_module = CPyImport_GetModuleCache(module_cache);
         // Keep the cache lazy. A normal shim import should not populate it, since
         // the first compiled native import must still validate sys.modules. If a
         // compiled import already populated the cache (including with a partial
-        // module during a circular import), refresh it to this instance but wait
-        // for import finalization before publishing initialized.
+        // module during a circular import), refresh it to this instance but keep
+        // it tagged as unverified until import finalization has completed.
         if (cached_module != NULL && cached_module != Py_None) {
-            CPyImport_ReplaceModuleCache(module_cache, module);
-        } else {
-            // No compiled import can take the cache fast path yet, so publishing
-            // before the caller finishes import finalization is not observable.
-            CPyImport_SetInitialized(state, true);
+            CPyImport_ReplaceModuleCacheUnverified(module_cache, module);
         }
+        // A successfully executed native module body must not run again, even if
+        // import finalization subsequently fails. Publish this only after any
+        // partial cache entry has been refreshed to the module that was executed.
+        CPyImport_SetExecuted(state);
     }
     return result;
 }
@@ -1695,7 +1693,7 @@ PyObject *CPyImport_ImportNative(PyObject *module_name,
                                  PyObject *(*init_only_fn)(void),
                                  int (*exec_fn)(PyObject *),
                                  CPyModule **module_static,
-                                 CPyModule **module_cache,
+                                 CPyModuleCache *module_cache,
                                  CPyImportState *state, CPyModuleLockAPI *lock_api,
                                  PyObject *shared_lib_file, PyObject *ext_suffix,
                                  Py_ssize_t is_package) {
@@ -1718,6 +1716,7 @@ PyObject *CPyImport_ImportNative(PyObject *module_name,
         PyObject *partial = PyDict_GetItemWithError(PyImport_GetModuleDict(), module_name);
         if (partial != NULL &&
                 (*module_static == NULL || partial == (PyObject *)*module_static)) {
+            CPyImport_ReplaceModuleCacheUnverified(module_cache, partial);
             Py_INCREF(partial);
             return partial;
         }
@@ -1745,16 +1744,23 @@ PyObject *CPyImport_ImportNative(PyObject *module_name,
                 // Acquiring the module lock synchronizes with a regular import.
                 // A recursive acquisition can still happen during finalization,
                 // so also verify the spec and parent binding before publishing.
-                if (CPyImport_GetModuleCache(module_cache) == existing &&
-                        !CPyImport_IsModuleInitializing(existing)) {
+                if (CPyImport_IsExecuted(state)
+                        && !CPyImport_IsModuleInitializing(existing)) {
                     int is_bound = CPyImport_IsBoundToParent(existing, module_name);
                     if (is_bound < 0) {
                         CPyImport_ReleaseLockPreservingException(module_lock);
                         return NULL;
                     }
                     if (is_bound) {
+                        // Publish the verified cache value before the completion
+                        // flag. An acquire-load of initialized can then trust the
+                        // cached module without re-reading it for validation.
+                        CPyImport_ReplaceModuleCache(module_cache, existing);
                         CPyImport_SetInitialized(state, true);
                     }
+                }
+                if (!CPyImport_IsInitialized(state)) {
+                    CPyImport_ReplaceModuleCacheUnverified(module_cache, existing);
                 }
                 Py_INCREF(existing);
                 if (CPyImport_ReleaseLock(module_lock) < 0) {
@@ -1824,6 +1830,10 @@ PyObject *CPyImport_ImportNative(PyObject *module_name,
     // Direct imports must publish parent.child themselves; normal extension
     // loading leaves this to importlib.
     int parent_result = CPyImport_SetParentAttr(modobj, module_name);
+    // The module body and import finalization are complete even if publishing
+    // parent.child reports an error. Cache the verified object before setting
+    // the monotonic completion flag.
+    CPyImport_ReplaceModuleCache(module_cache, modobj);
     CPyImport_SetInitialized(state, true);
     if (parent_result < 0) {
         // The module finished initializing before parent binding was attempted,
@@ -1844,7 +1854,6 @@ fail:
     // Clean up on failure so that a subsequent import attempt will retry
     // initialization.
     PyErr_Fetch(&exc_type, &exc_val, &exc_tb);
-    CPyImport_SetInitialized(state, false);
     PyObject_DelItem(module_dict, module_name);
     PyErr_Clear();
     if (initializing_spec != NULL) {

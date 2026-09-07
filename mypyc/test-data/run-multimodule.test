@@ -2771,6 +2771,37 @@ def test_lazy_import() -> None:
 
 test_lazy_import()
 
+[case testVerifiedNonNativeImportCacheSkipsModuleSpec]
+def load() -> int:
+    import dependency
+    return dependency.value
+
+[file cache_state.py]
+spec_checks = 0
+
+[file dependency.py]
+import cache_state
+
+class TrackingSpec:
+    def __getattribute__(self, name: str):
+        if name == "_initializing":
+            cache_state.spec_checks += 1
+            return False
+        raise AttributeError(name)
+
+__spec__ = TrackingSpec()
+value = 42
+
+[file driver.py]
+import cache_state
+import native
+
+assert native.load() == 42
+checks_after_first_import = cache_state.spec_checks
+assert checks_after_first_import > 0
+assert native.load() == 42
+assert cache_state.spec_checks == checks_after_first_import
+
 [case testConcurrentNativeImportDoesNotLeakCacheReference]
 # separate: [(["native.py", "other_target.py", "other_importer.py"], "testgroup")]
 from time import sleep
@@ -2824,6 +2855,71 @@ import native
 
 assert native.value == 42
 assert native.body_spec._initializing is False
+
+[case testReplacedSpecDoesNotPublishPartialNativeModule]
+# separate: [(["native.py", "other_target.py", "other_blocker.py"], "testgroup")]
+import import_sync
+
+def read_target() -> int:
+    import_sync.reader_started.set()
+    import other_target
+    return other_target.final_value
+
+[file import_sync.py]
+from threading import Event
+
+partial_cached = Event()
+reader_started = Event()
+blocker_may_return = Event()
+
+[file other_target.py]
+import import_sync
+
+assert __spec__ is not None
+body_spec = __spec__
+__spec__ = None
+early_value = 41
+import other_blocker
+final_value = 42
+
+[file other_blocker.py]
+import import_sync
+import other_target
+
+assert other_target.early_value == 41
+assert not hasattr(other_target, "final_value")
+import_sync.partial_cached.set()
+assert import_sync.blocker_may_return.wait(timeout=15)
+
+[file driver.py]
+from concurrent.futures import ThreadPoolExecutor
+import importlib
+from time import monotonic, sleep
+
+import import_sync
+import native
+
+with ThreadPoolExecutor(max_workers=2) as executor:
+    target_future = executor.submit(importlib.import_module, "other_target")
+    assert import_sync.partial_cached.wait(timeout=15)
+    reader_future = executor.submit(native.read_target)
+    assert import_sync.reader_started.wait(timeout=15)
+
+    bootstrap = importlib.import_module("importlib._bootstrap")
+    lock = bootstrap._get_module_lock("other_target")
+    deadline = monotonic() + 5
+    while not lock.waiters and not reader_future.done() and monotonic() < deadline:
+        sleep(0.001)
+    reader_waited = bool(lock.waiters)
+    import_sync.blocker_may_return.set()
+
+    target = target_future.result(timeout=15)
+    value = reader_future.result(timeout=15)
+
+assert reader_waited
+assert target.final_value == 42
+assert target.body_spec._initializing is False
+assert value == 42
 
 [case testNativeModuleCanReplaceSpecDuringDirectImport]
 # separate: [(["native.py", "other_importer.py"], "testgroup")]
@@ -2882,6 +2978,56 @@ with assertRaises(RuntimeError, "initialization failed"):
 assert len(spec_state.specs) == 2
 assert spec_state.specs[1]._initializing is False
 assert "native" not in sys.modules
+
+[case testNativeModuleDoesNotReexecuteAfterFinalizationFailure]
+# separate: [(["native.py", "other_target.py"], "testgroup")]
+def load_target() -> None:
+    import other_target
+
+[file execution_state.py]
+attempts = 0
+
+[file other_target.py]
+import execution_state
+import spec_hook
+
+execution_state.attempts += 1
+assert __spec__ is not None
+spec_hook.reject_clearing(__spec__)
+
+[file spec_hook.py]
+from typing import Any
+
+def reject_clearing(original_spec: Any) -> None:
+    spec_type: Any = type(original_spec)
+    original_setattr: Any = spec_type.__setattr__
+
+    def reject_original_spec_clear(instance: Any, name: str, value: Any) -> None:
+        if instance is original_spec and name == "_initializing" and value is False:
+            raise RuntimeError("cannot finish initialization")
+        original_setattr(instance, name, value)
+
+    spec_type.__setattr__ = reject_original_spec_clear
+
+[file driver.py]
+import sys
+
+import execution_state
+import native
+
+from testutil import assertRaises
+
+with assertRaises(RuntimeError, "cannot finish initialization"):
+    native.load_target()
+
+assert execution_state.attempts == 1
+assert "other_target" not in sys.modules
+
+with assertRaises(ImportError, "native module 'other_target' does not support reinitialization"):
+    native.load_target()
+
+assert execution_state.attempts == 1
+assert "other_target" not in sys.modules
 
 [case testNormalNativeImportPublishesParentAttributeOnce]
 pass

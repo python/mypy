@@ -170,9 +170,7 @@ from mypyc.primitives.misc_ops import (
     check_unpack_count_op,
     get_module_dict_op,
     import_cache_get_for_import_op,
-    import_cache_get_op,
-    import_cache_replace_op,
-    import_cache_set_op,
+    import_cache_replace_for_import_op,
     import_op,
     native_import_is_initialized_op,
     native_import_op,
@@ -531,7 +529,7 @@ class IRBuilder:
 
         needs_import, out = BasicBlock(), BasicBlock()
         module_static = LoadStatic(object_rprimitive, module, namespace=NAMESPACE_MODULE)
-        module_cache = self.add(LoadAddress(object_pointer_rprimitive, module_static))
+        module_cache = self.add(LoadAddress(c_pointer_rprimitive, module_static))
         is_native_module = self.is_native_module(module)
         group_name = self.mapper.group_map.get(self.module_name)
         is_same_group_native = is_native_module and self.mapper.group_map.get(module) == group_name
@@ -600,8 +598,8 @@ class IRBuilder:
             # Import using generic Python C API
             assert module_id is not None
             value = self.call_c(import_op, [module_id], line)
-        cache_set_op = import_cache_set_op if is_same_group_native else import_cache_replace_op
-        self.call_c(cache_set_op, [module_cache, value], line)
+        if not is_same_group_native:
+            self.call_c(import_cache_replace_for_import_op, [module_cache, value], line)
         self.goto_and_activate(out)
 
     def check_if_module_loaded(
@@ -626,18 +624,10 @@ class IRBuilder:
             first_load = self.call_c(
                 import_cache_get_for_import_op, [module_cache, module_id], line
             )
-        else:
-            first_load = self.call_c(import_cache_get_op, [module_cache], line)
-        comparison = self.translate_is_op(first_load, self.none_object(line), "is not", line)
-        if import_state is None:
+            comparison = self.translate_is_op(first_load, self.none_object(line), "is not", line)
             self.add_bool_branch(comparison, out, needs_import)
         else:
-            check_initialized = BasicBlock()
-            self.add_bool_branch(comparison, check_initialized, needs_import)
-            self.activate_block(check_initialized)
-            initialized = self.call_c(
-                native_import_is_initialized_op, [import_state, first_load, module_cache], line
-            )
+            initialized = self.call_c(native_import_is_initialized_op, [import_state], line)
             self.add_bool_branch(initialized, out, needs_import)
 
     def get_module(self, module: str, line: int) -> Value:

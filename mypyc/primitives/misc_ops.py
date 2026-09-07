@@ -148,7 +148,7 @@ native_import_op = custom_op(
         c_pointer_rprimitive,
         c_pointer_rprimitive,
         object_pointer_rprimitive,
-        object_pointer_rprimitive,
+        c_pointer_rprimitive,
         c_pointer_rprimitive,
         c_pointer_rprimitive,
         object_rprimitive,
@@ -161,39 +161,24 @@ native_import_op = custom_op(
 )
 
 native_import_is_initialized_op = custom_op(
-    arg_types=[c_pointer_rprimitive, object_rprimitive, object_pointer_rprimitive],
+    arg_types=[c_pointer_rprimitive],
     return_type=bit_rprimitive,
-    c_function_name="CPyImport_IsInitializedForModule",
+    c_function_name="CPyImport_IsInitialized",
     error_kind=ERR_NEVER,
-)
-
-import_cache_get_op = custom_op(
-    arg_types=[object_pointer_rprimitive],
-    return_type=object_rprimitive,
-    c_function_name="CPyImport_GetModuleCache",
-    error_kind=ERR_NEVER,
-    is_borrowed=True,
 )
 
 import_cache_get_for_import_op = custom_op(
-    arg_types=[object_pointer_rprimitive, str_rprimitive],
+    arg_types=[c_pointer_rprimitive, str_rprimitive],
     return_type=object_rprimitive,
     c_function_name="CPyImport_GetModuleCacheForImport",
     error_kind=ERR_MAGIC,
     is_borrowed=True,
 )
 
-import_cache_set_op = custom_op(
-    arg_types=[object_pointer_rprimitive, object_rprimitive],
+import_cache_replace_for_import_op = custom_op(
+    arg_types=[c_pointer_rprimitive, object_rprimitive],
     return_type=void_rtype,
-    c_function_name="CPyImport_SetModuleCache",
-    error_kind=ERR_NEVER,
-)
-
-import_cache_replace_op = custom_op(
-    arg_types=[object_pointer_rprimitive, object_rprimitive],
-    return_type=void_rtype,
-    c_function_name="CPyImport_ReplaceModuleCache",
+    c_function_name="CPyImport_ReplaceModuleCacheForImport",
     error_kind=ERR_NEVER,
 )
 
