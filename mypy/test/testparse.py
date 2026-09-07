@@ -49,8 +49,6 @@ def test_parser(testcase: DataDrivenTestCase) -> None:
         options.python_version = (3, 13)
     elif testcase.file.endswith("python314.test"):
         options.python_version = (3, 14)
-    else:
-        options.python_version = defaults.PYTHON3_VERSION
 
     source = "\n".join(testcase.input)
 
