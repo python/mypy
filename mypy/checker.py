@@ -1363,7 +1363,6 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
 
         active = self._function_body_hooks[-1]
 
-        # TODO: add test case
         if self.scope.current_function() is not active.defn:
             return
 
@@ -1381,14 +1380,12 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
 
         old_signature = defn.plugin_effective_type or declared
 
-        # TODO: check for subtype instead?
         if is_same_type(old_signature, new_signature):
             return
 
         defn.plugin_effective_type = new_signature
         self._changed_plugin_signatures.add(defn.fullname)
 
-    # TODO: add test for this: mult caged returns, naked returns
     def finish_function_body_hook(self, active: ActiveFunctionHook) -> None:
         inferred_typ = make_simplified_union([site.inferred_type for site in active.return_sites])
 
@@ -8295,7 +8292,6 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
         return self.analyze_iterable_item_type_without_expression(it, context)[1]
 
     def function_type(self, func: FuncBase) -> FunctionLike:
-        # TODO: should I be constructing a callable type?
         if func.plugin_effective_type is not None:
             return func.plugin_effective_type
 
