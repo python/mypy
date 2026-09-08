@@ -581,8 +581,7 @@ def test_fstring_conversion() -> None:
 
     tmp_str = """this
     is a new line."""
-    res_str = f'Test: {tmp_str!a}'
-    assert res_str == "Test: 'this\\n    is a new line.'", res_str
+    assert f'Test: {tmp_str!a}' == "Test: 'this\\n    is a new line.'"
 
     s = 'test: āĀēĒčČ..šŠūŪžŽ'
     assert f'{s}' == 'test: āĀēĒčČ..šŠūŪžŽ'
