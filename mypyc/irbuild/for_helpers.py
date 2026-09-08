@@ -705,7 +705,7 @@ class ForIterable(ForGenerator):
     def init(self, expr_reg: Value, target_type: RType) -> None:
         # Define targets to contain the expression, along with the iterator that will be used
         # for the for-loop. If we are inside of a generator function, spill these into the
-        # environment class.
+        # private generator frame.
         builder = self.builder
         iter_reg = builder.primitive_op(iter_op, [expr_reg], self.line)
         builder.maybe_spill(expr_reg)
@@ -753,7 +753,7 @@ class ForNativeGenerator(ForGenerator):
 
     def init(self, expr_reg: Value, target_type: RType) -> None:
         # Define target to contains the generator expression. It's also the iterator.
-        # If we are inside a generator function, spill these into the environment class.
+        # If we are inside a generator function, spill these into the private generator frame.
         builder = self.builder
         self.iter_target = builder.maybe_spill(expr_reg)
         self.target_type = target_type
@@ -811,7 +811,7 @@ class ForAsyncIterable(ForGenerator):
         # Define targets to contain the expression, along with the
         # iterator that will be used for the for-loop. We are inside
         # of a generator function, so we will spill these into
-        # environment class.
+        # the private generator frame.
         builder = self.builder
         iter_reg = builder.call_c(aiter_op, [expr_reg], self.line)
         builder.maybe_spill(expr_reg)
@@ -910,7 +910,7 @@ class ForSequence(ForGenerator):
         self.reverse = reverse
         # Define target to contain the expression, along with the index that will be used
         # for the for-loop. If we are inside of a generator function, spill these into the
-        # environment class.
+        # private generator frame.
         self.expr_target = builder.maybe_spill(expr_reg)
         if is_immutable_rprimitive(expr_reg.type):
             # If the expression is an immutable type, we can load the length just once.
@@ -1011,7 +1011,7 @@ class ForDictionaryCommon(ForGenerator):
         builder = self.builder
         self.target_type = target_type
 
-        # We add some variables to environment class, so they can be read across yield.
+        # Spill some values so they can be read across yield.
         self.expr_target = builder.maybe_spill(expr_reg)
         offset = Integer(0)
         self.offset_target = builder.maybe_spill_assignable(offset)

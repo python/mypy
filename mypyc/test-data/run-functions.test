@@ -1346,6 +1346,23 @@ def test_nested() -> None:
 {'x': 1}
 1
 
+[case testNestedFunctionEnvironmentIsReadOnly]
+from typing import Any, Callable
+from testutil import assertRaises
+
+def outer(value: str) -> Callable[[], str]:
+    def inner() -> str:
+        return value
+    return inner
+
+def test_environment_link_is_read_only() -> None:
+    fn: Any = outer("value")
+    environment = fn.__mypyc_env__
+    with assertRaises(AttributeError):
+        fn.__mypyc_env__ = None
+    assert fn.__mypyc_env__ is environment
+    assert fn() == "value"
+
 [case testFunctoolsUpdateWrapper]
 import functools
 
