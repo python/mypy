@@ -157,6 +157,7 @@ from mypyc.irbuild.targets import (
 )
 from mypyc.irbuild.util import bytes_from_str, is_constant
 from mypyc.irbuild.vec import vec_set_item
+from mypyc.namegen import exported_name
 from mypyc.options import CompilerOptions
 from mypyc.primitives.dict_ops import dict_get_item_op, dict_set_item_op
 from mypyc.primitives.generic_ops import iter_op, next_op, py_setattr_op
