@@ -1196,10 +1196,10 @@ except StopIteration as e:
     assert e.value == 5
 assert run(g, []) == ([], None)
 
-# This is a mypyc bug: native generators treat StopIteration raised in the generator
-# body as a return value instead of applying the PEP 479 conversion to
-# RuntimeError("generator raised StopIteration"). Thus 'yield from' receives the
-# exception's value and a 'for' loop silently ends.
+# TODO: Apply the PEP 479 conversion to RuntimeError("generator raised StopIteration").
+#       Native generators currently treat StopIteration raised in the generator body as a
+#       return value, so 'yield from' receives the exception's value and a 'for' loop
+#       silently ends.
 assert run(raises_stop_iteration(), []) == ([], "seven")
 assert run(native_yield_from_stop_iteration(), []) == ([], "seven")
 assert list(raises_stop_iteration()) == []

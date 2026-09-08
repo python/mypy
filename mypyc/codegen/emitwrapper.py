@@ -618,7 +618,8 @@ def generate_am_send_wrapper(cl: ClassIR, fn: FuncIR, emitter: Emitter) -> str:
     emitter.emit_line("if (stop_iter_value == NULL) {")
     # The helper raised an exception instead of using the out parameter. StopIteration
     # signals normal completion when the generator or coroutine is already exhausted.
-    # Due to a mypyc bug, an explicit StopIteration raised in the body does so as well.
+    # TODO: Convert an explicit StopIteration raised in the body to RuntimeError instead
+    #       of treating it as normal completion.
     emitter.emit_line("if (PyErr_ExceptionMatches(PyExc_StopIteration)) {")
     emitter.emit_line("stop_iter_value = CPy_FetchStopIterationValue();")
     emitter.emit_line("}")
