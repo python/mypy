@@ -2524,20 +2524,17 @@ async def fails() -> int:
     raise MyError()
 
 [file driver.py]
-# Interpreted 'await' resumes a native coroutine through __next__ or send(), i.e. through
-# the Python-level protocol, since the SEND opcode calls tp_iternext or the send method
-# directly on Python 3.12 and later. asyncio's C Task uses PyIter_Send instead, so it
-# goes through the C-level am_send slot, which reports completion without raising
-# StopIteration. See also testAmSendSlotOnNativeCoroutine.
 import asyncio
 
 from native import inc, suspend_then_inc, nested, fails, MyError
 
 async def main() -> None:
+    # On Python 3.12 and later, interpreted 'await' uses the SEND opcode, which calls
+    # tp_iternext or the send method directly. Exercise this Python-level protocol for
+    # immediate, suspended, nested, and exceptional completion.
     assert await inc(1) == 2
     assert await suspend_then_inc(1) == 2
     assert await nested(3) == 8
-    assert await asyncio.gather(inc(5), nested(5)) == [6, 12]
     try:
         await fails()
     except MyError:
@@ -2545,8 +2542,15 @@ async def main() -> None:
     else:
         assert False
 
+    # asyncio.gather implicitly schedules each native coroutine as a C Task. Tasks use
+    # PyIter_Send, which reaches the coroutine through its am_send slot.
+    # testAmSendSlotOnNativeCoroutine exercises that slot directly.
+    assert await asyncio.gather(inc(5), nested(5)) == [6, 12]
+
 asyncio.run(main())
 
+# The Python-level send method reports normal completion by raising StopIteration with
+# the coroutine's return value.
 coro = inc(1)
 try:
     coro.send(None)
@@ -2590,22 +2594,21 @@ async def fails() -> int:
     raise MyError()
 
 [file driver.py]
-# Coroutine classes have an am_send slot implementing CPython's C-level send protocol,
-# which reports normal completion as PYGEN_RETURN instead of raising StopIteration.
-# asyncio's C Task resumes coroutines through it, so drive it directly via PyIter_Send
-# here.
 from native import inc, suspends, fails, MyError
 from testutil import assertRaises, pyiter_send, PYGEN_NEXT, PYGEN_RETURN
 
-# Completing without suspending.
+# Coroutine classes expose an am_send slot for CPython's C-level send protocol. Drive
+# the slot directly through PyIter_Send, as asyncio's C Task does.
+
+# Immediate completion returns PYGEN_RETURN instead of raising StopIteration.
 assert pyiter_send(inc(1), None) == (PYGEN_RETURN, 2)
 
-# Suspending once, then completing with a value sent in.
+# A suspension returns PYGEN_NEXT; the next send completes with PYGEN_RETURN.
 coro = suspends(5)
 assert pyiter_send(coro, None) == (PYGEN_NEXT, None)
 assert pyiter_send(coro, 3) == (PYGEN_RETURN, 8)
 
-# An exception raised in the coroutine body is reported as PYGEN_ERROR.
+# PYGEN_ERROR leaves the body exception pending, so ctypes propagates it.
 with assertRaises(MyError):
     pyiter_send(fails(), None)
 

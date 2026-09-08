@@ -1161,10 +1161,6 @@ def native_yield_from_stop_iteration() -> Generator[int, None, object]:
     return x
 
 [file driver.py]
-# Interpreted 'yield from' resumes a native generator through __next__ or send(),
-# i.e. through the Python-level protocol, since the SEND opcode calls tp_iternext or
-# the send method directly on Python 3.12 and later. See testAmSendSlotOnNativeGenerator
-# for coverage of the C-level send protocol.
 from native import (
     native, exhausted, raises_stop_iteration, native_yield_from_stop_iteration
 )
@@ -1186,6 +1182,10 @@ def run(gen, sends):
         return yields, e.value
     assert False, "generator did not stop"
 
+# On Python 3.12 and later, interpreted 'yield from' uses the SEND opcode, which calls
+# tp_iternext or the send method directly. Exercise this Python-level protocol for
+# yielding, receiving a sent value, and returning. testAmSendSlotOnNativeGenerator
+# exercises the C-level send protocol separately.
 assert run(native(1), [10, None]) == ([1, 11], "done")
 
 # An already exhausted native generator completes with None, like a
@@ -1227,24 +1227,25 @@ def gen_delegate(it: Iterable[int]) -> Generator[int, None, None]:
     yield from it
 
 [file driver.py]
-# Generator classes have an am_send slot implementing CPython's C-level send protocol,
-# which reports normal completion as PYGEN_RETURN instead of raising StopIteration.
-# mypyc's generic 'await' and 'yield from' path resumes generators through this slot,
-# while the native fast path calls the mypyc generator helper directly. Drive the slot
-# directly via PyIter_Send here.
 from native import gen, gen_no_yield, gen_raises, gen_delegate
 from testutil import assertRaises, pyiter_send, PYGEN_NEXT, PYGEN_RETURN
 
+# Generator classes expose an am_send slot for CPython's C-level send protocol. The
+# generic compiled 'await' and 'yield from' path reaches this slot through PyIter_Send;
+# the native fast path calls the mypyc generator helper directly. Drive the slot through
+# PyIter_Send here.
+
+# Completion without yielding returns PYGEN_RETURN.
+assert pyiter_send(gen_no_yield(), None) == (PYGEN_RETURN, 5)
+
+# A yield returns PYGEN_NEXT; the next send completes with PYGEN_RETURN. Further sends
+# to the exhausted generator complete with None, like a CPython generator.
 g = gen()
 assert pyiter_send(g, None) == (PYGEN_NEXT, 1)
 assert pyiter_send(g, 3) == (PYGEN_RETURN, "ret3")
-# An exhausted generator completes with None, like a CPython generator does.
 assert pyiter_send(g, None) == (PYGEN_RETURN, None)
 
-# Completing without ever yielding.
-assert pyiter_send(gen_no_yield(), None) == (PYGEN_RETURN, 5)
-
-# An exception raised in the generator body is reported as PYGEN_ERROR.
+# PYGEN_ERROR leaves the body exception pending, so ctypes propagates it.
 with assertRaises(ValueError, "boom"):
     pyiter_send(gen_raises(), None)
 
