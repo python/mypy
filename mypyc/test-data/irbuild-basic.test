@@ -2450,7 +2450,7 @@ def g_a_obj.__call__(__mypyc_self__):
     r15 :: object_ptr
     r16 :: object
 L0:
-    r0 = __mypyc_self__.__mypyc_env__
+    r0 = borrow __mypyc_self__.__mypyc_env__
     r1 = 'Entering'
     r2 = builtins :: module
     r3 = 'print'
@@ -2514,7 +2514,7 @@ def g_b_obj.__call__(__mypyc_self__):
     r15 :: object_ptr
     r16 :: object
 L0:
-    r0 = __mypyc_self__.__mypyc_env__
+    r0 = borrow __mypyc_self__.__mypyc_env__
     r1 = '---'
     r2 = builtins :: module
     r3 = 'print'
@@ -2571,7 +2571,7 @@ def d_c_obj.__call__(__mypyc_self__):
     r6 :: object_ptr
     r7 :: object
 L0:
-    r0 = __mypyc_self__.__mypyc_env__
+    r0 = borrow __mypyc_self__.__mypyc_env__
     r1 = 'd'
     r2 = builtins :: module
     r3 = 'print'
@@ -2747,7 +2747,7 @@ def g_a_obj.__call__(__mypyc_self__):
     r15 :: object_ptr
     r16 :: object
 L0:
-    r0 = __mypyc_self__.__mypyc_env__
+    r0 = borrow __mypyc_self__.__mypyc_env__
     r1 = 'Entering'
     r2 = builtins :: module
     r3 = 'print'
@@ -3575,7 +3575,7 @@ def wrapper_deco_obj.__call__(__mypyc_self__, args):
     r0 :: __main__.deco_env
     r1, r2 :: object
 L0:
-    r0 = __mypyc_self__.__mypyc_env__
+    r0 = borrow __mypyc_self__.__mypyc_env__
     r1 = r0.fn
     r2 = PyObject_CallObject(r1, args)
     return r2
@@ -3622,7 +3622,7 @@ def wrapper_deco_obj.__call__(__mypyc_self__, args):
     r2 :: tuple
     r3 :: object
 L0:
-    r0 = __mypyc_self__.__mypyc_env__
+    r0 = borrow __mypyc_self__.__mypyc_env__
     r1 = r0.fn
     r2 = PyList_AsTuple(args)
     r3 = PyObject_CallObject(r1, r2)
@@ -3672,7 +3672,7 @@ def wrapper_deco_obj.__call__(__mypyc_self__, lst, kwargs):
     r3 :: dict
     r4 :: object
 L0:
-    r0 = __mypyc_self__.__mypyc_env__
+    r0 = borrow __mypyc_self__.__mypyc_env__
     r1 = r0.fn
     r2 = PyList_AsTuple(lst)
     r3 = PyDict_Copy(kwargs)
@@ -3721,7 +3721,7 @@ def wrapper_deco_obj.__call__(__mypyc_self__, args):
     r2 :: tuple
     r3 :: object
 L0:
-    r0 = __mypyc_self__.__mypyc_env__
+    r0 = borrow __mypyc_self__.__mypyc_env__
     r1 = r0.fn
     r2 = PySequence_Tuple(args)
     r3 = PyObject_CallObject(r1, r2)
@@ -3771,7 +3771,7 @@ def wrapper_deco_obj.__call__(__mypyc_self__, args, kwargs):
     r3 :: dict
     r4 :: object
 L0:
-    r0 = __mypyc_self__.__mypyc_env__
+    r0 = borrow __mypyc_self__.__mypyc_env__
     r1 = r0.fn
     r2 = PySequence_Tuple(args)
     r3 = PyDict_Copy(kwargs)

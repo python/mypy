@@ -701,7 +701,7 @@ def inner_deco_obj.__call__(__mypyc_self__, args, kwargs):
     r26 :: object
     r27 :: int
 L0:
-    r0 = __mypyc_self__.__mypyc_env__
+    r0 = borrow __mypyc_self__.__mypyc_env__
     r1 = var_object_size args
     r2 = PyList_New(r1)
     r3 = 0

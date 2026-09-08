@@ -52,7 +52,7 @@ def inner_a_obj.__call__(__mypyc_self__):
     r0 :: __main__.a_env
     r1 :: object
 L0:
-    r0 = __mypyc_self__.__mypyc_env__
+    r0 = borrow __mypyc_self__.__mypyc_env__
     r1 = box(None, 1)
     return r1
 def a():
@@ -84,7 +84,7 @@ def second_b_first_obj.__call__(__mypyc_self__):
     r1 :: __main__.b_env
     r2 :: str
 L0:
-    r0 = __mypyc_self__.__mypyc_env__
+    r0 = borrow __mypyc_self__.__mypyc_env__
     r1 = r0.__mypyc_env__
     r2 = 'b.first.second: nested function'
     return r2
@@ -109,7 +109,7 @@ def first_b_obj.__call__(__mypyc_self__):
     r3 :: __main__.second_b_first_obj
     second :: object
 L0:
-    r0 = __mypyc_self__.__mypyc_env__
+    r0 = borrow __mypyc_self__.__mypyc_env__
     r1 = first_b_env()
     r1.__mypyc_env__ = r0; r2 = is_error
     r3 = second_b_first_obj()
@@ -145,7 +145,7 @@ def inner_c_obj.__call__(__mypyc_self__, s):
     r0 :: __main__.c_env
     r1, r2 :: str
 L0:
-    r0 = __mypyc_self__.__mypyc_env__
+    r0 = borrow __mypyc_self__.__mypyc_env__
     r1 = '!'
     r2 = PyUnicode_Concat(s, r1)
     return r2
@@ -179,7 +179,7 @@ def inner_d_obj.__call__(__mypyc_self__, s):
     r0 :: __main__.d_env
     r1, r2 :: str
 L0:
-    r0 = __mypyc_self__.__mypyc_env__
+    r0 = borrow __mypyc_self__.__mypyc_env__
     r1 = '?'
     r2 = PyUnicode_Concat(s, r1)
     return r2
@@ -278,7 +278,7 @@ def inner_a_obj.__call__(__mypyc_self__):
     r0 :: __main__.a_env
     r1 :: int
 L0:
-    r0 = __mypyc_self__.__mypyc_env__
+    r0 = borrow __mypyc_self__.__mypyc_env__
     r1 = r0.num
     return r1
 def a(num):
@@ -316,7 +316,7 @@ def inner_b_obj.__call__(__mypyc_self__):
     r1 :: bool
     foo, r2 :: int
 L0:
-    r0 = __mypyc_self__.__mypyc_env__
+    r0 = borrow __mypyc_self__.__mypyc_env__
     r0.num = 8; r1 = is_error
     foo = 12
     r2 = r0.num
@@ -356,7 +356,7 @@ def inner_c_obj.__call__(__mypyc_self__):
     r0 :: __main__.c_env
     r1 :: str
 L0:
-    r0 = __mypyc_self__.__mypyc_env__
+    r0 = borrow __mypyc_self__.__mypyc_env__
     r1 = 'f.inner: first definition'
     return r1
 def inner_c_obj_0.__get__(__mypyc_self__, instance, owner):
@@ -377,7 +377,7 @@ def inner_c_obj_0.__call__(__mypyc_self__):
     r0 :: __main__.c_env
     r1 :: str
 L0:
-    r0 = __mypyc_self__.__mypyc_env__
+    r0 = borrow __mypyc_self__.__mypyc_env__
     r1 = 'f.inner: second definition'
     return r1
 def c(flag):
@@ -435,7 +435,7 @@ def c_a_b_obj.__call__(__mypyc_self__):
     r1 :: __main__.a_env
     r2 :: int
 L0:
-    r0 = __mypyc_self__.__mypyc_env__
+    r0 = borrow __mypyc_self__.__mypyc_env__
     r1 = r0.__mypyc_env__
     r2 = r1.x
     return r2
@@ -463,7 +463,7 @@ def b_a_obj.__call__(__mypyc_self__):
     c, r7 :: object
     r8 :: int
 L0:
-    r0 = __mypyc_self__.__mypyc_env__
+    r0 = borrow __mypyc_self__.__mypyc_env__
     r1 = b_a_env()
     r1.__mypyc_env__ = r0; r2 = is_error
     r3 = r0.x
@@ -519,7 +519,7 @@ def inner_f_obj.__call__(__mypyc_self__):
     r0 :: __main__.f_env
     r1 :: str
 L0:
-    r0 = __mypyc_self__.__mypyc_env__
+    r0 = borrow __mypyc_self__.__mypyc_env__
     r1 = 'f.inner: first definition'
     return r1
 def inner_f_obj_0.__get__(__mypyc_self__, instance, owner):
@@ -540,7 +540,7 @@ def inner_f_obj_0.__call__(__mypyc_self__):
     r0 :: __main__.f_env
     r1 :: str
 L0:
-    r0 = __mypyc_self__.__mypyc_env__
+    r0 = borrow __mypyc_self__.__mypyc_env__
     r1 = 'f.inner: second definition'
     return r1
 def f(flag):
@@ -604,7 +604,7 @@ def foo_f_obj.__call__(__mypyc_self__):
     r0 :: __main__.f_env
     r1, r2 :: int
 L0:
-    r0 = __mypyc_self__.__mypyc_env__
+    r0 = borrow __mypyc_self__.__mypyc_env__
     r1 = r0.a
     r2 = CPyTagged_Add(r1, 2)
     return r2
@@ -627,7 +627,7 @@ def bar_f_obj.__call__(__mypyc_self__):
     r1, r2 :: object
     r3 :: int
 L0:
-    r0 = __mypyc_self__.__mypyc_env__
+    r0 = borrow __mypyc_self__.__mypyc_env__
     r1 = r0.foo
     r2 = PyObject_Vectorcall(r1, 0, 0, 0)
     r3 = unbox(int, r2)
@@ -657,7 +657,7 @@ def baz_f_obj.__call__(__mypyc_self__, n):
     r7 :: object
     r8, r9 :: int
 L0:
-    r0 = __mypyc_self__.__mypyc_env__
+    r0 = borrow __mypyc_self__.__mypyc_env__
     r1 = int_eq n, 0
     if r1 goto L1 else goto L2 :: bool
 L1:
@@ -742,7 +742,7 @@ def __mypyc_lambda__0_f_obj.__call__(__mypyc_self__, a, b):
     r0 :: __main__.f_env
     r1 :: object
 L0:
-    r0 = __mypyc_self__.__mypyc_env__
+    r0 = borrow __mypyc_self__.__mypyc_env__
     r1 = PyNumber_Add(a, b)
     return r1
 def __mypyc_lambda__1_f_obj.__get__(__mypyc_self__, instance, owner):
@@ -767,7 +767,7 @@ def __mypyc_lambda__1_f_obj.__call__(__mypyc_self__, a, b):
     r3 :: object_ptr
     r4 :: object
 L0:
-    r0 = __mypyc_self__.__mypyc_env__
+    r0 = borrow __mypyc_self__.__mypyc_env__
     r1 = r0.s
     r2 = [a, b]
     r3 = load_address r2
