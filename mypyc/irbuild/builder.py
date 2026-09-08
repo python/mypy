@@ -1049,8 +1049,9 @@ class IRBuilder:
         """Moves a given Value instance into the private generator frame."""
         frame = self.fn_info.generator_class
         # Generator classes for overriding methods can inherit from one another. Include the
-        # owning class name so unrelated helper spills don't alias an inherited struct field.
-        name = f"{TEMP_ATTR_NAME}1_{frame.ir.name}_{self.temp_counter}"
+        # module-qualified owning class name so unrelated helper spills don't alias an inherited
+        # struct field.
+        name = f"{TEMP_ATTR_NAME}1_{exported_name(frame.ir.fullname)}_{self.temp_counter}"
         self.temp_counter += 1
         target = self.add_var_to_class(Var(name), type, frame.ir, frame.self_reg)
         return target
