@@ -352,9 +352,7 @@ class TestRun(MypycDataSuite):
             cached_librt = get_librt_path(experimental_features, opt_level=str(opt_level))
             shutil.copytree(os.path.join(cached_librt, "librt"), "librt")
 
-        if testcase.name != "testFStrings" and not run_setup(
-            setup_file, ["build_ext", "--inplace"]
-        ):
+        if not run_setup(setup_file, ["build_ext", "--inplace"]):
             if testcase.config.getoption("--mypyc-showc"):
                 show_c(cfiles)
             copy_output_files(mypyc_output_dir)
@@ -362,11 +360,7 @@ class TestRun(MypycDataSuite):
 
         # Assert that an output file got created
         suffix = "pyd" if sys.platform == "win32" else "so"
-        assert (
-            testcase.name == "testFStrings"
-            or glob.glob(f"native.*.{suffix}")
-            or glob.glob(f"native.{suffix}")
-        )
+        assert glob.glob(f"native.*.{suffix}") or glob.glob(f"native.{suffix}")
 
         driver_path = "driver.py"
         if not os.path.isfile(driver_path):
