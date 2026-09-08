@@ -596,7 +596,7 @@ def generate_len_wrapper(cl: ClassIR, fn: FuncIR, emitter: Emitter) -> str:
 
 
 def generate_am_send_wrapper(cl: ClassIR, fn: FuncIR, emitter: Emitter) -> str:
-    """Generate an am_send slot for a generator class based on the generator helper method.
+    """Generate an am_send slot for a generator or coroutine class.
 
     This implements the C-level send protocol (used by PyIter_Send), which reports
     normal completion without raising StopIteration.
@@ -616,9 +616,9 @@ def generate_am_send_wrapper(cl: ClassIR, fn: FuncIR, emitter: Emitter) -> str:
     emitter.emit_line("return PYGEN_NEXT;")
     emitter.emit_line("}")
     emitter.emit_line("if (stop_iter_value == NULL) {")
-    # The helper raised an exception instead of using the out parameter. A
-    # StopIteration still signals normal completion (e.g. if the generator has
-    # already completed, or if the body raised StopIteration explicitly).
+    # The helper raised an exception instead of using the out parameter. StopIteration
+    # signals normal completion when the generator or coroutine is already exhausted.
+    # Due to a mypyc bug, an explicit StopIteration raised in the body does so as well.
     emitter.emit_line("if (PyErr_ExceptionMatches(PyExc_StopIteration)) {")
     emitter.emit_line("stop_iter_value = CPy_FetchStopIterationValue();")
     emitter.emit_line("}")

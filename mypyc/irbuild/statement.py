@@ -1340,8 +1340,7 @@ def emit_yield_from_or_await(
         # This allows two optimizations:
         # 1) No need to call CPy_GetCoro() or iter() since for native generators
         #    it just returns the generator object (implemented here).
-        # 2) Instead of calling next(), call generator helper method directly,
-        #    since next() just calls __next__ which calls the helper method.
+        # 2) Call the generator helper method directly instead of using PyIter_Send.
         iter_val: Value = val
     else:
         get_op = coro_op if is_await else iter_op
@@ -1391,9 +1390,9 @@ def emit_yield_from_or_await(
         # an extra PyObject ** argument to helper where the stop iteration value is stored.
         _y_init = native_step(builder.none_object())
     else:
-        # Use PyIter_Send (via CPyIter_Send) for the initial advance as well, so that
-        # a natively compiled iterator can complete through its am_send slot without
-        # raising StopIteration, even if we don't know the type statically.
+        # Use PyIter_Send (via CPyIter_Send) so that a natively compiled iterator can
+        # complete through its am_send slot without raising StopIteration, even if we
+        # don't know the type statically.
         ptr = clear_stop_iter_val()
         _y_init = builder.call_c(
             send_op, [builder.read(iter_reg, line), builder.none_object(), ptr], line

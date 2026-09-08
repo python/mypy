@@ -151,8 +151,8 @@ AS_ASYNC_SLOT_DEFS: SlotTable = {
     "__await__": ("am_await", native_slot),
     "__aiter__": ("am_aiter", native_slot),
     "__anext__": ("am_anext", native_slot),
-    # Generator classes get an am_send slot based on the generator helper method,
-    # so that PyIter_Send can drive them without raising StopIteration.
+    # Generator and coroutine classes get an am_send slot based on the generator helper
+    # method, so that PyIter_Send can drive them without raising StopIteration.
     GENERATOR_HELPER_NAME: ("am_send", generate_am_send_wrapper),
 }
 

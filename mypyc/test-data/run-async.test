@@ -2524,11 +2524,11 @@ async def fails() -> int:
     raise MyError()
 
 [file driver.py]
-# Interpreted 'await' resumes a native coroutine through send(), i.e. through the
-# Python-level protocol, since the SEND opcode calls the send method directly on
-# Python 3.12 and later. asyncio's C Task uses PyIter_Send instead, so it goes through
-# the C-level am_send slot, which reports completion without raising StopIteration.
-# See also testAmSendSlotOnNativeCoroutine.
+# Interpreted 'await' resumes a native coroutine through __next__ or send(), i.e. through
+# the Python-level protocol, since the SEND opcode calls tp_iternext or the send method
+# directly on Python 3.12 and later. asyncio's C Task uses PyIter_Send instead, so it
+# goes through the C-level am_send slot, which reports completion without raising
+# StopIteration. See also testAmSendSlotOnNativeCoroutine.
 import asyncio
 
 from native import inc, suspend_then_inc, nested, fails, MyError
