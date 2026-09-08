@@ -143,7 +143,11 @@ def load_env_registers(builder: IRBuilder, prefix: str = "") -> None:
 
 
 def load_outer_env(
-    builder: IRBuilder, base: Value, outer_env: dict[SymbolNode, SymbolTarget]
+    builder: IRBuilder,
+    base: Value,
+    outer_env: dict[SymbolNode, SymbolTarget],
+    *,
+    borrow: bool = False,
 ) -> Value:
     """Load the environment class for a given base into a register.
 
@@ -156,7 +160,10 @@ def load_outer_env(
 
     Returns the register where the environment class was loaded.
     """
-    env = builder.add(GetAttr(base, ENV_ATTR_NAME, builder.fn_info.fitem.line))
+    if borrow:
+        assert isinstance(base.type, RInstance)
+        assert base.type.class_ir.is_final_attr(ENV_ATTR_NAME)
+    env = builder.add(GetAttr(base, ENV_ATTR_NAME, builder.fn_info.fitem.line, borrow=borrow))
     assert isinstance(env.type, RInstance), f"{env} must be of type RInstance"
 
     for symbol, target in outer_env.items():
@@ -182,7 +189,9 @@ def load_outer_envs(builder: IRBuilder, base: ImplicitClass) -> None:
         if isinstance(base, GeneratorClass):
             base.prev_env_reg = load_outer_env(builder, base.curr_env_reg, outer_env)
         else:
-            base.prev_env_reg = load_outer_env(builder, base.self_reg, outer_env)
+            # The callable stays alive throughout __call__, and its environment link is Final,
+            # so the environment can be borrowed for the duration of the call.
+            base.prev_env_reg = load_outer_env(builder, base.self_reg, outer_env, borrow=True)
         env_reg = base.prev_env_reg
         index -= 1
 

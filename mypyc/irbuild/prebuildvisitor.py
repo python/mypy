@@ -15,6 +15,7 @@ from mypy.nodes import (
     MypyFile,
     NameExpr,
     Node,
+    StrExpr,
     SymbolNode,
     Var,
 )
@@ -259,6 +260,17 @@ class PreBuildVisitor(ExtendedTraverserVisitor):
         if isinstance(expr.node, (Var, FuncDef)):
             self.visit_symbol_node(expr.node)
 
+    def visit_str_expr(self, o: StrExpr) -> None:
+        # Handle surrogates before main pass to avoid conflicts with various optimizations
+        # like replacing `ord("<some char>")` with its integer value statically, etc.
+        if o.has_surrogates:
+            self.errors.error(
+                "Surrogate codepoints in string literals not supported, use chr(...) instead",
+                self.current_file.path,
+                o.line,
+            )
+        super().visit_str_expr(o)
+
     def visit_var(self, var: Var) -> None:
         self.visit_symbol_node(var)
 
@@ -272,7 +284,7 @@ class PreBuildVisitor(ExtendedTraverserVisitor):
             orig_func = self.symbols_to_funcs[symbol]
             if self.is_parent(self.funcs[-1], orig_func):
                 # The function in which the symbol was previously seen is
-                # nested within the function currently being visited. Thus
+                # nested within the function currently being visited. Thus,
                 # the current function is a better candidate to contain the
                 # declaration.
                 self.symbols_to_funcs[symbol] = self.funcs[-1]

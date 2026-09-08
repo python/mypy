@@ -52,6 +52,7 @@ from mypyc.irbuild.env_class import (
 )
 from mypyc.irbuild.nonlocalcontrol import ExceptNonlocalControl, gen_generator_func_cleanup
 from mypyc.irbuild.prepare import GENERATOR_HELPER_NAME
+from mypyc.irbuild.targets import AssignmentTargetAttr
 from mypyc.primitives.exc_ops import (
     error_catch_op,
     exc_matches_op,
@@ -142,11 +143,7 @@ def instantiate_generator_class(builder: IRBuilder) -> Value:
     fitem = builder.fn_info.fitem
     generator_reg = builder.add(Call(builder.fn_info.generator_class.ir.ctor, [], fitem.line))
 
-    if builder.fn_info.can_merge_generator_and_env_classes():
-        # Set the generator instance to the initial state (zero).
-        zero = Integer(0)
-        builder.add(SetAttr(generator_reg, NEXT_LABEL_ATTR_NAME, zero, fitem.line))
-    else:
+    if not builder.fn_info.can_merge_generator_and_env_classes():
         # Get the current environment register. If the current function is nested, then the
         # generator class gets instantiated from the callable class' '__call__' method, and hence
         # we use the callable class' environment register. Otherwise, we use the original
@@ -160,9 +157,10 @@ def instantiate_generator_class(builder: IRBuilder) -> Value:
         # defined in the current scope.
         builder.add(SetAttr(generator_reg, ENV_ATTR_NAME, curr_env_reg, fitem.line))
 
-        # Set the generator instance's environment to the initial state (zero).
-        zero = Integer(0)
-        builder.add(SetAttr(curr_env_reg, NEXT_LABEL_ATTR_NAME, zero, fitem.line))
+    # The continuation label is private generator state even when captured source variables
+    # require a separate environment.
+    zero = Integer(0)
+    builder.add(SetAttr(generator_reg, NEXT_LABEL_ATTR_NAME, zero, fitem.line))
     return generator_reg
 
 
@@ -171,15 +169,14 @@ def setup_generator_class(builder: IRBuilder) -> ClassIR:
     assert isinstance(builder.fn_info.fitem, FuncDef), builder.fn_info.fitem
     generator_class_ir = mapper.fdef_to_generator[builder.fn_info.fitem]
     generator_class_ir.has_running_flag = True
+    generator_class_ir.has_private_generator_frame = True
     if builder.fn_info.can_merge_generator_and_env_classes():
         builder.fn_info.env_class = generator_class_ir
-        # The merged environment can be thread-confined; see attrs_are_thread_confined.
-        generator_class_ir.has_merged_generator_env = True
     else:
         generator_class_ir.attributes[ENV_ATTR_NAME] = RInstance(builder.fn_info.env_class)
         if not builder.fn_info.fitem.is_coroutine:
-            # After completion generators still need generator.__mypyc_env__ for subsequent
-            # __next__() calls to observe the terminal next-label and raise StopIteration.
+            # The helper currently loads generator.__mypyc_env__ before terminal dispatch, so
+            # an exhausted generator still needs the link on subsequent __next__() calls.
             # Coroutines can't be resumed after completion, so keeping the environment alive
             # there would just extend local lifetimes unnecessarily.
             generator_class_ir.attrs_to_keep_alive_on_completion.add(ENV_ATTR_NAME)
@@ -260,7 +257,9 @@ def add_helper_to_generator_class(
     )
     fn_info.generator_class.ir.methods[GENERATOR_HELPER_NAME] = helper_fn_ir
     builder.functions.append(helper_fn_ir)
-    fn_info.env_class.env_user_function = helper_fn_ir
+    # Compiler-generated values live on the private generator frame even if source-level
+    # captured variables require a separate environment.
+    fn_info.generator_class.ir.env_user_function = helper_fn_ir
 
     return helper_fn_decl
 
@@ -438,12 +437,13 @@ def setup_env_for_generator_class(builder: IRBuilder) -> None:
     else:
         cls.curr_env_reg = load_outer_env(builder, cls.self_reg, builder.symtables[-1])
 
-    # Define a variable representing the label to go to the next time
-    # the '__next__' function of the generator is called, and add it
-    # as an attribute to the environment class.
-    cls.next_label_target = builder.add_var_to_env_class(
-        Var(NEXT_LABEL_ATTR_NAME), int32_rprimitive, cls, reassign=False, always_defined=True
-    )
+    # The continuation label identifies where execution resumes when the generator is next
+    # advanced. Only the serialized generator helper accesses it, so keep it on the private
+    # generator frame instead of a potentially shared closure environment.
+    cls.ir.attributes[NEXT_LABEL_ATTR_NAME] = int32_rprimitive
+    cls.ir.attrs_with_defaults.add(NEXT_LABEL_ATTR_NAME)
+    next_label_target = AssignmentTargetAttr(cls.self_reg, NEXT_LABEL_ATTR_NAME)
+    cls.next_label_target = builder.add_target(Var(NEXT_LABEL_ATTR_NAME), next_label_target)
 
     # Add arguments from the original generator function to the
     # environment of the generator class.
