@@ -93,17 +93,16 @@ PYGEN_NEXT: Final = 1
 
 
 def pyiter_send(it: Any, arg: Any) -> Tuple[int, Any]:
-    """Resume an iterator using PyIter_Send, the C-level send protocol.
+    """Resume an iterator through CPython's C-level PyIter_Send protocol.
 
-    This calls the am_send slot, if the type of 'it' has one, so it's the only way to
-    exercise am_send from Python. It's the path asyncio's C Task and compiled
-    'await'/'yield from' use to resume a generator or coroutine. Note that the
-    interpreter's own SEND opcode does not use it on Python 3.12 and later.
+    PyIter_Send calls the iterator type's am_send slot when available, allowing tests to
+    exercise the slot directly from Python. asyncio's C Task and compiled 'await' and
+    'yield from' expressions use this path to resume generators and coroutines, but the
+    SEND opcode does not on Python 3.12 and later.
 
-    Return (result code, value), where the code is PYGEN_NEXT for a yielded value and
-    PYGEN_RETURN for normal completion -- completion is reported without raising
-    StopIteration. If the iterator raises, the exception propagates, since ctypes
-    re-raises whatever exception is pending after the call.
+    Return (code, value), where code is PYGEN_NEXT for a yielded value and PYGEN_RETURN
+    for normal completion. Completion does not raise StopIteration. Other exceptions
+    propagate because ctypes re-raises the exception left pending by PyIter_Send.
     """
     import ctypes
 
