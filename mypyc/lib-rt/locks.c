@@ -258,5 +258,9 @@ void CPyImport_ReplaceModuleCacheUnverified(CPyModuleCache *cache, PyObject *mod
 }
 
 void CPyImport_ReplaceModuleCacheForImport(CPyModuleCache *cache, PyObject *module) {
+    if (CPyImport_LoadModuleCache(cache) == (CPyModuleCache)module) {
+        return;
+    }
+
     CPyImport_ReplaceModuleCacheValue(cache, module, CPyImport_IsModuleInitializing(module));
 }
