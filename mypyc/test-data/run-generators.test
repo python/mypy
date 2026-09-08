@@ -1182,10 +1182,8 @@ def run(gen, sends):
         return yields, e.value
     assert False, "generator did not stop"
 
-# On Python 3.12 and later, interpreted 'yield from' uses the SEND opcode, which calls
-# tp_iternext or the send method directly. Exercise this Python-level protocol for
-# yielding, receiving a sent value, and returning. testAmSendSlotOnNativeGenerator
-# exercises the C-level send protocol separately.
+# Exercise a native generator through interpreted 'yield from', including yielding,
+# receiving a sent value, and returning.
 assert run(native(1), [10, None]) == ([1, 11], "done")
 
 # An already exhausted native generator completes with None, like a
@@ -1230,10 +1228,9 @@ def gen_delegate(it: Iterable[int]) -> Generator[int, None, None]:
 from native import gen, gen_no_yield, gen_raises, gen_delegate
 from testutil import assertRaises, pyiter_send, PYGEN_NEXT, PYGEN_RETURN
 
-# Generator classes expose an am_send slot for CPython's C-level send protocol. The
-# generic compiled 'await' and 'yield from' path reaches this slot through PyIter_Send;
-# the native fast path calls the mypyc generator helper directly. Drive the slot through
-# PyIter_Send here.
+# Drive a native generator's am_send slot through PyIter_Send. The generic compiled
+# 'await' and 'yield from' path does the same; the native fast path calls the generator
+# helper directly.
 
 # Completion without yielding returns PYGEN_RETURN.
 assert pyiter_send(gen_no_yield(), None) == (PYGEN_RETURN, 5)
