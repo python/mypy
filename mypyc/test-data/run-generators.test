@@ -772,9 +772,12 @@ def make() -> str:
 
 def outer() -> Generator[str, str, str]:
     def nested(value: str) -> Generator[str, str, str]:
-        # The result of make() is a compiler-generated temporary live across
-        # the yield. The source argument stays in the separate environment.
-        return make() + (yield value)
+        for item in [value]:
+            # The loop iterator and the result of make() are compiler-generated
+            # temporaries live across the yield. The source bindings stay in the
+            # separate environment.
+            return make() + (yield item)
+        return "unreachable"
 
     return nested("right")
 
@@ -792,9 +795,12 @@ def make_number() -> int:
 
 class Same(other_base.Same):
     def gen(self) -> Generator[None, None, object]:
-        # This spill has a different native representation from the base class's spill.
+        # The builder and transform spills have different native representations from the
+        # corresponding base class spills.
         # Both generator frames have the same short name, but different full names.
-        return (make_number(), (yield None))[0]
+        for _ in range(1):
+            return (make_number(), (yield None))[0]
+        return None
 
 def run(g: Generator[None, None, object]) -> object:
     assert next(g) is None
@@ -816,8 +822,10 @@ def make_text() -> str:
 
 class Same:
     def gen(self) -> Generator[None, None, object]:
-        # The call result is live across the yield.
-        return (make_text(), (yield None))[0]
+        # The loop state and call result are live across the yield.
+        for _ in [None]:
+            return (make_text(), (yield None))[0]
+        return None
 
 [case testGeneratorReuse]
 from typing import Iterator, Any
