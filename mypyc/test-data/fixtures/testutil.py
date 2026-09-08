@@ -96,9 +96,10 @@ def pyiter_send(it: Any, arg: Any) -> Tuple[int, Any]:
     """Resume an iterator through CPython's C-level PyIter_Send protocol.
 
     PyIter_Send calls the iterator type's am_send slot when available, allowing tests to
-    exercise the slot directly from Python. asyncio's C Task and compiled 'await' and
-    'yield from' expressions use this path to resume generators and coroutines, but the
-    SEND opcode does not on Python 3.12 and later.
+    exercise the slot directly from Python. asyncio's C Task and mypyc's generic 'await'
+    and 'yield from' path use this protocol, while mypyc's native fast path calls the
+    generator helper directly. The SEND opcode also bypasses the protocol on Python 3.12
+    and later.
 
     Return (code, value), where code is PYGEN_NEXT for a yielded value and PYGEN_RETURN
     for normal completion. Completion does not raise StopIteration. Other exceptions

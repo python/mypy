@@ -1229,8 +1229,9 @@ def gen_delegate(it: Iterable[int]) -> Generator[int, None, None]:
 [file driver.py]
 # Generator classes have an am_send slot implementing CPython's C-level send protocol,
 # which reports normal completion as PYGEN_RETURN instead of raising StopIteration.
-# asyncio's C Task and compiled 'await'/'yield from' resume generators through it, so
-# drive it directly via PyIter_Send here.
+# mypyc's generic 'await' and 'yield from' path resumes generators through this slot,
+# while the native fast path calls the mypyc generator helper directly. Drive the slot
+# directly via PyIter_Send here.
 from native import gen, gen_no_yield, gen_raises, gen_delegate
 from testutil import assertRaises, pyiter_send, PYGEN_NEXT, PYGEN_RETURN
 
