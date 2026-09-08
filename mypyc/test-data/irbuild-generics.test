@@ -178,7 +178,6 @@ def f(x):
     x :: int
 L0:
     return x
-
 [case testTypeVarMappingBound]
 # Dicts are special-cased for efficient iteration.
 from typing import Dict, TypedDict, TypeVar, Union
@@ -760,13 +759,12 @@ def deco(func):
     r0 :: __main__.deco_env
     r1 :: bool
     r2 :: __main__.inner_deco_obj
-    r3 :: bool
     inner :: object
 L0:
     r0 = deco_env()
     r0.func = func; r1 = is_error
     r2 = inner_deco_obj()
-    r2.__mypyc_env__ = r0; r3 = is_error
+    r2.__mypyc_env__ = r0
     inner = r2
     return inner
 def f(x):
