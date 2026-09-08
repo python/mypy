@@ -1198,15 +1198,10 @@ except StopIteration as e:
     assert e.value == 5
 assert run(g, []) == ([], None)
 
-# StopIteration raised in a generator body is treated as a return value by
-# 'yield from', both in interpreted and in native code.
-#
-# This is a known deviation from Python semantics, not the desired behavior: PEP 479
-# requires the StopIteration to be replaced with RuntimeError("generator raised
-# StopIteration"), which mypyc doesn't implement. These assertions pin down the current
-# behavior so that a future fix shows up as a test failure here. It's pre-existing and
-# not specific to 'yield from': raising StopIteration in a native generator body also
-# silently ends a 'for' loop over it.
+# This is a mypyc bug: native generators treat StopIteration raised in the generator
+# body as a return value instead of applying the PEP 479 conversion to
+# RuntimeError("generator raised StopIteration"). Thus 'yield from' receives the
+# exception's value and a 'for' loop silently ends.
 assert run(raises_stop_iteration(), []) == ([], "seven")
 assert run(native_yield_from_stop_iteration(), []) == ([], "seven")
 assert list(raises_stop_iteration()) == []

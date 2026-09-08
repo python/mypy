@@ -2555,14 +2555,10 @@ except StopIteration as e:
 else:
     assert False
 
-# Resuming a completed native coroutine raises a bare StopIteration, which means that
-# awaiting it a second time evaluates to None.
-#
-# This is a known deviation from Python semantics, not the desired behavior: CPython
-# raises RuntimeError("cannot reuse already awaited coroutine") instead. This assertion
-# pins down the current behavior so that a future fix shows up as a test failure here.
-# It's pre-existing and independent of the am_send slot, which faithfully reports what
-# the generator helper does.
+# This is a mypyc bug: unlike CPython, which rejects reuse with RuntimeError("cannot
+# reuse already awaited coroutine"), native coroutines permit reuse after they have
+# been awaited. Resuming a completed native coroutine raises a bare StopIteration, so
+# awaiting it again evaluates to None.
 try:
     coro.send(None)
 except StopIteration as e:
