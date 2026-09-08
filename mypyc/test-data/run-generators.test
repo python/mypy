@@ -1161,9 +1161,10 @@ def native_yield_from_stop_iteration() -> Generator[int, None, object]:
     return x
 
 [file driver.py]
-# Interpreted 'yield from' drives native generators through the C-level
-# am_send slot (PyIter_Send), which reports completion without raising
-# StopIteration.
+# Interpreted 'yield from' resumes a native generator through __next__ or send(),
+# i.e. through the Python-level protocol, since the SEND opcode calls tp_iternext or
+# the send method directly on Python 3.12 and later. See testAmSendSlotOnNativeGenerator
+# for coverage of the C-level send protocol.
 from native import (
     native, exhausted, raises_stop_iteration, native_yield_from_stop_iteration
 )
@@ -1199,5 +1200,73 @@ assert run(g, []) == ([], None)
 
 # StopIteration raised in a generator body is treated as a return value by
 # 'yield from', both in interpreted and in native code.
+#
+# This is a known deviation from Python semantics, not the desired behavior: PEP 479
+# requires the StopIteration to be replaced with RuntimeError("generator raised
+# StopIteration"), which mypyc doesn't implement. These assertions pin down the current
+# behavior so that a future fix shows up as a test failure here. It's pre-existing and
+# not specific to 'yield from': raising StopIteration in a native generator body also
+# silently ends a 'for' loop over it.
 assert run(raises_stop_iteration(), []) == ([], "seven")
 assert run(native_yield_from_stop_iteration(), []) == ([], "seven")
+assert list(raises_stop_iteration()) == []
+
+[case testAmSendSlotOnNativeGenerator]
+from typing import Generator, Iterable
+
+def gen() -> Generator[int, int, str]:
+    x = yield 1
+    return "ret" + str(x)
+
+def gen_no_yield() -> Generator[int, None, int]:
+    if int() == 1:
+        yield 1
+    return 5
+
+def gen_raises() -> Generator[int, None, int]:
+    if int() == 1:
+        yield 1
+    raise ValueError("boom")
+
+def gen_delegate(it: Iterable[int]) -> Generator[int, None, None]:
+    yield from it
+
+[file driver.py]
+# Generator classes have an am_send slot implementing CPython's C-level send protocol,
+# which reports normal completion as PYGEN_RETURN instead of raising StopIteration.
+# asyncio's C Task and compiled 'await'/'yield from' resume generators through it, so
+# drive it directly via PyIter_Send here.
+from native import gen, gen_no_yield, gen_raises, gen_delegate
+from testutil import assertRaises, pyiter_send, PYGEN_NEXT, PYGEN_RETURN
+
+g = gen()
+assert pyiter_send(g, None) == (PYGEN_NEXT, 1)
+assert pyiter_send(g, 3) == (PYGEN_RETURN, "ret3")
+# An exhausted generator completes with None, like a CPython generator does.
+assert pyiter_send(g, None) == (PYGEN_RETURN, None)
+
+# Completing without ever yielding.
+assert pyiter_send(gen_no_yield(), None) == (PYGEN_RETURN, 5)
+
+# An exception raised in the generator body is reported as PYGEN_ERROR.
+with assertRaises(ValueError, "boom"):
+    pyiter_send(gen_raises(), None)
+
+# A closed generator completes with None.
+g = gen()
+assert pyiter_send(g, None) == (PYGEN_NEXT, 1)
+g.close()
+assert pyiter_send(g, None) == (PYGEN_RETURN, None)
+
+# Resuming a generator that is currently executing is an error.
+box = []
+
+def reenter():
+    with assertRaises(ValueError, "generator already executing"):
+        pyiter_send(box[0], None)
+    yield 2
+
+g2 = gen_delegate(reenter())
+box.append(g2)
+assert pyiter_send(g2, None) == (PYGEN_NEXT, 2)
+assert pyiter_send(g2, None) == (PYGEN_RETURN, None)

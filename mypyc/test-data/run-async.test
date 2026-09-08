@@ -2524,9 +2524,11 @@ async def fails() -> int:
     raise MyError()
 
 [file driver.py]
-# Interpreted 'await' and asyncio drive native coroutines through the C-level
-# am_send slot (PyIter_Send), which reports completion without raising
-# StopIteration.
+# Interpreted 'await' resumes a native coroutine through send(), i.e. through the
+# Python-level protocol, since the SEND opcode calls the send method directly on
+# Python 3.12 and later. asyncio's C Task uses PyIter_Send instead, so it goes through
+# the C-level am_send slot, which reports completion without raising StopIteration.
+# See also testAmSendSlotOnNativeCoroutine.
 import asyncio
 
 from native import inc, suspend_then_inc, nested, fails, MyError
@@ -2545,7 +2547,6 @@ async def main() -> None:
 
 asyncio.run(main())
 
-# Resuming a completed native coroutine raises StopIteration.
 coro = inc(1)
 try:
     coro.send(None)
@@ -2553,11 +2554,63 @@ except StopIteration as e:
     assert e.value == 2
 else:
     assert False
+
+# Resuming a completed native coroutine raises a bare StopIteration, which means that
+# awaiting it a second time evaluates to None.
+#
+# This is a known deviation from Python semantics, not the desired behavior: CPython
+# raises RuntimeError("cannot reuse already awaited coroutine") instead. This assertion
+# pins down the current behavior so that a future fix shows up as a test failure here.
+# It's pre-existing and independent of the am_send slot, which faithfully reports what
+# the generator helper does.
 try:
     coro.send(None)
-except StopIteration:
-    pass
+except StopIteration as e:
+    assert e.value is None
 else:
     assert False
+
+[typing fixtures/typing-full.pyi]
+
+[case testAmSendSlotOnNativeCoroutine]
+from typing import Any, Generator
+
+class Suspend:
+    def __await__(self) -> Generator[Any, Any, int]:
+        x = yield None
+        return x
+
+async def inc(x: int) -> int:
+    return x + 1
+
+async def suspends(x: int) -> int:
+    y = await Suspend()
+    return x + y
+
+class MyError(Exception):
+    pass
+
+async def fails() -> int:
+    raise MyError()
+
+[file driver.py]
+# Coroutine classes have an am_send slot implementing CPython's C-level send protocol,
+# which reports normal completion as PYGEN_RETURN instead of raising StopIteration.
+# asyncio's C Task resumes coroutines through it, so drive it directly via PyIter_Send
+# here.
+from native import inc, suspends, fails, MyError
+from testutil import assertRaises, pyiter_send, PYGEN_NEXT, PYGEN_RETURN
+
+# Completing without suspending.
+assert pyiter_send(inc(1), None) == (PYGEN_RETURN, 2)
+
+# Suspending once, then completing with a value sent in.
+coro = suspends(5)
+assert pyiter_send(coro, None) == (PYGEN_NEXT, None)
+assert pyiter_send(coro, 3) == (PYGEN_RETURN, 8)
+
+# An exception raised in the coroutine body is reported as PYGEN_ERROR.
+with assertRaises(MyError):
+    pyiter_send(fails(), None)
 
 [typing fixtures/typing-full.pyi]

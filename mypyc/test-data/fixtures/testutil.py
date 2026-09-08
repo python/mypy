@@ -86,6 +86,39 @@ def run_generator(gen: Generator[T, V, U],
 
 F = TypeVar('F', bound=Callable)
 
+# Result codes of CPython's C-level send protocol (PySendResult).
+PYGEN_RETURN: Final = 0
+PYGEN_ERROR: Final = -1
+PYGEN_NEXT: Final = 1
+
+
+def pyiter_send(it: Any, arg: Any) -> Tuple[int, Any]:
+    """Resume an iterator using PyIter_Send, the C-level send protocol.
+
+    This calls the am_send slot, if the type of 'it' has one, so it's the only way to
+    exercise am_send from Python. It's the path asyncio's C Task and compiled
+    'await'/'yield from' use to resume a generator or coroutine. Note that the
+    interpreter's own SEND opcode does not use it on Python 3.12 and later.
+
+    Return (result code, value), where the code is PYGEN_NEXT for a yielded value and
+    PYGEN_RETURN for normal completion -- completion is reported without raising
+    StopIteration. If the iterator raises, the exception propagates, since ctypes
+    re-raises whatever exception is pending after the call.
+    """
+    import ctypes
+
+    send = ctypes.pythonapi.PyIter_Send
+    send.argtypes = [ctypes.py_object, ctypes.py_object, ctypes.POINTER(ctypes.py_object)]
+    send.restype = ctypes.c_int
+    result = ctypes.py_object()
+    code = send(it, arg, ctypes.byref(result))
+    assert code in (PYGEN_NEXT, PYGEN_RETURN), f"unexpected PySendResult {code}"
+    try:
+        value = result.value
+    except ValueError:
+        assert False, f"PyIter_Send returned {code} but left *result NULL"
+    return code, value
+
 
 class async_val(Awaitable[V], Generic[T, V]):
     def __init__(self, val: T) -> None:
