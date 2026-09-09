@@ -119,6 +119,11 @@ def tuple_fallback(typ: TupleType) -> Instance:
                 and unpacked_type.type.fullname == "builtins.tuple"
             ):
                 items.append(unpacked_type.args[0])
+            elif isinstance(unpacked_type, TupleType):
+                # A fixed-length tuple being unpacked (e.g. *tuple[int, str], possibly
+                # via a type alias) isn't a TypeVarTupleType or a variable-length tuple
+                # Instance, but its own fallback already gives us the right element type.
+                items.append(tuple_fallback(unpacked_type).args[0])
             else:
                 raise NotImplementedError
         else:
