@@ -1419,3 +1419,31 @@ def process(response1: int,response2: int) -> int: # E: Overloaded function sign
 
 def process(response1,response2)-> Union[float,int]:
    return response1 + response2
+
+[case testLegacyTypeComments_no_parallel]
+# flags: --enable-error-code type-comment
+from typing import AsyncGenerator
+def f(): ...
+async def g() -> AsyncGenerator[int, None]:
+    yield 2
+
+a = 2  # type: int  # E: Using type comments with mypy is (soft-)deprecated, use inline annotations instead  [type-comment]
+
+for b in ():  # type: int  # E: Using type comments with mypy is (soft-)deprecated, use inline annotations instead  [type-comment]
+    ...
+
+with f() as foo:  # type: int  # E: Using type comments with mypy is (soft-)deprecated, use inline annotations instead  [type-comment]
+    ...
+
+def func(d, e):  # E: Using type comments with mypy is (soft-)deprecated, use inline annotations instead  [type-comment]
+    # type: (str, int) -> bool
+    ...
+
+async def func2():  # E: Using type comments with mypy is (soft-)deprecated, use inline annotations instead  [type-comment]
+    # type: () -> None
+
+    async for c in g():  # type: int  # E: Using type comments with mypy is (soft-)deprecated, use inline annotations instead  [type-comment]
+        ...
+
+[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-full.pyi]
