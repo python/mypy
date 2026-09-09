@@ -1657,6 +1657,18 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                 object_type,
                 original_type=callee,
             )
+        elif isinstance(callee, LiteralType):
+            return self.check_call(
+                callee.fallback,
+                args,
+                arg_kinds,
+                context,
+                arg_names,
+                callable_node,
+                callable_name,
+                object_type,
+                original_type=original_type,
+            )
         elif isinstance(callee, UninhabitedType):
             ret = UninhabitedType()
             ret.ambiguous = callee.ambiguous

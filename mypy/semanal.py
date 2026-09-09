@@ -259,6 +259,7 @@ from mypy.typeanal import (
 )
 from mypy.typeops import function_type, get_type_vars, try_getting_str_literals_from_type
 from mypy.types import (
+    ANNOTATED_TYPE_NAMES,
     ASSERT_TYPE_NAMES,
     DATACLASS_TRANSFORM_NAMES,
     DEPRECATED_TYPE_NAMES,
@@ -1190,11 +1191,15 @@ class SemanticAnalyzer(
                 sym = self.lookup_qualified(typ.name, typ, suppress_errors=True)
                 if sym is not None and sym.fullname in TYPE_NAMES and typ.args:
                     return self.is_expected_self_type(typ.args[0], is_classmethod=False)
+                if sym is not None and sym.fullname in ANNOTATED_TYPE_NAMES and typ.args:
+                    return self.is_expected_self_type(typ.args[0], is_classmethod=True)
             return False
         if isinstance(typ, TypeVarType):
             return typ == self.type.self_type
         if isinstance(typ, UnboundType):
             sym = self.lookup_qualified(typ.name, typ, suppress_errors=True)
+            if sym is not None and sym.fullname in ANNOTATED_TYPE_NAMES and typ.args:
+                return self.is_expected_self_type(typ.args[0], is_classmethod=False)
             return sym is not None and sym.fullname in SELF_TYPE_NAMES
         return False
 
