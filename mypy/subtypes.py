@@ -1245,9 +1245,21 @@ def is_protocol_implementation(
         left = mypy.typeops.tuple_fallback(left)
     # We need to record this check to generate protocol fine-grained dependencies.
     type_state.record_protocol_subtype_check(left.type, right.type)
+    # Iterator instances inherit object.__hash__ at runtime, but Iterator is a
+    # protocol and therefore doesn't expose that inherited member structurally.
+    # Keep the special handling limited to the standard Hashable protocol: a
+    # concrete unhashable iterator must still be rejected. See #21813.
+    if is_named_instance(left, "typing.Iterator") and is_named_instance(right, "typing.Hashable"):
+        return True
     # nominal subtyping currently ignores '__init__' and '__new__' signatures
     members_not_to_check = {"__init__", "__new__"}
     members_not_to_check.update(skip)
+    # Iterator instances inherit object.__hash__ at runtime, but Iterator is a
+    # protocol and therefore doesn't expose that inherited member structurally.
+    # Keep the special handling limited to the standard Hashable protocol: a
+    # concrete unhashable iterator must still be rejected. See #21813.
+    if is_named_instance(left, "typing.Iterator") and is_named_instance(right, "typing.Hashable"):
+        members_not_to_check.add("__hash__")
     # Trivial check that circumvents the bug described in issue 9771:
     if left.type.is_protocol:
         members_right = set(right.type.protocol_members) - members_not_to_check
