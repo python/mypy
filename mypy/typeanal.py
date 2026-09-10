@@ -1799,6 +1799,14 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 )
             ]
 
+        if self.is_direct_union_literal_param(arg):
+            self.fail(
+                f"Parameter {idx} of Literal[...] cannot be a union expression",
+                ctx,
+                code=codes.VALID_TYPE,
+            )
+            return None
+
         # If arg is an UnboundType that was *not* originally defined as
         # a string, try expanding it in case it's a type alias or something.
         if isinstance(arg, UnboundType):
@@ -1855,6 +1863,9 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             # Types generated from declarations like "var: Final = 4".
             return [arg.last_known_value]
         elif isinstance(arg, UnionType):
+            # This handles unions produced by expanding aliases or nested Literal types,
+            # such as Literal[Alias] where Alias = Literal[1, None]. Direct union
+            # expressions inside Literal[...] are rejected before alias expansion above.
             out = []
             for union_arg in arg.items:
                 union_result = self.analyze_literal_param(idx, union_arg, ctx)
@@ -1865,6 +1876,21 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         else:
             self.fail(f"Parameter {idx} of Literal[...] is invalid", ctx, code=codes.VALID_TYPE)
             return None
+
+    def is_direct_union_literal_param(self, arg: Type) -> bool:
+        """Is this a direct Union expression inside Literal[...]?"""
+        if (
+            isinstance(arg, ProperType)
+            and isinstance(arg, UnionType)
+            and arg.uses_pep604_syntax
+            and arg.original_str_expr is None
+        ):
+            return True
+        if isinstance(arg, UnboundType) and arg.args:
+            sym = self.lookup_qualified(arg.name, arg, suppress_errors=True)
+            if sym is not None and sym.node is not None:
+                return sym.node.fullname in ("typing.Union", "typing.Optional")
+        return False
 
     def analyze_type(self, typ: Type) -> Type:
         return typ.accept(self)
