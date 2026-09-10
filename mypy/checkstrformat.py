@@ -51,6 +51,7 @@ from mypy.types import (
     AnyType,
     Instance,
     LiteralType,
+    NoneType,
     TupleType,
     Type,
     TypeOfAny,
@@ -97,7 +98,6 @@ def compile_new_format_re(custom_spec: bool) -> Pattern[str]:
 
     # Conversion (optional) is ! followed by one of letters for forced repr(), str(), or ascii().
     conversion = r"(?P<conversion>![^:])?"
-
     # Format specification (optional) follows its own mini-language:
     if not custom_spec:
         # Fill and align is valid for all builtin types.
@@ -112,7 +112,6 @@ def compile_new_format_re(custom_spec: bool) -> Pattern[str]:
     else:
         # Custom types can define their own form_spec using __format__().
         format_spec = r"(?P<format_spec>:.*)?"
-
     return re.compile(field + conversion + format_spec)
 
 
@@ -337,6 +336,7 @@ class StringFormatterChecker:
 
         The core logic for format checking is implemented in this method.
         """
+
         assert all(s.key for s in specs), "Keys must be auto-generated first!"
         replacements = self.find_replacements_in_call(call, [cast(str, s.key) for s in specs])
         assert len(replacements) == len(specs)
@@ -445,6 +445,27 @@ class StringFormatterChecker:
             ):
                 self.msg.fail(
                     "Numeric flags are only allowed for numeric types",
+                    call,
+                    code=codes.STRING_FORMATTING,
+                )
+
+        if isinstance(get_proper_type(actual_type), NoneType):
+            # Perform type check of alignment specifiers on None
+            # If spec.format_spec is None then we use "" instead of avoid crashing
+            specifier_char = None
+            if spec.non_standard_format_spec and isinstance(call.args[-1], StrExpr):
+                arg = call.args[-1].value
+                specifier_char = next((c for c in (arg or "") if c in "<>^"), None)
+            elif isinstance(spec.format_spec, str):
+                specifier_char = next((c for c in (spec.format_spec or "") if c in "<>^"), None)
+
+            if specifier_char:
+                self.msg.fail(
+                    (
+                        f"Alignment format specifier "
+                        f'"{specifier_char}" '
+                        f"is not supported for None"
+                    ),
                     call,
                     code=codes.STRING_FORMATTING,
                 )
