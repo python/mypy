@@ -3,8 +3,20 @@ from typing import TypeVar, overload, Callable, Any, Type, Optional, Union, Sequ
 _T = TypeVar('_T')
 _C = TypeVar('_C', bound=type)
 
+class Converter:
+    # Simplified non-generic stub for testing the attrs plugin. The real attrs
+    # ``Converter`` is ``Generic[In, Out]``; the plugin doesn't rely on that.
+    def __init__(
+        self,
+        converter: Callable[..., Any],
+        *,
+        takes_self: bool = ...,
+        takes_field: bool = ...,
+    ) -> None: ...
+
 _ValidatorType = Callable[[Any, Any, _T], Any]
 _ConverterType = Callable[[Any], _T]
+_FieldConverterType = Union[_ConverterType[_T], Converter]
 _FilterType = Callable[[Any, Any], bool]
 _ValidatorArgType = Union[_ValidatorType[_T], Sequence[_ValidatorType[_T]]]
 
@@ -36,7 +48,7 @@ def attrib(default: None = ...,
            convert: Optional[_ConverterType[_T]] = ...,
            metadata: Optional[Mapping[Any, Any]] = ...,
            type: Optional[Type[_T]] = ...,
-           converter: Optional[_ConverterType[_T]] = ...,
+           converter: Optional[_FieldConverterType[_T]] = ...,
            factory: Optional[Callable[[], _T]] = ...,
            kw_only: bool = ...,
            eq: Optional[bool] = ...,
@@ -53,7 +65,7 @@ def attrib(default: _T,
            convert: Optional[_ConverterType[_T]] = ...,
            metadata: Optional[Mapping[Any, Any]] = ...,
            type: Optional[Type[_T]] = ...,
-           converter: Optional[_ConverterType[_T]] = ...,
+           converter: Optional[_FieldConverterType[_T]] = ...,
            factory: Optional[Callable[[], _T]] = ...,
            kw_only: bool = ...,
            eq: Optional[bool] = ...,
@@ -70,7 +82,7 @@ def attrib(default: Optional[_T] = ...,
            convert: Optional[_ConverterType[_T]] = ...,
            metadata: Optional[Mapping[Any, Any]] = ...,
            type: object = ...,
-           converter: Optional[_ConverterType[_T]] = ...,
+           converter: Optional[_FieldConverterType[_T]] = ...,
            factory: Optional[Callable[[], _T]] = ...,
            kw_only: bool = ...,
            eq: Optional[bool] = ...,
@@ -203,7 +215,7 @@ def field(
     hash: Optional[bool] = ...,
     init: bool = ...,
     metadata: Optional[Mapping[Any, Any]] = ...,
-    converter: Optional[_ConverterType] = ...,
+    converter: Optional[_FieldConverterType[_T]] = ...,
     factory: Optional[Callable[[], _T]] = ...,
     kw_only: bool = ...,
     eq: Optional[bool] = ...,
@@ -221,7 +233,7 @@ def field(
     hash: Optional[bool] = ...,
     init: bool = ...,
     metadata: Optional[Mapping[Any, Any]] = ...,
-    converter: Optional[_ConverterType] = ...,
+    converter: Optional[_FieldConverterType[_T]] = ...,
     factory: Optional[Callable[[], _T]] = ...,
     kw_only: bool = ...,
     eq: Optional[bool] = ...,
@@ -239,7 +251,7 @@ def field(
     hash: Optional[bool] = ...,
     init: bool = ...,
     metadata: Optional[Mapping[Any, Any]] = ...,
-    converter: Optional[_ConverterType] = ...,
+    converter: Optional[_FieldConverterType[_T]] = ...,
     factory: Optional[Callable[[], _T]] = ...,
     kw_only: bool = ...,
     eq: Optional[bool] = ...,
