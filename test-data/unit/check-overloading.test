@@ -6856,3 +6856,123 @@ if isinstance(headers, dict):
 
 reveal_type(headers)  # N: Revealed type is "__main__.Headers | typing.Iterable[tuple[builtins.bytes, builtins.bytes]]"
 [builtins fixtures/isinstancelist.pyi]
+
+-- Tests for literal-disjointness fast path in check_overlapping_overloads
+
+[case testOverloadLiteralDistinctStringsNoError]
+# Overloads with distinct Literal[str] arguments are provably disjoint; no
+# overlap or never-match errors should be reported.
+from typing import overload, Literal
+@overload
+def f(x: Literal["a"]) -> int: ...
+@overload
+def f(x: Literal["b"]) -> str: ...
+@overload
+def f(x: Literal["c"]) -> float: ...
+def f(x: str) -> object:
+    return x
+[builtins fixtures/tuple.pyi]
+
+[case testOverloadLiteralDuplicateStillErrors]
+# Two overloads sharing the same Literal value should still trigger an error.
+# Signature 1 covers all inputs of type Literal["a"], so signature 2 is unreachable.
+from typing import overload, Literal
+@overload
+def f(x: Literal["a"]) -> int: ...
+@overload
+def f(x: Literal["a"]) -> str: ...  # E: Overloaded function signature 2 will never be matched: signature 1's parameter type(s) are the same or broader
+def f(x: str) -> object:
+    return x
+[builtins fixtures/tuple.pyi]
+
+[case testOverloadLiteralWithBroadCatchAll]
+# Distinct Literal overloads followed by a broad catch-all should produce no
+# overlap errors.  The broad type must come last (correct ordering).
+from typing import overload, Literal, Any
+@overload
+def f(x: Literal["a"]) -> int: ...
+@overload
+def f(x: Literal["b"]) -> str: ...
+@overload
+def f(x: str) -> Any: ...
+def f(x: str) -> object:
+    return x
+[builtins fixtures/tuple.pyi]
+
+[case testOverloadLiteralBroadBeforeLiteralErrors]
+# A broad type before a specific Literal means the Literal can never match.
+from typing import overload, Literal
+@overload
+def f(x: str) -> int: ...
+@overload
+def f(x: Literal["a"]) -> str: ...  # E: Overloaded function signature 2 will never be matched: signature 1's parameter type(s) are the same or broader
+def f(x: str) -> object:
+    return x
+[builtins fixtures/tuple.pyi]
+
+[case testOverloadLiteralImplErrorsNotSuppressed]
+# The literal fast path must not suppress implementation-body consistency errors.
+# Use bytes as the impl return type — incompatible with both int and str.
+from typing import overload, Literal
+@overload
+def f(x: Literal["a"]) -> int: ...
+@overload
+def f(x: Literal["b"]) -> str: ...
+def f(x: str) -> bytes:  # E: Overloaded function implementation cannot produce return type of signature 1  # E: Overloaded function implementation cannot produce return type of signature 2
+    return b""
+[builtins fixtures/tuple.pyi]
+
+[case testOverloadLiteralUnionDistinctNoError]
+# Literal unions with disjoint value sets are provably disjoint; no errors.
+from typing import overload, Literal, Union
+@overload
+def f(x: Literal["a", "b"]) -> int: ...
+@overload
+def f(x: Literal["c", "d"]) -> str: ...
+def f(x: str) -> object:
+    return x
+[builtins fixtures/tuple.pyi]
+
+[case testOverloadLiteralUnionOverlapErrors]
+# Literal unions that share a value are NOT disjoint and should be flagged.
+from typing import overload, Literal
+@overload
+def f(x: Literal["a", "b"]) -> int: ...  # E: Overloaded function signatures 1 and 2 overlap with incompatible return types
+@overload
+def f(x: Literal["b", "c"]) -> str: ...
+def f(x: str) -> object:
+    return x
+[builtins fixtures/tuple.pyi]
+
+[case testOverloadLiteralUnionMixedNoFastPath]
+# A union with a non-Literal member is not fingerprinted, so the full check runs.
+from typing import overload, Literal, Union
+@overload
+def f(x: Literal["a"]) -> int: ...  # E: Overloaded function signatures 1 and 2 overlap with incompatible return types
+@overload
+def f(x: Union[Literal["b"], str]) -> str: ...
+def f(x: str) -> object:
+    return x
+[builtins fixtures/tuple.pyi]
+
+[case testOverloadLiteralOptionalArgNotDisjoint]
+# Overloads that differ in an optional positional Literal arg still overlap:
+# a call like f(1) omits mode and matches both signatures.
+from typing import Literal, overload
+@overload
+def f(x: int, mode: Literal[True] = ...) -> int: ...  # E: Overloaded function signatures 1 and 2 overlap with incompatible return types  # N: Flipping the order of overloads will fix this error
+@overload
+def f(x: object, mode: Literal[False] = ...) -> str: ...
+def f(x: object, mode: bool = True) -> object: ...
+[builtins fixtures/tuple.pyi]
+
+[case testOverloadLiteralOptionalKwOnlyNotDisjoint]
+# Overloads that differ in an optional keyword-only Literal arg still overlap:
+# a call like f(1) omits mode and matches both signatures.
+from typing import Literal, overload
+@overload
+def f(x: int, *, mode: Literal[True] = ...) -> int: ...  # E: Overloaded function signatures 1 and 2 overlap with incompatible return types  # N: Flipping the order of overloads will fix this error
+@overload
+def f(x: object, *, mode: Literal[False] = ...) -> str: ...
+def f(x: object, *, mode: bool = True) -> object: ...
+[builtins fixtures/tuple.pyi]
