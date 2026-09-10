@@ -20,8 +20,9 @@ from mypy.nodes import (
     UnaryExpr,
     Var,
 )
+from mypyc.common import IS_FREE_THREADED
 from mypyc.ir.ops import BasicBlock
-from mypyc.ir.rtypes import is_fixed_width_rtype, is_tagged
+from mypyc.ir.rtypes import RVec, is_fixed_width_rtype, is_tagged
 from mypyc.irbuild.builder import IRBuilder
 from mypyc.irbuild.constant_fold import constant_fold_expr
 
@@ -119,5 +120,14 @@ def is_borrow_friendly_expr(self: IRBuilder, expr: Expression) -> bool:
             # Local variable reference can be borrowed
             return True
     if isinstance(expr, MemberExpr) and self.is_native_attr_ref(expr):
-        return True
+        # Borrowing a native attribute read is unsafe on free-threaded builds, since another
+        # thread could concurrently reassign the attribute and free the old value (this is the
+        # same rule transform_member_expr applies). We still borrow in two cases:
+        #  - Native Final attributes are read-only at runtime, so they can never be reassigned.
+        #  - Vec-typed attributes require manual synchronization, so we borrow them liberally.
+        return (
+            not IS_FREE_THREADED
+            or isinstance(self.node_type(expr), RVec)
+            or self.is_final_native_attr_ref(expr)
+        )
     return False
