@@ -1446,6 +1446,14 @@ reveal_type(F[str]().m())  # N: Revealed type is "__main__.F[builtins.str]"
 reveal_type(F[str]().mm(b'x'))  # N: Revealed type is "tuple[__main__.F[builtins.str], builtins.bytes]"
 [builtins fixtures/tuple.pyi]
 
+[case testTypingSelfInvalidLocationsTypeParams]
+# flags: --python-version 3.12
+from typing import Self
+
+class C:
+    def bounded[T: Self](self: T) -> None: ...  # E: Self type cannot be used in a type parameter bound
+    def constrained[T: (C, Self)](self: T) -> None: ...  # E: Self type cannot be used in a type parameter constraint
+
 [case testPEP695CallAlias]
 class C:
     def __init__(self, x: str) -> None: ...

@@ -1888,7 +1888,11 @@ class SemanticAnalyzer(
     ) -> TypeVarLikeExpr | None:
         fullname = self.qualified_name(type_param.name)
         if type_param.upper_bound:
-            upper_bound = self.anal_type(type_param.upper_bound, allow_placeholder=True)
+            upper_bound = self.anal_type(
+                type_param.upper_bound,
+                allow_placeholder=True,
+                prohibit_self_type="a type parameter bound",
+            )
             # TODO: we should validate the upper bound is valid for a given kind.
             if upper_bound is None:
                 # This and below copies special-casing for old-style type variables, that
@@ -1929,7 +1933,11 @@ class SemanticAnalyzer(
             values: list[Type] = []
             if type_param.values:
                 for value in type_param.values:
-                    analyzed = self.anal_type(value, allow_placeholder=True)
+                    analyzed = self.anal_type(
+                        value,
+                        allow_placeholder=True,
+                        prohibit_self_type="a type parameter constraint",
+                    )
                     if analyzed is None:
                         analyzed = PlaceholderType(None, [], context.line)
                     if has_type_vars(analyzed):
