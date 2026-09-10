@@ -281,6 +281,12 @@ TYPE_GUARD_POS_ARG_REQUIRED: Final = ErrorMessage("Type {} requires positional a
 # Match Statement
 MISSING_MATCH_ARGS: Final = 'Class "{}" doesn\'t define "__match_args__"'
 OR_PATTERN_ALTERNATIVE_NAMES: Final = "Alternative patterns bind different names"
+NAME_CAPTURE_MAKES_REMAINING_UNREACHABLE: Final = (
+    'Name capture "{}" makes remaining patterns unreachable'
+)
+WILDCARD_MAKES_REMAINING_UNREACHABLE: Final = (
+    "Wildcard pattern makes remaining patterns unreachable"
+)
 CLASS_PATTERN_GENERIC_TYPE_ALIAS: Final = (
     "Class pattern class must not be a type alias with type parameters"
 )
