@@ -650,11 +650,17 @@ int CPyStatics_Initialize(PyObject **statics,
     PyObject **result = statics;
     // Start with some hard-coded values
     *result++ = Py_None;
+#if !CPY_3_14_FEATURES
     Py_INCREF(Py_None);
+#endif
     *result++ = Py_False;
+#if !CPY_3_14_FEATURES
     Py_INCREF(Py_False);
+#endif
     *result++ = Py_True;
+#if !CPY_3_14_FEATURES
     Py_INCREF(Py_True);
+#endif
     if (strings) {
         for (; **strings != '\0'; strings++) {
             size_t num;
@@ -669,6 +675,9 @@ int CPyStatics_Initialize(PyObject **statics,
                 }
                 PyUnicode_InternInPlace(&obj);
                 *result++ = obj;
+#if CPY_3_14_FEATURES
+                CPy_SetImmortal(obj);
+#endif
                 data += len;
             }
         }
@@ -686,6 +695,9 @@ int CPyStatics_Initialize(PyObject **statics,
                     return -1;
                 }
                 *result++ = obj;
+#if CPY_3_14_FEATURES
+                CPy_SetImmortal(obj);
+#endif
                 data += len;
             }
         }
@@ -701,6 +713,9 @@ int CPyStatics_Initialize(PyObject **statics,
                 if (obj == NULL) {
                     return -1;
                 }
+#if CPY_3_14_FEATURES
+                CPy_SetImmortal(obj);
+#endif
                 data = end;
                 data++;
                 *result++ = obj;
@@ -714,6 +729,9 @@ int CPyStatics_Initialize(PyObject **statics,
             if (obj == NULL) {
                 return -1;
             }
+#if CPY_3_14_FEATURES
+            CPy_SetImmortal(obj);
+#endif
             *result++ = obj;
         }
     }
@@ -726,6 +744,9 @@ int CPyStatics_Initialize(PyObject **statics,
             if (obj == NULL) {
                 return -1;
             }
+#if CPY_3_14_FEATURES
+            CPy_SetImmortal(obj);
+#endif
             *result++ = obj;
         }
     }
@@ -737,10 +758,17 @@ int CPyStatics_Initialize(PyObject **statics,
             if (obj == NULL) {
                 return -1;
             }
+#if CPY_3_14_FEATURES
+            CPy_SetImmortal(obj);
+#endif
             int i;
             for (i = 0; i < num_items; i++) {
                 PyObject *item = statics[*tuples++];
+#if CPY_3_14_FEATURES
+                CPy_SetImmortal(item);
+#else
                 Py_INCREF(item);
+#endif
                 PyTuple_SET_ITEM(obj, i, item);
             }
             *result++ = obj;
@@ -754,9 +782,16 @@ int CPyStatics_Initialize(PyObject **statics,
             if (obj == NULL) {
                 return -1;
             }
+//#if CPY_3_14_FEATURES
+//            CPy_SetImmortal(obj);
+//#endif
             for (int i = 0; i < num_items; i++) {
                 PyObject *item = statics[*frozensets++];
+#if CPY_3_14_FEATURES
+                CPy_SetImmortal(item);
+#else
                 Py_INCREF(item);
+#endif
                 if (PySet_Add(obj, item) == -1) {
                     return -1;
                 }
