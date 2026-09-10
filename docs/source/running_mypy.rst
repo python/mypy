@@ -403,6 +403,11 @@ By default, :option:`--install-types <mypy --install-types>` shows a confirmatio
 Use :option:`--non-interactive <mypy --non-interactive>` to install all suggested
 stub packages without asking for confirmation *and* type check your code:
 
+If you maintain a lock file (for example ``pylock.toml``), you can combine
+:option:`--install-types <mypy --install-types>` with
+``--install-types-from-pylock FILE`` to install known stub packages for locked
+runtime dependencies while avoiding upgrades or downgrades of runtime packages.
+
 If you've already installed the relevant third-party libraries in an environment
 other than the one mypy is running in, you can use :option:`--python-executable
 <mypy --python-executable>` flag to point to the Python executable for that
