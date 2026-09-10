@@ -487,7 +487,7 @@ class SuggestionEngine:
         if self.no_errors and orig_errors:
             raise SuggestionFailure("Function does not typecheck.")
 
-        is_method = bool(node.info) and node.has_self_or_cls_argument
+        is_method = bool(node.info) and node.has_self_or_cls_parameter
 
         with state.strict_optional_set(graph[mod].options.strict_optional):
             guesses = self.get_guesses(
