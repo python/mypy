@@ -117,3 +117,17 @@ Indices and tables
 
 * :ref:`genindex`
 * :ref:`search`
+
+Documentation versions
+----------------------
+
+Mypy documentation on Read the Docs is built from released git tags.
+This allows users to browse documentation corresponding to older
+released versions of mypy.
+
+Using git tags for documentation versions avoids relying on long-lived
+maintenance branches and makes it easier to remove stale branches while
+still preserving historical documentation.
+
+Older documentation versions are kept available to support users
+working with pinned or legacy mypy releases.
