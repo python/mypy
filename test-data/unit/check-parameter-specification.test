@@ -1147,6 +1147,7 @@ from typing import Callable
 P = ParamSpec("P")
 
 def x(f: Callable[Concatenate[int, Concatenate[int, P]], None]) -> None: ...  # E: Nested Concatenates are invalid
+def y(f: Callable[Concatenate[Concatenate[...], ...], None]) -> None: ...  # E: Invalid location for Concatenate  # N: You can use Concatenate as the first argument to Callable
 [builtins fixtures/paramspec.pyi]
 
 [case testPropagatedAnyConstraintsAreOK]
