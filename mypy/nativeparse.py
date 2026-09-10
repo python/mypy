@@ -257,14 +257,10 @@ def native_parse(
 def native_parse_type_string(
     expr_string: str, line: int, column: int, end_line: int, end_column: int, options: Options
 ) -> ProperType:
-    # This is a horrible hack to work around a mypyc bug where imported
-    # module may be not ready in a thread sometimes.
-    t0 = time.time()
-    while ast_serialize is None:
-        time.sleep(0.0001)  # type: ignore[unreachable]
-        if time.time() - t0 > 10.0:
-            raise ImportError("Cannot import ast_serialize")
+    """Try to parse a string literal as a type expression (i.e. resolve a forward reference).
 
+    If parsing fails, a RawExpressionType will be returned.
+    """
     ast_bytes = ast_serialize.parse_type_string(
         expr_string, (line, column, end_line, end_column), cache_version=5
     )
