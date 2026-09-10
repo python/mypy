@@ -483,7 +483,7 @@ def is_complex(t: Type) -> bool:
 
 
 def is_special_form_any(t: AnyType) -> bool:
-    return get_original_any(t).type_of_any == TypeOfAny.special_form
+    return get_original_any(t).type_of_any in (TypeOfAny.special_form, TypeOfAny.from_alias_target)
 
 
 def get_original_any(t: AnyType) -> AnyType:

@@ -1381,6 +1381,22 @@ def h(i: int) -> None:  # E: Type of decorated function contains type "Any" ("Ca
     pass
 [builtins fixtures/list.pyi]
 
+[case testDisallowAnyDecoratedAliasToAny]
+# flags: --disallow-any-decorated
+from typing import Any, Callable, TypeVar
+from typing_extensions import TypeAlias
+
+F = TypeVar("F", bound=Callable[..., Any])
+AddressFormat: TypeAlias = Any
+
+def d(f: F) -> F:
+    return f
+
+@d
+def f(x: AddressFormat | None = None) -> int:
+    return 0
+[builtins fixtures/list.pyi]
+
 [case testDisallowAnyDecoratedReturnsCallableNoParams]
 # flags: --disallow-any-decorated
 from typing import Callable
