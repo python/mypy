@@ -46,6 +46,7 @@ python -m venv venv
 
 ```bash
 python -m pip install -r test-requirements.txt
+python -m pip install --group dev
 python -m pip install -e .
 hash -r  # This resets shell PATH cache, not necessary on Windows
 ```
