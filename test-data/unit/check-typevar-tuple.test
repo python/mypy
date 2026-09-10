@@ -957,6 +957,18 @@ def pipeline(*xs: Unpack[Tuple[int, Unpack[Tuple[str, ...]], bool]]) -> None:
     reduce(combine, xs)
 [builtins fixtures/tuple.pyi]
 
+[case testMultipleTypeVarTuplesInGenericBasesNoCrash]
+from typing import Generic
+from typing_extensions import TypeVarTuple, Unpack
+
+Ts = TypeVarTuple("Ts")
+Us = TypeVarTuple("Us")
+
+class C(Generic[Unpack[Ts]], Generic[Unpack[Us]]):  # E: Only single Generic[...] or Protocol[...] can be in bases \
+                                                     # E: Can only use one type var tuple in a class def
+    pass
+[builtins fixtures/tuple.pyi]
+
 [case testVariadicStarArgsCallNoCrash]
 from typing import TypeVar, Callable, Tuple
 from typing_extensions import TypeVarTuple, Unpack

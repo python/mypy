@@ -2295,6 +2295,14 @@ class D[*Ts](Generic[Unpack[Us]]):  # E: Generic[...] base class is redundant \
     pass
 [builtins fixtures/tuple.pyi]
 
+[case testPEP695MultipleTypeVarTuplesUsedAsBasesNoCrash]
+class C[*T, *U](T, U):  # E: Can only use one type var tuple in a class def \
+                        # E: All type parameters should be declared ("U" not declared) \
+                        # E: TypeVarTuple "T" is only valid with an unpack \
+                        # E: TypeVarTuple "U" is unbound
+    pass
+[builtins fixtures/tuple.pyi]
+
 [case testPEP695VariadicAliasUnpack]
 class C[*Ts]:
     pass
