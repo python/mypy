@@ -120,6 +120,8 @@ def run_cmd(name: str) -> int:
             cmd = ["pytest", f"mypy/test/testcheck.py::TypeCheckSuite::{name}"]
         else:
             cmd = ["pytest", "-n0", "-k", name]
+    if cmd[0] == "pytest" and "--update-data" in argv:
+        cmd += ["--update-data"]
     print(f"run {name}: {cmd}")
     proc = subprocess.run(cmd, stderr=subprocess.STDOUT)
     if proc.returncode:
@@ -165,6 +167,7 @@ def main() -> None:
             + " interpreted as individual test names / substring expressions"
             + " (or, if they end in .test, individual test files)"
             + " and this script will try to run them."
+            + " A flag of --update-data will be propagated through to all pytest commands."
         )
         if "-h" in args or "--help" in args:
             exit(1)
@@ -186,9 +189,10 @@ def main() -> None:
         args = [arg for arg in args if arg not in ("self", "lint")]
 
     for arg in args:
-        cmd_status = run_cmd(arg)
-        if cmd_status:
-            status = cmd_status
+        if arg != "--update-data":
+            cmd_status = run_cmd(arg)
+            if cmd_status:
+                status = cmd_status
 
     exit(status)
 
