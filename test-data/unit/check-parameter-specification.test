@@ -1275,7 +1275,8 @@ def c3(f: Callable[P, int], *args, **kwargs) -> int: ...
 def c4(f: Callable[P, int], *args: int, **kwargs: str) -> int:
     # but not ok to call:
     f(*args, **kwargs)  # E: Argument 1 has incompatible type "*tuple[int, ...]"; expected "P.args" \
-                        # E: Argument 2 has incompatible type "**dict[str, str]"; expected "P.kwargs"
+                        # E: Argument 2 has incompatible type "**dict[str, str]"; expected "P.kwargs" \
+                        # N: Consider annotating the ** argument as "**kwargs: Any" or using a TypedDict
     return 1
 
 def f1(f: Callable[P, int], *args, **kwargs: P.kwargs) -> int: ...  # E: ParamSpec must have "*args" typed as "P.args" and "**kwargs" typed as "P.kwargs"
@@ -1288,6 +1289,7 @@ def f5(f: Callable[P, int], *args: P.args, extra_keyword_arg: int, **kwargs: P.k
 P1 = ParamSpec('P1')
 
 def m1(f: Callable[P1, int], *a, **k: P1.kwargs) -> int: ...  # E: ParamSpec must have "*args" typed as "P1.args" and "**kwargs" typed as "P1.kwargs"
+
 [builtins fixtures/paramspec.pyi]
 
 
@@ -1305,7 +1307,8 @@ def c3(f: Callable[Concatenate[int, P], int], *args, **kwargs) -> int: ...
 def c4(f: Callable[Concatenate[int, P], int], *args: int, **kwargs: str) -> int:
     # but not ok to call:
     f(1, *args, **kwargs)  # E: Argument 2 has incompatible type "*tuple[int, ...]"; expected "P.args" \
-                           # E: Argument 3 has incompatible type "**dict[str, str]"; expected "P.kwargs"
+                           # E: Argument 3 has incompatible type "**dict[str, str]"; expected "P.kwargs" \
+                           # N: Consider annotating the ** argument as "**kwargs: Any" or using a TypedDict
     return 1
 
 def f1(f: Callable[Concatenate[int, P], int], *args, **kwargs: P.kwargs) -> int: ...  # E: ParamSpec must have "*args" typed as "P.args" and "**kwargs" typed as "P.kwargs"
@@ -1313,6 +1316,7 @@ def f2(f: Callable[Concatenate[int, P], int], *args: P.args, **kwargs) -> int: .
 def f3(f: Callable[Concatenate[int, P], int], *args: P.args) -> int: ...  # E: ParamSpec must have "*args" typed as "P.args" and "**kwargs" typed as "P.kwargs"
 def f4(f: Callable[Concatenate[int, P], int], **kwargs: P.kwargs) -> int: ...  # E: ParamSpec must have "*args" typed as "P.args" and "**kwargs" typed as "P.kwargs"
 def f5(f: Callable[Concatenate[int, P], int], *args: P.args, extra_keyword_arg: int, **kwargs: P.kwargs) -> int: ...  # E: Arguments not allowed after ParamSpec.args
+
 [builtins fixtures/paramspec.pyi]
 
 
@@ -2416,7 +2420,8 @@ def run3(func: Callable[Concatenate[int, P], T], *args: P.args, **kwargs: P.kwar
     func2 = partial(func, 1, *args)
     d = {"":""}
     func2(**d)  # E: Too few arguments \
-                # E: Argument 1 has incompatible type "**dict[str, str]"; expected "P.kwargs"
+                # E: Argument 1 has incompatible type "**dict[str, str]"; expected "P.kwargs" \
+                # N: Consider annotating the ** argument as "**kwargs: Any" or using a TypedDict
     return func2(**kwargs)
 
 def run4(func: Callable[Concatenate[int, P], T], *args: P.args, **kwargs: P.kwargs) -> T:
@@ -2452,6 +2457,12 @@ def run_bad4(func: Callable[Concatenate[int, P], T], *args: P.args, **kwargs: P.
     func2(1, **kwargs)  # E: Too few arguments \
                         # E: Argument 1 has incompatible type "int"; expected "P.args"
     return func2(**kwargs)  # E: Too few arguments
+
+
+
+
+
+
 
 [builtins fixtures/paramspec.pyi]
 
