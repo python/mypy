@@ -1175,6 +1175,23 @@ assert f() == 10
 A.x = 200
 assert f() == 200
 
+[case testSlotsNotEmittedAsClassVar]
+class Base:
+    __slots__ = ("value",)
+    value: int
+
+class Child(Base):
+    pass
+
+def make_child() -> Child:
+    child = Child()
+    child.value = 1
+    return child
+[file driver.py]
+from native import make_child
+
+assert make_child().value == 1
+
 [case testClassVarDoesNotShadowMethodGlobal]
 from typing import ClassVar
 from testutil import assertRaises
