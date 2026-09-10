@@ -6081,6 +6081,23 @@ inputs: Sequence[Component] = [{
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 
+[case testTypedDictTupleExpressionWithCollectionContext]
+import collections.abc
+from typing import Collection, TypedDict
+
+class Item(TypedDict):
+    x: int
+
+def take(items: Collection[Item]) -> None: ...
+def take_abc(items: collections.abc.Collection[Item]) -> None: ...
+
+take(({"x": 1}, {"x": 2}))
+take_abc(({"x": 1}, {"x": 2}))
+items: Collection[Item] = ({"x": 1}, {"x": 2})
+abc_items: collections.abc.Collection[Item] = ({"x": 1}, {"x": 2})
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
 [case testTypedDictAssignableToWiderContext]
 from typing import TypedDict, Union
 
