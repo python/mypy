@@ -35,6 +35,7 @@ from mypy.nodes import (
     OpExpr,
     ParamSpecExpr,
     PromoteExpr,
+    RefExpr,
     RevealExpr,
     SetComprehension,
     SetExpr,
@@ -45,6 +46,7 @@ from mypy.nodes import (
     TemplateStrExpr,
     TempNode,
     TupleExpr,
+    TypeAlias,
     TypeAliasExpr,
     TypeApplication,
     TypedDictExpr,
@@ -56,6 +58,7 @@ from mypy.nodes import (
     YieldExpr,
     YieldFromExpr,
 )
+from mypy.types import is_named_instance
 from mypy.visitor import ExpressionVisitor
 
 # [Note Literals and literal_hash]
@@ -98,6 +101,9 @@ from mypy.visitor import ExpressionVisitor
 
 
 Key: _TypeAlias = tuple[Any, ...]
+LITERAL_NAMES: Final = frozenset(
+    ("builtins.True", "builtins.False", "builtins.None", "builtins.NotImplemented")
+)
 
 
 def literal_hash(e: Expression) -> Key | None:
@@ -136,10 +142,23 @@ def literal(e: Expression) -> int:
         else:
             return LITERAL_NO
 
-    elif isinstance(e, NameExpr):
-        if isinstance(e.node, Var) and e.node.is_final and e.node.final_value is not None:
+    elif isinstance(e, RefExpr):
+        if (
+            isinstance(e, NameExpr)
+            and isinstance(e.node, Var)
+            and e.node.is_final
+            and e.node.final_value is not None
+        ):
             return LITERAL_YES
-        return LITERAL_TYPE
+
+        if e.fullname in LITERAL_NAMES:
+            return LITERAL_YES
+        elif isinstance(e.node, TypeAlias) and not e.node.python_3_12_type_alias:
+            if is_named_instance(e.node.target, LITERAL_NAMES):
+                return LITERAL_YES
+
+        if isinstance(e, NameExpr):
+            return LITERAL_TYPE
 
     if isinstance(e, (IntExpr, FloatExpr, ComplexExpr, StrExpr, BytesExpr)):
         return LITERAL_YES
