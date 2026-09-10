@@ -40,6 +40,7 @@ from mypy.types import (
     LiteralType,
     NoneType,
     Overloaded,
+    Parameters,
     ProperType,
     SentinelValue,
     TupleType,
@@ -299,6 +300,41 @@ class TypeOpsSuite(Suite):
 
     def test_expand_basic_generic_types(self) -> None:
         self.assert_expand(self.fx.gt, [(self.fx.t.id, self.fx.a)], self.fx.ga)
+
+    def test_expand_parameters_type_var_tuple_twice(self) -> None:
+        initial = Parameters(
+            [UnpackType(self.fx.ts), self.fx.d],
+            [ARG_STAR, ARG_NAMED],
+            ["args", "flag"],
+            variables=[self.fx.ts],
+        )
+        first = mypy.expandtype.expand_type(
+            initial,
+            {
+                self.fx.ts.id: TupleType(
+                    [self.fx.a, UnpackType(self.fx.us), self.fx.b], self.fx.std_tuple
+                )
+            },
+        )
+        assert isinstance(first, Parameters)
+        assert first == Parameters(
+            [
+                self.fx.a,
+                UnpackType(TupleType([UnpackType(self.fx.us), self.fx.b], self.fx.std_tuple)),
+                self.fx.d,
+            ],
+            [ARG_POS, ARG_STAR, ARG_NAMED],
+            [None, "args", "flag"],
+        )
+
+        second = mypy.expandtype.expand_type(
+            first, {self.fx.us.id: TupleType([self.fx.c], self.fx.std_tuple)}
+        )
+        assert second == Parameters(
+            [self.fx.a, self.fx.c, self.fx.b, self.fx.d],
+            [ARG_POS, ARG_POS, ARG_POS, ARG_NAMED],
+            [None, None, None, "flag"],
+        )
 
     # IDEA: Add test cases for
     #   tuple types
@@ -1655,7 +1691,7 @@ def make_call(*items: tuple[str, str | None]) -> CallExpr:
 class TestExpandTypeLimitGetProperType(TestCase):
     # WARNING: do not increase this number unless absolutely necessary,
     # and you understand what you are doing.
-    ALLOWED_GET_PROPER_TYPES = 7
+    ALLOWED_GET_PROPER_TYPES = 8
 
     @skipUnless(mypy.expandtype.__file__.endswith(".py"), "Skip for compiled mypy")
     def test_count_get_proper_type(self) -> None:
