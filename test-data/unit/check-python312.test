@@ -1695,6 +1695,22 @@ e: M[bool]  # E: Value of type variable "T" of "M" cannot be "bool"
 [builtins fixtures/tuple.pyi]
 [typing fixtures/typing-full.pyi]
 
+[case testMatchClassPatternCapturePEP695GenericNamedTupleAlreadyKnown]
+# flags: --warn-unreachable
+from typing import NamedTuple
+
+class N[T](NamedTuple):
+    x: T
+
+def f(n: N[int]) -> int:
+    match n:
+        case N(x=value):
+            return value
+        case _:
+            return "oops"  # E: Statement is unreachable
+[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-full.pyi]
+
 [case testPEP695GenericTypedDict]
 from typing import TypedDict
 
