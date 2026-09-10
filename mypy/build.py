@@ -3211,6 +3211,12 @@ class State:
 
         if raw_data is None:
             source = self.get_source()
+            if (
+                self.source is not None
+                and codes.IGNORE_WITHOUT_CODE in self.options.enabled_error_codes
+                and codes.IGNORE_WITHOUT_CODE not in self.options.disabled_error_codes
+            ):
+                self.manager.errors.set_source_lines(self.xpath, source.splitlines())
         else:
             source = ""
         manager = self.manager

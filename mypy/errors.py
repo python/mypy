@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+import io
 import os.path
+import re
 import sys
+import tokenize
 import traceback
 from collections import defaultdict
 from collections.abc import Callable, Iterable, Iterator
@@ -60,6 +63,8 @@ HIDE_LINK_CODES: Final = {
     # Overrides have a custom link to docs
     codes.OVERRIDE,
 }
+
+TYPE_IGNORE_PATTERN: Final = re.compile(r"#\s*type:\s*ignore\b")
 
 BASE_RTD_URL: Final = "https://mypy.rtfd.io/en/stable/_refs.html#code"
 
@@ -464,6 +469,12 @@ class Errors:
     # (path -> line -> error-codes)
     ignored_lines: dict[str, dict[int, list[str]]]
 
+    # Source locations of type ignore comments (path -> line -> (column, end column)).
+    type_ignore_ranges: dict[str, dict[int, tuple[int, int]]]
+
+    # Sources supplied directly instead of read from the filesystem.
+    source_lines: dict[str, list[str]]
+
     # Lines that were skipped during semantic analysis e.g. due to ALWAYS_FALSE, MYPY_FALSE,
     # or platform/version checks. Those lines would not be type-checked.
     skipped_lines: dict[str, set[int]]
@@ -517,6 +528,8 @@ class Errors:
         self.import_ctx = []
         self.function_or_member = [None]
         self.ignored_lines = {}
+        self.type_ignore_ranges = {}
+        self.source_lines = {}
         self.skipped_lines = {}
         self.used_ignored_lines = defaultdict(lambda: defaultdict(list))
         self.ignored_files = set()
@@ -566,8 +579,41 @@ class Errors:
         self, file: str, ignored_lines: dict[int, list[str]], ignore_all: bool = False
     ) -> None:
         self.ignored_lines[file] = ignored_lines
+        self.type_ignore_ranges.pop(file, None)
         if ignore_all:
             self.ignored_files.add(file)
+
+    def set_source_lines(self, file: str, source_lines: list[str]) -> None:
+        self.source_lines[file] = source_lines
+        self.type_ignore_ranges.pop(file, None)
+
+    def type_ignore_range(self, file: str, line: int) -> tuple[int, int]:
+        if file not in self.type_ignore_ranges:
+            source_lines = self.source_lines.pop(file, None)
+            if source_lines is None and self.read_source is not None:
+                source_path = self.find_shadow_file_mapping(file) or file
+                source_lines = self.read_source(source_path)
+
+            ranges: dict[int, tuple[int, int]] = {}
+            if source_lines is not None:
+                source = "\n".join(source_lines)
+                try:
+                    tokens = tokenize.generate_tokens(io.StringIO(source).readline)
+                    for token in tokens:
+                        if token.type == tokenize.COMMENT and TYPE_IGNORE_PATTERN.match(
+                            token.string
+                        ):
+                            token_line = token.start[0]
+                            source_line = source_lines[token_line - 1]
+                            # AST columns, and thus mypy columns, are UTF-8 byte offsets.
+                            column = len(source_line[: token.start[1]].encode("utf-8"))
+                            end_column = len(source_line[: token.end[1]].encode("utf-8"))
+                            ranges[token_line] = (column, end_column)
+                except (IndentationError, tokenize.TokenError):
+                    pass
+            self.type_ignore_ranges[file] = ranges
+
+        return self.type_ignore_ranges[file].get(line, (-1, -1))
 
     def set_skipped_lines(self, file: str, skipped_lines: set[int]) -> None:
         self.skipped_lines[file] = skipped_lines
@@ -728,7 +774,14 @@ class Errors:
         self._add_error_info(file, info)
 
     def report_simple_error(
-        self, file: str, line: int, message: str, code: ErrorCode | None
+        self,
+        file: str,
+        line: int,
+        message: str,
+        code: ErrorCode | None,
+        *,
+        column: int = -1,
+        end_column: int = -1,
     ) -> None:
         """Generate a simple error in a module.
 
@@ -738,9 +791,9 @@ class Errors:
             import_ctx=self.import_context(),
             local_ctx=(None, None),
             line=line,
-            column=-1,
+            column=column,
             end_line=line,
-            end_column=-1,
+            end_column=end_column,
             severity="error",
             message=message,
             code=code,
@@ -960,7 +1013,15 @@ class Errors:
 
             message = f'"type: ignore" comment without error code{codes_hint}'
             # Don't use report() since add_error_info will ignore the error!
-            self.report_simple_error(file, line, message, code=codes.IGNORE_WITHOUT_CODE)
+            column, end_column = self.type_ignore_range(file, line)
+            self.report_simple_error(
+                file,
+                line,
+                message,
+                code=codes.IGNORE_WITHOUT_CODE,
+                column=column,
+                end_column=end_column,
+            )
 
     def num_messages(self) -> int:
         """Return the number of generated messages."""
