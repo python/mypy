@@ -27,6 +27,7 @@ def test_error_stream(testcase: DataDrivenTestCase) -> None:
     options = Options()
     options.show_traceback = True
     options.hide_error_codes = True
+    options.pretty = False
 
     logged_messages: list[str] = []
 
