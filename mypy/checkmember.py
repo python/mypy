@@ -33,6 +33,7 @@ from mypy.nodes import (
     MypyFile,
     NameExpr,
     OverloadedFuncDef,
+    RefExpr,
     SymbolTable,
     TempNode,
     TypeAlias,
@@ -1304,6 +1305,21 @@ def analyze_class_attribute_access(
         result = t
         # __set__ is not called on class objects.
         if not mx.is_lvalue:
+            if is_decorated and any(
+                isinstance(d, RefExpr) and d.fullname == "functools.cached_property"
+                for d in cast(Decorator, node.node).original_decorators
+            ):
+                # Accessing a functools.cached_property through the class object
+                # returns the descriptor itself, not the getter. At runtime the
+                # value is a ``cached_property`` instance (with attributes like
+                # ``attrname`` and ``func``), which typeshed models via
+                # ``__get__(self, instance: None, ...) -> Self``. (#21825)
+                getter_type = get_proper_type(t)
+                if isinstance(getter_type, CallableType):
+                    cached_property = lookup_stdlib_typeinfo(
+                        "functools.cached_property", modules_state.modules
+                    )
+                    result = Instance(cached_property, [getter_type.ret_type])
             result = analyze_descriptor_access(result, mx)
 
         return apply_class_attr_hook(mx, hook, result)
