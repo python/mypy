@@ -1256,6 +1256,36 @@ def test_native_class_keywords() -> None:
 def test_non_ext_class_keywords() -> None:
     assert non_ext_seen == {"marker": 2, "label": "non-ext"}
 
+[case testPrepareReceivedClassKeywords]
+from typing import Any
+from mypy_extensions import mypyc_attr
+
+seen: dict[str, object] = {}
+
+@mypyc_attr(native_class=False)
+class Meta(type):
+    @classmethod
+    def __prepare__(
+        mcls, name: str, bases: tuple[type, ...], /, **kwargs: Any
+    ) -> dict[str, object]:
+        global seen
+        seen = kwargs
+        return {}
+
+@mypyc_attr(native_class=False)
+class Base(metaclass=Meta):
+    def __init_subclass__(cls, **kwargs: object) -> None:
+        pass
+
+@mypyc_attr(native_class=False)
+class Child(Base, marker=1):
+    pass
+
+def test_prepare_received_class_keywords() -> None:
+    assert seen == {"marker": 1}, seen
+
+test_prepare_received_class_keywords()
+
 [case testDefaultVars]
 from typing import Optional
 class A:

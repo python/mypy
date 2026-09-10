@@ -271,7 +271,7 @@ class NonExtClassBuilder(ClassBuilder):
         # Class header expressions are evaluated before invoking __prepare__.
         self.class_keyword_values = load_class_keyword_values(self.builder, self.cdef)
         non_ext_dict = setup_non_ext_dict(
-            self.builder, self.cdef, non_ext_metaclass, non_ext_bases
+            self.builder, self.cdef, non_ext_metaclass, non_ext_bases, self.class_keyword_values
         )
         # We populate __annotations__ for non-extension classes
         # because dataclasses uses it to determine which attributes to compute on.
@@ -647,11 +647,17 @@ def find_non_ext_metaclass(builder: IRBuilder, cdef: ClassDef, bases: Value) -> 
 
 
 def setup_non_ext_dict(
-    builder: IRBuilder, cdef: ClassDef, metaclass: Value, bases: Value
+    builder: IRBuilder,
+    cdef: ClassDef,
+    metaclass: Value,
+    bases: Value,
+    class_keyword_values: list[tuple[str, Value]],
 ) -> Value:
     """Initialize the class dictionary for a non-extension class.
 
-    This class dictionary is passed to the metaclass constructor.
+    This class dictionary is passed to the metaclass constructor. If the
+    metaclass defines ``__prepare__``, class definition keywords are passed to
+    it as well.
     """
     # Check if the metaclass defines a __prepare__ method, and if so, call it.
     has_prepare = builder.primitive_op(
@@ -666,7 +672,20 @@ def setup_non_ext_dict(
     builder.activate_block(true_block)
     cls_name = builder.load_str(cdef.name)
     prepare_meth = builder.py_get_attr(metaclass, "__prepare__", cdef.line)
-    prepare_dict = builder.py_call(prepare_meth, [cls_name, bases], cdef.line)
+    prepare_args = [cls_name, bases]
+    prepare_arg_kinds = [ARG_POS, ARG_POS]
+    prepare_arg_names: list[str | None] = [None, None]
+    for name, value in class_keyword_values:
+        prepare_args.append(value)
+        prepare_arg_kinds.append(ARG_NAMED)
+        prepare_arg_names.append(name)
+    prepare_dict = builder.py_call(
+        prepare_meth,
+        prepare_args,
+        cdef.line,
+        arg_kinds=prepare_arg_kinds,
+        arg_names=prepare_arg_names,
+    )
     builder.assign(non_ext_dict, prepare_dict, cdef.line)
     builder.goto(exit_block)
 
