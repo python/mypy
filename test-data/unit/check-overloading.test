@@ -1105,6 +1105,31 @@ class B(A):
     def f(self, x: str) -> str: return ''
 [out]
 
+[case testOverloadedMethodWithNarrowerReturnTypes]
+from typing import overload, Union, Optional
+
+class A:
+    def view(self, x: Optional[int] = None) -> "A":
+        ...
+
+class B(A):
+    def view(self, x: Optional[int] = None) -> "B":
+        return B()
+
+class C(A):
+    @overload  # Should be allowed since B is a subtype of A
+    def view(self, x: int) -> B: ...
+    @overload  # Should be allowed since C is a subtype of A
+    def view(self, x: None = None) -> "C": ...
+    def view(self, x: Optional[int] = None) -> Union[B, C]:
+        if x is None:
+            return C()
+        else:
+            return B()
+
+reveal_type(C().view(None))  # N: Revealed type is "__main__.C"
+reveal_type(C().view(5))     # N: Revealed type is "__main__.B"
+
 [case testOverrideOverloadedMethodWithMoreSpecificArgumentTypes]
 from foo import *
 [file foo.pyi]
