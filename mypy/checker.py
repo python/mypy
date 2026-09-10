@@ -3712,6 +3712,10 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                 return
             rvalue_type = self.expr_checker.accept(rvalue)
             rvalue_type = get_proper_type(rvalue_type)
+            if var not in partial_types:
+                # Evaluating rvalue may have already resolved this partial type
+                # (e.g. a walrus assignment to the same variable inside rvalue).
+                return
             if isinstance(rvalue_type, Instance):
                 if rvalue_type.type == typ.type and is_valid_inferred_type(
                     rvalue_type, self.options

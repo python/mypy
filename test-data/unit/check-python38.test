@@ -455,6 +455,15 @@ def check_partial_list() -> None:
     reveal_type(z)  # N: Revealed type is "builtins.list[builtins.int]"
 [builtins fixtures/list.pyi]
 
+[case testWalrusPartialTypeShadowedInComprehension]
+# https://github.com/python/mypy/issues/20792
+errors = []
+errors = [
+    i for i in [1, 2, 3] if (errors := [1])
+]
+reveal_type(errors)  # N: Revealed type is "builtins.list[builtins.int]"
+[builtins fixtures/list.pyi]
+
 [case testWalrusAssignmentAndConditionScopeForLiteral]
 # flags: --warn-unreachable
 
