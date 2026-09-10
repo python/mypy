@@ -3913,6 +3913,22 @@ def foo(arg: Type[Tuple[int]]):
     arg()  # E: Cannot instantiate type "type[tuple[int]]"
 [builtins fixtures/tuple.pyi]
 
+[case testTypeCanInstantiateNoneType]
+from types import NoneType
+
+type(None)()
+NoneType()
+
+def f(n: type[None]) -> None:
+    n()
+
+def g(n: type[NoneType]) -> None:  # E: NoneType should not be used as a type, please use None instead
+    n()
+
+f(NoneType)
+g(NoneType)
+[builtins fixtures/tuple.pyi]
+
 [case testTypeUsingTypeCOverloadedClass]
 from foo import *
 [file foo.pyi]
