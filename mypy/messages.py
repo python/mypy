@@ -2325,6 +2325,21 @@ class MessageBuilder:
                             offset=OFFSET,
                             parent_error=parent_error,
                         )
+                    elif (
+                        not is_lvalue
+                        and IS_SETTABLE in get_member_flags(name, supertype)
+                        and is_subtype(got, exp, options=self.options)
+                    ):
+                        self.note(
+                            f'Consider making "{name}" in "{supertype.type.name}" read-only, '
+                            "e.g. by using a read-only property, since a mutable protocol "
+                            "member is invariant -- see "
+                            "https://mypy.readthedocs.io/en/stable/protocols.html"
+                            "#invariance-of-protocol-attributes",
+                            context,
+                            offset=OFFSET,
+                            parent_error=parent_error,
+                        )
                 else:
                     self.note(
                         "Expected{}:".format(setter_suffix),
