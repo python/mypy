@@ -248,3 +248,63 @@ import typedpkg_ns.b  # type: ignore
 import typedpkg_ns.a
 [out]
 [out2]
+
+[case testUntypedParentWithTypedSubDoesNotBreakReExports]
+# pkgs: untypedpkg_w_typed_sub
+# Regression: untyped parent with a typed subpackage. The parent gets a
+# synthetic __getattr__ so unresolved attrs return Any (no spurious
+# attr-defined), but real submodules still win in attribute lookup so
+# dotted access through the parent stays precisely typed.
+import other
+from untypedpkg_w_typed_sub import re_exported  # type: ignore[import-untyped]
+reveal_type(re_exported)
+[file other.py]
+import untypedpkg_w_typed_sub.typed_sub  # type: ignore[import-untyped]
+import untypedpkg_w_typed_sub.typed_sub as ts  # type: ignore[import-untyped]
+from untypedpkg_w_typed_sub import typed_sub  # type: ignore[import-untyped]
+from untypedpkg_w_typed_sub.typed_sub import EXAMPLE_CONST  # type: ignore[import-untyped]
+reveal_type(untypedpkg_w_typed_sub.typed_sub.EXAMPLE_CONST)
+reveal_type(ts.EXAMPLE_CONST)
+reveal_type(typed_sub.EXAMPLE_CONST)
+reveal_type(EXAMPLE_CONST)
+[out]
+other.py:5: note: Revealed type is "int"
+other.py:6: note: Revealed type is "int"
+other.py:7: note: Revealed type is "int"
+other.py:8: note: Revealed type is "int"
+testUntypedParentWithTypedSubDoesNotBreakReExports.py:8: note: Revealed type is "Any"
+
+[case testUntypedParentWithTypedSubFollowUntypedImports]
+# pkgs: untypedpkg_w_typed_sub
+# flags: --follow-untyped-imports
+# When the user opts into precise untyped-import analysis, mypy parses the
+# parent's __init__.py for real -- so the re-export gets its precise type
+# (not Any), and unknown attributes correctly raise attr-defined. The
+# synthetic __getattr__ fix stays dormant in this mode.
+import untypedpkg_w_typed_sub
+import untypedpkg_w_typed_sub.typed_sub
+from untypedpkg_w_typed_sub import re_exported
+reveal_type(re_exported)
+reveal_type(untypedpkg_w_typed_sub.typed_sub.EXAMPLE_CONST)
+untypedpkg_w_typed_sub.nonexistent
+[out]
+testUntypedParentWithTypedSubFollowUntypedImports.py:10: note: Revealed type is "def () -> int"
+testUntypedParentWithTypedSubFollowUntypedImports.py:11: note: Revealed type is "int"
+testUntypedParentWithTypedSubFollowUntypedImports.py:12: error: Module has no attribute "nonexistent"
+
+[case testUntypedParentWithTypedSubGetattrIsHidden]
+# pkgs: untypedpkg_w_typed_sub
+# The synthetic __getattr__ must not leak as a user-visible attribute or
+# satisfy `from pkg import __getattr__`. Direct access to `pkg.__getattr__`
+# should fall through to `types.ModuleType.__getattr__` -- the same answer
+# a plain untyped module would give.
+import untypedpkg_w_typed_sub.typed_sub  # type: ignore[import-untyped]
+import untypedpkg_w_typed_sub  # type: ignore[import-untyped]
+reveal_type(untypedpkg_w_typed_sub.__getattr__)
+from untypedpkg_w_typed_sub import __getattr__ as g  # type: ignore[import-untyped]
+reveal_type(g)
+[out]
+testUntypedParentWithTypedSubGetattrIsHidden.py:8: note: Revealed type is "def (str) -> Any"
+testUntypedParentWithTypedSubGetattrIsHidden.py:9: error: Module "untypedpkg_w_typed_sub" does not explicitly export attribute "__getattr__"
+testUntypedParentWithTypedSubGetattrIsHidden.py:9: note: Error code "attr-defined" not covered by "type: ignore[import-untyped]" comment
+testUntypedParentWithTypedSubGetattrIsHidden.py:10: note: Revealed type is "Any"
