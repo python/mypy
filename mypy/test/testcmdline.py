@@ -35,7 +35,13 @@ import pytest
 python3_path = sys.executable
 
 # Files containing test case descriptions.
-cmdline_files = ["cmdline.test", "cmdline.pyproject.test", "reports.test", "envvars.test"]
+cmdline_files = [
+    "cmdline.test",
+    "cmdline.pyproject.test",
+    "cmdline.mypy_toml.test",
+    "reports.test",
+    "envvars.test",
+]
 
 
 class PythonCmdlineSuite(DataSuite):

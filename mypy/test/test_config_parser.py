@@ -25,7 +25,10 @@ def chdir(target: Path) -> Iterator[None]:
 def write_config(path: Path, content: str | None = None) -> None:
     if path.suffix == ".toml":
         if content is None:
-            content = "[tool.mypy]\nstrict = true"
+            if path.name == "pyproject.toml":
+                content = "[tool.mypy]\nstrict = true"
+            else:
+                content = "strict = true"
         path.write_text(content)
     else:
         if content is None:
@@ -82,6 +85,8 @@ class FindConfigFileSuite(unittest.TestCase):
             setup_cfg = tmpdir / "setup.cfg"
             mypy_ini = tmpdir / "mypy.ini"
             dot_mypy = tmpdir / ".mypy.ini"
+            mypy_toml = tmpdir / "mypy.toml"
+            dot_mypy_toml = tmpdir / ".mypy.toml"
 
             child = tmpdir / "child"
             child.mkdir()
@@ -91,6 +96,8 @@ class FindConfigFileSuite(unittest.TestCase):
                 write_config(setup_cfg)
                 write_config(mypy_ini)
                 write_config(dot_mypy)
+                write_config(mypy_toml)
+                write_config(dot_mypy_toml)
 
                 with chdir(cwd):
                     result = _find_config_file()
@@ -103,6 +110,16 @@ class FindConfigFileSuite(unittest.TestCase):
                     assert os.path.basename(result[2]) == ".mypy.ini"
 
                     dot_mypy.unlink()
+                    result = _find_config_file()
+                    assert result is not None
+                    assert os.path.basename(result[2]) == "mypy.toml"
+
+                    mypy_toml.unlink()
+                    result = _find_config_file()
+                    assert result is not None
+                    assert os.path.basename(result[2]) == ".mypy.toml"
+
+                    dot_mypy_toml.unlink()
                     result = _find_config_file()
                     assert result is not None
                     assert os.path.basename(result[2]) == "pyproject.toml"
