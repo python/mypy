@@ -381,6 +381,8 @@ Example:
 
 .. code-block:: python
 
+    # mypy: enable-error-code="truthy-iterable"
+
     from collections.abc import Iterable
 
     def transform(items: Iterable[int]) -> list[int]:
@@ -457,6 +459,8 @@ silence the error:
 
 .. code-block:: python
 
+    # mypy: enable-error-code="unused-awaitable"
+
     async def g() -> None:
         _ = asyncio.create_task(f())  # No error
 
@@ -475,7 +479,7 @@ Example:
 
 .. code-block:: python
 
-    # Use "mypy --warn-unused-ignores ..."
+    # mypy: warn-unused-ignores
 
     def add(a: int, b: int) -> int:
         # Error: unused "type: ignore" comment
@@ -490,7 +494,7 @@ Example:
 
 .. code-block:: python
 
-    # Use "mypy --warn-unused-ignores ..."
+    # mypy: warn-unused-ignores
 
     import sys
 
@@ -556,6 +560,8 @@ this check is not enabled by default. The example below is unsafe, and will be
 flagged when this error code is enabled:
 
 .. code-block:: python
+
+    # mypy: enable-error-code="mutable-override"
 
     from typing import Any
 
@@ -650,6 +656,8 @@ Example:
 
 .. code-block:: python
 
+        # mypy: enable-error-code="exhaustive-match"
+
         import enum
 
 
@@ -689,6 +697,8 @@ mypy generates an error if a typed function is wrapped by an untyped decorator
 Example:
 
 .. code-block:: python
+
+        # mypy: disallow-untyped-decorators
 
         def printing_decorator(func):
             def wrapper(*args, **kwds):
