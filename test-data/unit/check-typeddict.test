@@ -3004,6 +3004,32 @@ d[True] # E: TypedDict key must be a string literal; expected one of ("foo")
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 
+[case testTypedDictEnumKey]
+# flags: --python-version 3.11
+from enum import Enum, StrEnum
+from typing import TypedDict
+
+class PlainEnum(Enum):
+    foo = "foo"
+
+class StringEnum(StrEnum):
+    foo = "foo"
+
+class StringMixinEnum(str, Enum):
+    foo = "foo"
+
+class TD(TypedDict):
+    foo: int
+
+d: TD
+d[PlainEnum.foo]  # E: TypedDict key must be a string literal; expected one of ("foo")
+d[PlainEnum.foo] = 1  # E: TypedDict key must be a string literal; expected one of ("foo") \
+    # E: Argument 1 to "__setitem__" has incompatible type "PlainEnum"; expected "str"
+reveal_type(d[StringEnum.foo])  # N: Revealed type is "builtins.int"
+reveal_type(d[StringMixinEnum.foo])  # N: Revealed type is "builtins.int"
+[builtins fixtures/enum.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
 [case testTypedDictUppercaseKey]
 from typing import TypedDict
 
