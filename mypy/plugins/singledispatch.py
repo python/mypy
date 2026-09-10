@@ -106,7 +106,8 @@ def create_singledispatch_function_callback(ctx: FunctionContext) -> Type:
         # singledispatch returns an instance of functools._SingleDispatchCallable according to
         # typeshed
         singledispatch_obj = get_proper_type(ctx.default_return_type)
-        assert isinstance(singledispatch_obj, Instance)
+        if not isinstance(singledispatch_obj, Instance):
+            return ctx.default_return_type
         singledispatch_obj.args += (func_type,)
 
     return ctx.default_return_type
