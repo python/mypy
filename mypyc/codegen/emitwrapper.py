@@ -659,7 +659,10 @@ def generate_set_del_item_wrapper(cl: ClassIR, fn: FuncIR, emitter: Emitter) -> 
         emitter.emit_line(f"return {del_name}(obj_{args[0].name}, obj_{args[1].name});")
     else:
         # Try to call superclass method instead
-        emitter.emit_line(f"PyObject *super = CPy_Super(CPyModule_builtins, obj_{args[0].name});")
+        emitter.emit_line(
+            "PyObject *super = "
+            f"CPy_Super(CPyImport_GetModuleCache(&CPyModule_builtins), obj_{args[0].name});"
+        )
         emitter.emit_line("if (super == NULL) return -1;")
         emitter.emit_line(
             'PyObject *result = PyObject_CallMethod(super, "__delitem__", "O", obj_{});'.format(
@@ -675,7 +678,10 @@ def generate_set_del_item_wrapper(cl: ClassIR, fn: FuncIR, emitter: Emitter) -> 
     if method_cls and method_cls[1] == cl:
         generate_set_del_item_wrapper_inner(fn, emitter, args)
     else:
-        emitter.emit_line(f"PyObject *super = CPy_Super(CPyModule_builtins, obj_{args[0].name});")
+        emitter.emit_line(
+            "PyObject *super = "
+            f"CPy_Super(CPyImport_GetModuleCache(&CPyModule_builtins), obj_{args[0].name});"
+        )
         emitter.emit_line("if (super == NULL) return -1;")
         emitter.emit_line("PyObject *result;")
 

@@ -73,9 +73,12 @@ from mypyc.common import (
     IS_FREE_THREADED,
     KEEP_ALIVE_SHORT_LIVED,
     KEEP_ALIVE_WHOLE_EXPRESSION,
-    MODULE_PREFIX,
     SELF_NAME,
     TEMP_ATTR_NAME,
+    module_exec_name,
+    module_import_state_name,
+    module_init_only_name,
+    module_lock_api_name,
     shared_lib_name,
 )
 from mypyc.crash import catch_errors
@@ -167,7 +170,10 @@ from mypyc.primitives.list_ops import (
 from mypyc.primitives.misc_ops import (
     check_unpack_count_op,
     get_module_dict_op,
+    import_cache_get_for_import_op,
+    import_cache_replace_for_import_op,
     import_op,
+    native_import_is_initialized_op,
     native_import_op,
 )
 from mypyc.primitives.registry import CFunctionDescription, function_ops
@@ -523,24 +529,45 @@ class IRBuilder:
         self.imports[module] = None
 
         needs_import, out = BasicBlock(), BasicBlock()
-        self.check_if_module_loaded(module, line, needs_import, out)
+        module_static = LoadStatic(object_rprimitive, module, namespace=NAMESPACE_MODULE)
+        module_cache = self.add(LoadAddress(c_pointer_rprimitive, module_static))
+        is_native_module = self.is_native_module(module)
+        group_name = self.mapper.group_map.get(self.module_name)
+        is_same_group_native = is_native_module and self.mapper.group_map.get(module) == group_name
+        module_id: Value | None = None
+        import_state: Value | None = None
+        module_lock_api: Value | None = None
+        if is_same_group_native:
+            import_state = self.add(
+                LoadAddress(c_pointer_rprimitive, module_import_state_name(module))
+            )
+            if group_name is not None:
+                module_lock_api = self.add(
+                    LoadGlobal(c_pointer_rprimitive, module_lock_api_name(group_name))
+                )
+            else:
+                module_lock_api = Integer(0, c_pointer_rprimitive)
+        else:
+            module_id = self.load_str(module, line)
+        self.check_if_module_loaded(module_id, module_cache, line, needs_import, out, import_state)
 
         self.activate_block(needs_import)
-        if self.is_native_module(module) and self.is_same_group_module(module):
+        if is_same_group_native:
+            assert import_state is not None
+            assert module_lock_api is not None
             # Use custom import machinery for native-to-native imports in the same group
             init_only_func = self.add(
-                LoadGlobal(c_pointer_rprimitive, f"CPyInitOnly_{exported_name(module)}")
+                LoadGlobal(c_pointer_rprimitive, module_init_only_name(module))
             )
-            exec_func = self.add(
-                LoadGlobal(c_pointer_rprimitive, f"CPyExec_{exported_name(module)}")
-            )
-            module_static = self.add(
+            exec_func = self.add(LoadGlobal(c_pointer_rprimitive, module_exec_name(module)))
+            module_internal_static = self.add(
                 LoadAddress(
                     object_pointer_rprimitive,
-                    f"{MODULE_PREFIX}{exported_name(module + '__internal')}",
+                    LoadStatic(
+                        object_rprimitive, module + "__internal", namespace=NAMESPACE_MODULE
+                    ),
                 )
             )
-            group_name = self.mapper.group_map.get(self.module_name)
             if group_name is not None:
                 shared_lib_mod_name = shared_lib_name(group_name)
                 mod_dict = self.call_c(get_module_dict_op, [], line)
@@ -558,7 +585,10 @@ class IRBuilder:
                     self.load_str(module, line),
                     init_only_func,
                     exec_func,
-                    module_static,
+                    module_internal_static,
+                    module_cache,
+                    import_state,
+                    module_lock_api,
                     shared_lib_file,
                     ext_suffix,
                     Integer(1 if is_pkg else 0, c_pyssize_t_rprimitive),
@@ -567,23 +597,39 @@ class IRBuilder:
             )
         else:
             # Import using generic Python C API
-            value = self.call_c(import_op, [self.load_str(module, line)], line)
-        self.add(InitStatic(value, module, namespace=NAMESPACE_MODULE))
+            assert module_id is not None
+            value = self.call_c(import_op, [module_id], line)
+        if not is_same_group_native:
+            self.call_c(import_cache_replace_for_import_op, [module_cache, value], line)
         self.goto_and_activate(out)
 
     def check_if_module_loaded(
-        self, id: str, line: int, needs_import: BasicBlock, out: BasicBlock
+        self,
+        module_id: Value | None,
+        module_cache: Value,
+        line: int,
+        needs_import: BasicBlock,
+        out: BasicBlock,
+        import_state: Value | None = None,
     ) -> None:
-        """Generate code that checks if the module `id` has been loaded yet.
+        """Generate code that checks if a module cache has been populated.
 
         Arguments:
-            id: name of module to check if imported
+            module_id: module name used to validate a generic import cache
+            module_cache: address of the module cache to check
             line: line number that the import occurs on
             needs_import: the BasicBlock that is run if the module has not been loaded yet
             out: the BasicBlock that is run if the module has already been loaded"""
-        first_load = self.load_module(id)
-        comparison = self.translate_is_op(first_load, self.none_object(line), "is not", line)
-        self.add_bool_branch(comparison, out, needs_import)
+        if import_state is None:
+            assert module_id is not None
+            first_load = self.call_c(
+                import_cache_get_for_import_op, [module_cache, module_id], line
+            )
+            comparison = self.translate_is_op(first_load, self.none_object(line), "is not", line)
+            self.add_bool_branch(comparison, out, needs_import)
+        else:
+            initialized = self.call_c(native_import_is_initialized_op, [import_state], line)
+            self.add_bool_branch(initialized, out, needs_import)
 
     def get_module(self, module: str, line: int) -> Value:
         # Python 3.7 has a nice 'PyImport_GetModule' function that we can't use :(

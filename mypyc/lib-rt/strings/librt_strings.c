@@ -1358,6 +1358,8 @@ static PyModuleDef librt_strings_module = {
 PyMODINIT_FUNC
 PyInit_strings(void)
 {
-    intern_strings();
+    if (intern_strings() < 0) {
+        return NULL;
+    }
     return PyModuleDef_Init(&librt_strings_module);
 }

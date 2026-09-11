@@ -1441,6 +1441,7 @@ class Emitter:
         self, fn: FuncIR, name: str, filepath: str, error_stmt: str
     ) -> str:
         module = self.static_name(fn.decl.module_name, None, prefix=MODULE_PREFIX)
+        module = f"CPyImport_GetModuleCache(&{module})"
         cname = f"{PREFIX}{fn.cname(self.names)}"
         wrapper_name = f"{cname}_wrapper"
         cfunc = f"(PyCFunction){cname}"

@@ -58,7 +58,6 @@ from mypyc.ir.ops import (
     BasicBlock,
     Branch,
     Call,
-    InitStatic,
     Integer,
     LoadAddress,
     LoadErrorValue,
@@ -77,6 +76,7 @@ from mypyc.ir.ops import (
 from mypyc.ir.rtypes import (
     RInstance,
     RTuple,
+    c_pointer_rprimitive,
     c_pyssize_t_rprimitive,
     exc_rtuple,
     is_tagged,
@@ -127,6 +127,7 @@ from mypyc.primitives.misc_ops import (
     check_stop_op,
     coro_op,
     get_native_attrs_op,
+    import_cache_replace_for_import_op,
     import_from_many_op,
     import_many_op,
     import_op,
@@ -441,12 +442,10 @@ def transform_non_native_import_group(
         builder.imports[mod_id] = None
         modules.append((mod_id, *import_globals_id_and_name(mod_id, as_name)))
         mod_static = LoadStatic(object_rprimitive, mod_id, namespace=NAMESPACE_MODULE)
-        static_ptrs.append(builder.add(LoadAddress(object_pointer_rprimitive, mod_static)))
+        static_ptrs.append(builder.add(LoadAddress(c_pointer_rprimitive, mod_static)))
         mod_lines.append(Integer(line, c_pyssize_t_rprimitive))
 
-    static_array_ptr = builder.builder.setup_rarray(
-        object_pointer_rprimitive, static_ptrs, first_line
-    )
+    static_array_ptr = builder.builder.setup_rarray(c_pointer_rprimitive, static_ptrs, first_line)
     import_line_ptr = builder.builder.setup_rarray(c_pyssize_t_rprimitive, mod_lines, first_line)
     builder.call_c(
         import_many_op,
@@ -597,7 +596,9 @@ def transform_import_from_buckets(
                 line,
             )
     if module is not None:
-        builder.add(InitStatic(module, module_id, namespace=NAMESPACE_MODULE))
+        mod_static = LoadStatic(object_rprimitive, module_id, namespace=NAMESPACE_MODULE)
+        module_cache = builder.add(LoadAddress(c_pointer_rprimitive, mod_static))
+        builder.call_c(import_cache_replace_for_import_op, [module_cache, module], line)
 
 
 def transform_import_all(builder: IRBuilder, node: ImportAll) -> None:
