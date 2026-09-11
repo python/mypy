@@ -135,6 +135,38 @@ async def sleep(t: float) -> None: ...
 
 [typing fixtures/typing-full.pyi]
 
+[case testRunAsyncLocalsAcrossAwait]
+import asyncio
+from typing import List
+
+async def increment(value: int) -> int:
+    await asyncio.sleep(0)
+    return value + 1
+
+async def accumulate(count: int) -> int:
+    total = 0
+    for value in range(count):
+        total += await increment(value)
+    return total
+
+async def return_through_finally(log: List[str]) -> int:
+    try:
+        return 7
+    finally:
+        await asyncio.sleep(0)
+        log.append("finally")
+
+async def test_async_locals_across_await() -> None:
+    assert await accumulate(4) == 10
+    log: List[str] = []
+    assert await return_through_finally(log) == 7
+    assert log == ["finally"]
+
+[file asyncio/__init__.pyi]
+async def sleep(delay: float) -> None: ...
+
+[typing fixtures/typing-full.pyi]
+
 [case testRunAsyncAwaitInVariousPositions]
 from typing import cast, Any
 

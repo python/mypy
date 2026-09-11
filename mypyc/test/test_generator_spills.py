@@ -13,9 +13,26 @@ from mypyc.transform.generator_spills import registers_live_across_yield
 
 def generator_class(source: str, name: str) -> ClassIR:
     module, _, _, _ = build_ir_for_single_file2(source.splitlines())
-    return next(
-        cl for cl in module.classes if cl.name == name and cl.env_user_function is not None
-    )
+    matches = [
+        cl
+        for cl in module.classes
+        if (cl.name == name or cl.name.startswith(name + "___"))
+        and cl.env_user_function is not None
+    ]
+    assert len(matches) == 1
+    return matches[0]
+
+
+def promoted_slots(cl: ClassIR) -> set[str]:
+    return {name for name in cl.attributes if name.startswith(TEMP_ATTR_NAME + "3_")}
+
+
+def frame_variables(cl: ClassIR) -> set[str]:
+    return {
+        name.removeprefix(GENERATOR_ATTRIBUTE_PREFIX)
+        for name in cl.attributes
+        if name.startswith(GENERATOR_ATTRIBUTE_PREFIX)
+    }
 
 
 class TestGeneratorSpills(unittest.TestCase):
@@ -34,7 +51,7 @@ def gen() -> Iterator[int]:
         )
         helper = cl.env_user_function
         assert helper is not None
-        slots = {name for name in cl.attributes if name.startswith(TEMP_ATTR_NAME + "3_")}
+        slots = promoted_slots(cl)
         assert len(slots) == 1
         reads = [
             op
@@ -75,12 +92,8 @@ def inside_loop(values: list[int]) -> Iterator[int]:
 """
         before = generator_class(source, "before_yield_gen")
         inside = generator_class(source, "inside_loop_gen")
-        before_slots = {
-            name for name in before.attributes if name.startswith(TEMP_ATTR_NAME + "3_")
-        }
-        inside_slots = {
-            name for name in inside.attributes if name.startswith(TEMP_ATTR_NAME + "3_")
-        }
+        before_slots = promoted_slots(before)
+        inside_slots = promoted_slots(inside)
         assert not before_slots
         assert len(inside_slots) == 1
 
@@ -117,11 +130,7 @@ def gen() -> Generator[int, None, int]:
 """,
             "gen_gen",
         )
-        variables = {
-            name.removeprefix(GENERATOR_ATTRIBUTE_PREFIX)
-            for name in cl.attributes
-            if name.startswith(GENERATOR_ATTRIBUTE_PREFIX)
-        }
+        variables = frame_variables(cl)
         assert "crossing" in variables
         assert "local" not in variables
 
@@ -140,3 +149,43 @@ def gen() -> Iterator[Any]:
             cl for cl in module.classes if GENERATOR_ATTRIBUTE_PREFIX + "captured" in cl.attributes
         )
         assert environment is not frame
+
+    def test_nested_finally_promotes_each_saved_exception(self) -> None:
+        cl = generator_class(
+            """\
+from typing import Iterator
+
+def gen() -> Iterator[int]:
+    try:
+        try:
+            yield 1
+        finally:
+            yield 2
+    finally:
+        yield 3
+""",
+            "gen_gen",
+        )
+        helper = cl.env_user_function
+        assert helper is not None
+        slots = promoted_slots(cl)
+        assert len(slots) == 2
+        assert not registers_live_across_yield(helper)
+
+    def test_recursive_generator_reference_is_rematerialized(self) -> None:
+        cl = generator_class(
+            """\
+from typing import Any, Iterator
+
+def outer(edges: list[list[int]]) -> Any:
+    def walk(node: int) -> Iterator[int]:
+        for child in edges[node]:
+            yield from walk(child)
+        yield node
+    return walk
+""",
+            "walk_gen",
+        )
+        # The recursive reference comes from the closure again on every resume,
+        # so it doesn't need a second copy on the generator frame.
+        assert "walk" not in frame_variables(cl)
