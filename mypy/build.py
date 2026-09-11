@@ -3806,6 +3806,16 @@ def find_module_and_diagnose(
             raise ModuleNotFound
 
 
+def excluded_by_follow_imports(path: str, options: Options) -> bool:
+    """Check if the module at path is excluded from build by follow-imports=skip/error.
+
+    Stubs are only excluded if follow_imports_for_stubs is set.
+    """
+    return options.follow_imports in ("skip", "error") and (
+        not path.endswith(".pyi") or options.follow_imports_for_stubs
+    )
+
+
 def exist_added_packages(suppressed: list[str], manager: BuildManager) -> bool:
     """Find if there are any newly added packages that were previously suppressed.
 
@@ -3829,9 +3839,7 @@ def exist_added_packages(suppressed: list[str], manager: BuildManager) -> bool:
         #     follow-imports = normal
         # But such cases are extremely rare, and this allows us to avoid
         # massive performance impact in much more common situations.
-        if options.follow_imports in ("skip", "error") and (
-            not path.endswith(".pyi") or options.follow_imports_for_stubs
-        ):
+        if excluded_by_follow_imports(path, options):
             continue
         if os.path.basename(path) in ("__init__.py", "__init__.pyi"):
             return True
