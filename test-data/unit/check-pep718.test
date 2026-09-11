@@ -1,0 +1,140 @@
+-- Tests for PEP 718 subscriptable functions (--enable-incomplete-feature=SubscriptableFunctions)
+
+[case testPEP718Basic]
+# flags: --enable-incomplete-feature=SubscriptableFunctions --python-version=3.12
+def make_list[T](*args: T) -> list[T]:
+    return list(args)  # E: No overload variant of "list" matches argument type "tuple[T, ...]" \
+                       # N: Possible overload variants: \
+                       # N:     def [T] list() -> list[T] \
+                       # N:     def [T] list(x: Iterable[T]) -> list[T]
+reveal_type(make_list[int])  # N: Revealed type is "def (*args: builtins.int) -> builtins.list[builtins.int]"
+reveal_type(make_list[int]())  # N: Revealed type is "builtins.list[builtins.int]"
+make_int_list = make_list[int]
+reveal_type(make_int_list())  # N: Revealed type is "builtins.list[builtins.int]"
+make_list[int]("a")  # E: Argument 1 to "make_list" has incompatible type "str"; expected "int"
+[builtins fixtures/list.pyi]
+
+[case testPEP718Unsolvable]
+# flags: --enable-incomplete-feature=SubscriptableFunctions --python-version=3.12
+def foo[T](x: list[T]) -> T: ...
+reveal_type(foo[int]([]))  # N: Revealed type is "builtins.int"
+words = ["a", "b"]
+foo[int](words)  # E: Argument 1 to "foo" has incompatible type "list[str]"; expected "list[int]"
+[builtins fixtures/list.pyi]
+
+[case testPEP718Errors]
+# flags: --enable-incomplete-feature=SubscriptableFunctions --python-version=3.12
+def plain(x: int) -> int:
+    return x
+def foo[T](x: T) -> T: ...
+plain[int]  # E: Cannot subscript a function with no type parameters
+foo[int, str]  # E: Type application has too many types (1 expected)
+[builtins fixtures/tuple.pyi]
+
+[case testPEP718Disabled]
+# flags: --python-version=3.12
+def foo[T](x: T) -> T: ...
+foo[int]  # E: Type application is only supported for generic classes
+[builtins fixtures/tuple.pyi]
+
+[case testPEP718Defaults]
+# flags: --enable-incomplete-feature=SubscriptableFunctions --python-version=3.12
+from typing import TypeVar
+T = TypeVar("T")
+U = TypeVar("U", default=int)
+def g(x: T, y: U) -> tuple[T, U]: ...
+reveal_type(g[str])  # N: Revealed type is "def (x: builtins.str, y: builtins.int) -> tuple[builtins.str, builtins.int]"
+g[str]("", "")  # E: Argument 2 to "g" has incompatible type "str"; expected "int"
+reveal_type(g[str, bytes])  # N: Revealed type is "def (x: builtins.str, y: builtins.bytes) -> tuple[builtins.str, builtins.bytes]"
+[builtins fixtures/tuple.pyi]
+
+[case testPEP718DefaultReferencesEarlierTypeVar]
+# flags: --enable-incomplete-feature=SubscriptableFunctions --python-version=3.12
+from typing import TypeVar
+S = TypeVar("S")
+T = TypeVar("T", default=S)
+def g(x: S, y: T) -> tuple[S, T]: ...
+reveal_type(g[str])  # N: Revealed type is "def (x: builtins.str, y: builtins.str) -> tuple[builtins.str, builtins.str]"
+[builtins fixtures/tuple.pyi]
+
+[case testPEP718Methods]
+# flags: --enable-incomplete-feature=SubscriptableFunctions --python-version=3.12
+class C[T]:
+    def method[U](self, x: T, y: U) -> U: ...
+    @classmethod
+    def cm[U](cls, y: U) -> U: ...
+c: C[int]
+reveal_type(c.method[str])  # N: Revealed type is "def (x: builtins.int, y: builtins.str) -> builtins.str"
+c.method[str](0, 0)  # E: Argument 2 to "method" of "C" has incompatible type "int"; expected "str"
+reveal_type(C.cm[str](""))  # N: Revealed type is "builtins.str"
+[builtins fixtures/classmethod.pyi]
+
+[case testPEP718CallableTypedValue]
+# flags: --enable-incomplete-feature=SubscriptableFunctions --python-version=3.12
+from typing import Callable
+def keep[F: Callable](f: F) -> F:
+    return f
+@keep
+def dec_fn[T](x: T) -> list[T]: ...
+reveal_type(dec_fn[int])  # N: Revealed type is "def (x: builtins.int) -> builtins.list[builtins.int]"
+def erase(f: Callable[..., object]) -> Callable[..., object]:
+    return f
+@erase
+def erased[T](x: T) -> T: ...
+erased[int]  # E: Cannot subscript a function with no type parameters
+[builtins fixtures/list.pyi]
+
+[case testPEP718OverloadFiltering]
+# flags: --enable-incomplete-feature=SubscriptableFunctions --python-version=3.12
+from typing import overload
+@overload
+def pick[T](x: T) -> list[T]: ...
+@overload
+def pick[S, U](x: S, y: U) -> dict[S, U]: ...
+def pick(x, y=None): ...
+reveal_type(pick[int])  # N: Revealed type is "def (x: builtins.int) -> builtins.list[builtins.int]"
+reveal_type(pick[str, int]("a", 1))  # N: Revealed type is "builtins.dict[builtins.str, builtins.int]"
+pick[int, str, bytes]  # E: No overload variant accepts 3 type arguments
+[builtins fixtures/dict.pyi]
+
+[case testPEP718ParamSpec]
+# flags: --enable-incomplete-feature=SubscriptableFunctions --python-version=3.12
+from typing import Callable
+def wrap[**P, R](f: Callable[P, R]) -> Callable[P, R]: ...
+reveal_type(wrap[[int], str])  # N: Revealed type is "def (f: def (builtins.int) -> builtins.str) -> def (builtins.int) -> builtins.str"
+[builtins fixtures/tuple.pyi]
+
+[case testPEP718TypeVarTuple]
+# flags: --enable-incomplete-feature=SubscriptableFunctions --python-version=3.12
+def variadic[*Ts](*args: *tuple[*Ts]) -> tuple[*Ts]: ...
+reveal_type(variadic[int, str])  # N: Revealed type is "def (builtins.int, builtins.str) -> tuple[builtins.int, builtins.str]"
+[builtins fixtures/tuple.pyi]
+
+[case testPEP718PhantomTypeParams]
+# flags: --enable-incomplete-feature=SubscriptableFunctions --python-version=3.12
+def f[T]() -> None: pass
+reveal_type(f)  # N: Revealed type is "def [T] ()"
+reveal_type(f[int])  # N: Revealed type is "def ()"
+f[int, str]  # E: Type application has too many types (1 expected)
+[builtins fixtures/tuple.pyi]
+
+[case testPEP718DeclarationOrder]
+# flags: --enable-incomplete-feature=SubscriptableFunctions --python-version=3.12
+def g[T, U](x: U, y: T) -> tuple[T, U]: ...
+reveal_type(g[int, str])  # N: Revealed type is "def (x: builtins.str, y: builtins.int) -> tuple[builtins.int, builtins.str]"
+[builtins fixtures/tuple.pyi]
+
+[case testPEP718OverloadDispatchOnBounds]
+# flags: --enable-incomplete-feature=SubscriptableFunctions --python-version=3.12
+from typing import overload
+class StringSerializer: ...
+class IntSerializer: ...
+@overload
+def ser[T: str]() -> StringSerializer: ...
+@overload
+def ser[T: int]() -> IntSerializer: ...  # E: Overloaded function signature 2 will never be matched: signature 1's parameter type(s) are the same or broader
+def ser(): ...
+reveal_type(ser[str]())  # N: Revealed type is "__main__.StringSerializer"
+reveal_type(ser[int]())  # N: Revealed type is "__main__.IntSerializer"
+ser[bytes]()  # E: No overload variant accepts 1 type argument
+[builtins fixtures/tuple.pyi]
