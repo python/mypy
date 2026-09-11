@@ -137,7 +137,6 @@ class TypeCheckSuite(DataSuite):
         options = parse_options(original_program_text, testcase, incremental_step)
         options.use_builtins_fixtures = True
         options.show_traceback = True
-        options.native_parser = bool(os.environ.get("TEST_NATIVE_PARSER"))
         options.reveal_verbose_types = not testcase.name.endswith("_no_verbose_reveal")
 
         if options.num_workers:
@@ -152,8 +151,9 @@ class TypeCheckSuite(DataSuite):
             if testcase.name.endswith("_parallel_only"):
                 raise pytest.skip("Test is only for parallel mode")
 
-        if options.native_parser and testcase.name.endswith("_no_native_parse"):
-            raise pytest.skip("Test not supported by native parser yet")
+        if testcase.name.endswith("_old_parser"):
+            # This test is only for the old parser.
+            options.native_parser = False
 
         # Enable some options automatically based on test file name.
         if "columns" in testcase.file:

@@ -1,5 +1,5 @@
-[case testNewSyntaxSyntaxError_no_native_parse]
-x: int: int  # E: Invalid syntax
+[case testNewSyntaxSyntaxError]
+x: int: int  # E: Expected a statement
 [out]
 
 [case testNewSyntaxBasics]
@@ -122,7 +122,8 @@ reveal_type(f'{v}') # N: Revealed type is "builtins.str"
 reveal_type(f'{1}') # N: Revealed type is "builtins.str"
 [builtins fixtures/f_string.pyi]
 
-[case testFeatureVersionSuggestion_no_native_parse]
+-- Native parser can parse future versions of Python
+[case testFeatureVersionSuggestion_old_parser]
 # flags: --python-version 3.99
 x *** x this is what future python looks like public static void main String[] args await goto exit
 [out]

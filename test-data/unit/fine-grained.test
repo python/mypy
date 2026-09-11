@@ -8226,7 +8226,7 @@ a.py:10: error: Name "bar" already defined on line 6
 a.py:11: error: Variable "a.T" is not valid as a type
 a.py:11: note: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
 
-[case testRefreshForWithTypeComment1]
+[case testRefreshForWithTypeComment1_old_parser]
 [file a.py]
 from typing import List
 import b
@@ -8243,7 +8243,7 @@ x = '1'
 [out]
 ==
 
-[case testRefreshForWithTypeComment2]
+[case testRefreshForWithTypeComment2_old_parser]
 from typing import List, Any
 import m
 def f(x: List[Any]) -> None:

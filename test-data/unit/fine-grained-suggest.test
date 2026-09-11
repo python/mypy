@@ -1117,10 +1117,10 @@ def foo():
 
 (
 [out]
-foo.py:4: error: '(' was never closed
+foo.py:4: error: Unexpected EOF while parsing
 Command 'suggest' is only valid after a 'check' command (that produces no parse errors)
 ==
-foo.py:4: error: '(' was never closed
+foo.py:4: error: Unexpected EOF while parsing
 -- )
 
 [case testSuggestRefine]
