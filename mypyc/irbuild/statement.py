@@ -1285,7 +1285,7 @@ def transform_del_item(builder: IRBuilder, target: AssignmentTarget, line: int) 
         # Delete a local by assigning an error value to it, which will
         # prompt the insertion of uninit checks.
         builder.add(
-            Assign(target.register, builder.add(LoadErrorValue(target.type, undefines=True)))
+            Assign(target.register, builder.add(LoadErrorValue(target.type, undefines=True)), line)
         )
     elif isinstance(target, AssignmentTargetTuple):
         for subtarget in target.items:

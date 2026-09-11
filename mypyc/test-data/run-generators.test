@@ -1157,3 +1157,56 @@ def test_exception_survives_yield_in_finally() -> None:
     assert next(it) == 1
     with assertRaises(Marker):
         next(it)
+
+[case testCrossingLocalOnExceptionOnlyPath]
+from typing import Iterator
+
+class InnerError(Exception):
+    pass
+
+class AssignmentError(Exception):
+    pass
+
+def fail_assignment() -> str:
+    raise AssignmentError
+
+def through_handler() -> Iterator[str]:
+    value = "old handler value"
+    try:
+        try:
+            yield "first"
+            raise InnerError
+        except InnerError:
+            value = fail_assignment()
+    except AssignmentError:
+        yield value
+
+def through_finally() -> Iterator[str]:
+    value = "old finally value"
+    try:
+        try:
+            yield "first"
+            raise InnerError
+        finally:
+            value = fail_assignment()
+    except AssignmentError:
+        yield value
+
+def test_crossing_local_on_exception_only_path() -> None:
+    for it, expected in [
+        (through_handler(), "old handler value"),
+        (through_finally(), "old finally value"),
+    ]:
+        assert next(it) == "first"
+        assert next(it) == expected
+
+[case testDelLocalInGenerator]
+from typing import Iterator
+
+def gen() -> Iterator[int]:
+    value = "temporary"
+    del value
+    yield 1
+
+def test_del_local_in_generator() -> None:
+    assert list(gen()) == [1]

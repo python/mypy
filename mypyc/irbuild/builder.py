@@ -263,6 +263,7 @@ class IRBuilder:
         self.fdefs_to_decorators = pbv.funcs_to_decorators
         self.module_import_groups = pbv.module_import_groups
         self.comprehension_to_fitem = pbv.comprehension_to_fitem
+        self.deleted_vars = pbv.deleted_vars
 
         self.singledispatch_impls = singledispatch_impls
 
@@ -749,9 +750,12 @@ class IRBuilder:
         if line == -1:
             line = lvalue.line
         if isinstance(lvalue, NameExpr):
-            # If we are visiting a decorator, then the SymbolNode we really want to be looking at
-            # is the function that is decorated, not the entire Decorator node itself.
+            # Use the concrete implementation as the symbol-table key for
+            # decorated and overloaded functions.
             symbol = lvalue.node
+            if isinstance(symbol, OverloadedFuncDef):
+                assert symbol.impl is not None
+                symbol = symbol.impl
             if isinstance(symbol, Decorator):
                 symbol = symbol.func
             if symbol is None:
@@ -766,12 +770,14 @@ class IRBuilder:
                         reg_type = self.type_to_rtype(symbol.type)
                     else:
                         reg_type = self.node_type(lvalue)
-                    # If the function is a generator function, then first define a new variable
-                    # in the current function's environment class. Next, define a target that
-                    # refers to the newly defined variable in that environment class. Add the
-                    # target to the table containing class environment variables, as well as the
-                    # current environment.
-                    if self.fn_info.is_generator or self.fn_info.is_coroutine:
+                    # A deleted error-overlap value needs the environment's
+                    # definedness bitmap. Other generator locals start in
+                    # registers and are promoted later if they cross a yield.
+                    if (
+                        (self.fn_info.is_generator or self.fn_info.is_coroutine)
+                        and reg_type.error_overlap
+                        and symbol in self.deleted_vars
+                    ):
                         return self.add_var_to_env_class(
                             symbol,
                             reg_type,
@@ -780,7 +786,6 @@ class IRBuilder:
                             prefix=GENERATOR_ATTRIBUTE_PREFIX,
                         )
 
-                    # Otherwise define a new local variable.
                     return self.add_local_reg(symbol, reg_type)
                 else:
                     # Assign to a previously defined variable.

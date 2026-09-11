@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import unittest
 
-from mypyc.common import TEMP_ATTR_NAME
+from mypyc.common import GENERATOR_ATTRIBUTE_PREFIX, TEMP_ATTR_NAME
 from mypyc.ir.class_ir import ClassIR
 from mypyc.ir.ops import Assign, GetAttr
 from mypyc.test.testutil import build_ir_for_single_file2
@@ -103,3 +103,40 @@ async def collect(values: Any) -> Any:
             if isinstance(op, Assign) and not op.dest.is_arg
         ]
         assert result_copies
+
+    def test_only_crossing_named_local_is_on_frame(self) -> None:
+        cl = generator_class(
+            """\
+from typing import Generator
+
+def gen() -> Generator[int, None, int]:
+    local = 1
+    crossing = 2
+    yield local
+    return crossing
+""",
+            "gen_gen",
+        )
+        variables = {
+            name.removeprefix(GENERATOR_ATTRIBUTE_PREFIX)
+            for name in cl.attributes
+            if name.startswith(GENERATOR_ATTRIBUTE_PREFIX)
+        }
+        assert "crossing" in variables
+        assert "local" not in variables
+
+    def test_captured_local_stays_in_environment(self) -> None:
+        module, _, _, _ = build_ir_for_single_file2("""\
+from typing import Any, Iterator
+
+def gen() -> Iterator[Any]:
+    captured = "value"
+    def get() -> str:
+        return captured
+    yield get
+""".splitlines())
+        frame = next(cl for cl in module.classes if cl.name == "gen_gen")
+        environment = next(
+            cl for cl in module.classes if GENERATOR_ATTRIBUTE_PREFIX + "captured" in cl.attributes
+        )
+        assert environment is not frame
