@@ -361,6 +361,10 @@ TYPE_VAR_GENERIC_CONSTRAINT_TYPE: Final = ErrorMessage(
     "TypeVar constraint type cannot be parametrized by type variables", codes.MISC
 )
 
+TYPE_VAR_GENERIC_BOUND_TYPE: Final = ErrorMessage(
+    "TypeVar upper bound can not be parametrized by type variables", codes.MISC
+)
+
 TYPE_VAR_REDECLARED_IN_NESTED_CLASS: Final = ErrorMessage(
     'Type variable "{}" is bound by an outer class', codes.VALID_TYPE
 )
