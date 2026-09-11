@@ -6,7 +6,7 @@ import unittest
 
 from mypyc.common import TEMP_ATTR_NAME
 from mypyc.ir.class_ir import ClassIR
-from mypyc.ir.ops import GetAttr
+from mypyc.ir.ops import Assign, GetAttr
 from mypyc.test.testutil import build_ir_for_single_file2
 from mypyc.transform.generator_spills import registers_live_across_yield
 
@@ -58,3 +58,48 @@ def gen(values: Any) -> Generator[int, None, None]:
         helper = cl.env_user_function
         assert helper is not None
         assert not registers_live_across_yield(helper)
+
+    def test_loop_state_only_crossing_a_yield_uses_a_slot(self) -> None:
+        source = """\
+from typing import Iterator
+
+def before_yield(values: list[int]) -> Iterator[int]:
+    total = 0
+    for value in values:
+        total += value
+    yield total
+
+def inside_loop(values: list[int]) -> Iterator[int]:
+    for value in values:
+        yield value
+"""
+        before = generator_class(source, "before_yield_gen")
+        inside = generator_class(source, "inside_loop_gen")
+        before_slots = {
+            name for name in before.attributes if name.startswith(TEMP_ATTR_NAME + "3_")
+        }
+        inside_slots = {
+            name for name in inside.attributes if name.startswith(TEMP_ATTR_NAME + "3_")
+        }
+        assert not before_slots
+        assert len(inside_slots) == 1
+
+    def test_return_value_is_copied_before_frame_cleanup(self) -> None:
+        cl = generator_class(
+            """\
+from typing import Any
+
+async def collect(values: Any) -> Any:
+    return {value: value async for value in values}
+""",
+            "collect_gen",
+        )
+        helper = cl.env_user_function
+        assert helper is not None
+        result_copies = [
+            op
+            for block in helper.blocks
+            for op in block.ops
+            if isinstance(op, Assign) and not op.dest.is_arg
+        ]
+        assert result_copies

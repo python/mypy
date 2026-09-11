@@ -30,7 +30,9 @@ def insert_spills(ir: FuncIR, frame: ClassIR) -> None:
     entry_live = live.before[ir.blocks[0], 0]
 
     entry_live = {op for op in entry_live if not (isinstance(op, Register) and op.is_arg)}
-    # TODO: Actually for now, no Registers at all -- we keep the manual spills
+    # Registers that cross a suspension are moved to the frame earlier by
+    # promote_generator_registers(). Address-taken and RArray registers stay
+    # as C locals and are intentionally ignored here.
     entry_live = {op for op in entry_live if not isinstance(op, Register)}
 
     ir.blocks = spill_regs(ir.blocks, frame, entry_live, live, ir.arg_regs[0])

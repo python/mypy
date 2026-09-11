@@ -12,6 +12,7 @@ from mypyc.ir.class_ir import ClassIR
 from mypyc.ir.ops import (
     ERR_NEVER,
     NO_TRACEBACK_LINE_NO,
+    Assign,
     BasicBlock,
     Branch,
     Call,
@@ -93,6 +94,11 @@ class GeneratorNonlocalControl(BaseNonlocalControl):
     """Default nonlocal control in a generator function outside statements."""
 
     def gen_return(self, builder: IRBuilder, value: Value, line: int) -> None:
+        # Frame cleanup may clear an attribute holding the return value. Copy it
+        # first so later spill transforms can place any required load here.
+        result = Register(value.type)
+        builder.add(Assign(result, value, line))
+
         gen_generator_func_cleanup(builder, line)
 
         # Raise a StopIteration containing a field for the value that
@@ -120,7 +126,7 @@ class GeneratorNonlocalControl(BaseNonlocalControl):
         builder.activate_block(true)
         # The default/slow path is to raise a StopIteration exception with
         # return value.
-        builder.call_c(set_stop_iteration_value, [value], NO_TRACEBACK_LINE_NO)
+        builder.call_c(set_stop_iteration_value, [result], NO_TRACEBACK_LINE_NO)
         builder.add(Unreachable())
         builder.builder.pop_error_handler()
 
@@ -128,7 +134,7 @@ class GeneratorNonlocalControl(BaseNonlocalControl):
         # The fast path is to store return value via caller-provided pointer
         # instead of raising an exception. This can only be used when the
         # caller is a native function.
-        builder.add(SetMem(object_rprimitive, stop_iter_reg, value))
+        builder.add(SetMem(object_rprimitive, stop_iter_reg, result))
         builder.add(Return(Integer(0, object_rprimitive)))
 
 

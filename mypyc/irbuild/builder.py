@@ -1064,28 +1064,11 @@ class IRBuilder:
         return target
 
     def maybe_spill(self, value: Value) -> Value | AssignmentTarget:
-        """
-        Moves a given Value instance into the private frame for generator functions. For
-        non-generator functions, leaves the Value instance as it is.
-
-        Returns an AssignmentTarget associated with the Value for generator functions and the
-        original Value itself for non-generator functions.
-        """
-        if self.fn_info.is_generator:
-            return self.spill(value)
+        """Return a value that the generator-spill transforms may move later."""
         return value
 
     def maybe_spill_assignable(self, value: Value) -> Register | AssignmentTarget:
-        """
-        Moves a given Value instance into the private frame for generator functions. For
-        non-generator functions, allocate a temporary Register.
-
-        Returns an AssignmentTarget associated with the Value for generator functions and an
-        assignable Register for non-generator functions.
-        """
-        if self.fn_info.is_generator:
-            return self.spill(value)
-
+        """Return an assignable register for a value."""
         if isinstance(value, Register):
             return value
 
