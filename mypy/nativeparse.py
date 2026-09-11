@@ -254,6 +254,23 @@ def native_parse(
     return node, errors, ignores
 
 
+def native_parse_type_string(
+    expr_string: str, line: int, column: int, end_line: int, end_column: int, options: Options
+) -> ProperType:
+    """Try to parse a string literal as a type expression (i.e. resolve a forward reference).
+
+    If parsing fails, a RawExpressionType will be returned.
+    """
+    ast_bytes = ast_serialize.parse_type_string(
+        expr_string, (line, column, end_line, end_column), cache_version=5
+    )
+    state = State(options)
+    data = ReadBuffer(ast_bytes)
+    ret = read_type(state, data)
+    assert isinstance(ret, ProperType)
+    return ret
+
+
 def expect_end_tag(data: ReadBuffer) -> None:
     assert read_tag(data) == END_TAG
 

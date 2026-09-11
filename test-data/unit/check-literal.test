@@ -224,7 +224,7 @@ accepts_bytes(c_alias)
 [builtins fixtures/tuple.pyi]
 [out]
 
-[case testLiteralMixingUnicodeAndBytesPython3ForwardStrings_no_native_parse]
+[case testLiteralMixingUnicodeAndBytesPython3ForwardStrings]
 from typing import Literal, TypeVar, Generic
 
 a_unicode_wrapper: u"Literal[u'foo']"
@@ -235,7 +235,7 @@ a_str_wrapper: "Literal[u'foo']"
 b_str_wrapper: "Literal['foo']"
 c_str_wrapper: "Literal[b'foo']"
 
-# In Python 3, forward references MUST be str, not bytes
+# In Python 3, forward references MUST be str, not bytes.
 a_bytes_wrapper: b"Literal[u'foo']"  # E: Invalid type comment or annotation
 b_bytes_wrapper: b"Literal['foo']"   # E: Invalid type comment or annotation
 c_bytes_wrapper: b"Literal[b'foo']"  # E: Invalid type comment or annotation
@@ -265,9 +265,10 @@ a_str_wrapper_alias: AStrWrapperAlias
 b_str_wrapper_alias: BStrWrapperAlias
 c_str_wrapper_alias: CStrWrapperAlias
 
-ABytesWrapperAlias = Wrap[b"Literal[u'foo']"]
-BBytesWrapperAlias = Wrap[b"Literal['foo']"]
-CBytesWrapperAlias = Wrap[b"Literal[b'foo']"]
+# Bytes literals are not valid as forward references.
+ABytesWrapperAlias = Wrap[b"Literal[u'foo']"]  # E: Invalid type comment or annotation
+BBytesWrapperAlias = Wrap[b"Literal['foo']"]   # E: Invalid type comment or annotation
+CBytesWrapperAlias = Wrap[b"Literal[b'foo']"]  # E: Invalid type comment or annotation
 a_bytes_wrapper_alias: ABytesWrapperAlias
 b_bytes_wrapper_alias: BBytesWrapperAlias
 c_bytes_wrapper_alias: CBytesWrapperAlias
@@ -282,9 +283,9 @@ reveal_type(a_str_wrapper_alias)      # N: Revealed type is "__main__.Wrap[Liter
 reveal_type(b_str_wrapper_alias)      # N: Revealed type is "__main__.Wrap[Literal['foo']]"
 reveal_type(c_str_wrapper_alias)      # N: Revealed type is "__main__.Wrap[Literal[b'foo']]"
 
-reveal_type(a_bytes_wrapper_alias)    # N: Revealed type is "__main__.Wrap[Literal['foo']]"
-reveal_type(b_bytes_wrapper_alias)    # N: Revealed type is "__main__.Wrap[Literal['foo']]"
-reveal_type(c_bytes_wrapper_alias)    # N: Revealed type is "__main__.Wrap[Literal[b'foo']]"
+reveal_type(a_bytes_wrapper_alias)    # N: Revealed type is "__main__.Wrap[Any]"
+reveal_type(b_bytes_wrapper_alias)    # N: Revealed type is "__main__.Wrap[Any]"
+reveal_type(c_bytes_wrapper_alias)    # N: Revealed type is "__main__.Wrap[Any]"
 [builtins fixtures/tuple.pyi]
 [out]
 

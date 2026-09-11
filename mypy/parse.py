@@ -7,8 +7,9 @@ from librt.internal import ReadBuffer
 from mypy import errorcodes as codes
 from mypy.cache import read_int
 from mypy.errors import Errors
-from mypy.nodes import FileRawData, MypyFile, ParseError
+from mypy.nodes import FileRawData, MypyFile, ParseError, StrExpr
 from mypy.options import Options
+from mypy.types import ProperType
 
 
 def parse(
@@ -115,3 +116,20 @@ def report_parse_error(error: ParseError, errors: Errors) -> None:
         # Fallback to [syntax] for backwards compatibility.
         error_code = codes.error_codes.get(error_code) or codes.SYNTAX
     errors.report(error["line"], error["column"], message, blocker=is_blocker, code=error_code)
+
+
+def parse_type_string(expr: StrExpr, options: Options) -> ProperType:
+    if options.native_parser:
+        import mypy.nativeparse
+
+        return mypy.nativeparse.native_parse_type_string(
+            expr.value,
+            expr.line,
+            expr.column,
+            expr.end_line or expr.line,
+            expr.end_column or expr.column,
+            options,
+        )
+    import mypy.fastparse
+
+    return mypy.fastparse.parse_type_string(expr.value, "builtins.str", expr.line, expr.column)
