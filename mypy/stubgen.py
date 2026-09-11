@@ -607,7 +607,10 @@ class ASTStubGenerator(BaseStubGenerator, mypy.traverser.TraverserVisitor):
                 if not isinstance(get_proper_type(annotated_type), AnyType):
                     typename = self.print_annotation(annotated_type)
 
-            if actually_pos_only_args and arg_.pos_only:
+            # A keyword-only argument is never positional-only, even when its name
+            # starts with two underscores, so it must not move the "/" marker past
+            # the "*" separator.
+            if actually_pos_only_args and arg_.pos_only and not kind.is_named():
                 pos_only_marker_position += 1
 
             if kind.is_named() and not any(arg.name.startswith("*") for arg in args):
