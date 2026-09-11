@@ -212,6 +212,8 @@ MODULE_RESOLUTION_URL: Final = (
 # situations where 100 empty __init__.py files cost less than 1 trivial module.
 MIN_SIZE_HINT: Final = 256
 
+MAX_PLUGIN_REFINEMENT_PASSES = 5
+
 
 class SCC:
     """A simple class that represents a strongly connected component (import cycle)."""
@@ -3964,7 +3966,7 @@ def module_not_found(
                     errors.report(
                         line,
                         0,
-                        f'Did you mean {pretty_seq(matches, "or")}?',
+                        f"Did you mean {pretty_seq(matches, 'or')}?",
                         severity="note",
                         code=code,
                     )
@@ -4209,7 +4211,7 @@ def dump_line_checking_stats(path: str, graph: Graph) -> None:
             f.write(f"{id}:\n")
             for line in sorted(graph[id].per_line_checking_time_ns):
                 line_time = graph[id].per_line_checking_time_ns[line]
-                f.write(f"{line:>5} {line_time/1000:8.1f}\n")
+                f.write(f"{line:>5} {line_time / 1000:8.1f}\n")
 
 
 def dump_graph(graph: Graph, stdout: TextIO | None = None) -> None:
@@ -4786,27 +4788,70 @@ def process_stale_scc(graph: Graph, ascc: SCC, manager: BuildManager) -> None:
     mypy.semanal_main.semantic_analysis_for_scc(graph, scc, manager.errors)
 
     t3 = time.time()
-    # Track what modules aren't yet done, so we can finish them as soon
-    # as possible, saving memory.
-    unfinished_modules = set(stale)
-    for id in stale:
-        graph[id].type_check_first_pass()
-        if not graph[id].type_checker().deferred_nodes:
-            unfinished_modules.discard(id)
-            graph[id].detect_possibly_undefined_vars()
-            graph[id].finish_passes()
+    # A plugin might choose to refine callable return types after a checking pass.
+    # In any case this happens, we want to recheck scc until fixed point, and avoid
+    # broadcasting errors that violate the domain specific typing rule.
+    pre_type_check_errors = {
+        id: list(manager.errors.error_info_map.get(graph[id].xpath, [])) for id in stale
+    }
+    refinement_round = 0
+    while True:
+        # Track what modules aren't yet done, so we can finish them as soon
+        # as possible, saving memory.
+        unfinished_modules = set(stale)
 
-    while unfinished_modules:
         for id in stale:
-            if id not in unfinished_modules:
-                continue
-            if not graph[id].type_check_second_pass():
+            graph[id].type_check_first_pass()
+            if not graph[id].type_checker().deferred_nodes:
                 unfinished_modules.discard(id)
-                graph[id].detect_possibly_undefined_vars()
-                graph[id].finish_passes()
+
+        while unfinished_modules:
+            for id in stale:
+                if id not in unfinished_modules:
+                    continue
+                if not graph[id].type_check_second_pass():
+                    unfinished_modules.discard(id)
+
+        dirty_signatures = set()
+        for id in stale:
+            dirty_signatures |= graph[id].type_checker().take_changed_plugin_signatures()
+        if not dirty_signatures:
+            break
+
+        if refinement_round >= MAX_PLUGIN_REFINEMENT_PASSES:
+            raise RuntimeError(
+                "Function-body plugin refinements did not converge in SCC: "
+                + ", ".join(sorted(stale))
+            )
+        refinement_round += 1
+
+        for id in stale:
+            state = graph[id]
+            path = state.xpath
+
+            targets = {
+                info.target
+                for info in manager.errors.error_info_map.get(path, [])
+                if info.target is not None
+            }
+            manager.errors.clear_errors_in_targets(path, targets)
+
+            # Restore diagnostics emitted before type checking, such as semantic
+            # analysis errors. clear_errors_in_targets() removed these too when
+            # they belonged to a target we rechecked.
+            for info in pre_type_check_errors[id]:
+                if info.target in targets:
+                    manager.errors.add_error_info(info, file=path)
+
+            checker = graph[id].type_checker()
+            checker.reset()
+            checker.pass_num = 0
+
     for id in stale:
+        graph[id].detect_possibly_undefined_vars()
         graph[id].generate_unused_ignore_notes()
         graph[id].generate_ignore_without_code_notes()
+        graph[id].finish_passes()
 
     t4 = time.time()
     # Flush errors, and write cache in two phases: first data files, then meta files.
