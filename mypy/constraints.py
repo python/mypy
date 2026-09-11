@@ -1425,6 +1425,8 @@ class ConstraintBuilderVisitor(TypeVisitor[list[Constraint]]):
         if isinstance(self.actual, CallableType):
             if self.actual.is_type_obj():
                 instance_type = self.actual.get_instance_type()
+                if is_named_instance(instance_type, "typing.Any"):
+                    instance_type = AnyType(TypeOfAny.explicit)
                 if self.erase_types:
                     instance_type = erase_typevars(instance_type)
                 return infer_constraints(template.item, instance_type, self.direction)
