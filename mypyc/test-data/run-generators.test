@@ -1203,10 +1203,25 @@ def test_crossing_local_on_exception_only_path() -> None:
 [case testDelLocalInGenerator]
 from typing import Iterator
 
-def gen() -> Iterator[int]:
-    value = "temporary"
-    del value
-    yield 1
+from testutil import assertRaises
+
+def crossing(delete: bool) -> Iterator[str]:
+    value = "crossing"
+    yield value
+    if delete:
+        del value
+    yield value
+
+def non_crossing(delete: bool) -> Iterator[str]:
+    value = "local"
+    if delete:
+        del value
+    yield value
 
 def test_del_local_in_generator() -> None:
-    assert list(gen()) == [1]
+    assert list(crossing(False)) == ["crossing", "crossing"]
+    assert list(non_crossing(False)) == ["local"]
+    with assertRaises(AttributeError, "attribute 'value' of 'crossing_gen' undefined"):
+        list(crossing(True))
+    with assertRaises(UnboundLocalError, 'local variable "value" referenced before assignment'):
+        list(non_crossing(True))
