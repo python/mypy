@@ -1979,14 +1979,19 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
         assert defn.info
 
         # First check for a valid signature
-        method_type = CallableType(
-            [AnyType(TypeOfAny.special_form), AnyType(TypeOfAny.special_form)],
-            [nodes.ARG_POS, nodes.ARG_POS],
-            [None, None],
-            AnyType(TypeOfAny.special_form),
-            self.named_type("builtins.function"),
-        )
-        if not is_subtype(reverse_type, method_type):
+        method_types = [
+            CallableType(
+                [AnyType(TypeOfAny.special_form)] * num_args,
+                [nodes.ARG_POS] * num_args,
+                [None] * num_args,
+                AnyType(TypeOfAny.special_form),
+                self.named_type("builtins.function"),
+            )
+            # The data model allows __rpow__ to take an optional third "modulo"
+            # argument, mirroring the ternary form of __pow__.
+            for num_args in ([2, 3] if reverse_name == "__rpow__" else [2])
+        ]
+        if not any(is_subtype(reverse_type, method_type) for method_type in method_types):
             self.msg.invalid_signature(reverse_type, context)
             return
 
