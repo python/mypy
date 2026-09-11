@@ -1138,3 +1138,22 @@ def test_generator_method_override_still_works() -> None:
     box[0] = g
     with assertRaises(ValueError, "generator already executing"):
         next(g)
+
+[case testExceptionSurvivesYieldInFinally]
+from typing import Iterator
+from testutil import assertRaises
+
+class Marker(Exception):
+    pass
+
+def gen() -> Iterator[int]:
+    try:
+        raise Marker
+    finally:
+        yield 1
+
+def test_exception_survives_yield_in_finally() -> None:
+    it = gen()
+    assert next(it) == 1
+    with assertRaises(Marker):
+        next(it)

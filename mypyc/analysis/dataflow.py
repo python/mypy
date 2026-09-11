@@ -7,6 +7,7 @@ from collections.abc import Iterable, Iterator, Set as AbstractSet
 from typing import Any, Generic, TypeVar
 
 from mypyc.ir.ops import (
+    ERR_NEVER,
     Assign,
     AssignMulti,
     BasicBlock,
@@ -516,6 +517,51 @@ def analyze_live_regs(blocks: list[BasicBlock], cfg: CFG) -> AnalysisResult[Valu
         backward=True,
         kind=MAYBE_ANALYSIS,
     )
+
+
+def analyze_live_regs_with_exception_edges(
+    blocks: list[BasicBlock],
+) -> dict[BasicBlock, set[Value]]:
+    """Calculate block-entry liveness before exception handling is inserted.
+
+    Unlike ``get_cfg()``, this models an error edge at each operation that can
+    raise. This matters when an assignment later in the same block overwrites a
+    value that the error handler can still read. Returns inserted for a yield
+    are treated as edges to their continuation blocks.
+    """
+    visitor = LivenessVisitor()
+    live_in: dict[BasicBlock, set[Value]] = {block: set() for block in blocks}
+
+    while True:
+        changed = False
+        for block in reversed(blocks):
+            terminator = block.terminator
+            if isinstance(terminator, Return) and terminator.yield_target is not None:
+                successors = (terminator.yield_target,)
+            else:
+                successors = terminator.targets()
+
+            live: set[Value] = set()
+            for successor in successors:
+                live.update(live_in[successor])
+
+            for op in reversed(block.ops):
+                if (
+                    block.error_handler is not None
+                    and isinstance(op, RegisterOp)
+                    and op.error_kind != ERR_NEVER
+                ):
+                    live.update(live_in[block.error_handler])
+                gen, kill = op.accept(visitor)
+                live.difference_update(kill)
+                live.update(gen)
+
+            if live != live_in[block]:
+                live_in[block] = live
+                changed = True
+
+        if not changed:
+            return live_in
 
 
 # Analysis kinds
