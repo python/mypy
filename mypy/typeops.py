@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import itertools
 from collections.abc import Callable, Iterable, Sequence
-from typing import Any, TypeVar, cast
+from typing import Any, Final, TypeVar, cast
 
 from mypy.checker_state import checker_state
 from mypy.copytype import copy_type
@@ -1074,6 +1074,24 @@ def is_singleton_equality_type(typ: ProperType) -> bool:
     as judged by the `==` operator.
     """
     return isinstance(typ, LiteralType) or is_singleton_identity_type(typ)
+
+
+FLAG_ENUM_BASES: Final = ("enum.Flag", "enum.IntFlag")
+
+
+def is_flag_enum_type(typ: ProperType) -> bool:
+    """Is this type an instance of, or a member of, an enum.Flag subclass?
+
+    A Flag value can hold any combination of members, so the declared members
+    are not an exhaustive enumeration of the possible values.
+    """
+    if isinstance(typ, LiteralType) and typ.is_enum_literal():
+        typ = typ.fallback
+    return isinstance(typ, Instance) and typ.type.is_enum and is_flag_enum_class(typ.type)
+
+
+def is_flag_enum_class(info: TypeInfo) -> bool:
+    return any(base.fullname in FLAG_ENUM_BASES for base in info.mro)
 
 
 def try_expanding_sum_type_to_union(typ: Type, target_fullname: str | None) -> Type:
