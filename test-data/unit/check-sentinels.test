@@ -176,6 +176,22 @@ def func(x: int | BUILTIN | TYPEXT) -> None:
 [builtins fixtures/sentinel.pyi]
 
 [case testSentinelReassignmentIsNotTypeAlias]
+from typing_extensions import sentinel
+
+MISSING = sentinel("MISSING")
+ALIAS = MISSING
+
+# Not a type alias (i.e. not a special form)
+reveal_type(ALIAS)  # N: Revealed type is "MISSING"
+
+def func(x: int | MISSING = MISSING) -> None:
+    pass
+
+func(MISSING)
+func(ALIAS)
+[builtins fixtures/tuple.pyi]
+
+[case testSentinelReassignmentIsSameSentinel]
 from typing_extensions import sentinel, assert_type
 
 MISSING = sentinel("MISSING")
@@ -184,16 +200,38 @@ ALIAS = MISSING
 # The value still identifies as the same sentinel...
 assert_type(ALIAS, MISSING)
 
-def func(x: int | MISSING = MISSING) -> None:
+def func(x: ALIAS | int = ALIAS) -> None:
     pass
 
 func(MISSING)
 func(ALIAS)
 
-# ...but the reassignment does not make ALIAS usable as a type alias.
-def uses_alias_as_type(x: ALIAS) -> None:  # E: Variable "__main__.ALIAS" is not valid as a type \
-        # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
+# ...and the reassignment keeps ALIAS usable as a type expression too.
+def uses_alias_as_type(x: ALIAS) -> None:
     pass
+
+uses_alias_as_type(MISSING)
+uses_alias_as_type(ALIAS)
+[builtins fixtures/tuple.pyi]
+
+[case testSentinelReassignmentAcrossModules]
+from other import MISSING
+
+def func(x: int | MISSING = MISSING) -> None:
+    pass
+
+func(MISSING)
+
+[file other.py]
+from typing_extensions import sentinel
+import lib
+
+MISSING = lib.MISSING
+
+[file lib.py]
+from typing_extensions import sentinel
+
+MISSING = sentinel("MISSING")
 [builtins fixtures/tuple.pyi]
 
 [case testSentinelPreservedThroughGenericSubstitution]

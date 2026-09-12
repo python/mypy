@@ -3406,11 +3406,19 @@ class SemanticAnalyzer(
         self.process__slots__(s)
 
     def is_sentinel_declaration(self, s: AssignmentStmt) -> bool:
-        """Does this assignment define a PEP 661 sentinel singleton?"""
+        """Does this assignment define a PEP 661 sentinel singleton?
+
+        This includes both the original `NAME = Sentinel("NAME")` call and a
+        plain alias of an existing sentinel, e.g. `ALIAS = NAME` or
+        `ALIAS = mod.NAME`, so that re-exports of a sentinel keep working as
+        the same sentinel type.
+        """
         if self.is_nested_within_func_scope() or s.unanalyzed_type is not None:
             return False
         if len(s.lvalues) != 1 or not isinstance(s.lvalues[0], NameExpr):
             return False
+        if isinstance(s.rvalue, RefExpr):
+            return isinstance(s.rvalue.node, Var) and s.rvalue.node.is_sentinel
         if not isinstance(s.rvalue, CallExpr):
             return False
         call = s.rvalue
@@ -3430,7 +3438,13 @@ class SemanticAnalyzer(
         lvalue.is_special_form = True
         var = lvalue.node
         var.is_sentinel = True
-        typ = self.sentinel_type_for_var(var, s.rvalue)
+        if isinstance(s.rvalue, RefExpr):
+            # An alias of an existing sentinel: reuse its already-computed type.
+            assert isinstance(s.rvalue.node, Var)
+            typ = get_proper_type(s.rvalue.node.type)
+            assert isinstance(typ, LiteralType)
+        else:
+            typ = self.sentinel_type_for_var(var, s.rvalue)
         if typ is not None:
             s.type = typ
 
