@@ -1,3 +1,17 @@
+[case testClassVarTypedDict]
+import dataclasses
+from typing import ClassVar, TypedDict
+
+@dataclasses.dataclass
+class X:
+    value: int
+    TD: ClassVar = TypedDict("TD", {"value": int})
+
+X.TD
+
+[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-medium.pyi]
+
 [case testDataclassesBasic]
 from dataclasses import dataclass
 

@@ -600,7 +600,11 @@ class DataclassTransformer:
                 # We will issue an error later.
                 continue
 
-            assert isinstance(node, Var), node
+            # A ClassVar assigned a class definition, such as a TypedDict,
+            # can be represented by a TypeInfo rather than a Var. Dataclasses
+            # ignore ClassVars, so there is no attribute to collect here.
+            if not isinstance(node, Var):
+                continue
 
             # x: ClassVar[int] is ignored by dataclasses.
             if node.is_classvar:
