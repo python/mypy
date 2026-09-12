@@ -4782,6 +4782,10 @@ class SemanticAnalyzer(
                     self.type.names[lval.name] = SymbolTableNode(MDEF, v, implicit=True)
                     for func in self.scope.functions:
                         func.def_or_infer_vars = True
+
+        if self.is_self_member_ref(lval) or self.is_cls_member_ref(lval):
+            assert self.type, "Self or cls member outside a class"
+            cur_node = self.type.names.get(lval.name)
             if (
                 cur_node
                 and isinstance(cur_node.node, Var)
@@ -4798,6 +4802,13 @@ class SemanticAnalyzer(
             return False
         node = memberexpr.expr.node
         return isinstance(node, Var) and node.is_self
+
+    def is_cls_member_ref(self, memberexpr: MemberExpr) -> bool:
+        """Does memberexpr to refer to an attribute of cls?"""
+        if not isinstance(memberexpr.expr, NameExpr):
+            return False
+        node = memberexpr.expr.node
+        return isinstance(node, Var) and node.is_cls
 
     def check_lvalue_validity(self, node: Expression | SymbolNode | None, ctx: Context) -> None:
         if isinstance(node, TypeVarExpr):
