@@ -1556,6 +1556,28 @@ class StubgencSuite(unittest.TestCase):
         )
         assert_equal(gen.get_imports().splitlines(), ["from typing import overload"])
 
+    def test_get_type_fullname_pep604_union(self) -> None:
+        # Regression test for https://github.com/python/mypy/issues/21689:
+        # types.UnionType (X | Y) must not crash under --inspect-mode.
+        mod = ModuleType("module", "")
+        gen = InspectionStubGenerator(mod.__name__, known_modules=[mod.__name__], module=mod)
+        assert_equal(gen.get_type_fullname(int | str), "int | str")
+        assert_equal(gen.get_type_fullname(float | None), "float | None")
+        assert_equal(gen.get_type_fullname(int | str | bytes), "int | str | bytes")
+
+    def test_generate_function_stub_pep604_union_annotations(self) -> None:
+        def process(value: int | str) -> float | None:
+            if isinstance(value, int):
+                return float(value)
+            return None
+
+        output: list[str] = []
+        mod = ModuleType(process.__module__, "")
+        gen = InspectionStubGenerator(mod.__name__, known_modules=[mod.__name__], module=mod)
+        gen.is_c_module = False
+        gen.generate_function_stub("process", process, output=output)
+        assert_equal(output, ["def process(value: int | str) -> float | None: ..."])
+
 
 class ArgSigSuite(unittest.TestCase):
     def test_repr(self) -> None:
