@@ -175,12 +175,16 @@ class TestBorrowGeneratorAttrs(unittest.TestCase):
         assert not read.is_borrowed
 
     def test_suspension_kills_borrow(self) -> None:
+        entry = BasicBlock()
         before_yield = BasicBlock()
         continuation = BasicBlock()
         ir, cl, self_reg = self.make_helper(
-            [before_yield, continuation], {"value": str_rprimitive}
+            [entry, before_yield, continuation], {"value": str_rprimitive}
         )
         read = GetAttr(self_reg, "value", -1)
+        entry.ops = [
+            Branch(Integer(1, bit_rprimitive), before_yield, continuation, Branch.BOOL)
+        ]
         before_yield.ops = [
             read,
             Return(Integer(1, none_rprimitive), yield_target=continuation),
@@ -190,6 +194,9 @@ class TestBorrowGeneratorAttrs(unittest.TestCase):
         borrow_generator_attrs(ir, cl)
 
         assert not read.is_borrowed
+        read.is_borrowed = True
+        with self.assertRaisesRegex(AssertionError, "cannot spill borrowed attribute read"):
+            insert_spills(ir, cl)
 
     def test_borrows_nullable_rtuple_attribute(self) -> None:
         tuple_type = RTuple([str_rprimitive, str_rprimitive])
