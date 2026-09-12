@@ -681,7 +681,16 @@ class Errors:
         return info
 
     def _add_error_info(self, file: str, info: ErrorInfo) -> None:
-        assert file not in self.flushed_files
+        # A file can be revisited under a second module name after an earlier
+        # pass has flushed its diagnostics. Do not duplicate an error that has
+        # already been emitted for the same physical file, even if the two
+        # module states use different path spellings.
+        normalized_file = os.path.normcase(os.path.abspath(file))
+        if any(
+            os.path.normcase(os.path.abspath(flushed_file)) == normalized_file
+            for flushed_file in self.flushed_files
+        ):
+            return
         # process the stack of ErrorWatchers before modifying any internal state
         # in case we need to filter out the error entirely
         if self._filter_error(file, info):
@@ -1094,7 +1103,10 @@ class Errors:
 
         Use a form suitable for displaying to the user.
         """
-        self.flushed_files.add(path)
+        normalized_path = os.path.normcase(os.path.abspath(path))
+        if normalized_path in self.flushed_files:
+            return []
+        self.flushed_files.add(normalized_path)
         if formatter is not None:
             errors = create_errors(error_tuples)
             return [formatter.report_error(err) for err in errors]
@@ -1129,7 +1141,7 @@ class Errors:
         """
         msgs = []
         for path in self.error_info_map.keys():
-            if path not in self.flushed_files:
+            if os.path.normcase(os.path.abspath(path)) not in self.flushed_files:
                 error_tuples = self.file_messages(path)
                 msgs.extend(
                     self.format_messages(path, error_tuples, formatter=self.error_formatter)
