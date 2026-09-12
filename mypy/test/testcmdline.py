@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import os
 import re
+import shlex
 import subprocess
 import sys
 import sysconfig
@@ -135,7 +136,7 @@ def parse_args(line: str) -> list[str]:
     m = re.match("# cmd: mypy (.*)$", line)
     if not m:
         return []  # No args; mypy will spit out an error.
-    return m.group(1).split()
+    return shlex.split(m.group(1))
 
 
 def parse_cwd(line: str) -> str | None:

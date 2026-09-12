@@ -1314,6 +1314,11 @@ pass
 error: Cache must be enabled in parallel mode
 == Return code: 2
 
+[case testCodeModeInParallelMode]
+# cmd: mypy -c 'def foo() -> None: 42 + "no"' --num-workers=2
+[out]
+<string>:1: error: Unsupported operand types for + ("int" and "str")
+
 [case testCheckingStubPackagesWorksInParallelMode]
 # cmd: mypy foo-stubs --num-workers=4
 [file foo-stubs/__init__.pyi]
