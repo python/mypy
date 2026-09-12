@@ -62,6 +62,7 @@ def spill_regs(
     spill_locs = {}
     # Sort values to make the order deterministic.
     for i, val in enumerate(sort_values(to_spill, blocks)):
+        assert not val.is_borrowed, f"cannot spill borrowed value {val}"
         # Generator classes for overriding methods can inherit from one another. Include the
         # module-qualified owning class name so unrelated helper spills don't alias an inherited
         # struct field.
