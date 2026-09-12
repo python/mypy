@@ -184,7 +184,7 @@ ALIAS = MISSING
 # Not a type alias (i.e. not a special form)
 reveal_type(ALIAS)  # N: Revealed type is "MISSING"
 
-def func(x: ALIAS | int = ALIAS) -> None:
+def func(x: int | MISSING = MISSING) -> None:
     pass
 
 func(MISSING)
@@ -200,7 +200,7 @@ ALIAS = MISSING
 # The value still identifies as the same sentinel...
 assert_type(ALIAS, MISSING)
 
-def func(x: int | MISSING = MISSING) -> None:
+def func(x: ALIAS | int = ALIAS) -> None:
     pass
 
 func(MISSING)
