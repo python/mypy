@@ -2662,3 +2662,35 @@ with assertRaises(MyError):
     pyiter_send(fails(), None)
 
 [typing fixtures/typing-full.pyi]
+
+[case testGeneratorAttributeBorrowDoesNotCrossAwait]
+from typing import Any, Generator
+
+class Box:
+    def __init__(self, value: str) -> None:
+        self.value = value
+
+class Suspend:
+    def __await__(self) -> Generator[Any, Any, int]:
+        yield None
+        return 7
+
+def combine(value: Box, number: int) -> str:
+    return value.value + str(number)
+
+async def f(value: Box) -> str:
+    # Evaluation reads value before suspending, but combine() uses it after resume.
+    return combine(value, await Suspend())
+
+def drive(coro: Any) -> Any:
+    assert coro.send(None) is None
+    try:
+        coro.send(None)
+    except StopIteration as exc:
+        return exc.value
+    assert False
+
+def test_generator_attribute_borrow_does_not_cross_await() -> None:
+    assert drive(f(Box("value"))) == "value7"
+
+[typing fixtures/typing-full.pyi]

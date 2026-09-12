@@ -1355,3 +1355,22 @@ g2 = gen_delegate(reenter())
 box.append(g2)
 assert pyiter_send(g2, None) == (PYGEN_NEXT, 2)
 assert pyiter_send(g2, None) == (PYGEN_RETURN, None)
+
+[case testGeneratorAttributeBorrowKilledByWalrus]
+from typing import Iterator
+
+class Box:
+    def __init__(self, value: str) -> None:
+        self.value = value
+
+def select(first: Box, second: Box) -> str:
+    return first.value + second.value
+
+def gen(value: Box, replacement: Box) -> Iterator[str]:
+    # The first argument is read before the walrus rebinds the same frame field,
+    # but it is consumed by select() only after the rebind.
+    yield select(value, (value := replacement))
+
+def test_generator_attribute_borrow_killed_by_walrus() -> None:
+    it = gen(Box("old"), Box("new"))
+    assert next(it) == "oldnew"
