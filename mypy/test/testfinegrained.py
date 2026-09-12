@@ -17,7 +17,9 @@ from __future__ import annotations
 import os
 import re
 import sys
+import tempfile
 import unittest
+from pathlib import Path
 from typing import Any
 
 import pytest
@@ -376,6 +378,38 @@ def normalize_messages(messages: list[str]) -> list[str]:
 
 
 class TestMessageSorting(unittest.TestCase):
+    def test_suggest_callsites_with_existing_messages(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            source_path = tmp_path / "main.py"
+            source_path.write_text("reveal_type(1)\n", encoding="utf8")
+            options = Options()
+            options.follow_imports = "normal"
+            options.use_builtins_fixtures = False
+            options.error_summary = False
+            server = Server(options, str(tmp_path / "dmypy.status"))
+
+            result = server.check(
+                [BuildSource(str(source_path), "__main__", None)],
+                export_types=False,
+                is_tty=False,
+                terminal_width=-1,
+            )
+            assert result["status"] == 0
+
+            response = server.cmd_suggest(
+                "os.path.islink",
+                json=False,
+                no_any=False,
+                no_errors=False,
+                flex_any=None,
+                use_fixme=None,
+                callsites=True,
+                max_guesses=None,
+            )
+            assert response.get("status") == 0
+            assert "error" not in response
+
     def test_simple_sorting(self) -> None:
         msgs = ['x.py:1: error: "int" not callable', 'foo/y.py:123: note: "X" not defined']
         old_msgs = ['foo/y.py:12: note: "Y" not defined', 'x.py:8: error: "str" not callable']
