@@ -175,6 +175,22 @@ def func(x: int | BUILTIN | TYPEXT) -> None:
 
 [builtins fixtures/sentinel.pyi]
 
+[case testSentinelReassignmentIsNotTypeAlias]
+from typing_extensions import sentinel
+
+MISSING = sentinel("MISSING")
+ALIAS = MISSING
+
+# Not a type alias (i.e. not a special form)
+reveal_type(ALIAS)  # N: Revealed type is "MISSING"
+
+def func(x: ALIAS | int = ALIAS) -> None:
+    pass
+
+func(MISSING)
+func(ALIAS)
+[builtins fixtures/tuple.pyi]
+
 [case testSentinelReassignmentIsSameSentinel]
 from typing_extensions import sentinel, assert_type
 
