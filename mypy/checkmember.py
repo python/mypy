@@ -1301,6 +1301,20 @@ def analyze_class_attribute_access(
                 t, mx, cast(Decorator, node.node).var, itype, is_class=is_classmethod
             )
 
+        proper_t = get_proper_type(t)
+        if (
+            is_decorated
+            and cast(Decorator, node.node).is_cached_property
+            and isinstance(proper_t, CallableType)
+        ):
+            # ``cached_property.__get__(None, owner)`` returns the descriptor
+            # itself, unlike a regular property access. Preserve that type so
+            # class-level attributes such as ``A.value.attrname`` are valid.
+            cached_property = Instance(
+                mx.chk.lookup_typeinfo("functools.cached_property"), [proper_t.ret_type]
+            )
+            return apply_class_attr_hook(mx, hook, cached_property)
+
         result = t
         # __set__ is not called on class objects.
         if not mx.is_lvalue:
