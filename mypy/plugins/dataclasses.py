@@ -599,6 +599,10 @@ class DataclassTransformer:
                 # This might be a property / field name clash.
                 # We will issue an error later.
                 continue
+            if isinstance(node, TypeInfo):
+                # The declared type is shadowed by a class created from a call like
+                # `x: Foo = namedtuple('Foo', [...])`, so there is no dataclass field here.
+                continue
 
             assert isinstance(node, Var), node
 
