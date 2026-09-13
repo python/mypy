@@ -307,3 +307,15 @@ def default(val) -> int:
     return 3
 
 [builtins fixtures/args.pyi]
+
+[case testDontCrashWhenSingledispatchIsShadowedByUserFunction]
+# cmd: mypy -m functools
+[file functools.py]
+def singledispatch(func):
+    pass
+
+@singledispatch
+def f(fn):
+    pass
+[out]
+[builtins fixtures/args.pyi]
