@@ -66,6 +66,8 @@ def test_python_cmdline(testcase: DataDrivenTestCase, step: int) -> None:
         args.append("--hide-error-codes")
     if "--disallow-empty-bodies" not in args:
         args.append("--allow-empty-bodies")
+    if "--pretty" not in args:
+        args.append("--no-pretty")
     # Type check the program.
     fixed = [python3_path, "-m", "mypy"]
     env = os.environ.copy()
