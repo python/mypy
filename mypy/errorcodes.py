@@ -280,6 +280,12 @@ MAYBE_UNRECOGNIZED_STR_TYPEFORM: Final = ErrorCode(
     "Error when a string is used where a TypeForm is expected but a string annotation cannot be recognized",
     "General",
 )
+TYPE_COMMENT: Final = ErrorCode(
+    "type-comment",
+    "Error when legacy type comments are used instead of type annotations",
+    "General",
+    default_enabled=False,
+)
 
 # Syntax errors are often blocking.
 SYNTAX: Final = ErrorCode("syntax", "Report syntax errors", "General")
