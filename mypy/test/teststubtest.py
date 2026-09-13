@@ -939,6 +939,39 @@ class StubtestUnit(unittest.TestCase):
             """,
             error=None,
         )
+        # Merging the overload items contributes one type variable per item, so the
+        # default value is checked against a union of them rather than a single one.
+        yield Case(
+            stub="""
+            from typing import TypeVar
+
+            _T1 = TypeVar("_T1")
+
+            @overload
+            def f_typevar_default(x: int = 0) -> int: ...
+            @overload
+            def f_typevar_default(x: int, ret: _T1) -> _T1: ...
+            @overload
+            def f_typevar_default(x: int = 0, *, ret: _T1) -> _T1: ...
+            """,
+            runtime="def f_typevar_default(x=0, ret=1): return ret",
+            error=None,
+        )
+        # An upper bound still has to accept the runtime default.
+        yield Case(
+            stub="""
+            _T2 = TypeVar("_T2", bound=str)
+
+            @overload
+            def f_typevar_bound_default(x: int = 0) -> int: ...
+            @overload
+            def f_typevar_bound_default(x: int, ret: _T2) -> _T2: ...
+            @overload
+            def f_typevar_bound_default(x: int = 0, *, ret: _T2) -> _T2: ...
+            """,
+            runtime="def f_typevar_bound_default(x=0, ret=1): return ret",
+            error="f_typevar_bound_default",
+        )
 
     @collect_cases
     def test_decorated_overload(self) -> Iterator[Case]:
