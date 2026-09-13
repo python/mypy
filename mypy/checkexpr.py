@@ -814,7 +814,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         self, kwargs: Iterable[tuple[Expression | None, Expression]], callee: TypedDictType
     ) -> tuple[dict[str, list[Expression]], set[str]] | None:
         # All (actual or mapped from ** unpacks) expressions that can match given key.
-        result = defaultdict(list)
+        result: defaultdict[str, list[Expression]] = defaultdict(list)
         # Keys that are guaranteed to be present no matter what (e.g. for all items of a union)
         always_present_keys = set()
         # Indicates latest encountered ** unpack of a non-closed type among items.
@@ -837,9 +837,12 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                     return None
                 else:
                     # A directly present key unconditionally shadows all previously found
-                    # values from ** items.
-                    # TODO: for duplicate keys, type-check all values.
-                    result[literal_value] = [item_arg]
+                    # values from ** items. Preserve directly present values, since their
+                    # expressions are still evaluated even when a later value shadows them.
+                    previous_values = [
+                        value for value in result[literal_value] if not isinstance(value, TempNode)
+                    ]
+                    result[literal_value] = [item_arg, *previous_values]
                     always_present_keys.add(literal_value)
             else:
                 is_valid, is_open = self.validate_star_typeddict_item(
@@ -917,11 +920,13 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                 # some `overrides` types are narrower that types in `defaults`, and
                 # former are too wide for `Config`.
                 if result[key]:
-                    first = result[key][0]
-                    if not isinstance(first, TempNode):
+                    explicit_values = [
+                        value for value in result[key] if not isinstance(value, TempNode)
+                    ]
+                    if explicit_values:
                         # We must always preserve any non-synthetic values, so that
-                        # we will accept them even if they are shadowed.
-                        result[key] = [first, arg]
+                        # we type-check them even if they are shadowed.
+                        result[key] = [*explicit_values, arg]
                     else:
                         result[key] = [arg]
                 else:
