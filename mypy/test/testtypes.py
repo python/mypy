@@ -61,6 +61,19 @@ from mypy.types import (
 import mypy.expandtype  # ruff: isort: skip
 
 
+class LiteralTypeReprSuite(Suite):
+    def setUp(self) -> None:
+        self.fx = TypeFixture()
+
+    def test_value_repr_of_huge_int(self) -> None:
+        # repr() of an int is limited by sys.set_int_max_str_digits(); a literal built
+        # from a folded power can exceed it and used to raise ValueError.
+        huge = LiteralType(2**100000, self.fx.a)
+        rendered = huge.value_repr()
+        assert rendered.startswith("0x")
+        assert int(rendered, 16) == 2**100000
+
+
 class TypesSuite(Suite):
     def setUp(self) -> None:
         self.x = UnboundType("X")  # Helpers
