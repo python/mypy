@@ -382,6 +382,18 @@ section of the command line docs.
     to suppress the import of a module from ``typeshed``, replacing it
     with ``Any``.
 
+    For example, suppose your code monkey-patches ``email.message`` with extra
+    members that are not declared in its ``typeshed`` stub. You can treat
+    imports from that module as ``Any`` with a per-module section:
+
+    .. code-block:: ini
+
+        [mypy]
+
+        [mypy-email.message]
+        follow_imports = skip
+        follow_imports_for_stubs = True
+
     Used in conjunction with :confval:`follow_imports=error <follow_imports>`, this can be used
     to make any use of a particular ``typeshed`` module an error.
 
