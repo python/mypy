@@ -156,7 +156,7 @@ L0:
     self.y = 60
     return 1
 
-[case testAttrLvalue]
+[case testAttrLvalue_withgil]
 class O(object):
     def __init__(self) -> None:
         self.x = 1
@@ -176,6 +176,34 @@ def increment(o):
     r2 :: bool
 L0:
     r0 = borrow o.x
+    r1 = CPyTagged_Add(r0, 2)
+    o.x = r1; r2 = is_error
+    return o
+
+[case testAttrLvalue_nogil]
+# On free-threaded builds an operator assignment such as 'o.x += 1' must not borrow
+# the native attribute read: a concurrent store could free the old value between the
+# borrowed load and its use. Contrast testAttrLvalue_withgil, where the read is
+# borrowed. is_borrow_friendly_expr applies the same rule as transform_member_expr.
+class O(object):
+    def __init__(self) -> None:
+        self.x = 1
+
+def increment(o: O) -> O:
+    o.x += 1
+    return o
+[out]
+def O.__init__(self):
+    self :: __main__.O
+L0:
+    self.x = 2
+    return 1
+def increment(o):
+    o :: __main__.O
+    r0, r1 :: int
+    r2 :: bool
+L0:
+    r0 = o.x
     r1 = CPyTagged_Add(r0, 2)
     o.x = r1; r2 = is_error
     return o
