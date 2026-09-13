@@ -1349,6 +1349,32 @@ def f() -> Iterator[str]:
     yield from h()  # E: Incompatible types in "yield from" (actual type "int", expected type "str")
 [out]
 
+[case testYieldFromIteratorSubclass]
+# https://github.com/python/mypy/issues/17449
+from typing import Iterator, Tuple, TypeVar
+T = TypeVar("T")
+
+class Ints(Iterator[int]):
+    def __next__(self) -> int: ...
+    def __iter__(self) -> "Ints": ...
+
+def bad() -> Iterator[str]:
+    yield from Ints()  # E: Incompatible types in "yield from" (actual type "int", expected type "str")
+def good() -> Iterator[int]:
+    yield from Ints()
+
+# The item type is not the first type argument, so a naive args[0] would be wrong here.
+class Pairs(Iterator[Tuple[int, T]]):
+    def __next__(self) -> Tuple[int, T]: ...
+    def __iter__(self) -> "Pairs[T]": ...
+
+def pairs_good() -> Iterator[Tuple[int, str]]:
+    yield from Pairs[str]()
+def pairs_bad() -> Iterator[str]:
+    yield from Pairs[str]()  # E: Incompatible types in "yield from" (actual type "tuple[int, str]", expected type "str")
+[builtins fixtures/tuple.pyi]
+[out]
+
 [case testYieldFromAppliedToAny]
 from typing import Any
 def g() -> Any:
