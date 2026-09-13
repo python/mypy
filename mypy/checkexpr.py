@@ -610,6 +610,13 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             ):
                 member = e.callee.name
                 object_type = self.chk.lookup_type(e.callee.expr)
+        elif isinstance(e.callee, SuperExpr):
+            # SuperExpr is not a RefExpr, so its method cannot be identified from
+            # the expression node. Use the definition attached to the resolved
+            # callable instead, just as regular method calls use the defining class.
+            fullname = self.super_method_fullname(callee_type)
+            if fullname is not None:
+                object_type = self.super_method_object_type(e.callee)
 
         if (
             self.chk.options.disallow_untyped_calls
@@ -652,6 +659,31 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         ):
             self.chk.msg.does_not_return_value(callee_type, e)
         return ret_type
+
+    def super_method_fullname(self, callee_type: Type) -> str | None:
+        """Return the defining fullname for a method resolved through super()."""
+        callee_type = get_proper_type(callee_type)
+        if isinstance(callee_type, CallableType):
+            definition = callee_type.definition
+            return definition.fullname if definition is not None else None
+        if isinstance(callee_type, Overloaded):
+            for item in callee_type.items:
+                if item.definition is not None:
+                    return item.definition.fullname
+        return None
+
+    def super_method_object_type(self, e: SuperExpr) -> Type | None:
+        """Return the object type passed to the super() proxy for plugin contexts."""
+        if len(e.call.args) == 2 and self.chk.has_type(e.call.args[1]):
+            return self.chk.lookup_type(e.call.args[1])
+        if e.info is not None:
+            method = self.chk.scope.current_function()
+            if method is not None and method.arguments:
+                instance_type = method.arguments[0].variable.type
+                if instance_type is not None:
+                    return instance_type
+            return fill_typevars(e.info)
+        return None
 
     def check_str_format_call(self, e: CallExpr) -> None:
         """More precise type checking for str.format() calls on literals and folded constants."""
