@@ -953,6 +953,25 @@ class TestClass(TestBaseClass):
     pass
 
 
+class SelfReferential:
+    """A class that exposes itself as one of its own attributes."""
+
+
+SelfReferential.SelfReferential = SelfReferential  # type: ignore[attr-defined]
+
+
+class MutualParent:
+    """A class that exposes a sibling which points back at it."""
+
+
+class MutualChild:
+    """The sibling of MutualParent."""
+
+
+MutualParent.MutualChild = MutualChild  # type: ignore[attr-defined]
+MutualChild.MutualParent = MutualParent  # type: ignore[attr-defined]
+
+
 class StubgencSuite(unittest.TestCase):
     """Unit tests for stub generation from C modules using introspection.
 
@@ -1003,6 +1022,22 @@ class StubgencSuite(unittest.TestCase):
         gen.generate_class_stub("alias", object, output)
         assert_equal(gen.get_imports().splitlines(), [])
         assert_equal(output[0], "class alias:")
+
+    def test_generate_class_stub_no_crash_for_self_referential_class(self) -> None:
+        output: list[str] = []
+        mod = ModuleType(SelfReferential.__module__, "")
+        gen = InspectionStubGenerator(mod.__name__, known_modules=[mod.__name__], module=mod)
+
+        gen.generate_class_stub("SelfReferential", SelfReferential, output)
+        assert_equal(output[0], "class SelfReferential:")
+
+    def test_generate_class_stub_no_crash_for_mutually_referential_classes(self) -> None:
+        output: list[str] = []
+        mod = ModuleType(MutualParent.__module__, "")
+        gen = InspectionStubGenerator(mod.__name__, known_modules=[mod.__name__], module=mod)
+
+        gen.generate_class_stub("MutualParent", MutualParent, output)
+        assert_equal(output[0], "class MutualParent:")
 
     def test_generate_class_stub_variable_type_annotation(self) -> None:
         # This class mimics the stubgen unit test 'testClassVariable'
