@@ -682,6 +682,43 @@ class StubtestUnit(unittest.TestCase):
             """,
             error=None,
         )
+        # An alias in the stub refers to the classmethod object, which keeps its "cls"
+        # argument, while reading the same name off the class at runtime gives a bound
+        # method.
+        yield Case(
+            stub="""
+            class GoodAlias:
+                def m(self) -> None: ...
+                m_alias = m
+                @classmethod
+                def c(cls) -> None: ...
+                c_alias = c
+            """,
+            runtime="""
+            class GoodAlias:
+                def m(self): pass
+                m_alias = m
+                @classmethod
+                def c(cls): pass
+                c_alias = c
+            """,
+            error=None,
+        )
+        yield Case(
+            stub="""
+            class BadAlias:
+                @classmethod
+                def c(cls) -> None: ...
+                c_alias: int
+            """,
+            runtime="""
+            class BadAlias:
+                @classmethod
+                def c(cls): pass
+                c_alias = c
+            """,
+            error="BadAlias.c_alias",
+        )
 
     @collect_cases
     def test_arg_mismatch(self) -> Iterator[Case]:
