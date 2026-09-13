@@ -978,6 +978,38 @@ error: --install-types not supported without python executable or site packages
 [out]
 pkg.py:1: error: "int" not callable
 
+[case testCmdlineListInstallTypesConflictsWithInstallTypes]
+# cmd: mypy --list-install-types --install-types -m pkg
+[out]
+error: --install-types and --list-install-types cannot be used together
+== Return code: 2
+
+[case testCmdlineListInstallTypesRequiresIncremental]
+# cmd: mypy --list-install-types --no-incremental -m pkg
+[file pkg.py]
+1 + 2
+[out]
+error: --list-install-types not supported with incremental mode disabled
+== Return code: 2
+
+[case testCmdlineListInstallTypesNothingToDo]
+# cmd: mypy --list-install-types -m pkg
+[file pkg.py]
+1()
+[out]
+pkg.py:1: error: "int" not callable
+
+[case testCmdlineListInstallTypesMissingStubs]
+# cmd: mypy --list-install-types --no-site-packages -m pkg
+[file pkg.py]
+import requests
+[out]
+pkg.py:1: error: Library stubs not installed for "requests"
+pkg.py:1: note: Hint: "python3 -m pip install types-requests"
+pkg.py:1: note: (or run "mypy --install-types" to install all missing stub packages)
+pkg.py:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
+types-requests
+
 [case testCmdlineExclude]
 # cmd: mypy --exclude abc .
 [file abc/apkg.py]
