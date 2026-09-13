@@ -3784,6 +3784,25 @@ foo(X)
 [builtins fixtures/tuple.pyi]
 [out]
 
+[case testInferGenericFromAnyTypeObject]
+from typing import Any, TypeVar, assert_type
+
+T = TypeVar("T")
+
+def instantiate(cls: type[T]) -> T:
+    return cls()
+
+assert_type(instantiate(Any), Any)
+reveal_type(instantiate(Any))  # N: Revealed type is "Any"
+[file typing.pyi]
+class Any: ...
+class Iterable: ...
+class Mapping: ...
+class TypeVar:
+    def __init__(self, name: str) -> None: ...
+def assert_type(value, typ): ...
+[out]
+
 [case testTypeUsingTypeCTypeAnyMember]
 from typing import Type, Any
 def foo(arg: Type[Any]):
