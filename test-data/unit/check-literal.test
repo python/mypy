@@ -3147,3 +3147,20 @@ f(X.a.value)
 g(X.a.value)
 h(X.a.value)
 [builtins fixtures/primitives.pyi]
+
+[case testInvalidTypeLikeLiteralString]
+from typing import Literal
+
+Foo = Literal[
+    "duration[s][pyarrow]",
+    "duration[ms][pyarrow]",
+]
+foo: Foo
+reveal_type(foo)  # N: Revealed type is "Literal['duration[s][pyarrow]'] | Literal['duration[ms][pyarrow]']"
+
+bar: Literal[
+    "duration[s][pyarrow]",
+    "duration[ms][pyarrow]",
+]
+reveal_type(bar)  # N: Revealed type is "Literal['duration[s][pyarrow]'] | Literal['duration[ms][pyarrow]']"
+[builtins fixtures/primitives.pyi]
