@@ -1137,7 +1137,7 @@ def transform_with(
         value = builder.py_call(builder.py_get_attr(typ, f"__{al}enter__", line), [mgr_v], line)
 
     mgr = mgr_v
-    exc = builder.maybe_spill_assignable(builder.true())
+    exc = builder.ensure_register(builder.true())
     if is_async:
         value = emit_await(builder, value, line)
 
@@ -1347,7 +1347,7 @@ def emit_yield_from_or_await(
         else:
             iter_val = builder.call_c(get_op, [val], line)
 
-    iter_reg = builder.maybe_spill_assignable(iter_val)
+    iter_reg = builder.ensure_register(iter_val)
 
     stop_block, main_block, done_block = BasicBlock(), BasicBlock(), BasicBlock()
 

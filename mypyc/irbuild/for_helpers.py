@@ -920,7 +920,7 @@ class ForSequence(ForGenerator):
             else:
                 len_val = self.load_len(self.expr_target)
             index_reg = builder.builder.int_sub(len_val, 1)
-        self.index_target = builder.maybe_spill_assignable(index_reg)
+        self.index_target = builder.ensure_register(index_reg)
         self.target_type = target_type
 
     def gen_condition(self) -> None:
@@ -1007,7 +1007,7 @@ class ForDictionaryCommon(ForGenerator):
         # The generator spill transform will promote loop state that crosses a yield.
         self.expr_target = expr_reg
         offset = Integer(0)
-        self.offset_target = builder.maybe_spill_assignable(offset)
+        self.offset_target = builder.ensure_register(offset)
         self.size = self.load_len(self.expr_target)
 
         # For dict class (not a subclass) this is the dictionary itself.
@@ -1135,7 +1135,7 @@ class ForRange(ForGenerator):
             index_type = int_rprimitive
         index_reg = Register(index_type, line=self.line)
         builder.assign(index_reg, start_reg, self.line)
-        self.index_reg = builder.maybe_spill_assignable(index_reg)
+        self.index_reg = builder.ensure_register(index_reg)
         # Initialize loop index to 0. Assert that the index target is assignable.
         self.index_target: Register | AssignmentTarget = builder.get_assignment_target(self.index)
         builder.assign(self.index_target, builder.read(self.index_reg, self.line), self.line)
@@ -1189,7 +1189,7 @@ class ForInfiniteCounter(ForGenerator):
         # Create a register to store the state of the loop index and
         # initialize this register along with the loop index to 0.
         zero = Integer(0)
-        self.index_reg = builder.maybe_spill_assignable(zero)
+        self.index_reg = builder.ensure_register(zero)
         self.index_target: Register | AssignmentTarget = builder.get_assignment_target(self.index)
 
     def gen_step(self) -> None:

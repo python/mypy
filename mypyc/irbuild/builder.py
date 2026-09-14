@@ -1061,8 +1061,8 @@ class IRBuilder:
         target = self.add_var_to_class(Var(name), type, frame.ir, frame.self_reg)
         return target
 
-    def maybe_spill_assignable(self, value: Value) -> Register | AssignmentTarget:
-        """Return an assignable register for a value."""
+    def ensure_register(self, value: Value) -> Register:
+        """Return an assignable register containing a value."""
         if isinstance(value, Register):
             return value
 
