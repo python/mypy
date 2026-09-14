@@ -64,7 +64,9 @@ class WorkerCleanupSuite(TestCase):
                     mock.patch("mypy.build.os.unlink", side_effect=tracking_unlink),
                 ):
                     with self.assertRaises(OSError):
-                        build.build(sources=[BuildSource("main", None, "x = 1\n")], options=options)
+                        build.build(
+                            sources=[BuildSource("main", None, "x = 1\n")], options=options
+                        )
         finally:
             for wc in created_workers:
                 if wc.proc.poll() is None:
