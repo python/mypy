@@ -65,9 +65,9 @@ def spill_regs(
         # Borrowed literals can be spilled because their backing static reference
         # remains alive. Attribute reads instead borrow from the frame and must not
         # outlive this helper invocation.
-        assert not (isinstance(val, GetAttr) and val.is_borrowed), (
-            f"cannot spill borrowed attribute read {val}"
-        )
+        assert not (
+            isinstance(val, GetAttr) and val.is_borrowed
+        ), f"cannot spill borrowed attribute read {val}"
         # Generator classes for overriding methods can inherit from one another. Include the
         # module-qualified owning class name so unrelated helper spills don't alias an inherited
         # struct field.

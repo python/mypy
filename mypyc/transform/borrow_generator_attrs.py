@@ -125,7 +125,7 @@ def borrow_generator_attrs(ir: FuncIR, cl: ClassIR) -> None:
     if not candidates:
         return
 
-    candidates_by_attr = {}
+    candidates_by_attr: dict[str, set[GetAttr]] = {}
     for candidate in candidates:
         candidates_by_attr.setdefault(candidate.attr, set()).add(candidate)
 

@@ -182,13 +182,8 @@ class TestBorrowGeneratorAttrs(unittest.TestCase):
             [entry, before_yield, continuation], {"value": str_rprimitive}
         )
         read = GetAttr(self_reg, "value", -1)
-        entry.ops = [
-            Branch(Integer(1, bit_rprimitive), before_yield, continuation, Branch.BOOL)
-        ]
-        before_yield.ops = [
-            read,
-            Return(Integer(1, none_rprimitive), yield_target=continuation),
-        ]
+        entry.ops = [Branch(Integer(1, bit_rprimitive), before_yield, continuation, Branch.BOOL)]
+        before_yield.ops = [read, Return(Integer(1, none_rprimitive), yield_target=continuation)]
         continuation.ops = [KeepAlive([read]), return_none()]
 
         borrow_generator_attrs(ir, cl)
