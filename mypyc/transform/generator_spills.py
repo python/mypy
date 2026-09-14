@@ -143,6 +143,9 @@ def rewrite_registers(
     slots: dict[Register, str],
     nullable: set[Register],
 ) -> None:
+    """Replace promoted register accesses with generator frame attribute accesses."""
+    # IRTransform maps each value to one replacement, but mutable registers need a fresh
+    # attribute read at each use, so we can't use IRTransform here.
     for block in blocks:
         old_ops = block.ops
         block.ops = []
