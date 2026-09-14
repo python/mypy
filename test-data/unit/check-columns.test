@@ -408,6 +408,14 @@ main:2:10:2:17: error: Incompatible types in assignment (expression has type "st
 main:6:3:7:1: error: Argument 1 to "f" has incompatible type "int"; expected "str"
 main:8:1:8:4: error: Value of type "int" is not indexable
 
+[case testIgnoreWithoutCodeEndColumn]
+# flags: --enable-error-code ignore-without-code --show-error-end
+a: int = "a" # type: ignore
+b: str = "# type: ignore" # type: ignore
+[out]
+main:2:14:2:27: error: "type: ignore" comment without error code (consider "type: ignore[assignment]" instead)
+main:3:27:3:40: error: "type: ignore" comment without error code
+
 [case testColumnsMissingPositionalArgShiftDetected]
 def f(x: int, y: str, z: bytes, aa: int) -> None: ...
 f(1, b'x', 1) # E:6: Missing positional argument "y" in call to "f"
