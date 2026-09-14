@@ -1135,7 +1135,7 @@ class ForRange(ForGenerator):
             index_type = int_rprimitive
         index_reg = Register(index_type, line=self.line)
         builder.assign(index_reg, start_reg, self.line)
-        self.index_reg = builder.ensure_register(index_reg)
+        self.index_reg = index_reg
         # Initialize loop index to 0. Assert that the index target is assignable.
         self.index_target: Register | AssignmentTarget = builder.get_assignment_target(self.index)
         builder.assign(self.index_target, builder.read(self.index_reg, self.line), self.line)
