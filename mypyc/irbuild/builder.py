@@ -75,7 +75,6 @@ from mypyc.common import (
     KEEP_ALIVE_WHOLE_EXPRESSION,
     MODULE_PREFIX,
     SELF_NAME,
-    TEMP_ATTR_NAME,
     shared_lib_name,
 )
 from mypyc.crash import catch_errors
@@ -249,11 +248,8 @@ class IRBuilder:
         self.callable_class_names: set[str] = set()
         self.options = options
 
-        # These variables keep track of the number of lambdas, implicit indices, and implicit
-        # iterators instantiated so we avoid name conflicts. The indices and iterators are
-        # instantiated from for-loops.
+        # Keep track of the number of lambdas instantiated so we avoid name conflicts.
         self.lambda_counter = 0
-        self.temp_counter = 0
 
         # These variables are populated from the first-pass PreBuildVisitor.
         self.free_variables = pbv.free_variables
@@ -858,11 +854,6 @@ class IRBuilder:
 
         assert False, "Unsupported lvalue: %r" % target
 
-    def read_nullable_attr(self, obj: Value, attr: str, line: int = -1) -> Value:
-        """Read an attribute that might have an error value without raising AttributeError."""
-        assert isinstance(obj.type, RInstance) and obj.type.class_ir.is_ext_class
-        return self.add(GetAttr(obj, attr, line, allow_error_value=True))
-
     def assign(self, target: Register | AssignmentTarget, rvalue_reg: Value, line: int) -> None:
         if isinstance(target, Register):
             self.add(Assign(target, self.coerce_rvalue(rvalue_reg, target.type, line), line))
@@ -1046,17 +1037,6 @@ class IRBuilder:
 
     def pop_loop_stack(self) -> None:
         self.nonlocal_control.pop()
-
-    def make_spill_target(self, type: RType) -> AssignmentTarget:
-        """Moves a given Value instance into the private generator frame."""
-        frame = self.fn_info.generator_class
-        # Generator classes for overriding methods can inherit from one another. Include the
-        # module-qualified owning class name so unrelated helper spills don't alias an inherited
-        # struct field.
-        name = f"{TEMP_ATTR_NAME}1_{exported_name(frame.ir.fullname)}_{self.temp_counter}"
-        self.temp_counter += 1
-        target = self.add_var_to_class(Var(name), type, frame.ir, frame.self_reg)
-        return target
 
     def ensure_register(self, value: Value) -> Register:
         """Return an assignable register containing a value."""

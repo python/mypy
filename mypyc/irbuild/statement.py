@@ -49,7 +49,7 @@ from mypy.nodes import (
     YieldExpr,
     YieldFromExpr,
 )
-from mypyc.common import KEEP_ALIVE_SHORT_LIVED, KEEP_ALIVE_WHOLE_EXPRESSION, TEMP_ATTR_NAME
+from mypyc.common import KEEP_ALIVE_SHORT_LIVED, KEEP_ALIVE_WHOLE_EXPRESSION
 from mypyc.ir.ops import (
     ERR_NEVER,
     NAMESPACE_MODULE,
@@ -793,7 +793,7 @@ def try_finally_try(
     return_entry: BasicBlock,
     main_entry: BasicBlock,
     try_body: GenFunc,
-) -> Register | AssignmentTarget | None:
+) -> Register | None:
     # Compile the try block with an error handler
     control = TryFinallyNonlocalControl(return_entry)
     builder.builder.push_error_handler(err_handler)
@@ -814,7 +814,7 @@ def try_finally_entry_blocks(
     return_entry: BasicBlock,
     main_entry: BasicBlock,
     finally_block: BasicBlock,
-    ret_reg: Register | AssignmentTarget | None,
+    ret_reg: Register | None,
 ) -> Value:
     line = builder.fn_info.fitem.line
     old_exc = Register(exc_rtuple, line=line)
@@ -859,7 +859,7 @@ def try_finally_resolve_control(
     cleanup_block: BasicBlock,
     finally_control: FinallyNonlocalControl,
     old_exc: Value,
-    ret_reg: Register | AssignmentTarget | None,
+    ret_reg: Register | None,
 ) -> BasicBlock:
     """Resolve the control flow out of a finally block.
 
@@ -880,15 +880,10 @@ def try_finally_resolve_control(
     if ret_reg:
         builder.activate_block(rest)
         return_block, rest = BasicBlock(), BasicBlock()
-        # For spill targets in try/finally, use nullable read to avoid AttributeError
-        if isinstance(ret_reg, AssignmentTargetAttr) and ret_reg.attr.startswith(TEMP_ATTR_NAME):
-            ret_val = builder.read_nullable_attr(ret_reg.obj, ret_reg.attr, line)
-        else:
-            ret_val = builder.read(ret_reg, line)
-        builder.add(Branch(ret_val, rest, return_block, Branch.IS_ERROR, line))
+        builder.add(Branch(ret_reg, rest, return_block, Branch.IS_ERROR, line))
 
         builder.activate_block(return_block)
-        builder.nonlocal_control[-1].gen_return(builder, ret_val, line)
+        builder.nonlocal_control[-1].gen_return(builder, ret_reg, line)
 
     # TODO: handle break/continue
     builder.activate_block(rest)

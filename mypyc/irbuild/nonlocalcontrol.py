@@ -25,7 +25,6 @@ from mypyc.ir.ops import (
     Value,
 )
 from mypyc.ir.rtypes import object_rprimitive
-from mypyc.irbuild.targets import AssignmentTarget
 from mypyc.primitives.exc_ops import restore_exc_info_op, set_stop_iteration_value
 
 if TYPE_CHECKING:
@@ -184,7 +183,7 @@ class TryFinallyNonlocalControl(NonlocalControl):
 
     def __init__(self, target: BasicBlock) -> None:
         self.target = target
-        self.ret_reg: None | Register | AssignmentTarget = None
+        self.ret_reg: Register | None = None
 
     def gen_break(self, builder: IRBuilder, line: int) -> None:
         builder.error("break inside try/finally block is unimplemented", line)
@@ -194,13 +193,7 @@ class TryFinallyNonlocalControl(NonlocalControl):
 
     def gen_return(self, builder: IRBuilder, value: Value, line: int) -> None:
         if self.ret_reg is None:
-            if builder.fn_info.is_generator:
-                self.ret_reg = builder.make_spill_target(builder.ret_types[-1])
-            else:
-                self.ret_reg = Register(builder.ret_types[-1])
-        # assert needed because of apparent mypy bug... it loses track of the union
-        # and infers the type as object
-        assert isinstance(self.ret_reg, (Register, AssignmentTarget)), self.ret_reg
+            self.ret_reg = Register(builder.ret_types[-1])
         builder.assign(self.ret_reg, value, line)
 
         builder.add(Goto(self.target))
