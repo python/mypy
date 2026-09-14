@@ -45,9 +45,10 @@ class WorkerSuite(TestCase):
         expected_data = b"recovered_payload"
         fake_open, attempts = self._create_transient_open(1, expected_data)
 
-        with mock.patch("builtins.open", side_effect=fake_open), mock.patch(
-            "time.sleep"
-        ) as mock_sleep:
+        with (
+            mock.patch("builtins.open", side_effect=fake_open),
+            mock.patch("time.sleep") as mock_sleep,
+        ):
             data = read_options_data("dummy_path", timeout=1.0, interval=0.05)
             self.assertEqual(data, expected_data)
             self.assertEqual(attempts[0], 2)
@@ -58,9 +59,10 @@ class WorkerSuite(TestCase):
         expected_data = b"recovered_after_multiple"
         fake_open, attempts = self._create_transient_open(3, expected_data)
 
-        with mock.patch("builtins.open", side_effect=fake_open), mock.patch(
-            "time.sleep"
-        ) as mock_sleep:
+        with (
+            mock.patch("builtins.open", side_effect=fake_open),
+            mock.patch("time.sleep") as mock_sleep,
+        ):
             data = read_options_data("dummy_path", timeout=2.0, interval=0.02)
             self.assertEqual(data, expected_data)
             self.assertEqual(attempts[0], 4)
@@ -78,9 +80,11 @@ class WorkerSuite(TestCase):
             nonlocal current_time
             current_time += duration
 
-        with mock.patch("builtins.open", side_effect=orig_exc), \
-             mock.patch("time.monotonic", side_effect=fake_monotonic), \
-             mock.patch("time.sleep", side_effect=fake_sleep) as mock_sleep:
+        with (
+            mock.patch("builtins.open", side_effect=orig_exc),
+            mock.patch("time.monotonic", side_effect=fake_monotonic),
+            mock.patch("time.sleep", side_effect=fake_sleep) as mock_sleep,
+        ):
             with self.assertRaises(FileNotFoundError) as ctx:
                 read_options_data("missing_path", timeout=0.1, interval=0.03)
             self.assertIs(ctx.exception, orig_exc)
@@ -90,8 +94,10 @@ class WorkerSuite(TestCase):
     def test_read_options_data_zero_timeout(self) -> None:
         """Zero timeout raises on first failure without any sleep."""
         orig_exc = FileNotFoundError("Missing on zero timeout")
-        with mock.patch("builtins.open", side_effect=orig_exc), \
-             mock.patch("time.sleep") as mock_sleep:
+        with (
+            mock.patch("builtins.open", side_effect=orig_exc),
+            mock.patch("time.sleep") as mock_sleep,
+        ):
             with self.assertRaises(FileNotFoundError) as ctx:
                 read_options_data("missing_path", timeout=0)
             self.assertIs(ctx.exception, orig_exc)
@@ -99,8 +105,10 @@ class WorkerSuite(TestCase):
 
     def test_read_options_data_permission_error_no_retry(self) -> None:
         """Unrelated OS errors (e.g. PermissionError) propagate immediately without sleeping."""
-        with mock.patch("builtins.open", side_effect=PermissionError("Access denied")), \
-             mock.patch("time.sleep") as mock_sleep:
+        with (
+            mock.patch("builtins.open", side_effect=PermissionError("Access denied")),
+            mock.patch("time.sleep") as mock_sleep,
+        ):
             with self.assertRaises(PermissionError):
                 read_options_data("restricted_path", timeout=1.0, interval=0.01)
             mock_sleep.assert_not_called()
