@@ -148,3 +148,19 @@ class ClassPattern(Pattern):
 
     def accept(self, visitor: PatternVisitor[T]) -> T:
         return visitor.visit_class_pattern(self)
+
+
+def sub_patterns(pattern: Pattern) -> list[Pattern]:
+    """Return the direct sub-patterns of a composite pattern.
+
+    Captures inside composite patterns (e.g. '[x]' or 'Cls(x)') are always
+    allowed by CPython's irrefutability check, which only inspects them in
+    top-level positions and or-pattern alternatives.
+    """
+    if isinstance(pattern, SequencePattern):
+        return pattern.patterns
+    if isinstance(pattern, MappingPattern):
+        return pattern.values
+    if isinstance(pattern, ClassPattern):
+        return [*pattern.positionals, *pattern.keyword_values]
+    return []
