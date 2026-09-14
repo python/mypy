@@ -51,7 +51,7 @@ RECURSION_LIMIT: Final = 2**14
 # with our generous timeouts, so we set them higher.
 WORKER_START_INTERVAL: Final = 0.01 if sys.platform != "win32" else 0.03
 WORKER_START_TIMEOUT: Final = 3 if sys.platform != "win32" else 10
-WORKER_SHUTDOWN_TIMEOUT: Final = 1 if sys.platform != "win32" else 3
+WORKER_SHUTDOWN_TIMEOUT: Final = 3 if sys.platform != "win32" else 10
 
 WORKER_CONNECTION_TIMEOUT: Final = 10
 WORKER_IDLE_TIMEOUT: Final = 600
