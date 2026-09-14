@@ -713,7 +713,7 @@ def transform_try_except(
     # exception is raised, based on the exception in exc_info.
     builder.builder.push_error_handler(double_except_block)
     builder.activate_block(except_entry)
-    old_exc = builder.maybe_spill(builder.call_c(error_catch_op, [], line))
+    old_exc = builder.call_c(error_catch_op, [], line)
     # Compile the except blocks with the nonlocal control flow overridden to clear exc_info
     builder.nonlocal_control.append(ExceptNonlocalControl(builder.nonlocal_control[-1], old_exc))
 
@@ -1133,10 +1133,10 @@ def transform_with(
         exit_ = None
     else:
         typ = builder.primitive_op(type_op, [mgr_v], line)
-        exit_ = builder.maybe_spill(builder.py_get_attr(typ, f"__{al}exit__", line))
+        exit_ = builder.py_get_attr(typ, f"__{al}exit__", line)
         value = builder.py_call(builder.py_get_attr(typ, f"__{al}enter__", line), [mgr_v], line)
 
-    mgr = builder.maybe_spill(mgr_v)
+    mgr = mgr_v
     exc = builder.maybe_spill_assignable(builder.true())
     if is_async:
         value = emit_await(builder, value, line)
@@ -1210,7 +1210,7 @@ def transform_with_lock(
     # __enter__: acquire the lock
     value = builder.primitive_op(lock_acquire_op, [mgr_v], line)
 
-    mgr = builder.maybe_spill(mgr_v)
+    mgr = mgr_v
 
     def try_body() -> None:
         if target:

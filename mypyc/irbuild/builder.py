@@ -1061,17 +1061,6 @@ class IRBuilder:
         target = self.add_var_to_class(Var(name), type, frame.ir, frame.self_reg)
         return target
 
-    def spill(self, value: Value) -> AssignmentTarget:
-        """Moves a given Value instance into the private generator frame."""
-        target = self.make_spill_target(value.type)
-        # Shouldn't be able to fail
-        self.assign(target, value, NO_TRACEBACK_LINE_NO)
-        return target
-
-    def maybe_spill(self, value: Value) -> Value | AssignmentTarget:
-        """Return a value that the generator-spill transforms may move later."""
-        return value
-
     def maybe_spill_assignable(self, value: Value) -> Register | AssignmentTarget:
         """Return an assignable register for a value."""
         if isinstance(value, Register):

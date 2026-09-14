@@ -213,7 +213,7 @@ class ExceptNonlocalControl(CleanupNonlocalControl):
     This is super annoying.
     """
 
-    def __init__(self, outer: NonlocalControl, saved: Value | AssignmentTarget) -> None:
+    def __init__(self, outer: NonlocalControl, saved: Value) -> None:
         super().__init__(outer)
         self.saved = saved
 

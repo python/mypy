@@ -1415,7 +1415,7 @@ def transform_dictionary_comprehension(builder: IRBuilder, o: DictionaryComprehe
 
 
 def _dict_comp_body(builder: IRBuilder, o: DictionaryComprehension) -> Value:
-    d = builder.maybe_spill(builder.call_c(dict_new_op, [], o.line))
+    d = builder.call_c(dict_new_op, [], o.line)
     loop_params = list(zip(o.indices, o.sequences, o.condlists, o.is_async))
 
     def gen_inner_stmts() -> None:

@@ -322,7 +322,7 @@ def translate_list_comprehension(builder: IRBuilder, gen: GeneratorExpr) -> Valu
     if val is not None:
         return val
 
-    list_ops = builder.maybe_spill(builder.new_list_op([], gen.line))
+    list_ops = builder.new_list_op([], gen.line)
 
     loop_params = list(zip(gen.indices, gen.sequences, gen.condlists, gen.is_async))
 
@@ -358,7 +358,7 @@ def translate_set_comprehension(builder: IRBuilder, gen: GeneratorExpr) -> Value
     if raise_error_if_contains_unreachable_names(builder, gen):
         return builder.none()
 
-    set_ops = builder.maybe_spill(builder.new_set_op([], gen.line))
+    set_ops = builder.new_set_op([], gen.line)
     loop_params = list(zip(gen.indices, gen.sequences, gen.condlists, gen.is_async))
 
     def gen_inner_stmts() -> None:
@@ -688,7 +688,7 @@ class ForGenerator:
     def gen_cleanup(self) -> None:
         """Generate post-loop cleanup (if needed)."""
 
-    def load_len(self, expr: Value | AssignmentTarget) -> Value:
+    def load_len(self, expr: Value) -> Value:
         """A helper to get collection length, used by several subclasses."""
         return self.builder.builder.builtin_len(
             self.builder.read(expr, self.line), self.line, use_pyssize_t=True
@@ -703,13 +703,11 @@ class ForIterable(ForGenerator):
         return True
 
     def init(self, expr_reg: Value, target_type: RType) -> None:
-        # Define targets to contain the expression, along with the iterator that will be used
-        # for the for-loop. If we are inside of a generator function, spill these into the
-        # private generator frame.
+        # Define a target containing the iterator used by the for-loop. The generator spill
+        # transform will promote it to the private generator frame if needed.
         builder = self.builder
         iter_reg = builder.primitive_op(iter_op, [expr_reg], self.line)
-        builder.maybe_spill(expr_reg)
-        self.iter_target = builder.maybe_spill(iter_reg)
+        self.iter_target = iter_reg
         self.target_type = target_type
 
     def gen_condition(self) -> None:
@@ -752,10 +750,9 @@ class ForNativeGenerator(ForGenerator):
         return True
 
     def init(self, expr_reg: Value, target_type: RType) -> None:
-        # Define target to contains the generator expression. It's also the iterator.
-        # If we are inside a generator function, spill these into the private generator frame.
-        builder = self.builder
-        self.iter_target = builder.maybe_spill(expr_reg)
+        # The generator expression is also the iterator. The generator spill transform will
+        # promote it to the private generator frame if needed.
+        self.iter_target = expr_reg
         self.target_type = target_type
 
     def gen_condition(self) -> None:
@@ -808,14 +805,11 @@ class ForAsyncIterable(ForGenerator):
     """Generate IR for an async for loop."""
 
     def init(self, expr_reg: Value, target_type: RType) -> None:
-        # Define targets to contain the expression, along with the
-        # iterator that will be used for the for-loop. We are inside
-        # of a generator function, so we will spill these into
-        # the private generator frame.
+        # Define a target containing the iterator used by the for-loop. The generator spill
+        # transform will promote it to the private generator frame if needed.
         builder = self.builder
         iter_reg = builder.call_c(aiter_op, [expr_reg], self.line)
-        builder.maybe_spill(expr_reg)
-        self.iter_target = builder.maybe_spill(iter_reg)
+        self.iter_target = iter_reg
         self.target_type = target_type
         self.stop_reg = Register(bool_rprimitive)
 
@@ -895,7 +889,7 @@ class ForSequence(ForGenerator):
     Supports iterating in both forward and reverse.
     """
 
-    length_reg: Value | AssignmentTarget | None
+    length_reg: Value | None
 
     def init(
         self, expr_reg: Value, target_type: RType, reverse: bool, length: Value | None = None
@@ -908,13 +902,12 @@ class ForSequence(ForGenerator):
         # Record a Value indicating the length of the sequence, if known at compile time.
         self.length = length
         self.reverse = reverse
-        # Define target to contain the expression, along with the index that will be used
-        # for the for-loop. If we are inside of a generator function, spill these into the
-        # private generator frame.
-        self.expr_target = builder.maybe_spill(expr_reg)
+        # The generator spill transform will promote loop state to the private generator frame
+        # if needed.
+        self.expr_target = expr_reg
         if is_immutable_rprimitive(expr_reg.type):
             # If the expression is an immutable type, we can load the length just once.
-            self.length_reg = builder.maybe_spill(self.length or self.load_len(self.expr_target))
+            self.length_reg = self.length or self.load_len(self.expr_target)
         else:
             # Otherwise, even if the length is known, we must recalculate the length
             # at every iteration for compatibility with python semantics.
@@ -1011,15 +1004,15 @@ class ForDictionaryCommon(ForGenerator):
         builder = self.builder
         self.target_type = target_type
 
-        # Spill some values so they can be read across yield.
-        self.expr_target = builder.maybe_spill(expr_reg)
+        # The generator spill transform will promote loop state that crosses a yield.
+        self.expr_target = expr_reg
         offset = Integer(0)
         self.offset_target = builder.maybe_spill_assignable(offset)
-        self.size = builder.maybe_spill(self.load_len(self.expr_target))
+        self.size = self.load_len(self.expr_target)
 
         # For dict class (not a subclass) this is the dictionary itself.
         iter_reg = builder.call_c(self.dict_iter_op, [expr_reg], self.line)
-        self.iter_target = builder.maybe_spill(iter_reg)
+        self.iter_target = iter_reg
 
     def gen_condition(self) -> None:
         """Get next key/value pair, set new offset, and check if we should continue."""
@@ -1133,7 +1126,7 @@ class ForRange(ForGenerator):
         self.start_reg = start_reg
         self.end_reg = end_reg
         self.step = step
-        self.end_target = builder.maybe_spill(end_reg)
+        self.end_target = end_reg
         if is_short_int_rprimitive(start_reg.type) and is_short_int_rprimitive(end_reg.type):
             index_type: RType = short_int_rprimitive
         elif is_fixed_width_rtype(end_reg.type):
