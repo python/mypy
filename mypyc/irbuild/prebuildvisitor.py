@@ -99,7 +99,7 @@ class PreBuildVisitor(ExtendedTraverserVisitor):
 
         # Local variables that occur in a del statement. This is needed before
         # their first assignment is lowered (see IRBuilder.get_assignment_target).
-        self.deleted_vars: set[SymbolNode] = set()
+        self.deleted_vars: set[Var] = set()
 
         # A map from any function that contains nested functions to
         # a set of all the functions that are nested within it.

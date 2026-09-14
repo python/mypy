@@ -767,7 +767,7 @@ class IRBuilder:
                     # definedness bitmap. Other generator locals start in
                     # registers and are promoted later if they cross a yield.
                     if (
-                        (self.fn_info.is_generator or self.fn_info.is_coroutine)
+                        self.fn_info.is_generator
                         and reg_type.error_overlap
                         and symbol in self.deleted_vars
                     ):
