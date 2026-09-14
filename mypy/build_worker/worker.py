@@ -83,9 +83,10 @@ def read_options_data(
             with open(options_data, "rb") as f:
                 return f.read()
         except FileNotFoundError:
-            if time.monotonic() >= end_time:
+            remaining = end_time - time.monotonic()
+            if remaining <= 0:
                 raise
-            time.sleep(interval)
+            time.sleep(min(interval, remaining))
 
 
 class ServerContext:

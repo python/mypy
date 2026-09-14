@@ -113,6 +113,29 @@ class WorkerSuite(TestCase):
                 read_options_data("restricted_path", timeout=1.0, interval=0.01)
             mock_sleep.assert_not_called()
 
+    def test_read_options_data_caps_sleep_to_remaining_timeout(self) -> None:
+        current_time = 100.0
+        orig_exc = FileNotFoundError("Target file missing")
+
+        def fake_monotonic() -> float:
+            return current_time
+
+        def fake_sleep(duration: float) -> None:
+            nonlocal current_time
+            current_time += duration
+
+        with (
+            mock.patch("builtins.open", side_effect=orig_exc),
+            mock.patch("time.monotonic", side_effect=fake_monotonic),
+            mock.patch("time.sleep", side_effect=fake_sleep) as mock_sleep,
+        ):
+            with self.assertRaises(FileNotFoundError) as ctx:
+                read_options_data("missing_path", timeout=0.1, interval=10.0)
+
+            self.assertIs(ctx.exception, orig_exc)
+            mock_sleep.assert_called_once()
+            self.assertAlmostEqual(mock_sleep.call_args.args[0], 0.1)
+
     def test_read_options_data_corrupted_data_not_masked(self) -> None:
         """Corrupted content is returned as-is and fails parsing, not masked as absence."""
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -123,7 +146,7 @@ class WorkerSuite(TestCase):
             data = read_options_data(options_path, timeout=0.5, interval=0.01)
             self.assertEqual(data, b"not_valid_json_buffer")
             buf = ReadBuffer(data)
-            with self.assertRaises(Exception):
+            with self.assertRaises(AssertionError):
                 read_json(buf)
 
     def test_read_options_data_roundtrip_with_options(self) -> None:
