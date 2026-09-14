@@ -147,6 +147,22 @@ class TestBorrowGeneratorAttrs(unittest.TestCase):
 
         assert not read.is_borrowed
 
+    def test_storing_frame_in_attribute_kills_borrow(self) -> None:
+        ir, cl, self_reg = self.make_single_block_helper([])
+        other_cl = ClassIR("other", "module")
+        other_cl.attributes["frame"] = self_reg.type
+        other = Register(RInstance(other_cl), "other")
+        read = GetAttr(self_reg, "value", -1)
+        ir.blocks[0].ops[:0] = [
+            read,
+            SetAttr(other, "frame", self_reg, -1),
+            KeepAlive([read]),
+        ]
+
+        borrow_generator_attrs(ir, cl)
+
+        assert not read.is_borrowed
+
     def test_borrows_across_basic_blocks(self) -> None:
         first = BasicBlock()
         second = BasicBlock()

@@ -68,6 +68,8 @@ class BorrowGeneratorAttrsVisitor(BaseAnalysisVisitor[GetAttr]):
         return EMPTY
 
     def visit_set_attr(self, op: SetAttr) -> GenAndKill:
+        if op.src is self.self_reg:
+            return frozenset(), self.candidates
         if op.obj is self.self_reg:
             return frozenset(), self.candidates_by_attr.get(op.attr, frozenset())
         return EMPTY
@@ -87,9 +89,10 @@ class BorrowGeneratorAttrsVisitor(BaseAnalysisVisitor[GetAttr]):
 def borrow_generator_attrs(ir: FuncIR, cl: ClassIR) -> None:
     """Mark safe reads from a private generator frame as borrowed.
 
-    The generator running flag prevents external writes while the helper is executing.
-    A read can therefore stay borrowed until this helper writes the same attribute or
-    passes the frame to an operation that may access it.
+    Only private frames without Python-visible attribute getsetters qualify, and the
+    generator running flag prevents concurrent helper invocations. A read can stay borrowed
+    until the helper writes the same attribute, passes the frame to an operation that may
+    access it, or suspends.
     """
     if not cl.attrs_are_thread_confined() or cl.env_user_function is not ir or not ir.arg_regs:
         return
