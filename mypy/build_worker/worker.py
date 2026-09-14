@@ -47,7 +47,13 @@ from mypy.build import (
     process_stale_scc_interface,
 )
 from mypy.cache import Tag, read_int_list, read_json
-from mypy.defaults import RECURSION_LIMIT, WORKER_CONNECTION_TIMEOUT, WORKER_IDLE_TIMEOUT
+from mypy.defaults import (
+    RECURSION_LIMIT,
+    WORKER_CONNECTION_TIMEOUT,
+    WORKER_IDLE_TIMEOUT,
+    WORKER_START_INTERVAL,
+    WORKER_START_TIMEOUT,
+)
 from mypy.error_formatter import OUTPUT_CHOICES
 from mypy.errors import CompileError, ErrorInfo, Errors, report_internal_error
 from mypy.fscache import FileSystemCache
@@ -92,8 +98,19 @@ def main(argv: list[str]) -> None:
     # This mimics how daemon receives the options. Note we need to postpone
     # processing error codes after plugins are loaded, because plugins can add
     # custom error codes.
-    with open(args.options_data, "rb") as f:
-        buf = ReadBuffer(f.read())
+    end_time = time.time() + WORKER_START_TIMEOUT
+    last_exception: Exception | None = None
+    while time.time() < end_time:
+        try:
+            with open(args.options_data, "rb") as f:
+                buf = ReadBuffer(f.read())
+                break
+        except OSError as exc:
+            last_exception = exc
+            time.sleep(WORKER_START_INTERVAL)
+    else:
+        TimeoutError(f"Failed to read {args.optionms_data}: {last_exception}")
+
     options_dict = read_json(buf)
     disable_error_code = options_dict.pop("disable_error_code", [])
     enable_error_code = options_dict.pop("enable_error_code", [])
