@@ -524,10 +524,14 @@ def analyze_live_regs_with_exception_edges(
 ) -> dict[BasicBlock, set[Value]]:
     """Calculate block-entry liveness before exception handling is inserted.
 
-    Unlike ``get_cfg()``, this models an error edge at each operation that can
+    Unlike get_cfg(), this models an error edge at each operation that can
     raise. This matters when an assignment later in the same block overwrites a
     value that the error handler can still read. Returns inserted for a yield
     are treated as edges to their continuation blocks.
+
+    TODO: Unlike run_analysis(), this supports edges from the middle of basic
+          blocks, so we reimplement data flow analysis here. Figure out a way
+          to unify this with run_analysis().
     """
     visitor = LivenessVisitor()
     live_in: dict[BasicBlock, set[Value]] = {block: set() for block in blocks}
