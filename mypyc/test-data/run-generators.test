@@ -1210,6 +1210,7 @@ def crossing(delete: bool) -> Iterator[str]:
     yield value
     if delete:
         del value
+    yield "pause"
     yield value
 
 def non_crossing(delete: bool) -> Iterator[str]:
@@ -1219,9 +1220,12 @@ def non_crossing(delete: bool) -> Iterator[str]:
     yield value
 
 def test_del_local_in_generator() -> None:
-    assert list(crossing(False)) == ["crossing", "crossing"]
+    assert list(crossing(False)) == ["crossing", "pause", "crossing"]
     assert list(non_crossing(False)) == ["local"]
+    it = crossing(True)
+    assert next(it) == "crossing"
+    assert next(it) == "pause"
     with assertRaises(AttributeError, "attribute 'value' of 'crossing_gen' undefined"):
-        list(crossing(True))
+        next(it)
     with assertRaises(UnboundLocalError, 'local variable "value" referenced before assignment'):
         list(non_crossing(True))

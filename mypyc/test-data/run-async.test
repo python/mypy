@@ -139,6 +139,8 @@ async def sleep(t: float) -> None: ...
 import asyncio
 from typing import List
 
+from testutil import assertRaises
+
 async def increment(value: int) -> int:
     await asyncio.sleep(0)
     return value + 1
@@ -156,11 +158,21 @@ async def return_through_finally(log: List[str]) -> int:
         await asyncio.sleep(0)
         log.append("finally")
 
+async def deleted_across_await(delete: bool) -> str:
+    value = "live"
+    if delete:
+        del value
+    await asyncio.sleep(0)
+    return value
+
 async def test_async_locals_across_await() -> None:
     assert await accumulate(4) == 10
     log: List[str] = []
     assert await return_through_finally(log) == 7
     assert log == ["finally"]
+    assert await deleted_across_await(False) == "live"
+    with assertRaises(AttributeError):
+        await deleted_across_await(True)
 
 [file asyncio/__init__.pyi]
 async def sleep(delay: float) -> None: ...

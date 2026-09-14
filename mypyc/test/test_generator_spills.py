@@ -1,4 +1,7 @@
-"""Tests for promoting generator registers onto their frames."""
+"""Tests for promoting generator registers onto their frames.
+
+These don't use the normal data-driven tests, since generators produce very verbose IR.
+"""
 
 from __future__ import annotations
 
