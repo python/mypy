@@ -358,21 +358,28 @@ class PatternChecker(PatternVisitor[PatternType]):
                 new_type = UninhabitedType()
             else:
                 new_type = TupleType(new_inner_types, current_type.partial_fallback)
-
-            num_always_match = sum(is_uninhabited(typ) for typ in rest_inner_types)
-            if num_always_match == len(rest_inner_types):
-                # All subpatterns always match, so we can apply negative narrowing
-                rest_type = UninhabitedType()
-            elif num_always_match == len(rest_inner_types) - 1:
-                # Exactly one subpattern may conditionally match, the rest always match.
-                # We can apply negative narrowing to this one position.
-                rest_type = TupleType(
-                    [
-                        curr if is_uninhabited(rest) else rest
-                        for curr, rest in zip(inner_types, rest_inner_types)
-                    ],
-                    current_type.partial_fallback,
-                )
+                # A value doesn't match the pattern if some item doesn't match its
+                # subpattern while all the items before it do, so what remains is the
+                # union of one tuple per position whose subpattern may fail to match:
+                #     tuple[A, B] - tuple[a, b] == tuple[A - a, B] | tuple[a, B - b]
+                # Positions whose subpattern always matches never fail and keep their type.
+                matched_types = [
+                    curr if is_uninhabited(rest) else new
+                    for curr, new, rest in zip(inner_types, new_inner_types, rest_inner_types)
+                ]
+                rest_items = [
+                    TupleType(
+                        matched_types[:i] + [rest] + inner_types[i + 1 :],
+                        current_type.partial_fallback,
+                    )
+                    for i, rest in enumerate(rest_inner_types)
+                    if not is_uninhabited(rest)
+                ]
+                if rest_items:
+                    rest_type = make_simplified_union(rest_items)
+                else:
+                    # All subpatterns always match, so nothing remains
+                    rest_type = UninhabitedType()
         elif isinstance(current_type, TupleType):
             # For variadic tuples it is too tricky to match individual items like for fixed
             # tuples, so we instead try to narrow the entire type.
