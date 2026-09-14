@@ -76,6 +76,9 @@ class BorrowGeneratorAttrsVisitor(BaseAnalysisVisitor[GetAttr]):
         return EMPTY
 
     def visit_sources(self, op: Op) -> GenAndKill:
+        # An operation that uses the frame may expose an alias or access its attributes in a
+        # way this analysis doesn't track, so conservatively invalidate all outstanding borrows.
+        # Safe direct frame operations are handled more precisely by the methods above.
         if any(source is self.self_reg for source in op.sources()):
             return frozenset(), self.candidates
         return EMPTY
