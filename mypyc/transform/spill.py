@@ -1,4 +1,7 @@
-"""Insert spills for values that are live across yields."""
+"""Spill operation results that are live across generator suspension points.
+
+Registers are spilled in an earlier pass.
+"""
 
 from __future__ import annotations
 
@@ -26,9 +29,11 @@ from mypyc.namegen import exported_name
 def insert_spills(ir: FuncIR, frame: ClassIR) -> None:
     cfg = get_cfg(ir.blocks, use_yields=True)
     live = analyze_live_regs(ir.blocks, cfg)
-    # Registers that cross a suspension are moved to the frame earlier by
-    # promote_generator_registers(). Address-taken and RArray registers stay
-    # as C locals and are intentionally ignored here.
+    # Registers needing frame storage were handled earlier by promote_generator_registers().
+    # Argument, address-taken, and RArray registers stay as C locals.
+
+    # Each generator helper invocation starts at the resume dispatch, so an operation result
+    # live at entry must have survived a previous suspension.
     to_spill = {value for value in live.before[ir.blocks[0], 0] if isinstance(value, Op)}
 
     ir.blocks = spill_regs(ir.blocks, frame, to_spill, live, ir.arg_regs[0])
