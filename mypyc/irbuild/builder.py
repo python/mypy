@@ -152,7 +152,7 @@ from mypyc.irbuild.targets import (
     AssignmentTargetRegister,
     AssignmentTargetTuple,
 )
-from mypyc.irbuild.util import bytes_from_str, is_constant
+from mypyc.irbuild.util import bytes_from_str, get_func_def, is_constant
 from mypyc.irbuild.vec import vec_set_item
 from mypyc.namegen import exported_name
 from mypyc.options import CompilerOptions
@@ -753,11 +753,8 @@ class IRBuilder:
             # Use the concrete implementation as the symbol-table key for
             # decorated and overloaded functions.
             symbol = lvalue.node
-            if isinstance(symbol, OverloadedFuncDef):
-                assert symbol.impl is not None
-                symbol = symbol.impl
-            if isinstance(symbol, Decorator):
-                symbol = symbol.func
+            if isinstance(symbol, Decorator | OverloadedFuncDef):
+                symbol = get_func_def(symbol)
             if symbol is None:
                 # Semantic analyzer doesn't create ad-hoc Vars for special forms.
                 assert lvalue.is_special_form
