@@ -104,10 +104,11 @@ def main(argv: list[str]) -> None:
         try:
             with open(args.options_data, "rb") as f:
                 buf = ReadBuffer(f.read())
-                break
         except OSError as exc:
             last_exception = exc
             time.sleep(WORKER_START_INTERVAL)
+            continue
+        break
     else:
         raise TimeoutError(f"Failed to read {args.optionms_data}: {last_exception}")
 
