@@ -105,6 +105,7 @@ def main(
     if options.num_workers:
         # Supporting both parsers would be really tricky, so just support the new one.
         options.native_parser = True
+        options.incremental = True
         if options.num_workers < 0:
             fail("error: Number of workers cannot be negative", stderr, options)
         if options.cache_dir == os.devnull:
