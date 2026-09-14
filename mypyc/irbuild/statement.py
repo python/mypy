@@ -49,11 +49,7 @@ from mypy.nodes import (
     YieldExpr,
     YieldFromExpr,
 )
-from mypyc.common import (
-    GENERATOR_HELPER_NAME,
-    KEEP_ALIVE_SHORT_LIVED,
-    KEEP_ALIVE_WHOLE_EXPRESSION,
-)
+from mypyc.common import GENERATOR_HELPER_NAME, KEEP_ALIVE_SHORT_LIVED, KEEP_ALIVE_WHOLE_EXPRESSION
 from mypyc.ir.ops import (
     ERR_NEVER,
     NAMESPACE_MODULE,
