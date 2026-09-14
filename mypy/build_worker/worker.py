@@ -47,7 +47,13 @@ from mypy.build import (
     process_stale_scc_interface,
 )
 from mypy.cache import Tag, read_int_list, read_json
-from mypy.defaults import RECURSION_LIMIT, WORKER_CONNECTION_TIMEOUT, WORKER_IDLE_TIMEOUT
+from mypy.defaults import (
+    RECURSION_LIMIT,
+    WORKER_CONNECTION_TIMEOUT,
+    WORKER_IDLE_TIMEOUT,
+    WORKER_START_INTERVAL,
+    WORKER_START_TIMEOUT,
+)
 from mypy.error_formatter import OUTPUT_CHOICES
 from mypy.errors import CompileError, ErrorInfo, Errors, report_internal_error
 from mypy.fscache import FileSystemCache
@@ -63,6 +69,23 @@ parser.add_argument("--status-file", help="status file to communicate worker det
 parser.add_argument("--options-data", help="file with serialized mypy options")
 
 CONNECTION_NAME = "build_worker"
+
+
+def read_options_data(
+    options_data: str,
+    timeout: float = WORKER_START_TIMEOUT,
+    interval: float = WORKER_START_INTERVAL,
+) -> bytes:
+    """Read serialized options file with retry in case of transient filesystem delay."""
+    end_time = time.monotonic() + timeout
+    while True:
+        try:
+            with open(options_data, "rb") as f:
+                return f.read()
+        except FileNotFoundError:
+            if time.monotonic() >= end_time:
+                raise
+            time.sleep(interval)
 
 
 class ServerContext:
@@ -92,8 +115,7 @@ def main(argv: list[str]) -> None:
     # This mimics how daemon receives the options. Note we need to postpone
     # processing error codes after plugins are loaded, because plugins can add
     # custom error codes.
-    with open(args.options_data, "rb") as f:
-        buf = ReadBuffer(f.read())
+    buf = ReadBuffer(read_options_data(args.options_data))
     options_dict = read_json(buf)
     disable_error_code = options_dict.pop("disable_error_code", [])
     enable_error_code = options_dict.pop("enable_error_code", [])
