@@ -1039,7 +1039,10 @@ class IRBuilder:
         self.nonlocal_control.pop()
 
     def ensure_register(self, value: Value) -> Register:
-        """Return an assignable register containing a value."""
+        """Return an assignable register containing a value.
+
+        Values that may remain live across arbitrary control flow should use a register.
+        """
         if isinstance(value, Register):
             return value
 
