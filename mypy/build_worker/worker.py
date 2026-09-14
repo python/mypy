@@ -109,7 +109,7 @@ def main(argv: list[str]) -> None:
             last_exception = exc
             time.sleep(WORKER_START_INTERVAL)
     else:
-        TimeoutError(f"Failed to read {args.optionms_data}: {last_exception}")
+        raise TimeoutError(f"Failed to read {args.optionms_data}: {last_exception}")
 
     options_dict = read_json(buf)
     disable_error_code = options_dict.pop("disable_error_code", [])
