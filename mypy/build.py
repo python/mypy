@@ -315,10 +315,11 @@ class WorkerClient:
         if self.connected:
             self.conn.close()
         # Technically we don't need to wait, but otherwise we will get ResourceWarnings.
+        # Also, it is generally good to not leave some running worker processes behind.
         try:
             self.proc.wait(timeout=WORKER_SHUTDOWN_TIMEOUT)
         except subprocess.TimeoutExpired:
-            pass
+            self.proc.terminate()
         if os.path.isfile(self.status_file):
             os.unlink(self.status_file)
 
