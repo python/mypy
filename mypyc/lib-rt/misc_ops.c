@@ -31,14 +31,24 @@ PyObject *CPyGen_AlreadyExecutingError(int is_coroutine)
     return NULL;
 }
 
-PyObject *CPyIter_Send(PyObject *iter, PyObject *val)
+PyObject *CPyIter_Send(PyObject *iter, PyObject *val, PyObject **stop_iter_value)
 {
     // Do a send, or a next if second arg is None.
     // (This behavior is to match the PEP 380 spec for yield from.)
-    if (Py_IsNone(val)) {
-        return CPyIter_Next(iter);
-    } else {
-        return PyObject_CallMethodOneArg(iter, mypyc_interned_str.send, val);
+    //
+    // If the iterator yields a value, return it. If it completes normally,
+    // return NULL and store the return value in *stop_iter_value, without
+    // raising StopIteration. If it raises, return NULL and leave
+    // *stop_iter_value untouched (the caller initializes it to NULL).
+    PyObject *result;
+    switch (PyIter_Send(iter, val, &result)) {
+        case PYGEN_NEXT:
+            return result;
+        case PYGEN_RETURN:
+            *stop_iter_value = result;
+            return NULL;
+        default:
+            return NULL;
     }
 }
 

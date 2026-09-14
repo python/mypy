@@ -2498,3 +2498,115 @@ def test_close_suspended_native_child() -> None:
     coro.close()
 
 [typing fixtures/typing-full.pyi]
+
+[case testRunAsyncNativeCoroutineDrivenByInterpretedCode]
+from typing import Any, Generator
+
+class Suspend:
+    def __await__(self) -> Generator[Any, Any, None]:
+        yield None
+
+async def inc(x: int) -> int:
+    return x + 1
+
+async def suspend_then_inc(x: int) -> int:
+    await Suspend()
+    return x + 1
+
+async def nested(x: int) -> int:
+    return await suspend_then_inc(x) + await inc(x)
+
+class MyError(Exception):
+    pass
+
+async def fails() -> int:
+    await Suspend()
+    raise MyError()
+
+[file driver.py]
+import asyncio
+
+from native import inc, suspend_then_inc, nested, fails, MyError
+
+async def main() -> None:
+    # Exercise native coroutines through interpreted 'await', including immediate,
+    # suspended, nested, and exceptional completion.
+    assert await inc(1) == 2
+    assert await suspend_then_inc(1) == 2
+    assert await nested(3) == 8
+    try:
+        await fails()
+    except MyError:
+        pass
+    else:
+        assert False
+
+    # asyncio.gather schedules each native coroutine as a C Task, which drives it through
+    # PyIter_Send and its am_send slot. The next case exercises the slot directly.
+    assert await asyncio.gather(inc(5), nested(5)) == [6, 12]
+
+asyncio.run(main())
+
+# The Python-level send method reports normal completion by raising StopIteration with
+# the coroutine's return value.
+coro = inc(1)
+try:
+    coro.send(None)
+except StopIteration as e:
+    assert e.value == 2
+else:
+    assert False
+
+# TODO: Reject reuse with RuntimeError("cannot reuse already awaited coroutine") like
+#       CPython. Native coroutines currently permit reuse after they have been awaited.
+#       Resuming a completed native coroutine raises a bare StopIteration, so awaiting it
+#       again evaluates to None.
+try:
+    coro.send(None)
+except StopIteration as e:
+    assert e.value is None
+else:
+    assert False
+
+[typing fixtures/typing-full.pyi]
+
+[case testAmSendSlotOnNativeCoroutine]
+from typing import Any, Generator
+
+class Suspend:
+    def __await__(self) -> Generator[Any, Any, int]:
+        x = yield None
+        return x
+
+async def inc(x: int) -> int:
+    return x + 1
+
+async def suspends(x: int) -> int:
+    y = await Suspend()
+    return x + y
+
+class MyError(Exception):
+    pass
+
+async def fails() -> int:
+    raise MyError()
+
+[file driver.py]
+from native import inc, suspends, fails, MyError
+from testutil import assertRaises, pyiter_send, PYGEN_NEXT, PYGEN_RETURN
+
+# Drive a native coroutine's am_send slot through PyIter_Send, as asyncio's C Task does.
+
+# Immediate completion returns PYGEN_RETURN instead of raising StopIteration.
+assert pyiter_send(inc(1), None) == (PYGEN_RETURN, 2)
+
+# A suspension returns PYGEN_NEXT; the next send completes with PYGEN_RETURN.
+coro = suspends(5)
+assert pyiter_send(coro, None) == (PYGEN_NEXT, None)
+assert pyiter_send(coro, 3) == (PYGEN_RETURN, 8)
+
+# PYGEN_ERROR leaves the body exception pending, so ctypes propagates it.
+with assertRaises(MyError):
+    pyiter_send(fails(), None)
+
+[typing fixtures/typing-full.pyi]

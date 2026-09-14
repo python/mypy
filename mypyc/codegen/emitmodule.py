@@ -47,6 +47,7 @@ from mypyc.codegen.emitwrapper import (
 from mypyc.codegen.literals import Literals
 from mypyc.common import (
     EXT_SUFFIX,
+    GENERATOR_HELPER_NAME,
     IS_FREE_THREADED,
     MODULE_PREFIX,
     PREFIX,
@@ -75,7 +76,7 @@ from mypyc.ir.ops import DeserMaps, LoadLiteral
 from mypyc.ir.rtypes import RType
 from mypyc.irbuild.main import build_ir
 from mypyc.irbuild.mapper import Mapper
-from mypyc.irbuild.prepare import GENERATOR_HELPER_NAME, load_type_map
+from mypyc.irbuild.prepare import load_type_map
 from mypyc.namegen import NameGenerator, exported_name
 from mypyc.options import CompilerOptions
 from mypyc.transform.copy_propagation import do_copy_propagation
