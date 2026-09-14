@@ -1139,6 +1139,97 @@ def test_generator_method_override_still_works() -> None:
     with assertRaises(ValueError, "generator already executing"):
         next(g)
 
+[case testExceptionSurvivesYieldInFinally]
+from typing import Iterator
+from testutil import assertRaises
+
+class Marker(Exception):
+    pass
+
+def gen() -> Iterator[int]:
+    try:
+        raise Marker
+    finally:
+        yield 1
+
+def test_exception_survives_yield_in_finally() -> None:
+    it = gen()
+    assert next(it) == 1
+    with assertRaises(Marker):
+        next(it)
+
+[case testCrossingLocalOnExceptionOnlyPath]
+from typing import Iterator
+
+class InnerError(Exception):
+    pass
+
+class AssignmentError(Exception):
+    pass
+
+def fail_assignment() -> str:
+    raise AssignmentError
+
+def through_handler() -> Iterator[str]:
+    value = "old handler value"
+    try:
+        try:
+            yield "first"
+            raise InnerError
+        except InnerError:
+            value = fail_assignment()
+    except AssignmentError:
+        yield value
+
+def through_finally() -> Iterator[str]:
+    value = "old finally value"
+    try:
+        try:
+            yield "first"
+            raise InnerError
+        finally:
+            value = fail_assignment()
+    except AssignmentError:
+        yield value
+
+def test_crossing_local_on_exception_only_path() -> None:
+    for it, expected in [
+        (through_handler(), "old handler value"),
+        (through_finally(), "old finally value"),
+    ]:
+        assert next(it) == "first"
+        assert next(it) == expected
+
+[case testDelLocalInGenerator]
+from typing import Iterator
+
+from testutil import assertRaises
+
+def crossing(delete: bool) -> Iterator[str]:
+    value = "crossing"
+    yield value
+    if delete:
+        del value
+    yield "pause"
+    yield value
+
+def non_crossing(delete: bool) -> Iterator[str]:
+    value = "local"
+    if delete:
+        del value
+    yield value
+
+def test_del_local_in_generator() -> None:
+    assert list(crossing(False)) == ["crossing", "pause", "crossing"]
+    assert list(non_crossing(False)) == ["local"]
+    it = crossing(True)
+    assert next(it) == "crossing"
+    assert next(it) == "pause"
+    with assertRaises(AttributeError, "attribute 'value' of 'crossing_gen' undefined"):
+        next(it)
+    with assertRaises(UnboundLocalError, 'local variable "value" referenced before assignment'):
+        list(non_crossing(True))
+
 [case testYieldFromNativeGeneratorInInterpretedCode]
 from typing import Generator
 

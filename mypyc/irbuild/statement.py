@@ -49,12 +49,7 @@ from mypy.nodes import (
     YieldExpr,
     YieldFromExpr,
 )
-from mypyc.common import (
-    GENERATOR_HELPER_NAME,
-    KEEP_ALIVE_SHORT_LIVED,
-    KEEP_ALIVE_WHOLE_EXPRESSION,
-    TEMP_ATTR_NAME,
-)
+from mypyc.common import GENERATOR_HELPER_NAME, KEEP_ALIVE_SHORT_LIVED, KEEP_ALIVE_WHOLE_EXPRESSION
 from mypyc.ir.ops import (
     ERR_NEVER,
     NAMESPACE_MODULE,
@@ -716,7 +711,7 @@ def transform_try_except(
     # exception is raised, based on the exception in exc_info.
     builder.builder.push_error_handler(double_except_block)
     builder.activate_block(except_entry)
-    old_exc = builder.maybe_spill(builder.call_c(error_catch_op, [], line))
+    old_exc = builder.call_c(error_catch_op, [], line)
     # Compile the except blocks with the nonlocal control flow overridden to clear exc_info
     builder.nonlocal_control.append(ExceptNonlocalControl(builder.nonlocal_control[-1], old_exc))
 
@@ -796,7 +791,7 @@ def try_finally_try(
     return_entry: BasicBlock,
     main_entry: BasicBlock,
     try_body: GenFunc,
-) -> Register | AssignmentTarget | None:
+) -> Register | None:
     # Compile the try block with an error handler
     control = TryFinallyNonlocalControl(return_entry)
     builder.builder.push_error_handler(err_handler)
@@ -817,7 +812,7 @@ def try_finally_entry_blocks(
     return_entry: BasicBlock,
     main_entry: BasicBlock,
     finally_block: BasicBlock,
-    ret_reg: Register | AssignmentTarget | None,
+    ret_reg: Register | None,
 ) -> Value:
     line = builder.fn_info.fitem.line
     old_exc = Register(exc_rtuple, line=line)
@@ -862,7 +857,7 @@ def try_finally_resolve_control(
     cleanup_block: BasicBlock,
     finally_control: FinallyNonlocalControl,
     old_exc: Value,
-    ret_reg: Register | AssignmentTarget | None,
+    ret_reg: Register | None,
 ) -> BasicBlock:
     """Resolve the control flow out of a finally block.
 
@@ -883,15 +878,10 @@ def try_finally_resolve_control(
     if ret_reg:
         builder.activate_block(rest)
         return_block, rest = BasicBlock(), BasicBlock()
-        # For spill targets in try/finally, use nullable read to avoid AttributeError
-        if isinstance(ret_reg, AssignmentTargetAttr) and ret_reg.attr.startswith(TEMP_ATTR_NAME):
-            ret_val = builder.read_nullable_attr(ret_reg.obj, ret_reg.attr, line)
-        else:
-            ret_val = builder.read(ret_reg, line)
-        builder.add(Branch(ret_val, rest, return_block, Branch.IS_ERROR, line))
+        builder.add(Branch(ret_reg, rest, return_block, Branch.IS_ERROR, line))
 
         builder.activate_block(return_block)
-        builder.nonlocal_control[-1].gen_return(builder, ret_val, line)
+        builder.nonlocal_control[-1].gen_return(builder, ret_reg, line)
 
     # TODO: handle break/continue
     builder.activate_block(rest)
@@ -1136,11 +1126,11 @@ def transform_with(
         exit_ = None
     else:
         typ = builder.primitive_op(type_op, [mgr_v], line)
-        exit_ = builder.maybe_spill(builder.py_get_attr(typ, f"__{al}exit__", line))
+        exit_ = builder.py_get_attr(typ, f"__{al}exit__", line)
         value = builder.py_call(builder.py_get_attr(typ, f"__{al}enter__", line), [mgr_v], line)
 
-    mgr = builder.maybe_spill(mgr_v)
-    exc = builder.maybe_spill_assignable(builder.true())
+    mgr = mgr_v
+    exc = builder.ensure_register(builder.true())
     if is_async:
         value = emit_await(builder, value, line)
 
@@ -1213,7 +1203,7 @@ def transform_with_lock(
     # __enter__: acquire the lock
     value = builder.primitive_op(lock_acquire_op, [mgr_v], line)
 
-    mgr = builder.maybe_spill(mgr_v)
+    mgr = mgr_v
 
     def try_body() -> None:
         if target:
@@ -1288,7 +1278,7 @@ def transform_del_item(builder: IRBuilder, target: AssignmentTarget, line: int) 
         # Delete a local by assigning an error value to it, which will
         # prompt the insertion of uninit checks.
         builder.add(
-            Assign(target.register, builder.add(LoadErrorValue(target.type, undefines=True)))
+            Assign(target.register, builder.add(LoadErrorValue(target.type, undefines=True)), line)
         )
     elif isinstance(target, AssignmentTargetTuple):
         for subtarget in target.items:
@@ -1311,7 +1301,7 @@ def emit_yield(builder: IRBuilder, val: Value, line: int) -> Value:
     next_label = len(cls.continuation_blocks)
     cls.continuation_blocks.append(next_block)
     builder.assign(cls.next_label_target, Integer(next_label), line)
-    builder.add(Return(retval, yield_target=next_block))
+    builder.add(Return(retval, line, yield_target=next_block))
     builder.activate_block(next_block)
 
     add_raise_exception_blocks_to_generator_class(builder, line)
@@ -1349,7 +1339,7 @@ def emit_yield_from_or_await(
         else:
             iter_val = builder.call_c(get_op, [val], line)
 
-    iter_reg = builder.maybe_spill_assignable(iter_val)
+    iter_reg = builder.ensure_register(iter_val)
 
     stop_block, main_block, done_block = BasicBlock(), BasicBlock(), BasicBlock()
 
