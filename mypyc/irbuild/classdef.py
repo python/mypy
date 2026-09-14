@@ -30,7 +30,7 @@ from mypy.nodes import (
     is_class_var,
 )
 from mypy.types import Instance, UnboundType, get_proper_type
-from mypyc.common import MYPYC_DEFAULTS_SETUP, PROPSET_PREFIX
+from mypyc.common import GENERATOR_HELPER_NAME, MYPYC_DEFAULTS_SETUP, PROPSET_PREFIX
 from mypyc.ir.class_ir import ClassIR, NonExtClassInfo
 from mypyc.ir.func_ir import FuncDecl, FuncSignature
 from mypyc.ir.ops import (
@@ -58,7 +58,6 @@ from mypyc.irbuild.function import (
     handle_non_ext_method,
     load_type,
 )
-from mypyc.irbuild.prepare import GENERATOR_HELPER_NAME
 from mypyc.irbuild.util import (
     dataclass_type,
     default_attr_name,

@@ -1229,3 +1229,129 @@ def test_del_local_in_generator() -> None:
         next(it)
     with assertRaises(UnboundLocalError, 'local variable "value" referenced before assignment'):
         list(non_crossing(True))
+
+[case testYieldFromNativeGeneratorInInterpretedCode]
+from typing import Generator
+
+def native(n: int) -> Generator[int, int, str]:
+    x = yield n
+    yield x + 1
+    return "done"
+
+def exhausted() -> Generator[int, None, int]:
+    yield 1
+    return 5
+
+def raises_stop_iteration() -> Generator[int, None, object]:
+    if int() == 1:
+        yield 1
+    raise StopIteration("seven")
+
+def native_yield_from_stop_iteration() -> Generator[int, None, object]:
+    x = yield from raises_stop_iteration()
+    return x
+
+[file driver.py]
+from native import (
+    native, exhausted, raises_stop_iteration, native_yield_from_stop_iteration
+)
+
+def outer(gen):
+    x = yield from gen
+    return x
+
+def run(gen, sends):
+    g = outer(gen)
+    yields = []
+    try:
+        value = g.send(None)
+        for s in sends:
+            yields.append(value)
+            value = g.send(s)
+        yields.append(value)
+    except StopIteration as e:
+        return yields, e.value
+    assert False, "generator did not stop"
+
+# Exercise a native generator through interpreted 'yield from', including yielding,
+# receiving a sent value, and returning.
+assert run(native(1), [10, None]) == ([1, 11], "done")
+
+# An already exhausted native generator completes with None, like a
+# CPython generator does.
+g = exhausted()
+assert next(g) == 1
+try:
+    next(g)
+except StopIteration as e:
+    assert e.value == 5
+assert run(g, []) == ([], None)
+
+# TODO: Apply the PEP 479 conversion to RuntimeError("generator raised StopIteration").
+#       Native generators currently treat StopIteration raised in the generator body as a
+#       return value, so 'yield from' receives the exception's value and a 'for' loop
+#       silently ends.
+assert run(raises_stop_iteration(), []) == ([], "seven")
+assert run(native_yield_from_stop_iteration(), []) == ([], "seven")
+assert list(raises_stop_iteration()) == []
+
+[case testAmSendSlotOnNativeGenerator]
+from typing import Generator, Iterable
+
+def gen() -> Generator[int, int, str]:
+    x = yield 1
+    return "ret" + str(x)
+
+def gen_no_yield() -> Generator[int, None, int]:
+    if int() == 1:
+        yield 1
+    return 5
+
+def gen_raises() -> Generator[int, None, int]:
+    if int() == 1:
+        yield 1
+    raise ValueError("boom")
+
+def gen_delegate(it: Iterable[int]) -> Generator[int, None, None]:
+    yield from it
+
+[file driver.py]
+from native import gen, gen_no_yield, gen_raises, gen_delegate
+from testutil import assertRaises, pyiter_send, PYGEN_NEXT, PYGEN_RETURN
+
+# Drive a native generator's am_send slot through PyIter_Send. The generic compiled
+# 'await' and 'yield from' path does the same; the native fast path calls the generator
+# helper directly.
+
+# Completion without yielding returns PYGEN_RETURN.
+assert pyiter_send(gen_no_yield(), None) == (PYGEN_RETURN, 5)
+
+# A yield returns PYGEN_NEXT; the next send completes with PYGEN_RETURN. Further sends
+# to the exhausted generator complete with None, like a CPython generator.
+g = gen()
+assert pyiter_send(g, None) == (PYGEN_NEXT, 1)
+assert pyiter_send(g, 3) == (PYGEN_RETURN, "ret3")
+assert pyiter_send(g, None) == (PYGEN_RETURN, None)
+
+# PYGEN_ERROR leaves the body exception pending, so ctypes propagates it.
+with assertRaises(ValueError, "boom"):
+    pyiter_send(gen_raises(), None)
+
+# A closed generator completes with None.
+g = gen()
+assert pyiter_send(g, None) == (PYGEN_NEXT, 1)
+g.close()
+assert pyiter_send(g, None) == (PYGEN_RETURN, None)
+
+# Resuming a generator that is currently executing is an error.
+box = []
+
+def reenter():
+    with assertRaises(ValueError, "generator already executing"):
+        pyiter_send(box[0], None)
+    yield 2
+
+g2 = gen_delegate(reenter())
+box.append(g2)
+assert pyiter_send(g2, None) == (PYGEN_NEXT, 2)
+assert pyiter_send(g2, None) == (PYGEN_RETURN, None)

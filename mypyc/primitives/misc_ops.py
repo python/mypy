@@ -74,13 +74,15 @@ coro_op = custom_op(
     error_kind=ERR_MAGIC,
 )
 
-# Do obj.send(value), or a next(obj) if second arg is None.
-# (This behavior is to match the PEP 380 spec for yield from.)
-# Like next_raw_op, don't swallow StopIteration,
-# but also don't propagate an error.
-# Can return NULL: see next_op.
+# Do obj.send(value), or a next(obj) if second arg is None, using the
+# PyIter_Send C API. (This behavior is to match the PEP 380 spec for yield from.)
+#
+# Returns the yielded value, or NULL if the iterator completed or raised. On
+# normal completion the return value is stored via the third (PyObject **)
+# argument instead of raising StopIteration. The caller must initialize the
+# pointed-to value to NULL, since it's only assigned on normal completion.
 send_op = custom_op(
-    arg_types=[object_rprimitive, object_rprimitive],
+    arg_types=[object_rprimitive, object_rprimitive, object_pointer_rprimitive],
     return_type=object_rprimitive,
     c_function_name="CPyIter_Send",
     error_kind=ERR_NEVER,
