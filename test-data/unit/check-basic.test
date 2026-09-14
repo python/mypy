@@ -286,10 +286,11 @@ x = 1
 x in 1,  # E: Unsupported right operand type for in ("int")
 [builtins fixtures/tuple.pyi]
 
-[case testTrailingCommaInIfParsing_no_native_parse]
+[case testTrailingCommaInIfParsing]
 if x in 1, : pass
 [out]
-main:1: error: Invalid syntax
+main:1: error: Expected `:`, found `,`
+main:1: error: Expected a statement
 
 [case testInitReturnTypeError]
 class C:

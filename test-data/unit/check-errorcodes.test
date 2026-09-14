@@ -101,32 +101,34 @@ class A:
 [case testErrorCodeNoteHasNoCode]
 reveal_type(1) # N: Revealed type is "Literal[1]?"
 
-[case testErrorCodeSyntaxError_no_native_parse]
+[case testErrorCodeSyntaxError]
 1 ''
 [out]
-main:1: error: Invalid syntax  [syntax]
-[out version==3.10.0]
-main:1: error: Invalid syntax. Perhaps you forgot a comma?  [syntax]
+main:1: error: Simple statements must be separated by newlines or semicolons  [syntax]
 
-[case testErrorCodeSyntaxError2_no_native_parse]
+[case testErrorCodeSyntaxError2]
 def f(): # E: Type signature has too many parameters  [syntax]
     # type: (int) -> None
     1
 
-x = 0  # type: x y  # E: Syntax error in type comment "x y"  [syntax]
+x = 0  # type: x y  # E: Syntax error in type comment "x y"  [syntax] \
+                    # E: Invalid type comment or annotation  [valid-type]
 
-[case testErrorCodeSyntaxError3_no_native_parse]
+[case testErrorCodeSyntaxError3_old_parser]
 # This is a bit inconsistent -- syntax error would be more logical?
 x: 'a b'  # E: Invalid type comment or annotation  [valid-type]
 for v in x:  # type: int, int  # E: Syntax error in type annotation  [syntax] \
     # N: Suggestion: Use Tuple[T1, ..., Tn] instead of (T1, ..., Tn)
     pass
 
+[case testErrorCodeSyntaxError4]
+x = 1  # type: int, int  # E: Syntax error in type annotation  [syntax] \
+                         # N: Suggestion: Use Tuple[T1, ..., Tn] instead of (T1, ..., Tn)
+
 [case testErrorCodeSyntaxErrorIgnoreNote]
 # This is a bit inconsistent -- syntax error would be more logical?
 x: 'a b'  # type: ignore[valid-type]
-for v in x:  # type: int, int  # type: ignore[syntax]
-    pass
+y = 1  # type: int, int  # type: ignore[syntax]
 
 [case testErrorCodeIgnore1]
 'x'.foobar  # type: ignore[attr-defined]
@@ -281,10 +283,10 @@ def h(x  # type: xyz  # type: ignore[foo]  # E: Name "xyz" is not defined  [name
 import nostub  # type: ignore[import]
 from defusedxml import xyz  # type: ignore[import]
 
-[case testErrorCodeBadIgnore_no_native_parse]
-import nostub # type: ignore xyz  # E: Invalid "type: ignore" comment  [syntax] \
-                                  # E: Cannot find implementation or library stub for module named "nostub"  [import-not-found] \
-                                  # N: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
+[case testErrorCodeBadIgnore]
+import nostub # type: ignore xyz  # E: Cannot find implementation or library stub for module named "nostub"  [import-not-found] \
+                                  # N: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports \
+                                  # E: Invalid "type: ignore" comment  [syntax]
 import nostub # type: ignore[  # E: Invalid "type: ignore" comment  [syntax]
 import nostub # type: ignore[foo  # E: Invalid "type: ignore" comment  [syntax]
 import nostub # type: ignore[foo,  # E: Invalid "type: ignore" comment  [syntax]
@@ -299,7 +301,7 @@ def f(x,  # type: int  # type: ignore[  # E: Invalid "type: ignore" comment  [sy
     # type: (...) -> None
     pass
 
-[case testErrorCodeBadIgnoreNoExtraComment_no_native_parse]
+[case testErrorCodeBadIgnoreNoExtraComment]
 # Omit the E: ... comments, as they affect parsing
 import nostub # type: ignore xyz
 import nostub # type: ignore[xyz
@@ -310,9 +312,9 @@ def f(x,  # type: int  # type: ignore[
     # type: (...) -> None
     pass
 [out]
-main:2: error: Invalid "type: ignore" comment  [syntax]
 main:2: error: Cannot find implementation or library stub for module named "nostub"  [import-not-found]
 main:2: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
+main:2: error: Invalid "type: ignore" comment  [syntax]
 main:3: error: Invalid "type: ignore" comment  [syntax]
 main:4: error: Invalid "type: ignore" comment  [syntax]
 main:5: error: Invalid "type: ignore" comment  [syntax]
@@ -846,12 +848,12 @@ main:1: error: Name "y" is not defined  [name-defined]
 main:2: error: Name "ignored" is not defined  [name-defined]
 main:2: error: Name "y" is not defined  [name-defined]
 
-[case testErrorCodeTypeIgnoreMisspelled2_no_native_parse]
+[case testErrorCodeTypeIgnoreMisspelled2]
 x = y  # type: int  # type: ignored[foo]
 x = y  # type: int  # type: ignored [foo]
 [out]
-main:1: error: Syntax error in type comment "int"  [syntax]
-main:2: error: Syntax error in type comment "int"  [syntax]
+main:1: error: Multiple type comments on the same line  [syntax]
+main:2: error: Multiple type comments on the same line  [syntax]
 
 [case testErrorCode__exit__Return]
 class InvalidReturn:
@@ -1098,7 +1100,7 @@ def f(arg: int) -> int:
 def f(arg: str) -> str:
     ...
 
-[case testSliceInDictBuiltin_no_native_parse]
+[case testSliceInDictBuiltin]
 # flags: --show-column-numbers
 b: dict[int, x:y]
 c: dict[x:y]
@@ -1106,12 +1108,10 @@ c: dict[x:y]
 [builtins fixtures/dict.pyi]
 [out]
 main:2:14: error: Invalid type comment or annotation  [valid-type]
-main:2:14: note: did you mean to use ',' instead of ':' ?
 main:3:4: error: "dict" expects 2 type arguments, but 1 given  [type-arg]
 main:3:9: error: Invalid type comment or annotation  [valid-type]
-main:3:9: note: did you mean to use ',' instead of ':' ?
 
-[case testSliceInDictTyping_no_native_parse]
+[case testSliceInDictTyping]
 # flags: --show-column-numbers
 from typing import Dict
 b: Dict[int, x:y]
@@ -1120,11 +1120,8 @@ c: Dict[x:y]
 [builtins fixtures/dict.pyi]
 [out]
 main:3:14: error: Invalid type comment or annotation  [valid-type]
-main:3:14: note: did you mean to use ',' instead of ':' ?
 main:4:4: error: "dict" expects 2 type arguments, but 1 given  [type-arg]
 main:4:9: error: Invalid type comment or annotation  [valid-type]
-main:4:9: note: did you mean to use ',' instead of ':' ?
-
 
 [case testSliceInCustomTensorType]
 # syntactically mimics torchtyping.TensorType

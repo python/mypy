@@ -32,13 +32,13 @@ from xyz_m import * # type: ignore
 x   # E: Name "x" is not defined
 1() # E: "int" not callable
 
-[case testIgnoreImportBadModule_no_native_parse]
+[case testIgnoreImportBadModule]
 import m # type: ignore
 from m import a # type: ignore
 [file m.py]
 +
 [out]
-tmp/m.py:1: error: Invalid syntax
+tmp/m.py:1: error: Expected an expression
 
 [case testIgnoreAppliesOnlyToMissing]
 import a # type: ignore
@@ -54,12 +54,12 @@ foo = 3
 [builtins fixtures/module_all.pyi]
 [out]
 
-[case testIgnoreImportStarFromBadModule_no_native_parse]
+[case testIgnoreImportStarFromBadModule]
 from m import * # type: ignore
 [file m.py]
 +
 [out]
-tmp/m.py:1: error: Invalid syntax
+tmp/m.py:1: error: Expected an expression
 
 [case testIgnoreAssignmentTypeError]
 x = 1
