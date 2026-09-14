@@ -47,6 +47,8 @@ MANY_ERRORS_THRESHOLD: Final = -1
 
 RECURSION_LIMIT: Final = 2**14
 
+# Cap the automatic selection of workers since each worker adds roughly 10% of memory overhead.
+# Users can specify an explicit --num-workers value which can exceed this limit.
 MAX_AUTO_WORKERS: Final = 8
 
 # It looks like Windows is slow with processes, causing test flakiness even
