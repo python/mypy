@@ -1,4 +1,8 @@
-"""Tests for borrowing reads from private generator-frame attributes."""
+"""Tests for borrowing reads from private generator-frame attributes.
+
+These mostly use hand-built IR instead of normal data-driven tests, since generators
+produce very verbose IR.
+"""
 
 from __future__ import annotations
 
