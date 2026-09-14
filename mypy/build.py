@@ -449,6 +449,14 @@ def build(
         for thread in connect_threads:
             thread.join()
         if options_data is not None:
+            for worker in workers:
+                if not worker.connected:
+                    try:
+                        worker.proc.terminate()
+                        worker.proc.wait(timeout=WORKER_SHUTDOWN_TIMEOUT)
+                    except subprocess.TimeoutExpired:
+                        worker.proc.kill()
+                        worker.proc.wait()
             os.unlink(options_data)
         for worker in workers:
             if not worker.connected:
