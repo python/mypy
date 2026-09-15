@@ -6212,7 +6212,13 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                     column=node_as_type.column,
                     is_type_form=True,
                 )
-                if is_subtype(typ1, p_type_context):
+                # Type variables in the TypeForm branch can prevent the subtype
+                # check from recognizing a type expression. Erase them only for
+                # this check; normal argument checking and inference still use
+                # the original context.
+                if is_subtype(typ1, p_type_context) or is_subtype(
+                    typ1, erasetype.erase_typevars(p_type_context)
+                ):
                     typ = typ1  # r-value type, when interpreted as a type expression
                 else:
                     typ2 = node.accept(self)

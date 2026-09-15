@@ -255,6 +255,15 @@ typx2: TypeForm = no_such_module.NoSuchType  # E: Name "no_such_module" is not d
 
 -- Type Expression Context: Union[TypeForm, <non-TypeForm>]
 
+[case testCanPassTypeExpressionToTypeFormInUnionParameter]
+from typing import TypeVar
+from typing_extensions import Annotated, TypeForm
+T = TypeVar('T')
+def f(typx: TypeForm[T] | None) -> T: ...
+reveal_type(f(Annotated[int, 'meta']))  # N: Revealed type is "builtins.int"
+[builtins fixtures/primitives.pyi]
+[typing fixtures/typing-full.pyi]
+
 [case testAcceptsTypeFormLiteralAssignedToUnionOfTypeFormAndNonStr]
 from typing_extensions import TypeForm
 typx_or_int1: TypeForm[int | None] | int = int | None  # No error; interpret as TypeForm
