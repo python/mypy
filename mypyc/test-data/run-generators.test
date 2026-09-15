@@ -748,6 +748,7 @@ def test_basic() -> None:
     assert context.x == 0
 
 [case testYieldSpill]
+import sys
 from typing import Generator
 from testutil import run_generator
 
@@ -757,11 +758,29 @@ def f() -> int:
 def yield_spill() -> Generator[str, int, int]:
     return f() + (yield "foo")
 
+def consume(first: object, second: object) -> None:
+    pass
+
+# Bytes literals are mortal on GIL-enabled CPython builds, so a missing reference
+# to the spilled value is observable through sys.getrefcount().
+def get_spilled_literal() -> bytes:
+    return b"mypyc borrowed generator spill regression"
+
+def yield_with_borrowed_literal() -> Generator[None, None, None]:
+    consume(b"mypyc borrowed generator spill regression", (yield))
+
 def test_basic() -> None:
     x = run_generator(yield_spill(), [2])
     yields, val = x
     assert yields == ('foo',)
     assert val == 3, val
+
+def test_borrowed_literal_spill() -> None:
+    literal = get_spilled_literal()
+    getrefcount = getattr(sys, "getrefcount")
+    refcount = getrefcount(literal)
+    assert run_generator(yield_with_borrowed_literal(), [None]) == ((None,), None)
+    assert getrefcount(literal) == refcount
 
 [case testNestedGeneratorPrivateSpill]
 from typing import Generator
