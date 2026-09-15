@@ -454,9 +454,10 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         Final attributes are never rebound (no setter), so there is no concurrent writer
         and no use-after-free window; an owned read uses the cheaper CPy_GetAttrRefFinal
         (a plain load + incref). Borrowed reads keep the plain load: they are only emitted
-        for attributes safe to borrow on free-threaded builds (Final and vec attrs -- see
-        transform_member_expr in irbuild), whose values live as long as their container.
-        The default (GIL) build always takes the plain-load path and increfs separately.
+        when safe on free-threaded builds, either for Final and vec attributes in
+        transform_member_expr in irbuild or for private generator-frame attributes proven
+        safe by borrow_generator_attrs. The default (GIL) build always takes the plain-load
+        path and increfs separately.
 
         Thread-confined attributes also use plain loads; see
         ClassIR.attrs_are_thread_confined.
