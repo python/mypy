@@ -149,16 +149,14 @@ def load_outer_env(
     *,
     borrow: bool = False,
 ) -> Value:
-    """Load the environment class for a given base into a register.
+    """Load the environment referenced by "base" and bind its symbols.
 
-    Additionally, iterates through all of the SymbolNode and
-    AssignmentTarget instances of the environment at the given index's
-    symtable, and adds those instances to the environment of the
-    current environment. This is done so that the current environment
-    can access outer environment variables without having to reload
-    all of the environment registers.
+    "outer_env" may contain registers and attributes from multiple environment levels.
+    Bind only attributes stored directly on the loaded environment, since the other targets
+    cannot be accessed through it.
 
-    Returns the register where the environment class was loaded.
+    If "borrow" is true, return a borrowed reference. In that case the environment link on
+    "base" must be final so that the reference remains valid.
     """
     if borrow:
         assert isinstance(base.type, RInstance)
@@ -167,9 +165,14 @@ def load_outer_env(
     assert isinstance(env.type, RInstance), f"{env} must be of type RInstance"
 
     for symbol, target in outer_env.items():
-        attr_name = symbol.name
-        if isinstance(target, AssignmentTargetAttr):
-            attr_name = target.attr
+        # Only targets actually stored in this environment are visible through it.
+        if (
+            not isinstance(target, AssignmentTargetAttr)
+            or not isinstance(target.obj.type, RInstance)
+            or target.obj.type.class_ir is not env.type.class_ir
+        ):
+            continue
+        attr_name = target.attr
         env.type.class_ir.attributes[attr_name] = target.type
         symbol_target = AssignmentTargetAttr(env, attr_name)
         builder.add_target(symbol, symbol_target)

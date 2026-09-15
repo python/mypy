@@ -26,6 +26,7 @@ from mypyc.ir.ops import (
     BasicBlock,
     Branch,
     Call,
+    GetAttr,
     Goto,
     Integer,
     LoadErrorValue,
@@ -51,7 +52,6 @@ from mypyc.irbuild.env_class import (
     add_vars_to_env,
     finalize_env_class,
     load_env_registers,
-    load_outer_env,
     load_outer_envs,
     setup_func_for_recursive_call,
 )
@@ -439,7 +439,8 @@ def setup_env_for_generator_class(builder: IRBuilder) -> None:
     if builder.fn_info.can_merge_generator_and_env_classes():
         cls.curr_env_reg = cls.self_reg
     else:
-        cls.curr_env_reg = load_outer_env(builder, cls.self_reg, builder.symtables[-1])
+        cls.curr_env_reg = builder.add(GetAttr(cls.self_reg, ENV_ATTR_NAME, fitem.line))
+        assert isinstance(cls.curr_env_reg.type, RInstance)
 
     # The continuation label identifies where execution resumes when the generator is next
     # advanced. Only the serialized generator helper accesses it, so keep it on the private
