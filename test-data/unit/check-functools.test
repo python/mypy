@@ -491,8 +491,8 @@ def main4(a2good: A2Good, a2bad: A2Bad, **d2: Unpack[D2]) -> None:
     partial(fn3, **d2)(**a2bad)  # E: Argument "a2" to "fn3" has incompatible type "int"; expected "str"
 
 def main5(**d2: Unpack[D2]) -> None:
-    partial(fn1, **d2)()  # E: Extra argument "a2" from **args for "fn1"
-    partial(fn2, **d2)()  # E: Extra argument "a2" from **args for "fn2"
+    partial(fn1, **d2)()  # E: Extra argument "a2" from **TypedDict for "fn1"
+    partial(fn2, **d2)()  # E: Extra argument "a2" from **TypedDict for "fn2"
 
 def main6(a2good: A2Good, a2bad: A2Bad, **d1: Unpack[D1]) -> None:
     partial(fn3, **d1)()  # E: Missing positional argument "a1" in call to "fn3"
