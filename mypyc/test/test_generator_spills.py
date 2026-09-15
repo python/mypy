@@ -13,6 +13,7 @@ from mypyc.common import (
     NEXT_LABEL_ATTR_NAME,
     SELF_NAME,
     TEMP_ATTR_NAME,
+    generator_frame_attribute_prefix,
 )
 from mypyc.ir.class_ir import ClassIR
 from mypyc.ir.ops import Assign, GetAttr
@@ -38,11 +39,8 @@ def promoted_slots(cl: ClassIR) -> set[str]:
 
 
 def frame_variables(cl: ClassIR) -> set[str]:
-    return {
-        name.removeprefix(GENERATOR_ATTRIBUTE_PREFIX)
-        for name in cl.attributes
-        if name.startswith(GENERATOR_ATTRIBUTE_PREFIX)
-    }
+    prefix = generator_frame_attribute_prefix(cl.fullname)
+    return {name.removeprefix(prefix) for name in cl.attributes if name.startswith(prefix)}
 
 
 class TestGeneratorSpills(unittest.TestCase):

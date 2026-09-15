@@ -8,7 +8,11 @@ from __future__ import annotations
 
 import unittest
 
-from mypyc.common import GENERATOR_ATTRIBUTE_PREFIX, TEMP_ATTR_NAME
+from mypyc.common import (
+    GENERATOR_ATTRIBUTE_PREFIX,
+    TEMP_ATTR_NAME,
+    generator_frame_attribute_prefix,
+)
 from mypyc.ir.class_ir import ClassIR
 from mypyc.ir.func_ir import FuncDecl, FuncIR, FuncSignature, RuntimeArg
 from mypyc.ir.ops import (
@@ -257,7 +261,8 @@ def gen(value: str) -> Generator[str, None, str]:
         private_reads = [
             op
             for op in reads
-            if op.obj is ir.arg_regs[0] and op.attr == GENERATOR_ATTRIBUTE_PREFIX + "other"
+            if op.obj is ir.arg_regs[0]
+            and op.attr == generator_frame_attribute_prefix(cl.fullname) + "other"
         ]
         shared_reads = [
             op

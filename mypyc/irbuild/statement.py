@@ -50,10 +50,10 @@ from mypy.nodes import (
     YieldFromExpr,
 )
 from mypyc.common import (
-    GENERATOR_ATTRIBUTE_PREFIX,
     GENERATOR_HELPER_NAME,
     KEEP_ALIVE_SHORT_LIVED,
     KEEP_ALIVE_WHOLE_EXPRESSION,
+    source_name_from_generator_attribute,
 )
 from mypyc.ir.ops import (
     ERR_NEVER,
@@ -1274,7 +1274,8 @@ def transform_del_item(builder: IRBuilder, target: AssignmentTarget, line: int) 
         if isinstance(target.obj_type, RInstance):
             cl = target.obj_type.class_ir
             if not cl.is_deletable(target.attr):
-                name = target.attr.removeprefix(GENERATOR_ATTRIBUTE_PREFIX)
+                _, decl_cl = cl.attr_details(target.attr)
+                name = source_name_from_generator_attribute(target.attr, decl_cl.fullname)
                 builder.error(f'"{name}" cannot be deleted', line)
                 builder.note(
                     'Using "__deletable__ = '

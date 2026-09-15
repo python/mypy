@@ -76,6 +76,7 @@ from mypyc.common import (
     KEEP_ALIVE_WHOLE_EXPRESSION,
     MODULE_PREFIX,
     SELF_NAME,
+    generator_frame_attribute_prefix,
     shared_lib_name,
 )
 from mypyc.crash import catch_errors
@@ -1640,7 +1641,7 @@ class IRBuilder:
             reassign=reassign,
             always_defined=always_defined,
             keep_alive_on_completion=keep_alive_on_completion,
-            prefix=GENERATOR_ATTRIBUTE_PREFIX,
+            prefix=generator_frame_attribute_prefix(cls.fullname),
         )
 
     def add_var_to_class(

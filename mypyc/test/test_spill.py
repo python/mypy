@@ -7,6 +7,7 @@ from mypyc.common import (
     GENERATOR_ATTRIBUTE_PREFIX,
     NEXT_LABEL_ATTR_NAME,
     TEMP_ATTR_NAME,
+    generator_frame_attribute_prefix,
 )
 from mypyc.ir.rtypes import RInstance
 from mypyc.test.testutil import build_ir_for_single_file2
@@ -50,7 +51,7 @@ def outer():
         assert any(name.startswith(TEMP_ATTR_NAME + "3_") for name in frame.attributes)
 
         # Noncaptured source-level variables also stay on the private frame.
-        frame_prefix = GENERATOR_ATTRIBUTE_PREFIX
+        frame_prefix = generator_frame_attribute_prefix(frame.fullname)
         assert frame_prefix + "value" in frame.attributes
         assert GENERATOR_ATTRIBUTE_PREFIX + "value" not in environment.attributes
 
@@ -78,7 +79,7 @@ def outer():
         assert frame.attrs_are_thread_confined()
         assert not environment.attrs_are_thread_confined()
 
-        frame_prefix = GENERATOR_ATTRIBUTE_PREFIX
+        frame_prefix = generator_frame_attribute_prefix(frame.fullname)
         assert GENERATOR_ATTRIBUTE_PREFIX + "captured" in environment_attrs
         assert frame_prefix + "captured" not in frame_attrs
         for name in ("private", "private_local", "callback"):
