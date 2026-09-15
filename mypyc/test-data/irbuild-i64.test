@@ -2212,6 +2212,7 @@ from mypy_extensions import i64
 def gen() -> Iterator[i64]:
     value: i64 = 1
     yield value
+    # TODO: Don't suggest __deletable__ for generator locals.
     del value  # E: "value" cannot be deleted \
                # N: Using "__deletable__ = ['<attr>']" in the class body enables "del obj.<attr>"
     yield 0
