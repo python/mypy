@@ -772,7 +772,7 @@ class IRBuilder:
                         and reg_type.error_overlap
                         and symbol in self.deleted_vars
                     ):
-                        if self.is_generator_env_var(symbol):
+                        if self.is_captured_by_nested_func(symbol):
                             return self.add_var_to_env_class(
                                 symbol,
                                 reg_type,
@@ -1615,9 +1615,8 @@ class IRBuilder:
                 return True
         return False
 
-    def is_generator_env_var(self, symbol: SymbolNode) -> bool:
-        """Does a generator-owned binding need to be visible to a nested function?"""
-        assert self.fn_info.is_generator
+    def is_captured_by_nested_func(self, symbol: SymbolNode) -> bool:
+        """Does a binding need to be visible to a nested function?"""
         return symbol in self.free_variables.get(
             self.fn_info.fitem, set()
         ) or self.is_free_variable_in_nested_func(self.fn_info.fitem, symbol)

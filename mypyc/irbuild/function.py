@@ -256,8 +256,8 @@ def gen_func_item(
         builder.fn_info.generator_class = GeneratorClass(generator_class_ir)
 
     # Functions that contain nested functions need an environment class to store captured
-    # variables. Generators also temporarily retain the existing environment topology when they
-    # are nested or their generated classes can participate in inheritance.
+    # variables. A generator also needs a separate environment class when it is nested or its
+    # generated class is non-final.
     if contains_nested or (
         is_generator and not builder.fn_info.can_merge_generator_and_env_classes()
     ):

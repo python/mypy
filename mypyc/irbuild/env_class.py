@@ -27,7 +27,7 @@ from mypyc.common import (
 )
 from mypyc.ir.class_ir import ClassIR
 from mypyc.ir.ops import Call, GetAttr, SetAttr, Value
-from mypyc.ir.rtypes import RInstance, RType, bitmap_rprimitive, object_rprimitive
+from mypyc.ir.rtypes import RInstance, bitmap_rprimitive, object_rprimitive
 from mypyc.irbuild.builder import IRBuilder, SymbolTarget
 from mypyc.irbuild.context import FuncInfo, GeneratorClass, ImplicitClass
 from mypyc.irbuild.targets import AssignmentTargetAttr
@@ -237,24 +237,15 @@ def add_args_to_env(
             builder.add_local_reg(Var(bitmap_name(i)), bitmap_rprimitive, is_arg=True)
     else:
         for arg in args:
-            if fn_info.is_generator and not builder.is_generator_env_var(arg.variable):
-                continue
-            if (
-                is_free_variable(builder, arg.variable)
-                or fn_info.is_generator
-                or fn_info.is_coroutine
-            ):
+            if is_free_variable(builder, arg.variable):
                 rtype = builder.type_to_rtype(arg.variable.type)
                 assert base is not None, "base cannot be None for adding nonlocal args"
-                keep_alive = is_free_variable(
-                    builder, arg.variable
-                ) or builder.is_free_variable_in_nested_func(builder.fn_info.fitem, arg.variable)
                 builder.add_var_to_env_class(
                     arg.variable,
                     rtype,
                     base,
                     reassign=reassign,
-                    keep_alive_on_completion=keep_alive,
+                    keep_alive_on_completion=builder.is_captured_by_nested_func(arg.variable),
                     prefix=prefix,
                 )
 
@@ -265,7 +256,7 @@ def add_generator_args(
     """Put generator arguments on either the closure environment or private frame."""
     for arg in builder.fn_info.fitem.arguments:
         rtype = builder.type_to_rtype(arg.variable.type)
-        if builder.is_generator_env_var(arg.variable):
+        if builder.is_captured_by_nested_func(arg.variable):
             builder.add_var_to_class(
                 arg.variable,
                 rtype,
@@ -286,53 +277,28 @@ def add_vars_to_env(builder: IRBuilder, prefix: str = "") -> None:
     captured go on the private generator frame. This is done before visiting the function body
     so nested functions can reference declarations that occur later in the body.
     """
-    env_for_func: FuncInfo | ImplicitClass = builder.fn_info
-    if builder.fn_info.is_generator:
-        env_for_func = builder.fn_info.generator_class
-    elif (
-        builder.fn_info.is_nested or builder.fn_info.in_non_ext
-    ) and not builder.fn_info.is_comprehension_scope:
-        env_for_func = builder.fn_info.callable_class
+    fn_info = builder.fn_info
+    env_for_func: FuncInfo | ImplicitClass = fn_info
+    if fn_info.is_generator:
+        env_for_func = fn_info.generator_class
+    elif (fn_info.is_nested or fn_info.in_non_ext) and not fn_info.is_comprehension_scope:
+        env_for_func = fn_info.callable_class
 
-    def add_var(
-        var: SymbolNode, rtype: RType, keep_alive_on_completion: bool, attr_prefix: str
-    ) -> None:
-        if builder.fn_info.is_generator:
-            if builder.is_generator_env_var(var):
+    if fn_info.fitem in builder.free_variables:
+        # Sort the variables to keep things deterministic
+        for var in sorted(builder.free_variables[fn_info.fitem], key=lambda x: x.name):
+            if isinstance(var, Var):
                 builder.add_var_to_env_class(
                     var,
-                    rtype,
-                    builder.fn_info.generator_class,
+                    builder.type_to_rtype(var.type),
+                    env_for_func,
                     reassign=False,
-                    keep_alive_on_completion=keep_alive_on_completion,
-                    prefix=attr_prefix,
+                    keep_alive_on_completion=True,
+                    prefix=prefix,
                 )
-            else:
-                builder.add_var_to_generator_frame(
-                    var,
-                    rtype,
-                    builder.fn_info.generator_class.self_reg,
-                    reassign=False,
-                    keep_alive_on_completion=keep_alive_on_completion,
-                )
-        else:
-            builder.add_var_to_env_class(
-                var,
-                rtype,
-                env_for_func,
-                reassign=False,
-                keep_alive_on_completion=keep_alive_on_completion,
-                prefix=attr_prefix,
-            )
 
-    if builder.fn_info.fitem in builder.free_variables:
-        # Sort the variables to keep things deterministic
-        for var in sorted(builder.free_variables[builder.fn_info.fitem], key=lambda x: x.name):
-            if isinstance(var, Var):
-                add_var(var, builder.type_to_rtype(var.type), True, prefix)
-
-    if builder.fn_info.fitem in builder.encapsulating_funcs:
-        for nested_fn in builder.encapsulating_funcs[builder.fn_info.fitem]:
+    if fn_info.fitem in builder.encapsulating_funcs:
+        for nested_fn in builder.encapsulating_funcs[fn_info.fitem]:
             if isinstance(nested_fn, FuncDef):
                 # The return type is 'object' instead of an RInstance of the
                 # callable class because differently defined functions with
@@ -342,12 +308,24 @@ def add_vars_to_env(builder: IRBuilder, prefix: str = "") -> None:
                 nested_prefix = prefix
                 if nested_fn.is_generator or nested_fn.is_coroutine:
                     nested_prefix = GENERATOR_ATTRIBUTE_PREFIX
-                add_var(
-                    nested_fn,
-                    object_rprimitive,
-                    is_free_variable(builder, nested_fn),
-                    nested_prefix,
-                )
+                keep_alive = is_free_variable(builder, nested_fn)
+                if fn_info.is_generator and not builder.is_captured_by_nested_func(nested_fn):
+                    builder.add_var_to_generator_frame(
+                        nested_fn,
+                        object_rprimitive,
+                        fn_info.generator_class.self_reg,
+                        reassign=False,
+                        keep_alive_on_completion=keep_alive,
+                    )
+                else:
+                    builder.add_var_to_env_class(
+                        nested_fn,
+                        object_rprimitive,
+                        env_for_func,
+                        reassign=False,
+                        keep_alive_on_completion=keep_alive,
+                        prefix=nested_prefix,
+                    )
 
 
 def setup_func_for_recursive_call(

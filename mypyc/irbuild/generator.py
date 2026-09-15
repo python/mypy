@@ -180,8 +180,8 @@ def setup_generator_class(builder: IRBuilder) -> ClassIR:
     else:
         generator_class_ir.attributes[ENV_ATTR_NAME] = RInstance(builder.fn_info.env_class)
         if not builder.fn_info.fitem.is_coroutine:
-            # The helper currently loads generator.__mypyc_env__ before terminal dispatch, so
-            # an exhausted generator still needs the link on subsequent __next__() calls.
+            # The helper loads generator.__mypyc_env__ before terminal dispatch, so an exhausted
+            # generator still needs the link on subsequent __next__() calls.
             # Coroutines can't be resumed after completion, so keeping the environment alive
             # there would just extend local lifetimes unnecessarily.
             generator_class_ir.attrs_to_keep_alive_on_completion.add(ENV_ATTR_NAME)
@@ -445,13 +445,14 @@ def setup_env_for_generator_class(builder: IRBuilder) -> None:
     cls.ir.attrs_with_defaults.add(NEXT_LABEL_ATTR_NAME)
     next_label_target = AssignmentTargetAttr(cls.self_reg, NEXT_LABEL_ATTR_NAME)
     cls.next_label_target = builder.add_target(Var(NEXT_LABEL_ATTR_NAME), next_label_target)
-    cls.next_label_reg = builder.read(cls.next_label_target, fitem.line)
 
     if builder.fn_info.can_merge_generator_and_env_classes():
         cls.curr_env_reg = cls.self_reg
     else:
         cls.curr_env_reg = builder.add(GetAttr(cls.self_reg, ENV_ATTR_NAME, fitem.line))
-        assert isinstance(cls.curr_env_reg.type, RInstance)
 
     # Add arguments from the original generator function to their selected storage objects.
     add_generator_args(builder, cls.self_reg, cls.curr_env_reg, reassign=False)
+
+    # Set the next label register for the generator class.
+    cls.next_label_reg = builder.read(cls.next_label_target, fitem.line)
