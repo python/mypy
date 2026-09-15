@@ -1899,6 +1899,8 @@ class SemanticAnalyzer(
                 # This and below copies special-casing for old-style type variables, that
                 # is equally necessary for new-style classes to break a vicious circle.
                 upper_bound = PlaceholderType(None, [], context.line)
+            elif has_type_vars(upper_bound):
+                self.fail(message_registry.TYPE_VAR_GENERIC_BOUND_TYPE, context)
         else:
             if type_param.kind == TYPE_VAR_TUPLE_KIND:
                 upper_bound = self.named_type("builtins.tuple", [self.object_type()])
