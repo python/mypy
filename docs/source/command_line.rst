@@ -1044,15 +1044,18 @@ used to manage most of the shared state. Parallel type-checking also requires
 :option:`--local-partial-types <mypy --no-local-partial-types>`, which is
 enabled by default starting from mypy 2.0.
 
-.. option:: -n NUMBER, --num-workers NUMBER
+.. option:: -n VALUE, --num-workers VALUE
 
-    Use ``NUMBER`` parallel worker processes (in addition to the coordinator
-    process) to perform type-checking. Specifying ``--num-workers 0`` (default)
-    disables parallel checking. Automatic detection of the optimal number
-    of workers is not supported yet.
+    Use the specified amount of parallel worker processes (in addition to the
+    coordinator process) to perform type-checking. Specifying ``--num-workers 0``
+    (default) disables parallel checking. Specifying ``--num-workers auto``
+    selects the number based on the physical CPU cores available to mypy.
 
-    This setting will override the ``MYPY_NUM_WORKERS`` environment
-    variable if it is set.
+    Automatic selection uses at most 8 workers because each worker adds roughly
+    10% memory overhead. This cap does not apply when an explicit value is specified.
+
+    The ``MYPY_NUM_WORKERS`` environment variable also accepts ``auto``. This
+    setting will override the environment variable if it is set.
 
 Notes:
 
@@ -1065,7 +1068,9 @@ Notes:
   tune the number of workers on a given machine is to start from 3-4 workers
   and increase the number while you see a performance improvement.
 
-* Parallel mode requires and automatically enables :option:`--native-parser`.
+* Parallel mode requires and automatically enables :option:`--native-parser`
+  and :ref:`incremental mode <incremental>`. Specifying
+  :option:`--no-incremental` has no effect in parallel mode.
 
 
 Advanced options
