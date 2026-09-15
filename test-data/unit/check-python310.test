@@ -511,7 +511,7 @@ match m, (n, o):
 
 [case testMatchUnpackedTupleSubjectExpressionNoCrash]
 # flags: --strict-equality --warn-unreachable
-# See: https://github.com/python/mypy/issues/21468 
+# See: https://github.com/python/mypy/issues/21468
 
 foo: int = 1
 bar: tuple[int, int] = 1, 2
