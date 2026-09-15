@@ -2135,6 +2135,37 @@ from typing import Any, Generator
 
 def run(x: object) -> object: ...
 
+[case testCPyFunctionVariableNameConflict]
+class C:
+    async def operation(self) -> int:
+        return 42
+
+    async def operation_wrapper(self) -> int:
+        return await self.operation()
+
+    async def wrapper_operation(self) -> int:
+        return await self.operation()
+
+async def test_variable_name_conflict() -> None:
+    c = C()
+    assert await c.operation() == 42
+    assert await c.operation_wrapper() == 42
+    assert await c.wrapper_operation() == 42
+
+[file driver.py]
+import asyncio
+
+from native import C, test_variable_name_conflict
+
+async def test_variable_name_conflict_interpreted() -> None:
+    c = C()
+    assert await c.operation() == 42
+    assert await c.operation_wrapper() == 42
+    assert await c.wrapper_operation() == 42
+
+asyncio.run(test_variable_name_conflict())
+asyncio.run(test_variable_name_conflict_interpreted())
+
 [case testNestedCoroutineCallsAnotherNestedFunction]
 import asyncio
 import functools
