@@ -8200,9 +8200,10 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
         return typ
 
     def push_type_map(self, type_map: TypeMap, *, from_assignment: bool = True) -> None:
-        if is_unreachable_map(type_map):
+        unreachable_map = is_unreachable_map(type_map)
+        if unreachable_map:
             self.binder.unreachable()
-        else:
+        if not unreachable_map or self.options.check_unreachable:
             for expr, type in type_map.items():
                 self.binder.put(expr, type, from_assignment=from_assignment)
 
