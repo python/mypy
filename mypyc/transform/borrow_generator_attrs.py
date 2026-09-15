@@ -7,6 +7,7 @@ accessing it concurrently, so attribute values can be borrowed while the helper 
 from __future__ import annotations
 
 from collections.abc import Set as AbstractSet
+from typing import Final
 
 from mypyc.analysis.dataflow import MUST_ANALYSIS, BaseAnalysisVisitor, get_cfg, run_analysis
 from mypyc.ir.class_ir import ClassIR
@@ -39,9 +40,9 @@ class BorrowGeneratorAttrsVisitor(BaseAnalysisVisitor[GetAttr]):
         candidates: set[GetAttr],
         candidates_by_attr: dict[str, set[GetAttr]],
     ) -> None:
-        self.self_reg = self_reg
-        self.candidates = candidates
-        self.candidates_by_attr = candidates_by_attr
+        self.self_reg: Final = self_reg
+        self.candidates: Final = candidates
+        self.candidates_by_attr: Final = candidates_by_attr
 
     def visit_branch(self, op: Branch) -> GenAndKill:
         return self.visit_sources(op)
