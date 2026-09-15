@@ -1574,14 +1574,14 @@ def _resolve_funcitem_from_decorator(dec: nodes.OverloadPart) -> nodes.FuncItem 
         ):
             return func
         if decorator.fullname == "builtins.classmethod":
-            if func.arguments[0].variable.name not in ("_cls", "cls", "mcs", "metacls"):
-                raise StubtestFailure(
-                    f"unexpected class parameter name {func.arguments[0].variable.name!r} "
-                    f"in {dec.fullname}"
-                )
+            if not func.arguments or func.arguments[0].kind not in (nodes.ARG_POS, nodes.ARG_OPT):
+                # Nothing to drop, e.g. `def f(*args)`. inspect.signature of the runtime
+                # classmethod keeps the star argument too, so the two already line up.
+                return func
             # FuncItem is written so that copy.copy() actually works, even when compiled
             ret = copy.copy(func)
-            # Remove the cls argument, since it's not present in inspect.signature of classmethods
+            # Remove the cls argument, since it's not present in inspect.signature of classmethods.
+            # It can be given any name, so don't look at the name to decide.
             ret.arguments = ret.arguments[1:]
             return ret
         # Just give up on any other decorators. After excluding properties, we don't run into
