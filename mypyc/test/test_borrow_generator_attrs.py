@@ -262,7 +262,9 @@ def gen(value: str) -> Generator[str, None, str]:
             op
             for op in reads
             if op.obj is ir.arg_regs[0]
-            and op.attr == generator_frame_attribute_prefix(cl.fullname) + "other"
+            and op.attr
+            == generator_frame_attribute_prefix(cl.fullname, is_final_class=cl.is_final_class)
+            + "other"
         ]
         shared_reads = [
             op

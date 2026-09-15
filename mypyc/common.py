@@ -32,16 +32,20 @@ GENERATOR_FRAME_ATTRIBUTE_PREFIX: Final = "__mypyc_generator_frame_attribute__"
 CPYFUNCTION_NAME = "__cpyfunction__"
 
 
-def generator_frame_attribute_prefix(class_fullname: str) -> str:
+def generator_frame_attribute_prefix(class_fullname: str, *, is_final_class: bool) -> str:
     """Return the source-attribute prefix private to a generator frame class."""
+    if is_final_class:
+        return GENERATOR_FRAME_ATTRIBUTE_PREFIX
     return f"{GENERATOR_FRAME_ATTRIBUTE_PREFIX}{exported_name(class_fullname)}_"
 
 
 def source_name_from_generator_attribute(name: str, class_fullname: str) -> str:
     """Recover a source name from a generator frame or closure attribute."""
-    frame_prefix = generator_frame_attribute_prefix(class_fullname)
-    if name.startswith(frame_prefix):
-        return name.removeprefix(frame_prefix)
+    qualified_prefix = generator_frame_attribute_prefix(class_fullname, is_final_class=False)
+    if name.startswith(qualified_prefix):
+        return name.removeprefix(qualified_prefix)
+    if name.startswith(GENERATOR_FRAME_ATTRIBUTE_PREFIX):
+        return name.removeprefix(GENERATOR_FRAME_ATTRIBUTE_PREFIX)
     return name.removeprefix(GENERATOR_ATTRIBUTE_PREFIX)
 
 

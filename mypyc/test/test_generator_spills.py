@@ -10,6 +10,7 @@ import unittest
 from mypyc.common import (
     ENV_ATTR_NAME,
     GENERATOR_ATTRIBUTE_PREFIX,
+    GENERATOR_FRAME_ATTRIBUTE_PREFIX,
     NEXT_LABEL_ATTR_NAME,
     SELF_NAME,
     TEMP_ATTR_NAME,
@@ -39,7 +40,7 @@ def promoted_slots(cl: ClassIR) -> set[str]:
 
 
 def frame_variables(cl: ClassIR) -> set[str]:
-    prefix = generator_frame_attribute_prefix(cl.fullname)
+    prefix = generator_frame_attribute_prefix(cl.fullname, is_final_class=cl.is_final_class)
     return {name.removeprefix(prefix) for name in cl.attributes if name.startswith(prefix)}
 
 
@@ -161,6 +162,8 @@ def gen() -> Generator[int, None, int]:
 """,
             "gen_gen",
         )
+        assert cl.is_final_class
+        assert GENERATOR_FRAME_ATTRIBUTE_PREFIX + "crossing" in cl.attributes
         variables = frame_variables(cl)
         assert "crossing" in variables
         assert "local" not in variables

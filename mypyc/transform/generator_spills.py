@@ -114,7 +114,9 @@ def order_registers(registers: list[Register], blocks: list[BasicBlock]) -> list
 def allocate_slots(frame: ClassIR, registers: list[Register]) -> dict[Register, str]:
     slots: dict[Register, str] = {}
     owner = exported_name(frame.fullname)
-    source_prefix = generator_frame_attribute_prefix(frame.fullname)
+    source_prefix = generator_frame_attribute_prefix(
+        frame.fullname, is_final_class=frame.is_final_class
+    )
     for index, register in enumerate(registers):
         if register.name:
             name = available_attr_name(frame, source_prefix + register.name)

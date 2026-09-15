@@ -1640,7 +1640,9 @@ class IRBuilder:
             reassign=reassign,
             always_defined=always_defined,
             keep_alive_on_completion=keep_alive_on_completion,
-            prefix=generator_frame_attribute_prefix(cls.fullname),
+            prefix=generator_frame_attribute_prefix(
+                cls.fullname, is_final_class=cls.is_final_class
+            ),
         )
 
     def add_var_to_class(

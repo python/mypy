@@ -51,7 +51,9 @@ def outer():
         assert any(name.startswith(TEMP_ATTR_NAME + "3_") for name in frame.attributes)
 
         # Noncaptured source-level variables also stay on the private frame.
-        frame_prefix = generator_frame_attribute_prefix(frame.fullname)
+        frame_prefix = generator_frame_attribute_prefix(
+            frame.fullname, is_final_class=frame.is_final_class
+        )
         assert frame_prefix + "value" in frame.attributes
         assert GENERATOR_ATTRIBUTE_PREFIX + "value" not in environment.attributes
 
@@ -79,7 +81,9 @@ def outer():
         assert frame.attrs_are_thread_confined()
         assert not environment.attrs_are_thread_confined()
 
-        frame_prefix = generator_frame_attribute_prefix(frame.fullname)
+        frame_prefix = generator_frame_attribute_prefix(
+            frame.fullname, is_final_class=frame.is_final_class
+        )
         assert GENERATOR_ATTRIBUTE_PREFIX + "captured" in environment_attrs
         assert frame_prefix + "captured" not in frame_attrs
         for name in ("private", "private_local", "callback"):
