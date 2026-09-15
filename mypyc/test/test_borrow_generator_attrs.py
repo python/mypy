@@ -153,11 +153,7 @@ class TestBorrowGeneratorAttrs(unittest.TestCase):
         other_cl.attributes["frame"] = self_reg.type
         other = Register(RInstance(other_cl), "other")
         read = GetAttr(self_reg, "value", -1)
-        ir.blocks[0].ops[:0] = [
-            read,
-            SetAttr(other, "frame", self_reg, -1),
-            KeepAlive([read]),
-        ]
+        ir.blocks[0].ops[:0] = [read, SetAttr(other, "frame", self_reg, -1), KeepAlive([read])]
 
         borrow_generator_attrs(ir, cl)
 
