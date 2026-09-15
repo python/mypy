@@ -6925,7 +6925,16 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                                 narrowable_indices={0},
                             )
                             all_if_maps.append(if_map)
-                            if is_singleton_equality_type(get_proper_type(known_item)):
+                            # A literal expression in the container, e.g. `x in ('a', 'b')`,
+                            # gives the item an instance type with a last known value rather
+                            # than a literal type, but it still denotes a single value, so a
+                            # failed comparison against it is enough for negative narrowing.
+                            # Only this check coerces; the type we narrowed against above is
+                            # left alone, to keep `in` consistent with `==`.
+                            is_single_valued = is_singleton_equality_type(
+                                get_proper_type(coerce_to_literal(known_item))
+                            )
+                            if is_single_valued and not has_custom_eq_checks(p_known_item):
                                 all_else_maps.append(else_map)
                         if_map = reduce_or_conditional_type_maps(all_if_maps)
                         else_map = reduce_and_conditional_type_maps(all_else_maps, use_meet=True)
