@@ -1013,13 +1013,14 @@ These options may only be set in the global section (``[mypy]``).
 
 .. confval:: num_workers
 
-    :type: integer
+    :type: integer or string
     :default: 0
 
-    Use specific number of parallel worker processes for type-checking, see
-    :ref:`parallel type-checking <parallel>` for more details.
-    This setting will be overridden by the ``MYPY_NUM_WORKERS`` environment
-    variable.
+    Use a specific number of parallel worker processes for type-checking or
+    the value ``auto`` to select the number based on the CPUs available to mypy.
+    See :ref:`parallel type-checking <parallel>` for more details.
+    The ``MYPY_NUM_WORKERS`` environment variable accepts the same values and
+    overrides this setting.
 
 
 Advanced options
