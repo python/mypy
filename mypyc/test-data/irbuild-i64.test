@@ -2212,7 +2212,6 @@ from mypy_extensions import i64
 def gen() -> Iterator[i64]:
     value: i64 = 1
     yield value
-    # TODO: Improve the error message for generator locals.
-    del value  # E: "__mypyc_generator_attribute__value" cannot be deleted \
+    del value  # E: "value" cannot be deleted \
                # N: Using "__deletable__ = ['<attr>']" in the class body enables "del obj.<attr>"
     yield 0

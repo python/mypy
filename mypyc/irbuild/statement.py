@@ -49,7 +49,12 @@ from mypy.nodes import (
     YieldExpr,
     YieldFromExpr,
 )
-from mypyc.common import GENERATOR_HELPER_NAME, KEEP_ALIVE_SHORT_LIVED, KEEP_ALIVE_WHOLE_EXPRESSION
+from mypyc.common import (
+    GENERATOR_ATTRIBUTE_PREFIX,
+    GENERATOR_HELPER_NAME,
+    KEEP_ALIVE_SHORT_LIVED,
+    KEEP_ALIVE_WHOLE_EXPRESSION,
+)
 from mypyc.ir.ops import (
     ERR_NEVER,
     NAMESPACE_MODULE,
@@ -1269,7 +1274,8 @@ def transform_del_item(builder: IRBuilder, target: AssignmentTarget, line: int) 
         if isinstance(target.obj_type, RInstance):
             cl = target.obj_type.class_ir
             if not cl.is_deletable(target.attr):
-                builder.error(f'"{target.attr}" cannot be deleted', line)
+                name = target.attr.removeprefix(GENERATOR_ATTRIBUTE_PREFIX)
+                builder.error(f'"{name}" cannot be deleted', line)
                 builder.note(
                     'Using "__deletable__ = '
                     + '[\'<attr>\']" in the class body enables "del obj.<attr>"',
