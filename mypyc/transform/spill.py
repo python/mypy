@@ -124,6 +124,10 @@ def spill_regs(
 
             if op in spill_locs:
                 # XXX: could we set uninit?
+                # Reference count insertion has already run, so explicitly give the
+                # stealing attribute store an owned reference to a borrowed result.
+                if op.is_borrowed and op.type.is_refcounted:
+                    block.ops.append(IncRef(op))
                 block.ops.append(SetAttr(frame_reg, spill_locs[op], op, op.line))
 
     return blocks
