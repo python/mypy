@@ -31,10 +31,10 @@ class ArgSuite(Suite):
 
         assert parse_num_workers(12) == 12
         assert parse_num_workers("12") == 12
-        
+
         assert parse_num_workers("0") == 0
         assert parse_num_workers("1") == 1
-        
+
         assert parse_num_workers("-1") == -1
         with self.assertRaises(argparse.ArgumentTypeError):
             parse_num_workers("automatic")
@@ -95,8 +95,7 @@ class ArgSuite(Suite):
                     )
 
                     _, cli_options = process_options(
-                        ["--config-file", str(config), "--num-workers=auto"],
-                        require_targets=False,
+                        ["--config-file", str(config), "--num-workers=auto"], require_targets=False
                     )
 
         assert config_options.num_workers == 2
@@ -126,7 +125,7 @@ class ArgSuite(Suite):
 
         assert incremental_with_workers(1)
         assert not incremental_with_workers(0)
-    
+
     def test_coherence(self) -> None:
         options = Options()
         _, parsed_options = process_options([], require_targets=False)
