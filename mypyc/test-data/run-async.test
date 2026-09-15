@@ -292,8 +292,12 @@ async def async_with_vectorcall() -> str:
     async with ctx:
         return await async_val("vc")
 
+async def async_with_pass() -> None:
+    async with async_ctx():
+        pass
+
 [file driver.py]
-from native import async_with, async_with_vectorcall
+from native import async_with, async_with_pass, async_with_vectorcall
 from testutil import run_generator
 
 yields, val = run_generator(async_with(), [None, 'x', None])
@@ -303,6 +307,10 @@ assert val == 'x', val
 yields, val = run_generator(async_with_vectorcall(), [None, 'x', None])
 assert yields == ('enter', 'vc', 'exit'), yields
 assert val == 'x', val
+
+yields, val = run_generator(async_with_pass(), [None, None])
+assert yields == ('enter', 'exit'), yields
+assert val is None
 
 [case testAsyncReturn]
 from testutil import async_val

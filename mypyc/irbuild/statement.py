@@ -712,6 +712,9 @@ def transform_try_except(
     builder.builder.push_error_handler(double_except_block)
     builder.activate_block(except_entry)
     old_exc = builder.call_c(error_catch_op, [], line)
+    if builder.fn_info.is_generator:
+        # CFG cleanup may remove the CallC's block while resume cleanup paths remain.
+        old_exc = builder.ensure_register(old_exc)
     # Compile the except blocks with the nonlocal control flow overridden to clear exc_info
     builder.nonlocal_control.append(ExceptNonlocalControl(builder.nonlocal_control[-1], old_exc))
 
