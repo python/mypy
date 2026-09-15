@@ -13,7 +13,12 @@ from __future__ import annotations
 from collections.abc import Callable
 
 from mypy.nodes import ARG_OPT, FuncDef, Var
-from mypyc.common import ENV_ATTR_NAME, GENERATOR_ATTRIBUTE_PREFIX, NEXT_LABEL_ATTR_NAME
+from mypyc.common import (
+    ENV_ATTR_NAME,
+    GENERATOR_ATTRIBUTE_PREFIX,
+    GENERATOR_HELPER_NAME,
+    NEXT_LABEL_ATTR_NAME,
+)
 from mypyc.ir.class_ir import ClassIR
 from mypyc.ir.func_ir import FuncDecl, FuncIR
 from mypyc.ir.ops import (
@@ -51,7 +56,6 @@ from mypyc.irbuild.env_class import (
     setup_func_for_recursive_call,
 )
 from mypyc.irbuild.nonlocalcontrol import ExceptNonlocalControl, gen_generator_func_cleanup
-from mypyc.irbuild.prepare import GENERATOR_HELPER_NAME
 from mypyc.irbuild.targets import AssignmentTargetAttr
 from mypyc.primitives.exc_ops import (
     error_catch_op,

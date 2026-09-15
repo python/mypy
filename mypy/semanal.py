@@ -259,6 +259,7 @@ from mypy.typeanal import (
 )
 from mypy.typeops import function_type, get_type_vars, try_getting_str_literals_from_type
 from mypy.types import (
+    ANNOTATED_TYPE_NAMES,
     ASSERT_TYPE_NAMES,
     DATACLASS_TRANSFORM_NAMES,
     DEPRECATED_TYPE_NAMES,
@@ -1190,11 +1191,15 @@ class SemanticAnalyzer(
                 sym = self.lookup_qualified(typ.name, typ, suppress_errors=True)
                 if sym is not None and sym.fullname in TYPE_NAMES and typ.args:
                     return self.is_expected_self_type(typ.args[0], is_classmethod=False)
+                if sym is not None and sym.fullname in ANNOTATED_TYPE_NAMES and typ.args:
+                    return self.is_expected_self_type(typ.args[0], is_classmethod=True)
             return False
         if isinstance(typ, TypeVarType):
             return typ == self.type.self_type
         if isinstance(typ, UnboundType):
             sym = self.lookup_qualified(typ.name, typ, suppress_errors=True)
+            if sym is not None and sym.fullname in ANNOTATED_TYPE_NAMES and typ.args:
+                return self.is_expected_self_type(typ.args[0], is_classmethod=False)
             return sym is not None and sym.fullname in SELF_TYPE_NAMES
         return False
 
@@ -3401,11 +3406,19 @@ class SemanticAnalyzer(
         self.process__slots__(s)
 
     def is_sentinel_declaration(self, s: AssignmentStmt) -> bool:
-        """Does this assignment define a PEP 661 sentinel singleton?"""
+        """Does this assignment define a PEP 661 sentinel singleton?
+
+        This includes both the original `NAME = Sentinel("NAME")` call and a
+        plain alias of an existing sentinel, e.g. `ALIAS = NAME` or
+        `ALIAS = mod.NAME`, so that re-exports of a sentinel keep working as
+        the same sentinel type.
+        """
         if self.is_nested_within_func_scope() or s.unanalyzed_type is not None:
             return False
         if len(s.lvalues) != 1 or not isinstance(s.lvalues[0], NameExpr):
             return False
+        if isinstance(s.rvalue, RefExpr):
+            return isinstance(s.rvalue.node, Var) and s.rvalue.node.is_sentinel
         if not isinstance(s.rvalue, CallExpr):
             return False
         call = s.rvalue
@@ -3425,7 +3438,13 @@ class SemanticAnalyzer(
         lvalue.is_special_form = True
         var = lvalue.node
         var.is_sentinel = True
-        typ = self.sentinel_type_for_var(var, s.rvalue)
+        if isinstance(s.rvalue, RefExpr):
+            # An alias of an existing sentinel: reuse its already-computed type.
+            assert isinstance(s.rvalue.node, Var)
+            typ = get_proper_type(s.rvalue.node.type)
+            assert isinstance(typ, LiteralType)
+        else:
+            typ = self.sentinel_type_for_var(var, s.rvalue)
         if typ is not None:
             s.type = typ
 

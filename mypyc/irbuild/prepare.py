@@ -15,7 +15,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 from collections.abc import Iterable
-from typing import Final, NamedTuple
+from typing import NamedTuple
 
 from mypy.build import Graph
 from mypy.nodes import (
@@ -42,6 +42,7 @@ from mypy.traverser import TraverserVisitor
 from mypy.types import Instance, Type, get_proper_type
 from mypyc.common import (
     FAST_PREFIX,
+    GENERATOR_HELPER_NAME,
     MYPYC_DEFAULTS_SETUP,
     PROPSET_PREFIX,
     SELF_NAME,
@@ -82,8 +83,6 @@ from mypyc.irbuild.util import (
 )
 from mypyc.options import CompilerOptions
 from mypyc.sametype import is_same_type
-
-GENERATOR_HELPER_NAME: Final = "__mypyc_generator_helper__"
 
 
 def build_type_map(

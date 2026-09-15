@@ -1641,14 +1641,18 @@ reveal_type(a)  # N: Revealed type is "builtins.list[builtins.int]"
 def f[T](x: foobar, y: T) -> T: ...  # E: Name "foobar" is not defined
 reveal_type(f)  # N: Revealed type is "def [T] (x: Any, y: T`-1) -> T`-1"
 
-[case testPEP695WrongNumberOfConstrainedTypes_no_native_parse]
-type A[T: ()] = list[T]  # E: Type variable must have at least two constrained types
+[case testPEP695WrongNumberOfConstrainedTypes]
+# TODO: we should probably error on this.
+type A[T: ()] = list[T]
 a: A[int]
 reveal_type(a)  # N: Revealed type is "builtins.list[builtins.int]"
 
 type B[T: (int,)] = list[T]  # E: Type variable must have at least two constrained types
 b: B[str]
 reveal_type(b)  # N: Revealed type is "builtins.list[builtins.str]"
+
+class C[T: (int,)]:  # E: Type variable must have at least two constrained types
+    pass
 
 [case testPEP695UsingTypeVariableInOwnBoundOrConstraint]
 type A[T: list[T]] = str  # E: Name "T" is not defined
@@ -1790,47 +1794,49 @@ type Y[T] = {"item": T, **Y[T]}  # E: Overwriting TypedDict field "item" while m
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-full.pyi]
 
-[case testPEP695UsingIncorrectExpressionsInTypeVariableBound_no_native_parse]
-type X[T: (yield 1)] = Any  # E: Yield expression cannot be used as a type variable bound
-type Y[T: (yield from [])] = Any # E: Yield expression cannot be used as a type variable bound
-type Z[T: (a := 1)] = Any  # E: Named expression cannot be used as a type variable bound
-type K[T: (await 1)] = Any # E: Await expression cannot be used as a type variable bound
+[case testPEP695UsingIncorrectExpressionsInTypeVariableBound]
+from typing import Any
 
-type XNested[T: (1 + (yield 1))] = Any  # E: Yield expression cannot be used as a type variable bound
-type YNested[T: (1 + (yield from []))] = Any # E: Yield expression cannot be used as a type variable bound
-type ZNested[T: (1 + (a := 1))] = Any  # E: Named expression cannot be used as a type variable bound
-type KNested[T: (1 + (await 1))] = Any # E: Await expression cannot be used as a type variable bound
+type X[T: (yield 1)] = Any  # E: Invalid type comment or annotation
+type Y[T: (yield from [])] = Any # E: Invalid type comment or annotation
+type Z[T: (a := 1)] = Any  # E: Invalid type comment or annotation
+type K[T: (await 1)] = Any # E: Invalid type comment or annotation
 
-class FooX[T: (yield 1)]: pass  # E: Yield expression cannot be used as a type variable bound
-class FooY[T: (yield from [])]: pass  # E: Yield expression cannot be used as a type variable bound
-class FooZ[T: (a := 1)]: pass  # E: Named expression cannot be used as a type variable bound
-class FooK[T: (await 1)]: pass  # E: Await expression cannot be used as a type variable bound
+type XNested[T: (1 + (yield 1))] = Any  # E: Invalid type comment or annotation
+type YNested[T: (1 + (yield from []))] = Any # E: Invalid type comment or annotation
+type ZNested[T: (1 + (a := 1))] = Any  # E: Invalid type comment or annotation
+type KNested[T: (1 + (await 1))] = Any # E: Invalid type comment or annotation
 
-class FooXNested[T: (1 + (yield 1))]: pass  # E: Yield expression cannot be used as a type variable bound
-class FooYNested[T: (1 + (yield from []))]: pass  # E: Yield expression cannot be used as a type variable bound
-class FooZNested[T: (1 + (a := 1))]: pass  # E: Named expression cannot be used as a type variable bound
-class FooKNested[T: (1 + (await 1))]: pass  # E: Await expression cannot be used as a type variable bound
+class FooX[T: (yield 1)]: pass  # E: Invalid type comment or annotation
+class FooY[T: (yield from [])]: pass  # E: Invalid type comment or annotation
+class FooZ[T: (a := 1)]: pass  # E: Invalid type comment or annotation
+class FooK[T: (await 1)]: pass  # E: Invalid type comment or annotation
 
-def foox[T: (yield 1)](): pass  # E: Yield expression cannot be used as a type variable bound
-def fooy[T: (yield from [])](): pass  # E: Yield expression cannot be used as a type variable bound
-def fooz[T: (a := 1)](): pass  # E: Named expression cannot be used as a type variable bound
-def fook[T: (await 1)](): pass  # E: Await expression cannot be used as a type variable bound
+class FooXNested[T: (1 + (yield 1))]: pass  # E: Invalid type comment or annotation
+class FooYNested[T: (1 + (yield from []))]: pass  # E: Invalid type comment or annotation
+class FooZNested[T: (1 + (a := 1))]: pass  # E: Invalid type comment or annotation
+class FooKNested[T: (1 + (await 1))]: pass  # E: Invalid type comment or annotation
 
-def foox_nested[T: (1 + (yield 1))](): pass  # E: Yield expression cannot be used as a type variable bound
-def fooy_nested[T: (1 + (yield from []))](): pass  # E: Yield expression cannot be used as a type variable bound
-def fooz_nested[T: (1 + (a := 1))](): pass  # E: Named expression cannot be used as a type variable bound
-def fook_nested[T: (1 +(await 1))](): pass  # E: Await expression cannot be used as a type variable bound
+def foox[T: (yield 1)](): pass  # E: Invalid type comment or annotation
+def fooy[T: (yield from [])](): pass  # E: Invalid type comment or annotation
+def fooz[T: (a := 1)](): pass  # E: Invalid type comment or annotation
+def fook[T: (await 1)](): pass  # E: Invalid type comment or annotation
 
-[case testPEP695UsingIncorrectExpressionsInTypeAlias_no_native_parse]
-type X = (yield 1)  # E: Yield expression cannot be used within a type alias
-type Y = (yield from []) # E: Yield expression cannot be used within a type alias
-type Z = (a := 1)  # E: Named expression cannot be used within a type alias
-type K = (await 1)  # E: Await expression cannot be used within a type alias
+def foox_nested[T: (1 + (yield 1))](): pass  # E: Invalid type comment or annotation
+def fooy_nested[T: (1 + (yield from []))](): pass  # E: Invalid type comment or annotation
+def fooz_nested[T: (1 + (a := 1))](): pass  # E: Invalid type comment or annotation
+def fook_nested[T: (1 + (await 1))](): pass  # E: Invalid type comment or annotation
 
-type XNested = (1 + (yield 1))  # E: Yield expression cannot be used within a type alias
-type YNested = (1 + (yield from [])) # E: Yield expression cannot be used within a type alias
-type ZNested = (1 + (a := 1))  # E: Named expression cannot be used within a type alias
-type KNested = (1 + (await 1))  # E: Await expression cannot be used within a type alias
+[case testPEP695UsingIncorrectExpressionsInTypeAlias]
+type X = (yield 1)  # E: Invalid type alias: expression is not a valid type
+type Y = (yield from []) # E: Invalid type alias: expression is not a valid type
+type Z = (a := 1)  # E: Invalid type alias: expression is not a valid type
+type K = (await 1)  # E: Invalid type alias: expression is not a valid type
+
+type XNested = (1 + (yield 1))  # E: Invalid type alias: expression is not a valid type
+type YNested = (1 + (yield from [])) # E: Invalid type alias: expression is not a valid type
+type ZNested = (1 + (a := 1))  # E: Invalid type alias: expression is not a valid type
+type KNested = (1 + (await 1))  # E: Invalid type alias: expression is not a valid type
 
 [case testWalrusRebindsNamesLoadedInComprehensionTargets]
 # Newly legal in https://github.com/python/cpython/pull/100581
@@ -1993,7 +1999,6 @@ d3: Multi[str, int] = Multi[str, float]()
 d4: Multi[str, float] = Multi[str, int]()  # E: Incompatible types in assignment (expression has type "Multi[str, int]", variable has type "Multi[str, float]")
 
 [case testPEP695MultipleNestedGenericClass1]
-# flags: --enable-incomplete-feature=NewGenericSyntax
 class A:
     class B:
         class C:
@@ -2007,7 +2012,6 @@ reveal_type(x)  # N: Revealed type is "__main__.A.B.C.D[builtins.int]"
 reveal_type(A.B.C.d)  # N: Revealed type is "__main__.A.B.C.D[builtins.str]"
 
 [case testPEP695MultipleNestedGenericClass2]
-# flags: --enable-incomplete-feature=NewGenericSyntax
 class A:
     class B:
         def m(self) -> None:
@@ -2017,10 +2021,9 @@ class A:
             reveal_type(x.f())  # N: Revealed type is "builtins.int"
             self.a = C[str]()
 
-reveal_type(A().B().a) # N: Revealed type is "__main__.C@5[builtins.str]"
+reveal_type(A().B().a) # N: Revealed type is "__main__.C@4[builtins.str]"
 
 [case testPEP695MultipleNestedGenericClass3]
-# flags: --enable-incomplete-feature=NewGenericSyntax
 class A:
     class C[T]:
         def f(self) -> T: ...
@@ -2041,7 +2044,6 @@ class B:
 c: B.E.F[int]
 
 [case testPEP695MultipleNestedGenericClass4]
-# flags: --enable-incomplete-feature=NewGenericSyntax
 class Z:
     class A:
         class B[T]:
@@ -2053,7 +2055,6 @@ a = Z.A()
 v = a.f
 
 [case testPEP695MultipleNestedGenericClass5]
-# flags: --enable-incomplete-feature=NewGenericSyntax
 from a.b.c import d
 x: d.D.E.F.G[int]
 x.g('a') # E: Argument 1 to "g" of "G" has incompatible type "str"; expected "int"

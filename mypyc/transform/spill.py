@@ -1,9 +1,11 @@
-"""Insert spills for values that are live across yields."""
+"""Spill operation results that are live across generator suspension points.
+
+Registers are spilled in an earlier pass.
+"""
 
 from __future__ import annotations
 
 from collections.abc import Collection
-from typing import cast
 
 from mypyc.analysis.dataflow import AnalysisResult, analyze_live_regs, get_cfg
 from mypyc.common import TEMP_ATTR_NAME
@@ -27,13 +29,14 @@ from mypyc.namegen import exported_name
 def insert_spills(ir: FuncIR, frame: ClassIR) -> None:
     cfg = get_cfg(ir.blocks, use_yields=True)
     live = analyze_live_regs(ir.blocks, cfg)
-    entry_live = live.before[ir.blocks[0], 0]
+    # Registers needing frame storage were handled earlier by promote_generator_registers().
+    # Argument, address-taken, and RArray registers stay as C locals.
 
-    entry_live = {op for op in entry_live if not (isinstance(op, Register) and op.is_arg)}
-    # TODO: Actually for now, no Registers at all -- we keep the manual spills
-    entry_live = {op for op in entry_live if not isinstance(op, Register)}
+    # Each generator helper invocation starts at the resume dispatch, so an operation result
+    # live at entry must have survived a previous suspension.
+    to_spill = {value for value in live.before[ir.blocks[0], 0] if isinstance(value, Op)}
 
-    ir.blocks = spill_regs(ir.blocks, frame, entry_live, live, ir.arg_regs[0])
+    ir.blocks = spill_regs(ir.blocks, frame, to_spill, live, ir.arg_regs[0])
 
 
 def sort_values(values: Collection[Op], blocks: list[BasicBlock]) -> list[Op]:
@@ -52,14 +55,13 @@ def sort_values(values: Collection[Op], blocks: list[BasicBlock]) -> list[Op]:
 def spill_regs(
     blocks: list[BasicBlock],
     frame: ClassIR,
-    to_spill: set[Value],
+    to_spill: set[Op],
     live: AnalysisResult[Value],
     frame_reg: Register,
 ) -> list[BasicBlock]:
     spill_locs = {}
-    # Sort values to make the order deterministic. All the spilled values are
-    # known to be Op instances, so the cast is safe.
-    for i, val in enumerate(sort_values(cast(set[Op], to_spill), blocks)):
+    # Sort values to make the order deterministic.
+    for i, val in enumerate(sort_values(to_spill, blocks)):
         # Generator classes for overriding methods can inherit from one another. Include the
         # module-qualified owning class name so unrelated helper spills don't alias an inherited
         # struct field.

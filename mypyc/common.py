@@ -23,6 +23,7 @@ FAST_PREFIX: Final = "__mypyc_fast_"  # Optimized methods in non-extension class
 
 ENV_ATTR_NAME: Final = "__mypyc_env__"
 NEXT_LABEL_ATTR_NAME: Final = "__mypyc_next_label__"
+GENERATOR_HELPER_NAME: Final = "__mypyc_generator_helper__"
 TEMP_ATTR_NAME: Final = "__mypyc_temp__"
 LAMBDA_NAME: Final = "__mypyc_lambda__"
 PROPSET_PREFIX: Final = "__mypyc_setter__"

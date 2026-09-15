@@ -124,6 +124,7 @@ from mypy.nodes import (
     WithStmt,
     YieldExpr,
     YieldFromExpr,
+    check_param_names,
 )
 from mypy.options import Options
 from mypy.patterns import (
@@ -251,6 +252,23 @@ def native_parse(
         mypy_comments,
     )
     return node, errors, ignores
+
+
+def native_parse_type_string(
+    expr_string: str, line: int, column: int, end_line: int, end_column: int, options: Options
+) -> ProperType:
+    """Try to parse a string literal as a type expression (i.e. resolve a forward reference).
+
+    If parsing fails, a RawExpressionType will be returned.
+    """
+    ast_bytes = ast_serialize.parse_type_string(
+        expr_string, (line, column, end_line, end_column), cache_version=5
+    )
+    state = State(options)
+    data = ReadBuffer(ast_bytes)
+    ret = read_type(state, data)
+    assert isinstance(ret, ProperType)
+    return ret
 
 
 def expect_end_tag(data: ReadBuffer) -> None:
@@ -620,6 +638,11 @@ def read_parameters(state: State, data: ReadBuffer) -> tuple[list[Argument], boo
         set_line_column_range(var, arg)
         arguments.append(arg)
 
+    def fail_arg(msg: str, ctx: Argument) -> None:
+        # To match the old parser (for now).
+        state.add_error(msg, ctx.line, ctx.column, blocker=True, code="syntax")
+
+    check_param_names([arg.variable.name for arg in arguments], arguments, fail_arg)
     return arguments, has_ann
 
 
@@ -628,6 +651,22 @@ def check_type_param_defaults(
 ) -> None:
     if any(p.default is not None for p in type_params):
         state.check_min_version("Type parameter defaults", (3, 13), line, column)
+
+
+def check_type_param_values(
+    state: State, type_params: list[TypeParam], line: int, column: int
+) -> None:
+    for type_param in type_params:
+        if len(type_param.values) == 1:
+            state.add_error(
+                message_registry.TYPE_VAR_TOO_FEW_CONSTRAINED_TYPES.value,
+                line,
+                column,
+                blocker=False,
+                code="misc",
+            )
+            # For compatibility with old parser.
+            type_param.values = []
 
 
 def read_type_params(state: State, data: ReadBuffer) -> list[TypeParam]:
@@ -708,6 +747,7 @@ def read_func_def(state: State, data: ReadBuffer) -> FuncDef:
             "Improved type parameter syntax", (3, 12), func_def.line, func_def.column
         )
         check_type_param_defaults(state, type_params, func_def.line, func_def.column)
+        check_type_param_values(state, type_params, func_def.line, func_def.column)
     if typ:
         typ.line = func_def.line
         typ.column = func_def.column
@@ -762,6 +802,7 @@ def read_class_def(state: State, data: ReadBuffer) -> ClassDef:
             "Improved type parameter syntax", (3, 12), class_def.line, class_def.column
         )
         check_type_param_defaults(state, type_params, class_def.line, class_def.column)
+        check_type_param_values(state, type_params, class_def.line, class_def.column)
     expect_end_tag(data)
     if state.options.include_docstrings:
         class_def.docstring = get_docstring(body)
@@ -828,6 +869,7 @@ def read_type_alias_stmt(state: State, data: ReadBuffer) -> TypeAliasStmt:
     read_loc(data, stmt)
     state.check_min_version('"type" statements', (3, 12), stmt.line, stmt.column)
     check_type_param_defaults(state, type_params, stmt.line, stmt.column)
+    check_type_param_values(state, type_params, stmt.line, stmt.column)
     expect_end_tag(data)
     return stmt
 
@@ -887,7 +929,7 @@ def read_try_stmt(state: State, data: ReadBuffer) -> TryStmt:
     return stmt
 
 
-def read_type(state: State, data: ReadBuffer) -> Type:
+def read_type(state: State, data: ReadBuffer, always_allow_star: bool = False) -> Type:
     tag = read_tag(data)
     if tag == types.UNBOUND_TYPE:
         name = read_str(data)
@@ -948,7 +990,7 @@ def read_type(state: State, data: ReadBuffer) -> Type:
     elif tag == types.LIST_TYPE:
         expect_tag(data, LIST_GEN)
         n = read_int_bare(data)
-        items = [read_type(state, data) for i in range(n)]
+        items = [read_type(state, data, always_allow_star=True) for i in range(n)]
         type_list = TypeList(items)
         read_loc(data, type_list)
         expect_end_tag(data)
@@ -1018,7 +1060,7 @@ def read_type(state: State, data: ReadBuffer) -> Type:
         from_star_syntax = read_bool(data)
         unpack = UnpackType(inner_type, from_star_syntax=from_star_syntax)
         read_loc(data, unpack)
-        if from_star_syntax:
+        if from_star_syntax and not always_allow_star:
             state.check_min_version("Star unpack syntax", (3, 11), unpack.line, unpack.column)
         expect_end_tag(data)
         return unpack
@@ -1364,6 +1406,12 @@ def read_expression(state: State, data: ReadBuffer) -> Expression:
         base = read_expression(state, data)
         index = read_expression(state, data)
         expr = IndexExpr(base, index)
+        if (
+            isinstance(index, StarExpr)
+            or isinstance(index, TupleExpr)
+            and any(isinstance(it, StarExpr) for it in index.items)
+        ):
+            state.check_min_version("Star unpack syntax", (3, 11), index.line, index.column)
         read_loc(data, expr)
         expect_end_tag(data)
         return expr
