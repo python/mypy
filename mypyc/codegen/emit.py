@@ -1442,7 +1442,7 @@ class Emitter:
     ) -> str:
         module = self.static_name(fn.decl.module_name, None, prefix=MODULE_PREFIX)
         cname = f"{PREFIX}{fn.cname(self.names)}"
-        wrapper_name = f"{cname}_wrapper"
+        wrapper_name = f"wrapper_{cname}"
         cfunc = f"(PyCFunction){cname}"
         func_flags = ["METH_FASTCALL", "METH_KEYWORDS"]
         if fn.class_name and fn.decl.kind == FUNC_STATICMETHOD:
