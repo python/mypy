@@ -1049,7 +1049,7 @@ enabled by default starting from mypy 2.0.
     Use the specified amount of parallel worker processes (in addition to the
     coordinator process) to perform type-checking. Specifying ``--num-workers 0``
     (default) disables parallel checking. Specifying ``--num-workers auto``
-    selects the number based on the physical CPU cores available to mypy.
+    selects the number based on the CPU resources available to mypy.
 
     Automatic selection uses at most 8 workers because each worker adds roughly
     10% memory overhead. This cap does not apply when an explicit value is specified.
