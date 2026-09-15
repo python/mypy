@@ -10,9 +10,11 @@ import unittest
 from mypyc.common import (
     ENV_ATTR_NAME,
     GENERATOR_ATTRIBUTE_PREFIX,
+    GENERATOR_FRAME_ATTRIBUTE_PREFIX,
     NEXT_LABEL_ATTR_NAME,
     SELF_NAME,
     TEMP_ATTR_NAME,
+    generator_frame_attribute_prefix,
 )
 from mypyc.ir.class_ir import ClassIR
 from mypyc.ir.ops import Assign, GetAttr
@@ -38,11 +40,8 @@ def promoted_slots(cl: ClassIR) -> set[str]:
 
 
 def frame_variables(cl: ClassIR) -> set[str]:
-    return {
-        name.removeprefix(GENERATOR_ATTRIBUTE_PREFIX)
-        for name in cl.attributes
-        if name.startswith(GENERATOR_ATTRIBUTE_PREFIX)
-    }
+    prefix = generator_frame_attribute_prefix(cl.fullname, is_final_class=cl.is_final_class)
+    return {name.removeprefix(prefix) for name in cl.attributes if name.startswith(prefix)}
 
 
 class TestGeneratorSpills(unittest.TestCase):
@@ -163,6 +162,8 @@ def gen() -> Generator[int, None, int]:
 """,
             "gen_gen",
         )
+        assert cl.is_final_class
+        assert GENERATOR_FRAME_ATTRIBUTE_PREFIX + "crossing" in cl.attributes
         variables = frame_variables(cl)
         assert "crossing" in variables
         assert "local" not in variables

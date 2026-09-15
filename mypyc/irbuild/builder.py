@@ -27,6 +27,7 @@ from mypy.nodes import (
     DictionaryComprehension,
     Expression,
     FuncDef,
+    FuncItem,
     GeneratorExpr,
     IndexExpr,
     IntExpr,
@@ -75,6 +76,7 @@ from mypyc.common import (
     KEEP_ALIVE_WHOLE_EXPRESSION,
     MODULE_PREFIX,
     SELF_NAME,
+    generator_frame_attribute_prefix,
     shared_lib_name,
 )
 from mypyc.crash import catch_errors
@@ -763,20 +765,23 @@ class IRBuilder:
                         reg_type = self.type_to_rtype(symbol.type)
                     else:
                         reg_type = self.node_type(lvalue)
-                    # A deleted error-overlap value needs the environment's
-                    # definedness bitmap. Other generator locals start in
-                    # registers and are promoted later if they cross a yield.
+                    # A deleted error-overlap value needs a definedness bitmap. Other generator
+                    # locals start in registers and are promoted later if they cross a yield.
                     if (
                         self.fn_info.is_generator
                         and reg_type.error_overlap
                         and symbol in self.deleted_vars
                     ):
-                        return self.add_var_to_env_class(
-                            symbol,
-                            reg_type,
-                            self.fn_info.generator_class,
-                            reassign=False,
-                            prefix=GENERATOR_ATTRIBUTE_PREFIX,
+                        if self.is_captured_by_nested_func(symbol):
+                            return self.add_var_to_env_class(
+                                symbol,
+                                reg_type,
+                                self.fn_info.generator_class,
+                                reassign=False,
+                                prefix=GENERATOR_ATTRIBUTE_PREFIX,
+                            )
+                        return self.add_var_to_generator_frame(
+                            symbol, reg_type, self.fn_info.generator_class.self_reg, reassign=False
                         )
 
                     return self.add_local_reg(symbol, reg_type)
@@ -1600,6 +1605,44 @@ class IRBuilder:
             always_defined=always_defined,
             keep_alive_on_completion=keep_alive_on_completion,
             prefix=prefix,
+        )
+
+    def is_free_variable_in_nested_func(self, fitem: FuncItem, symbol: SymbolNode) -> bool:
+        for nested in self.encapsulating_funcs.get(fitem, []):
+            if symbol in self.free_variables.get(nested, set()):
+                return True
+            if self.is_free_variable_in_nested_func(nested, symbol):
+                return True
+        return False
+
+    def is_captured_by_nested_func(self, symbol: SymbolNode) -> bool:
+        """Does a binding need to be visible to a nested function?"""
+        return symbol in self.free_variables.get(
+            self.fn_info.fitem, set()
+        ) or self.is_free_variable_in_nested_func(self.fn_info.fitem, symbol)
+
+    def add_var_to_generator_frame(
+        self,
+        var: SymbolNode,
+        rtype: RType,
+        frame_reg: Value,
+        reassign: bool = False,
+        always_defined: bool = False,
+        keep_alive_on_completion: bool = False,
+    ) -> AssignmentTarget:
+        """Add a generator-owned source binding to the private generator frame."""
+        cls = self.fn_info.generator_class.ir
+        return self.add_var_to_class(
+            var,
+            rtype,
+            cls,
+            frame_reg,
+            reassign=reassign,
+            always_defined=always_defined,
+            keep_alive_on_completion=keep_alive_on_completion,
+            prefix=generator_frame_attribute_prefix(
+                cls.fullname, is_final_class=cls.is_final_class
+            ),
         )
 
     def add_var_to_class(
