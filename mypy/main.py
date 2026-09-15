@@ -23,7 +23,12 @@ if platform.python_implementation() == "PyPy":
     sys.exit(2)
 
 from mypy import build, defaults, state, util
-from mypy.config_parser import parse_config_file, parse_version, validate_package_allow_list
+from mypy.config_parser import (
+    parse_config_file,
+    parse_num_workers,
+    parse_version,
+    validate_package_allow_list,
+)
 from mypy.defaults import RECURSION_LIMIT
 from mypy.error_formatter import OUTPUT_CHOICES
 from mypy.errors import CompileError
@@ -100,6 +105,7 @@ def main(
     if options.num_workers:
         # Supporting both parsers would be really tricky, so just support the new one.
         options.native_parser = True
+        options.incremental = True
         if options.num_workers < 0:
             fail("error: Number of workers cannot be negative", stderr, options)
         if options.cache_dir == os.devnull:
@@ -1189,9 +1195,10 @@ def define_options(
     internals_group.add_argument(
         "-n",
         "--num-workers",
-        type=int,
+        type=parse_num_workers,
+        metavar="VALUE",
         default=0,
-        help="Number of separate mypy worker processes (experimental)",
+        help="Number of separate mypy worker processes, or 'auto' (experimental)",
     )
 
     report_group = parser.add_argument_group(
@@ -1477,9 +1484,9 @@ def process_options(
     environ_num_workers = os.getenv("MYPY_NUM_WORKERS", "")
     if environ_num_workers.strip():
         try:
-            options.num_workers = int(environ_num_workers)
-        except ValueError:
-            parser.error(f"MYPY_NUM_WORKERS must be an integer, got {environ_num_workers!r}")
+            options.num_workers = parse_num_workers(environ_num_workers)
+        except argparse.ArgumentTypeError as error:
+            parser.error(f"MYPY_NUM_WORKERS: {error}")
 
     # Parse command line for real, using a split namespace.
     special_opts = argparse.Namespace()
