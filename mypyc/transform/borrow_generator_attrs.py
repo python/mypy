@@ -78,9 +78,10 @@ class BorrowGeneratorAttrsVisitor(BaseAnalysisVisitor[GetAttr]):
         return EMPTY
 
     def visit_sources(self, op: Op) -> GenAndKill:
-        # An operation that uses the frame may expose an alias or access its attributes in a
-        # way this analysis doesn't track, so conservatively invalidate all outstanding borrows.
-        # Safe direct frame operations are handled more precisely by the methods above.
+        # An operation that uses the frame may access its attributes in a way this analysis
+        # doesn't track, so conservatively invalidate all outstanding borrows. Safe direct frame
+        # operations are handled more precisely by the methods above. Generator helper IR is
+        # assumed not to let an operation retain the frame and access it after the operation.
         if any(source is self.self_reg for source in op.sources()):
             return frozenset(), self.candidates
         return EMPTY
@@ -92,7 +93,8 @@ def borrow_generator_attrs(ir: FuncIR, cl: ClassIR) -> None:
     Only private frames without Python-visible attribute getsetters qualify, and the
     generator running flag prevents concurrent helper invocations. A read can stay borrowed
     until the helper writes the same attribute, passes the frame to an operation that may
-    access it, or suspends.
+    access it, or suspends. The analysis assumes that no operation retains the frame; a frame
+    use invalidates existing borrows but does not prevent new borrows after the use.
     """
     if not cl.attrs_are_thread_confined() or cl.env_user_function is not ir or not ir.arg_regs:
         return
