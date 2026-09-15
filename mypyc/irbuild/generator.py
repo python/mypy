@@ -49,6 +49,7 @@ from mypyc.irbuild.builder import IRBuilder, calculate_arg_defaults, gen_arg_def
 from mypyc.irbuild.context import FuncInfo
 from mypyc.irbuild.env_class import (
     add_args_to_env,
+    add_args_to_generator_frame,
     add_vars_to_env,
     finalize_env_class,
     load_env_registers,
@@ -83,6 +84,7 @@ def gen_generator_func(
     else:
         finalize_env_class(builder, prefix=GENERATOR_ATTRIBUTE_PREFIX)
         gen = instantiate_generator_class(builder)
+    add_args_to_generator_frame(builder, gen, reassign=True)
     builder.add(Return(gen))
 
     args, _, blocks, ret_type, fn_info = builder.leave()
@@ -436,11 +438,6 @@ def setup_env_for_generator_class(builder: IRBuilder) -> None:
     cls.stop_iter_value_reg = stop_iter_value_arg
 
     cls.self_reg = builder.read(self_target, fitem.line)
-    if builder.fn_info.can_merge_generator_and_env_classes():
-        cls.curr_env_reg = cls.self_reg
-    else:
-        cls.curr_env_reg = builder.add(GetAttr(cls.self_reg, ENV_ATTR_NAME, fitem.line))
-        assert isinstance(cls.curr_env_reg.type, RInstance)
 
     # The continuation label identifies where execution resumes when the generator is next
     # advanced. Only the serialized generator helper accesses it, so keep it on the private
@@ -449,12 +446,16 @@ def setup_env_for_generator_class(builder: IRBuilder) -> None:
     cls.ir.attrs_with_defaults.add(NEXT_LABEL_ATTR_NAME)
     next_label_target = AssignmentTargetAttr(cls.self_reg, NEXT_LABEL_ATTR_NAME)
     cls.next_label_target = builder.add_target(Var(NEXT_LABEL_ATTR_NAME), next_label_target)
+    cls.next_label_reg = builder.read(cls.next_label_target, fitem.line)
 
-    # Add arguments from the original generator function to the
-    # environment of the generator class.
+    if builder.fn_info.can_merge_generator_and_env_classes():
+        cls.curr_env_reg = cls.self_reg
+    else:
+        cls.curr_env_reg = builder.add(GetAttr(cls.self_reg, ENV_ATTR_NAME, fitem.line))
+        assert isinstance(cls.curr_env_reg.type, RInstance)
+
+    # Add arguments from the original generator function to their selected storage objects.
     add_args_to_env(
         builder, local=False, base=cls, reassign=False, prefix=GENERATOR_ATTRIBUTE_PREFIX
     )
-
-    # Set the next label register for the generator class.
-    cls.next_label_reg = builder.read(cls.next_label_target, fitem.line)
+    add_args_to_generator_frame(builder, cls.self_reg, reassign=False)

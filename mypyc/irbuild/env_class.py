@@ -17,7 +17,7 @@ non-locals is via an instance of an environment class. Example:
 
 from __future__ import annotations
 
-from mypy.nodes import Argument, FuncDef, FuncItem, SymbolNode, Var
+from mypy.nodes import Argument, FuncDef, SymbolNode, Var
 from mypyc.common import (
     BITMAP_BITS,
     ENV_ATTR_NAME,
@@ -27,7 +27,7 @@ from mypyc.common import (
 )
 from mypyc.ir.class_ir import ClassIR
 from mypyc.ir.ops import Call, GetAttr, SetAttr, Value
-from mypyc.ir.rtypes import RInstance, bitmap_rprimitive, object_rprimitive
+from mypyc.ir.rtypes import RInstance, RType, bitmap_rprimitive, object_rprimitive
 from mypyc.irbuild.builder import IRBuilder, SymbolTarget
 from mypyc.irbuild.context import FuncInfo, GeneratorClass, ImplicitClass
 from mypyc.irbuild.targets import AssignmentTargetAttr
@@ -105,18 +105,17 @@ def instantiate_env_class(builder: IRBuilder) -> Value:
         # Top-level functions and comprehension scopes store env reg directly.
         builder.fn_info._curr_env_reg = curr_env_reg
         # Comprehension scopes link to parent env if it exists.
-        if (
-            builder.fn_info.is_nested
-            and builder.fn_infos[-2]._env_class is not None
-            and builder.fn_infos[-2]._curr_env_reg is not None
-        ):
+        parent = builder.fn_infos[-2] if builder.fn_info.is_nested else None
+        if parent is not None and parent._env_class is not None:
+            if parent.is_generator:
+                parent_env_reg = parent.generator_class.curr_env_reg
+            else:
+                parent_env_reg = parent._curr_env_reg
+        else:
+            parent_env_reg = None
+        if parent_env_reg is not None:
             builder.add(
-                SetAttr(
-                    curr_env_reg,
-                    ENV_ATTR_NAME,
-                    builder.fn_infos[-2].curr_env_reg,
-                    builder.fn_info.fitem.line,
-                )
+                SetAttr(curr_env_reg, ENV_ATTR_NAME, parent_env_reg, builder.fn_info.fitem.line)
             )
 
     return curr_env_reg
@@ -235,6 +234,8 @@ def add_args_to_env(
             builder.add_local_reg(Var(bitmap_name(i)), bitmap_rprimitive, is_arg=True)
     else:
         for arg in args:
+            if fn_info.is_generator and not builder.is_generator_env_var(arg.variable):
+                continue
             if (
                 is_free_variable(builder, arg.variable)
                 or fn_info.is_generator
@@ -242,29 +243,37 @@ def add_args_to_env(
             ):
                 rtype = builder.type_to_rtype(arg.variable.type)
                 assert base is not None, "base cannot be None for adding nonlocal args"
+                keep_alive = is_free_variable(
+                    builder, arg.variable
+                ) or builder.is_free_variable_in_nested_func(builder.fn_info.fitem, arg.variable)
                 builder.add_var_to_env_class(
                     arg.variable,
                     rtype,
                     base,
                     reassign=reassign,
-                    keep_alive_on_completion=(
-                        is_free_variable(builder, arg.variable)
-                        or is_free_variable_in_nested_func(
-                            builder, builder.fn_info.fitem, arg.variable
-                        )
-                    ),
+                    keep_alive_on_completion=keep_alive,
                     prefix=prefix,
                 )
 
 
-def add_vars_to_env(builder: IRBuilder, prefix: str = "") -> None:
-    """Add relevant local variables and nested functions to the environment class.
+def add_args_to_generator_frame(builder: IRBuilder, frame_reg: Value, reassign: bool) -> None:
+    """Put noncaptured generator arguments on the private generator frame."""
+    for arg in builder.fn_info.fitem.arguments:
+        if not builder.is_generator_env_var(arg.variable):
+            builder.add_var_to_generator_frame(
+                arg.variable,
+                builder.type_to_rtype(arg.variable.type),
+                frame_reg,
+                reassign=reassign,
+            )
 
-    Add all variables and functions that are declared/defined within current
-    function and are referenced in functions nested within this one to this
-    function's environment class so the nested functions can reference
-    them even if they are declared after the nested function's definition.
-    Note that this is done before visiting the body of the function.
+
+def add_vars_to_env(builder: IRBuilder, prefix: str = "") -> None:
+    """Add relevant local variables and nested functions to persistent storage.
+
+    Captured bindings go in the environment class. Generator-owned bindings that aren't
+    captured go on the private generator frame. This is done before visiting the function body
+    so nested functions can reference declarations that occur later in the body.
     """
     env_for_func: FuncInfo | ImplicitClass = builder.fn_info
     if builder.fn_info.is_generator:
@@ -274,19 +283,42 @@ def add_vars_to_env(builder: IRBuilder, prefix: str = "") -> None:
     ) and not builder.fn_info.is_comprehension_scope:
         env_for_func = builder.fn_info.callable_class
 
+    def add_var(
+        var: SymbolNode, rtype: RType, keep_alive_on_completion: bool, attr_prefix: str
+    ) -> None:
+        if builder.fn_info.is_generator:
+            if builder.is_generator_env_var(var):
+                builder.add_var_to_env_class(
+                    var,
+                    rtype,
+                    builder.fn_info.generator_class,
+                    reassign=False,
+                    keep_alive_on_completion=keep_alive_on_completion,
+                    prefix=attr_prefix,
+                )
+            else:
+                builder.add_var_to_generator_frame(
+                    var,
+                    rtype,
+                    builder.fn_info.generator_class.self_reg,
+                    reassign=False,
+                    keep_alive_on_completion=keep_alive_on_completion,
+                )
+        else:
+            builder.add_var_to_env_class(
+                var,
+                rtype,
+                env_for_func,
+                reassign=False,
+                keep_alive_on_completion=keep_alive_on_completion,
+                prefix=attr_prefix,
+            )
+
     if builder.fn_info.fitem in builder.free_variables:
         # Sort the variables to keep things deterministic
         for var in sorted(builder.free_variables[builder.fn_info.fitem], key=lambda x: x.name):
             if isinstance(var, Var):
-                rtype = builder.type_to_rtype(var.type)
-                builder.add_var_to_env_class(
-                    var,
-                    rtype,
-                    env_for_func,
-                    reassign=False,
-                    keep_alive_on_completion=True,
-                    prefix=prefix,
-                )
+                add_var(var, builder.type_to_rtype(var.type), True, prefix)
 
     if builder.fn_info.fitem in builder.encapsulating_funcs:
         for nested_fn in builder.encapsulating_funcs[builder.fn_info.fitem]:
@@ -299,13 +331,11 @@ def add_vars_to_env(builder: IRBuilder, prefix: str = "") -> None:
                 nested_prefix = prefix
                 if nested_fn.is_generator or nested_fn.is_coroutine:
                     nested_prefix = GENERATOR_ATTRIBUTE_PREFIX
-                builder.add_var_to_env_class(
+                add_var(
                     nested_fn,
                     object_rprimitive,
-                    env_for_func,
-                    reassign=False,
-                    keep_alive_on_completion=is_free_variable(builder, nested_fn),
-                    prefix=nested_prefix,
+                    is_free_variable(builder, nested_fn),
+                    nested_prefix,
                 )
 
 
@@ -343,14 +373,3 @@ def setup_func_for_recursive_call(
 def is_free_variable(builder: IRBuilder, symbol: SymbolNode) -> bool:
     fitem = builder.fn_info.fitem
     return fitem in builder.free_variables and symbol in builder.free_variables[fitem]
-
-
-def is_free_variable_in_nested_func(
-    builder: IRBuilder, fitem: FuncItem, symbol: SymbolNode
-) -> bool:
-    for nested in builder.encapsulating_funcs.get(fitem, []):
-        if symbol in builder.free_variables.get(nested, set()):
-            return True
-        if is_free_variable_in_nested_func(builder, nested, symbol):
-            return True
-    return False
