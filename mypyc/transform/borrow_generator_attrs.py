@@ -1,4 +1,8 @@
-"""Borrow reads from private generator-frame attributes."""
+"""Borrow reads from private generator-frame attributes.
+
+The frame is private, and the generator running flag prevents another helper invocation from
+accessing it concurrently, so attribute values can be borrowed while the helper runs.
+"""
 
 from __future__ import annotations
 
