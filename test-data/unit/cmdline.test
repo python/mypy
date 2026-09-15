@@ -822,6 +822,26 @@ src/foo/bar.py: note:     a) adding `__init__.py` somewhere,
 src/foo/bar.py: note:     b) using `--explicit-package-bases` or adjusting `MYPYPATH`
 == Return code: 2
 
+[case testDuplicatePackageRootsReportsTypeError]
+# cmd: mypy --config-file pyproject.toml
+[file pyproject.toml]
+\[tool.mypy]
+python_version = "3.10"
+strict = true
+mypy_path = ["src", "src/outer/inner"]
+packages = ["outer", "example"]
+explicit_package_bases = true
+[file src/outer/__init__.py]
+[file src/outer/inner/example/__init__.py]
+[file src/outer/inner/example/module.py]
+def takes_int(value: int) -> None:
+    pass
+
+def broken() -> None:
+    takes_int("not an int")
+[out]
+src/outer/inner/example/module.py:5: error: Argument 1 to "takes_int" has incompatible type "str"; expected "int"
+
 [case testEnableInvalidErrorCode]
 # cmd: mypy --enable-error-code YOLO test.py
 [file test.py]
