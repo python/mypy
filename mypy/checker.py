@@ -6124,6 +6124,12 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
         sub_patterns_map: dict[Expression, Type] = {}
         typ_ = get_proper_type(typ)
         if isinstance(expr, TupleExpr) and isinstance(typ_, TupleType):
+            if any(isinstance(item, StarExpr) for item in expr.items):
+                # For a starred item (e.g. `*bar`), there's no one-to-one correspondence
+                # between expr.items and typ_.items, we are returning early to avoid an
+                # assertion crash. See: https://github.com/python/mypy/issues/21468.
+                return sub_patterns_map
+
             # When matching a tuple expression with a sequence pattern, narrow individual tuple items
             assert len(expr.items) == len(typ_.items)
             for item_expr, item_typ in zip(expr.items, typ_.items):
