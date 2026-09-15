@@ -48,8 +48,7 @@ from mypyc.ir.rtypes import (
 from mypyc.irbuild.builder import IRBuilder, calculate_arg_defaults, gen_arg_defaults
 from mypyc.irbuild.context import FuncInfo
 from mypyc.irbuild.env_class import (
-    add_args_to_env,
-    add_args_to_generator_frame,
+    add_generator_args,
     add_vars_to_env,
     finalize_env_class,
     load_env_registers,
@@ -80,11 +79,11 @@ def gen_generator_func(
     if builder.fn_info.can_merge_generator_and_env_classes():
         gen = instantiate_generator_class(builder)
         builder.fn_info._curr_env_reg = gen
-        finalize_env_class(builder, prefix=GENERATOR_ATTRIBUTE_PREFIX)
+        env_reg = finalize_env_class(builder, add_args=False)
     else:
-        finalize_env_class(builder, prefix=GENERATOR_ATTRIBUTE_PREFIX)
+        env_reg = finalize_env_class(builder, add_args=False)
         gen = instantiate_generator_class(builder)
-    add_args_to_generator_frame(builder, gen, reassign=True)
+    add_generator_args(builder, gen, env_reg, reassign=True)
     builder.add(Return(gen))
 
     args, _, blocks, ret_type, fn_info = builder.leave()
@@ -455,7 +454,4 @@ def setup_env_for_generator_class(builder: IRBuilder) -> None:
         assert isinstance(cls.curr_env_reg.type, RInstance)
 
     # Add arguments from the original generator function to their selected storage objects.
-    add_args_to_env(
-        builder, local=False, base=cls, reassign=False, prefix=GENERATOR_ATTRIBUTE_PREFIX
-    )
-    add_args_to_generator_frame(builder, cls.self_reg, reassign=False)
+    add_generator_args(builder, cls.self_reg, cls.curr_env_reg, reassign=False)
