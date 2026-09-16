@@ -1037,7 +1037,7 @@ Parallel type-checking
 **********************
 
 By default, mypy checks all modules in the same Python process. This can be slow
-for large code bases. Mypy offers experimental parallel type-checking mode using
+for large code bases. Mypy offers parallel type-checking mode using
 multiple worker processes. In parallel mode, modules that do not depend om each
 other are type-checked in parallel. :ref:`Incremental cache <incremental>` is
 used to manage most of the shared state. Parallel type-checking also requires
@@ -1068,9 +1068,7 @@ Notes:
   tune the number of workers on a given machine is to start from 3-4 workers
   and increase the number while you see a performance improvement.
 
-* Parallel mode requires and automatically enables :option:`--native-parser`
-  and :ref:`incremental mode <incremental>`. Specifying
-  :option:`--no-incremental` has no effect in parallel mode.
+* Parallel mode requires and automatically enables :option:`--native-parser`.
 
 
 Advanced options
