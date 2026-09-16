@@ -75,11 +75,11 @@ from mypyc.common import (
     KEEP_ALIVE_SHORT_LIVED,
     KEEP_ALIVE_WHOLE_EXPRESSION,
     SELF_NAME,
+    generator_frame_attribute_prefix,
     module_exec_name,
     module_import_state_name,
     module_init_only_name,
     module_lock_api_name,
-    generator_frame_attribute_prefix,
     shared_lib_name,
 )
 from mypyc.crash import catch_errors
