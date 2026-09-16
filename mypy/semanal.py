@@ -6486,6 +6486,8 @@ class SemanticAnalyzer(
         self.analyze_comp_for_2(expr)
 
     def visit_generator_expr(self, expr: GeneratorExpr) -> None:
+        if isinstance(expr.left_expr, StarExpr):
+            expr.left_expr.valid = True
         with self.enter(expr):
             self.analyze_comp_for(expr)
             expr.left_expr.accept(self)

@@ -1569,9 +1569,15 @@ class ASTConverter:
         iters = [self.visit(c.iter) for c in n.generators]
         ifs_list = [self.translate_expr_list(c.ifs) for c in n.generators]
         is_async = [bool(c.is_async) for c in n.generators]
-        e = DictionaryComprehension(
-            self.visit(n.key), self.visit(n.value), targets, iters, ifs_list, is_async
-        )
+        key = self.visit(n.key)
+        if n.value is not None:
+            value = self.visit(n.value)
+        else:
+            # Our convention for ** unpack in dictionary comprehension matches Ruff
+            # parser, while Python parser has an opposite one.
+            value = key  # type: ignore[unreachable]
+            key = None
+        e = DictionaryComprehension(key, value, targets, iters, ifs_list, is_async)
         return self.set_line(e, n)
 
     # GeneratorExp(expr elt, comprehension* generators)
