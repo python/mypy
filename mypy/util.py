@@ -988,10 +988,6 @@ def get_available_threads() -> int:
     if _AVAILABLE_THREADS is not None:
         return _AVAILABLE_THREADS
 
-    if not can_start_threads():
-        _AVAILABLE_THREADS = 1
-        return 1
-
     # This takes into account -X cpu_count and/or PYTHON_CPU_COUNT, but always
     # counts virtual cores (which is not what we want for CPU bound tasks).
     os_cpu_count = os.cpu_count()

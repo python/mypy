@@ -1,19 +1,11 @@
-"""Test cases for graph processing and other code in build.py."""
+"""Test cases for graph processing code in build.py."""
 
 from __future__ import annotations
 
 import sys
 from collections.abc import Set as AbstractSet
-from concurrent.futures import wait
 
-from mypy.build import (
-    BuildManager,
-    BuildSourceSet,
-    State,
-    order_ascc,
-    sorted_components,
-    submit_inline,
-)
+from mypy.build import BuildManager, BuildSourceSet, State, order_ascc, sorted_components
 from mypy.errors import Errors
 from mypy.fscache import FileSystemCache
 from mypy.graph_utils import strongly_connected_components, topsort
@@ -144,29 +136,3 @@ class GraphSuite(Suite):
         ascc = res[1]
         scc = order_ascc(graph, ascc)
         assert_equal(scc, ["d", "c", "b", "a"])
-
-
-class SubmitInlineSuite(Suite):
-    """Test the fallback used when threads are unavailable (e.g. on wasm)."""
-
-    def test_result(self) -> None:
-        future = submit_inline(str, 5)
-        assert future.done()
-        assert future.result() == "5"
-
-    def test_exception_is_only_raised_when_collected(self) -> None:
-        def fail() -> None:
-            raise ValueError("boom")
-
-        future = submit_inline(fail)
-        assert future.done()
-        assert isinstance(future.exception(), ValueError)
-        with self.assertRaises(ValueError):
-            future.result()
-
-    def test_wait(self) -> None:
-        # This is how build.py collects results of parse jobs.
-        futures = [submit_inline(str, i) for i in (1, 2)]
-        result = wait(futures)
-        assert result.done == set(futures)
-        assert not result.not_done
