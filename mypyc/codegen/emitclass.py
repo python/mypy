@@ -1506,7 +1506,7 @@ def generate_coroutine_setup(
 
         name = short_id_from_name(fn.name, fn.decl.shortname, fn.line)
         wrapper_name = emit_instance(fn, name)
-        name_obj = f"{wrapper_name}_name"
+        name_obj = f"name_{wrapper_name}"
         emitter.emit_line(f'PyObject *{name_obj} = PyUnicode_FromString("{fn.name}");')
         emitter.emit_line(f"if (unlikely(!{name_obj}))")
         emitter.emit_line(error_stmt)

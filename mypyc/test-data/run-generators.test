@@ -657,6 +657,22 @@ def test_near_yield() -> None:
         pass
     assert c.foo.flag == False
 
+class Box:
+    def __init__(self, value: str) -> None:
+        self.value = value
+
+def select(first: Box, second: Box) -> str:
+    return first.value + second.value
+
+def walrus_gen(value: Box, replacement: Box) -> Iterator[str]:
+    # The first argument is read before the walrus rebinds the same frame field,
+    # but it is consumed by select() only after the rebind.
+    yield select(value, (value := replacement))
+
+def test_generator_attribute_borrow_killed_by_walrus() -> None:
+    it = walrus_gen(Box("old"), Box("new"))
+    assert next(it) == "oldnew"
+
 [case testGeneratorEarlyReturnWithBorrows]
 from typing import Iterator
 class Bar:
@@ -748,6 +764,7 @@ def test_basic() -> None:
     assert context.x == 0
 
 [case testYieldSpill]
+import sys
 from typing import Generator
 from testutil import run_generator
 
@@ -757,11 +774,29 @@ def f() -> int:
 def yield_spill() -> Generator[str, int, int]:
     return f() + (yield "foo")
 
+def consume(first: object, second: object) -> None:
+    pass
+
+# Bytes literals are mortal on GIL-enabled CPython builds, so a missing reference
+# to the spilled value is observable through sys.getrefcount().
+def get_spilled_literal() -> bytes:
+    return b"mypyc borrowed generator spill regression"
+
+def yield_with_borrowed_literal() -> Generator[None, None, None]:
+    consume(b"mypyc borrowed generator spill regression", (yield))
+
 def test_basic() -> None:
     x = run_generator(yield_spill(), [2])
     yields, val = x
     assert yields == ('foo',)
     assert val == 3, val
+
+def test_borrowed_literal_spill() -> None:
+    literal = get_spilled_literal()
+    getrefcount = getattr(sys, "getrefcount")
+    refcount = getrefcount(literal)
+    assert run_generator(yield_with_borrowed_literal(), [None]) == ((None,), None)
+    assert getrefcount(literal) == refcount
 
 [case testNestedGeneratorPrivateSpill]
 from typing import Generator
@@ -771,20 +806,101 @@ def make() -> str:
     return "left"
 
 def outer() -> Generator[str, str, str]:
-    def nested(value: str) -> Generator[str, str, str]:
-        for item in [value]:
+    def nested(captured: str, private: str) -> Generator[str, str, str]:
+        def callback() -> str:
+            return captured
+
+        private_local = private
+        for item in [private_local]:
             # The loop iterator and the result of make() are compiler-generated
-            # temporaries live across the yield. The source bindings stay in the
-            # separate environment.
-            return make() + (yield item)
+            # temporaries live across the yield. Only 'captured' stays in the
+            # separate environment; the other source bindings are frame-private.
+            return callback() + make() + (yield item)
         return "unreachable"
 
-    return nested("right")
+    return nested("captured", "right")
 
 def test_nested_generator_private_spill() -> None:
     yields, value = run_generator(outer(), ["sent"])
     assert yields == ("right",)
-    assert value == "leftsent"
+    assert value == "capturedleftsent"
+
+[case testGeneratorPrivateAndEscapedBindings]
+from typing import Any, Callable, Generator, Iterator
+
+callbacks: list[Callable[[], int]] = []
+
+def gen(shared: list[int], private: int) -> Generator[int, int, None]:
+    callback = lambda: shared[0]
+    callbacks.append(callback)
+    private_local = private
+    sent = yield private_local
+    shared = [shared[0] + sent]
+    yield callback()
+
+def make_recursive(prefix: str) -> Callable[[int], Generator[object, None, None]]:
+    def nested(private: int) -> Generator[object, None, None]:
+        def recurse(count: int) -> str:
+            if count:
+                return recurse(count - 1)
+            return prefix
+
+        yield private
+        yield recurse(2)
+    return nested
+
+def comprehension_lambdas() -> Iterator[list[int]]:
+    offset = 10
+    functions = [lambda: i + offset for i in range(3)]
+    yield [function() for function in functions]
+
+def test_private_and_escaped_bindings() -> None:
+    shared = [1]
+    g: Any = gen(shared, 7)
+    assert next(g) == 7
+    assert callbacks[-1]() == 1
+    shared[0] = 5
+    assert callbacks[-1]() == 5
+    assert g.send(4) == 9
+    assert list(g) == []
+    assert callbacks[-1]() == 9
+    assert list(make_recursive("outer")(7)) == [7, "outer"]
+    assert list(comprehension_lambdas()) == [[12, 12, 12]]
+
+[case testGeneratorOverridePrivateLocals]
+from typing import Generator
+
+def make_text() -> str:
+    return "base"
+
+def make_number() -> int:
+    return 42
+
+class Base:
+    def gen(self) -> Generator[None, None, object]:
+        # The source local is private and must not alias the differently typed
+        # local in the derived generator frame.
+        value = make_text()
+        yield None
+        return value
+
+class Derived(Base):
+    def gen(self) -> Generator[None, None, object]:
+        value = make_number()
+        yield None
+        return value
+
+def run(g: Generator[None, None, object]) -> object:
+    assert next(g) is None
+    try:
+        next(g)
+    except StopIteration as e:
+        return e.value
+    assert False
+
+def test_generator_override_private_locals() -> None:
+    assert run(Base().gen()) == "base"
+    assert run(Derived().gen()) == 42
 
 [case testGeneratorOverridePrivateSpillsAcrossModules]
 from typing import Generator

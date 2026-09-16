@@ -62,6 +62,12 @@ def spill_regs(
     spill_locs = {}
     # Sort values to make the order deterministic.
     for i, val in enumerate(sort_values(to_spill, blocks)):
+        # Borrowed literals can be spilled because their backing static reference
+        # remains alive. Attribute reads instead borrow from the frame and must not
+        # outlive this helper invocation.
+        assert not (
+            isinstance(val, GetAttr) and val.is_borrowed
+        ), f"cannot spill borrowed attribute read {val}"
         # Generator classes for overriding methods can inherit from one another. Include the
         # module-qualified owning class name so unrelated helper spills don't alias an inherited
         # struct field.
@@ -124,6 +130,10 @@ def spill_regs(
 
             if op in spill_locs:
                 # XXX: could we set uninit?
+                # Reference count insertion has already run, so explicitly give the
+                # stealing attribute store an owned reference to a borrowed result.
+                if op.is_borrowed and op.type.is_refcounted:
+                    block.ops.append(IncRef(op))
                 block.ops.append(SetAttr(frame_reg, spill_locs[op], op, op.line))
 
     return blocks

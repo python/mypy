@@ -84,6 +84,7 @@ from mypyc.irbuild.mapper import Mapper
 from mypyc.irbuild.prepare import load_type_map
 from mypyc.namegen import NameGenerator, exported_name
 from mypyc.options import CompilerOptions
+from mypyc.transform.borrow_generator_attrs import borrow_generator_attrs
 from mypyc.transform.copy_propagation import do_copy_propagation
 from mypyc.transform.exceptions import insert_exception_handling
 from mypyc.transform.flag_elimination import do_flag_elimination
@@ -299,6 +300,8 @@ def compile_scc_to_ir(
                 insert_uninit_checks(fn, compiler_options.strict_traceback_checks)
                 # Insert exception handling.
                 insert_exception_handling(fn, compiler_options.strict_traceback_checks)
+                if fn in generator_spill_owners:
+                    borrow_generator_attrs(fn, generator_spill_owners[fn])
                 # Insert reference count handling.
                 insert_ref_count_opcodes(fn)
 
@@ -1264,7 +1267,7 @@ class GroupGenerator:
             error_stmt = "    goto fail;"
             name = short_id_from_name(fn.name, fn.decl.shortname, fn.line)
             wrapper_name = emitter.emit_cpyfunction_instance(fn, name, filepath, error_stmt)
-            name_obj = f"{wrapper_name}_name"
+            name_obj = f"name_{wrapper_name}"
             emitter.emit_line(f'PyObject *{name_obj} = PyUnicode_FromString("{fn.name}");')
             emitter.emit_line(f"if (unlikely(!{name_obj}))")
             emitter.emit_line(error_stmt)

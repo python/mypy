@@ -125,6 +125,7 @@ from mypy.semanal import SemanticAnalyzer
 from mypy.semanal_pass1 import SemanticAnalyzerPreAnalysis
 from mypy.util import (
     DecodeError,
+    can_start_threads,
     decode_python_encoding,
     get_available_threads,
     get_mypy_comments,
@@ -1021,8 +1022,8 @@ class BuildManager:
         If post_parse is False, skip the last step (used when parsing unchanged files
         that need to be re-checked due to stale dependencies).
         """
-        if not self.options.native_parser:
-            # Old parser cannot be parallelized.
+        if not self.options.native_parser or not can_start_threads():
+            # Old parser cannot be parallelized, and some platforms don't support threads.
             for state in states:
                 state.parse_file()
             if post_parse:
@@ -1031,9 +1032,7 @@ class BuildManager:
 
         parallel_states = []
         for state in states:
-            if not self.fscache.exists(state.xpath, real_only=True) or (
-                self.shadow_map and self.maybe_swap_for_shadow_path(state.xpath) != state.xpath
-            ):
+            if state.requires_read():
                 state.source = state.get_source()
             if state.tree is not None:
                 # The file was already parsed.
@@ -1076,13 +1075,6 @@ class BuildManager:
             for state in parallel_states:
                 assert state.tree is not None
                 if state in parallel_parsed_states_set:
-                    if state.tree.raw_data is not None:
-                        # source_hash was already extracted above, but raw_data
-                        # may have been preserved for workers (imports_only=True).
-                        pass
-                    elif state.source_hash is None:
-                        # At least namespace packages may not have source.
-                        state.get_source()
                     state.early_errors = list(self.errors.error_info_map.get(state.xpath, []))
                     state.semantic_analysis_pass1()
                     self.ast_cache[state.id] = (state.tree, state.early_errors, state.source_hash)
@@ -3145,6 +3137,26 @@ class State:
 
     # Methods for processing modules from source code.
 
+    def requires_read(self) -> bool:
+        """Do we need to force reading the file source before parsing?
+
+        Ruff parser can do all the work faster, but there are situation where
+        we cannot delegate the work to it (because it needs actual file on disk):
+        * Non-trivial shadow file mapping.
+        * Various "fake" files like namespace packages, etc.
+        """
+        if (
+            self.manager.shadow_map
+            and self.manager.maybe_swap_for_shadow_path(self.xpath) != self.xpath
+        ):
+            return True
+        return (
+            self.manager.fscache.isdir(self.xpath)
+            or not self.manager.fscache.exists(self.xpath, real_only=True)
+            # For a better error in case one tries to parse a .pyd file (which is a DLL).
+            or self.xpath.endswith(".pyd")
+        )
+
     def get_source(self) -> str:
         """Get module source and parse inline mypy configurations."""
         manager = self.manager
@@ -3210,10 +3222,10 @@ class State:
             # The file was already parsed.
             return
 
-        if raw_data is None:
+        if not self.options.native_parser or raw_data is None and self.requires_read():
             source = self.get_source()
         else:
-            source = ""
+            source = None
         manager = self.manager
         # Can we reuse a previously parsed AST? This avoids redundant work in daemon.
         if self.id not in manager.ast_cache:
@@ -3234,6 +3246,9 @@ class State:
                 # New parser returns serialized trees that need to be de-serialized.
                 if self.tree.raw_data is not None:
                     assert raw_data is None
+                    # Same as above, apply inline configuration first.
+                    self.source_hash = self.tree.raw_data.source_hash
+                    self.apply_inline_configuration(self.tree.raw_data.mypy_comments)
                     self.tree = load_from_raw(
                         self.xpath,
                         self.id,

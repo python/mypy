@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from mypyc.analysis.dataflow import analyze_live_regs_with_exception_edges, cleanup_cfg
-from mypyc.common import GENERATOR_ATTRIBUTE_PREFIX, TEMP_ATTR_NAME
+from mypyc.common import TEMP_ATTR_NAME, generator_frame_attribute_prefix
 from mypyc.ir.class_ir import ClassIR
 from mypyc.ir.func_ir import FuncIR
 from mypyc.ir.ops import (
@@ -114,9 +114,12 @@ def order_registers(registers: list[Register], blocks: list[BasicBlock]) -> list
 def allocate_slots(frame: ClassIR, registers: list[Register]) -> dict[Register, str]:
     slots: dict[Register, str] = {}
     owner = exported_name(frame.fullname)
+    source_prefix = generator_frame_attribute_prefix(
+        frame.fullname, is_final_class=frame.is_final_class
+    )
     for index, register in enumerate(registers):
         if register.name:
-            name = available_attr_name(frame, GENERATOR_ATTRIBUTE_PREFIX + register.name)
+            name = available_attr_name(frame, source_prefix + register.name)
         else:
             name = f"{TEMP_ATTR_NAME}3_{owner}_{index}"
             if register.type.error_overlap:

@@ -315,6 +315,8 @@ def transform_member_expr(builder: IRBuilder, expr: MemberExpr) -> Value:
 
     is_final = builder.is_final_native_attr_ref(expr)
     scope = KEEP_ALIVE_SHORT_LIVED
+    # TODO: Support borrowing in subexpressions evaluated before suspension, such as
+    #       `await f(obj.final_attr)` and `yield f(obj.final_attr)`.
     if (
         is_final
         and builder.expression_depth > 1

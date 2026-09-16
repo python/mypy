@@ -112,8 +112,14 @@ undef
 sub.pkg contains __init__.py but is not a valid Python package name
 == Return code: 2
 
-[case testBadFileEncoding]
+[case testBadFileEncodingIgnored]
 # cmd: mypy a.py
+[file a.py]
+# coding: uft-8
+[out]
+
+[case testBadFileEncodingOldParser]
+# cmd: mypy a.py --no-native-parser
 [file a.py]
 # coding: uft-8
 [out]

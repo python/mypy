@@ -7,9 +7,18 @@ from __future__ import annotations
 
 import unittest
 
-from mypyc.common import GENERATOR_ATTRIBUTE_PREFIX, TEMP_ATTR_NAME
+from mypyc.common import (
+    ENV_ATTR_NAME,
+    GENERATOR_ATTRIBUTE_PREFIX,
+    GENERATOR_FRAME_ATTRIBUTE_PREFIX,
+    NEXT_LABEL_ATTR_NAME,
+    SELF_NAME,
+    TEMP_ATTR_NAME,
+    generator_frame_attribute_prefix,
+)
 from mypyc.ir.class_ir import ClassIR
 from mypyc.ir.ops import Assign, GetAttr
+from mypyc.ir.rtypes import RInstance
 from mypyc.test.testutil import build_ir_for_single_file2
 from mypyc.transform.generator_spills import registers_live_across_yield
 
@@ -31,14 +40,34 @@ def promoted_slots(cl: ClassIR) -> set[str]:
 
 
 def frame_variables(cl: ClassIR) -> set[str]:
-    return {
-        name.removeprefix(GENERATOR_ATTRIBUTE_PREFIX)
-        for name in cl.attributes
-        if name.startswith(GENERATOR_ATTRIBUTE_PREFIX)
-    }
+    prefix = generator_frame_attribute_prefix(cl.fullname, is_final_class=cl.is_final_class)
+    return {name.removeprefix(prefix) for name in cl.attributes if name.startswith(prefix)}
 
 
 class TestGeneratorSpills(unittest.TestCase):
+    def test_generator_environment_excludes_helper_arguments(self) -> None:
+        # Loading the outer environment must not add the generator helper's arguments or
+        # state to the environment class, or overwrite the type of its self-reference.
+        module, _, _, _ = build_ir_for_single_file2("""\
+from typing import Iterator
+
+def outer() -> Iterator[str]:
+    captured = "value"
+    def nested() -> str:
+        return captured
+    yield nested()
+""".splitlines())
+        frame = next(cl for cl in module.classes if cl.has_running_flag)
+        env_type = frame.attributes[ENV_ATTR_NAME]
+        assert isinstance(env_type, RInstance)
+        environment = env_type.class_ir
+
+        self_type = environment.attributes[SELF_NAME]
+        assert isinstance(self_type, RInstance)
+        assert self_type.class_ir is environment
+        for name in ("type", "value", "traceback", "arg", "stop_iter_ptr", NEXT_LABEL_ATTR_NAME):
+            assert name not in environment.attributes
+
     def test_saved_exception_state_is_promoted(self) -> None:
         cl = generator_class(
             """\
@@ -133,6 +162,8 @@ def gen() -> Generator[int, None, int]:
 """,
             "gen_gen",
         )
+        assert cl.is_final_class
+        assert GENERATOR_FRAME_ATTRIBUTE_PREFIX + "crossing" in cl.attributes
         variables = frame_variables(cl)
         assert "crossing" in variables
         assert "local" not in variables

@@ -490,7 +490,7 @@ a.py:1: error: Simple statements must be separated by newlines or semicolons
 b.py:2: error: Incompatible return value type (got "str", expected "int")
 ==
 
-[case testDecodeErrorBlocker1-posix]
+[case testDecodeErrorNonBlocker1-posix]
 import a
 a.f(1)
 [file a.py]
@@ -502,11 +502,11 @@ def f(x: int) -> None: ...
 def f(x: str) -> None: ...
 [out]
 ==
-a.py: error: Cannot decode file: 'ascii' codec can't decode byte 0xc3 in position 16: ordinal not in range(128)
+main:2: error: Module has no attribute "f"
 ==
 main:2: error: Argument 1 to "f" has incompatible type "int"; expected "str"
 
-[case testDecodeErrorBlocker2-windows]
+[case testDecodeErrorNonBlocker2-windows]
 import a
 a.f(1)
 [file a.py]
@@ -518,11 +518,11 @@ def f(x: int) -> None: ...
 def f(x: str) -> None: ...
 [out]
 ==
-a.py: error: Cannot decode file: 'ascii' codec can't decode byte 0xc3 in position 17: ordinal not in range(128)
+main:2: error: Module has no attribute "f"
 ==
 main:2: error: Argument 1 to "f" has incompatible type "int"; expected "str"
 
-[case testDecodeErrorBlockerOnInitialRun-posix]
+[case testDecodeErrorNonBlockerOnInitialRun-posix]
 # Note that there's no test variant for Windows, since the above Windows test case is good enough.
 import a
 a.f(1)
