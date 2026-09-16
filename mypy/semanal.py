@@ -8172,7 +8172,7 @@ class SemanticAnalyzer(
                     if (
                         isinstance(node, Var)
                         and isinstance(get_proper_type(node.type), Instance)
-                        and not self.var_is_typing_special_form(node)
+                        and not self.var_could_be_typing_special_form(node)
                     ):
                         # Var whose declared type is a concrete instance: it is
                         # a value (local, parameter, module-level constant),
@@ -8252,7 +8252,7 @@ class SemanticAnalyzer(
             if isinstance(maybe_type_expr.base, NameExpr):
                 if isinstance(
                     maybe_type_expr.base.node, Var
-                ) and not self.var_is_typing_special_form(maybe_type_expr.base.node):
+                ) and not self.var_could_be_typing_special_form(maybe_type_expr.base.node):
                     # Leftmost part of IndexExpr refers to a Var. Not a valid type.
                     maybe_type_expr.as_type = None
                     return
@@ -8313,32 +8313,12 @@ class SemanticAnalyzer(
         maybe_type_expr.as_type = t
 
     @staticmethod
-    def var_is_typing_special_form(var: Var) -> bool:
-        return var.fullname.startswith("typing") and var.fullname in [
-            "typing.Annotated",
-            "typing_extensions.Annotated",
-            "typing.Any",
-            "typing.Callable",
-            "typing.ClassVar",
-            "typing.Literal",
-            "typing_extensions.Literal",
-            "typing.Never",
-            "typing_extensions.Never",
-            "typing.NoReturn",
-            "typing.Optional",
-            "typing.Self",
-            "typing_extensions.Self",
-            "typing.Tuple",
-            "typing.Type",
-            "typing.TypeAlias",
-            "typing.TypeForm",
-            "typing_extensions.TypeForm",
-            "typing.TypeGuard",
-            "typing_extensions.TypeGuard",
-            "typing.TypeIs",
-            "typing_extensions.TypeIs",
-            "typing.Union",
-        ]
+    def var_could_be_typing_special_form(var: Var) -> bool:
+        return (
+            var.fullname.startswith("typing.")
+            or var.fullname.startswith("typing_extensions.")
+            or var.fullname.startswith("mypy_extensions.")
+        )
 
     @contextmanager
     def isolated_error_analysis(self) -> Iterator[None]:
