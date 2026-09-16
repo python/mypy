@@ -8,25 +8,38 @@ object it creates.
 from __future__ import annotations
 
 import argparse
+import contextlib
 import os
 import sys
 import tempfile
+from collections.abc import Iterator
 from io import StringIO
 from pathlib import Path
 from typing import Any, cast
 from unittest import mock
 
+from mypy import util
 from mypy.config_parser import parse_num_workers
 from mypy.main import infer_python_executable, main, process_options
 from mypy.options import Options
 from mypy.test.helpers import Suite
 
 
+@contextlib.contextmanager
+def _available_threads(value: int) -> Iterator[None]:
+    previous = util._AVAILABLE_THREADS
+    util._AVAILABLE_THREADS = value
+    try:
+        yield
+    finally:
+        util._AVAILABLE_THREADS = previous
+
+
 class ArgSuite(Suite):
     def test_parse_num_workers(self) -> None:
-        with mock.patch("mypy.config_parser.get_available_threads", return_value=4):
+        with _available_threads(4):
             assert parse_num_workers("auto") == 4
-        with mock.patch("mypy.config_parser.get_available_threads", return_value=32):
+        with _available_threads(32):
             assert parse_num_workers("auto") == 8
 
         assert parse_num_workers(12) == 12
@@ -40,7 +53,7 @@ class ArgSuite(Suite):
             parse_num_workers("automatic")
 
     def test_num_workers_auto_from_command_line_and_environment(self) -> None:
-        with mock.patch("mypy.config_parser.get_available_threads", return_value=6):
+        with _available_threads(6):
             with mock.patch.dict(os.environ, {"MYPY_NUM_WORKERS": ""}):
                 _, cli_options = process_options(
                     ["--config-file=", "--num-workers=auto"], require_targets=False
@@ -68,7 +81,7 @@ class ArgSuite(Suite):
             ("pyproject.toml", '[tool.mypy]\nnum_workers = "auto"\n'),
         )
         with tempfile.TemporaryDirectory() as temp_dir:
-            with mock.patch("mypy.config_parser.get_available_threads", return_value=6):
+            with _available_threads(6):
                 for filename, contents in configs:
                     config = Path(temp_dir) / filename
                     config.write_text(contents, encoding="utf-8")
@@ -83,7 +96,7 @@ class ArgSuite(Suite):
             config = Path(temp_dir) / "mypy.ini"
             config.write_text("[mypy]\nnum_workers = 2\n", encoding="utf-8")
 
-            with mock.patch("mypy.config_parser.get_available_threads", return_value=4):
+            with _available_threads(4):
                 with mock.patch.dict(os.environ, {"MYPY_NUM_WORKERS": ""}):
                     _, config_options = process_options(
                         ["--config-file", str(config)], require_targets=False
