@@ -315,6 +315,8 @@ def transform_member_expr(builder: IRBuilder, expr: MemberExpr) -> Value:
 
     is_final = builder.is_final_native_attr_ref(expr)
     scope = KEEP_ALIVE_SHORT_LIVED
+    # TODO: Support borrowing in subexpressions evaluated before suspension, such as
+    #       `await f(obj.final_attr)` and `yield f(obj.final_attr)`.
     if (
         is_final
         and builder.expression_depth > 1
@@ -1415,7 +1417,7 @@ def transform_dictionary_comprehension(builder: IRBuilder, o: DictionaryComprehe
 
 
 def _dict_comp_body(builder: IRBuilder, o: DictionaryComprehension) -> Value:
-    d = builder.maybe_spill(builder.call_c(dict_new_op, [], o.line))
+    d = builder.call_c(dict_new_op, [], o.line)
     loop_params = list(zip(o.indices, o.sequences, o.condlists, o.is_async))
 
     def gen_inner_stmts() -> None:

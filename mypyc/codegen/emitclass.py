@@ -14,6 +14,7 @@ from mypyc.codegen.emit import (
 )
 from mypyc.codegen.emitfunc import native_function_header
 from mypyc.codegen.emitwrapper import (
+    generate_am_send_wrapper,
     generate_bin_op_wrapper,
     generate_bool_wrapper,
     generate_contains_wrapper,
@@ -29,6 +30,7 @@ from mypyc.common import (
     BITMAP_BITS,
     BITMAP_TYPE,
     CPYFUNCTION_NAME,
+    GENERATOR_HELPER_NAME,
     IS_FREE_THREADED,
     MYPYC_DEFAULTS_SETUP,
     NATIVE_PREFIX,
@@ -149,6 +151,9 @@ AS_ASYNC_SLOT_DEFS: SlotTable = {
     "__await__": ("am_await", native_slot),
     "__aiter__": ("am_aiter", native_slot),
     "__anext__": ("am_anext", native_slot),
+    # Generator and coroutine classes get an am_send slot based on the generator helper
+    # method, so that PyIter_Send can drive them without raising StopIteration.
+    GENERATOR_HELPER_NAME: ("am_send", generate_am_send_wrapper),
 }
 
 SIDE_TABLES = [
@@ -1501,7 +1506,7 @@ def generate_coroutine_setup(
 
         name = short_id_from_name(fn.name, fn.decl.shortname, fn.line)
         wrapper_name = emit_instance(fn, name)
-        name_obj = f"{wrapper_name}_name"
+        name_obj = f"name_{wrapper_name}"
         emitter.emit_line(f'PyObject *{name_obj} = PyUnicode_FromString("{fn.name}");')
         emitter.emit_line(f"if (unlikely(!{name_obj}))")
         emitter.emit_line(error_stmt)

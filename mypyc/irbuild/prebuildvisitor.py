@@ -4,6 +4,7 @@ from mypy.nodes import (
     AssignmentStmt,
     Block,
     Decorator,
+    DelStmt,
     DictionaryComprehension,
     Expression,
     FuncDef,
@@ -11,11 +12,14 @@ from mypy.nodes import (
     GeneratorExpr,
     Import,
     LambdaExpr,
+    ListExpr,
     MemberExpr,
     MypyFile,
     NameExpr,
     Node,
+    StrExpr,
     SymbolNode,
+    TupleExpr,
     Var,
 )
 from mypy.traverser import ExtendedTraverserVisitor, TraverserVisitor
@@ -93,6 +97,10 @@ class PreBuildVisitor(ExtendedTraverserVisitor):
         # All property setters encountered so far.
         self.prop_setters: set[FuncDef] = set()
 
+        # Local variables that occur in a del statement. This is needed before
+        # their first assignment is lowered (see IRBuilder.get_assignment_target).
+        self.deleted_vars: set[Var] = set()
+
         # A map from any function that contains nested functions to
         # a set of all the functions that are nested within it.
         self.encapsulating_funcs: dict[FuncItem, list[FuncItem]] = {}
@@ -145,6 +153,17 @@ class PreBuildVisitor(ExtendedTraverserVisitor):
         self._current_import_group = None
         super().visit_block(block)
         self._current_import_group = None
+
+    def visit_del_stmt(self, stmt: DelStmt) -> None:
+        self.record_deleted_names(stmt.expr)
+        super().visit_del_stmt(stmt)
+
+    def record_deleted_names(self, expr: Expression) -> None:
+        if isinstance(expr, NameExpr) and isinstance(expr.node, Var):
+            self.deleted_vars.add(expr.node)
+        elif isinstance(expr, (ListExpr, TupleExpr)):
+            for item in expr.items:
+                self.record_deleted_names(item)
 
     def visit_decorator(self, dec: Decorator) -> None:
         if dec.decorators:
@@ -259,6 +278,17 @@ class PreBuildVisitor(ExtendedTraverserVisitor):
         if isinstance(expr.node, (Var, FuncDef)):
             self.visit_symbol_node(expr.node)
 
+    def visit_str_expr(self, o: StrExpr) -> None:
+        # Handle surrogates before main pass to avoid conflicts with various optimizations
+        # like replacing `ord("<some char>")` with its integer value statically, etc.
+        if o.has_surrogates:
+            self.errors.error(
+                "Surrogate codepoints in string literals not supported, use chr(...) instead",
+                self.current_file.path,
+                o.line,
+            )
+        super().visit_str_expr(o)
+
     def visit_var(self, var: Var) -> None:
         self.visit_symbol_node(var)
 
@@ -272,7 +302,7 @@ class PreBuildVisitor(ExtendedTraverserVisitor):
             orig_func = self.symbols_to_funcs[symbol]
             if self.is_parent(self.funcs[-1], orig_func):
                 # The function in which the symbol was previously seen is
-                # nested within the function currently being visited. Thus
+                # nested within the function currently being visited. Thus,
                 # the current function is a better candidate to contain the
                 # declaration.
                 self.symbols_to_funcs[symbol] = self.funcs[-1]

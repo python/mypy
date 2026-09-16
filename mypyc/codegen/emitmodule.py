@@ -47,6 +47,7 @@ from mypyc.codegen.emitwrapper import (
 from mypyc.codegen.literals import Literals
 from mypyc.common import (
     EXT_SUFFIX,
+    GENERATOR_HELPER_NAME,
     IS_FREE_THREADED,
     MODULE_PREFIX,
     PREFIX,
@@ -75,9 +76,10 @@ from mypyc.ir.ops import DeserMaps, LoadLiteral
 from mypyc.ir.rtypes import RType
 from mypyc.irbuild.main import build_ir
 from mypyc.irbuild.mapper import Mapper
-from mypyc.irbuild.prepare import GENERATOR_HELPER_NAME, load_type_map
+from mypyc.irbuild.prepare import load_type_map
 from mypyc.namegen import NameGenerator, exported_name
 from mypyc.options import CompilerOptions
+from mypyc.transform.borrow_generator_attrs import borrow_generator_attrs
 from mypyc.transform.copy_propagation import do_copy_propagation
 from mypyc.transform.exceptions import insert_exception_handling
 from mypyc.transform.flag_elimination import do_flag_elimination
@@ -279,11 +281,11 @@ def compile_scc_to_ir(
     if errors.num_errors > 0:
         return modules
 
-    env_user_functions = {}
+    generator_spill_owners = {}
     for module in modules.values():
         for cls in module.classes:
             if cls.env_user_function:
-                env_user_functions[cls.env_user_function] = cls
+                generator_spill_owners[cls.env_user_function] = cls
 
     for module in modules.values():
         module_path = result.graph[module.fullname].xpath
@@ -293,11 +295,13 @@ def compile_scc_to_ir(
                 insert_uninit_checks(fn, compiler_options.strict_traceback_checks)
                 # Insert exception handling.
                 insert_exception_handling(fn, compiler_options.strict_traceback_checks)
+                if fn in generator_spill_owners:
+                    borrow_generator_attrs(fn, generator_spill_owners[fn])
                 # Insert reference count handling.
                 insert_ref_count_opcodes(fn)
 
-                if fn in env_user_functions:
-                    insert_spills(fn, env_user_functions[fn])
+                if fn in generator_spill_owners:
+                    insert_spills(fn, generator_spill_owners[fn])
 
                 if compiler_options.log_trace:
                     insert_event_trace_logging(fn, compiler_options)
@@ -1248,7 +1252,7 @@ class GroupGenerator:
             error_stmt = "    goto fail;"
             name = short_id_from_name(fn.name, fn.decl.shortname, fn.line)
             wrapper_name = emitter.emit_cpyfunction_instance(fn, name, filepath, error_stmt)
-            name_obj = f"{wrapper_name}_name"
+            name_obj = f"name_{wrapper_name}"
             emitter.emit_line(f'PyObject *{name_obj} = PyUnicode_FromString("{fn.name}");')
             emitter.emit_line(f"if (unlikely(!{name_obj}))")
             emitter.emit_line(error_stmt)

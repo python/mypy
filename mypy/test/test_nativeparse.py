@@ -247,6 +247,9 @@ class TestNativeParserBinaryFormat(unittest.TestCase):
         def int_enc(n: int) -> int:
             return (n + 10) << 1
 
+        def bool_enc(b: bool) -> int:
+            return int(b)
+
         def locs(start_line: int, start_column: int, end_line: int, end_column: int) -> list[int]:
             return [
                 LOCATION,
@@ -267,6 +270,7 @@ class TestNativeParserBinaryFormat(unittest.TestCase):
                 + [END_TAG, LIST_GEN, 22, nodes.STR_EXPR]
                 + [LITERAL_STR, int_enc(5)]
                 + list(b"hello")
+                + [bool_enc(False)]  # no unicode surrogates
                 + locs(1, 6, 1, 13)
                 + [END_TAG]
                 # arg_kinds: [ARG_POS]

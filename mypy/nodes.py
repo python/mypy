@@ -2275,7 +2275,7 @@ class IntExpr(Expression):
 class StrExpr(Expression):
     """String literal"""
 
-    __slots__ = ("value", "as_type")
+    __slots__ = ("value", "as_type", "has_surrogates")
 
     __match_args__ = ("value",)
 
@@ -2284,11 +2284,16 @@ class StrExpr(Expression):
     # represents the type denoted by the type expression.
     # None means "is not a type expression".
     as_type: NotParsed | mypy.types.Type | None
+    # This indicates whether original string literal contained Unicode surrogate
+    # codepoints. Those are not supported by Ruff parser and are replaced by
+    # replacement characters. Thus, we can't support them in mypyc.
+    has_surrogates: bool
 
     def __init__(self, value: str) -> None:
         super().__init__()
         self.value = value
         self.as_type = NotParsed.VALUE
+        self.has_surrogates = False
 
     def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_str_expr(self)
@@ -2937,7 +2942,7 @@ class DictExpr(Expression):
 class TemplateStrExpr(Expression):
     """Template string expression t'...'."""
 
-    __slots__ = ("items",)
+    __slots__ = ("items", "has_surrogates")
     __match_args__ = ("items",)
 
     # Each item is either:
@@ -2946,12 +2951,14 @@ class TemplateStrExpr(Expression):
     #     where conversion is str | None ("r", "s", "a", or None)
     #     and format_spec_expr is Expression | None
     items: list[Expression | tuple[Expression, str, str | None, Expression | None]]
+    has_surrogates: bool
 
     def __init__(
         self, items: list[Expression | tuple[Expression, str, str | None, Expression | None]]
     ) -> None:
         super().__init__()
         self.items = items
+        self.has_surrogates = False
 
     def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_template_str_expr(self)

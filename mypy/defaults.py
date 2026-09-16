@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import platform
 import sys
 from typing import Final
 
@@ -51,11 +52,13 @@ RECURSION_LIMIT: Final = 2**14
 # Users can specify an explicit --num-workers value which can exceed this limit.
 MAX_AUTO_WORKERS: Final = 8
 
-# It looks like Windows is slow with processes, causing test flakiness even
-# with our generous timeouts, so we set them higher.
-WORKER_START_INTERVAL: Final = 0.01 if sys.platform != "win32" else 0.03
-WORKER_START_TIMEOUT: Final = 3 if sys.platform != "win32" else 10
-WORKER_SHUTDOWN_TIMEOUT: Final = 1 if sys.platform != "win32" else 3
+# It looks like Windows & riscv64 are both slow with processes, causing test
+# flakiness even with our generous timeouts, so we set them higher.
+slow_fs = sys.platform == "win32" or platform.machine() == "riscv64"
+
+WORKER_START_INTERVAL: Final = 0.03 if slow_fs else 0.01
+WORKER_START_TIMEOUT: Final = 10 if slow_fs else 3
+WORKER_SHUTDOWN_TIMEOUT: Final = 3 if sys.platform != "win32" else 10
 
 WORKER_CONNECTION_TIMEOUT: Final = 10
 WORKER_IDLE_TIMEOUT: Final = 600

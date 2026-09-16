@@ -543,3 +543,16 @@ class subc(float):
 [file userdefinedfloat.py]
 class float:
     pass
+
+[case testFloatErrorValueAcrossYield]
+from typing import Iterator
+
+from testutil import FLOAT_MAGIC
+
+def gen() -> Iterator[float]:
+    value = FLOAT_MAGIC
+    yield 0.0
+    yield value
+
+def test_float_error_value_across_yield() -> None:
+    assert list(gen()) == [0.0, FLOAT_MAGIC]

@@ -125,6 +125,7 @@ from mypy.nodes import (
     WithStmt,
     YieldExpr,
     YieldFromExpr,
+    check_param_names,
 )
 from mypy.options import Options
 from mypy.patterns import (
@@ -254,6 +255,23 @@ def native_parse(
     return node, errors, ignores
 
 
+def native_parse_type_string(
+    expr_string: str, line: int, column: int, end_line: int, end_column: int, options: Options
+) -> ProperType:
+    """Try to parse a string literal as a type expression (i.e. resolve a forward reference).
+
+    If parsing fails, a RawExpressionType will be returned.
+    """
+    ast_bytes = ast_serialize.parse_type_string(
+        expr_string, (line, column, end_line, end_column), cache_version=5
+    )
+    state = State(options)
+    data = ReadBuffer(ast_bytes)
+    ret = read_type(state, data)
+    assert isinstance(ret, ProperType)
+    return ret
+
+
 def expect_end_tag(data: ReadBuffer) -> None:
     assert read_tag(data) == END_TAG
 
@@ -295,7 +313,7 @@ def parse_to_binary_ast(
         platform=options.platform,
         always_true=options.always_true,
         always_false=options.always_false,
-        cache_version=4,
+        cache_version=5,
     )
     return (
         ast_bytes,
@@ -628,6 +646,11 @@ def read_parameters(state: State, data: ReadBuffer) -> tuple[list[Argument], boo
         set_line_column_range(var, arg)
         arguments.append(arg)
 
+    def fail_arg(msg: str, ctx: Argument) -> None:
+        # To match the old parser (for now).
+        state.add_error(msg, ctx.line, ctx.column, blocker=True, code="syntax")
+
+    check_param_names([arg.variable.name for arg in arguments], arguments, fail_arg)
     return arguments, has_ann
 
 
@@ -636,6 +659,22 @@ def check_type_param_defaults(
 ) -> None:
     if any(p.default is not None for p in type_params):
         state.check_min_version("Type parameter defaults", (3, 13), line, column)
+
+
+def check_type_param_values(
+    state: State, type_params: list[TypeParam], line: int, column: int
+) -> None:
+    for type_param in type_params:
+        if len(type_param.values) == 1:
+            state.add_error(
+                message_registry.TYPE_VAR_TOO_FEW_CONSTRAINED_TYPES.value,
+                line,
+                column,
+                blocker=False,
+                code="misc",
+            )
+            # For compatibility with old parser.
+            type_param.values = []
 
 
 def read_type_params(state: State, data: ReadBuffer) -> list[TypeParam]:
@@ -716,6 +755,7 @@ def read_func_def(state: State, data: ReadBuffer) -> FuncDef:
             "Improved type parameter syntax", (3, 12), func_def.line, func_def.column
         )
         check_type_param_defaults(state, type_params, func_def.line, func_def.column)
+        check_type_param_values(state, type_params, func_def.line, func_def.column)
     if typ:
         typ.line = func_def.line
         typ.column = func_def.column
@@ -770,6 +810,7 @@ def read_class_def(state: State, data: ReadBuffer) -> ClassDef:
             "Improved type parameter syntax", (3, 12), class_def.line, class_def.column
         )
         check_type_param_defaults(state, type_params, class_def.line, class_def.column)
+        check_type_param_values(state, type_params, class_def.line, class_def.column)
     expect_end_tag(data)
     if state.options.include_docstrings:
         class_def.docstring = get_docstring(body)
@@ -836,6 +877,7 @@ def read_type_alias_stmt(state: State, data: ReadBuffer) -> TypeAliasStmt:
     read_loc(data, stmt)
     state.check_min_version('"type" statements', (3, 12), stmt.line, stmt.column)
     check_type_param_defaults(state, type_params, stmt.line, stmt.column)
+    check_type_param_values(state, type_params, stmt.line, stmt.column)
     expect_end_tag(data)
     return stmt
 
@@ -895,7 +937,7 @@ def read_try_stmt(state: State, data: ReadBuffer) -> TryStmt:
     return stmt
 
 
-def read_type(state: State, data: ReadBuffer) -> Type:
+def read_type(state: State, data: ReadBuffer, always_allow_star: bool = False) -> Type:
     tag = read_tag(data)
     if tag == types.UNBOUND_TYPE:
         name = read_str(data)
@@ -956,7 +998,7 @@ def read_type(state: State, data: ReadBuffer) -> Type:
     elif tag == types.LIST_TYPE:
         expect_tag(data, LIST_GEN)
         n = read_int_bare(data)
-        items = [read_type(state, data) for i in range(n)]
+        items = [read_type(state, data, always_allow_star=True) for i in range(n)]
         type_list = TypeList(items)
         read_loc(data, type_list)
         expect_end_tag(data)
@@ -1026,7 +1068,7 @@ def read_type(state: State, data: ReadBuffer) -> Type:
         from_star_syntax = read_bool(data)
         unpack = UnpackType(inner_type, from_star_syntax=from_star_syntax)
         read_loc(data, unpack)
-        if from_star_syntax:
+        if from_star_syntax and not always_allow_star:
             state.check_min_version("Star unpack syntax", (3, 11), unpack.line, unpack.column)
         expect_end_tag(data)
         return unpack
@@ -1348,6 +1390,7 @@ def read_expression(state: State, data: ReadBuffer) -> Expression:
         return ce
     elif tag == nodes.STR_EXPR:
         se = StrExpr(read_str(data))
+        se.has_surrogates = read_bool(data)
         read_loc(data, se)
         expect_end_tag(data)
         return se
@@ -1371,6 +1414,12 @@ def read_expression(state: State, data: ReadBuffer) -> Expression:
         base = read_expression(state, data)
         index = read_expression(state, data)
         expr = IndexExpr(base, index)
+        if (
+            isinstance(index, StarExpr)
+            or isinstance(index, TupleExpr)
+            and any(isinstance(it, StarExpr) for it in index.items)
+        ):
+            state.check_min_version("Star unpack syntax", (3, 11), index.line, index.column)
         read_loc(data, expr)
         expect_end_tag(data)
         return expr
@@ -1437,7 +1486,7 @@ def read_expression(state: State, data: ReadBuffer) -> Expression:
                 s = StrExpr(read_str(data))
                 read_loc(data, s)
                 fitems.append(s)
-        expr = build_fstring_join(data, fitems)
+        expr = build_fstring_join(data, fitems, set_has_surrogates=True)
         expect_end_tag(data)
         return expr
     elif tag == nodes.LIST_COMPREHENSION:
@@ -1534,6 +1583,7 @@ def read_expression(state: State, data: ReadBuffer) -> Expression:
                 read_loc(data, s)
                 titems.append(s)
         expr = TemplateStrExpr(titems)
+        expr.has_surrogates = read_bool(data)
         read_loc(data, expr)
         state.check_min_version(
             "t-strings", (3, 14), expr.line, expr.column, enforce_in_stubs=True
@@ -1660,16 +1710,30 @@ def read_fstring_items(state: State, data: ReadBuffer) -> Expression:
     return build_fstring_join(data, items)
 
 
-def build_fstring_join(data: ReadBuffer, items: list[Expression]) -> Expression:
+def build_fstring_join(
+    data: ReadBuffer, items: list[Expression], set_has_surrogates: bool = False
+) -> Expression:
     items = collapse_consecutive_str_items(items)
     if len(items) == 1:
         expr = items[0]
+        if set_has_surrogates:
+            if isinstance(expr, StrExpr):
+                target = expr
+            else:
+                assert isinstance(expr, CallExpr) and isinstance(expr.callee, MemberExpr)
+                # It doesn't really matter where to set the surrogates flag,
+                # so we set it on the outermost format string.
+                target = expr.callee.expr
+                assert isinstance(target, StrExpr)
+            target.has_surrogates = read_bool(data)
         read_loc(data, expr)
         return expr
     args = ListExpr(items)
     str_expr = StrExpr("")
     member = MemberExpr(str_expr, "join")
     call = CallExpr(member, [args], [ARG_POS], [None])
+    if set_has_surrogates:
+        str_expr.has_surrogates = read_bool(data)
     read_loc(data, call)
     set_line_column(args, call)
     set_line_column(str_expr, call)

@@ -13,12 +13,12 @@ from mypyc.codegen.emit import (
     c_array_initializer,
 )
 from mypyc.common import (
-    GENERATOR_ATTRIBUTE_PREFIX,
     HAVE_IMMORTAL,
     IS_FREE_THREADED,
     NATIVE_PREFIX,
     REG_PREFIX,
     RUNNING_FIELD,
+    source_name_from_generator_attribute,
 )
 from mypyc.ir.class_ir import ClassIR
 from mypyc.ir.func_ir import FUNC_CLASSMETHOD, FUNC_STATICMETHOD, FuncDecl, FuncIR, all_values
@@ -454,9 +454,10 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         Final attributes are never rebound (no setter), so there is no concurrent writer
         and no use-after-free window; an owned read uses the cheaper CPy_GetAttrRefFinal
         (a plain load + incref). Borrowed reads keep the plain load: they are only emitted
-        for attributes safe to borrow on free-threaded builds (Final and vec attrs -- see
-        transform_member_expr in irbuild), whose values live as long as their container.
-        The default (GIL) build always takes the plain-load path and increfs separately.
+        when safe on free-threaded builds, either for Final and vec attributes in
+        transform_member_expr in irbuild or for private generator-frame attributes proven
+        safe by borrow_generator_attrs. The default (GIL) build always takes the plain-load
+        path and increfs separately.
 
         Thread-confined attributes also use plain loads; see
         ClassIR.attrs_are_thread_confined.
@@ -484,6 +485,7 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         rtype = op.class_type
         cl = rtype.class_ir
         attr_rtype, decl_cl = cl.attr_details(op.attr)
+        source_attr_name = source_name_from_generator_attribute(op.attr, decl_cl.fullname)
         prefer_method = cl.is_trait and attr_rtype.error_overlap
         if cl.get_method(op.attr, prefer_method=prefer_method):
             # Properties are essentially methods, so use vtable access for them
@@ -527,7 +529,7 @@ class FunctionEmitterVisitor(OpVisitor[None]):
                     ):
                         # Generate code for the following branch here to avoid
                         # redundant branches in the generated code.
-                        self.emit_attribute_error(branch, cl.name, op.attr)
+                        self.emit_attribute_error(branch, cl.name, source_attr_name)
                         self.emit_line("goto %s;" % self.label(branch.true))
                         merged_branch = branch
                         self.emitter.emit_line("}")
@@ -535,9 +537,7 @@ class FunctionEmitterVisitor(OpVisitor[None]):
                     exc_class = "PyExc_AttributeError"
                     self.emitter.emit_line(
                         'PyErr_SetString({}, "attribute {} of {} undefined");'.format(
-                            exc_class,
-                            repr(op.attr.removeprefix(GENERATOR_ATTRIBUTE_PREFIX)),
-                            repr(cl.name),
+                            exc_class, repr(source_attr_name), repr(cl.name)
                         )
                     )
 
@@ -1076,7 +1076,7 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         if op.traceback_entry is not None:
             self.emitter.emit_traceback(self.source_path, self.module_name, op.traceback_entry)
 
-    def emit_attribute_error(self, op: Branch, class_name: str, attr: str) -> None:
+    def emit_attribute_error(self, op: Branch, class_name: str, source_attr_name: str) -> None:
         assert op.traceback_entry is not None
         if self.emitter.context.strict_traceback_checks:
             assert (
@@ -1089,7 +1089,7 @@ class FunctionEmitterVisitor(OpVisitor[None]):
                 self.source_path.replace("\\", "\\\\"),
                 op.traceback_entry[0],
                 class_name,
-                attr.removeprefix(GENERATOR_ATTRIBUTE_PREFIX),
+                source_attr_name,
                 op.traceback_entry[1],
                 globals_static,
             )

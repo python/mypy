@@ -27,6 +27,7 @@ from mypy.nodes import (
     DictionaryComprehension,
     Expression,
     FuncDef,
+    FuncItem,
     GeneratorExpr,
     IndexExpr,
     IntExpr,
@@ -75,7 +76,7 @@ from mypyc.common import (
     KEEP_ALIVE_WHOLE_EXPRESSION,
     MODULE_PREFIX,
     SELF_NAME,
-    TEMP_ATTR_NAME,
+    generator_frame_attribute_prefix,
     shared_lib_name,
 )
 from mypyc.crash import catch_errors
@@ -152,7 +153,7 @@ from mypyc.irbuild.targets import (
     AssignmentTargetRegister,
     AssignmentTargetTuple,
 )
-from mypyc.irbuild.util import bytes_from_str, is_constant
+from mypyc.irbuild.util import bytes_from_str, get_func_def, is_constant
 from mypyc.irbuild.vec import vec_set_item
 from mypyc.namegen import exported_name
 from mypyc.options import CompilerOptions
@@ -249,11 +250,8 @@ class IRBuilder:
         self.callable_class_names: set[str] = set()
         self.options = options
 
-        # These variables keep track of the number of lambdas, implicit indices, and implicit
-        # iterators instantiated so we avoid name conflicts. The indices and iterators are
-        # instantiated from for-loops.
+        # Keep track of the number of lambdas instantiated so we avoid name conflicts.
         self.lambda_counter = 0
-        self.temp_counter = 0
 
         # These variables are populated from the first-pass PreBuildVisitor.
         self.free_variables = pbv.free_variables
@@ -263,6 +261,7 @@ class IRBuilder:
         self.fdefs_to_decorators = pbv.funcs_to_decorators
         self.module_import_groups = pbv.module_import_groups
         self.comprehension_to_fitem = pbv.comprehension_to_fitem
+        self.deleted_vars = pbv.deleted_vars
 
         self.singledispatch_impls = singledispatch_impls
 
@@ -303,7 +302,7 @@ class IRBuilder:
         # Whether the current top-level expression contains a suspension point
         # (await, yield or yield from). A whole-expression borrow can't span such a
         # point, since the borrowed value (and its root) live in registers that are
-        # not spilled into the generator environment across the suspend.
+        # not spilled into the generator frame across the suspend.
         self.expr_has_suspend = False
         # Saved expression state for enclosing functions (see enter()/leave()).
         self.expression_depth_stack: list[int] = []
@@ -749,11 +748,11 @@ class IRBuilder:
         if line == -1:
             line = lvalue.line
         if isinstance(lvalue, NameExpr):
-            # If we are visiting a decorator, then the SymbolNode we really want to be looking at
-            # is the function that is decorated, not the entire Decorator node itself.
+            # Use the concrete implementation as the symbol-table key for
+            # decorated and overloaded functions.
             symbol = lvalue.node
-            if isinstance(symbol, Decorator):
-                symbol = symbol.func
+            if isinstance(symbol, Decorator | OverloadedFuncDef):
+                symbol = get_func_def(symbol)
             if symbol is None:
                 # Semantic analyzer doesn't create ad-hoc Vars for special forms.
                 assert lvalue.is_special_form
@@ -766,21 +765,25 @@ class IRBuilder:
                         reg_type = self.type_to_rtype(symbol.type)
                     else:
                         reg_type = self.node_type(lvalue)
-                    # If the function is a generator function, then first define a new variable
-                    # in the current function's environment class. Next, define a target that
-                    # refers to the newly defined variable in that environment class. Add the
-                    # target to the table containing class environment variables, as well as the
-                    # current environment.
-                    if self.fn_info.is_generator or self.fn_info.is_coroutine:
-                        return self.add_var_to_env_class(
-                            symbol,
-                            reg_type,
-                            self.fn_info.generator_class,
-                            reassign=False,
-                            prefix=GENERATOR_ATTRIBUTE_PREFIX,
+                    # A deleted error-overlap value needs a definedness bitmap. Other generator
+                    # locals start in registers and are promoted later if they cross a yield.
+                    if (
+                        self.fn_info.is_generator
+                        and reg_type.error_overlap
+                        and symbol in self.deleted_vars
+                    ):
+                        if self.is_captured_by_nested_func(symbol):
+                            return self.add_var_to_env_class(
+                                symbol,
+                                reg_type,
+                                self.fn_info.generator_class,
+                                reassign=False,
+                                prefix=GENERATOR_ATTRIBUTE_PREFIX,
+                            )
+                        return self.add_var_to_generator_frame(
+                            symbol, reg_type, self.fn_info.generator_class.self_reg, reassign=False
                         )
 
-                    # Otherwise define a new local variable.
                     return self.add_local_reg(symbol, reg_type)
                 else:
                     # Assign to a previously defined variable.
@@ -855,11 +858,6 @@ class IRBuilder:
                 return self.py_get_attr(target.obj, target.attr, line)
 
         assert False, "Unsupported lvalue: %r" % target
-
-    def read_nullable_attr(self, obj: Value, attr: str, line: int = -1) -> Value:
-        """Read an attribute that might have an error value without raising AttributeError."""
-        assert isinstance(obj.type, RInstance) and obj.type.class_ir.is_ext_class
-        return self.add(GetAttr(obj, attr, line, allow_error_value=True))
 
     def assign(self, target: Register | AssignmentTarget, rvalue_reg: Value, line: int) -> None:
         if isinstance(target, Register):
@@ -1045,43 +1043,8 @@ class IRBuilder:
     def pop_loop_stack(self) -> None:
         self.nonlocal_control.pop()
 
-    def make_spill_target(self, type: RType) -> AssignmentTarget:
-        """Moves a given Value instance into the generator class' environment class."""
-        name = f"{TEMP_ATTR_NAME}{self.temp_counter}"
-        self.temp_counter += 1
-        target = self.add_var_to_env_class(Var(name), type, self.fn_info.generator_class)
-        return target
-
-    def spill(self, value: Value) -> AssignmentTarget:
-        """Moves a given Value instance into the generator class' environment class."""
-        target = self.make_spill_target(value.type)
-        # Shouldn't be able to fail
-        self.assign(target, value, NO_TRACEBACK_LINE_NO)
-        return target
-
-    def maybe_spill(self, value: Value) -> Value | AssignmentTarget:
-        """
-        Moves a given Value instance into the environment class for generator functions. For
-        non-generator functions, leaves the Value instance as it is.
-
-        Returns an AssignmentTarget associated with the Value for generator functions and the
-        original Value itself for non-generator functions.
-        """
-        if self.fn_info.is_generator:
-            return self.spill(value)
-        return value
-
-    def maybe_spill_assignable(self, value: Value) -> Register | AssignmentTarget:
-        """
-        Moves a given Value instance into the environment class for generator functions. For
-        non-generator functions, allocate a temporary Register.
-
-        Returns an AssignmentTarget associated with the Value for generator functions and an
-        assignable Register for non-generator functions.
-        """
-        if self.fn_info.is_generator:
-            return self.spill(value)
-
+    def ensure_register(self, value: Value) -> Register:
+        """Return an assignable register containing a value."""
         if isinstance(value, Register):
             return value
 
@@ -1633,24 +1596,83 @@ class IRBuilder:
         keep_alive_on_completion: bool = False,
         prefix: str = "",
     ) -> AssignmentTarget:
-        # First, define the variable name as an attribute of the environment class, and then
-        # construct a target for that attribute.
+        return self.add_var_to_class(
+            var,
+            rtype,
+            self.fn_info.env_class,
+            base.curr_env_reg,
+            reassign=reassign,
+            always_defined=always_defined,
+            keep_alive_on_completion=keep_alive_on_completion,
+            prefix=prefix,
+        )
+
+    def is_free_variable_in_nested_func(self, fitem: FuncItem, symbol: SymbolNode) -> bool:
+        for nested in self.encapsulating_funcs.get(fitem, []):
+            if symbol in self.free_variables.get(nested, set()):
+                return True
+            if self.is_free_variable_in_nested_func(nested, symbol):
+                return True
+        return False
+
+    def is_captured_by_nested_func(self, symbol: SymbolNode) -> bool:
+        """Does a binding need to be visible to a nested function?"""
+        return symbol in self.free_variables.get(
+            self.fn_info.fitem, set()
+        ) or self.is_free_variable_in_nested_func(self.fn_info.fitem, symbol)
+
+    def add_var_to_generator_frame(
+        self,
+        var: SymbolNode,
+        rtype: RType,
+        frame_reg: Value,
+        reassign: bool = False,
+        always_defined: bool = False,
+        keep_alive_on_completion: bool = False,
+    ) -> AssignmentTarget:
+        """Add a generator-owned source binding to the private generator frame."""
+        cls = self.fn_info.generator_class.ir
+        return self.add_var_to_class(
+            var,
+            rtype,
+            cls,
+            frame_reg,
+            reassign=reassign,
+            always_defined=always_defined,
+            keep_alive_on_completion=keep_alive_on_completion,
+            prefix=generator_frame_attribute_prefix(
+                cls.fullname, is_final_class=cls.is_final_class
+            ),
+        )
+
+    def add_var_to_class(
+        self,
+        var: SymbolNode,
+        rtype: RType,
+        cls: ClassIR,
+        base: Value,
+        reassign: bool = False,
+        always_defined: bool = False,
+        keep_alive_on_completion: bool = False,
+        prefix: str = "",
+    ) -> AssignmentTarget:
+        """Declare an attribute on a class and construct a target using an explicit base."""
         name = prefix + remangle_redefinition_name(var.name)
-        self.fn_info.env_class.attributes[name] = rtype
+        cls.attributes[name] = rtype
         if keep_alive_on_completion:
-            self.fn_info.env_class.attrs_to_keep_alive_on_completion.add(name)
+            cls.attrs_to_keep_alive_on_completion.add(name)
         if always_defined:
-            self.fn_info.env_class.attrs_with_defaults.add(name)
-        attr_target = AssignmentTargetAttr(base.curr_env_reg, name)
+            cls.attrs_with_defaults.add(name)
+        attr_target = AssignmentTargetAttr(base, name)
 
         if reassign:
             # Read the local definition of the variable, and set the corresponding attribute of
-            # the environment class' variable to be that value.
+            # the class' variable to be that value.
             reg = self.read(self.lookup(var), self.fn_info.fitem.line)
-            self.add(SetAttr(base.curr_env_reg, name, reg, self.fn_info.fitem.line))
+            self.add(SetAttr(base, name, reg, self.fn_info.fitem.line))
 
         # Override the local definition of the variable to instead point at the variable in
-        # the environment class.
+        # the class.
         return self.add_target(var, attr_target)
 
     def is_builtin_ref_expr(self, expr: RefExpr) -> bool:
