@@ -8206,7 +8206,7 @@ class SemanticAnalyzer(
                     # 2. Reference to an unknown placeholder node.
                     maybe_type_expr.as_type = None
                     return
-                if isinstance(node, Var) and not self.var_is_typing_special_form(node):
+                if isinstance(node, Var):
                     # Leftmost component is a Var: it is a value, so it cannot be
                     # the module or class prefix of a dotted type name.
                     maybe_type_expr.as_type = None
