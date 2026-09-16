@@ -973,11 +973,24 @@ def json_loads(data: bytes) -> Any:
 _AVAILABLE_THREADS: int | None = None
 
 
+def can_start_threads() -> bool:
+    """Can we start new threads?
+
+    WebAssembly builds are typically single-threaded, and starting a thread
+    fails with RuntimeError there, so we must not even try.
+    """
+    return sys.platform not in ("emscripten", "wasi")
+
+
 def get_available_threads() -> int:
     """Determine number of physical cores that current process can use (best effort)."""
     global _AVAILABLE_THREADS
     if _AVAILABLE_THREADS is not None:
         return _AVAILABLE_THREADS
+
+    if not can_start_threads():
+        _AVAILABLE_THREADS = 1
+        return 1
 
     # This takes into account -X cpu_count and/or PYTHON_CPU_COUNT, but always
     # counts virtual cores (which is not what we want for CPU bound tasks).

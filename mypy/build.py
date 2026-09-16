@@ -26,7 +26,7 @@ import sys
 import time
 import types
 from collections.abc import Callable, Iterator, Mapping, Sequence, Set as AbstractSet
-from concurrent.futures import ThreadPoolExecutor, wait
+from concurrent.futures import Future, ThreadPoolExecutor, wait
 from heapq import heappop, heappush
 from textwrap import dedent
 from threading import Lock, Thread
@@ -125,6 +125,7 @@ from mypy.semanal import SemanticAnalyzer
 from mypy.semanal_pass1 import SemanticAnalyzerPreAnalysis
 from mypy.util import (
     DecodeError,
+    can_start_threads,
     decode_python_encoding,
     get_available_threads,
     get_mypy_comments,
@@ -1105,34 +1106,53 @@ class BuildManager:
 
         Return (list, set) of states that were actually parsed (not cached).
         """
-        futures = []
-        # Use both list and a set to have more predictable order of errors,
-        # while also not sacrificing performance.
-        parallel_parsed_states: list[State] = []
-        parallel_parsed_states_set: set[State] = set()
+        if not can_start_threads():
+            # Threads are not available (e.g. on WebAssembly platforms), so parse
+            # files one by one in the current thread.
+            return self.parse_files_raw(states, None)
+
         # Use at least --num-workers if specified by user.
         available_threads = max(get_available_threads(), self.options.num_workers)
         # Overhead from trying to parallelize (small) blocking portion of
         # parse_file_inner() results in no visible improvement with more than 8 threads.
         # TODO: reuse thread pool and/or batch small files in single submit() call.
         with ThreadPoolExecutor(max_workers=min(available_threads, 8)) as executor:
-            for state in states:
-                state.needs_parse = False
-                if state.id not in self.ast_cache:
-                    self.log(f"Parsing {state.xpath} ({state.id})")
-                    ignore_errors = state.ignore_all or state.options.ignore_errors
-                    if ignore_errors:
-                        self.errors.ignored_files.add(state.xpath)
-                    futures.append(executor.submit(state.parse_file_inner, state.source))
-                    parallel_parsed_states.append(state)
-                    parallel_parsed_states_set.add(state)
-                else:
-                    self.log(f"Using cached AST for {state.xpath} ({state.id})")
-                    state.tree, state.early_errors, source_hash = self.ast_cache[state.id]
-                    state.source_hash = source_hash
+            return self.parse_files_raw(states, executor)
 
-            for fut in wait(futures).done:
-                fut.result()
+    def parse_files_raw(
+        self, states: list[State], executor: ThreadPoolExecutor | None
+    ) -> tuple[list[State], set[State]]:
+        """Parse files, using executor for parallelism if one is provided.
+
+        Without an executor files are parsed in the current thread, but we still
+        go through futures, so that behavior (such as the order in which errors
+        are reported) is the same on all platforms.
+        """
+        futures = []
+        # Use both list and a set to have more predictable order of errors,
+        # while also not sacrificing performance.
+        parallel_parsed_states: list[State] = []
+        parallel_parsed_states_set: set[State] = set()
+        for state in states:
+            state.needs_parse = False
+            if state.id not in self.ast_cache:
+                self.log(f"Parsing {state.xpath} ({state.id})")
+                ignore_errors = state.ignore_all or state.options.ignore_errors
+                if ignore_errors:
+                    self.errors.ignored_files.add(state.xpath)
+                if executor is not None:
+                    futures.append(executor.submit(state.parse_file_inner, state.source))
+                else:
+                    futures.append(submit_inline(state.parse_file_inner, state.source))
+                parallel_parsed_states.append(state)
+                parallel_parsed_states_set.add(state)
+            else:
+                self.log(f"Using cached AST for {state.xpath} ({state.id})")
+                state.tree, state.early_errors, source_hash = self.ast_cache[state.id]
+                state.source_hash = source_hash
+
+        for fut in wait(futures).done:
+            fut.result()
 
         return parallel_parsed_states, parallel_parsed_states_set
 
@@ -1577,6 +1597,21 @@ class BuildManager:
     ) -> None:
         for msg_line in dedent(msg.lstrip("\n")).splitlines():
             self.note(line, msg_line, code, only_once=only_once)
+
+
+def submit_inline(fn: Callable[..., Any], *args: Any) -> Future[Any]:
+    """Call fn in the current thread and return an already-completed future.
+
+    This is a substitute for Executor.submit() on platforms where threads are
+    not available. Like a thread pool, we only propagate an exception once the
+    result of the future is collected.
+    """
+    future: Future[Any] = Future()
+    try:
+        future.set_result(fn(*args))
+    except BaseException as exc:
+        future.set_exception(exc)
+    return future
 
 
 def deps_to_json(x: dict[str, set[str]]) -> bytes:
