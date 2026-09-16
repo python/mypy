@@ -1054,8 +1054,8 @@ enabled by default starting from mypy 2.0.
     Automatic selection uses at most 8 workers because each worker adds roughly
     10% memory overhead. This cap does not apply when an explicit value is specified.
 
-    The ``MYPY_NUM_WORKERS`` environment variable also accepts ``auto``. This
-    setting will override the environment variable if it is set.
+    This setting will override the ``MYPY_NUM_WORKERS`` environment
+    variable if it is set.
 
 Notes:
 
