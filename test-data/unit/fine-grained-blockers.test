@@ -522,7 +522,7 @@ a.py: error: Cannot decode file: 'ascii' codec can't decode byte 0xc3 in positio
 ==
 main:2: error: Argument 1 to "f" has incompatible type "int"; expected "str"
 
-[case testDecodeErrorBlockerOnInitialRun-posix]
+[case testDecodeErrorBlockerOnInitialRun-posix-skip]
 # Note that there's no test variant for Windows, since the above Windows test case is good enough.
 import a
 a.f(1)

@@ -125,6 +125,7 @@ from mypy.semanal import SemanticAnalyzer
 from mypy.semanal_pass1 import SemanticAnalyzerPreAnalysis
 from mypy.util import (
     DecodeError,
+    can_start_threads,
     decode_python_encoding,
     get_available_threads,
     get_mypy_comments,
@@ -1021,8 +1022,8 @@ class BuildManager:
         If post_parse is False, skip the last step (used when parsing unchanged files
         that need to be re-checked due to stale dependencies).
         """
-        if not self.options.native_parser:
-            # Old parser cannot be parallelized.
+        if not self.options.native_parser or not can_start_threads():
+            # Old parser cannot be parallelized, and some platforms don't support threads.
             for state in states:
                 state.parse_file()
             if post_parse:
