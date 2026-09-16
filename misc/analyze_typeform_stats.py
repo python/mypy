@@ -26,7 +26,6 @@ Example output:
 
 See also:
     - mypy/semanal.py: SemanticAnalyzer.try_parse_as_type_expression()
-    - mypy/semanal.py: DEBUG_TYPE_EXPRESSION_FULL_PARSE_FAILURES
 """
 
 import re
@@ -70,6 +69,7 @@ def analyze_stats(output: str) -> None:
         print(
             f"  - Expensive failed full parses: {failures:,} ({(failures / total * 100):.1f}% of all calls)"
         )
+        print("    - Analyze further with misc/analyze_typeform_full_parse_profile.py")
 
 
 if __name__ == "__main__":
