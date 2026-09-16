@@ -749,6 +749,14 @@ typx = 'Type'
 [builtins fixtures/primitives.pyi]
 [typing fixtures/typing-full.pyi]
 
+[case testVarWithUnknownTypeInStringAnnotationIsNotRejected]
+from typing import Any
+from typing_extensions import TypeForm
+foo: Any
+typx: TypeForm = 'foo'
+reveal_type(typx)  # N: Revealed type is "TypeForm[Any]"
+[builtins fixtures/primitives.pyi]
+[typing fixtures/typing-full.pyi]
 
 -- Misc
 

@@ -8171,12 +8171,11 @@ class SemanticAnalyzer(
                         return
                     if (
                         isinstance(node, Var)
-                        and isinstance(get_proper_type(node.type), Instance)
+                        and self.var_type_is_known(node)
                         and not self.var_could_be_typing_special_form(node)
                     ):
-                        # Var whose declared type is a concrete instance: it is
-                        # a value (local, parameter, module-level constant),
-                        # not a type expression.
+                        # Var whose type is known and is not a special form.
+                        # It is a value, not a type expression.
                         maybe_type_expr.as_type = None
                         return
                     if isinstance(node, (FuncDef, OverloadedFuncDef, MypyFile)):
@@ -8318,6 +8317,13 @@ class SemanticAnalyzer(
             var.fullname.startswith("typing.")
             or var.fullname.startswith("typing_extensions.")
             or var.fullname.startswith("mypy_extensions.")
+        )
+
+    @staticmethod
+    def var_type_is_known(var: Var) -> bool:
+        return not (
+            (var_typ_p := get_proper_type(var.type)) is None
+            or isinstance(var_typ_p, (AnyType, PlaceholderType, UnboundType))
         )
 
     @contextmanager
