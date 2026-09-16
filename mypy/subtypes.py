@@ -824,6 +824,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
             if self.variadic_tuple_subtype(left, right):
                 return True
             # print("TTT", left.items, right.items)
+            # TODO: adjust variadic left Any to fixed right (incl. *Ts), if possible.
             if len(left.items) != len(right.items):
                 return False
             if any(not self._is_subtype(l, r) for l, r in zip(left.items, right.items)):
@@ -916,6 +917,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
             # subtyping: *each* item on the left, must be a subtype of *some* item on the right.
             # For this we first check the "asymptotic case", i.e. that both unpacks a subtypes,
             # and then check subtyping for all finite overlaps.
+            # TODO: if left_item is Any, use any() logic, not all().
             if not self._is_subtype(left_item, right_item):
                 return False
             max_overlap = max(0, right_prefix - left_prefix, right_suffix - left_suffix)
