@@ -105,7 +105,9 @@ def main(
     if options.num_workers:
         # Supporting both parsers would be really tricky, so just support the new one.
         options.native_parser = True
-        options.incremental = True
+        if not options.incremental and os.path.isdir(options.cache_dir):
+            print("Warning: disabling incremental mode may severely reduce performance")
+            print(f"If this is intentional, delete '{options.cache_dir}' to suppress this warning")
         if options.num_workers < 0:
             fail("error: Number of workers cannot be negative", stderr, options)
         if options.cache_dir == os.devnull:
@@ -1191,14 +1193,14 @@ def define_options(
     # This undocumented feature exports limited line-level dependency information.
     internals_group.add_argument("--export-ref-info", action="store_true", help=argparse.SUPPRESS)
 
-    # Experimental parallel type-checking support.
+    # Parallel type-checking support.
     internals_group.add_argument(
         "-n",
         "--num-workers",
         type=parse_num_workers,
         metavar="VALUE",
         default=0,
-        help="Number of separate mypy worker processes, or 'auto' (experimental)",
+        help="Number of separate mypy worker processes, or 'auto'",
     )
 
     report_group = parser.add_argument_group(
