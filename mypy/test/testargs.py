@@ -115,29 +115,31 @@ class ArgSuite(Suite):
         assert env_options.num_workers == 7
         assert cli_options.num_workers == 4
 
-    def test_parallel_mode_forces_incremental(self) -> None:
-        def incremental_with_workers(num_workers: int) -> bool:
-            with mock.patch("mypy.main.run_build", return_value=(None, [], False)) as run_build:
-                main(
-                    args=[
-                        "--config-file=",
-                        f"--num-workers={num_workers}",
-                        "--no-incremental",
-                        "--no-site-packages",
-                        "--no-error-summary",
-                        "-c",
-                        "pass",
-                    ],
-                    stdout=StringIO(),
-                    stderr=StringIO(),
-                    clean_exit=True,
-                )
+    def test_parallel_mode_warns_when_incremental_disabled(self) -> None:
+        with tempfile.TemporaryDirectory() as cache_dir:
+            stdout = StringIO()
+            stderr = StringIO()
+            main(
+                args=[
+                    "--config-file=",
+                    "--num-workers=1",
+                    "--no-incremental",
+                    "--no-site-packages",
+                    "--no-error-summary",
+                    f"--cache-dir={cache_dir}",
+                    "-c",
+                    "pass",
+                ],
+                stdout=stdout,
+                stderr=stderr,
+                clean_exit=True,
+            )
 
-                options = cast(Options, run_build.call_args.args[1])
-            return options.incremental
-
-        assert incremental_with_workers(1)
-        assert not incremental_with_workers(0)
+            assert stdout.getvalue() == (
+                "Warning: disabling incremental mode may severely reduce performance\n"
+                f"If this is intentional, delete '{cache_dir}' to suppress this warning\n"
+            )
+            assert stderr.getvalue() == ""
 
     def test_coherence(self) -> None:
         options = Options()

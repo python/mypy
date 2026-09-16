@@ -106,8 +106,13 @@ def main(
         # Supporting both parsers would be really tricky, so just support the new one.
         options.native_parser = True
         if not options.incremental and os.path.isdir(options.cache_dir):
-            print("Warning: disabling incremental mode may severely reduce performance")
-            print(f"If this is intentional, delete '{options.cache_dir}' to suppress this warning")
+            print(
+                "Warning: disabling incremental mode may severely reduce performance", file=stdout
+            )
+            print(
+                f"If this is intentional, delete '{options.cache_dir}' to suppress this warning",
+                file=stdout,
+            )
         if options.num_workers < 0:
             fail("error: Number of workers cannot be negative", stderr, options)
         if options.cache_dir == os.devnull:
