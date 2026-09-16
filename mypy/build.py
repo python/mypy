@@ -3150,8 +3150,11 @@ class State:
             and self.manager.maybe_swap_for_shadow_path(self.xpath) != self.xpath
         ):
             return True
-        return self.manager.fscache.isdir(self.xpath) or not self.manager.fscache.exists(
-            self.xpath, real_only=True
+        return (
+            self.manager.fscache.isdir(self.xpath)
+            or not self.manager.fscache.exists(self.xpath, real_only=True)
+            # For a better error in case one tries to parse a .pyd file (which is a DLL).
+            or self.xpath.endswith(".pyd")
         )
 
     def get_source(self) -> str:
