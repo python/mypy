@@ -67,6 +67,7 @@ from mypy.types import (
     UninhabitedType,
     UnionType,
     UnpackType,
+    extend_args_for_prefix_and_suffix,
     find_unpack_in_list,
     flatten_nested_unions,
     get_proper_type,
@@ -824,7 +825,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
             if self.variadic_tuple_subtype(left, right):
                 return True
             # print("TTT", left.items, right.items)
-            # TODO: adjust variadic left Any to fixed right (incl. *Ts), if possible.
+            left = self.adjust_left_if_possible(left, right)
             if len(left.items) != len(right.items):
                 return False
             if any(not self._is_subtype(l, r) for l, r in zip(left.items, right.items)):
@@ -844,6 +845,51 @@ class SubtypeVisitor(TypeVisitor[bool]):
         else:
             return False
 
+    def adjust_left_if_possible(self, left: TupleType, right: TupleType) -> TupleType:
+        left_variadic = self.get_variadic_item(left)
+        if left_variadic is None:
+            return left
+        left_unpack_index, left_item = left_variadic
+        if not isinstance(get_proper_type(left_item), AnyType):
+            return left
+        right_unpack_index = find_unpack_in_list(right.items)
+        if right_unpack_index is None:
+            if len(left.items) > len(right.items) + 1:
+                return left
+            num_anys = len(right.items) - len(left.items) + 1
+            return left.copy_modified(
+                items=left.items[:left_unpack_index]
+                + [left_item] * num_anys
+                + left.items[left_unpack_index + 1 :]
+            )
+        right_unpack = right.items[right_unpack_index]
+        assert isinstance(right_unpack, UnpackType)
+        right_unpacked = get_proper_type(right_unpack.type)
+        if isinstance(right_unpacked, Instance):
+            return left
+        right_prefix = right_unpack_index
+        right_suffix = len(right.items) - right_prefix - 1
+        left_prefix = left_unpack_index
+        left_suffix = len(left.items) - left_prefix - 1
+        if left_prefix > right_prefix or left_suffix > right_suffix:
+            return left
+        new_items = extend_args_for_prefix_and_suffix(
+            tuple(left.items), right_prefix, right_suffix
+        )
+        return left.copy_modified(items=list(new_items))
+
+    def get_variadic_item(self, tup: TupleType) -> tuple[int, Type] | None:
+        unpack_index = find_unpack_in_list(tup.items)
+        if unpack_index is None:
+            return None
+        unpack = tup.items[unpack_index]
+        assert isinstance(unpack, UnpackType)
+        unpacked = get_proper_type(unpack.type)
+        if not isinstance(unpacked, Instance):
+            return None
+        assert unpacked.type.fullname == "builtins.tuple"
+        return unpack_index, unpacked.args[0]
+
     def variadic_tuple_subtype(self, left: TupleType, right: TupleType) -> bool:
         """Check subtyping between two potentially variadic tuples.
 
@@ -853,18 +899,11 @@ class SubtypeVisitor(TypeVisitor[bool]):
         Note: the cases where right is fixed or has *Ts unpack should be handled
         by the caller.
         """
-        right_unpack_index = find_unpack_in_list(right.items)
-        if right_unpack_index is None:
+        right_variadic = self.get_variadic_item(right)
+        if right_variadic is None:
             # This case should be handled by the caller.
             return False
-        right_unpack = right.items[right_unpack_index]
-        assert isinstance(right_unpack, UnpackType)
-        right_unpacked = get_proper_type(right_unpack.type)
-        if not isinstance(right_unpacked, Instance):
-            # This case should be handled by the caller.
-            return False
-        assert right_unpacked.type.fullname == "builtins.tuple"
-        right_item = right_unpacked.args[0]
+        right_unpack_index, right_item = right_variadic
         right_prefix = right_unpack_index
         right_suffix = len(right.items) - right_prefix - 1
         left_unpack_index = find_unpack_in_list(left.items)
@@ -917,7 +956,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
             # subtyping: *each* item on the left, must be a subtype of *some* item on the right.
             # For this we first check the "asymptotic case", i.e. that both unpacks a subtypes,
             # and then check subtyping for all finite overlaps.
-            # TODO: if left_item is Any, use any() logic, not all().
+            use_any = isinstance(get_proper_type(left_item), AnyType)
             if not self._is_subtype(left_item, right_item):
                 return False
             max_overlap = max(0, right_prefix - left_prefix, right_suffix - left_suffix)
@@ -927,7 +966,10 @@ class SubtypeVisitor(TypeVisitor[bool]):
                     repr_items += left.items[-left_suffix:]
                 left_repr = left.copy_modified(items=repr_items)
                 if not self._is_subtype(left_repr, right):
-                    return False
+                    if not use_any:
+                        return False
+                elif use_any:
+                    return True
             return True
 
     def is_top_type(self, typ: Type) -> bool:
