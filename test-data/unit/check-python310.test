@@ -2310,6 +2310,25 @@ def g(m: Medal) -> int:
             return 2
 [builtins fixtures/enum.pyi]
 
+[case testMatchAfterEqualityNarrowingEnum]
+# flags: --strict-equality --warn-unreachable
+from enum import Enum
+
+class Medal(Enum):
+    gold = 1
+    silver = 2
+    bronze = 3
+
+def f(m: Medal) -> None:
+    if m == Medal.gold:
+        return
+    match m:
+        case Medal.silver:
+            reveal_type(m)  # N: Revealed type is "Literal[__main__.Medal.silver]"
+        case Medal.bronze:
+            reveal_type(m)  # N: Revealed type is "Literal[__main__.Medal.bronze]"
+[builtins fixtures/primitives.pyi]
+
 [case testMatchLiteralOrValuePattern]
 # flags: --strict-equality --warn-unreachable
 from typing import Literal
