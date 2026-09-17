@@ -1,0 +1,6 @@
+[case testPEP798FailGracefully_python3_15]
+x = [[1]]
+y = [*l for l in x]  # E: PEP 798 is not supported yet
+
+dx = [{1: 1}]
+dy = {**d for d in dx}  # E: PEP 798 is not supported yet
