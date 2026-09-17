@@ -25,8 +25,10 @@ def assert_type(o, t): ...
 overload = 0
 Any = object()
 Optional = 0
-Generic = 0
-Protocol = 0
+class _Generic: ...
+Generic: type[_Generic]
+class _Protocol: ...
+Protocol: type[_Protocol]
 Tuple = 0
 _promote = 0
 Type = 0
