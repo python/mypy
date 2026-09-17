@@ -1394,9 +1394,11 @@ class MeetSuite(Suite):
         right = [LiteralType("v%d" % i, fx.str_type) for i in range(500, 2500)]
         result = get_proper_type(narrow_declared_type(UnionType(left), UnionType(right)))
         assert isinstance(result, UnionType)
-        values = {
-            item.value for item in result.items if isinstance(get_proper_type(item), LiteralType)
-        }
+        values = set()
+        for item in result.items:
+            proper = get_proper_type(item)
+            if isinstance(proper, LiteralType):
+                values.add(proper.value)
         assert values == {"v%d" % i for i in range(500, 2000)}
 
     # FIX generic interfaces + ranges
