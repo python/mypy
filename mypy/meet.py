@@ -193,6 +193,7 @@ def narrow_declared_type(declared: Type, narrowed: Type) -> Type:
         return original_declared
     if isinstance(declared, UnionType):
         declared_items = declared.relevant_items()
+        narrowed_items: list[Type]
         if isinstance(narrowed, UnionType):
             narrowed_items = narrowed.relevant_items()
         else:
