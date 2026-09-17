@@ -15,7 +15,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 from collections.abc import Iterable
-from typing import Final, NamedTuple
+from typing import NamedTuple
 
 from mypy.build import Graph
 from mypy.nodes import (
@@ -42,6 +42,7 @@ from mypy.traverser import TraverserVisitor
 from mypy.types import Instance, Type, get_proper_type
 from mypyc.common import (
     FAST_PREFIX,
+    GENERATOR_HELPER_NAME,
     MYPYC_DEFAULTS_SETUP,
     PROPSET_PREFIX,
     SELF_NAME,
@@ -75,14 +76,13 @@ from mypyc.irbuild.util import (
     default_attr_name,
     get_func_def,
     get_mypyc_attrs,
+    is_class_body_final,
     is_dataclass,
     is_extension_class,
     is_trait,
 )
 from mypyc.options import CompilerOptions
 from mypyc.sametype import is_same_type
-
-GENERATOR_HELPER_NAME: Final = "__mypyc_generator_helper__"
 
 
 def build_type_map(
@@ -637,6 +637,11 @@ def prepare_methods_and_attributes(
             assert node.node.type, "Class member %s missing type" % name
             if not node.node.is_classvar and name not in ("__slots__", "__deletable__"):
                 attr_rtype = mapper.type_to_rtype(node.node.type)
+                if is_class_body_final(node.node, ir, cdef, attr_rtype):
+                    # No instance slot: the value lives in a module-level static
+                    # and on the type object. See ClassIR.class_final_attributes.
+                    ir.class_final_attributes[name] = attr_rtype
+                    continue
                 if ir.is_trait and attr_rtype.error_overlap:
                     # Traits don't have attribute definedness bitmaps, so use
                     # property accessor methods to access attributes that need them.

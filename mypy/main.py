@@ -23,7 +23,12 @@ if platform.python_implementation() == "PyPy":
     sys.exit(2)
 
 from mypy import build, defaults, state, util
-from mypy.config_parser import parse_config_file, parse_version, validate_package_allow_list
+from mypy.config_parser import (
+    parse_config_file,
+    parse_num_workers,
+    parse_version,
+    validate_package_allow_list,
+)
 from mypy.defaults import RECURSION_LIMIT
 from mypy.error_formatter import OUTPUT_CHOICES
 from mypy.errors import CompileError
@@ -100,6 +105,14 @@ def main(
     if options.num_workers:
         # Supporting both parsers would be really tricky, so just support the new one.
         options.native_parser = True
+        if not options.incremental and os.path.isdir(options.cache_dir):
+            print(
+                "Warning: disabling incremental mode may severely reduce performance", file=stdout
+            )
+            print(
+                f"If this is intentional, delete '{options.cache_dir}' to suppress this warning",
+                file=stdout,
+            )
         if options.num_workers < 0:
             fail("error: Number of workers cannot be negative", stderr, options)
         if options.cache_dir == os.devnull:
@@ -1185,13 +1198,14 @@ def define_options(
     # This undocumented feature exports limited line-level dependency information.
     internals_group.add_argument("--export-ref-info", action="store_true", help=argparse.SUPPRESS)
 
-    # Experimental parallel type-checking support.
+    # Parallel type-checking support.
     internals_group.add_argument(
         "-n",
         "--num-workers",
-        type=int,
+        type=parse_num_workers,
+        metavar="VALUE",
         default=0,
-        help="Number of separate mypy worker processes (experimental)",
+        help="Number of separate mypy worker processes, or 'auto'",
     )
 
     report_group = parser.add_argument_group(
@@ -1303,11 +1317,11 @@ def define_options(
         dest="local_partial_types",
         help=argparse.SUPPRESS,
     )
-    # --native-parser enables the native parser (experimental)
     add_invertible_flag(
-        "--native-parser",
-        default=False,
-        help="Enable faster parser that parses directly to mypy AST",
+        "--no-native-parser",
+        default=True,
+        dest="native_parser",
+        help="Do not use faster parser that parses directly to mypy AST",
     )
     # --logical-deps adds some more dependencies that are not semantically needed, but
     # may be helpful to determine relative importance of classes and functions for overall
@@ -1477,9 +1491,9 @@ def process_options(
     environ_num_workers = os.getenv("MYPY_NUM_WORKERS", "")
     if environ_num_workers.strip():
         try:
-            options.num_workers = int(environ_num_workers)
-        except ValueError:
-            parser.error(f"MYPY_NUM_WORKERS must be an integer, got {environ_num_workers!r}")
+            options.num_workers = parse_num_workers(environ_num_workers)
+        except argparse.ArgumentTypeError as error:
+            parser.error(f"MYPY_NUM_WORKERS: {error}")
 
     # Parse command line for real, using a split namespace.
     special_opts = argparse.Namespace()

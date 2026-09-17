@@ -1,4 +1,5 @@
 import _typeshed
+import types
 from typing import (
     Generic, Iterator, Iterable, Mapping, Optional, Sequence, Tuple,
     TypeVar, Union, overload,
@@ -17,7 +18,6 @@ class object:
     def __ne__(self, o: object) -> bool: pass
 
 class type: pass
-class ellipsis: pass
 class tuple(Generic[_T]): pass
 class int: pass
 class float: pass

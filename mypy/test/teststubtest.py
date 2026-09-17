@@ -100,6 +100,7 @@ def final(func: _T) -> _T: ...
 """
 
 stubtest_builtins_stub = """
+import types
 from typing import Generic, Mapping, Sequence, TypeVar, overload
 
 T = TypeVar('T')
@@ -121,7 +122,6 @@ class dict(Mapping[KT, VT]): ...
 class frozenset(Generic[T]): ...
 
 class function: pass
-class ellipsis: pass
 
 class int: ...
 class float: ...
@@ -3207,7 +3207,7 @@ class StubtestMiscUnit(unittest.TestCase):
         output = run_stubtest(stub="+", runtime="", options=[])
         assert output == (
             "error: not checking stubs due to failed mypy compile:\n{}.pyi:1: "
-            "error: Invalid syntax  [syntax]\n".format(TEST_MODULE_NAME)
+            "error: Expected an expression  [syntax]\n".format(TEST_MODULE_NAME)
         )
 
         output = run_stubtest(stub="def f(): ...\ndef f(): ...", runtime="", options=[])

@@ -19,7 +19,6 @@ Expected benefits over mypy.fastparse:
 from __future__ import annotations
 
 import os
-import time
 from typing import Final, cast
 
 import ast_serialize
@@ -125,6 +124,7 @@ from mypy.nodes import (
     WithStmt,
     YieldExpr,
     YieldFromExpr,
+    check_param_names,
 )
 from mypy.options import Options
 from mypy.patterns import (
@@ -254,6 +254,23 @@ def native_parse(
     return node, errors, ignores
 
 
+def native_parse_type_string(
+    expr_string: str, line: int, column: int, end_line: int, end_column: int, options: Options
+) -> ProperType:
+    """Try to parse a string literal as a type expression (i.e. resolve a forward reference).
+
+    If parsing fails, a RawExpressionType will be returned.
+    """
+    ast_bytes = ast_serialize.parse_type_string(
+        expr_string, (line, column, end_line, end_column), cache_version=5
+    )
+    state = State(options)
+    data = ReadBuffer(ast_bytes)
+    ret = read_type(state, data)
+    assert isinstance(ret, ProperType)
+    return ret
+
+
 def expect_end_tag(data: ReadBuffer) -> None:
     assert read_tag(data) == END_TAG
 
@@ -280,13 +297,6 @@ def parse_to_binary_ast(
     source: str | bytes | None = None,
     skip_function_bodies: bool = False,
 ) -> tuple[bytes, list[ParseError], TypeIgnores, bytes, bool, bool, str, list[tuple[int, str]]]:
-    # This is a horrible hack to work around a mypyc bug where imported
-    # module may be not ready in a thread sometimes.
-    t0 = time.time()
-    while ast_serialize is None:
-        time.sleep(0.0001)  # type: ignore[unreachable]
-        if time.time() - t0 > 10.0:
-            raise ImportError("Cannot import ast_serialize")
     ast_bytes, errors, ignores, import_bytes, ast_data = ast_serialize.parse(
         filename,
         source,
@@ -295,7 +305,7 @@ def parse_to_binary_ast(
         platform=options.platform,
         always_true=options.always_true,
         always_false=options.always_false,
-        cache_version=3,
+        cache_version=5,
     )
     return (
         ast_bytes,
@@ -628,6 +638,11 @@ def read_parameters(state: State, data: ReadBuffer) -> tuple[list[Argument], boo
         set_line_column_range(var, arg)
         arguments.append(arg)
 
+    def fail_arg(msg: str, ctx: Argument) -> None:
+        # To match the old parser (for now).
+        state.add_error(msg, ctx.line, ctx.column, blocker=True, code="syntax")
+
+    check_param_names([arg.variable.name for arg in arguments], arguments, fail_arg)
     return arguments, has_ann
 
 
@@ -636,6 +651,22 @@ def check_type_param_defaults(
 ) -> None:
     if any(p.default is not None for p in type_params):
         state.check_min_version("Type parameter defaults", (3, 13), line, column)
+
+
+def check_type_param_values(
+    state: State, type_params: list[TypeParam], line: int, column: int
+) -> None:
+    for type_param in type_params:
+        if len(type_param.values) == 1:
+            state.add_error(
+                message_registry.TYPE_VAR_TOO_FEW_CONSTRAINED_TYPES.value,
+                line,
+                column,
+                blocker=False,
+                code="misc",
+            )
+            # For compatibility with old parser.
+            type_param.values = []
 
 
 def read_type_params(state: State, data: ReadBuffer) -> list[TypeParam]:
@@ -672,7 +703,7 @@ def read_func_def(state: State, data: ReadBuffer) -> FuncDef:
     name = read_str(data)
     arguments, has_ann = read_parameters(state, data)
 
-    if special_function_elide_names(name):
+    if state.options.pos_only_special_methods and special_function_elide_names(name):
         for arg in arguments:
             arg.pos_only = True
 
@@ -716,6 +747,7 @@ def read_func_def(state: State, data: ReadBuffer) -> FuncDef:
             "Improved type parameter syntax", (3, 12), func_def.line, func_def.column
         )
         check_type_param_defaults(state, type_params, func_def.line, func_def.column)
+        check_type_param_values(state, type_params, func_def.line, func_def.column)
     if typ:
         typ.line = func_def.line
         typ.column = func_def.column
@@ -723,6 +755,8 @@ def read_func_def(state: State, data: ReadBuffer) -> FuncDef:
         # TODO: This seems wasteful, can we avoid it?
         func_def.unanalyzed_type = typ.copy_modified()
     expect_end_tag(data)
+    if state.options.include_docstrings:
+        func_def.docstring = get_docstring(body)
     return func_def
 
 
@@ -768,8 +802,19 @@ def read_class_def(state: State, data: ReadBuffer) -> ClassDef:
             "Improved type parameter syntax", (3, 12), class_def.line, class_def.column
         )
         check_type_param_defaults(state, type_params, class_def.line, class_def.column)
+        check_type_param_values(state, type_params, class_def.line, class_def.column)
     expect_end_tag(data)
+    if state.options.include_docstrings:
+        class_def.docstring = get_docstring(body)
     return class_def
+
+
+def get_docstring(body: Block) -> str | None:
+    if body.body and isinstance(body.body[0], ExpressionStmt):
+        expr = body.body[0].expr
+        if isinstance(expr, StrExpr):
+            return expr.value
+    return None
 
 
 def read_type_alias_stmt(state: State, data: ReadBuffer) -> TypeAliasStmt:
@@ -824,6 +869,7 @@ def read_type_alias_stmt(state: State, data: ReadBuffer) -> TypeAliasStmt:
     read_loc(data, stmt)
     state.check_min_version('"type" statements', (3, 12), stmt.line, stmt.column)
     check_type_param_defaults(state, type_params, stmt.line, stmt.column)
+    check_type_param_values(state, type_params, stmt.line, stmt.column)
     expect_end_tag(data)
     return stmt
 
@@ -883,7 +929,7 @@ def read_try_stmt(state: State, data: ReadBuffer) -> TryStmt:
     return stmt
 
 
-def read_type(state: State, data: ReadBuffer) -> Type:
+def read_type(state: State, data: ReadBuffer, always_allow_star: bool = False) -> Type:
     tag = read_tag(data)
     if tag == types.UNBOUND_TYPE:
         name = read_str(data)
@@ -944,7 +990,7 @@ def read_type(state: State, data: ReadBuffer) -> Type:
     elif tag == types.LIST_TYPE:
         expect_tag(data, LIST_GEN)
         n = read_int_bare(data)
-        items = [read_type(state, data) for i in range(n)]
+        items = [read_type(state, data, always_allow_star=True) for i in range(n)]
         type_list = TypeList(items)
         read_loc(data, type_list)
         expect_end_tag(data)
@@ -1014,7 +1060,7 @@ def read_type(state: State, data: ReadBuffer) -> Type:
         from_star_syntax = read_bool(data)
         unpack = UnpackType(inner_type, from_star_syntax=from_star_syntax)
         read_loc(data, unpack)
-        if from_star_syntax:
+        if from_star_syntax and not always_allow_star:
             state.check_min_version("Star unpack syntax", (3, 11), unpack.line, unpack.column)
         expect_end_tag(data)
         return unpack
@@ -1336,6 +1382,7 @@ def read_expression(state: State, data: ReadBuffer) -> Expression:
         return ce
     elif tag == nodes.STR_EXPR:
         se = StrExpr(read_str(data))
+        se.has_surrogates = read_bool(data)
         read_loc(data, se)
         expect_end_tag(data)
         return se
@@ -1359,6 +1406,12 @@ def read_expression(state: State, data: ReadBuffer) -> Expression:
         base = read_expression(state, data)
         index = read_expression(state, data)
         expr = IndexExpr(base, index)
+        if (
+            isinstance(index, StarExpr)
+            or isinstance(index, TupleExpr)
+            and any(isinstance(it, StarExpr) for it in index.items)
+        ):
+            state.check_min_version("Star unpack syntax", (3, 11), index.line, index.column)
         read_loc(data, expr)
         expect_end_tag(data)
         return expr
@@ -1425,7 +1478,7 @@ def read_expression(state: State, data: ReadBuffer) -> Expression:
                 s = StrExpr(read_str(data))
                 read_loc(data, s)
                 fitems.append(s)
-        expr = build_fstring_join(data, fitems)
+        expr = build_fstring_join(data, fitems, set_has_surrogates=True)
         expect_end_tag(data)
         return expr
     elif tag == nodes.LIST_COMPREHENSION:
@@ -1522,6 +1575,7 @@ def read_expression(state: State, data: ReadBuffer) -> Expression:
                 read_loc(data, s)
                 titems.append(s)
         expr = TemplateStrExpr(titems)
+        expr.has_surrogates = read_bool(data)
         read_loc(data, expr)
         state.check_min_version(
             "t-strings", (3, 14), expr.line, expr.column, enforce_in_stubs=True
@@ -1552,7 +1606,11 @@ def read_expression(state: State, data: ReadBuffer) -> Expression:
         expect_end_tag(data)
         return expr
     elif tag == nodes.DICT_COMPREHENSION:
-        key = read_expression(state, data)
+        has_key = read_bool(data)
+        if has_key:
+            key = read_expression(state, data)
+        else:
+            key = None
         value = read_expression(state, data)
         n_generators = read_int(data)
         indices = [read_expression(state, data) for _ in range(n_generators)]
@@ -1561,6 +1619,9 @@ def read_expression(state: State, data: ReadBuffer) -> Expression:
         is_async = [read_bool(data) for _ in range(n_generators)]
         expr = DictionaryComprehension(key, value, indices, sequences, condlists, is_async)
         read_loc(data, expr)
+        if key is None:
+            # TODO: add similar check to other kinds of comprehensions.
+            state.check_min_version("Unpacking in comprehensions", (3, 15), expr.line, expr.column)
         expect_end_tag(data)
         return expr
     elif tag == nodes.SET_COMPREHENSION:
@@ -1579,7 +1640,14 @@ def read_expression(state: State, data: ReadBuffer) -> Expression:
     elif tag == nodes.ASSIGNMENT_EXPR:
         target = read_expression(state, data)
         value = read_expression(state, data)
-        assert isinstance(target, NameExpr), f"Expected NameExpr for target, got {type(target)}"
+        if not isinstance(target, NameExpr):
+            # The only valid target of ":=" is a plain name, but ruff's error
+            # recovery can produce other targets for invalid code such as
+            # "(f() := 1)". Ruff already reports a syntax error in this case, so
+            # here we just recover with a placeholder name instead of crashing.
+            placeholder = NameExpr("")
+            placeholder.set_line(target)
+            target = placeholder
         expr = AssignmentExpr(target, value)
         read_loc(data, expr)
         expect_end_tag(data)
@@ -1634,16 +1702,30 @@ def read_fstring_items(state: State, data: ReadBuffer) -> Expression:
     return build_fstring_join(data, items)
 
 
-def build_fstring_join(data: ReadBuffer, items: list[Expression]) -> Expression:
+def build_fstring_join(
+    data: ReadBuffer, items: list[Expression], set_has_surrogates: bool = False
+) -> Expression:
     items = collapse_consecutive_str_items(items)
     if len(items) == 1:
         expr = items[0]
+        if set_has_surrogates:
+            if isinstance(expr, StrExpr):
+                target = expr
+            else:
+                assert isinstance(expr, CallExpr) and isinstance(expr.callee, MemberExpr)
+                # It doesn't really matter where to set the surrogates flag,
+                # so we set it on the outermost format string.
+                target = expr.callee.expr
+                assert isinstance(target, StrExpr)
+            target.has_surrogates = read_bool(data)
         read_loc(data, expr)
         return expr
     args = ListExpr(items)
     str_expr = StrExpr("")
     member = MemberExpr(str_expr, "join")
     call = CallExpr(member, [args], [ARG_POS], [None])
+    if set_has_surrogates:
+        str_expr.has_surrogates = read_bool(data)
     read_loc(data, call)
     set_line_column(args, call)
     set_line_column(str_expr, call)

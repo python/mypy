@@ -1657,6 +1657,18 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                 object_type,
                 original_type=callee,
             )
+        elif isinstance(callee, LiteralType):
+            return self.check_call(
+                callee.fallback,
+                args,
+                arg_kinds,
+                context,
+                arg_names,
+                callable_node,
+                callable_name,
+                object_type,
+                original_type=original_type,
+            )
         elif isinstance(callee, UninhabitedType):
             ret = UninhabitedType()
             ret.ambiguous = callee.ambiguous
@@ -3595,7 +3607,11 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
 
     def visit_ellipsis(self, e: EllipsisExpr) -> Type:
         """Type check '...'."""
-        return self.named_type("builtins.ellipsis")
+        try:
+            return self.named_type("types.EllipsisType")
+        except KeyError:
+            # In test cases 'types' may not be available or may be shadowed.
+            return AnyType(TypeOfAny.special_form)
 
     def visit_op_expr(self, e: OpExpr) -> Type:
         """Type check a binary operator expression."""
@@ -6008,6 +6024,9 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                 name="<dictionary-comprehension>",
                 variables=[ktdef, vtdef],
             )
+            if e.key is None:
+                self.chk.fail("PEP 798 is not supported yet", e)
+                return AnyType(TypeOfAny.from_error)
             return self.check_call(
                 constructor, [e.key, e.value], [nodes.ARG_POS, nodes.ARG_POS], e
             )[0]

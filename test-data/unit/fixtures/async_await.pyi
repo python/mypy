@@ -1,3 +1,4 @@
+import types
 import typing
 
 T = typing.TypeVar('T')
@@ -23,4 +24,3 @@ class StopIteration(BaseException): pass
 class StopAsyncIteration(BaseException): pass
 def iter(obj: typing.Any) -> typing.Any: pass
 def next(obj: typing.Any) -> typing.Any: pass
-class ellipsis: ...

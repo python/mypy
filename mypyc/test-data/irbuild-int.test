@@ -141,12 +141,6 @@ def f4() -> int:
 def f5() -> int:
     return C.B
 [out]
-def C.__mypyc_defaults_setup(__mypyc_self__):
-    __mypyc_self__ :: __main__.C
-L0:
-    __mypyc_self__.A = 2
-    __mypyc_self__.B = -2
-    return 1
 def f1():
 L0:
     return -2

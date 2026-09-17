@@ -47,12 +47,18 @@ from mypyc.codegen.emitwrapper import (
 from mypyc.codegen.literals import Literals
 from mypyc.common import (
     EXT_SUFFIX,
+    GENERATOR_HELPER_NAME,
     IS_FREE_THREADED,
     MODULE_PREFIX,
     PREFIX,
     RUNTIME_C_FILES,
     TOP_LEVEL_NAME,
     TYPE_VAR_PREFIX,
+    module_exec_name,
+    module_import_state_name,
+    module_init_name,
+    module_init_only_name,
+    module_lock_api_name,
     shared_lib_name,
     short_id_from_name,
 )
@@ -78,6 +84,7 @@ from mypyc.irbuild.mapper import Mapper
 from mypyc.irbuild.prepare import load_type_map
 from mypyc.namegen import NameGenerator, exported_name
 from mypyc.options import CompilerOptions
+from mypyc.transform.borrow_generator_attrs import borrow_generator_attrs
 from mypyc.transform.copy_propagation import do_copy_propagation
 from mypyc.transform.exceptions import insert_exception_handling
 from mypyc.transform.flag_elimination import do_flag_elimination
@@ -279,11 +286,11 @@ def compile_scc_to_ir(
     if errors.num_errors > 0:
         return modules
 
-    env_user_functions = {}
+    generator_spill_owners = {}
     for module in modules.values():
         for cls in module.classes:
             if cls.env_user_function:
-                env_user_functions[cls.env_user_function] = cls
+                generator_spill_owners[cls.env_user_function] = cls
 
     for module in modules.values():
         module_path = result.graph[module.fullname].xpath
@@ -293,11 +300,13 @@ def compile_scc_to_ir(
                 insert_uninit_checks(fn, compiler_options.strict_traceback_checks)
                 # Insert exception handling.
                 insert_exception_handling(fn, compiler_options.strict_traceback_checks)
+                if fn in generator_spill_owners:
+                    borrow_generator_attrs(fn, generator_spill_owners[fn])
                 # Insert reference count handling.
                 insert_ref_count_opcodes(fn)
 
-                if fn in env_user_functions:
-                    insert_spills(fn, env_user_functions[fn])
+                if fn in generator_spill_owners:
+                    insert_spills(fn, generator_spill_owners[fn])
 
                 if compiler_options.log_trace:
                     insert_event_trace_logging(fn, compiler_options)
@@ -692,6 +701,9 @@ class GroupGenerator:
         base_emitter.emit_line(f'#include "__native_internal{self.short_group_suffix}.h"')
         emitter = base_emitter
 
+        if self.use_shared_lib:
+            self.declare_module_lock_api()
+
         self.generate_literal_tables()
 
         for module_name, module in self.modules.items():
@@ -708,12 +720,19 @@ class GroupGenerator:
                 if cl.is_ext_class:
                     generate_class(cl, module_name, emitter)
 
+            running_flag_classes = {cl.name: cl for cl in module.classes if cl.has_running_flag}
+
             # Generate Python extension module definitions and module initialization functions.
             self.generate_module_def(emitter, module_name, module)
 
             for fn in module.functions:
                 emitter.emit_line()
-                generate_native_function(fn, emitter, self.source_paths[module_name], module_name)
+                running_flag_class = None
+                if fn.decl.name == GENERATOR_HELPER_NAME and fn.class_name is not None:
+                    running_flag_class = running_flag_classes.get(fn.class_name)
+                generate_native_function(
+                    fn, emitter, self.source_paths[module_name], module_name, running_flag_class
+                )
                 if fn.name != TOP_LEVEL_NAME and not fn.internal:
                     emitter.emit_line()
                     if is_fastcall_supported(fn, emitter.capi_version):
@@ -947,6 +966,17 @@ class GroupGenerator:
             "",
         )
 
+        lock_api = module_lock_api_name(self.group_name)
+        emitter.emit_lines(
+            f"if ({lock_api} == NULL) {{",
+            f"{lock_api} = CPyModuleLockAPI_Alloc();",
+            f"if ({lock_api} == NULL) goto fail;",
+            "}",
+            "if (intern_strings() < 0) goto fail;",
+            "if (CPyGlobalsInit() < 0) goto fail;",
+            "",
+        )
+
         if self.compiler_options.separate:
             emitter.emit_lines(
                 'capsule = PyCapsule_New(&exports, "{}.exports", NULL);'.format(
@@ -981,20 +1011,16 @@ class GroupGenerator:
         for mod in self.modules:
             name = exported_name(mod)
             if self.multi_phase_init:
-                capsule_func_prefix = "CPyExec_"
+                capsule_func_name = module_exec_name(mod)
                 capsule_name_prefix = "exec_"
-                emitter.emit_line(f"extern int CPyExec_{name}(PyObject *);")
+                emitter.emit_line(f"extern int {capsule_func_name}(PyObject *);")
             else:
-                capsule_func_prefix = "CPyInit_"
+                capsule_func_name = module_init_name(mod)
                 capsule_name_prefix = "init_"
-                emitter.emit_line(f"extern PyObject *CPyInit_{name}(void);")
+                emitter.emit_line(f"extern PyObject *{capsule_func_name}(void);")
             emitter.emit_lines(
-                'capsule = PyCapsule_New((void *){}{}, "{}.{}{}", NULL);'.format(
-                    capsule_func_prefix,
-                    name,
-                    shared_lib_name(self.group_name),
-                    capsule_name_prefix,
-                    name,
+                'capsule = PyCapsule_New((void *){}, "{}.{}{}", NULL);'.format(
+                    capsule_func_name, shared_lib_name(self.group_name), capsule_name_prefix, name
                 ),
                 "if (!capsule) {",
                 "goto fail;",
@@ -1156,7 +1182,7 @@ class GroupGenerator:
         self, emitter: Emitter, module_prefix: str, module_name: str
     ) -> None:
         name = f"{module_prefix}_slots"
-        exec_name = f"CPyExec_{exported_name(module_name)}"
+        exec_name = module_exec_name(module_name)
 
         emitter.emit_line(f"static PyModuleDef_Slot {name}[] = {{")
         emitter.emit_line(f"{{Py_mod_exec, {exec_name}}},")
@@ -1241,7 +1267,7 @@ class GroupGenerator:
             error_stmt = "    goto fail;"
             name = short_id_from_name(fn.name, fn.decl.shortname, fn.line)
             wrapper_name = emitter.emit_cpyfunction_instance(fn, name, filepath, error_stmt)
-            name_obj = f"{wrapper_name}_name"
+            name_obj = f"name_{wrapper_name}"
             emitter.emit_line(f'PyObject *{name_obj} = PyUnicode_FromString("{fn.name}");')
             emitter.emit_line(f"if (unlikely(!{name_obj}))")
             emitter.emit_line(error_stmt)
@@ -1262,12 +1288,16 @@ class GroupGenerator:
         exec function for each module and these will be called by the shims
         via Capsules.
         """
-        exec_name = f"CPyExec_{exported_name(module_name)}"
+        exec_name = module_exec_name(module_name)
         declaration = f"int {exec_name}(PyObject *module)"
         emitter.context.declarations[exec_name] = HeaderDeclaration(declaration + ";")
+        impl_name = f"{exec_name}__impl"
         module_static = self.module_internal_static_name(module_name, emitter)
-        emitter.emit_lines(declaration, "{")
-        emitter.emit_line("intern_strings();")
+        state = module_import_state_name(module_name)
+        module_cache = emitter.static_name(module_name, None, prefix=MODULE_PREFIX)
+        emitter.emit_lines(f"static int {impl_name}(PyObject *module)", "{")
+        if not self.use_shared_lib:
+            emitter.emit_lines("if (intern_strings() < 0)", "    return -1;")
         if self.compiler_options.depends_on_librt_internal:
             emitter.emit_line("if (import_librt_internal() < 0) {")
             emitter.emit_line("return -1;")
@@ -1333,7 +1363,10 @@ class GroupGenerator:
                 name_prefix = cl.name_prefix(emitter.names)
                 emitter.emit_line(f"CPyDef_{name_prefix}_trait_vtable_setup();")
 
-        emitter.emit_lines("if (CPyGlobalsInit() < 0)", "    goto fail;")
+        if not self.use_shared_lib:
+            # With shared lib we initialize globals in its init function in case
+            # modules are executed concurrently.
+            emitter.emit_lines("if (CPyGlobalsInit() < 0)", "    goto fail;")
 
         self.generate_top_level_call(module, emitter)
 
@@ -1357,13 +1390,20 @@ class GroupGenerator:
         emitter.emit_line("return -1;")
         emitter.emit_line("}")
 
+        emitter.emit_lines(
+            declaration,
+            "{",
+            f"return CPyImport_Exec(module, {impl_name}, &{state}, &{module_cache});",
+            "}",
+        )
+
     def emit_init_only_func(self, emitter: Emitter, module_name: str, module_prefix: str) -> None:
         """Emit CPyInitOnly_* which creates the module object without executing the body.
 
         This allows the caller to set up attributes like __file__ and __package__
         before the module body runs. Used for same-group native imports.
         """
-        init_only_name = f"CPyInitOnly_{exported_name(module_name)}"
+        init_only_name = module_init_only_name(module_name)
         init_only_decl = f"PyObject *{init_only_name}(void)"
         emitter.context.declarations[init_only_name] = HeaderDeclaration(init_only_decl + ";")
         module_static = self.module_internal_static_name(module_name, emitter)
@@ -1387,7 +1427,7 @@ class GroupGenerator:
         if not self.use_shared_lib:
             declaration = f"PyMODINIT_FUNC PyInit_{module_name}(void)"
         else:
-            n = f"CPyInit_{exported_name(module_name)}"
+            n = module_init_name(module_name)
             declaration = f"PyObject *{n}(void)"
             emitter.context.declarations[n] = HeaderDeclaration(declaration + ";")
 
@@ -1398,7 +1438,7 @@ class GroupGenerator:
             emitter.emit_line("}")
             return
 
-        exec_func = f"CPyExec_{exported_name(module_name)}"
+        exec_func = module_exec_name(module_name)
 
         if self.use_shared_lib:
             self.emit_init_only_func(emitter, module_name, module_prefix)
@@ -1408,6 +1448,7 @@ class GroupGenerator:
         module_static = self.module_internal_static_name(module_name, emitter)
 
         emitter.emit_line("PyObject* modname = NULL;")
+        emitter.emit_line("PyObject *initializing_spec = NULL;")
         emitter.emit_lines(
             f"if ({module_static}) {{",
             f"Py_INCREF({module_static});",
@@ -1453,15 +1494,22 @@ class GroupGenerator:
         emitter.emit_line("Py_DECREF(shared_lib_file);")
         emitter.emit_line("if (rv < 0) goto fail;")
 
-        # Register in sys.modules early so that circular imports via
-        # CPyImport_ImportNative can detect that this module is already
-        # being initialized and avoid re-executing the module body.
+        # Mark the module as initializing before publishing it so that CPython's
+        # import fast path waits on the module lock. Publishing early also lets
+        # CPyImport_ImportNative detect circular imports.
+        emitter.emit_line(f"initializing_spec = CPyImport_BeginInitializing({module_static});")
+        emitter.emit_line("if (initializing_spec == NULL)")
+        emitter.emit_line("    goto fail;")
         emitter.emit_line(
             f"if (PyObject_SetItem(PyImport_GetModuleDict(), modname, {module_static}) < 0)"
         )
         emitter.emit_line("    goto fail;")
         emitter.emit_line("Py_CLEAR(modname);")
         emitter.emit_lines(f"if ({exec_func}({module_static}) != 0)", "    goto fail;")
+        emitter.emit_line("rv = CPyImport_EndInitializing(initializing_spec);")
+        emitter.emit_line("initializing_spec = NULL;")
+        emitter.emit_line("if (rv < 0)")
+        emitter.emit_line("    goto fail;")
         emitter.emit_line(f"return {module_static};")
         emitter.emit_lines("fail:")
         # Clean up on failure: remove from sys.modules and clear the static
@@ -1476,6 +1524,10 @@ class GroupGenerator:
         emitter.emit_line("    PyObject_DelItem(PyImport_GetModuleDict(), modname);")
         emitter.emit_line("    PyErr_Clear();")
         emitter.emit_line("    Py_DECREF(modname);")
+        emitter.emit_line("    if (initializing_spec != NULL) {")
+        emitter.emit_line("        CPyImport_EndInitializing(initializing_spec);")
+        emitter.emit_line("        PyErr_Clear();")
+        emitter.emit_line("    }")
         emitter.emit_line(f"    Py_CLEAR({module_static});")
         emitter.emit_line("    PyErr_Restore(exc_type, exc_val, exc_tb);")
         emitter.emit_line("}")
@@ -1558,9 +1610,22 @@ class GroupGenerator:
         if module_name in self.modules:
             internal_static_name = self.module_internal_static_name(module_name, emitter)
             self.declare_global("CPyModule *", internal_static_name, initializer="NULL")
+            state_name = module_import_state_name(module_name)
+            if state_name not in self.context.declarations:
+                self.context.declarations[state_name] = HeaderDeclaration(
+                    f"CPyImportState {state_name};", defn=[f"CPyImportState {state_name} = {{0}};"]
+                )
         static_name = emitter.static_name(module_name, None, prefix=MODULE_PREFIX)
-        self.declare_global("CPyModule *", static_name)
-        self.simple_inits.append((static_name, "Py_None"))
+        self.declare_global("CPyModuleCache ", static_name)
+        self.simple_inits.append((static_name, "(CPyModuleCache)Py_None"))
+
+    def declare_module_lock_api(self) -> None:
+        assert self.group_name is not None
+        name = module_lock_api_name(self.group_name)
+        if name not in self.context.declarations:
+            self.context.declarations[name] = HeaderDeclaration(
+                f"CPyModuleLockAPI *{name};", defn=[f"CPyModuleLockAPI *{name} = NULL;"]
+            )
 
     def declare_imports(self, imps: Iterable[str], emitter: Emitter) -> None:
         for imp in imps:

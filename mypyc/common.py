@@ -6,6 +6,7 @@ import sysconfig
 from typing import Any, Final
 
 from mypy.util import unnamed_function
+from mypyc.namegen import exported_name
 
 PREFIX: Final = "CPyPy_"  # Python wrappers
 NATIVE_PREFIX: Final = "CPyDef_"  # Native functions etc.
@@ -14,19 +15,64 @@ REG_PREFIX: Final = "cpy_r_"  # Registers
 STATIC_PREFIX: Final = "CPyStatic_"  # Static variables (for literals etc.)
 TYPE_PREFIX: Final = "CPyType_"  # Type object struct
 MODULE_PREFIX: Final = "CPyModule_"  # Cached modules
+IMPORT_STATE_PREFIX: Final = "CPyImportState_"  # Native module initialization state
+MODULE_LOCK_API_PREFIX: Final = "CPyModuleLockAPI_"  # CPython module-lock API cache
 TYPE_VAR_PREFIX: Final = "CPyTypeVar_"  # Type variables when using new-style Python 3.12 syntax
 ATTR_PREFIX: Final = "_"  # Attributes
 FAST_PREFIX: Final = "__mypyc_fast_"  # Optimized methods in non-extension classes
 
 ENV_ATTR_NAME: Final = "__mypyc_env__"
 NEXT_LABEL_ATTR_NAME: Final = "__mypyc_next_label__"
+GENERATOR_HELPER_NAME: Final = "__mypyc_generator_helper__"
 TEMP_ATTR_NAME: Final = "__mypyc_temp__"
 LAMBDA_NAME: Final = "__mypyc_lambda__"
 PROPSET_PREFIX: Final = "__mypyc_setter__"
 SELF_NAME: Final = "__mypyc_self__"
 MYPYC_DEFAULTS_SETUP: Final = "__mypyc_defaults_setup"
 GENERATOR_ATTRIBUTE_PREFIX: Final = "__mypyc_generator_attribute__"
+GENERATOR_FRAME_ATTRIBUTE_PREFIX: Final = "__mypyc_generator_frame_attribute__"
 CPYFUNCTION_NAME = "__cpyfunction__"
+
+
+def module_import_state_name(module_name: str) -> str:
+    return f"{IMPORT_STATE_PREFIX}{exported_name(module_name)}"
+
+
+def module_lock_api_name(group_name: str) -> str:
+    return f"{MODULE_LOCK_API_PREFIX}{exported_name(group_name)}"
+
+
+def module_init_only_name(module_name: str) -> str:
+    return f"CPyInitOnly_{exported_name(module_name)}"
+
+
+def module_init_name(module_name: str) -> str:
+    return f"CPyInit_{exported_name(module_name)}"
+
+
+def module_exec_name(module_name: str) -> str:
+    return f"CPyExec_{exported_name(module_name)}"
+
+
+def generator_frame_attribute_prefix(class_fullname: str, *, is_final_class: bool) -> str:
+    """Return the source-attribute prefix private to a generator frame class."""
+    if is_final_class:
+        return GENERATOR_FRAME_ATTRIBUTE_PREFIX
+    return f"{GENERATOR_FRAME_ATTRIBUTE_PREFIX}{exported_name(class_fullname)}_"
+
+
+def source_name_from_generator_attribute(name: str, class_fullname: str) -> str:
+    """Recover a source name from a generator frame or closure attribute."""
+    qualified_prefix = generator_frame_attribute_prefix(class_fullname, is_final_class=False)
+    if name.startswith(qualified_prefix):
+        return name.removeprefix(qualified_prefix)
+    if name.startswith(GENERATOR_FRAME_ATTRIBUTE_PREFIX):
+        return name.removeprefix(GENERATOR_FRAME_ATTRIBUTE_PREFIX)
+    return name.removeprefix(GENERATOR_ATTRIBUTE_PREFIX)
+
+
+# Omits the prefix added to user attribute fields, so it cannot collide with one.
+RUNNING_FIELD: Final = "mypyc_running"
 
 # Max short int we accept as a literal is based on 32-bit platforms,
 # so that we can just always emit the same code.
@@ -92,6 +138,7 @@ RUNTIME_C_FILES: Final = [
     "tuple_ops.c",
     "exc_ops.c",
     "misc_ops.c",
+    "locks.c",
     "generic_ops.c",
     "pythonsupport.c",
     "function_wrapper.c",

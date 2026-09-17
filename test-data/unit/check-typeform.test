@@ -751,7 +751,6 @@ class dict: pass
 class str: pass
 class type: pass
 class tuple: pass
-class ellipsis: pass
 class BaseException: pass
 class float: pass
 [typing fixtures/typing-full.pyi]

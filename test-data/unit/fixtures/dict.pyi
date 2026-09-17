@@ -3,6 +3,7 @@
 # NOTE: Use dict-full.pyi if you need more builtins instead of adding here,
 #       if feasible.
 
+import types
 from _typeshed import SupportsKeysAndGetItem
 import _typeshed
 from typing import (
@@ -59,7 +60,6 @@ class function: pass
 class float: pass
 class complex: pass
 class bool(int): pass
-class ellipsis: pass
 class BaseException: pass
 
 def isinstance(x: object, t: Union[type, Tuple[type, ...]]) -> bool: pass
