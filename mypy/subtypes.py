@@ -925,16 +925,16 @@ class SubtypeVisitor(TypeVisitor[bool]):
                 return False
             return all(self._is_subtype(li, right_item) for li in middle)
         else:
-            if len(left.items) < len(right.items):
-                # There are some items on the left that will never have a matching length
-                # on the right.
-                return False
             left_prefix = left_unpack_index
             left_suffix = len(left.items) - left_prefix - 1
             left_unpack = left.items[left_unpack_index]
             assert isinstance(left_unpack, UnpackType)
             left_unpacked = get_proper_type(left_unpack.type)
             if not isinstance(left_unpacked, Instance):
+                if len(left.items) < len(right.items):
+                    # There are some items on the left that will never have a matching length
+                    # on the right.
+                    return False
                 # *Ts unpack can't be split, except if it is all mapped to Anys or objects.
                 if self.is_top_type(right_item):
                     right_prefix_types, middle, right_suffix_types = split_with_prefix_and_suffix(
@@ -957,6 +957,10 @@ class SubtypeVisitor(TypeVisitor[bool]):
             # For this we first check the "asymptotic case", i.e. that both unpacks a subtypes,
             # and then check subtyping for all finite overlaps.
             use_any = isinstance(get_proper_type(left_item), AnyType)
+            if not use_any and len(left.items) < len(right.items):
+                # There are some items on the left that will never have a matching length
+                # on the right.
+                return False
             if not self._is_subtype(left_item, right_item):
                 return False
             max_overlap = max(0, right_prefix - left_prefix, right_suffix - left_suffix)
@@ -970,7 +974,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
                         return False
                 elif use_any:
                     return True
-            return True
+            return not use_any
 
     def is_top_type(self, typ: Type) -> bool:
         if not self.proper_subtype and isinstance(get_proper_type(typ), AnyType):
