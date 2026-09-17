@@ -511,7 +511,6 @@ class SubtypeVisitor(TypeVisitor[bool]):
                         return self._is_subtype(left, unpacked)
             if left.type.has_base(right.partial_fallback.type.fullname):
                 mapped = map_instance_to_supertype(left, right.partial_fallback.type)
-                # print("MMMM", left, right, mapped)
                 if not self.proper_subtype:
                     # Special cases to consider:
                     #   * Plain tuple[Any, ...] instance is a subtype of all tuple types.
@@ -520,7 +519,6 @@ class SubtypeVisitor(TypeVisitor[bool]):
                     if is_erased_instance(mapped) and mapped.type.fullname == "builtins.tuple":
                         return True
                 if is_normalized_instance(mapped):
-                    # print("HHHH", mapped, right.partial_fallback)
                     if self._is_subtype(mapped, right.partial_fallback):
                         return True
             return False
@@ -824,7 +822,6 @@ class SubtypeVisitor(TypeVisitor[bool]):
             # doesn't have one, we will fall through to False down the line.
             if self.variadic_tuple_subtype(left, right):
                 return True
-            # print("TTT", left.items, right.items)
             left = self.adjust_left_if_possible(left, right)
             if len(left.items) != len(right.items):
                 return False
