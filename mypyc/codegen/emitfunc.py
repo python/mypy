@@ -447,10 +447,12 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         """Emit the load of a native attribute into 'dest', taking a new reference.
 
         On free-threaded builds, reading a single reference-counted 'PyObject *' field
-        and taking a new reference must be done atomically to avoid a use-after-free
-        race with a concurrent setter. CPy_GetAttrRef performs the load and incref
-        atomically and returns a new reference (or NULL if undefined), so callers must
-        NOT emit a separate inc_ref. Return True in that case so the caller can skip it.
+        and taking a new reference must be synchronized to avoid a use-after-free race
+        with a concurrent setter. CPy_GetAttrRef uses an optimistic validated incref
+        with a locked fallback and returns a new reference (or NULL if undefined, which
+        on a free-threaded build includes an attribute deleted by another thread while
+        the read was in flight), so callers must NOT emit a separate inc_ref. Return
+        True in that case so the caller can skip it.
 
         Final attributes are never rebound (no setter), so there is no concurrent writer
         and no use-after-free window; an owned read uses the cheaper CPy_GetAttrRefFinal
@@ -472,7 +474,9 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         if use_get_attr_ref and cl.is_final_attr(op.attr):
             self.emitter.emit_line(f"{dest} = CPy_GetAttrRefFinal((PyObject **)&{attr_expr});")
         elif use_get_attr_ref:
-            self.emitter.emit_line(f"{dest} = CPy_GetAttrRef((PyObject **)&{attr_expr});")
+            self.emitter.emit_line(
+                f"{dest} = CPy_GetAttrRef((PyObject *){obj}, (PyObject **)&{attr_expr});"
+            )
         else:
             self.emitter.emit_line(f"{dest} = {attr_expr};")
         return use_get_attr_ref
@@ -629,20 +633,15 @@ class FunctionEmitterVisitor(OpVisitor[None]):
             and is_simple_refcounted_pointer(attr_rtype)
             and not cl.attrs_are_thread_confined()
         ):
-            # In free-threaded builds, publishing a single reference-counted
-            # 'PyObject *' field must be atomic so a concurrent reader (see
-            # CPy_GetAttrRef) never observes a torn pointer or a freed value.
-            # Both helpers steal the reference to src.
+            # These helpers implement free-threaded attribute stores and steal src.
             attr_expr = self.get_attr_expr(obj, op, decl_cl)
             if op.is_init:
-                # The attribute is known to be previously undefined (NULL), so
-                # there is no old value to reclaim; a relaxed store suffices
-                # (self's later publication provides the release barrier -- see
-                # CPy_InitAttrRef).
+                # Initialization happens before self can escape.
                 self.emitter.emit_line(f"CPy_InitAttrRef((PyObject **)&{attr_expr}, {src});")
             else:
-                # Atomically swap in the new value and reclaim the old one.
-                self.emitter.emit_line(f"CPy_SetAttrRef((PyObject **)&{attr_expr}, {src});")
+                self.emitter.emit_line(
+                    f"CPy_SetAttrRef((PyObject *){obj}, (PyObject **)&{attr_expr}, {src});"
+                )
             if op.error_kind == ERR_FALSE:
                 self.emitter.emit_line(f"{dest} = 1;")
         else:

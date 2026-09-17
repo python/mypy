@@ -17,10 +17,13 @@
 
 #if defined(__clang__) || defined(__GNUC__)
 #define CPy_NOINLINE __attribute__((noinline))
+#define CPy_COLD __attribute__((cold))
 #elif defined(_MSC_VER)
 #define CPy_NOINLINE __declspec(noinline)
+#define CPy_COLD
 #else
 #define CPy_NOINLINE
+#define CPy_COLD
 #endif
 
 #ifndef Py_GIL_DISABLED

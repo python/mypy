@@ -127,7 +127,9 @@ static void CPyImport_DecRefOld(PyObject *previous) {
 #ifdef Py_GIL_DISABLED
     // Atomic loads return borrowed references, so defer releasing the old
     // reference until concurrent readers have passed a quiescent point.
-    CPy_DecRefAttrOld(previous);
+    if (!_Py_IsImmortal(previous)) {
+        _PyObject_XDecRefDelayed(previous);
+    }
 #else
     Py_DECREF(previous);
 #endif
