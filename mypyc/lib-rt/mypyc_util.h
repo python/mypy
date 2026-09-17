@@ -17,10 +17,13 @@
 
 #if defined(__clang__) || defined(__GNUC__)
 #define CPy_NOINLINE __attribute__((noinline))
+#define CPy_COLD __attribute__((cold))
 #elif defined(_MSC_VER)
 #define CPy_NOINLINE __declspec(noinline)
+#define CPy_COLD
 #else
 #define CPy_NOINLINE
+#define CPy_COLD
 #endif
 
 #ifndef Py_GIL_DISABLED
@@ -129,6 +132,11 @@ typedef size_t CPyPtr;
 #define CPY_TAGGED_ABS_MIN (0-(size_t)CPY_TAGGED_MIN)
 
 typedef PyObject CPyModule;
+
+// Module caches use the low bit to distinguish a module that may still be
+// initializing from one whose initialization has been verified. PyObject
+// pointers are aligned, so the low bit is otherwise unused.
+typedef uintptr_t CPyModuleCache;
 
 // Tag bit used for long integers
 #define CPY_INT_TAG 1

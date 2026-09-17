@@ -135,8 +135,52 @@ async def sleep(t: float) -> None: ...
 
 [typing fixtures/typing-full.pyi]
 
+[case testRunAsyncLocalsAcrossAwait]
+import asyncio
+from typing import List
+
+from testutil import assertRaises
+
+async def increment(value: int) -> int:
+    await asyncio.sleep(0)
+    return value + 1
+
+async def accumulate(count: int) -> int:
+    total = 0
+    for value in range(count):
+        total += await increment(value)
+    return total
+
+async def return_through_finally(log: List[str]) -> int:
+    try:
+        return 7
+    finally:
+        await asyncio.sleep(0)
+        log.append("finally")
+
+async def deleted_across_await(delete: bool) -> str:
+    value = "live"
+    if delete:
+        del value
+    await asyncio.sleep(0)
+    return value
+
+async def test_async_locals_across_await() -> None:
+    assert await accumulate(4) == 10
+    log: List[str] = []
+    assert await return_through_finally(log) == 7
+    assert log == ["finally"]
+    assert await deleted_across_await(False) == "live"
+    with assertRaises(AttributeError):
+        await deleted_across_await(True)
+
+[file asyncio/__init__.pyi]
+async def sleep(delay: float) -> None: ...
+
+[typing fixtures/typing-full.pyi]
+
 [case testRunAsyncAwaitInVariousPositions]
-from typing import cast, Any
+from typing import Any, Generator, cast
 
 import asyncio
 
@@ -220,6 +264,33 @@ async def construct(s: str) -> str:
 async def test_construct() -> None:
     assert await construct("foo") == "foo!foo?"
 
+class Box:
+    def __init__(self, value: str) -> None:
+        self.value = value
+
+class Suspend:
+    def __await__(self) -> Generator[Any, Any, int]:
+        yield None
+        return 7
+
+def combine(value: Box, number: int) -> str:
+    return value.value + str(number)
+
+async def frame_arg_across_await(value: Box) -> str:
+    # Evaluation reads value before suspending, but combine() uses it after resume.
+    return combine(value, await Suspend())
+
+def drive(coro: Any) -> Any:
+    assert coro.send(None) is None
+    try:
+        coro.send(None)
+    except StopIteration as exc:
+        return exc.value
+    assert False
+
+def test_generator_attribute_borrow_does_not_cross_await() -> None:
+    assert drive(frame_arg_across_await(Box("value"))) == "value7"
+
 [file asyncio/__init__.pyi]
 async def sleep(t: float) -> None: ...
 
@@ -248,8 +319,12 @@ async def async_with_vectorcall() -> str:
     async with ctx:
         return await async_val("vc")
 
+async def async_with_pass() -> None:
+    async with async_ctx():
+        pass
+
 [file driver.py]
-from native import async_with, async_with_vectorcall
+from native import async_with, async_with_pass, async_with_vectorcall
 from testutil import run_generator
 
 yields, val = run_generator(async_with(), [None, 'x', None])
@@ -259,6 +334,10 @@ assert val == 'x', val
 yields, val = run_generator(async_with_vectorcall(), [None, 'x', None])
 assert yields == ('enter', 'vc', 'exit'), yields
 assert val == 'x', val
+
+yields, val = run_generator(async_with_pass(), [None, None])
+assert yields == ('enter', 'exit'), yields
+assert val is None
 
 [case testAsyncReturn]
 from testutil import async_val
@@ -2083,6 +2162,47 @@ from typing import Any, Generator
 
 def run(x: object) -> object: ...
 
+[case testCPyFunctionVariableNameConflict]
+class C:
+    async def operation(self) -> int:
+        return 42
+
+    async def operation_name(self) -> str:
+        return "name"
+
+    async def name_operation(self) -> str:
+        return await self.operation_name()
+
+    async def operation_wrapper(self) -> int:
+        return await self.operation()
+
+    async def wrapper_operation(self) -> int:
+        return await self.operation()
+
+async def test_variable_name_conflict() -> None:
+    c = C()
+    assert await c.operation() == 42
+    assert await c.operation_wrapper() == 42
+    assert await c.wrapper_operation() == 42
+    assert await c.operation_name() == "name"
+    assert await c.name_operation() == "name"
+
+[file driver.py]
+import asyncio
+
+from native import C, test_variable_name_conflict
+
+async def test_variable_name_conflict_interpreted() -> None:
+    c = C()
+    assert await c.operation() == 42
+    assert await c.operation_wrapper() == 42
+    assert await c.wrapper_operation() == 42
+    assert await c.operation_name() == "name"
+    assert await c.name_operation() == "name"
+
+asyncio.run(test_variable_name_conflict())
+asyncio.run(test_variable_name_conflict_interpreted())
+
 [case testNestedCoroutineCallsAnotherNestedFunction]
 import asyncio
 import functools
@@ -2496,5 +2616,117 @@ def test_close_suspended_native_child() -> None:
     coro = parent(3)
     coro.send(None)
     coro.close()
+
+[typing fixtures/typing-full.pyi]
+
+[case testRunAsyncNativeCoroutineDrivenByInterpretedCode]
+from typing import Any, Generator
+
+class Suspend:
+    def __await__(self) -> Generator[Any, Any, None]:
+        yield None
+
+async def inc(x: int) -> int:
+    return x + 1
+
+async def suspend_then_inc(x: int) -> int:
+    await Suspend()
+    return x + 1
+
+async def nested(x: int) -> int:
+    return await suspend_then_inc(x) + await inc(x)
+
+class MyError(Exception):
+    pass
+
+async def fails() -> int:
+    await Suspend()
+    raise MyError()
+
+[file driver.py]
+import asyncio
+
+from native import inc, suspend_then_inc, nested, fails, MyError
+
+async def main() -> None:
+    # Exercise native coroutines through interpreted 'await', including immediate,
+    # suspended, nested, and exceptional completion.
+    assert await inc(1) == 2
+    assert await suspend_then_inc(1) == 2
+    assert await nested(3) == 8
+    try:
+        await fails()
+    except MyError:
+        pass
+    else:
+        assert False
+
+    # asyncio.gather schedules each native coroutine as a C Task, which drives it through
+    # PyIter_Send and its am_send slot. The next case exercises the slot directly.
+    assert await asyncio.gather(inc(5), nested(5)) == [6, 12]
+
+asyncio.run(main())
+
+# The Python-level send method reports normal completion by raising StopIteration with
+# the coroutine's return value.
+coro = inc(1)
+try:
+    coro.send(None)
+except StopIteration as e:
+    assert e.value == 2
+else:
+    assert False
+
+# TODO: Reject reuse with RuntimeError("cannot reuse already awaited coroutine") like
+#       CPython. Native coroutines currently permit reuse after they have been awaited.
+#       Resuming a completed native coroutine raises a bare StopIteration, so awaiting it
+#       again evaluates to None.
+try:
+    coro.send(None)
+except StopIteration as e:
+    assert e.value is None
+else:
+    assert False
+
+[typing fixtures/typing-full.pyi]
+
+[case testAmSendSlotOnNativeCoroutine]
+from typing import Any, Generator
+
+class Suspend:
+    def __await__(self) -> Generator[Any, Any, int]:
+        x = yield None
+        return x
+
+async def inc(x: int) -> int:
+    return x + 1
+
+async def suspends(x: int) -> int:
+    y = await Suspend()
+    return x + y
+
+class MyError(Exception):
+    pass
+
+async def fails() -> int:
+    raise MyError()
+
+[file driver.py]
+from native import inc, suspends, fails, MyError
+from testutil import assertRaises, pyiter_send, PYGEN_NEXT, PYGEN_RETURN
+
+# Drive a native coroutine's am_send slot through PyIter_Send, as asyncio's C Task does.
+
+# Immediate completion returns PYGEN_RETURN instead of raising StopIteration.
+assert pyiter_send(inc(1), None) == (PYGEN_RETURN, 2)
+
+# A suspension returns PYGEN_NEXT; the next send completes with PYGEN_RETURN.
+coro = suspends(5)
+assert pyiter_send(coro, None) == (PYGEN_NEXT, None)
+assert pyiter_send(coro, 3) == (PYGEN_RETURN, 8)
+
+# PYGEN_ERROR leaves the body exception pending, so ctypes propagates it.
+with assertRaises(MyError):
+    pyiter_send(fails(), None)
 
 [typing fixtures/typing-full.pyi]

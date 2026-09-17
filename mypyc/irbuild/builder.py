@@ -27,6 +27,7 @@ from mypy.nodes import (
     DictionaryComprehension,
     Expression,
     FuncDef,
+    FuncItem,
     GeneratorExpr,
     IndexExpr,
     IntExpr,
@@ -73,9 +74,12 @@ from mypyc.common import (
     IS_FREE_THREADED,
     KEEP_ALIVE_SHORT_LIVED,
     KEEP_ALIVE_WHOLE_EXPRESSION,
-    MODULE_PREFIX,
     SELF_NAME,
-    TEMP_ATTR_NAME,
+    generator_frame_attribute_prefix,
+    module_exec_name,
+    module_import_state_name,
+    module_init_only_name,
+    module_lock_api_name,
     shared_lib_name,
 )
 from mypyc.crash import catch_errors
@@ -152,9 +156,8 @@ from mypyc.irbuild.targets import (
     AssignmentTargetRegister,
     AssignmentTargetTuple,
 )
-from mypyc.irbuild.util import bytes_from_str, is_constant
+from mypyc.irbuild.util import bytes_from_str, get_func_def, is_constant
 from mypyc.irbuild.vec import vec_set_item
-from mypyc.namegen import exported_name
 from mypyc.options import CompilerOptions
 from mypyc.primitives.dict_ops import dict_get_item_op, dict_set_item_op
 from mypyc.primitives.generic_ops import iter_op, next_op, py_setattr_op
@@ -167,7 +170,10 @@ from mypyc.primitives.list_ops import (
 from mypyc.primitives.misc_ops import (
     check_unpack_count_op,
     get_module_dict_op,
+    import_cache_get_for_import_op,
+    import_cache_replace_for_import_op,
     import_op,
+    native_import_is_initialized_op,
     native_import_op,
 )
 from mypyc.primitives.registry import CFunctionDescription, function_ops
@@ -249,11 +255,8 @@ class IRBuilder:
         self.callable_class_names: set[str] = set()
         self.options = options
 
-        # These variables keep track of the number of lambdas, implicit indices, and implicit
-        # iterators instantiated so we avoid name conflicts. The indices and iterators are
-        # instantiated from for-loops.
+        # Keep track of the number of lambdas instantiated so we avoid name conflicts.
         self.lambda_counter = 0
-        self.temp_counter = 0
 
         # These variables are populated from the first-pass PreBuildVisitor.
         self.free_variables = pbv.free_variables
@@ -263,6 +266,7 @@ class IRBuilder:
         self.fdefs_to_decorators = pbv.funcs_to_decorators
         self.module_import_groups = pbv.module_import_groups
         self.comprehension_to_fitem = pbv.comprehension_to_fitem
+        self.deleted_vars = pbv.deleted_vars
 
         self.singledispatch_impls = singledispatch_impls
 
@@ -523,24 +527,45 @@ class IRBuilder:
         self.imports[module] = None
 
         needs_import, out = BasicBlock(), BasicBlock()
-        self.check_if_module_loaded(module, line, needs_import, out)
+        module_static = LoadStatic(object_rprimitive, module, namespace=NAMESPACE_MODULE)
+        module_cache = self.add(LoadAddress(c_pointer_rprimitive, module_static))
+        is_native_module = self.is_native_module(module)
+        group_name = self.mapper.group_map.get(self.module_name)
+        is_same_group_native = is_native_module and self.mapper.group_map.get(module) == group_name
+        module_id: Value | None = None
+        import_state: Value | None = None
+        module_lock_api: Value | None = None
+        if is_same_group_native:
+            import_state = self.add(
+                LoadAddress(c_pointer_rprimitive, module_import_state_name(module))
+            )
+            if group_name is not None:
+                module_lock_api = self.add(
+                    LoadGlobal(c_pointer_rprimitive, module_lock_api_name(group_name))
+                )
+            else:
+                module_lock_api = Integer(0, c_pointer_rprimitive)
+        else:
+            module_id = self.load_str(module, line)
+        self.check_if_module_loaded(module_id, module_cache, line, needs_import, out, import_state)
 
         self.activate_block(needs_import)
-        if self.is_native_module(module) and self.is_same_group_module(module):
+        if is_same_group_native:
+            assert import_state is not None
+            assert module_lock_api is not None
             # Use custom import machinery for native-to-native imports in the same group
             init_only_func = self.add(
-                LoadGlobal(c_pointer_rprimitive, f"CPyInitOnly_{exported_name(module)}")
+                LoadGlobal(c_pointer_rprimitive, module_init_only_name(module))
             )
-            exec_func = self.add(
-                LoadGlobal(c_pointer_rprimitive, f"CPyExec_{exported_name(module)}")
-            )
-            module_static = self.add(
+            exec_func = self.add(LoadGlobal(c_pointer_rprimitive, module_exec_name(module)))
+            module_internal_static = self.add(
                 LoadAddress(
                     object_pointer_rprimitive,
-                    f"{MODULE_PREFIX}{exported_name(module + '__internal')}",
+                    LoadStatic(
+                        object_rprimitive, module + "__internal", namespace=NAMESPACE_MODULE
+                    ),
                 )
             )
-            group_name = self.mapper.group_map.get(self.module_name)
             if group_name is not None:
                 shared_lib_mod_name = shared_lib_name(group_name)
                 mod_dict = self.call_c(get_module_dict_op, [], line)
@@ -558,7 +583,10 @@ class IRBuilder:
                     self.load_str(module, line),
                     init_only_func,
                     exec_func,
-                    module_static,
+                    module_internal_static,
+                    module_cache,
+                    import_state,
+                    module_lock_api,
                     shared_lib_file,
                     ext_suffix,
                     Integer(1 if is_pkg else 0, c_pyssize_t_rprimitive),
@@ -567,23 +595,39 @@ class IRBuilder:
             )
         else:
             # Import using generic Python C API
-            value = self.call_c(import_op, [self.load_str(module, line)], line)
-        self.add(InitStatic(value, module, namespace=NAMESPACE_MODULE))
+            assert module_id is not None
+            value = self.call_c(import_op, [module_id], line)
+        if not is_same_group_native:
+            self.call_c(import_cache_replace_for_import_op, [module_cache, value], line)
         self.goto_and_activate(out)
 
     def check_if_module_loaded(
-        self, id: str, line: int, needs_import: BasicBlock, out: BasicBlock
+        self,
+        module_id: Value | None,
+        module_cache: Value,
+        line: int,
+        needs_import: BasicBlock,
+        out: BasicBlock,
+        import_state: Value | None = None,
     ) -> None:
-        """Generate code that checks if the module `id` has been loaded yet.
+        """Generate code that checks if a module cache has been populated.
 
         Arguments:
-            id: name of module to check if imported
+            module_id: module name used to validate a generic import cache
+            module_cache: address of the module cache to check
             line: line number that the import occurs on
             needs_import: the BasicBlock that is run if the module has not been loaded yet
             out: the BasicBlock that is run if the module has already been loaded"""
-        first_load = self.load_module(id)
-        comparison = self.translate_is_op(first_load, self.none_object(line), "is not", line)
-        self.add_bool_branch(comparison, out, needs_import)
+        if import_state is None:
+            assert module_id is not None
+            first_load = self.call_c(
+                import_cache_get_for_import_op, [module_cache, module_id], line
+            )
+            comparison = self.translate_is_op(first_load, self.none_object(line), "is not", line)
+            self.add_bool_branch(comparison, out, needs_import)
+        else:
+            initialized = self.call_c(native_import_is_initialized_op, [import_state], line)
+            self.add_bool_branch(initialized, out, needs_import)
 
     def get_module(self, module: str, line: int) -> Value:
         # Python 3.7 has a nice 'PyImport_GetModule' function that we can't use :(
@@ -749,11 +793,11 @@ class IRBuilder:
         if line == -1:
             line = lvalue.line
         if isinstance(lvalue, NameExpr):
-            # If we are visiting a decorator, then the SymbolNode we really want to be looking at
-            # is the function that is decorated, not the entire Decorator node itself.
+            # Use the concrete implementation as the symbol-table key for
+            # decorated and overloaded functions.
             symbol = lvalue.node
-            if isinstance(symbol, Decorator):
-                symbol = symbol.func
+            if isinstance(symbol, Decorator | OverloadedFuncDef):
+                symbol = get_func_def(symbol)
             if symbol is None:
                 # Semantic analyzer doesn't create ad-hoc Vars for special forms.
                 assert lvalue.is_special_form
@@ -766,21 +810,25 @@ class IRBuilder:
                         reg_type = self.type_to_rtype(symbol.type)
                     else:
                         reg_type = self.node_type(lvalue)
-                    # If the function is a generator function, then first define a new variable
-                    # in the current function's environment class. Next, define a target that
-                    # refers to the newly defined variable in that environment class. Add the
-                    # target to the table containing class environment variables, as well as the
-                    # current environment.
-                    if self.fn_info.is_generator or self.fn_info.is_coroutine:
-                        return self.add_var_to_env_class(
-                            symbol,
-                            reg_type,
-                            self.fn_info.generator_class,
-                            reassign=False,
-                            prefix=GENERATOR_ATTRIBUTE_PREFIX,
+                    # A deleted error-overlap value needs a definedness bitmap. Other generator
+                    # locals start in registers and are promoted later if they cross a yield.
+                    if (
+                        self.fn_info.is_generator
+                        and reg_type.error_overlap
+                        and symbol in self.deleted_vars
+                    ):
+                        if self.is_captured_by_nested_func(symbol):
+                            return self.add_var_to_env_class(
+                                symbol,
+                                reg_type,
+                                self.fn_info.generator_class,
+                                reassign=False,
+                                prefix=GENERATOR_ATTRIBUTE_PREFIX,
+                            )
+                        return self.add_var_to_generator_frame(
+                            symbol, reg_type, self.fn_info.generator_class.self_reg, reassign=False
                         )
 
-                    # Otherwise define a new local variable.
                     return self.add_local_reg(symbol, reg_type)
                 else:
                     # Assign to a previously defined variable.
@@ -855,11 +903,6 @@ class IRBuilder:
                 return self.py_get_attr(target.obj, target.attr, line)
 
         assert False, "Unsupported lvalue: %r" % target
-
-    def read_nullable_attr(self, obj: Value, attr: str, line: int = -1) -> Value:
-        """Read an attribute that might have an error value without raising AttributeError."""
-        assert isinstance(obj.type, RInstance) and obj.type.class_ir.is_ext_class
-        return self.add(GetAttr(obj, attr, line, allow_error_value=True))
 
     def assign(self, target: Register | AssignmentTarget, rvalue_reg: Value, line: int) -> None:
         if isinstance(target, Register):
@@ -1045,47 +1088,8 @@ class IRBuilder:
     def pop_loop_stack(self) -> None:
         self.nonlocal_control.pop()
 
-    def make_spill_target(self, type: RType) -> AssignmentTarget:
-        """Moves a given Value instance into the private generator frame."""
-        frame = self.fn_info.generator_class
-        # Generator classes for overriding methods can inherit from one another. Include the
-        # module-qualified owning class name so unrelated helper spills don't alias an inherited
-        # struct field.
-        name = f"{TEMP_ATTR_NAME}1_{exported_name(frame.ir.fullname)}_{self.temp_counter}"
-        self.temp_counter += 1
-        target = self.add_var_to_class(Var(name), type, frame.ir, frame.self_reg)
-        return target
-
-    def spill(self, value: Value) -> AssignmentTarget:
-        """Moves a given Value instance into the private generator frame."""
-        target = self.make_spill_target(value.type)
-        # Shouldn't be able to fail
-        self.assign(target, value, NO_TRACEBACK_LINE_NO)
-        return target
-
-    def maybe_spill(self, value: Value) -> Value | AssignmentTarget:
-        """
-        Moves a given Value instance into the private frame for generator functions. For
-        non-generator functions, leaves the Value instance as it is.
-
-        Returns an AssignmentTarget associated with the Value for generator functions and the
-        original Value itself for non-generator functions.
-        """
-        if self.fn_info.is_generator:
-            return self.spill(value)
-        return value
-
-    def maybe_spill_assignable(self, value: Value) -> Register | AssignmentTarget:
-        """
-        Moves a given Value instance into the private frame for generator functions. For
-        non-generator functions, allocate a temporary Register.
-
-        Returns an AssignmentTarget associated with the Value for generator functions and an
-        assignable Register for non-generator functions.
-        """
-        if self.fn_info.is_generator:
-            return self.spill(value)
-
+    def ensure_register(self, value: Value) -> Register:
+        """Return an assignable register containing a value."""
         if isinstance(value, Register):
             return value
 
@@ -1646,6 +1650,44 @@ class IRBuilder:
             always_defined=always_defined,
             keep_alive_on_completion=keep_alive_on_completion,
             prefix=prefix,
+        )
+
+    def is_free_variable_in_nested_func(self, fitem: FuncItem, symbol: SymbolNode) -> bool:
+        for nested in self.encapsulating_funcs.get(fitem, []):
+            if symbol in self.free_variables.get(nested, set()):
+                return True
+            if self.is_free_variable_in_nested_func(nested, symbol):
+                return True
+        return False
+
+    def is_captured_by_nested_func(self, symbol: SymbolNode) -> bool:
+        """Does a binding need to be visible to a nested function?"""
+        return symbol in self.free_variables.get(
+            self.fn_info.fitem, set()
+        ) or self.is_free_variable_in_nested_func(self.fn_info.fitem, symbol)
+
+    def add_var_to_generator_frame(
+        self,
+        var: SymbolNode,
+        rtype: RType,
+        frame_reg: Value,
+        reassign: bool = False,
+        always_defined: bool = False,
+        keep_alive_on_completion: bool = False,
+    ) -> AssignmentTarget:
+        """Add a generator-owned source binding to the private generator frame."""
+        cls = self.fn_info.generator_class.ir
+        return self.add_var_to_class(
+            var,
+            rtype,
+            cls,
+            frame_reg,
+            reassign=reassign,
+            always_defined=always_defined,
+            keep_alive_on_completion=keep_alive_on_completion,
+            prefix=generator_frame_attribute_prefix(
+                cls.fullname, is_final_class=cls.is_final_class
+            ),
         )
 
     def add_var_to_class(
