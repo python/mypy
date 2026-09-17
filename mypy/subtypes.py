@@ -511,11 +511,11 @@ class SubtypeVisitor(TypeVisitor[bool]):
                         return self._is_subtype(left, unpacked)
             if left.type.has_base(right.partial_fallback.type.fullname):
                 mapped = map_instance_to_supertype(left, right.partial_fallback.type)
+                # Special cases to consider:
+                #   * tuple[Any, ...] instance is a (non-proper) subtype of all tuple types.
+                #   * Foo[*tuple[X, ...]] (normalized) instance is a subtype of all
+                #     tuples with appropriate fallback (e.g. for variadic NamedTuples).
                 if not self.proper_subtype:
-                    # Special cases to consider:
-                    #   * Plain tuple[Any, ...] instance is a subtype of all tuple types.
-                    #   * Foo[*tuple[Any, ...]] (normalized) instance is a subtype of all
-                    #     tuples with fallback to Foo (e.g. for variadic NamedTuples).
                     if is_erased_instance(mapped) and mapped.type.fullname == "builtins.tuple":
                         return True
                 if is_normalized_instance(mapped):
@@ -819,9 +819,11 @@ class SubtypeVisitor(TypeVisitor[bool]):
         elif isinstance(right, TupleType):
             # If right has a variadic unpack this needs special handling. If there is a TypeVarTuple
             # unpack, item count must coincide. If the left has variadic unpack but right
-            # doesn't have one, we will fall through to False down the line.
+            # doesn't have one, we will fall through.
             if self.variadic_tuple_subtype(left, right):
                 return True
+            # The only case where variadic can be subtype of fixed is when left variadic item is Any.
+            # Otherwise, the original left will be returned, causing fall through to False.
             left = self.adjust_left_if_possible(left, right)
             if len(left.items) != len(right.items):
                 return False
@@ -843,6 +845,11 @@ class SubtypeVisitor(TypeVisitor[bool]):
             return False
 
     def adjust_left_if_possible(self, left: TupleType, right: TupleType) -> TupleType:
+        """Adjust shape of left containing *tuple[Any, ...] to match right.
+
+        Note: this only works if right is fixed size (including *Ts), the variadic
+        right are handled by the caller, currently with variadic_tuple_subtype().
+        """
         left_variadic = self.get_variadic_item(left)
         if left_variadic is None:
             return left
@@ -876,6 +883,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
         return left.copy_modified(items=list(new_items))
 
     def get_variadic_item(self, tup: TupleType) -> tuple[int, Type] | None:
+        """If this is tuple[X, *tuple[Y, ...], Z], return Y, otherwise None."""
         unpack_index = find_unpack_in_list(tup.items)
         if unpack_index is None:
             return None
@@ -953,6 +961,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
             # subtyping: *each* item on the left, must be a subtype of *some* item on the right.
             # For this we first check the "asymptotic case", i.e. that both unpacks a subtypes,
             # and then check subtyping for all finite overlaps.
+            # Note: if the left item is Any we use any() semantics instead of all().
             use_any = isinstance(get_proper_type(left_item), AnyType)
             if not use_any and len(left.items) < len(right.items):
                 # There are some items on the left that will never have a matching length
@@ -2434,6 +2443,15 @@ def is_erased_instance(t: Instance) -> bool:
 
 
 def is_normalized_instance(t: Instance) -> bool:
+    """Is this instance type a normalized representation of a tuple type?
+
+    Type like class C[T, *Ts](tuple[T, *Ts]) are internally represented as
+    tuple types, so that e.g. C[int, str] is tuple[int, str, fallback=C[int, str]].
+    However, in case of a variadic argument they are normalized, similar to how
+    tuple[*tuple[int, ...]] (TupleType) is normalized to tuple[int, ...] (Instance).
+    For example, C[int, *tuple[str, ...]] is represented as an instance. This
+    function detects such instances, when they need special-casing.
+    """
     if not t.args:
         return False
     if not t.type.tuple_type:
