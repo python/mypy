@@ -9727,3 +9727,71 @@ def f() -> None:
     class X:
         ...
     undefined  # E: Name "undefined" is not defined
+
+[case testSubclassAnyFromIndexedTuple]
+# https://github.com/python/mypy/issues/21998
+from typing import Any, Tuple
+
+def from_tuple(t: Tuple[int, Any]) -> None:
+    class Sub(t[1]):
+        pass
+
+def from_star_any(*args: Any) -> None:
+    class Sub(args[0]):
+        pass
+
+def from_any_param(base: Any) -> None:
+    class Sub(base):
+        pass
+
+def from_annotated_index(*args: Any) -> None:
+    x: Any = args[0]
+    class Sub(x):
+        pass
+[builtins fixtures/tuple.pyi]
+
+[case testSubclassAnyFromUnpackedStarArgs]
+# https://github.com/python/mypy/issues/21998
+# flags: --python-version 3.12
+from typing import Any
+
+def from_unpacked(*args: *tuple[int, Any]) -> None:
+    class Sub(args[1]):
+        pass
+
+def from_unpacked_type_annotation(*args: *tuple[int, Any]) -> None:
+    x: type = args[1]
+    class Sub(x):
+        pass
+[builtins fixtures/tuple.pyi]
+
+[case testSubclassIndexedNonAnyStillInvalid]
+# https://github.com/python/mypy/issues/21998
+from typing import Any, Tuple
+
+def from_str_tuple(t: Tuple[int, str]) -> None:
+    class Sub(t[1]): pass  # E: Variable "t" is not valid as a type \
+                           # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases \
+                           # E: Invalid base class "t" \
+                           # E: Invalid type: try using Literal[1] instead?
+
+def from_int_index(t: Tuple[int, Any]) -> None:
+    class Sub(t[0]): pass  # E: Variable "t" is not valid as a type \
+                           # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases \
+                           # E: Invalid base class "t" \
+                           # E: Invalid type: try using Literal[0] instead?
+
+def from_int_star(*args: int) -> None:
+    class Sub(args[0]): pass  # E: Variable "args" is not valid as a type \
+                              # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases \
+                              # E: Invalid base class "args" \
+                              # E: Invalid type: try using Literal[0] instead?
+
+def unannotated_local(base: Any) -> None:
+    # Class bases are resolved before type inference, so an unannotated
+    # local still needs an explicit Any/type annotation.
+    x = base
+    class Sub(x): pass  # E: Variable "x" is not valid as a type \
+                        # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases \
+                        # E: Invalid base class "x"
+[builtins fixtures/tuple.pyi]
