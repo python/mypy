@@ -130,9 +130,9 @@ from mypy.options import Options
 from mypy.patterns import (
     AsPattern,
     ClassPattern,
+    ConcretePattern,
     MappingPattern,
     OrPattern,
-    Pattern,
     SequencePattern,
     SingletonPattern,
     StarredPattern,
@@ -1186,7 +1186,7 @@ def read_call_type(state: State, data: ReadBuffer) -> Type:
     return call_arg
 
 
-def read_pattern(state: State, data: ReadBuffer) -> Pattern:
+def read_pattern(state: State, data: ReadBuffer) -> ConcretePattern:
     tag = read_tag(data)
     if tag == nodes.AS_PATTERN:
         has_pattern = read_bool(data)
