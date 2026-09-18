@@ -657,7 +657,7 @@ def f3(x) -> None:
         reveal_type(x) # N: Revealed type is "builtins.int"
     reveal_type(x) # N: Revealed type is "Any | builtins.int"
 
-[case tetNewRedefineDel]
+[case testNewRedefineDel]
 # flags: --allow-redefinition
 def f1() -> None:
     x = ""
