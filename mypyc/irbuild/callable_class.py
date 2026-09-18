@@ -78,6 +78,9 @@ def setup_callable_class(builder: IRBuilder) -> None:
     # this is a toplevel lambda), don't set up an environment.
     if builder.fn_infos[-2].contains_nested:
         callable_class_ir.attributes[ENV_ATTR_NAME] = RInstance(builder.fn_infos[-2].env_class)
+        # The link is initialized before the callable is published and is never rebound.
+        # Treating it as Final permits plain loads on free-threaded builds.
+        callable_class_ir.final_attributes.add(ENV_ATTR_NAME)
     callable_class_ir.mro = [callable_class_ir]
     builder.fn_info.callable_class = ImplicitClass(callable_class_ir)
     builder.classes.append(callable_class_ir)
@@ -235,7 +238,11 @@ def instantiate_callable_class(builder: IRBuilder, fn_info: FuncInfo) -> Value:
     elif builder.fn_info.contains_nested:
         curr_env_reg = builder.fn_info.curr_env_reg
     if curr_env_reg:
-        builder.add(SetAttr(func_reg, ENV_ATTR_NAME, curr_env_reg, fitem.line))
+        set_env = SetAttr(func_reg, ENV_ATTR_NAME, curr_env_reg, fitem.line)
+        # A new or freelist-reused callable has had all of its fields cleared, and this store
+        # happens before the callable can escape.
+        set_env.mark_as_initializer()
+        builder.add(set_env)
     # Initialize function wrapper for callable classes. As opposed to regular functions,
     # each instance of a callable class needs its own wrapper because they might be instantiated
     # inside other functions.

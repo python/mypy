@@ -293,9 +293,10 @@ def typed_dict_get_callback(ctx: MethodContext) -> Type:
         for key in keys:
             value_type: Type | None = ctx.type.items.get(key)
             if value_type is None:
-                return ctx.default_return_type
-
-            if key in ctx.type.required_keys:
+                if not ctx.type.is_closed:
+                    return ctx.default_return_type
+                output_types.append(default_type)
+            elif key in ctx.type.required_keys:
                 output_types.append(value_type)
             else:
                 # HACK to deal with get(key, {})

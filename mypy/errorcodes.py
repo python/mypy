@@ -287,6 +287,13 @@ SYNTAX: Final = ErrorCode("syntax", "Report syntax errors", "General")
 # This is a catch-all for remaining uncategorized errors.
 MISC: Final = ErrorCode("misc", "Miscellaneous other checks", "General")
 
+CALL_ARG_MISC: Final = ErrorCode(
+    "call-arg", "Check number, names and kinds of arguments in calls", "General", sub_code_of=MISC
+)
+# CALL_ARG_MISC reuses the "call-arg" code string, so keep CALL_ARG as the canonical
+# code that "call-arg" resolves to in the registry.
+error_codes[CALL_ARG.code] = CALL_ARG
+
 OVERLOAD_CANNOT_MATCH: Final = ErrorCode(
     "overload-cannot-match",
     "Warn if an @overload signature can never be matched",

@@ -150,7 +150,6 @@ from mypy.typeops import (
     false_only,
     fixup_partial_type,
     freeze_all_type_vars,
-    function_type,
     get_all_type_vars,
     get_type_vars,
     is_literal_type_like,
@@ -415,7 +414,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         if isinstance(node, (Var, Decorator, OverloadedFuncDef)):
             return node.type or AnyType(TypeOfAny.special_form)
         elif isinstance(node, FuncDef):
-            return function_type(node, self.named_type("builtins.function"))
+            return self.chk.function_type(node)
         elif isinstance(node, TypeInfo):
             # Reference to a type object.
             if node.typeddict_type:
@@ -818,8 +817,8 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         result = defaultdict(list)
         # Keys that are guaranteed to be present no matter what (e.g. for all items of a union)
         always_present_keys = set()
-        # Indicates latest encountered ** unpack among items.
-        last_star_found = None
+        # Indicates latest encountered ** unpack of a non-closed type among items.
+        last_open_star_found = None
 
         for item_name_expr, item_arg in kwargs:
             if item_name_expr:
@@ -843,22 +842,30 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                     result[literal_value] = [item_arg]
                     always_present_keys.add(literal_value)
             else:
-                last_star_found = item_arg
-                if not self.validate_star_typeddict_item(
+                is_valid, is_open = self.validate_star_typeddict_item(
                     item_arg, callee, result, always_present_keys
-                ):
+                )
+                if not is_valid:
                     return None
-        if self.chk.options.extra_checks and last_star_found is not None:
+                if is_open:
+                    last_open_star_found = item_arg
+        if self.chk.options.extra_checks and last_open_star_found is not None:
+            if callee.is_closed:
+                self.chk.fail(
+                    "Cannot unpack item that may contain extra keys into a closed TypedDict",
+                    last_open_star_found,
+                    code=codes.TYPEDDICT_ITEM,
+                )
             absent_keys = []
             for key in callee.items:
                 if key not in callee.required_keys and key not in result:
                     absent_keys.append(key)
             if absent_keys:
-                # Having an optional key not explicitly declared by a ** unpacked
+                # Having an optional key not explicitly declared by a ** unpacked open
                 # TypedDict is unsafe, it may be an (incompatible) subtype at runtime.
                 # TODO: catch the cases where a declared key is overridden by a subsequent
                 # ** item without it (and not again overridden with complete ** item).
-                self.msg.non_required_keys_absent_with_star(absent_keys, last_star_found)
+                self.msg.non_required_keys_absent_with_star(absent_keys, last_open_star_found)
         return result, always_present_keys
 
     def validate_star_typeddict_item(
@@ -867,14 +874,18 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         callee: TypedDictType,
         result: dict[str, list[Expression]],
         always_present_keys: set[str],
-    ) -> bool:
+    ) -> tuple[bool, bool]:
         """Update keys/expressions from a ** expression in TypedDict constructor.
 
-        Note `result` and `always_present_keys` are updated in place. Return true if the
-        expression `item_arg` may valid in `callee` TypedDict context.
+        Note `result` and `always_present_keys` are updated in place.
+
+        First tuple item returned is true if the expression `item_arg` may valid
+        in `callee` TypedDict context. Second tuple item returned is true if the
+        expression may contain other keys not explicitly declared.
         """
         inferred = get_proper_type(self.accept(item_arg, type_context=callee))
-        possible_tds = []
+        any_fallback = False
+        possible_tds: list[TypedDictType] = []
         if isinstance(inferred, TypedDictType):
             possible_tds = [inferred]
         elif isinstance(inferred, UnionType):
@@ -883,10 +894,14 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                     possible_tds.append(item)
                 elif not self.valid_unpack_fallback_item(item):
                     self.msg.unsupported_target_for_star_typeddict(item, item_arg)
-                    return False
+                    return False, True
+                else:
+                    any_fallback = True
         elif not self.valid_unpack_fallback_item(inferred):
             self.msg.unsupported_target_for_star_typeddict(inferred, item_arg)
-            return False
+            return False, True
+        else:
+            any_fallback = True
         all_keys: set[str] = set()
         for td in possible_tds:
             all_keys |= td.items.keys()
@@ -915,7 +930,8 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                 # If this key is not required at least in some item of a union
                 # it may not shadow previous item, so we need to type check both.
                 result[key].append(arg)
-        return True
+        all_closed = all(t.is_closed for t in possible_tds)
+        return True, any_fallback or not all_closed
 
     def valid_unpack_fallback_item(self, typ: ProperType) -> bool:
         if isinstance(typ, AnyType):
@@ -1641,6 +1657,18 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                 object_type,
                 original_type=callee,
             )
+        elif isinstance(callee, LiteralType):
+            return self.check_call(
+                callee.fallback,
+                args,
+                arg_kinds,
+                context,
+                arg_names,
+                callable_node,
+                callable_name,
+                object_type,
+                original_type=original_type,
+            )
         elif isinstance(callee, UninhabitedType):
             ret = UninhabitedType()
             ret.ambiguous = callee.ambiguous
@@ -1948,12 +1976,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             # but better than AnyType...), but replace the return type
             # with typevar.
             callee = self.analyze_type_type_callee(get_proper_type(item.upper_bound), context)
-            callee = get_proper_type(callee)
-            if isinstance(callee, CallableType):
-                callee = callee.copy_modified(ret_type=item)
-            elif isinstance(callee, Overloaded):
-                callee = Overloaded([c.copy_modified(ret_type=item) for c in callee.items])
-            return callee
+            return self.replace_type_type_callee_ret_type(callee, item)
         # We support Type of namedtuples but not of tuples in general
         if isinstance(item, TupleType) and tuple_fallback(item).type.fullname != "builtins.tuple":
             return self.analyze_type_type_callee(tuple_fallback(item), context)
@@ -1962,6 +1985,23 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
 
         self.msg.unsupported_type_type(item, context)
         return AnyType(TypeOfAny.from_error)
+
+    def replace_type_type_callee_ret_type(self, callee: Type, ret_type: Type) -> Type:
+        callee = get_proper_type(callee)
+        if isinstance(callee, CallableType):
+            return callee.copy_modified(ret_type=ret_type)
+        if isinstance(callee, Overloaded):
+            return Overloaded([c.copy_modified(ret_type=ret_type) for c in callee.items])
+        if isinstance(callee, UnionType):
+            return UnionType(
+                [
+                    self.replace_type_type_callee_ret_type(item, ret_type)
+                    for item in callee.relevant_items()
+                ],
+                line=callee.line,
+                column=callee.column,
+            )
+        return callee
 
     def infer_arg_types_in_empty_context(self, args: list[Expression]) -> list[Type]:
         """Infer argument expression types in an empty context.
@@ -3567,7 +3607,11 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
 
     def visit_ellipsis(self, e: EllipsisExpr) -> Type:
         """Type check '...'."""
-        return self.named_type("builtins.ellipsis")
+        try:
+            return self.named_type("types.EllipsisType")
+        except KeyError:
+            # In test cases 'types' may not be available or may be shadowed.
+            return AnyType(TypeOfAny.special_form)
 
     def visit_op_expr(self, e: OpExpr) -> Type:
         """Type check a binary operator expression."""
@@ -5936,9 +5980,25 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                 upper_bound=self.object_type(),
                 default=AnyType(TypeOfAny.from_omitted_generics),
             )
+            if isinstance(gen.left_expr, StarExpr):
+                left_expr = gen.left_expr.expr
+                # Note: we wrap the argument type instead of using ARG_STAR kind, because logic
+                # in argmap.py doesn't work with structural subtypes of Iterable.
+                arg = self.chk.named_generic_type("typing.Iterable", [tv])
+                # Motivation for inferring more unions in this case is two-fold:
+                # * In regular (non-star) case the constructor signature has bare type variable,
+                #   thus hitting a special case in constraints solver that would naturally infer
+                #   more unions. We want to match this behavior here.
+                # * This is a new syntax, so we can experiment with something
+                #   we may want in long-term
+                force_infer_unions = True
+            else:
+                left_expr = gen.left_expr
+                arg = tv
+                force_infer_unions = False
             tv_list: list[Type] = [tv]
             constructor = CallableType(
-                tv_list,
+                [arg],
                 [nodes.ARG_POS],
                 [None],
                 self.chk.named_generic_type(type_name, tv_list + additional_args),
@@ -5946,7 +6006,13 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                 name=id_for_messages,
                 variables=[tv],
             )
-            return self.check_call(constructor, [gen.left_expr], [nodes.ARG_POS], gen)[0]
+            if force_infer_unions:
+                old_infer_unions = type_state.infer_unions
+                type_state.infer_unions = True
+            res = self.check_call(constructor, [left_expr], [nodes.ARG_POS], gen)
+            if force_infer_unions:
+                type_state.infer_unions = old_infer_unions
+            return res[0]
 
     def visit_dictionary_comprehension(self, e: DictionaryComprehension) -> Type:
         """Type check a dictionary comprehension."""
@@ -5971,18 +6037,35 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                 upper_bound=self.object_type(),
                 default=AnyType(TypeOfAny.from_omitted_generics),
             )
+            if e.key is None:
+                # Logic and motivation here is similar to check_generator_or_comprehension().
+                arg_types = [self.chk.named_generic_type("typing.Mapping", [ktdef, vtdef])]
+                arg_kinds = [nodes.ARG_POS]
+                arg_names = [None]
+                args = [e.value]
+                force_infer_unions = True
+            else:
+                arg_types = [ktdef, vtdef]
+                arg_kinds = [nodes.ARG_POS, nodes.ARG_POS]
+                arg_names = [None, None]
+                args = [e.key, e.value]
+                force_infer_unions = False
             constructor = CallableType(
-                [ktdef, vtdef],
-                [nodes.ARG_POS, nodes.ARG_POS],
-                [None, None],
+                arg_types,
+                arg_kinds,
+                arg_names,
                 self.chk.named_generic_type("builtins.dict", [ktdef, vtdef]),
                 self.chk.named_type("builtins.function"),
                 name="<dictionary-comprehension>",
                 variables=[ktdef, vtdef],
             )
-            return self.check_call(
-                constructor, [e.key, e.value], [nodes.ARG_POS, nodes.ARG_POS], e
-            )[0]
+            if force_infer_unions:
+                old_infer_unions = type_state.infer_unions
+                type_state.infer_unions = True
+            res = self.check_call(constructor, args, arg_kinds, e)
+            if force_infer_unions:
+                type_state.infer_unions = old_infer_unions
+            return res[0]
 
     def check_for_comp(self, e: GeneratorExpr | DictionaryComprehension) -> None:
         """Check the for_comp part of comprehensions. That is the part from 'for':

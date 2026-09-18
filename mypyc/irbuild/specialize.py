@@ -30,6 +30,7 @@ from mypy.nodes import (
     MemberExpr,
     NameExpr,
     RefExpr,
+    SliceExpr,
     StrExpr,
     SuperExpr,
     TupleExpr,
@@ -41,6 +42,7 @@ from mypyc.ir.ops import (
     Call,
     Extend,
     Integer,
+    LoadErrorValue,
     PrimitiveDescription,
     RaiseStandardError,
     Register,
@@ -64,7 +66,9 @@ from mypyc.ir.rtypes import (
     int32_rprimitive,
     int64_rprimitive,
     int_rprimitive,
+    is_any_int,
     is_bool_rprimitive,
+    is_bytes_rprimitive,
     is_dict_rprimitive,
     is_fixed_width_rtype,
     is_float_rprimitive,
@@ -108,7 +112,7 @@ from mypyc.irbuild.vec import (
     vec_to_list,
     vec_to_tuple,
 )
-from mypyc.primitives.bytearray_ops import isinstance_bytearray
+from mypyc.primitives.bytearray_ops import bytearray_from_bytes_slice_op, isinstance_bytearray
 from mypyc.primitives.bytes_ops import (
     bytes_adjust_index_op,
     bytes_get_item_unsafe_op,
@@ -346,6 +350,38 @@ def translate_vec_to_list(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -
             vec = builder.accept(expr.args[0])
             return vec_to_list(builder.builder, vec, expr.line)
     return None
+
+
+@specialize_function("builtins.bytearray")
+def translate_bytearray_from_bytes_slice(
+    builder: IRBuilder, expr: CallExpr, callee: RefExpr
+) -> Value | None:
+    """Construct a bytearray from a bytes slice without an intermediate copy."""
+    if len(expr.args) != 1 or expr.arg_kinds != [ARG_POS]:
+        return None
+    arg = expr.args[0]
+    if not isinstance(arg, IndexExpr) or not is_bytes_rprimitive(builder.node_type(arg.base)):
+        return None
+    index = arg.index
+    if (
+        not isinstance(index, SliceExpr)
+        or index.stride is not None
+        or (index.begin_index is not None and not is_any_int(builder.node_type(index.begin_index)))
+        or (index.end_index is not None and not is_any_int(builder.node_type(index.end_index)))
+    ):
+        return None
+
+    obj = builder.accept(arg.base)
+    # Use the default-argument sentinel so subclass slicing still receives None.
+    if index.begin_index is None:
+        start = builder.add(LoadErrorValue(int_rprimitive, is_borrowed=True))
+    else:
+        start = builder.accept(index.begin_index)
+    if index.end_index is None:
+        end = builder.add(LoadErrorValue(int_rprimitive, is_borrowed=True))
+    else:
+        end = builder.accept(index.end_index)
+    return builder.primitive_op(bytearray_from_bytes_slice_op, [obj, start, end], expr.line)
 
 
 @specialize_function("builtins.list")

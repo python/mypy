@@ -127,7 +127,6 @@ Config file
 
     This flag makes mypy warn about unused ``[mypy-<pattern>]`` config
     file sections.
-    (This requires turning off incremental mode using :option:`--no-incremental`.)
 
 
 .. _import-discovery:
@@ -1038,19 +1037,22 @@ Parallel type-checking
 **********************
 
 By default, mypy checks all modules in the same Python process. This can be slow
-for large code bases. Mypy offers experimental parallel type-checking mode using
+for large code bases. Mypy offers parallel type-checking mode using
 multiple worker processes. In parallel mode, modules that do not depend om each
 other are type-checked in parallel. :ref:`Incremental cache <incremental>` is
 used to manage most of the shared state. Parallel type-checking also requires
 :option:`--local-partial-types <mypy --no-local-partial-types>`, which is
 enabled by default starting from mypy 2.0.
 
-.. option:: -n NUMBER, --num-workers NUMBER
+.. option:: -n VALUE, --num-workers VALUE
 
-    Use ``NUMBER`` parallel worker processes (in addition to the coordinator
-    process) to perform type-checking. Specifying ``--num-workers 0`` (default)
-    disables parallel checking. Automatic detection of the optimal number
-    of workers is not supported yet.
+    Use the specified amount of parallel worker processes (in addition to the
+    coordinator process) to perform type-checking. Specifying ``--num-workers 0``
+    (default) disables parallel checking. Specifying ``--num-workers auto``
+    selects the number based on the CPU resources available to mypy.
+
+    Automatic selection uses at most 8 workers because each worker adds roughly
+    10% memory overhead. This cap does not apply when an explicit value is specified.
 
     This setting will override the ``MYPY_NUM_WORKERS`` environment
     variable if it is set.

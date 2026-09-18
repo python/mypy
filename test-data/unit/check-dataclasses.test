@@ -448,6 +448,66 @@ Application('name', rating=123)  # E: Too many positional arguments for "Applica
 
 [builtins fixtures/dataclasses.pyi]
 
+[case testDataclassesOrderingKwOnlyWithPEP661Sentinel]
+-- Regression test for KW_ONLY implemented as a PEP 661 sentinel, as in
+-- https://github.com/python/cpython/commit/16952218d0535904236e8a39851133688c9ce1f0
+-- `_is_kw_only_type` must recognize this shape too, or `_` stops being excluded
+-- from `__init__` and kw-only ordering enforcement silently stops firing.
+from dataclasses import dataclass, KW_ONLY
+
+@dataclass
+class Application:
+    _: KW_ONLY
+    name: str = 'Unnamed'
+    rating: int
+
+Application(rating=5)
+Application('name', 123)  # E: Too many positional arguments for "Application"
+
+[file dataclasses.pyi]
+from typing import Any, Callable, TypeVar, overload
+from typing_extensions import sentinel
+
+_T = TypeVar("_T")
+
+KW_ONLY = sentinel("KW_ONLY")
+MISSING = sentinel("MISSING")
+
+class Field:
+    default: Any
+    default_factory: Any
+
+def field(
+    *,
+    default: Any = ...,
+    default_factory: Any = ...,
+    init: bool = ...,
+    repr: bool = ...,
+    hash: Any = ...,
+    compare: bool = ...,
+    metadata: Any = ...,
+    kw_only: Any = ...,
+) -> Any: ...
+@overload
+def dataclass(cls: type[_T]) -> type[_T]: ...
+@overload
+def dataclass(
+    cls: None = ...,
+    *,
+    init: bool = ...,
+    repr: bool = ...,
+    eq: bool = ...,
+    order: bool = ...,
+    unsafe_hash: bool = ...,
+    frozen: bool = ...,
+    match_args: bool = ...,
+    kw_only: bool = ...,
+    slots: bool = ...,
+    weakref_slot: bool = ...,
+) -> Callable[[type[_T]], type[_T]]: ...
+
+[builtins fixtures/dataclasses.pyi]
+
 [case testDataclassesOrderingKwOnlyWithSentinelAndFieldOverride]
 from dataclasses import dataclass, field, KW_ONLY
 
@@ -1251,6 +1311,26 @@ class Person:
     a: str = 'test'
 
 [builtins fixtures/dataclasses.pyi]
+
+[case testDataclassesFloatSerializationIncremental]
+import m
+[file m.py]
+from lib import MyDataClass
+[file m.py.2]
+from lib import MyDataClass
+
+reveal_type(MyDataClass.MY_CONSTANT)
+[file lib.py]
+from dataclasses import dataclass
+from typing import Final
+
+@dataclass(kw_only=True, repr=False)
+class MyDataClass:
+    MY_CONSTANT: Final = 1.234
+[builtins fixtures/dataclasses.pyi]
+[out]
+[out2]
+tmp/m.py:3: note: Revealed type is "Literal[1.234]?"
 
 [case testDataclassesDefaultsMroOtherFile]
 import a
@@ -2560,6 +2640,23 @@ Gen(2).__replace__(x="not an int")  # E: Argument "x" to "__replace__" of "Gen" 
 
 [builtins fixtures/tuple.pyi]
 
+[case testDunderReplaceAllowsCovariantDataclassField]
+# flags: --python-version 3.13
+from dataclasses import dataclass
+from typing import Generic, TypeVar
+
+T_co = TypeVar("T_co", covariant=True)
+
+@dataclass(frozen=True)
+class A(Generic[T_co]):
+    value: T_co
+
+class B(Generic[T_co]):
+    def __replace__(self, *, value: T_co) -> B[T_co]:
+        return self
+
+[builtins fixtures/tuple.pyi]
+
 [case testDunderReplaceCovariantOverride]
 # flags: --python-version 3.13  --enable-error-code mutable-override
 from dataclasses import dataclass
@@ -2587,6 +2684,27 @@ class X(metaclass=DCMeta):
 class Y(X):
     a: int  # E: Covariant override of a mutable attribute (base class "X" defined the type as "int | None", expression has type "int")
 [builtins fixtures/tuple.pyi]
+
+
+[case testDunderReplaceDoesNotBlockPlainIssubclassNarrowing]
+# https://github.com/python/mypy/issues/21635
+# flags: --python-version 3.13
+from dataclasses import dataclass
+
+@dataclass
+class A: ...
+@dataclass
+class M: ...
+@dataclass
+class B(A): ...
+@dataclass
+class C(M, A): ...
+
+cls: type[A] = C
+if issubclass(cls, M):
+    reveal_type(cls)  # N: Revealed type is "type[__main__.<subclass of "__main__.A" and "__main__.M">]"
+    n: int = 'foo'  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+[builtins fixtures/isinstancelist.pyi]
 
 
 [case testFrozenWithFinal]

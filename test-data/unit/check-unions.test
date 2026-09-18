@@ -139,10 +139,11 @@ x = 1
 x = f()
 
 [case testUnionWithEllipsis]
+from types import EllipsisType
 from typing import Union
 def f(x: Union[int, EllipsisType]) -> int:
     if x is Ellipsis:
-        reveal_type(x) # N: Revealed type is "builtins.ellipsis"
+        reveal_type(x) # N: Revealed type is "types.EllipsisType"
         x = 1
     reveal_type(x) # N: Revealed type is "builtins.int"
     return x

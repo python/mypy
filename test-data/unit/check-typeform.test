@@ -730,6 +730,30 @@ typx = 'int | str'
 [builtins fixtures/primitives.pyi]
 [typing fixtures/typing-full.pyi]
 
+[case testEveryKindOfSingleIdentifierSpecialFormInStringAnnotationIsRecognized]
+from typing import Any, Callable, Dict, List, NoReturn, Tuple, Type
+from typing_extensions import LiteralString, Never, TypeForm
+typx: TypeForm
+typx = 'Any'
+typx = 'Callable'
+typx = 'Dict'
+typx = 'List'
+typx = 'LiteralString'
+typx = 'Never'
+typx = 'NoReturn'
+typx = 'Tuple'
+typx = 'Type'
+[builtins fixtures/primitives.pyi]
+[typing fixtures/typing-full.pyi]
+
+[case testVarWithUnknownTypeInStringAnnotationIsNotRejected]
+from typing import Any
+from typing_extensions import TypeForm
+foo: Any
+typx: TypeForm = 'foo'
+reveal_type(typx)  # N: Revealed type is "TypeForm[Any]"
+[builtins fixtures/primitives.pyi]
+[typing fixtures/typing-full.pyi]
 
 -- Misc
 
@@ -751,7 +775,6 @@ class dict: pass
 class str: pass
 class type: pass
 class tuple: pass
-class ellipsis: pass
 class BaseException: pass
 class float: pass
 [typing fixtures/typing-full.pyi]

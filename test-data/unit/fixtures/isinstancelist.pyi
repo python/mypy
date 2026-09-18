@@ -13,9 +13,7 @@ class type:
 class function: pass
 class classmethod: pass
 
-class ellipsis: pass
-EllipsisType = ellipsis
-Ellipsis = ellipsis()
+Ellipsis: types.EllipsisType
 
 def isinstance(x: object, t: Union[type, Tuple]) -> bool: pass
 def issubclass(x: object, t: Union[type, Tuple]) -> bool: pass

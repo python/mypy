@@ -3335,6 +3335,24 @@ def narrow_dict(x: Literal['a', 'b', 'c'], t: dict[Literal['a', 'b'], int]):
 [builtins fixtures/primitives.pyi]
 
 
+[case testNarrowCustomEqEnumInLiteralContainer]
+# flags: --strict-equality --warn-unreachable
+# https://github.com/python/mypy/issues/21703
+from enum import Enum
+
+class E(Enum):
+    foo = 1
+    bar = 2
+
+    def __eq__(self, other: object) -> bool:
+        return True
+
+def f(x: int) -> None:
+    if x in [E.foo, E.bar]:
+        reveal_type(x)  # N: Revealed type is "builtins.int"
+[builtins fixtures/list.pyi]
+
+
 [case testNarrowingLiteralInLiteralContainer]
 # flags: --strict-equality --warn-unreachable
 from typing import Literal

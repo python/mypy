@@ -41,7 +41,7 @@ from abc import abstractmethod
 from typing import TYPE_CHECKING, ClassVar, Final, Generic, TypeGuard, TypeVar, Union, final
 
 from mypyc.common import HAVE_IMMORTAL, IS_32_BIT_PLATFORM, PLATFORM_SIZE, JsonDict, short_name
-from mypyc.ir.deps import LIBRT_RANDOM, LIBRT_STRINGS, LIBRT_VECS, Dependency
+from mypyc.ir.deps import LIBRT_RANDOM, LIBRT_STRINGS, LIBRT_THREADING, LIBRT_VECS, Dependency
 from mypyc.namegen import NameGenerator
 
 if TYPE_CHECKING:
@@ -151,6 +151,9 @@ class RTypeVisitor(Generic[T]):
     @abstractmethod
     def visit_rinstance(self, typ: RInstance, /) -> T:
         raise NotImplementedError
+
+    def visit_rtypevar(self, typ: RTypeVar, /) -> T:
+        raise RuntimeError("RTypeVar should not be encountered here")
 
     @abstractmethod
     def visit_rvec(self, typ: RVec, /) -> T:
@@ -547,16 +550,36 @@ KNOWN_NATIVE_TYPES: Final = {
 } | {
     "librt.random.Random": RPrimitive(
         "librt.random.Random", is_unboxed=False, is_refcounted=True, dependencies=(LIBRT_RANDOM,)
-    )
+    ),
+    "librt.threading.Lock": RPrimitive(
+        "librt.threading.Lock",
+        is_unboxed=False,
+        is_refcounted=True,
+        dependencies=(LIBRT_THREADING,),
+    ),
 }
 
 bytes_writer_rprimitive: Final = KNOWN_NATIVE_TYPES["librt.strings.BytesWriter"]
 string_writer_rprimitive: Final = KNOWN_NATIVE_TYPES["librt.strings.StringWriter"]
 random_rprimitive: Final = KNOWN_NATIVE_TYPES["librt.random.Random"]
+lock_rprimitive: Final = KNOWN_NATIVE_TYPES["librt.threading.Lock"]
 
 
 def is_native_rprimitive(rtype: RType) -> bool:
     return isinstance(rtype, RPrimitive) and rtype.name in KNOWN_NATIVE_TYPES
+
+
+def is_simple_refcounted_pointer(rtype: RType) -> bool:
+    """Is rtype represented at runtime as a single, reference-counted 'PyObject *'?
+
+    This covers 'object', 'str', containers, instances of native classes and
+    optional/union types -- everything whose C representation is exactly one
+    'PyObject *' field that owns a reference. It excludes unboxed types (tagged
+    'int', fixed-width ints, floats, bools), inline tuples ('RTuple'), vectors
+    ('RVec') and C structs ('RStruct'), which need different treatment for
+    free-threaded memory safety.
+    """
+    return rtype.is_refcounted and not rtype.is_unboxed and not isinstance(rtype, RStruct)
 
 
 def is_tagged(rtype: RType) -> TypeGuard[RPrimitive]:
@@ -746,6 +769,12 @@ class TupleNameVisitor(RTypeVisitor[str]):
 
     def visit_rvoid(self, t: RVoid) -> str:
         assert False, "rvoid in tuple?"
+
+    def visit_rtypevar(self, typ: RTypeVar) -> str:
+        # We need to return something to support generic RTuples, etc. Make sure
+        # the return value is invalid C so that generic RTuples must be expanded
+        # before they can be used in IR.
+        return f"!RTypeVar {typ.id} invalid!"
 
 
 @final
@@ -1011,6 +1040,50 @@ class RInstance(RType):
 
     def serialize(self) -> str:
         return self.name
+
+
+@final
+class RTypeVar(RType):
+    """Type variable type used for generic primitive ops.
+
+    This allows having generic primitive operations like vec get item, which is
+    parametrized by the vec item type.
+
+    These types are not valid in any other context outside PrimitiveDescription,
+    and they will always be substituted during the construction of a PrimitiveOp.
+
+    NOTE: This is not related to mypy's TypeVarType!
+    """
+
+    def __init__(self, id: int) -> None:
+        self.id = id
+
+    @property
+    def may_be_immortal(self) -> bool:
+        # RTypeVar must always be substituted before use, so this should never matter.
+        return False
+
+    def accept(self, visitor: RTypeVisitor[T]) -> T:
+        return visitor.visit_rtypevar(self)
+
+    def __str__(self) -> str:
+        return f"<RTypeVar {self.id}>"
+
+    def __repr__(self) -> str:
+        return f"<RTypeVar {self.id}>"
+
+    def __eq__(self, other: object) -> TypeGuard[RTypeVar]:
+        return isinstance(other, RTypeVar) and other.id == self.id
+
+    def __hash__(self) -> int:
+        return self.id ^ 12345
+
+    def serialize(self) -> JsonDict:
+        return {".class": "RTypeVar", "id": self.id}
+
+    @classmethod
+    def deserialize(cls, data: JsonDict, ctx: DeserMaps) -> RTypeVar:
+        return RTypeVar(data["id"])
 
 
 @final

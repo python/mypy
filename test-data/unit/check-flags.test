@@ -59,7 +59,7 @@ async def f():  # E: Function is missing a return type annotation \
                 # N: Use "-> None" if function does not return a value
     pass
 [builtins fixtures/async_await.pyi]
-[typing fixtures/typing-medium.pyi]
+[typing fixtures/typing-async.pyi]
 
 [case testAsyncUnannotatedArgument]
 # flags: --disallow-untyped-defs
@@ -552,8 +552,8 @@ x + ""  # E: Unsupported operand types for + ("int" and "str")
 import mod
 mod.x + 0
 mod.x + ""  # E: Unsupported operand types for + ("int" and "str")
-mod.y  # E: "object" has no attribute "y"
-mod + 0  # E: Unsupported left operand type for + ("object")
+mod.y  # E: Module has no attribute "y"
+mod + 0  # E: Unsupported left operand type for + (Module)
 [file mod.py]
 1 + ""  # E: Unsupported operand types for + ("int" and "str")
 x = 0
@@ -565,8 +565,8 @@ from mod import x
 x + ""  # E: Unsupported operand types for + ("int" and "str")
 import mod
 mod.x + ""  # E: Unsupported operand types for + ("int" and "str")
-mod.y  # E: "object" has no attribute "y"
-mod + 0  # E: Unsupported left operand type for + ("object")
+mod.y  # E: Module has no attribute "y"
+mod + 0  # E: Unsupported left operand type for + (Module)
 [file mod.py]
 1 + ""
 x = 0

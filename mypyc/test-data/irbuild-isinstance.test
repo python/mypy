@@ -48,7 +48,7 @@ L2:
 L3:
     return r1
 
-[case testBorrowSpecialCaseWithIsinstance]
+[case testBorrowSpecialCaseWithIsinstance_withgil]
 class C:
     s: str
 

@@ -401,3 +401,29 @@ def is_id(c):
 L0:
     r0 = LibRTStrings_IsIdentifier(c)
     return r0
+
+[case testLibrtStringsToUpperIR]
+from librt.strings import toupper
+from mypy_extensions import i32
+
+def up(c: i32) -> i32:
+    return toupper(c)
+[out]
+def up(c):
+    c, r0 :: i32
+L0:
+    r0 = LibRTStrings_ToUpper(c)
+    return r0
+
+[case testLibrtStringsToLowerIR]
+from librt.strings import tolower
+from mypy_extensions import i32
+
+def lo(c: i32) -> i32:
+    return tolower(c)
+[out]
+def lo(c):
+    c, r0 :: i32
+L0:
+    r0 = LibRTStrings_ToLower(c)
+    return r0

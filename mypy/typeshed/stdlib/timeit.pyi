@@ -1,7 +1,7 @@
+import sys
 import time
 from collections.abc import Callable, Sequence
-from typing import IO, Any
-from typing_extensions import TypeAlias
+from typing import IO, Any, TypeAlias
 
 __all__ = ["Timer", "timeit", "repeat", "default_timer"]
 
@@ -21,7 +21,12 @@ class Timer:
     def print_exc(self, file: IO[str] | None = None) -> None: ...
     def timeit(self, number: int = 1000000) -> float: ...
     def repeat(self, repeat: int = 5, number: int = 1000000) -> list[float]: ...
-    def autorange(self, callback: Callable[[int, float], object] | None = None) -> tuple[int, float]: ...
+    if sys.version_info >= (3, 15):
+        def autorange(
+            self, callback: Callable[[int, float], object] | None = None, target_time: float = 0.2
+        ) -> tuple[int, float]: ...
+    else:
+        def autorange(self, callback: Callable[[int, float], object] | None = None) -> tuple[int, float]: ...
 
 def timeit(
     stmt: _Stmt = "pass",

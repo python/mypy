@@ -125,6 +125,7 @@ from mypy.semanal import SemanticAnalyzer
 from mypy.semanal_pass1 import SemanticAnalyzerPreAnalysis
 from mypy.util import (
     DecodeError,
+    can_start_threads,
     decode_python_encoding,
     get_available_threads,
     get_mypy_comments,
@@ -230,10 +231,10 @@ class SCC:
         self.mod_ids = ids
         # Direct dependencies, should be populated by the caller.
         self.deps: set[int] = set(deps) if deps is not None else set()
-        # Direct dependencies that have not been processed yet.
-        # Should be populated by the caller. This set may change during graph
-        # processing, while the above stays constant.
-        self.not_ready_deps: set[int] = set()
+        # Count of direct dependencies that have not been processed yet.
+        # Populated by the caller from len(deps); decremented during graph
+        # processing as each dep completes. self.deps above stays constant.
+        self.not_ready_count: int = 0
         # SCCs that (directly) depend on this SCC. Note this is a list to
         # make processing order more predictable. Dependents will be notified
         # that they may be ready in the order in this list.
@@ -315,10 +316,11 @@ class WorkerClient:
         if self.connected:
             self.conn.close()
         # Technically we don't need to wait, but otherwise we will get ResourceWarnings.
+        # Also, it is generally good to not leave some running worker processes behind.
         try:
             self.proc.wait(timeout=WORKER_SHUTDOWN_TIMEOUT)
         except subprocess.TimeoutExpired:
-            pass
+            self.proc.terminate()
         if os.path.isfile(self.status_file):
             os.unlink(self.status_file)
 
@@ -998,6 +1000,10 @@ class BuildManager:
         self.import_options: dict[str, bytes] = {}
         # Cache for transitive dependency check (expensive).
         self.transitive_deps_cache: dict[tuple[int, int], bool] = {}
+        # Cache for options_snapshot() keyed by the cloned Options. Options is
+        # hashed by identity, and most modules share a handful of distinct
+        # configs, so this collapses ~all calls onto a few entries.
+        self.options_snapshot_cache: dict[Options, tuple[str, str]] = {}
         # Packages for which we know presence or absence of __getattr__().
         self.known_partial_packages: dict[str, bool] = {}
 
@@ -1016,8 +1022,8 @@ class BuildManager:
         If post_parse is False, skip the last step (used when parsing unchanged files
         that need to be re-checked due to stale dependencies).
         """
-        if not self.options.native_parser:
-            # Old parser cannot be parallelized.
+        if not self.options.native_parser or not can_start_threads():
+            # Old parser cannot be parallelized, and some platforms don't support threads.
             for state in states:
                 state.parse_file()
             if post_parse:
@@ -1026,7 +1032,7 @@ class BuildManager:
 
         parallel_states = []
         for state in states:
-            if not self.fscache.exists(state.xpath, real_only=True):
+            if state.requires_read():
                 state.source = state.get_source()
             if state.tree is not None:
                 # The file was already parsed.
@@ -1069,13 +1075,6 @@ class BuildManager:
             for state in parallel_states:
                 assert state.tree is not None
                 if state in parallel_parsed_states_set:
-                    if state.tree.raw_data is not None:
-                        # source_hash was already extracted above, but raw_data
-                        # may have been preserved for workers (imports_only=True).
-                        pass
-                    elif state.source_hash is None:
-                        # At least namespace packages may not have source.
-                        state.get_source()
                     state.early_errors = list(self.errors.error_info_map.get(state.xpath, []))
                     state.semantic_analysis_pass1()
                     self.ast_cache[state.id] = (state.tree, state.early_errors, state.source_hash)
@@ -1957,23 +1956,29 @@ def get_cache_names(id: str, path: str, options: Options) -> tuple[str, str, str
     return prefix + meta_suffix, prefix + data_suffix, deps_json
 
 
-def options_snapshot(id: str, manager: BuildManager) -> dict[str, object]:
+def options_snapshot(module: str, manager: BuildManager) -> dict[str, object]:
     """Make compact snapshot of options for a module.
 
     Separately store only the options we may compare individually, and take a hash
     of everything else. If --debug-cache is specified, fall back to full snapshot.
     """
-    platform_opt, values = manager.options.clone_for_module(id).select_options_affecting_cache()
+    cloned = manager.options.clone_for_module(module)
     if manager.options.debug_cache:
         # Build full options snapshot for debugging purposes.
+        platform_opt, values = cloned.select_options_affecting_cache()
         result: dict[str, object] = {"platform": platform_opt}
         for key, val in zip(OPTIONS_AFFECTING_CACHE_NO_PLATFORM, values):
             result[key] = val
         return result
-    # Process most options quickly, since this is performance critical.
-    buf = WriteBuffer()
-    write_json_value(buf, cast(JsonValue, values))
-    return {"platform": platform_opt, "other_options": hash_digest(buf.getvalue())}
+    cache = manager.options_snapshot_cache
+    cached = cache.get(cloned)
+    if cached is None:
+        platform_opt, values = cloned.select_options_affecting_cache()
+        buf = WriteBuffer()
+        write_json_value(buf, cast(JsonValue, values))
+        cached = (platform_opt, hash_digest(buf.getvalue()))
+        cache[cloned] = cached
+    return {"platform": cached[0], "other_options": cached[1]}
 
 
 def find_cache_meta(
@@ -3132,6 +3137,26 @@ class State:
 
     # Methods for processing modules from source code.
 
+    def requires_read(self) -> bool:
+        """Do we need to force reading the file source before parsing?
+
+        Ruff parser can do all the work faster, but there are situation where
+        we cannot delegate the work to it (because it needs actual file on disk):
+        * Non-trivial shadow file mapping.
+        * Various "fake" files like namespace packages, etc.
+        """
+        if (
+            self.manager.shadow_map
+            and self.manager.maybe_swap_for_shadow_path(self.xpath) != self.xpath
+        ):
+            return True
+        return (
+            self.manager.fscache.isdir(self.xpath)
+            or not self.manager.fscache.exists(self.xpath, real_only=True)
+            # For a better error in case one tries to parse a .pyd file (which is a DLL).
+            or self.xpath.endswith(".pyd")
+        )
+
     def get_source(self) -> str:
         """Get module source and parse inline mypy configurations."""
         manager = self.manager
@@ -3197,10 +3222,10 @@ class State:
             # The file was already parsed.
             return
 
-        if raw_data is None:
+        if not self.options.native_parser or raw_data is None and self.requires_read():
             source = self.get_source()
         else:
-            source = ""
+            source = None
         manager = self.manager
         # Can we reuse a previously parsed AST? This avoids redundant work in daemon.
         if self.id not in manager.ast_cache:
@@ -3221,6 +3246,9 @@ class State:
                 # New parser returns serialized trees that need to be de-serialized.
                 if self.tree.raw_data is not None:
                     assert raw_data is None
+                    # Same as above, apply inline configuration first.
+                    self.source_hash = self.tree.raw_data.source_hash
+                    self.apply_inline_configuration(self.tree.raw_data.mypy_comments)
                     self.tree = load_from_raw(
                         self.xpath,
                         self.id,
@@ -3470,12 +3498,16 @@ class State:
             # We should always patch indirect dependencies, even in full (non-incremental) builds,
             # because the cache still may be written, and it must be correct.
             self.patch_indirect_dependencies(
-                # Two possible sources of indirect dependencies:
+                # Three possible sources of indirect dependencies:
                 # * Symbols not directly imported in this module but accessed via an attribute
                 #   or via a re-export (vast majority of these recorded in semantic analysis).
                 # * For each expression type we need to record definitions of type components
                 #   since "meaning" of the type may be updated when definitions are updated.
-                self.tree.module_refs | self.type_checker().module_refs,
+                # * Additional dependencies reported by plugins (e.g. mypyc, see
+                #   MypycPlugin.get_additional_indirect_deps).
+                self.tree.module_refs
+                | self.type_checker().module_refs
+                | manager.plugin.get_additional_indirect_deps(self.tree),
                 set(self.type_map().values()),
             )
 
@@ -4333,7 +4365,7 @@ def load_graph(
         for dep in st.ancestors + dependencies + st.suppressed:
             ignored = dep in st.suppressed_set and dep not in entry_points
             if ignored and dep not in added:
-                manager.missing_modules[dep] = SuppressionReason.NOT_FOUND
+                manager.missing_modules.setdefault(dep, SuppressionReason.NOT_FOUND)
                 # TODO: for now we skip this in the daemon as a performance optimization.
                 # This however creates a correctness issue, see #7777 and State.is_fresh().
                 if not manager.use_fine_grained_cache() or manager.options.warn_unused_configs:
@@ -4619,10 +4651,11 @@ def process_graph(graph: Graph, manager: BuildManager) -> None:
         ready = []
         for done_scc in done:
             for dependent in done_scc.direct_dependents:
-                scc_by_id[dependent].not_ready_deps.discard(done_scc.id)
-                if not scc_by_id[dependent].not_ready_deps:
-                    not_ready.remove(scc_by_id[dependent])
-                    ready.append(scc_by_id[dependent])
+                dep_scc = scc_by_id[dependent]
+                dep_scc.not_ready_count -= 1
+                if not dep_scc.not_ready_count:
+                    not_ready.remove(dep_scc)
+                    ready.append(dep_scc)
     manager.trace(f"Transitive deps cache size: {sys.getsizeof(manager.transitive_deps_cache)}")
 
 
@@ -5003,9 +5036,10 @@ def prepare_sccs_full(
     for scc in sccs:
         # Remove trivial dependency on itself.
         scc_deps_map[scc].discard(scc)
-        for dep_scc in scc_deps_map[scc]:
+        dep_sccs = scc_deps_map[scc]
+        for dep_scc in dep_sccs:
             scc.deps.add(dep_scc.id)
-            scc.not_ready_deps.add(dep_scc.id)
+        scc.not_ready_count = len(dep_sccs)
     return scc_deps_map
 
 
@@ -5075,18 +5109,33 @@ def deps_filtered(graph: Graph, vertices: AbstractSet[str], id: str, pri_max: in
 
 def transitive_dep_hash(scc: SCC, graph: Graph) -> bytes:
     """Compute stable snapshot of transitive import structure for given SCC."""
-    all_direct_deps = sorted(
-        {
-            dep
-            for id in scc.mod_ids
-            for dep in graph[id].dependencies
-            if graph[id].priorities.get(dep) != PRI_INDIRECT
-        }
-    )
+    mod_ids = scc.mod_ids
+    if len(mod_ids) == 1:
+        # Fast path: State.dependencies is already deduped and never contains
+        # self.id, so we can skip the dedupe set and the self-membership check.
+        (only_id,) = mod_ids
+        st = graph[only_id]
+        priorities = st.priorities
+        all_direct_deps = sorted(
+            dep for dep in st.dependencies if priorities.get(dep) != PRI_INDIRECT
+        )
+        buf = WriteBuffer()
+        for dep_id in all_direct_deps:
+            write_str_bare(buf, dep_id)
+            write_bytes_bare(buf, graph[dep_id].trans_dep_hash)
+        return hash_digest_bytes(buf.getvalue())
+    deps_set: set[str] = set()
+    for id in mod_ids:
+        state = graph[id]
+        priorities = state.priorities
+        for dep in state.dependencies:
+            if priorities.get(dep) != PRI_INDIRECT:
+                deps_set.add(dep)
+    all_direct_deps = sorted(deps_set)
     buf = WriteBuffer()
     for dep_id in all_direct_deps:
         write_str_bare(buf, dep_id)
-        if dep_id not in scc.mod_ids:
+        if dep_id not in mod_ids:
             write_bytes_bare(buf, graph[dep_id].trans_dep_hash)
     return hash_digest_bytes(buf.getvalue())
 

@@ -426,6 +426,42 @@ class A: pass
 class B: pass
 [builtins fixtures/tuple.pyi]
 
+[case testMultipleAssignmentWithOverloadReinferredAsHomogeneousTuple]
+from typing import Any, TypeVar, overload
+
+T = TypeVar("T")
+
+@overload
+def f(value: T) -> tuple[T, int]: ...
+@overload
+def f(*values: object) -> tuple[Any, ...]: ...
+def f(*values: object, **kwargs: object) -> object: ...
+
+def g() -> None:
+    first: str
+    first, second = f(1)  # E: Incompatible types in assignment (expression has type "int", variable has type "str")
+    reveal_type(second)  # N: Revealed type is "builtins.int"
+
+    last: str
+    _, last = f(1)  # E: Incompatible types in assignment (expression has type "int", variable has type "str")
+[builtins fixtures/tuple.pyi]
+
+[case testMultipleAssignmentWithOverloadReinferredAsNonTuple]
+from typing import TypeVar, overload
+
+T = TypeVar("T")
+
+@overload
+def f(value: T) -> tuple[T]: ...
+@overload
+def f(*values: object) -> int: ...
+def f(*values: object, **kwargs: object) -> object: ...
+
+def g() -> None:
+    value: str
+    (value,) = f(1)  # E: Incompatible types in assignment (expression has type "int", variable has type "str")
+[builtins fixtures/tuple.pyi]
+
 [case testMultipleAssignmentWithSquareBracketTuples]
 # flags: --no-strict-optional
 from typing import Tuple

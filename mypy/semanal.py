@@ -259,6 +259,7 @@ from mypy.typeanal import (
 )
 from mypy.typeops import function_type, get_type_vars, try_getting_str_literals_from_type
 from mypy.types import (
+    ANNOTATED_TYPE_NAMES,
     ASSERT_TYPE_NAMES,
     DATACLASS_TRANSFORM_NAMES,
     DEPRECATED_TYPE_NAMES,
@@ -271,6 +272,7 @@ from mypy.types import (
     OVERRIDE_DECORATOR_NAMES,
     PROTOCOL_NAMES,
     REVEAL_TYPE_NAMES,
+    SENTINEL_TYPE_NAMES,
     TPDICT_NAMES,
     TYPE_ALIAS_NAMES,
     TYPE_CHECK_ONLY_NAMES,
@@ -289,6 +291,7 @@ from mypy.types import (
     ParamSpecType,
     PlaceholderType,
     ProperType,
+    SentinelValue,
     TrivialSyntheticTypeTranslator,
     TupleType,
     Type,
@@ -365,6 +368,13 @@ Tag: _TypeAlias = int
 # type expression and can be ignored quickly when attempting to parse a
 # string literal as a type expression.
 _MULTIPLE_WORDS_NONTYPE_RE = re.compile(r'\s*[^\s.\'"|\[]+\s+[^\s.\'"|\[]')
+
+# Characters which never appear in a valid type expression.
+# NOTE: Allows '*' for (PEP 646 Unpack) and '+' for (Literal[+N])
+# NOTE: Stored as a tuple of single-character strings (rather than a str)
+#       so that iterating it does not allocate a new string per character
+#       when compiled with mypyc.
+_NONTYPE_CHARS: Final = tuple("!:/<>@%$^?;&~`\\")
 
 
 class SemanticAnalyzer(
@@ -1188,11 +1198,15 @@ class SemanticAnalyzer(
                 sym = self.lookup_qualified(typ.name, typ, suppress_errors=True)
                 if sym is not None and sym.fullname in TYPE_NAMES and typ.args:
                     return self.is_expected_self_type(typ.args[0], is_classmethod=False)
+                if sym is not None and sym.fullname in ANNOTATED_TYPE_NAMES and typ.args:
+                    return self.is_expected_self_type(typ.args[0], is_classmethod=True)
             return False
         if isinstance(typ, TypeVarType):
             return typ == self.type.self_type
         if isinstance(typ, UnboundType):
             sym = self.lookup_qualified(typ.name, typ, suppress_errors=True)
+            if sym is not None and sym.fullname in ANNOTATED_TYPE_NAMES and typ.args:
+                return self.is_expected_self_type(typ.args[0], is_classmethod=False)
             return sym is not None and sym.fullname in SELF_TYPE_NAMES
         return False
 
@@ -2143,7 +2157,7 @@ class SemanticAnalyzer(
         if (
             defn.info
             and defn.info.typeddict_type
-            and not has_placeholder(defn.info.typeddict_type)
+            and (defn.info.typeddict_data is None or defn.info.typeddict_data.ready)
         ):
             # Don't reprocess everything
             is_typeddict = True
@@ -3377,9 +3391,15 @@ class SemanticAnalyzer(
         # may be set to True while there were still placeholders due to forward refs.
         s.is_alias_def = False
 
+        sentinel_definition = self.is_sentinel_declaration(s)
+
         # OK, this is a regular assignment, perform the necessary analysis steps.
         s.is_final_def = self.unwrap_final(s)
+        if sentinel_definition:
+            s.is_final_def = True
         self.analyze_lvalues(s)
+        if sentinel_definition:
+            self.setup_sentinel_var(s)
         self.check_final_implicit_def(s)
         self.store_final_status(s)
         self.check_classvar(s)
@@ -3391,6 +3411,61 @@ class SemanticAnalyzer(
         self.process__all__(s)
         self.process__deletable__(s)
         self.process__slots__(s)
+
+    def is_sentinel_declaration(self, s: AssignmentStmt) -> bool:
+        """Does this assignment define a PEP 661 sentinel singleton?
+
+        This includes both the original `NAME = Sentinel("NAME")` call and a
+        plain alias of an existing sentinel, e.g. `ALIAS = NAME` or
+        `ALIAS = mod.NAME`, so that re-exports of a sentinel keep working as
+        the same sentinel type.
+        """
+        if self.is_nested_within_func_scope() or s.unanalyzed_type is not None:
+            return False
+        if len(s.lvalues) != 1 or not isinstance(s.lvalues[0], NameExpr):
+            return False
+        if isinstance(s.rvalue, RefExpr):
+            return isinstance(s.rvalue.node, Var) and s.rvalue.node.is_sentinel
+        if not isinstance(s.rvalue, CallExpr):
+            return False
+        call = s.rvalue
+        if not isinstance(call.callee, RefExpr):
+            return False
+        if call.callee.fullname not in SENTINEL_TYPE_NAMES:
+            return False
+        if not call.args or call.arg_kinds[0] != ARG_POS or not isinstance(call.args[0], StrExpr):
+            return False
+        return True
+
+    def setup_sentinel_var(self, s: AssignmentStmt) -> None:
+        lvalue = s.lvalues[0]
+        assert isinstance(lvalue, NameExpr)
+        if not isinstance(lvalue.node, Var):
+            return
+        lvalue.is_special_form = True
+        var = lvalue.node
+        var.is_sentinel = True
+        if isinstance(s.rvalue, RefExpr):
+            # An alias of an existing sentinel: reuse its already-computed type.
+            assert isinstance(s.rvalue.node, Var)
+            typ = get_proper_type(s.rvalue.node.type)
+            assert isinstance(typ, LiteralType)
+        else:
+            typ = self.sentinel_type_for_var(var, s.rvalue)
+        if typ is not None:
+            s.type = typ
+
+    def sentinel_type_for_var(self, var: Var, rvalue: Expression) -> LiteralType | None:
+        assert isinstance(rvalue, CallExpr)
+        callee = rvalue.callee
+        assert isinstance(callee, RefExpr)
+        typ = self.named_type_or_none(callee.fullname)
+        if typ is None:
+            return None
+        name = f"{self.type.name}.{var.name}" if self.type is not None else var.name
+        return LiteralType(
+            SentinelValue(var.fullname, name), fallback=typ, line=rvalue.line, column=rvalue.column
+        )
 
     def analyze_identity_global_assignment(self, s: AssignmentStmt) -> bool:
         """Special case 'X = X' in global scope.
@@ -4263,6 +4338,8 @@ class SemanticAnalyzer(
             # An alias gets updated.
             updated = False
             if isinstance(existing.node, TypeAlias):
+                # Invalidate recursive status cache in case it was previously set.
+                existing.node._is_recursive = None
                 if existing.node.target != res:
                     # Copy expansion to the existing alias, this matches how we update base classes
                     # for a TypeInfo _in place_ if there are nested placeholders.
@@ -4271,8 +4348,6 @@ class SemanticAnalyzer(
                     existing.node.alias_tvars = alias_tvars
                     existing.node.no_args = no_args
                     updated = True
-                    # Invalidate recursive status cache in case it was previously set.
-                    existing.node._is_recursive = None
             else:
                 # Otherwise just replace existing placeholder with type alias *in place*.
                 existing._node = alias_node
@@ -4763,6 +4838,7 @@ class SemanticAnalyzer(
                     var.is_final
                     and isinstance(typ, Instance)
                     and typ.last_known_value
+                    and not isinstance(typ.last_known_value.value, SentinelValue)
                     and (not self.type or not self.type.is_enum)
                 ):
                     var.final_value = typ.last_known_value.value
@@ -5830,6 +5906,8 @@ class SemanticAnalyzer(
             ):
                 updated = False
                 if isinstance(existing.node, TypeAlias):
+                    # Invalidate recursive status cache in case it was previously set.
+                    existing.node._is_recursive = None
                     if (
                         existing.node.target != res
                         or existing.node.alias_tvars != alias_node.alias_tvars
@@ -5840,8 +5918,6 @@ class SemanticAnalyzer(
                         existing.node.default_depends = default_depends
                         existing.node.alias_tvars = alias_tvars
                         updated = True
-                        # Invalidate recursive status cache in case it was previously set.
-                        existing.node._is_recursive = None
                 else:
                     # Otherwise just replace existing placeholder with type alias *in place*.
                     existing._node = alias_node
@@ -6411,11 +6487,14 @@ class SemanticAnalyzer(
 
         with self.enter(expr):
             self.analyze_comp_for(expr)
-            expr.key.accept(self)
+            if expr.key is not None:
+                expr.key.accept(self)
             expr.value.accept(self)
         self.analyze_comp_for_2(expr)
 
     def visit_generator_expr(self, expr: GeneratorExpr) -> None:
+        if isinstance(expr.left_expr, StarExpr):
+            expr.left_expr.valid = True
         with self.enter(expr):
             self.analyze_comp_for(expr)
             expr.left_expr.accept(self)
@@ -8080,57 +8159,15 @@ class SemanticAnalyzer(
             # and only lazily in contexts where a TypeForm is expected
             return
         elif isinstance(maybe_type_expr, StrExpr):
-            str_value = maybe_type_expr.value  # cache
-            # Filter out string literals which look like an identifier but
-            # cannot be a type expression, for a few common reasons
-            if str_value.isidentifier():
-                sym = self.lookup(str_value, UnboundType(str_value), suppress_errors=True)
-                if sym is None:
-                    # Does not refer to anything in the local symbol table
-                    maybe_type_expr.as_type = None
-                    return
-                else:  # sym is not None
-                    node = sym.node  # cache
-                    if isinstance(node, PlaceholderNode) and not node.becomes_typeinfo:
-                        # Either:
-                        # 1. f'Cannot resolve name "{t.name}" (possible cyclic definition)'
-                        # 2. Reference to an unknown placeholder node.
-                        maybe_type_expr.as_type = None
-                        return
-                    unbound_tvar_or_paramspec = (
-                        isinstance(node, (TypeVarExpr, TypeVarTupleExpr, ParamSpecExpr))
-                        and self.tvar_scope.get_binding(sym) is None
-                    )
-                    if unbound_tvar_or_paramspec:
-                        # Either:
-                        # 1. unbound_tvar: 'Type variable "{}" is unbound' [codes.VALID_TYPE]
-                        # 2. unbound_paramspec: f'ParamSpec "{name}" is unbound' [codes.VALID_TYPE]
-                        maybe_type_expr.as_type = None
-                        return
-            else:  # does not look like an identifier
-                if '"' in str_value or "'" in str_value:
-                    # Only valid inside a Literal[...] or Annotated[..., ...] type
-                    if "[" not in str_value:
-                        # Cannot be a Literal[...] or Annotated[..., ...] type
-                        maybe_type_expr.as_type = None
-                        return
-                elif len(str_value) < 2 or str_value.isspace():
-                    # Whitespace-only strings cannot be valid types. Very short strings can
-                    # only be valid if they are identifiers, but we already checked for those.
-                    maybe_type_expr.as_type = None
-                    return
-                # Filter out string literals with common patterns that could not
-                # possibly be in a type expression
-                if _MULTIPLE_WORDS_NONTYPE_RE.match(str_value):
-                    # A common pattern in string literals containing a sentence.
-                    # But cannot be a type expression.
-                    maybe_type_expr.as_type = None
-                    return
+            if not self.string_could_be_type_expression(maybe_type_expr):
+                # Not a valid type.
+                maybe_type_expr.as_type = None
+                return
         elif isinstance(maybe_type_expr, IndexExpr):
             if isinstance(maybe_type_expr.base, NameExpr):
                 if isinstance(
                     maybe_type_expr.base.node, Var
-                ) and not self.var_is_typing_special_form(maybe_type_expr.base.node):
+                ) and not self.var_could_be_typing_special_form(maybe_type_expr.base.node):
                     # Leftmost part of IndexExpr refers to a Var. Not a valid type.
                     maybe_type_expr.as_type = None
                     return
@@ -8142,9 +8179,7 @@ class SemanticAnalyzer(
                         break
                     next_leftmost = leftmost
                 if isinstance(leftmost, NameExpr):
-                    if isinstance(leftmost.node, Var) and not self.var_is_typing_special_form(
-                        leftmost.node
-                    ):
+                    if isinstance(leftmost.node, Var):
                         # Leftmost part of IndexExpr refers to a Var. Not a valid type.
                         maybe_type_expr.as_type = None
                         return
@@ -8192,21 +8227,117 @@ class SemanticAnalyzer(
 
         maybe_type_expr.as_type = t
 
+    def string_could_be_type_expression(self, maybe_type_expr: StrExpr) -> bool:
+        str_value = maybe_type_expr.value  # cache
+        if str_value.isidentifier():
+            # Filter out string literals which look like an identifier but
+            # cannot be a type expression, for a few common reasons
+            sym = self.lookup(str_value, UnboundType(str_value), suppress_errors=True)
+            if sym is None:
+                # Does not refer to anything in the local symbol table
+                return False
+            else:  # sym is not None
+                node = sym.node  # cache
+                # The following early-reject checks are mutually exclusive,
+                # ordered by decreasing rejection frequency (measured on
+                # mypy's self-check) so the commonest rejections exit first.
+                # - TypeVarExpr, TypeVarTupleExpr, ParamSpecExpr (~951)
+                # - Var (~157)
+                # - FuncDef, OverloadedFuncDef, MypyFile (~48)
+                # - PlaceholderNode (~23)
+                unbound_tvar_or_paramspec = (
+                    isinstance(node, (TypeVarExpr, TypeVarTupleExpr, ParamSpecExpr))
+                    and self.tvar_scope.get_binding(sym) is None
+                )
+                if unbound_tvar_or_paramspec:
+                    # Either:
+                    # 1. unbound_tvar: 'Type variable "{}" is unbound' [codes.VALID_TYPE]
+                    # 2. unbound_paramspec: f'ParamSpec "{name}" is unbound' [codes.VALID_TYPE]
+                    return False
+                if (
+                    isinstance(node, Var)
+                    and self.var_type_is_known(node)
+                    and not self.var_could_be_typing_special_form(node)
+                ):
+                    # Var whose type is known and is not a special form.
+                    # It is a value, not a type expression.
+                    return False
+                if isinstance(node, (FuncDef, OverloadedFuncDef, MypyFile)):
+                    # Functions and modules are never type expressions.
+                    return False
+                if isinstance(node, PlaceholderNode) and not node.becomes_typeinfo:
+                    # Either:
+                    # 1. f'Cannot resolve name "{t.name}" (possible cyclic definition)'
+                    # 2. Reference to an unknown placeholder node.
+                    return False
+        elif (leftmost_name := dotted_identifier_leftmost(str_value)) is not None:
+            # Dotted-name string (e.g. "builtins.tuple", "typing.Mapping").
+            # Look up the leftmost component; if it cannot be a type prefix
+            # then the whole dotted name cannot spell a type. Mirrors the
+            # IndexExpr-with-MemberExpr-base filter logic below.
+            sym = self.lookup(leftmost_name, UnboundType(leftmost_name), suppress_errors=True)
+            if sym is None:
+                # Leftmost component does not refer to anything in scope
+                return False
+            node = sym.node  # cache
+            if isinstance(node, PlaceholderNode) and not node.becomes_typeinfo:
+                # Either:
+                # 1. f'Cannot resolve name "{t.name}" (possible cyclic definition)'
+                # 2. Reference to an unknown placeholder node.
+                return False
+            if isinstance(node, Var):
+                # Leftmost component is a Var: it is a value, so it cannot be
+                # the module or class prefix of a dotted type name.
+                return False
+        else:  # does not look like an identifier or dotted identifier
+            if '"' in str_value or "'" in str_value:
+                # Only valid inside a Literal[...] or Annotated[..., ...] type
+                if "[" not in str_value:
+                    # Cannot be a Literal[...] or Annotated[..., ...] type
+                    return False
+            elif len(str_value) < 2 or str_value.isspace():
+                # Whitespace-only strings cannot be valid types. Very short strings can
+                # only be valid if they are identifiers, but we already checked for those.
+                return False
+            # Filter out string literals with common patterns that could not
+            # possibly be in a type expression
+            if _MULTIPLE_WORDS_NONTYPE_RE.match(str_value):
+                # A common pattern in string literals containing a sentence.
+                # But cannot be a type expression.
+                return False
+            # Skip some checks when a non-zero even number of single or double quotes
+            # signals a possible Literal[...] component, whose quoted content
+            # could contain anything: symbols or identifiers that would be
+            # incorrectly processed by some checks.
+            sq = str_value.count("'")
+            dq = str_value.count('"')
+            if not ((sq > 0 and sq % 2 == 0) or (dq > 0 and dq % 2 == 0)):
+                # Filter out string literals containing characters or boundary
+                # patterns that never appear in valid type expressions:
+                # - Leading '.' (incomplete dotted name, file extension, etc)
+                # - Trailing '.' (incomplete dotted name, file extension, etc)
+                # - Characters never valid in a type expression (e.g. '/', ':', '<', '>', '@')
+                # - '-' not directly preceded by '[' (which can occur in Literal[-N])
+                # NOTE: str_value is never empty here. Branches above return
+                #       for every string shorter than 2 characters.
+                if str_value[0] == "." or str_value[-1] == "." or has_nontype_char(str_value):
+                    return False
+        return True
+
     @staticmethod
-    def var_is_typing_special_form(var: Var) -> bool:
-        return var.fullname.startswith("typing") and var.fullname in [
-            "typing.Annotated",
-            "typing_extensions.Annotated",
-            "typing.Callable",
-            "typing.Literal",
-            "typing_extensions.Literal",
-            "typing.Optional",
-            "typing.TypeGuard",
-            "typing_extensions.TypeGuard",
-            "typing.TypeIs",
-            "typing_extensions.TypeIs",
-            "typing.Union",
-        ]
+    def var_could_be_typing_special_form(var: Var) -> bool:
+        return (
+            var.fullname.startswith("typing.")
+            or var.fullname.startswith("typing_extensions.")
+            or var.fullname.startswith("mypy_extensions.")
+        )
+
+    @staticmethod
+    def var_type_is_known(var: Var) -> bool:
+        return not (
+            (var_typ_p := get_proper_type(var.type)) is None
+            or isinstance(var_typ_p, (AnyType, PlaceholderType, UnboundType))
+        )
 
     @contextmanager
     def isolated_error_analysis(self) -> Iterator[None]:
@@ -8464,3 +8595,67 @@ def erase_func_annotations(func: FuncDef) -> None:
         arg.variable.type = None
     func.type = None
     func.unanalyzed_type = None
+
+
+def dotted_identifier_leftmost(s: str) -> str | None:
+    """The leftmost component of s, if s is a dotted identifier, else None.
+
+    A dotted identifier is two or more identifiers joined by ".", such as
+    "builtins.tuple" or "typing.Mapping". A bare identifier is not a dotted
+    identifier: callers are expected to handle that case separately.
+
+    Returns the leftmost component (which is never empty) so that callers
+    need not split s a second time to obtain it.
+    """
+    # NOTE: Scanning with find() rather than s.split(".") avoids allocating a
+    #       list, since only the leftmost component is ever needed.
+    dot = s.find(".")
+    if dot == -1:
+        return None
+    leftmost = s[:dot]
+    if not leftmost.isidentifier():
+        return None
+    start = dot + 1
+    while True:
+        dot = s.find(".", start)
+        if dot == -1:
+            if not s[start:].isidentifier():
+                return None
+            return leftmost
+        if not s[start:dot].isidentifier():
+            return None
+        start = dot + 1
+
+
+def has_nontype_char(s: str) -> bool:
+    """Whether s contains a character that cannot appear in a type expression.
+
+    Callers must exclude strings that may contain a quoted Literal[...]
+    component first, since quoted content can hold arbitrary characters.
+    """
+    # Look for _NONTYPE_CHARS
+    # NOTE: Iterating over s first (instead of _NONTYPE_CHARS) is NOT faster.
+    # NOTE: set.isdisjoint() is faster in interpreted-mypy (-22% runtime)
+    #       but slower in compiled-mypy (+16% runtime)
+    for ch in _NONTYPE_CHARS:
+        if ch in s:
+            return True
+
+    # Look for "-".
+    # It is valid only as a unary minus introducing a Literal[...] element,
+    # which is to say only where the preceding non-space character is a "["
+    # (as in Literal[-1]) or a "," (as in Literal[-1, -2]).
+    # A "-" anywhere else means s cannot be a type.
+    i = s.find("-")
+    while i != -1:
+        # Look for a preceding "[" or "," (skipping whitespace)
+        j = i - 1
+        while j >= 0 and s[j] == " ":
+            j -= 1
+        if j < 0 or (s[j] != "[" and s[j] != ","):
+            return True
+
+        # Continue to the next "-"
+        i = s.find("-", i + 1)
+
+    return False

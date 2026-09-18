@@ -23,6 +23,10 @@
 #include "internal/pycore_setobject.h"  // _PySet_Update
 #endif
 
+#ifdef Py_GIL_DISABLED
+#include "internal/pycore_object.h"  // _Py_TryIncrefFast, _Py_TryIncRefShared
+#endif
+
 #if CPY_3_12_FEATURES
 #include "internal/pycore_frame.h"
 #endif
@@ -32,6 +36,149 @@ extern "C" {
 #endif
 #if 0
 } // why isn't emacs smart enough to not indent this
+#endif
+
+#ifdef Py_GIL_DISABLED
+// Read a native attribute that is a single reference-counted 'PyObject *' field,
+// returning a new reference (or NULL if the field is NULL/undefined).
+//
+// On free-threaded builds a plain load followed by an incref races with a
+// concurrent setter that may decref the old value to zero and free it before the
+// incref runs (use-after-free). We avoid that with an optimistic try-incref,
+// validating the field when taking a shared reference. If no reference can be
+// secured that way, the fallback takes the same per-object lock as CPy_SetAttrRef
+// and reloads the field before taking a reference. This mirrors CPython's own
+// instance attribute read (in CPython 3.14: _Py_TryIncrefCompare, then a locked
+// reload -- see _PyObject_TryGetInstanceAttribute in Objects/dictobject.c).
+//
+// CPython's QSBR-aware object heaps keep a stale pointer safe to inspect as a
+// PyObject header. The try-incref protocol ensures that stale memory is never returned
+// as the attribute value. These guarantees depend on CPython internals and must be
+// rechecked when adding support for a new Python version.
+//
+// The hot path is lock-free and intentionally small: _Py_TryIncrefFast handles
+// values owned by this thread and immortal values. Everything colder -- the
+// shared-refcount CAS, field validation, and per-object lock fallback -- is in
+// CPy_GetAttrRefSlow. The cold annotation also prevents those arguments and
+// branches from bloating the caller's hot path. An unflagged cross-thread value
+// takes the locked slow path once; _Py_XNewRefWithLock sets maybe-weakref lazily,
+// so subsequent reads generally succeed through the lock-free shared-refcount
+// path. The default (GIL) build keeps the plain load + incref generated inline by
+// mypyc.
+//
+// Note that observing a non-NULL 'v' does not guarantee a non-NULL result: 'v' is
+// only a provisional read, and if the attribute is deleted before a reference to it
+// can be secured, this returns NULL and the caller raises AttributeError. That is a
+// legal outcome for a racing read, since it is ordered after the delete.
+CPy_COLD PyObject *CPy_GetAttrRefSlow(PyObject *v, PyObject *owner, PyObject **field);
+
+static inline PyObject *CPy_GetAttrRef(PyObject *owner, PyObject **field) {
+    PyObject *v = (PyObject *)_Py_atomic_load_ptr_acquire(field);
+    if (v == NULL) {
+        return NULL;
+    }
+    if (likely(_Py_TryIncrefFast(v))) {
+        return v;
+    }
+    return CPy_GetAttrRefSlow(v, owner, field);
+}
+
+// Read a native attribute that is a single reference-counted 'PyObject *' field
+// AND is Final (assigned once during construction, never rebound -- mypyc emits no
+// setter for it), returning a new reference (or NULL if undefined).
+//
+// A Final attribute has no concurrent writer after 'self' is published, so the
+// use-after-free race that CPy_GetAttrRef guards against cannot happen: the field
+// holds a strong reference for the object's whole lifetime, and any thread reading
+// it necessarily holds 'self', which keeps the value alive. So the try-incref +
+// _Py_XNewRefWithLock fallback are unnecessary here -- a plain load + Py_INCREF is
+// safe. A cross-thread Py_INCREF is an unconditional atomic add on ob_ref_shared
+// (CPython 3.14), so (unlike CPy_GetAttrRef's try-incref) it needs no maybe-weakref
+// and has no slow path. The load is relaxed rather than acquire: the
+// reader reached 'self' through a synchronization edge (self's own publication)
+// that already ordered the construction stores before it, exactly as with
+// CPy_InitAttrRef's relaxed store. Relaxed keeps it TSan-clean at zero cost (plain
+// mov/ldr).
+static inline PyObject *CPy_GetAttrRefFinal(PyObject **field) {
+    PyObject *v = (PyObject *)_Py_atomic_load_ptr_relaxed(field);
+    if (v != NULL) {
+        Py_INCREF(v);
+    }
+    return v;
+}
+
+// Set a native attribute that is a single reference-counted 'PyObject *' field,
+// stealing the reference to 'value' (which may be NULL to delete the attribute)
+// and safely reclaiming the previous value.
+//
+// The owner's critical section serializes writers and synchronizes them with
+// CPy_GetAttrRef's fallback path. A lock-free reader either secures a local or
+// immortal reference directly, or secures a shared reference and validates the
+// field. Otherwise it reloads the field under this lock. Thus once the replacement
+// is published, the old field reference can be decrefed immediately, even if a
+// reader is still dereferencing the old value (see CPy_GetAttrRef for why touching
+// a freed value there is safe). Decref outside the critical section so an
+// arbitrary destructor does not run while the owner is locked -- the equivalent in
+// CPython 3.14 (store_instance_attr_lock_held) decrefs with the lock still held.
+static inline void CPy_SetAttrRef(PyObject *owner, PyObject **field, PyObject *value) {
+    PyObject *old;
+    Py_BEGIN_CRITICAL_SECTION(owner);
+    old = (PyObject *)_Py_atomic_load_ptr_relaxed(field);
+    _Py_atomic_store_ptr_release(field, value);
+    Py_END_CRITICAL_SECTION();
+    Py_XDECREF(old);
+}
+
+// Initialize a native attribute that is known to be previously undefined (NULL),
+// stealing the reference to 'value'.
+//
+// Initializer stores only happen while 'self' is still thread-local (the
+// attribute-definedness analysis marks a SetAttr as an initializer only before
+// 'self' can leak -- see mypyc/analysis/attrdefined.py). So there is no old value
+// to reclaim, no competing writer, and the field store is not itself the
+// publication point: 'self' is published later (when it escapes __init__ or is
+// returned), and that publication carries the release barrier making all the
+// construction stores visible. A relaxed store therefore suffices.
+//
+// This deliberately does NOT call SetMaybeWeakref (its CAS is pure overhead here,
+// ~+2.6ns per fresh store, and construction-heavy code pays it on every attribute
+// of every new object). CPy_SetAttrRef likewise leaves the flag unset. The cost is
+// moved onto CPy_GetAttrRef's cold slow path, which sets maybe-weakref lazily on
+// the first cross-thread read that needs it.
+static inline void CPy_InitAttrRef(PyObject **field, PyObject *value) {
+    _Py_atomic_store_ptr_relaxed(field, value);
+}
+
+#endif
+
+// Generated generator and coroutine helpers claim this flag while executing,
+// rejecting reentrant or concurrent resumes.
+//
+// On free-threaded builds, the atomic exchange provides mutual exclusion and acquire
+// ordering; the release store publishes body writes to the next resume. This also
+// permits plain access to private generator attributes. Claiming must be a single
+// atomic operation, or two threads could both observe a clear flag and enter. Under
+// the GIL, plain accesses suffice.
+#ifdef Py_GIL_DISABLED
+static inline int CPyGen_TryEnter(uint32_t *running) {
+    return _Py_atomic_exchange_uint32(running, 1) == 0;
+}
+
+static inline void CPyGen_Exit(uint32_t *running) {
+    _Py_atomic_store_uint32_release(running, 0);
+}
+#else
+static inline int CPyGen_TryEnter(uint32_t *running) {
+    if (*running) {
+        return 0;
+    }
+    *running = 1;
+    return 1;
+}
+
+static inline void CPyGen_Exit(uint32_t *running) {
+    *running = 0;
+}
 #endif
 
 PyObject* update_bases(PyObject *bases);
@@ -205,6 +352,25 @@ list_count(PyListObject *self, PyObject *value)
     Py_ssize_t count = 0;
     Py_ssize_t i;
 
+#ifdef Py_GIL_DISABLED
+    for (i = 0; i < PyList_GET_SIZE(self); i++) {
+        PyObject *item = PyList_GetItemRef((PyObject *)self, i);
+        if (unlikely(item == NULL)) {
+            // Race condition: list shrank between size read and get item
+            if (PyErr_ExceptionMatches(PyExc_IndexError)) {
+                PyErr_Clear();
+                break;
+            }
+            return CPY_INT_TAG;
+        }
+        int cmp = PyObject_RichCompareBool(item, value, Py_EQ);
+        Py_DECREF(item);
+        if (cmp > 0)
+            count++;
+        else if (cmp < 0)
+            return CPY_INT_TAG;
+    }
+#else
     for (i = 0; i < Py_SIZE(self); i++) {
         int cmp = PyObject_RichCompareBool(self->ob_item[i], value, Py_EQ);
         if (cmp > 0)
@@ -212,6 +378,7 @@ list_count(PyListObject *self, PyObject *value)
         else if (cmp < 0)
             return CPY_INT_TAG;
     }
+#endif
     return CPyTagged_ShortFromSsize_t(count);
 }
 

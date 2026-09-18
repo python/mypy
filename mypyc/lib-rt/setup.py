@@ -164,5 +164,11 @@ else:
                 include_dirs=["."],
                 extra_compile_args=cflags,
             ),
+            Extension(
+                "librt.threading",
+                ["threading/librt_threading.c"],
+                include_dirs=[".", "threading"],
+                extra_compile_args=cflags,
+            ),
         ]
     )

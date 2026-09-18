@@ -1416,6 +1416,7 @@ VAR_FLAGS: Final = [
     "from_module_getattr",
     "has_explicit_value",
     "allow_incompatible_override",
+    "is_sentinel",
 ]
 
 
@@ -1454,6 +1455,7 @@ class Var(SymbolNode):
         "allow_incompatible_override",
         "invalid_partial_type",
         "is_argument",
+        "is_sentinel",
     )
 
     __match_args__ = ("name", "type", "final_value")
@@ -1516,6 +1518,8 @@ class Var(SymbolNode):
         self.invalid_partial_type = False
         # Is it a variable symbol for a function argument?
         self.is_argument = False
+        # Was this variable created by PEP 661 sentinel()/Sentinel() syntax?
+        self.is_sentinel = False
 
     @property
     def name(self) -> str:
@@ -1598,6 +1602,7 @@ class Var(SymbolNode):
                 self.from_module_getattr,
                 self.has_explicit_value,
                 self.allow_incompatible_override,
+                self.is_sentinel,
             ],
         )
         write_literal(data, self.final_value)
@@ -1635,12 +1640,15 @@ class Var(SymbolNode):
             v.from_module_getattr,
             v.has_explicit_value,
             v.allow_incompatible_override,
-        ) = read_flags(data, num_flags=19)
+            v.is_sentinel,
+        ) = read_flags(data, num_flags=20)
         tag = read_tag(data)
         if tag == LITERAL_COMPLEX:
             v.final_value = complex(read_float_bare(data), read_float_bare(data))
         elif tag != LITERAL_NONE:
-            v.final_value = read_literal(data, tag)
+            val = read_literal(data, tag)
+            assert not isinstance(val, mypy.types.SentinelValue)
+            v.final_value = val
         assert read_tag(data) == END_TAG
         return v
 
@@ -2267,7 +2275,7 @@ class IntExpr(Expression):
 class StrExpr(Expression):
     """String literal"""
 
-    __slots__ = ("value", "as_type")
+    __slots__ = ("value", "as_type", "has_surrogates")
 
     __match_args__ = ("value",)
 
@@ -2276,11 +2284,16 @@ class StrExpr(Expression):
     # represents the type denoted by the type expression.
     # None means "is not a type expression".
     as_type: NotParsed | mypy.types.Type | None
+    # This indicates whether original string literal contained Unicode surrogate
+    # codepoints. Those are not supported by Ruff parser and are replaced by
+    # replacement characters. Thus, we can't support them in mypyc.
+    has_surrogates: bool
 
     def __init__(self, value: str) -> None:
         super().__init__()
         self.value = value
         self.as_type = NotParsed.VALUE
+        self.has_surrogates = False
 
     def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_str_expr(self)
@@ -2929,7 +2942,7 @@ class DictExpr(Expression):
 class TemplateStrExpr(Expression):
     """Template string expression t'...'."""
 
-    __slots__ = ("items",)
+    __slots__ = ("items", "has_surrogates")
     __match_args__ = ("items",)
 
     # Each item is either:
@@ -2938,12 +2951,14 @@ class TemplateStrExpr(Expression):
     #     where conversion is str | None ("r", "s", "a", or None)
     #     and format_spec_expr is Expression | None
     items: list[Expression | tuple[Expression, str, str | None, Expression | None]]
+    has_surrogates: bool
 
     def __init__(
         self, items: list[Expression | tuple[Expression, str, str | None, Expression | None]]
     ) -> None:
         super().__init__()
         self.items = items
+        self.has_surrogates = False
 
     def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_template_str_expr(self)
@@ -3058,7 +3073,7 @@ class DictionaryComprehension(Expression):
 
     __match_args__ = ("key", "value", "indices", "sequences", "condlists")
 
-    key: Expression
+    key: Expression | None
     value: Expression
     sequences: list[Expression]
     condlists: list[list[Expression]]
@@ -3067,7 +3082,7 @@ class DictionaryComprehension(Expression):
 
     def __init__(
         self,
-        key: Expression,
+        key: Expression | None,
         value: Expression,
         indices: list[Lvalue],
         sequences: list[Expression],
@@ -3670,6 +3685,7 @@ class TypeInfo(SymbolNode):
         "deprecated",
         "type_object_type",
         "default_depends",
+        "typeddict_data",
     )
 
     _fullname: str  # Fully qualified name
@@ -3841,6 +3857,9 @@ class TypeInfo(SymbolNode):
     # Keys are type variable full names.
     default_depends: dict[str, set[TypeAlias | TypeInfo]]
 
+    # If defn is TypedDictType, stores information needed for delayed validation of inheritance.
+    typeddict_data: TypedDictData | None
+
     FLAGS: Final = [
         "is_abstract",
         "is_enum",
@@ -3903,6 +3922,7 @@ class TypeInfo(SymbolNode):
         self.deprecated = None
         self.type_object_type = None
         self.default_depends = {}
+        self.typeddict_data = None
 
     def add_type_vars(self) -> None:
         self.has_type_var_tuple_type = False
@@ -4947,6 +4967,17 @@ class SymbolTableNode:
                 self.unfixed = False
         return self._node
 
+    def read_node_no_fixup(self) -> SymbolNode | None:
+        """Return the deserialized node without performing cross-reference fixup.
+
+        This is intended for introspection tools (such as mypy.exportjson) that read
+        cache files in isolation, where no node fixer is available.
+        """
+        if self._node is None and self._node_bytes:
+            self._node = read_symbol(ReadBuffer(self._node_bytes), self._node_tag)
+            self._node_bytes = b""
+        return self._node
+
     def copy(self) -> SymbolTableNode:
         new = SymbolTableNode(
             self.kind, self._node, self.module_public, self.implicit, self.module_hidden
@@ -5230,6 +5261,44 @@ class DataclassTransformSpec:
         )
         assert read_tag(data) == END_TAG
         return ret
+
+
+class TypedDictFieldSource:
+    """Source of a TypedDict field definition, used for forming error messages.
+
+    May be defined directly on the type, or on a base class.
+    """
+
+    __slots__ = ("base", "ctx")
+
+    base: TypeInfo | None
+    ctx: Context
+
+    def __init__(self, base: TypeInfo | None, ctx: Context) -> None:
+        self.base = base
+        self.ctx = ctx
+
+
+class TypedDictData:
+    """Stores information needed for delayed validation of TypedDict inheritance."""
+
+    __slots__ = ("ready", "bases", "field_sources")
+
+    # If False, the type definition referenced a placeholder
+    ready: bool
+
+    bases: list[tuple[TypeInfo, dict[str, mypy.types.Type]]]
+    field_sources: dict[str, TypedDictFieldSource]
+
+    def __init__(
+        self,
+        ready: bool,
+        bases: list[tuple[TypeInfo, dict[str, mypy.types.Type]]],
+        field_sources: dict[str, TypedDictFieldSource],
+    ) -> None:
+        self.ready = ready
+        self.bases = bases
+        self.field_sources = field_sources
 
 
 @trait

@@ -9,6 +9,7 @@ from typing import (
     Any,
     ClassVar,
     Final,
+    NamedTuple,
     NewType,
     TypeAlias as _TypeAlias,
     TypeGuard,
@@ -66,6 +67,7 @@ T = TypeVar("T")
 
 JsonDict: _TypeAlias = dict[str, Any]
 
+
 # The set of all valid expressions that can currently be contained
 # inside of a Literal[...].
 #
@@ -96,7 +98,12 @@ JsonDict: _TypeAlias = dict[str, Any]
 #
 # Note: Float values are only used internally. They are not accepted within
 # Literal[...].
-LiteralValue: _TypeAlias = int | str | bool | float
+class SentinelValue(NamedTuple):
+    fullname: str
+    name: str
+
+
+LiteralValue: _TypeAlias = int | str | bool | float | SentinelValue
 
 
 TUPLE_NAMES: Final = ("builtins.tuple", "typing.Tuple")
@@ -109,6 +116,12 @@ TYPE_VAR_LIKE_NAMES: Final = (
     "typing_extensions.ParamSpec",
     "typing.TypeVarTuple",
     "typing_extensions.TypeVarTuple",
+)
+
+SENTINEL_TYPE_NAMES: Final = (
+    "builtins.sentinel",
+    "typing_extensions.sentinel",
+    "typing_extensions.Sentinel",
 )
 
 TYPED_NAMEDTUPLE_NAMES: Final = ("typing.NamedTuple", "typing_extensions.NamedTuple")
@@ -2984,6 +2997,26 @@ class TupleType(ProperType):
         return TupleType(slice_items, fallback, self.line, self.column, self.implicit)
 
 
+class TypedDictItem(NamedTuple):
+    """Type, mutability and requiredness of an item in a TypedDict.
+
+    If typ is `None`, the item comes from a missing item in an open TypedDict, and
+    the type should be treated as if it were a `builtins.object`. (Missing items in
+    closed TypedDicts will have an uninhabited type.)
+
+    TODO: pass a `builtins.object` instead of None when TypedDictType gains a
+    proper extra_items field.
+    """
+
+    typ: Type | None
+    required: bool
+    readonly: bool
+
+    @property
+    def mutable(self) -> bool:
+        return not self.readonly
+
+
 class TypedDictType(ProperType):
     """Type of TypedDict object {'k1': v1, ..., 'kn': vn}.
 
@@ -3008,6 +3041,7 @@ class TypedDictType(ProperType):
         "items",
         "required_keys",
         "readonly_keys",
+        "is_closed",
         "fallback",
         "extra_items_from",
         "to_be_mutated",
@@ -3029,11 +3063,14 @@ class TypedDictType(ProperType):
         fallback: Instance,
         line: int = -1,
         column: int = -1,
+        *,
+        is_closed: bool = False,
     ) -> None:
         super().__init__(line, column)
         self.items = items
         self.required_keys = required_keys
         self.readonly_keys = readonly_keys
+        self.is_closed = is_closed
         self.fallback = fallback
         self.can_be_true = len(self.items) > 0
         self.can_be_false = len(self.required_keys) == 0
@@ -3050,6 +3087,7 @@ class TypedDictType(ProperType):
                 self.fallback,
                 frozenset(self.required_keys),
                 frozenset(self.readonly_keys),
+                self.is_closed,
             )
         )
 
@@ -3067,6 +3105,7 @@ class TypedDictType(ProperType):
             and self.fallback == other.fallback
             and self.required_keys == other.required_keys
             and self.readonly_keys == other.readonly_keys
+            and self.is_closed == other.is_closed
         )
 
     def serialize(self) -> JsonDict:
@@ -3076,6 +3115,7 @@ class TypedDictType(ProperType):
             "required_keys": sorted(self.required_keys),
             "readonly_keys": sorted(self.readonly_keys),
             "fallback": self.fallback.serialize(),
+            "is_closed": self.is_closed,
         }
 
     @classmethod
@@ -3086,6 +3126,7 @@ class TypedDictType(ProperType):
             set(data["required_keys"]),
             set(data["readonly_keys"]),
             Instance.deserialize(data["fallback"]),
+            is_closed=bool(data["is_closed"]),
         )
 
     def write(self, data: WriteBuffer) -> None:
@@ -3094,6 +3135,7 @@ class TypedDictType(ProperType):
         write_type_map(data, self.items)
         write_str_list(data, sorted(self.required_keys))
         write_str_list(data, sorted(self.readonly_keys))
+        write_bool(data, self.is_closed)
         write_tag(data, END_TAG)
 
     @classmethod
@@ -3101,7 +3143,11 @@ class TypedDictType(ProperType):
         assert read_tag(data) == INSTANCE
         fallback = Instance.read(data)
         ret = TypedDictType(
-            read_type_map(data), set(read_str_list(data)), set(read_str_list(data)), fallback
+            read_type_map(data),
+            set(read_str_list(data)),
+            set(read_str_list(data)),
+            fallback,
+            is_closed=read_bool(data),
         )
         assert read_tag(data) == END_TAG
         return ret
@@ -3127,6 +3173,7 @@ class TypedDictType(ProperType):
         item_names: list[str] | None = None,
         required_keys: set[str] | None = None,
         readonly_keys: set[str] | None = None,
+        is_closed: bool | None = None,
     ) -> TypedDictType:
         if fallback is None:
             fallback = self.fallback
@@ -3138,13 +3185,20 @@ class TypedDictType(ProperType):
             required_keys = self.required_keys
         if readonly_keys is None:
             readonly_keys = self.readonly_keys
+        if is_closed is None:
+            is_closed = self.is_closed
         if item_names is not None:
             items = {k: v for (k, v) in items.items() if k in item_names}
             required_keys &= set(item_names)
-        return TypedDictType(items, required_keys, readonly_keys, fallback, self.line, self.column)
-
-    def names_are_wider_than(self, other: TypedDictType) -> bool:
-        return len(other.items.keys() - self.items.keys()) == 0
+        return TypedDictType(
+            items,
+            required_keys,
+            readonly_keys,
+            fallback,
+            self.line,
+            self.column,
+            is_closed=is_closed,
+        )
 
     def zip(self, right: TypedDictType) -> Iterable[tuple[str, Type, Type]]:
         left = self
@@ -3153,15 +3207,28 @@ class TypedDictType(ProperType):
             if right_item_type is not None:
                 yield (item_name, left_item_type, right_item_type)
 
-    def zipall(self, right: TypedDictType) -> Iterable[tuple[str, Type | None, Type | None]]:
+    def item(self, item_name: str) -> TypedDictItem:
+        item_type = self.items.get(item_name)
+        if item_type is not None:
+            is_required = item_name in self.required_keys
+            is_readonly = item_name in self.readonly_keys
+        elif self.is_closed:
+            item_type = UninhabitedType()
+            is_required = False
+            is_readonly = False
+        else:
+            is_required = False
+            is_readonly = True
+        return TypedDictItem(item_type, is_required, is_readonly)
+
+    def zipall(self, right: TypedDictType) -> Iterable[tuple[str, TypedDictItem, TypedDictItem]]:
         left = self
-        for item_name, left_item_type in left.items.items():
-            right_item_type = right.items.get(item_name)
-            yield (item_name, left_item_type, right_item_type)
-        for item_name, right_item_type in right.items.items():
+        for item_name in left.items:
+            yield (item_name, left.item(item_name), right.item(item_name))
+        for item_name in right.items:
             if item_name in left.items:
                 continue
-            yield (item_name, None, right_item_type)
+            yield (item_name, left.item(item_name), right.item(item_name))
 
 
 class RawExpressionType(ProperType):
@@ -3287,11 +3354,15 @@ class LiteralType(ProperType):
     #       almost no test cases where we would redundantly compute
     #       `can_be_false`/`can_be_true`.
     def can_be_false_default(self) -> bool:
+        if isinstance(self.value, SentinelValue):
+            return False
         if self.fallback.type.is_enum:
             return self.fallback.can_be_false
         return not self.value
 
     def can_be_true_default(self) -> bool:
+        if isinstance(self.value, SentinelValue):
+            return True
         if self.fallback.type.is_enum:
             return self.fallback.can_be_true
         return bool(self.value)
@@ -3312,6 +3383,9 @@ class LiteralType(ProperType):
     def is_enum_literal(self) -> bool:
         return self.fallback.type.is_enum
 
+    def is_sentinel_literal(self) -> bool:
+        return isinstance(self.value, SentinelValue)
+
     def value_repr(self) -> str:
         """Returns the string representation of the underlying type.
 
@@ -3319,6 +3393,9 @@ class LiteralType(ProperType):
         except it includes some additional logic to correctly handle cases
         where the value is a string, byte string, a unicode string, or an enum.
         """
+        if isinstance(self.value, SentinelValue):
+            return self.value.name
+
         raw = repr(self.value)
         fallback_name = self.fallback.type.fullname
 
@@ -3337,16 +3414,19 @@ class LiteralType(ProperType):
             return raw
 
     def serialize(self) -> JsonDict | str:
-        return {
-            ".class": "LiteralType",
-            "value": self.value,
-            "fallback": self.fallback.serialize(),
-        }
+        value: LiteralValue | JsonDict = self.value
+        if isinstance(value, SentinelValue):
+            value = {".class": "SentinelValue", "fullname": value.fullname, "name": value.name}
+        return {".class": "LiteralType", "value": value, "fallback": self.fallback.serialize()}
 
     @classmethod
     def deserialize(cls, data: JsonDict) -> LiteralType:
         assert data[".class"] == "LiteralType"
-        return LiteralType(value=data["value"], fallback=Instance.deserialize(data["fallback"]))
+        value = data["value"]
+        if isinstance(value, dict):
+            assert value[".class"] == "SentinelValue"
+            value = SentinelValue(value["fullname"], value["name"])
+        return LiteralType(value=value, fallback=Instance.deserialize(data["fallback"]))
 
     def write(self, data: WriteBuffer) -> None:
         write_tag(data, LITERAL_TYPE)
@@ -3359,7 +3439,8 @@ class LiteralType(ProperType):
         assert read_tag(data) == INSTANCE
         fallback = Instance.read(data)
         tag = read_tag(data)
-        ret = LiteralType(read_literal(data, tag), fallback)
+        value = read_literal(data, tag)
+        ret = LiteralType(value, fallback)
         assert read_tag(data) == END_TAG
         return ret
 
@@ -3633,11 +3714,12 @@ class TypeType(ProperType):
     def write(self, data: WriteBuffer) -> None:
         write_tag(data, TYPE_TYPE)
         self.item.write(data)
+        write_bool(data, self.is_type_form)
         write_tag(data, END_TAG)
 
     @classmethod
     def read(cls, data: ReadBuffer) -> Type:
-        ret = TypeType.make_normalized(read_type(data))
+        ret = TypeType.make_normalized(read_type(data), is_type_form=read_bool(data))
         assert read_tag(data) == END_TAG
         return ret
 
@@ -4001,6 +4083,8 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
             + ", ".join(item_str(name, typ.accept(self)) for name, typ in t.items.items())
             + "}"
         )
+        if t.is_closed:
+            s += ", closed=True"
         prefix = ""
         if t.fallback and t.fallback.type:
             if t.fallback.type.fullname not in TPDICT_FB_NAMES:
@@ -4019,6 +4103,8 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
         return repr(t.literal_value)
 
     def visit_literal_type(self, t: LiteralType, /) -> str:
+        if isinstance(t.value, SentinelValue):
+            return t.value_repr()
         return f"Literal[{t.value_repr()}]"
 
     def visit_union_type(self, t: UnionType, /) -> str:
@@ -4251,12 +4337,12 @@ def find_unpack_in_list(items: Sequence[Type]) -> int | None:
             # Funky code here avoids mypyc narrowing the type of unpack_index.
             old_index = unpack_index
             assert old_index is None
-            # Don't return so that we can also sanity check there is only one.
+            # Don't return so that we can also sanity-check there is only one.
             unpack_index = i
     return unpack_index
 
 
-def flatten_nested_tuples(types: Iterable[Type]) -> list[Type]:
+def flatten_nested_tuples(types: Iterable[Type], handle_recursive: bool = True) -> list[Type]:
     """Recursively flatten TupleTypes nested with Unpack.
 
     For example this will transform
@@ -4270,7 +4356,12 @@ def flatten_nested_tuples(types: Iterable[Type]) -> list[Type]:
             res.append(typ)
             continue
         p_type = get_proper_type(typ.type)
-        if not isinstance(p_type, TupleType):
+        if (
+            not isinstance(p_type, TupleType)
+            or not handle_recursive
+            and isinstance(typ.type, TypeAliasType)
+            and typ.type.is_recursive
+        ):
             res.append(typ)
             continue
         if isinstance(typ.type, TypeAliasType):

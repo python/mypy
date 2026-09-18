@@ -1,3 +1,5 @@
+.. _librt-vecs:
+
 librt.vecs
 ==========
 
@@ -198,15 +200,21 @@ with no unnecessary temporary objects.
 Thread safety
 -------------
 
+The ``vec`` type is heavily optimized for performance, and this means that ``vec``
+gives fewer thread safety guarantees than built-in types such as ``list``.
+``vec`` is a lower-level type where implicit synchronization would have a very
+significant performance cost. However, since vec lengths are immutable, some race
+conditions that lists can be susceptible to are not possible with vecs.
+
 In free-threaded Python builds, it's unsafe to write or modify an item if other
 threads might be concurrently accessing *the same item*. For example, writing ``v[4]``
 is not safe to do if another thread might be reading ``v[4]``. Similarly, two
 threads concurrently calling ``append`` or ``remove`` on the same vec object is not safe.
 
-This is different from list objects, since vec is a lower-level type where implicit
-synchronization would have a significant performance cost. However, since vec lengths
-are immutable, some race conditions that lists can be susceptible to are not possible
-with vecs.
+Similarly, assigning to an instance attribute of a native class with a ``vec`` type
+is unsafe if another thread might be accessing the same attribute concurrently
+(in a free-threaded Python build only). Using ``Final`` attributes is a way
+to prevent this race condition, since ``Final`` attributes cannot be rebound.
 
 Implementation details
 ----------------------

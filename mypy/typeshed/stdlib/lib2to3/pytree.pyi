@@ -1,8 +1,8 @@
-from _typeshed import Incomplete, SupportsGetItem, SupportsLenAndGetItem, Unused
+from _typeshed import SupportsGetItem, SupportsLenAndGetItem, Unused
 from abc import abstractmethod
 from collections.abc import Iterable, Iterator, MutableSequence
-from typing import ClassVar, Final
-from typing_extensions import Self, TypeAlias
+from typing import ClassVar, Final, TypeAlias
+from typing_extensions import Self
 
 from .fixer_base import BaseFix
 from .pgen2.grammar import Grammar
@@ -48,7 +48,7 @@ class Base:
 class Node(Base):
     fixers_applied: MutableSequence[BaseFix] | None
     # Is Unbound until set in refactor.RefactoringTool
-    future_features: frozenset[Incomplete]
+    future_features: frozenset[str]
     # Is Unbound until set in pgen2.parse.Parser.pop
     used_names: set[str]
     def __init__(

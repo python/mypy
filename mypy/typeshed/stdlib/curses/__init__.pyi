@@ -1,10 +1,8 @@
-import sys
 from _curses import *
 from _curses import window as window
 from _typeshed import structseq
 from collections.abc import Callable
-from typing import Final, TypeVar, final, type_check_only
-from typing_extensions import Concatenate, ParamSpec
+from typing import Concatenate, Final, ParamSpec, TypeVar, final, type_check_only
 
 # NOTE: The _curses module is ordinarily only available on Unix, but the
 # windows-curses package makes it available on Windows as well with the same
@@ -30,8 +28,7 @@ def wrapper(func: Callable[Concatenate[window, _P], _T], /, *arg: _P.args, **kwd
 @final
 @type_check_only
 class _ncurses_version(structseq[int], tuple[int, int, int]):
-    if sys.version_info >= (3, 10):
-        __match_args__: Final = ("major", "minor", "patch")
+    __match_args__: Final = ("major", "minor", "patch")
 
     @property
     def major(self) -> int: ...

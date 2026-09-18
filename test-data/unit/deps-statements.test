@@ -207,7 +207,7 @@ def g() -> None:
 <m.C> -> <m.A.__enter__>, m.A.__enter__, m.C
 <m.D> -> <m.B.__enter__>, m.B.__enter__, m.D
 
-[case testWithStmtAnnotation]
+[case testWithStmtAnnotation_old_parser]
 from typing import Any
 class A:
     def __enter__(self) -> Any: pass
@@ -228,7 +228,7 @@ def g() -> None:
 <m.B> -> <m.f>, m.B, m.f, m.g
 <m.f> -> m.g
 
-[case testForStmtAnnotation]
+[case testForStmtAnnotation_old_parser]
 class A:
     def __iter__(self): pass
 

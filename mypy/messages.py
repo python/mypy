@@ -970,8 +970,9 @@ class MessageBuilder:
             msg = "Too many positional arguments"
         else:
             msg = "Too many positional arguments" + for_function(callee)
-        self.fail(msg, context)
+        self.fail(msg, context, code=codes.CALL_ARG_MISC)
         self.maybe_note_about_special_args(callee, context)
+        self.note_defined_here(callee, context, code=codes.CALL_ARG_MISC)
 
     def maybe_note_about_special_args(self, callee: CallableType, context: Context) -> None:
         if self.prefer_simple_messages():
@@ -1018,7 +1019,9 @@ class MessageBuilder:
         )
         self.note_defined_here(callee, context)
 
-    def note_defined_here(self, callee: CallableType, context: Context) -> None:
+    def note_defined_here(
+        self, callee: CallableType, context: Context, code: ErrorCode = codes.CALL_ARG
+    ) -> None:
         module = find_defining_module(self.modules, callee)
         if (
             module
@@ -1031,7 +1034,7 @@ class MessageBuilder:
                 fname = "Called function"
             else:
                 fname = fname.split(" of ")[0]  # use short method names in the note
-            self.note(f'{fname} defined in "{module.fullname}"', context, code=codes.CALL_ARG)
+            self.note(f'{fname} defined in "{module.fullname}"', context, code=code)
 
     def duplicate_argument_value(self, callee: CallableType, index: int, context: Context) -> None:
         self.fail(
@@ -2780,6 +2783,8 @@ def format_type_inner(
                 modifier += "="
             items.append(f"{item_name!r}{modifier}: {format(item_type)}")
         return f"TypedDict({{{', '.join(items)}}})"
+    elif isinstance(typ, LiteralType) and typ.is_sentinel_literal():
+        return format_literal_value(typ)
     elif isinstance(typ, LiteralType):
         return f"Literal[{format_literal_value(typ)}]"
     elif isinstance(typ, UnionType):
@@ -2787,6 +2792,9 @@ def format_type_inner(
         if not isinstance(typ, UnionType):
             return format(typ)
         literal_items, union_items = separate_union_literals(typ)
+        sentinel_items = [item for item in literal_items if item.is_sentinel_literal()]
+        literal_items = [item for item in literal_items if not item.is_sentinel_literal()]
+        union_items = [*sentinel_items, *union_items]
 
         # Coalesce multiple Literal[] members. This also changes output order.
         # If there's just one Literal item, retain the original ordering.

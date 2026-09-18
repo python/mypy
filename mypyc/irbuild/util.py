@@ -12,6 +12,7 @@ from mypy.nodes import (
     ARG_POS,
     GDEF,
     ArgKind,
+    AssignmentStmt,
     BytesExpr,
     CallExpr,
     ClassDef,
@@ -24,13 +25,17 @@ from mypy.nodes import (
     OverloadedFuncDef,
     RefExpr,
     StrExpr,
+    TempNode,
     TupleExpr,
     UnaryExpr,
     Var,
+    is_class_var,
 )
 from mypy.semanal import refers_to_fullname
 from mypy.types import FINAL_DECORATOR_NAMES
 from mypyc.errors import Errors
+from mypyc.ir.class_ir import ClassIR
+from mypyc.ir.rtypes import RType, is_none_rprimitive, is_object_rprimitive, is_optional_type
 
 MYPYC_ATTRS: Final[frozenset[MypycAttr]] = frozenset(
     ["native_class", "allow_interpreted_subclasses", "serializable", "free_list_len", "acyclic"]
@@ -100,6 +105,86 @@ def dataclass_type(cdef: ClassDef) -> str | None:
         if typ is not None:
             return typ
     return None
+
+
+def is_class_body_final(var: Var, ir: ClassIR, cdef: ClassDef, attr_rtype: RType) -> bool:
+    """Is a member a final attribute initialized in class body ("X: Final = <value>")?
+
+    The value is the same for every instance, so we don't give these struct
+    slots. Instead, we let the general final-name machinery own it: the value
+    is stored once in a module-level static and set on the type object (see
+    ExtClassBuilder.add_attr), and reads are constant folded or loaded from
+    the static.
+
+    See ClassIR.class_final_attributes.
+    """
+    if not var.is_final or not var.has_explicit_value:
+        return False
+    if var.final_set_in_init:
+        # "self.x: Final = ..." in __init__ varies per instance.
+        return False
+    if not ir.is_ext_class:
+        # Non-extension classes keep class-level values in the class dict anyway.
+        return False
+    if ir.builtin_base:
+        # These have no attribute slots at all (see prepare_methods_and_attributes),
+        # so reads go through the class dict and honour shadowing by an interpreted
+        # subclass, which folding would break.
+        return False
+    if dataclass_type(cdef) is not None:
+        # Dataclass attribute definitions are special.
+        return False
+    if attr_rtype.error_overlap:
+        # A static of type like this can't distinguish unset from a value equal to
+        # the error sentinel.
+        #
+        # TODO: Support thesse by having a separate initialized flag
+        return False
+    return True
+
+
+def _defaults_skip(stmt: AssignmentStmt, cls_type: str | None) -> bool:
+    """Whether a class-level default assignment is skipped when emitting
+    __mypyc_defaults_setup, based on class type.
+
+    - attr (auto_attribs=False): skip all (handled by attr.ib machinery).
+    - dataclasses / attr-auto: skip annotated assignments.
+    - regular extension class: skip nothing.
+    """
+    if cls_type == "attr":
+        return True
+    if cls_type in ("dataclasses", "attr-auto"):
+        return stmt.type is not None
+    return False
+
+
+def default_attr_name(stmt: AssignmentStmt, ir: ClassIR, cls_type: str | None) -> str | None:
+    """Return the attribute name if `stmt` is a class-level default assignment
+    that __mypyc_defaults_setup should emit; otherwise None.
+
+    Single source of truth for the predicate used by both
+    mypyc.irbuild.classdef.find_attr_initializers (IR build) and
+    mypyc.irbuild.prepare._has_own_default_attrs (prepare-phase decl registration).
+    """
+    lvalue = stmt.lvalues[0]
+    if not isinstance(lvalue, NameExpr) or is_class_var(lvalue):
+        return None
+    if isinstance(stmt.rvalue, TempNode):
+        return None
+    name = lvalue.name
+    if name in ("__slots__", "__deletable__") or name not in ir.attributes:
+        return None
+    if _defaults_skip(stmt, cls_type):
+        return None
+    if isinstance(stmt.rvalue, RefExpr) and stmt.rvalue.fullname == "builtins.None":
+        attr_type = ir.attributes[name]
+        if (
+            not is_optional_type(attr_type)
+            and not is_object_rprimitive(attr_type)
+            and not is_none_rprimitive(attr_type)
+        ):
+            return None
+    return name
 
 
 def get_mypyc_attr_literal(e: Expression) -> Any:

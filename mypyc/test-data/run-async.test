@@ -135,8 +135,52 @@ async def sleep(t: float) -> None: ...
 
 [typing fixtures/typing-full.pyi]
 
+[case testRunAsyncLocalsAcrossAwait]
+import asyncio
+from typing import List
+
+from testutil import assertRaises
+
+async def increment(value: int) -> int:
+    await asyncio.sleep(0)
+    return value + 1
+
+async def accumulate(count: int) -> int:
+    total = 0
+    for value in range(count):
+        total += await increment(value)
+    return total
+
+async def return_through_finally(log: List[str]) -> int:
+    try:
+        return 7
+    finally:
+        await asyncio.sleep(0)
+        log.append("finally")
+
+async def deleted_across_await(delete: bool) -> str:
+    value = "live"
+    if delete:
+        del value
+    await asyncio.sleep(0)
+    return value
+
+async def test_async_locals_across_await() -> None:
+    assert await accumulate(4) == 10
+    log: List[str] = []
+    assert await return_through_finally(log) == 7
+    assert log == ["finally"]
+    assert await deleted_across_await(False) == "live"
+    with assertRaises(AttributeError):
+        await deleted_across_await(True)
+
+[file asyncio/__init__.pyi]
+async def sleep(delay: float) -> None: ...
+
+[typing fixtures/typing-full.pyi]
+
 [case testRunAsyncAwaitInVariousPositions]
-from typing import cast, Any
+from typing import Any, Generator, cast
 
 import asyncio
 
@@ -220,6 +264,33 @@ async def construct(s: str) -> str:
 async def test_construct() -> None:
     assert await construct("foo") == "foo!foo?"
 
+class Box:
+    def __init__(self, value: str) -> None:
+        self.value = value
+
+class Suspend:
+    def __await__(self) -> Generator[Any, Any, int]:
+        yield None
+        return 7
+
+def combine(value: Box, number: int) -> str:
+    return value.value + str(number)
+
+async def frame_arg_across_await(value: Box) -> str:
+    # Evaluation reads value before suspending, but combine() uses it after resume.
+    return combine(value, await Suspend())
+
+def drive(coro: Any) -> Any:
+    assert coro.send(None) is None
+    try:
+        coro.send(None)
+    except StopIteration as exc:
+        return exc.value
+    assert False
+
+def test_generator_attribute_borrow_does_not_cross_await() -> None:
+    assert drive(frame_arg_across_await(Box("value"))) == "value7"
+
 [file asyncio/__init__.pyi]
 async def sleep(t: float) -> None: ...
 
@@ -248,8 +319,12 @@ async def async_with_vectorcall() -> str:
     async with ctx:
         return await async_val("vc")
 
+async def async_with_pass() -> None:
+    async with async_ctx():
+        pass
+
 [file driver.py]
-from native import async_with, async_with_vectorcall
+from native import async_with, async_with_pass, async_with_vectorcall
 from testutil import run_generator
 
 yields, val = run_generator(async_with(), [None, 'x', None])
@@ -259,6 +334,10 @@ assert val == 'x', val
 yields, val = run_generator(async_with_vectorcall(), [None, 'x', None])
 assert yields == ('enter', 'vc', 'exit'), yields
 assert val == 'x', val
+
+yields, val = run_generator(async_with_pass(), [None, None])
+assert yields == ('enter', 'exit'), yields
+assert val is None
 
 [case testAsyncReturn]
 from testutil import async_val
@@ -407,6 +486,12 @@ import asyncio
 import gc
 import platform
 
+from testutil import is_gil_disabled
+
+def immediate_deallocation_checks_are_reliable() -> bool:
+    # Free-threaded builds can defer deallocation, so weakref liveness is not deterministic.
+    return not is_gil_disabled()
+
 async def sleep() -> None:
     # Non-zero value hangs on Windows.
     time = 0 if platform.system() == "Windows" else 0.0001
@@ -511,6 +596,106 @@ async def stolen(n: int) -> int:
 
 async def test_stolen() -> None:
     await assert_no_leaks(lambda: stolen(200), 16)
+
+async def retain_arg(c: set[int]) -> None:
+    async def nested() -> int:
+        await sleep()
+        return len(c)
+
+    await nested()
+
+async def test_completed_coroutine_releases_environment() -> None:
+    if not immediate_deallocation_checks_are_reliable():
+        return
+
+    import weakref
+
+    c = {1}
+    ref = weakref.ref(c)
+    coro = retain_arg(c)
+    c = {2}
+    await coro
+    assert ref() is None
+
+async def retain_arg_then_raise(c: set[int]) -> None:
+    async def nested() -> int:
+        await sleep()
+        return len(c)
+
+    await nested()
+    raise ValueError
+
+async def test_failed_coroutine_releases_environment() -> None:
+    if not immediate_deallocation_checks_are_reliable():
+        return
+
+    import weakref
+
+    c = {1}
+    ref = weakref.ref(c)
+    coro = retain_arg_then_raise(c)
+    c = {2}
+    try:
+        await coro
+    except ValueError:
+        pass
+    assert ref() is None
+
+async def close_retain_arg(c: set[int]) -> None:
+    await sleep()
+    len(c)
+
+async def test_closed_coroutine_releases_environment() -> None:
+    if not immediate_deallocation_checks_are_reliable():
+        return
+
+    import weakref
+    from typing import Any, cast
+
+    c = {1}
+    ref = weakref.ref(c)
+    coro = cast(Any, close_retain_arg(c))
+    coro.send(None)
+    c = {2}
+    coro.close()
+    assert ref() is None
+
+async def interpreted_leaf(c: set[int]) -> int:
+    await sleep()
+    return len(c)
+
+async def compiled_leaf(c: set[int]) -> int:
+    await sleep()
+    return len(c)
+
+async def compiled_awaits_interpreted(c: set[int]) -> int:
+    import interpreted
+
+    return await interpreted.interpreted_leaf(c)
+
+async def interpreted_awaits_compiled(fn, c: set[int]) -> int:
+    return await fn(c)
+
+async def test_completed_mixed_coroutine_releases_environment() -> None:
+    if not immediate_deallocation_checks_are_reliable():
+        return
+
+    import interpreted
+    import weakref
+
+    c = {1}
+    ref = weakref.ref(c)
+    coro = compiled_awaits_interpreted(c)
+    c = {2}
+    assert await coro == 1
+    assert ref() is None
+
+    c = {3}
+    ref = weakref.ref(c)
+    coro = interpreted.interpreted_awaits_compiled(compiled_leaf, c)
+    c = {4}
+    assert await coro == 1
+    assert ref() is None
 
 [file asyncio/__init__.pyi]
 async def sleep(t: float) -> None: ...
@@ -1416,12 +1601,15 @@ def run(x: object) -> object: ...
 
 [case testAsyncIntrospection]
 import asyncio
+import gc
 import inspect
 import sys
 import weakref
 
 from functools import wraps
 from typing import Any, Callable, TypeVar, cast
+
+from testutil import is_gil_disabled
 
 def identity(val: int) -> int:
     return val
@@ -1445,6 +1633,18 @@ def wrap(fn: F) -> F:
 
     return cast(F, wrapper)
 
+C = Callable[..., Any]
+
+def get_decorator() -> C:
+    def decorator(endpoint: C) -> C:
+        @wraps(endpoint)
+        async def inner(self: Any, val: int, *args: Any) -> Any:
+            return await endpoint(self, val, *args)
+
+        return cast(C, inner)
+
+    return cast(C, decorator)
+
 @wrap
 def wrapped(val: int) -> int:
     return val
@@ -1462,34 +1662,57 @@ async def wrapped2_async(val: int) -> int:
     return val * 2
 
 class T:
-    def returns_one(self) -> int:
+    def returns_one(self, val: int) -> int:
         return 1
 
-    async def returns_one_async(self) -> int:
-        return 1
-
-    @wrap
-    def returns_two(self) -> int:
+    async def returns_one_async(self, val: int) -> int:
         return 1
 
     @wrap
-    async def returns_two_async(self) -> int:
+    def returns_two(self, val: int) -> int:
+        return 1
+
+    @wrap
+    async def returns_two_async(self, val: int) -> int:
         return 1
 
     @staticmethod
-    def static() -> int:
+    def static(val: int) -> int:
         return 2
 
     @staticmethod
-    async def static_async() -> int:
+    async def static_async(val: int) -> int:
+        return 2
+
+    @staticmethod
+    @wrap
+    def wrapped_static(val: int) -> int:
+        return 2
+
+    @staticmethod
+    @wrap
+    async def wrapped_static_async(val: int) -> int:
         return 2
 
     @classmethod
-    def class_method(cls) -> int:
+    def class_method(cls, val: int) -> int:
         return 3
 
     @classmethod
-    async def class_method_async(cls) -> int:
+    async def class_method_async(cls, val: int) -> int:
+        assert cls is T
+        return 3
+
+    @classmethod
+    @wrap
+    def wrapped_class_method(cls, val: int) -> int:
+        assert cls is T
+        return 3
+
+    @classmethod
+    @get_decorator()
+    async def wrapped_class_method_async(cls, val: int) -> int:
+        assert cls is T
         return 3
 
 def is_coroutine(fn):
@@ -1544,38 +1767,50 @@ def test_method() -> None:
     t = T()
     # Call through variable to make sure the call is through vectorcall and not optimized to a native call.
     f: Any = t.returns_one_async
-    assert asyncio.run(f()) == 1
+    assert asyncio.run(f(1)) == 1
 
     assert not is_coroutine(T.returns_two)
     assert is_coroutine(T.returns_two_async)
-    assert asyncio.run(t.returns_two_async()) == 2
+    assert asyncio.run(t.returns_two_async(2)) == 2
 
     assert not is_coroutine(T.static)
     assert is_coroutine(T.static_async)
-    assert asyncio.run(T.static_async()) == 2
+    assert asyncio.run(T.static_async(3)) == 2
+    assert not is_coroutine(T.wrapped_static)
+    assert is_coroutine(T.wrapped_static_async)
+    assert T.wrapped_static(3) == 4
+    assert t.wrapped_static(3) == 4
+    assert asyncio.run(T.wrapped_static_async(3)) == 4
+    assert asyncio.run(t.wrapped_static_async(3)) == 4
 
     assert not is_coroutine(T.class_method)
     assert is_coroutine(T.class_method_async)
-    assert asyncio.run(T.class_method_async()) == 3
+    assert asyncio.run(T.class_method_async(4)) == 3
+    assert not is_coroutine(T.wrapped_class_method)
+    assert is_coroutine(T.wrapped_class_method_async)
+    assert T.wrapped_class_method(4) == 6
+    assert t.wrapped_class_method(4) == 6
+    assert asyncio.run(T.wrapped_class_method_async(4)) == 3
+    assert asyncio.run(t.wrapped_class_method_async(4)) == 3
 
 def test_nested() -> None:
-    def nested() -> int:
+    def nested(val: int) -> int:
         return 1
 
-    async def nested_async() -> int:
+    async def nested_async(val: int) -> int:
         return 1
 
     @wrap
-    def nested_wrapped() -> int:
+    def nested_wrapped(val: int) -> int:
         return 2
 
     @wrap
-    async def nested_wrapped_async() -> int:
+    async def nested_wrapped_async(val: int) -> int:
         return 2
 
     assert not is_coroutine(nested)
     assert is_coroutine(nested_async)
-    assert asyncio.run(nested_async()) == 1
+    assert asyncio.run(nested_async(1)) == 1
 
     assert getattr(nested_async, "__name__") == "nested_async", getattr(nested_async, "__name__")
     setattr(nested_async, "__name__", "some custom name")
@@ -1587,7 +1822,134 @@ def test_nested() -> None:
 
     assert not is_coroutine(nested_wrapped)
     assert is_coroutine(nested_wrapped_async)
-    assert asyncio.run(nested_wrapped_async()) == 4
+    assert asyncio.run(nested_wrapped_async(2)) == 4
+
+def test_async_function_wrapper_code_refcount() -> None:
+    if is_gil_disabled():
+        # On free-threaded builds the code object might be immortal, so the ref count test doesn't work.
+        return
+    code = getattr(identity_async, "__code__")
+    getrefcount = getattr(sys, "getrefcount")
+    # getrefcount sees the local code variable plus the wrapper-owned reference.
+    assert getrefcount(code) == 2, getrefcount(code)
+
+def test_nested_async_function_wrapper_code_refcount() -> None:
+    if is_gil_disabled():
+        # On free-threaded builds the code object might be immortal, so the ref count test doesn't work.
+        return
+    def make_nested() -> Any:
+        async def nested_refcounted() -> int:
+            return 1
+
+        return nested_refcounted
+
+    getrefcount = getattr(sys, "getrefcount")
+    fn = make_nested()
+    code = getattr(fn, "__code__")
+    before = getrefcount(code)
+    assert asyncio.run(fn()) == 1
+
+    del fn
+    gc.collect()
+    after = getrefcount(code)
+    assert before == after + 1, (before, after)
+    assert after == 1, after
+
+[file driver.py]
+import asyncio
+import sys
+import weakref
+
+import native
+
+def test_function() -> None:
+    native.identity_async.__name__ = "identity_async"
+    native.wrapped_async.__name__ = "wrapped_async"
+
+    assert not native.is_coroutine(native.identity)
+    assert native.is_coroutine(native.identity_async)
+    assert str(native.identity_async).startswith("<function identity_async"), str(native.identity_async)
+    assert asyncio.run(native.identity_async(42)) == 42
+
+    wr = weakref.ref(native.identity_async)
+    f = wr()
+    assert f
+    assert asyncio.run(f(43)) == 43
+
+    assert getattr(native.identity_async, "__name__") == "identity_async"
+    assert getattr(native.identity_async, "__code__") is not None
+    assert getattr(native.identity_async, "__defaults__") is None
+    assert getattr(native.identity_async, "__kwdefaults__") is None
+    assert getattr(native.identity_async, "__annotations__") is None
+
+    assert not native.is_coroutine(native.wrapped)
+    assert native.is_coroutine(native.wrapped_async)
+    assert asyncio.run(native.wrapped_async(22)) == 44
+
+    assert getattr(native.wrapped, "__name__") == "wrapped"
+    assert getattr(native.wrapped2, "__name__") == "wrapped2"
+    assert getattr(native.wrapped_async, "__name__") == "wrapped_async"
+    assert getattr(native.wrapped2_async, "__name__") == "wrapped2_async"
+
+def test_method() -> None:
+    assert not native.is_coroutine(native.T.returns_one)
+    assert native.is_coroutine(native.T.returns_one_async)
+    assert str(native.T.returns_one_async).startswith("<function T.returns_one_async")
+
+    t = native.T()
+    f = t.returns_one_async
+    assert asyncio.run(f(1)) == 1
+
+    assert not native.is_coroutine(native.T.returns_two)
+    assert native.is_coroutine(native.T.returns_two_async)
+    assert asyncio.run(t.returns_two_async(2)) == 2
+
+    assert not native.is_coroutine(native.T.static)
+    assert native.is_coroutine(native.T.static_async)
+    assert asyncio.run(native.T.static_async(3)) == 2
+    assert asyncio.run(t.static_async(3)) == 2
+    assert not native.is_coroutine(native.T.wrapped_static)
+    assert native.is_coroutine(native.T.wrapped_static_async)
+    assert native.T.wrapped_static(3) == 4
+    assert t.wrapped_static(3) == 4
+    assert asyncio.run(native.T.wrapped_static_async(3)) == 4
+    assert asyncio.run(t.wrapped_static_async(3)) == 4
+
+    assert not native.is_coroutine(native.T.class_method)
+    assert native.is_coroutine(native.T.class_method_async)
+    assert asyncio.run(native.T.class_method_async(4)) == 3
+    assert asyncio.run(t.class_method_async(4)) == 3
+    assert not native.is_coroutine(native.T.wrapped_class_method)
+    assert native.is_coroutine(native.T.wrapped_class_method_async)
+    assert native.T.wrapped_class_method(4) == 6
+    assert t.wrapped_class_method(4) == 6
+    assert asyncio.run(native.T.wrapped_class_method_async(4)) == 3
+    assert asyncio.run(t.wrapped_class_method_async(4)) == 3
+
+def test_nested() -> None:
+    def nested(val: int) -> int:
+        return 1
+
+    async def nested_async(val: int) -> int:
+        return 1
+
+    nested_wrapped = native.wrap(nested)
+    nested_wrapped_async = native.wrap(nested_async)
+
+    assert not native.is_coroutine(nested_wrapped)
+    assert native.is_coroutine(nested_wrapped_async)
+    assert nested_wrapped(1) == 2
+    assert asyncio.run(nested_wrapped_async(2)) == 2
+
+native.test_function()
+native.test_method()
+native.test_nested()
+native.test_async_function_wrapper_code_refcount()
+native.test_nested_async_function_wrapper_code_refcount()
+
+test_function()
+test_nested()
+test_method()
 
 [file asyncio/__init__.pyi]
 def run(x: object) -> object: ...
@@ -1800,6 +2162,47 @@ from typing import Any, Generator
 
 def run(x: object) -> object: ...
 
+[case testCPyFunctionVariableNameConflict]
+class C:
+    async def operation(self) -> int:
+        return 42
+
+    async def operation_name(self) -> str:
+        return "name"
+
+    async def name_operation(self) -> str:
+        return await self.operation_name()
+
+    async def operation_wrapper(self) -> int:
+        return await self.operation()
+
+    async def wrapper_operation(self) -> int:
+        return await self.operation()
+
+async def test_variable_name_conflict() -> None:
+    c = C()
+    assert await c.operation() == 42
+    assert await c.operation_wrapper() == 42
+    assert await c.wrapper_operation() == 42
+    assert await c.operation_name() == "name"
+    assert await c.name_operation() == "name"
+
+[file driver.py]
+import asyncio
+
+from native import C, test_variable_name_conflict
+
+async def test_variable_name_conflict_interpreted() -> None:
+    c = C()
+    assert await c.operation() == 42
+    assert await c.operation_wrapper() == 42
+    assert await c.wrapper_operation() == 42
+    assert await c.operation_name() == "name"
+    assert await c.name_operation() == "name"
+
+asyncio.run(test_variable_name_conflict())
+asyncio.run(test_variable_name_conflict_interpreted())
+
 [case testNestedCoroutineCallsAnotherNestedFunction]
 import asyncio
 import functools
@@ -1938,5 +2341,392 @@ from typing import AsyncIterator
 async def async_iter(vals: list[int]) -> AsyncIterator[int]:
     for v in vals:
         yield v
+
+[typing fixtures/typing-full.pyi]
+
+[case testBorrowedFinalAttrAcrossAwait]
+from typing import Final
+from testutil import async_val
+
+class C:
+    def __init__(self, s: str) -> None:
+        self.s: Final = s
+
+async def f(c: C) -> str:
+    # c.s is a final attr; it must not be borrowed across the await, which is a
+    # suspension point in the middle of the expression.
+    return c.s + await async_val("hello")
+
+[file driver.py]
+from native import f, C
+from testutil import run_generator
+
+for i in range(50):
+    c = C("value" + str(i))
+    yields, val = run_generator(f(c), inputs=["world"])
+    assert yields == ("hello",), yields
+    assert val == "value" + str(i) + "world", repr(val)
+
+[case testCoroutineClosureOutlivesCompletedCoroutine]
+import asyncio
+from typing import Callable
+
+async def make_reader() -> Callable[[], int]:
+    payload = [7]
+    await asyncio.sleep(0)
+
+    def read_payload() -> int:
+        return payload[0]
+
+    return read_payload
+
+async def make_arg_reader(payload: list[int]) -> Callable[[], int]:
+    await asyncio.sleep(0)
+
+    def read_payload() -> int:
+        return payload[0]
+
+    return read_payload
+
+async def make_indirect_reader() -> Callable[[], int]:
+    def leaf() -> int:
+        return 17
+
+    def reader() -> int:
+        return leaf()
+
+    await asyncio.sleep(0)
+    return reader
+
+def test_closure_returned_from_completed_coroutine_keeps_capture() -> None:
+    read_payload = asyncio.run(make_reader())
+    assert read_payload() == 7
+
+    payload = [13]
+    read_arg_payload = asyncio.run(make_arg_reader(payload))
+    payload = [0]
+    assert read_arg_payload() == 13
+
+    indirect_reader = asyncio.run(make_indirect_reader())
+    assert indirect_reader() == 17
+
+async def test_closure_returned_from_awaited_coroutine_keeps_capture() -> None:
+    read_payload = await make_reader()
+    assert read_payload() == 7
+
+    payload = [13]
+    read_arg_payload = await make_arg_reader(payload)
+    payload = [0]
+    assert read_arg_payload() == 13
+
+    indirect_reader = await make_indirect_reader()
+    assert indirect_reader() == 17
+
+[file asyncio/__init__.pyi]
+from typing import Awaitable, TypeVar
+
+T = TypeVar("T")
+
+def run(x: Awaitable[T]) -> T: ...
+async def sleep(t: float) -> None: ...
+
+[typing fixtures/typing-full.pyi]
+
+[case testNestedCoroutineOutlivesCompletedCoroutine]
+import asyncio
+from typing import Awaitable
+
+async def make_nested_coroutine() -> Awaitable[int]:
+    payload = [11]
+    await asyncio.sleep(0)
+
+    async def read_payload() -> int:
+        await asyncio.sleep(0)
+        return payload[0]
+
+    return read_payload()
+
+def test_nested_coroutine_returned_from_completed_coroutine_keeps_capture() -> None:
+    read_payload = asyncio.run(make_nested_coroutine())
+    assert asyncio.run(read_payload) == 11
+
+[file asyncio/__init__.pyi]
+from typing import Awaitable, TypeVar
+
+T = TypeVar("T")
+
+def run(x: Awaitable[T]) -> T: ...
+async def sleep(t: float) -> None: ...
+
+[typing fixtures/typing-full.pyi]
+
+[case testBorrowedFinalAttrAcrossAsyncComprehension]
+import asyncio
+from typing import Final
+
+class C:
+    def __init__(self, s: str) -> None:
+        self.s: Final = s
+
+class AsyncRange:
+    def __init__(self, n: int) -> None:
+        self.n = n
+        self.i = 0
+
+    def __aiter__(self) -> "AsyncRange":
+        return self
+
+    async def __anext__(self) -> str:
+        if self.i >= self.n:
+            raise StopAsyncIteration
+        i = self.i
+        self.i += 1
+        # Suspend in the middle of iteration.
+        await asyncio.sleep(0)
+        return "item" + str(i)
+
+async def f(c: C) -> str:
+    # c.s is a final attr; it must not be borrowed across the async comprehension,
+    # which suspends via an implicit await on __anext__ that isn't represented as
+    # an AwaitExpr node in the AST.
+    return c.s + "".join([x async for x in AsyncRange(3)])
+
+async def test_async_comprehension_borrow() -> None:
+    for i in range(50):
+        c = C("value" + str(i))
+        assert await f(c) == "value" + str(i) + "item0item1item2"
+
+[file asyncio/__init__.pyi]
+async def sleep(t: float) -> None: ...
+
+[typing fixtures/typing-full.pyi]
+
+[case testBorrowedFinalAttrAcrossAwaitAfterComprehension]
+import asyncio
+from typing import Final
+
+class C:
+    def __init__(self, s: str) -> None:
+        self.s: Final = s
+
+async def sink() -> str:
+    await asyncio.sleep(0)
+    return "z"
+
+async def f(c: C, xs: list[int]) -> str:
+    # A (sync) comprehension enters a nested borrow scope earlier in the same
+    # top-level expression. It must not clear the enclosing expression's suspend
+    # flag, or c.s (a final attr) gets borrowed across the await below, which
+    # produces invalid C (the borrow does not survive the suspension point).
+    return str([x for x in xs]) + (c.s + await sink())
+
+async def test_borrow_final_attr_across_await_after_comprehension() -> None:
+    for i in range(50):
+        c = C("v" + str(i))
+        assert await f(c, [1, 2, 3]) == "[1, 2, 3]" + "v" + str(i) + "z"
+
+[file asyncio/__init__.pyi]
+async def sleep(t: float) -> None: ...
+
+[typing fixtures/typing-full.pyi]
+
+[case testRunAsyncResumedNativeAwait]
+from typing import Any, Generator
+
+from testutil import assertRaises
+
+class MyError(Exception):
+    pass
+
+class Suspend:
+    """Awaitable that suspends the given number of times before returning."""
+
+    def __init__(self, n: int) -> None:
+        self.n = n
+
+    def __await__(self) -> Generator[Any, Any, int]:
+        i = 0
+        while i < self.n:
+            yield i
+            i += 1
+        return self.n
+
+async def child(n: int) -> int:
+    total = await Suspend(n)
+    return total + 1
+
+async def parent(n: int) -> int:
+    # Statically known native child that suspends before completing, so the
+    # await loop must resume it after a suspension.
+    return await child(n) + 10
+
+async def grandparent(n: int) -> int:
+    return await parent(n) + 100
+
+async def tuple_child(n: int) -> tuple[int, str]:
+    await Suspend(n)
+    return (n, "x")
+
+async def tuple_parent(n: int) -> tuple[int, str]:
+    return await tuple_child(n)
+
+async def raising_child(n: int) -> int:
+    await Suspend(n)
+    raise MyError()
+
+async def raising_parent(n: int) -> int:
+    return await raising_child(n)
+
+async def catching_parent(n: int) -> int:
+    try:
+        return await raising_child(n)
+    except MyError:
+        return -1
+
+def drive(coro: Any) -> Any:
+    """Drive a coroutine to completion without an event loop."""
+    steps = 0
+    while True:
+        try:
+            coro.send(None)
+        except StopIteration as e:
+            return e.value
+        steps += 1
+        assert steps < 100
+
+def test_resumed_native_await() -> None:
+    for n in range(5):
+        assert drive(parent(n)) == n + 11
+        assert drive(grandparent(n)) == n + 111
+        assert drive(tuple_parent(n)) == (n, "x")
+
+def test_resumed_native_await_exception() -> None:
+    for n in range(5):
+        with assertRaises(MyError):
+            drive(raising_parent(n))
+        assert drive(catching_parent(n)) == -1
+
+def test_throw_into_suspended_native_child() -> None:
+    coro = parent(3)
+    coro.send(None)
+    with assertRaises(MyError):
+        coro.throw(MyError())
+
+def test_close_suspended_native_child() -> None:
+    coro = parent(3)
+    coro.send(None)
+    coro.close()
+
+[typing fixtures/typing-full.pyi]
+
+[case testRunAsyncNativeCoroutineDrivenByInterpretedCode]
+from typing import Any, Generator
+
+class Suspend:
+    def __await__(self) -> Generator[Any, Any, None]:
+        yield None
+
+async def inc(x: int) -> int:
+    return x + 1
+
+async def suspend_then_inc(x: int) -> int:
+    await Suspend()
+    return x + 1
+
+async def nested(x: int) -> int:
+    return await suspend_then_inc(x) + await inc(x)
+
+class MyError(Exception):
+    pass
+
+async def fails() -> int:
+    await Suspend()
+    raise MyError()
+
+[file driver.py]
+import asyncio
+
+from native import inc, suspend_then_inc, nested, fails, MyError
+
+async def main() -> None:
+    # Exercise native coroutines through interpreted 'await', including immediate,
+    # suspended, nested, and exceptional completion.
+    assert await inc(1) == 2
+    assert await suspend_then_inc(1) == 2
+    assert await nested(3) == 8
+    try:
+        await fails()
+    except MyError:
+        pass
+    else:
+        assert False
+
+    # asyncio.gather schedules each native coroutine as a C Task, which drives it through
+    # PyIter_Send and its am_send slot. The next case exercises the slot directly.
+    assert await asyncio.gather(inc(5), nested(5)) == [6, 12]
+
+asyncio.run(main())
+
+# The Python-level send method reports normal completion by raising StopIteration with
+# the coroutine's return value.
+coro = inc(1)
+try:
+    coro.send(None)
+except StopIteration as e:
+    assert e.value == 2
+else:
+    assert False
+
+# TODO: Reject reuse with RuntimeError("cannot reuse already awaited coroutine") like
+#       CPython. Native coroutines currently permit reuse after they have been awaited.
+#       Resuming a completed native coroutine raises a bare StopIteration, so awaiting it
+#       again evaluates to None.
+try:
+    coro.send(None)
+except StopIteration as e:
+    assert e.value is None
+else:
+    assert False
+
+[typing fixtures/typing-full.pyi]
+
+[case testAmSendSlotOnNativeCoroutine]
+from typing import Any, Generator
+
+class Suspend:
+    def __await__(self) -> Generator[Any, Any, int]:
+        x = yield None
+        return x
+
+async def inc(x: int) -> int:
+    return x + 1
+
+async def suspends(x: int) -> int:
+    y = await Suspend()
+    return x + y
+
+class MyError(Exception):
+    pass
+
+async def fails() -> int:
+    raise MyError()
+
+[file driver.py]
+from native import inc, suspends, fails, MyError
+from testutil import assertRaises, pyiter_send, PYGEN_NEXT, PYGEN_RETURN
+
+# Drive a native coroutine's am_send slot through PyIter_Send, as asyncio's C Task does.
+
+# Immediate completion returns PYGEN_RETURN instead of raising StopIteration.
+assert pyiter_send(inc(1), None) == (PYGEN_RETURN, 2)
+
+# A suspension returns PYGEN_NEXT; the next send completes with PYGEN_RETURN.
+coro = suspends(5)
+assert pyiter_send(coro, None) == (PYGEN_NEXT, None)
+assert pyiter_send(coro, 3) == (PYGEN_RETURN, 8)
+
+# PYGEN_ERROR leaves the body exception pending, so ctypes propagates it.
+with assertRaises(MyError):
+    pyiter_send(fails(), None)
 
 [typing fixtures/typing-full.pyi]

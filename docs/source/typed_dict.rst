@@ -81,9 +81,9 @@ arbitrarily complex types. For example, you can define nested
 ``TypedDict``\s and containers with ``TypedDict`` items.
 Unlike most other types, mypy uses structural compatibility checking
 (or structural subtyping) with ``TypedDict``\s. A ``TypedDict`` object with
-extra items is compatible with (a subtype of) a narrower
+extra items can be compatible with (a subtype of) a narrower
 ``TypedDict``, assuming item types are compatible (*totality* also affects
-subtyping, as discussed below).
+subtyping, as does *closing*, as discussed below).
 
 A ``TypedDict`` object is not a subtype of the regular ``dict[...]``
 type (and vice versa), since :py:class:`dict` allows arbitrary keys to be
@@ -276,6 +276,84 @@ vary :ref:`covariantly <variance-of-generics>`:
     m: Movie = {"name": "Jaws", "year": 1975}
     process_entry(m)  # OK
 
+You can override a read-only item with a compatible subtype, make a
+read-only item mutable, and inherit from multiple parents with compatible
+definitions:
+
+.. code-block:: python
+
+    from collections.abc import Collection, Sequence
+
+    class Competition(TypedDict):
+        hosts: ReadOnly[Collection[str]]
+        entries: ReadOnly[Sequence[Entry]]
+
+    class MovieShow(TypedDict):
+        entries: list[Movie]
+
+    class Oscars(Competition, MovieShow):
+        hosts: set[str]
+
+Defining ``hosts`` as a mutable ``set[str]`` item works as this is compatible
+with the read-only ``Collection[str]`` definition in ``Competition``.
+``entries`` will be of type ``list[Movie]``, taken from the ``MovieShow`` type,
+as it is the only non-readonly definition, and is compatible with the definition
+in ``Competition``.
+
+If an item is only defined in supertypes, and is always read-only, mypy takes
+the definition from the first parent in the inheritance order, and raises an
+error if any other parent definition is incompatible:
+
+.. code-block:: python
+
+    class NameIds(TypedDict):
+        ids: ReadOnly[Collection[str]]
+
+    class OrderedIds(TypedDict):
+        ids: ReadOnly[Sequence[int | str]]
+
+    class OrderedNameIds(NameIds, OrderedIds):
+        pass  # Error! Parent definitions incompatible
+
+In this example, the definition of ``ids`` will be taken from ``NameIds``,
+which would not be compatible with the definition in ``OrderedIds``; reordering
+the parents would not solve the problem. Instead, you will need to make a
+compatible definition explicitly:
+
+.. code-block:: python
+
+    class OrderedNameIds(NameIds, OrderedIds):
+        ids: ReadOnly[Sequence[str]]
+
+Closing
+-------
+
+You can use the ``closed`` keyword, introduced to ``TypedDict`` in Python
+3.15 (and available via ``typing_extensions.TypedDict`` in older
+versions) to prevent structural subtypes from adding extra keys to a
+type (:pep:`728`):
+
+.. code-block:: python
+
+   HasName = TypedDict("HasName", {"name": str})
+   HasOnlyName = TypedDict("HasOnlyName", {"name": str}, closed=True)
+   Movie = TypedDict("Movie", {"name": str, "year": int})
+
+   movie: Movie = {"name": "Nimona", "year": 2023}
+   has_name: HasName = movie  # OK: type is open
+   has_only_name: HasOnlyName = movie  # Error: type is closed
+
+This allows the typechecker to determine that certain operations are safe,
+when they otherwise wouldn't be due to the potential presence of unknown
+keys.
+
+The ``closed`` keyword can also be used in class-based syntax:
+
+.. code-block:: python
+
+   class HasOnlyName(TypedDict, closed=True):
+       name: str
+
 Unions of TypedDicts
 --------------------
 
@@ -288,6 +366,40 @@ section of the docs has a full description with an example, but in short, you wi
 need to give each TypedDict the same key where each value has a unique
 :ref:`Literal type <literal_types>`. Then, check that key to distinguish
 between your TypedDicts.
+
+Alternatively, you can implement tagged unions with single-key wrapper dictionaries:
+
+.. code-block:: python
+
+   class Book(TypedDict):
+       name: str
+       length: int
+       ...
+
+   class DVD(TypedDict):
+       name: str
+       length: int
+       ...
+
+   TaggedBook = TypedDict('TaggedBook', {'book': Book}, closed=True)
+   TaggedDVD = TypedDict('TaggedDVD', {'dvd': DVD}, closed=True)
+   type Inventory = TaggedBook | TaggedDVD
+
+   def print_length(inventory: Inventory) -> None:
+       if "book" in inventory:
+           print(inventory["book"]["length"], 'pages')
+       else:
+           print(inventory["dvd"]["length"], 'minutes')
+
+Here, the ``closed`` keyword is necessary to allow the ``if`` guard to safely
+narrow the types; without it, there could be a structural subtype of ``TaggedDVD``
+that contains a ``book`` field of arbitrary type.
+
+.. note::
+
+   Applying ``@final`` to a TypedDict is a legacy way of marking it as closed
+   for the purposes of type narrowing. It was never fully implemented and is
+   now superseded; it may be removed in future.
 
 Inline TypedDict types
 ----------------------

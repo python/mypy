@@ -31,8 +31,9 @@ typedef struct {
 } StringWriterObject;
 
 // Codepoint classification helpers. Inputs are signed i32 for compatibility
-// with mypyc's int32_rprimitive; negative values are non-codepoints and
-// return false. Defined `static inline` so they compile statically into
+// with mypyc's int32_rprimitive; out-of-range values (negative, or past the
+// maximum Unicode code point 0x10FFFF) are non-codepoints and return false.
+// Defined `static inline` so they compile statically into
 // both the librt.strings module and any mypyc-compiled extension that
 // includes this header, avoiding the capsule indirection that would dwarf
 // the work of a single Py_UNICODE_IS* macro call.
@@ -58,12 +59,14 @@ static inline bool LibRTStrings_IsAlpha(int32_t c) {
 // PyUnicode_IsIdentifier on a 1-character string. Aborts via
 // CPyError_OutOfMemory on allocation failure to keep this ERR_NEVER.
 static inline bool LibRTStrings_IsIdentifier(int32_t c) {
-    if (c < 0) return false;
-    if (c < 128) {
+    // Unsigned compare: negatives wrap to large values and skip the fast path.
+    if ((uint32_t)c < 128) {
         return (c >= 'a' && c <= 'z')
             || (c >= 'A' && c <= 'Z')
             || c == '_';
     }
+    // Reject negatives and code points past the Unicode maximum.
+    if ((uint32_t)c > 0x10FFFF) return false;
     PyObject *s = PyUnicode_FromOrdinal((int)c);
     if (s == NULL) {
         CPyError_OutOfMemory();
@@ -71,6 +74,58 @@ static inline bool LibRTStrings_IsIdentifier(int32_t c) {
     int r = PyUnicode_IsIdentifier(s);
     Py_DECREF(s);
     return r == 1;
+}
+
+// Shared slow path for LibRTStrings_ToUpper / _ToLower. Round-trips the
+// codepoint through CPython's str.upper / str.lower on a 1-character
+// string. When the conversion expands to multiple codepoints (e.g.
+// 'ß'.upper() == 'SS') we return the input unchanged so the public
+// helpers stay i32 -> i32. Aborts via CPyError_OutOfMemory on allocation
+// failure.
+static inline int32_t LibRTStrings_ChangeCase_slow(int32_t c, const char *method) {
+    PyObject *s = PyUnicode_FromOrdinal((int)c);
+    if (s == NULL) {
+        CPyError_OutOfMemory();
+    }
+    PyObject *u = PyObject_CallMethod(s, method, NULL);
+    Py_DECREF(s);
+    if (u == NULL) {
+        CPyError_OutOfMemory();
+    }
+    int32_t result = c;
+    if (PyUnicode_GET_LENGTH(u) == 1) {
+        result = (int32_t)PyUnicode_READ_CHAR(u, 0);
+    }
+    Py_DECREF(u);
+    return result;
+}
+
+// Uppercase a codepoint. ASCII fast path is `a..z -> A..Z` (subtract 32);
+// non-ASCII delegates to str.upper on a 1-character string. Returns the
+// input unchanged when uppercasing expands to multiple codepoints.
+static inline int32_t LibRTStrings_ToUpper(int32_t c) {
+    // Unsigned compare: negatives wrap to large values and skip the fast path.
+    if ((uint32_t)c < 128) {
+        if (c >= 'a' && c <= 'z') return c - 32;
+        return c;
+    }
+    // Negatives and code points past the Unicode maximum are returned unchanged.
+    if ((uint32_t)c > 0x10FFFF) return c;
+    return LibRTStrings_ChangeCase_slow(c, "upper");
+}
+
+// Lowercase a codepoint. ASCII fast path is `A..Z -> a..z` (add 32);
+// non-ASCII delegates to str.lower on a 1-character string. Returns the
+// input unchanged when lowercasing expands to multiple codepoints.
+static inline int32_t LibRTStrings_ToLower(int32_t c) {
+    // Unsigned compare: negatives wrap to large values and skip the fast path.
+    if ((uint32_t)c < 128) {
+        if (c >= 'A' && c <= 'Z') return c + 32;
+        return c;
+    }
+    // Negatives and code points past the Unicode maximum are returned unchanged.
+    if ((uint32_t)c > 0x10FFFF) return c;
+    return LibRTStrings_ChangeCase_slow(c, "lower");
 }
 
 #endif  // LIBRT_STRINGS_H

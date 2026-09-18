@@ -52,7 +52,11 @@ except ImportError:
 class NativeParserSuite(DataSuite):
     required_out_section = True
     base_path = "."
-    files = ["native-parser.test"] if has_nativeparse else []
+    files = (
+        ["native-parser.test", "native-parser-python311.test", "native-parser-python312.test"]
+        if has_nativeparse
+        else []
+    )
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
         test_parser(testcase)
@@ -77,6 +81,8 @@ def test_parser(testcase: DataDrivenTestCase) -> None:
 
     if testcase.file.endswith("python310.test"):
         options.python_version = (3, 10)
+    elif testcase.file.endswith("python311.test"):
+        options.python_version = (3, 11)
     elif testcase.file.endswith("python312.test"):
         options.python_version = (3, 12)
     elif testcase.file.endswith("python313.test"):
@@ -241,6 +247,9 @@ class TestNativeParserBinaryFormat(unittest.TestCase):
         def int_enc(n: int) -> int:
             return (n + 10) << 1
 
+        def bool_enc(b: bool) -> int:
+            return int(b)
+
         def locs(start_line: int, start_column: int, end_line: int, end_column: int) -> list[int]:
             return [
                 LOCATION,
@@ -261,6 +270,7 @@ class TestNativeParserBinaryFormat(unittest.TestCase):
                 + [END_TAG, LIST_GEN, 22, nodes.STR_EXPR]
                 + [LITERAL_STR, int_enc(5)]
                 + list(b"hello")
+                + [bool_enc(False)]  # no unicode surrogates
                 + locs(1, 6, 1, 13)
                 + [END_TAG]
                 # arg_kinds: [ARG_POS]

@@ -5,6 +5,9 @@ from __future__ import annotations
 import re
 from unittest import TestCase, skipUnless
 
+from librt.internal import ReadBuffer, WriteBuffer
+
+from mypy.cache import read_tag
 from mypy.erasetype import erase_type, remove_instance_last_known_values
 from mypy.indirection import TypeIndirectionVisitor
 from mypy.join import join_types
@@ -30,6 +33,7 @@ from mypy.test.helpers import Suite, assert_equal, assert_type, skip
 from mypy.test.typefixture import InterfaceTypeFixture, TypeFixture
 from mypy.typeops import false_only, make_simplified_union, true_only
 from mypy.types import (
+    LITERAL_TYPE,
     AnyType,
     CallableType,
     Instance,
@@ -37,8 +41,10 @@ from mypy.types import (
     NoneType,
     Overloaded,
     ProperType,
+    SentinelValue,
     TupleType,
     Type,
+    TypedDictType,
     TypeOfAny,
     TypeType,
     TypeVarId,
@@ -64,6 +70,25 @@ class TypesSuite(Suite):
 
     def test_any(self) -> None:
         assert_equal(str(AnyType(TypeOfAny.special_form)), "Any")
+
+    def test_sentinel_literal_json_roundtrip(self) -> None:
+        literal = LiteralType(SentinelValue("__main__.MISSING", "MISSING"), self.fx.a)
+        assert_equal(str(literal), "MISSING")
+        data = literal.serialize()
+        assert isinstance(data, dict)
+        roundtrip = LiteralType.deserialize(data)
+        self.assertEqual(roundtrip.value, literal.value)
+        self.assertEqual(roundtrip.fallback.type_ref, self.fx.a.type.fullname)
+
+    def test_sentinel_literal_ff_roundtrip(self) -> None:
+        literal = LiteralType(SentinelValue("__main__.MISSING", "MISSING"), self.fx.a)
+        data = WriteBuffer()
+        literal.write(data)
+        buffer = ReadBuffer(data.getvalue())
+        assert read_tag(buffer) == LITERAL_TYPE
+        roundtrip = LiteralType.read(buffer)
+        self.assertEqual(roundtrip.value, literal.value)
+        self.assertEqual(roundtrip.fallback.type_ref, self.fx.a.type.fullname)
 
     def test_simple_unbound_type(self) -> None:
         u = UnboundType("Foo")
@@ -222,6 +247,22 @@ class TypesSuite(Suite):
         A.accept(visitor)
         modules = visitor.modules
         assert modules == {"__main__", "builtins"}
+
+    def test_typeddict_type_constructor_signature(self) -> None:
+        typ = TypedDictType({"x": self.fx.o}, {"x"}, set(), self.fx.a, 10, 20)
+
+        assert typ.fallback is self.fx.a
+        assert_equal(typ.line, 10)
+        assert_equal(typ.column, 20)
+        assert not typ.is_closed
+
+        closed = TypedDictType({"x": self.fx.o}, {"x"}, set(), self.fx.a, is_closed=True)
+        assert closed.is_closed
+
+        with self.assertRaises(TypeError):
+            TypedDictType(  # type: ignore[call-arg]
+                {"x": self.fx.o}, {"x"}, set(), self.fx.a, 10, 20, True
+            )
 
 
 class TypeOpsSuite(Suite):

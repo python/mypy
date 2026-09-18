@@ -15,13 +15,10 @@
 // some indirections.
 PyObject *CPyDict_GetItem(PyObject *dict, PyObject *key) {
     if (PyDict_CheckExact(dict)) {
-        PyObject *res = PyDict_GetItemWithError(dict, key);
-        if (!res) {
-            if (!PyErr_Occurred()) {
-                PyErr_SetObject(PyExc_KeyError, key);
-            }
-        } else {
-            Py_INCREF(res);
+        PyObject *res;
+        int found = PyDict_GetItemRef(dict, key, &res);
+        if (found == 0) {
+            PyErr_SetObject(PyExc_KeyError, key);
         }
         return res;
     } else {
@@ -56,14 +53,15 @@ PyObject *CPyDict_Build(Py_ssize_t size, ...) {
 PyObject *CPyDict_Get(PyObject *dict, PyObject *key, PyObject *fallback) {
     // We are dodgily assuming that get on a subclass doesn't have
     // different behavior.
-    PyObject *res = PyDict_GetItemWithError(dict, key);
-    if (!res) {
-        if (PyErr_Occurred()) {
-            return NULL;
-        }
-        res = fallback;
+    PyObject *res;
+    int found = PyDict_GetItemRef(dict, key, &res);
+    if (found < 0) {
+        return NULL;
     }
-    Py_INCREF(res);
+    if (found == 0) {
+        Py_INCREF(fallback);
+        return fallback;
+    }
     return res;
 }
 
@@ -100,17 +98,19 @@ PyObject *CPyDict_SetDefaultWithEmptyDatatype(PyObject *dict, PyObject *key,
         } else if (data_type == 3) {
             new_obj = PySet_New(NULL);
         } else {
-            return NULL;
+            new_obj = NULL;
         }
 
-        if (CPyDict_SetItem(dict, key, new_obj) == -1) {
-            return NULL;
+        if (new_obj == NULL) {
+            res = NULL;
+        } else if (CPyDict_SetItem(dict, key, new_obj) == -1) {
+            Py_DECREF(new_obj);
+            res = NULL;
         } else {
-            return new_obj;
+            res = new_obj;
         }
-    } else {
-        return res;
     }
+    return res;
 }
 
 int CPyDict_SetItem(PyObject *dict, PyObject *key, PyObject *value) {
@@ -346,16 +346,24 @@ tuple_T3CIO CPyDict_NextKey(PyObject *dict_or_iter, CPyTagged offset) {
     PyObject *dummy;
 
     if (PyDict_CheckExact(dict_or_iter)) {
-        ret.f0 = PyDict_Next(dict_or_iter, &py_offset, &ret.f2, &dummy);
+        PyObject *key;
+        // PyDict_Next() returns a borrowed reference. On free-threaded builds,
+        // hold the dict lock until we have converted it to a strong reference.
+        Py_BEGIN_CRITICAL_SECTION(dict_or_iter);
+        ret.f0 = PyDict_Next(dict_or_iter, &py_offset, &key, &dummy);
+        if (ret.f0) {
+            ret.f2 = Py_NewRef(key);
+        }
+        Py_END_CRITICAL_SECTION();
+
         if (ret.f0) {
             ret.f1 = CPyTagged_FromSsize_t(py_offset);
         } else {
             // Set key to None, so mypyc can manage refcounts.
             ret.f1 = 0;
             ret.f2 = Py_None;
+            Py_INCREF(ret.f2);
         }
-        // PyDict_Next() returns borrowed references.
-        Py_INCREF(ret.f2);
     } else {
         // offset is dummy in this case, just use the old value.
         ret.f1 = offset;
@@ -370,16 +378,24 @@ tuple_T3CIO CPyDict_NextValue(PyObject *dict_or_iter, CPyTagged offset) {
     PyObject *dummy;
 
     if (PyDict_CheckExact(dict_or_iter)) {
-        ret.f0 = PyDict_Next(dict_or_iter, &py_offset, &dummy, &ret.f2);
+        PyObject *value;
+        // PyDict_Next() returns a borrowed reference. On free-threaded builds,
+        // hold the dict lock until we have converted it to a strong reference.
+        Py_BEGIN_CRITICAL_SECTION(dict_or_iter);
+        ret.f0 = PyDict_Next(dict_or_iter, &py_offset, &dummy, &value);
+        if (ret.f0) {
+            ret.f2 = Py_NewRef(value);
+        }
+        Py_END_CRITICAL_SECTION();
+
         if (ret.f0) {
             ret.f1 = CPyTagged_FromSsize_t(py_offset);
         } else {
             // Set value to None, so mypyc can manage refcounts.
             ret.f1 = 0;
             ret.f2 = Py_None;
+            Py_INCREF(ret.f2);
         }
-        // PyDict_Next() returns borrowed references.
-        Py_INCREF(ret.f2);
     } else {
         // offset is dummy in this case, just use the old value.
         ret.f1 = offset;
@@ -393,7 +409,18 @@ tuple_T4CIOO CPyDict_NextItem(PyObject *dict_or_iter, CPyTagged offset) {
     Py_ssize_t py_offset = CPyTagged_AsSsize_t(offset);
 
     if (PyDict_CheckExact(dict_or_iter)) {
-        ret.f0 = PyDict_Next(dict_or_iter, &py_offset, &ret.f2, &ret.f3);
+        PyObject *key;
+        PyObject *value;
+        // PyDict_Next() returns borrowed references. On free-threaded builds,
+        // hold the dict lock until we have converted them to strong references.
+        Py_BEGIN_CRITICAL_SECTION(dict_or_iter);
+        ret.f0 = PyDict_Next(dict_or_iter, &py_offset, &key, &value);
+        if (ret.f0) {
+            ret.f2 = Py_NewRef(key);
+            ret.f3 = Py_NewRef(value);
+        }
+        Py_END_CRITICAL_SECTION();
+
         if (ret.f0) {
             ret.f1 = CPyTagged_FromSsize_t(py_offset);
         } else {
@@ -401,6 +428,8 @@ tuple_T4CIOO CPyDict_NextItem(PyObject *dict_or_iter, CPyTagged offset) {
             ret.f1 = 0;
             ret.f2 = Py_None;
             ret.f3 = Py_None;
+            Py_INCREF(ret.f2);
+            Py_INCREF(ret.f3);
         }
     } else {
         ret.f1 = offset;
@@ -413,6 +442,8 @@ tuple_T4CIOO CPyDict_NextItem(PyObject *dict_or_iter, CPyTagged offset) {
             ret.f0 = 0;
             ret.f2 = Py_None;
             ret.f3 = Py_None;
+            Py_INCREF(ret.f2);
+            Py_INCREF(ret.f3);
         } else {
             ret.f0 = 1;
             ret.f2 = PyTuple_GET_ITEM(item, 0);
@@ -423,9 +454,6 @@ tuple_T4CIOO CPyDict_NextItem(PyObject *dict_or_iter, CPyTagged offset) {
             return ret;
         }
     }
-    // PyDict_Next() returns borrowed references.
-    Py_INCREF(ret.f2);
-    Py_INCREF(ret.f3);
     return ret;
 }
 

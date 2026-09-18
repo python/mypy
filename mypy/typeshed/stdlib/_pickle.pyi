@@ -1,8 +1,8 @@
 from _typeshed import ReadableBuffer, SupportsWrite
 from collections.abc import Callable, Iterable, Iterator, Mapping
 from pickle import PickleBuffer as PickleBuffer
-from typing import Any, Protocol, type_check_only
-from typing_extensions import TypeAlias, disjoint_base
+from typing import Any, Protocol, TypeAlias, type_check_only
+from typing_extensions import disjoint_base
 
 @type_check_only
 class _ReadableFileobj(Protocol):
@@ -69,10 +69,12 @@ class Pickler:
         fix_imports: bool = True,
         buffer_callback: _BufferCallback = None,
     ) -> None: ...
+
     @property
     def memo(self) -> PicklerMemoProxy: ...
     @memo.setter
     def memo(self, value: PicklerMemoProxy | dict[int, tuple[int, Any]]) -> None: ...
+
     def dump(self, obj: Any, /) -> None: ...
     def clear_memo(self) -> None: ...
 
@@ -99,10 +101,12 @@ class Unpickler:
         errors: str = "strict",
         buffers: Iterable[Any] | None = (),
     ) -> None: ...
+
     @property
     def memo(self) -> UnpicklerMemoProxy: ...
     @memo.setter
     def memo(self, value: UnpicklerMemoProxy | dict[int, tuple[int, Any]]) -> None: ...
+
     def load(self) -> Any: ...
     def find_class(self, module_name: str, global_name: str, /) -> Any: ...
 

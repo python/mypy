@@ -1,16 +1,12 @@
-import sys
-from typing_extensions import Self, TypeAlias, disjoint_base
+from typing import TypeAlias
+from typing_extensions import disjoint_base
 
 # Actually Tuple[(int,) * 625]
 _State: TypeAlias = tuple[int, ...]
 
 @disjoint_base
 class Random:
-    if sys.version_info >= (3, 10):
-        def __init__(self, seed: object = ..., /) -> None: ...
-    else:
-        def __new__(self, seed: object = ..., /) -> Self: ...
-
+    def __init__(self, seed: object = ..., /) -> None: ...
     def seed(self, n: object = None, /) -> None: ...
     def getstate(self) -> _State: ...
     def setstate(self, state: _State, /) -> None: ...

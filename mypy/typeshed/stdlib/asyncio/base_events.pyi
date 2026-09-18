@@ -10,9 +10,9 @@ from asyncio.transports import BaseTransport, DatagramTransport, ReadTransport, 
 from collections.abc import Callable, Iterable, Sequence
 from concurrent.futures import Executor, ThreadPoolExecutor
 from contextvars import Context
-from socket import AddressFamily, AddressInfo, SocketKind, _Address, _RetAddress, socket
-from typing import IO, Any, Literal, TypeVar, overload
-from typing_extensions import TypeAlias, TypeVarTuple, Unpack
+from socket import AddressFamily, AddressInfo, _Address, _GetAddrInfoResult, _RetAddress, socket
+from typing import IO, Any, Literal, TypeAlias, TypeVar, overload
+from typing_extensions import TypeVarTuple, Unpack
 
 # Keep asyncio.__all__ updated with any changes to __all__ here
 __all__ = ("BaseEventLoop", "Server")
@@ -83,7 +83,8 @@ class BaseEventLoop(AbstractEventLoop):
     # Future methods
     def create_future(self) -> Future[Any]: ...
     # Tasks methods
-    if sys.version_info >= (3, 14):
+    # `eager_start` is supported as an arbitrary kwarg starting in 3.13.3.
+    if sys.version_info >= (3, 13):
         def create_task(
             self,
             coro: _CoroutineLike[_T],
@@ -115,8 +116,9 @@ class BaseEventLoop(AbstractEventLoop):
         type: int = 0,
         proto: int = 0,
         flags: int = 0,
-    ) -> list[tuple[AddressFamily, SocketKind, int, str, tuple[str, int] | tuple[str, int, int, int]]]: ...
+    ) -> _GetAddrInfoResult: ...
     async def getnameinfo(self, sockaddr: tuple[str, int] | tuple[str, int, int, int], flags: int = 0) -> tuple[str, str]: ...
+
     if sys.version_info >= (3, 12):
         @overload
         async def create_connection(

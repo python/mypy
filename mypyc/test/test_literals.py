@@ -10,6 +10,7 @@ from mypyc.codegen.literals import (
     _encode_int_values,
     _encode_str_values,
     format_str_literal,
+    literal_sort_key,
 )
 
 
@@ -88,3 +89,50 @@ class TestLiterals(unittest.TestCase):
             "7",  # Second tuple (length=4)
             "0",  # Third tuple (length=0)
         ]
+
+    def test_frozenset_literal_index_is_deterministic(self) -> None:
+        # Index assignment for members must not depend on frozenset iteration
+        # order (which is hash-seed dependent), so that generated code is
+        # reproducible.
+        lit1 = Literals()
+        lit1.record_literal(frozenset({"self", "cls"}))
+        lit2 = Literals()
+        lit2.record_literal(frozenset({"cls", "self"}))
+        for s in ("self", "cls"):
+            assert lit1.literal_index(s) == lit2.literal_index(s)
+        # Members are recorded in sorted order.
+        assert lit1.literal_index("cls") == 3
+        assert lit1.literal_index("self") == 4
+
+    def test_frozenset_encoding_is_deterministic(self) -> None:
+        lit1 = Literals()
+        lit1.record_literal(frozenset({"self", "cls"}))
+        lit2 = Literals()
+        lit2.record_literal(frozenset({"cls", "self"}))
+        assert lit1.encoded_frozenset_values() == lit2.encoded_frozenset_values()
+
+    def test_literal_sort_key_is_total_over_types(self) -> None:
+        # Heterogeneous, individually unorderable items must still be sorted.
+        values = ["x", b"y", 1, None, (1, 2), frozenset({1, 2})]
+        values_reversed = list(reversed(values))
+        assert sorted(values, key=literal_sort_key) == sorted(
+            values_reversed, key=literal_sort_key
+        )
+
+    def test_literal_sort_key_with_frozenset(self) -> None:
+        assert literal_sort_key(frozenset({"a", "b"})) == literal_sort_key(frozenset({"b", "a"}))
+        assert literal_sort_key((frozenset({"a", "b"}),)) == literal_sort_key(
+            (frozenset({"b", "a"}),)
+        )
+        assert literal_sort_key(frozenset({"a", frozenset({"b", "c"})})) == literal_sort_key(
+            frozenset({frozenset({"c", "b"}), "a"})
+        )
+
+    def test_nested_frozenset_literal_index_is_deterministic(self) -> None:
+        lit1 = Literals()
+        lit1.record_literal(frozenset({frozenset({"a", "b"}), frozenset({"c", "d"})}))
+        lit2 = Literals()
+        lit2.record_literal(frozenset({frozenset({"d", "c"}), frozenset({"b", "a"})}))
+        for s in ("a", "b", "c", "d"):
+            assert lit1.literal_index(s) == lit2.literal_index(s)
+        assert lit1.encoded_frozenset_values() == lit2.encoded_frozenset_values()

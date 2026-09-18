@@ -64,7 +64,7 @@ NameExpr(10) : A
 import typing
 ...
 [out]
-EllipsisExpr(2) : builtins.ellipsis
+EllipsisExpr(2) : types.EllipsisType
 
 [case testMemberAccess]
 ## MemberExpr|CallExpr

@@ -628,7 +628,7 @@ class TransformVisitor(NodeVisitor[Node]):
         self, node: DictionaryComprehension
     ) -> DictionaryComprehension:
         return DictionaryComprehension(
-            self.expr(node.key),
+            self.optional_expr(node.key),
             self.expr(node.value),
             [self.expr(index) for index in node.indices],
             [self.expr(s) for s in node.sequences],

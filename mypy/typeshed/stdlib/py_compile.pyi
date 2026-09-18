@@ -1,5 +1,4 @@
 import enum
-import sys
 from typing import AnyStr
 
 __all__ = ["compile", "main", "PyCompileError", "PycInvalidationMode"]
@@ -26,9 +25,4 @@ def compile(
     invalidation_mode: PycInvalidationMode | None = None,
     quiet: int = 0,
 ) -> AnyStr | None: ...
-
-if sys.version_info >= (3, 10):
-    def main() -> None: ...
-
-else:
-    def main(args: list[str] | None = None) -> int: ...
+def main() -> None: ...

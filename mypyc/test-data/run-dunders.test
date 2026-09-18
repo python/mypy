@@ -1009,3 +1009,15 @@ def test_equality_with_implicit_ne() -> None:
     assert not eq(Eq(1), Eq(2))
     assert ne(Eq(1), Eq(2))
     assert not ne(Eq(1), Eq(1))
+
+[case testDundersImplicitNeWithNarrowRhs]
+class Accepted:
+    pass
+
+class Eq:
+    def __eq__(self, other: Accepted) -> bool:  # type: ignore[override]
+        return True
+
+def test_implicit_ne_with_narrow_rhs() -> None:
+    assert Eq() == Accepted()
+    assert not (Eq() != Accepted())

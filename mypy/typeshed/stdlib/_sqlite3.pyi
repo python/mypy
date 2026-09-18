@@ -18,8 +18,8 @@ from sqlite3 import (
     Warning as Warning,
     _IsolationLevel,
 )
-from typing import Any, Final, Literal, TypeVar, overload
-from typing_extensions import TypeAlias, deprecated
+from typing import Any, Final, Literal, TypeAlias, TypeVar, overload
+from typing_extensions import deprecated
 
 if sys.version_info >= (3, 11):
     from sqlite3 import Blob as Blob
@@ -69,6 +69,8 @@ SQLITE_SAVEPOINT: Final = 32
 SQLITE_SELECT: Final = 21
 SQLITE_TRANSACTION: Final = 22
 SQLITE_UPDATE: Final = 23
+if sys.version_info >= (3, 15):
+    SQLITE_KEYWORDS: tuple[str, ...]
 adapters: dict[tuple[type[Any], type[Any]], _Adapter[Any]]
 converters: dict[str, _Converter]
 sqlite_version: str
@@ -218,6 +220,7 @@ if sys.version_info >= (3, 11):
 def adapt(obj: Any, proto: Any, /) -> Any: ...
 @overload
 def adapt(obj: Any, proto: Any, alt: _T, /) -> Any | _T: ...
+
 def complete_statement(statement: str) -> bool: ...
 
 if sys.version_info >= (3, 12):
@@ -259,7 +262,6 @@ if sys.version_info >= (3, 12):
         uri: bool = False,
         autocommit: bool = ...,
     ) -> _ConnectionT: ...
-
 else:
     @overload
     def connect(
@@ -305,13 +307,5 @@ if sys.version_info < (3, 12):
     )
     def enable_shared_cache(do_enable: int) -> None: ...  # undocumented
 
-if sys.version_info >= (3, 10):
-    def register_adapter(type: type[_T], adapter: _Adapter[_T], /) -> None: ...
-    def register_converter(typename: str, converter: _Converter, /) -> None: ...
-
-else:
-    def register_adapter(type: type[_T], caster: _Adapter[_T], /) -> None: ...
-    def register_converter(name: str, converter: _Converter, /) -> None: ...
-
-if sys.version_info < (3, 10):
-    OptimizedUnicode = str  # undocumented
+def register_adapter(type: type[_T], adapter: _Adapter[_T], /) -> None: ...
+def register_converter(typename: str, converter: _Converter, /) -> None: ...

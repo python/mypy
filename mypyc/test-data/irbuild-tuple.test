@@ -281,7 +281,7 @@ L5:
 L6:
     return r6
 
-[case testTupleBuiltFromList]
+[case testTupleBuiltFromList_withgil]
 def f(val: int) -> bool:
     return val % 2 == 0
 
@@ -1018,7 +1018,7 @@ L5:
     a = r42
     return 1
 
-[case testTupleBuiltFromStars]
+[case testTupleBuiltFromStars_withgil]
 from typing import Final
 
 abc: Final = "abc"

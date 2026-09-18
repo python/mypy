@@ -1,23 +1,86 @@
-From 5c922a2484f2e18c7f901e62bb499b6414cf1090 Mon Sep 17 00:00:00 2001
+From 8985351bf6f917db1a7b15ffed95ec2357d9819d Mon Sep 17 00:00:00 2001
 From: Marc Mueller <30130371+cdce8p@users.noreply.github.com>
-Date: Wed, 18 Feb 2026 13:11:02 +0100
+Date: Mon, 18 May 2026 17:33:09 +0200
 Subject: [PATCH] Adjust stubs to fix mypy lookup error due to circular
  dependencies in stubs
 
 ---
- mypy/typeshed/stdlib/time.pyi | 6 +++---
- 1 file changed, 3 insertions(+), 3 deletions(-)
+ mypy/typeshed/stdlib/__future__.pyi | 2 +-
+ mypy/typeshed/stdlib/dis.pyi        | 4 ++--
+ mypy/typeshed/stdlib/inspect.pyi    | 4 ++--
+ mypy/typeshed/stdlib/itertools.pyi  | 2 +-
+ mypy/typeshed/stdlib/time.pyi       | 6 +++---
+ 5 files changed, 9 insertions(+), 9 deletions(-)
 
+diff --git a/mypy/typeshed/stdlib/__future__.pyi b/mypy/typeshed/stdlib/__future__.pyi
+index aa445d22b..a90cf1edd 100644
+--- a/mypy/typeshed/stdlib/__future__.pyi
++++ b/mypy/typeshed/stdlib/__future__.pyi
+@@ -1,4 +1,4 @@
+-from typing import TypeAlias
++from typing_extensions import TypeAlias
+ 
+ _VersionInfo: TypeAlias = tuple[int, int, int, str, int]
+ 
+diff --git a/mypy/typeshed/stdlib/dis.pyi b/mypy/typeshed/stdlib/dis.pyi
+index 984f932e3..0ad928934 100644
+--- a/mypy/typeshed/stdlib/dis.pyi
++++ b/mypy/typeshed/stdlib/dis.pyi
+@@ -2,7 +2,7 @@ import sys
+ import types
+ from collections.abc import Callable, Iterator
+ from opcode import *  # `dis` re-exports it as a part of public API
+-from typing import IO, Any, Final, NamedTuple, TypeAlias, overload
++from typing import IO, Any, Final, NamedTuple, overload
+ from typing_extensions import Self, deprecated, disjoint_base
+ 
+ __all__ = [
+@@ -41,7 +41,7 @@ else:
+ 
+ # Strictly this should not have to include Callable, but mypy doesn't use FunctionType
+ # for functions (python/mypy#3171)
+-_HaveCodeType: TypeAlias = types.MethodType | types.FunctionType | types.CodeType | type | Callable[..., Any]
++_HaveCodeType = types.MethodType | types.FunctionType | types.CodeType | type | Callable[..., Any]
+ 
+ if sys.version_info >= (3, 11):
+     class Positions(NamedTuple):
+diff --git a/mypy/typeshed/stdlib/inspect.pyi b/mypy/typeshed/stdlib/inspect.pyi
+index cc39a7c9f..0ca4cff75 100644
+--- a/mypy/typeshed/stdlib/inspect.pyi
++++ b/mypy/typeshed/stdlib/inspect.pyi
+@@ -196,8 +196,8 @@ if sys.version_info >= (3, 14):
+ 
+ modulesbyfile: dict[str, Any]
+ 
+-_GetMembersPredicateTypeGuard: TypeAlias = Callable[[Any], TypeGuard[_T]]
+-_GetMembersPredicateTypeIs: TypeAlias = Callable[[Any], TypeIs[_T]]
++_GetMembersPredicateTypeGuard = Callable[[Any], TypeGuard[_T]]
++_GetMembersPredicateTypeIs = Callable[[Any], TypeIs[_T]]
+ _GetMembersPredicate: TypeAlias = Callable[[Any], bool]
+ _GetMembersReturn: TypeAlias = list[tuple[str, _T]]
+ 
+diff --git a/mypy/typeshed/stdlib/itertools.pyi b/mypy/typeshed/stdlib/itertools.pyi
+index d26a4e1da..60e79bc2e 100644
+--- a/mypy/typeshed/stdlib/itertools.pyi
++++ b/mypy/typeshed/stdlib/itertools.pyi
+@@ -23,7 +23,7 @@ _T10 = TypeVar("_T10")
+ 
+ _Step: TypeAlias = SupportsFloat | SupportsInt | SupportsIndex | SupportsComplex
+ 
+-_Predicate: TypeAlias = Callable[[_T], object]
++_Predicate = Callable[[_T], object]
+ 
+ # Technically count can take anything that implements a number protocol and has an add method
+ # but we can't enforce the add method
 diff --git a/mypy/typeshed/stdlib/time.pyi b/mypy/typeshed/stdlib/time.pyi
-index 64a009318..d0853792b 100644
+index ac53089b8..9b5344b32 100644
 --- a/mypy/typeshed/stdlib/time.pyi
 +++ b/mypy/typeshed/stdlib/time.pyi
-@@ -1,16 +1,16 @@
+@@ -1,15 +1,15 @@
  import sys
  from _typeshed import structseq
--from typing import Any, Final, Literal, Protocol, SupportsFloat, SupportsIndex, final, type_check_only
-+from typing import Any, Final, Literal, Protocol, SupportsFloat, SupportsIndex, Union, final, type_check_only
- from typing_extensions import TypeAlias
+-from typing import Any, Final, Literal, Protocol, SupportsFloat, SupportsIndex, TypeAlias, final, type_check_only
++from typing import Any, Final, Literal, Protocol, SupportsFloat, SupportsIndex, TypeAlias, Union, final, type_check_only
  
  _TimeTuple: TypeAlias = tuple[int, int, int, int, int, int, int, int, int]
  
@@ -33,5 +96,5 @@ index 64a009318..d0853792b 100644
  altzone: int
  daylight: int
 -- 
-2.53.0
+2.54.0
 

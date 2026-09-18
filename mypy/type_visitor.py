@@ -288,6 +288,7 @@ class TypeTranslator(TypeVisitor[Type]):
             cast(Any, t.fallback.accept(self)),
             t.line,
             t.column,
+            is_closed=t.is_closed,
         )
         self.set_cached(t, result)
         return result

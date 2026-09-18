@@ -11,6 +11,7 @@ from collections.abc import Callable, Iterator
 
 from mypy import build
 from mypy.errors import CompileError
+from mypy.main import process_options
 from mypy.nodes import Expression, MypyFile
 from mypy.options import Options
 from mypy.test.config import test_temp_dir
@@ -102,10 +103,16 @@ def build_ir_for_single_file2(
 ) -> tuple[ModuleIR, MypyFile, dict[Expression, Type], Mapper]:
     program_text = "\n".join(input_lines)
 
-    # By default generate IR compatible with the earliest supported Python C API.
+    flags = re.search("# flags: (.*)$", program_text, flags=re.MULTILINE)
+
+    # By default, generate IR compatible with the earliest supported Python C API.
     # If a test needs more recent API features, this should be overridden.
     compiler_options = compiler_options or CompilerOptions(capi_version=(3, 10))
-    options = Options()
+    if flags:
+        flag_list = flags.group(1).split()
+        _, options = process_options(flag_list, require_targets=False)
+    else:
+        options = Options()
     options.show_traceback = True
     options.hide_error_codes = True
     options.use_builtins_fixtures = True
@@ -120,7 +127,7 @@ def build_ir_for_single_file2(
     options.per_module_options["__main__"] = {"mypyc": True}
 
     source = build.BuildSource("main", "__main__", program_text)
-    # Construct input as a single single.
+    # Construct input as a single source.
     # Parse and type check the input program.
     result = build.build(sources=[source], options=options, alt_lib_path=test_temp_dir)
     result.manager.metastore.close()

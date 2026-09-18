@@ -160,7 +160,7 @@ jobs:
       PYTEST_ADDOPTS: --color=yes
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       with:
         persist-credentials: false
 
@@ -198,7 +198,7 @@ jobs:
           sudo ln -s /opt/pythondev/bin/python3 /opt/pythondev/bin/python
           sudo ln -s /opt/pythondev/bin/pip3 /opt/pythondev/bin/pip
           echo "/opt/pythondev/bin" >> $GITHUB_PATH
-    - uses: actions/setup-python@v5
+    - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
       if: ${{ !(matrix.debug_build || endsWith(matrix.python, '-dev')) }}
       with:
         python-version: ${{ matrix.python }}
@@ -253,7 +253,7 @@ jobs:
       CXX: i686-linux-gnu-g++
       CC: i686-linux-gnu-gcc
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           persist-credentials: false
       - name: Install 32-bit build dependencies
@@ -273,7 +273,7 @@ jobs:
             liblzma-dev:i386 \
             uuid-dev:i386
       - name: Compile, install, and activate 32-bit Python
-        uses: gabrielfalcao/pyenv-action@v13
+        uses: gabrielfalcao/pyenv-action@5668dcb49bd9d228bba29dd5e1fbb6e0aae55a71 # v13
         with:
           default: 3.11.1
           command: python -c "import platform; print(f'{platform.architecture()=} {platform.machine()=}');"

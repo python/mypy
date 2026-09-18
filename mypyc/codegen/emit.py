@@ -2,14 +2,12 @@
 
 from __future__ import annotations
 
-import pprint
 import sys
-import textwrap
 from collections.abc import Callable
 from typing import Final
 
 from mypyc.codegen.cstring import c_string_initializer
-from mypyc.codegen.literals import Literals
+from mypyc.codegen.literals import Literals, literal_sort_key
 from mypyc.common import (
     ATTR_PREFIX,
     BITMAP_BITS,
@@ -24,7 +22,13 @@ from mypyc.common import (
     TYPE_VAR_PREFIX,
 )
 from mypyc.ir.class_ir import ClassIR, all_concrete_classes
-from mypyc.ir.func_ir import FUNC_STATICMETHOD, FuncDecl, FuncIR, get_text_signature
+from mypyc.ir.func_ir import (
+    FUNC_CLASSMETHOD,
+    FUNC_STATICMETHOD,
+    FuncDecl,
+    FuncIR,
+    get_text_signature,
+)
 from mypyc.ir.ops import (
     NAMESPACE_MODULE,
     NAMESPACE_STATIC,
@@ -237,24 +241,16 @@ class Emitter:
         return ATTR_PREFIX + name
 
     def object_annotation(self, obj: object, line: str) -> str:
-        """Build a C comment with an object's string representation.
+        """Build a C comment with a literal value's string representation.
 
-        If the comment exceeds the line length limit, it's wrapped into a
-        multiline string (with the extra lines indented to be aligned with
-        the first line's comment).
+        This is a debugging aid that makes generated C easier to read.
 
-        If it contains illegal characters, an empty string is returned."""
-        line_width = self._indent + len(line)
-        formatted = pprint.pformat(obj, compact=True, indent=1, width=max(90 - line_width, 20))
-        if any(x in formatted for x in ("/*", "*/", "\0")):
+        If it contains illegal characters or is too long, return an empty string.
+        """
+        formatted = stable_literal_repr(obj)
+        if any(x in formatted for x in ("/*", "*/", "\0")) or len(formatted) >= 256:
             return ""
-
-        if "\n" in formatted:
-            first_line, rest = formatted.split("\n", maxsplit=1)
-            comment_continued = textwrap.indent(rest, (line_width + 3) * " ")
-            return f" /* {first_line}\n{comment_continued} */"
-        else:
-            return f" /* {formatted} */"
+        return f" /* {formatted} */"
 
     def emit_line(self, line: str = "", *, ann: object = None) -> None:
         if line.startswith("}"):
@@ -1022,12 +1018,13 @@ class Emitter:
         error = error or AssignHandler()
         # TODO: Verify refcount handling.
         if isinstance(error, AssignHandler):
-            failure = f"{dest} = {self.c_error_value(typ)};"
+            error_action = f"{dest} = {self.c_error_value(typ)};"
         elif isinstance(error, GotoHandler):
-            failure = "goto %s;" % error.label
+            error_action = "goto %s;" % error.label
         else:
             assert isinstance(error, ReturnHandler), error
-            failure = "return %s;" % error.value
+            error_action = "return %s;" % error.value
+        failure = error_action
         if raise_exception:
             raise_exc = f'CPy_TypeError("{self.pretty_name(typ)}", {src}); '
             failure = raise_exc + failure
@@ -1102,14 +1099,12 @@ class Emitter:
             self.declare_tuple_struct(typ)
             if declare_dest:
                 self.emit_line(f"{self.ctype(typ)} {dest};")
-            # HACK: The error handling for unboxing tuples is busted
-            # and instead of fixing it I am just wrapping it in the
-            # cast code which I think is right. This is not good.
             if optional:
                 self.emit_line(f"if ({src} == NULL) {{")
                 self.emit_line(f"{dest} = {self.c_error_value(typ)};")
                 self.emit_line("} else {")
 
+            item_error_labels: list[tuple[str, int]] = []
             cast_temp = self.temp_name()
             self.emit_tuple_cast(
                 src, cast_temp, typ, declare_dest=True, error=error, src_type=None
@@ -1130,12 +1125,18 @@ class Emitter:
                 temp2 = self.temp_name()
                 # Unbox or check the item.
                 if item_type.is_unboxed:
+                    item_error_label = self.new_label()
+                    item_error_labels.append((item_error_label, i))
                     self.emit_unbox(
                         temp,
                         temp2,
                         item_type,
-                        raise_exception=raise_exception,
-                        error=error,
+                        # The tuple cast has already checked the item type. In the
+                        # normal AssignHandler case, preserve conversion errors such
+                        # as an integer overflow instead of replacing them with a
+                        # TypeError.
+                        raise_exception=raise_exception and not isinstance(error, AssignHandler),
+                        error=GotoHandler(item_error_label),
                         declare_dest=True,
                         borrow=borrow,
                     )
@@ -1145,6 +1146,20 @@ class Emitter:
                     self.emit_cast(temp, temp2, item_type, declare_dest=True)
                 self.emit_line(f"{dest}.f{i} = {temp2};")
             self.emit_line("}")
+            if item_error_labels:
+                done_label = self.new_label()
+                self.emit_line(f"goto {done_label};")
+                for item_error_label, failed_item in item_error_labels:
+                    self.emit_label(item_error_label)
+                    # The failed field has not been assigned yet, but earlier fields
+                    # may own references that must be released before propagating.
+                    if not borrow:
+                        for previous_index, previous_type in enumerate(typ.types[:failed_item]):
+                            self.emit_dec_ref(f"{dest}.f{previous_index}", previous_type)
+                    self.emit_line(error_action)
+                    if isinstance(error, AssignHandler):
+                        self.emit_line(f"goto {done_label};")
+                self.emit_label(done_label)
             if optional:
                 self.emit_line("}")
         elif isinstance(typ, RVec):
@@ -1426,16 +1441,21 @@ class Emitter:
         self, fn: FuncIR, name: str, filepath: str, error_stmt: str
     ) -> str:
         module = self.static_name(fn.decl.module_name, None, prefix=MODULE_PREFIX)
+        module = f"CPyImport_GetModuleCache(&{module})"
         cname = f"{PREFIX}{fn.cname(self.names)}"
-        wrapper_name = f"{cname}_wrapper"
+        wrapper_name = f"wrapper_{cname}"
         cfunc = f"(PyCFunction){cname}"
-        func_flags = "METH_FASTCALL | METH_KEYWORDS"
+        func_flags = ["METH_FASTCALL", "METH_KEYWORDS"]
+        if fn.class_name and fn.decl.kind == FUNC_STATICMETHOD:
+            func_flags.append("METH_STATIC")
+        elif fn.class_name and fn.decl.kind == FUNC_CLASSMETHOD:
+            func_flags.append("METH_CLASS")
         doc = f"PyDoc_STR({native_function_doc_initializer(fn)})"
         has_self_arg = "true" if fn.class_name and fn.decl.kind != FUNC_STATICMETHOD else "false"
 
         code_flags = "CO_COROUTINE"
         self.emit_line(
-            f'PyObject* {wrapper_name} = CPyFunction_New({module}, "{filepath}", "{name}", {cfunc}, {func_flags}, {doc}, {fn.line}, {code_flags}, {has_self_arg});'
+            f'PyObject* {wrapper_name} = CPyFunction_New({module}, "{filepath}", "{name}", {cfunc}, {" | ".join(func_flags)}, {doc}, {fn.line}, {code_flags}, {has_self_arg});'
         )
         self.emit_line(f"if (unlikely(!{wrapper_name}))")
         self.emit_line(error_stmt)
@@ -1444,8 +1464,17 @@ class Emitter:
     def emit_base_tp_function_call(
         self, derived_cl: ClassIR, tp_func: str, args: str, *, prefix: str = ""
     ) -> None:
+        # Walk past intermediate heap types (Python or mypyc classes) to reach a
+        # static C-level ancestor. Calling a heap type's tp_dealloc/tp_traverse/
+        # tp_clear would dispatch through subtype_dealloc, which uses Py_TYPE(self)
+        # (still our subtype) and re-enters our own function — infinite recursion.
         type_obj = self.type_struct_name(derived_cl)
-        self.emit_line(f"{prefix}{type_obj}->tp_base->{tp_func}({args});")
+        base_var = f"_base_{tp_func}"
+        self.emit_line(f"PyTypeObject *{base_var} = {type_obj}->tp_base;")
+        self.emit_line(f"while ({base_var}->tp_flags & Py_TPFLAGS_HEAPTYPE) {{")
+        self.emit_line(f"    {base_var} = {base_var}->tp_base;")
+        self.emit_line("}")
+        self.emit_line(f"{prefix}{base_var}->{tp_func}({args});")
 
 
 def c_array_initializer(components: list[str], *, indented: bool = False) -> str:
@@ -1486,3 +1515,21 @@ def native_function_doc_initializer(func: FuncIR) -> str:
         return "NULL"
     docstring = f"{text_sig}\n--\n\n"
     return c_string_initializer(docstring.encode("ascii", errors="backslashreplace"))
+
+
+def stable_literal_repr(obj: object) -> str:
+    """Return a single-line repr of a literal value.
+
+    Behaves like repr() for most values, but renders frozenset members in a
+    deterministic order (frozenset iteration order is hash-seed dependent).
+    """
+    if isinstance(obj, frozenset):
+        if not obj:
+            return "frozenset()"
+        items = ", ".join(stable_literal_repr(item) for item in sorted(obj, key=literal_sort_key))
+        return "frozenset({" + items + "})"
+    elif isinstance(obj, tuple):
+        if len(obj) == 1:
+            return "(" + stable_literal_repr(obj[0]) + ",)"
+        return "(" + ", ".join(stable_literal_repr(item) for item in obj) + ")"
+    return repr(obj)
