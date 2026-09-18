@@ -898,6 +898,7 @@ class BuildManager:
             self.errors,
             self.plugin,
             self.import_map,
+            parallel_worker,
         )
         self.all_types: dict[Expression, Type] = {}  # Enabled by export_types
         self.indirection_detector = TypeIndirectionVisitor()

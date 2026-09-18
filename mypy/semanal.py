@@ -461,6 +461,7 @@ class SemanticAnalyzer(
         errors: Errors,
         plugin: Plugin,
         import_map: dict[str, set[str]],
+        parallel_worker: bool,
     ) -> None:
         """Construct semantic analyzer.
 
@@ -494,6 +495,8 @@ class SemanticAnalyzer(
         self.errors = errors
         self.modules = modules
         self.import_map = import_map
+        # True if this analysis is run in a parallel worker process.
+        self.parallel_worker = parallel_worker
         self.msg = MessageBuilder(errors, modules)
         self.missing_modules = missing_modules
         self.missing_names = [set()]
@@ -719,24 +722,26 @@ class SemanticAnalyzer(
                 self.accept(node)
         del self.patches
 
+    def ad_hoc_error(self, msg: str) -> None:
+        n = TempNode(AnyType(TypeOfAny.special_form))
+        n.line = 1
+        n.column = 0
+        n.end_line = 1
+        n.end_column = 0
+        self.fail(msg, n)
+
     def refresh_top_level(self, file_node: MypyFile) -> None:
         """Reanalyze a stale module top-level in fine-grained incremental mode."""
         if self.options.allow_redefinition and not self.options.local_partial_types:
-            n = TempNode(AnyType(TypeOfAny.special_form))
-            n.line = 1
-            n.column = 0
-            n.end_line = 1
-            n.end_column = 0
-            self.fail("--local-partial-types must be enabled if using --allow-redefinition", n)
-        if self.options.allow_redefinition and self.options.allow_redefinition_old:
-            n = TempNode(AnyType(TypeOfAny.special_form))
-            n.line = 1
-            n.column = 0
-            n.end_line = 1
-            n.end_column = 0
-            self.fail(
-                "--allow-redefinition-old and --allow-redefinition should not be used together", n
+            self.ad_hoc_error(
+                "--local-partial-types must be enabled if using --allow-redefinition"
             )
+        if self.options.allow_redefinition and self.options.allow_redefinition_old:
+            self.ad_hoc_error(
+                "--allow-redefinition-old and --allow-redefinition should not be used together"
+            )
+        if not self.options.local_partial_types and self.parallel_worker:
+            self.ad_hoc_error("--local-partial-types must be enabled in parallel mode")
         self.recurse_into_functions = False
         self.add_implicit_module_attrs(file_node)
         for d in file_node.defs:
