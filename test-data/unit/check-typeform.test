@@ -730,9 +730,6 @@ typx = 'int | str'
 [builtins fixtures/primitives.pyi]
 [typing fixtures/typing-full.pyi]
 
--- TODO: Replace the enumerated allowlist in var_is_typing_special_form()
---       with a new kind of general check, so new typing special forms are
---       recognized without being added to it by hand.
 [case testEveryKindOfSingleIdentifierSpecialFormInStringAnnotationIsRecognized]
 from typing import Any, Callable, Dict, List, NoReturn, Tuple, Type
 from typing_extensions import LiteralString, Never, TypeForm
