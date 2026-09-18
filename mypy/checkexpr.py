@@ -5980,9 +5980,25 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                 upper_bound=self.object_type(),
                 default=AnyType(TypeOfAny.from_omitted_generics),
             )
+            if isinstance(gen.left_expr, StarExpr):
+                left_expr = gen.left_expr.expr
+                # Note: we wrap the argument type instead of using ARG_STAR kind, because logic
+                # in argmap.py doesn't work with structural subtypes of Iterable.
+                arg = self.chk.named_generic_type("typing.Iterable", [tv])
+                # Motivation for inferring more unions in this case is two-fold:
+                # * In regular (non-star) case the constructor signature has bare type variable,
+                #   thus hitting a special case in constraints solver that would naturally infer
+                #   more unions. We want to match this behavior here.
+                # * This is a new syntax, so we can experiment with something
+                #   we may want in long-term
+                force_infer_unions = True
+            else:
+                left_expr = gen.left_expr
+                arg = tv
+                force_infer_unions = False
             tv_list: list[Type] = [tv]
             constructor = CallableType(
-                tv_list,
+                [arg],
                 [nodes.ARG_POS],
                 [None],
                 self.chk.named_generic_type(type_name, tv_list + additional_args),
@@ -5990,7 +6006,13 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                 name=id_for_messages,
                 variables=[tv],
             )
-            return self.check_call(constructor, [gen.left_expr], [nodes.ARG_POS], gen)[0]
+            if force_infer_unions:
+                old_infer_unions = type_state.infer_unions
+                type_state.infer_unions = True
+            res = self.check_call(constructor, [left_expr], [nodes.ARG_POS], gen)
+            if force_infer_unions:
+                type_state.infer_unions = old_infer_unions
+            return res[0]
 
     def visit_dictionary_comprehension(self, e: DictionaryComprehension) -> Type:
         """Type check a dictionary comprehension."""
@@ -6015,21 +6037,35 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                 upper_bound=self.object_type(),
                 default=AnyType(TypeOfAny.from_omitted_generics),
             )
+            if e.key is None:
+                # Logic and motivation here is similar to check_generator_or_comprehension().
+                arg_types = [self.chk.named_generic_type("typing.Mapping", [ktdef, vtdef])]
+                arg_kinds = [nodes.ARG_POS]
+                arg_names = [None]
+                args = [e.value]
+                force_infer_unions = True
+            else:
+                arg_types = [ktdef, vtdef]
+                arg_kinds = [nodes.ARG_POS, nodes.ARG_POS]
+                arg_names = [None, None]
+                args = [e.key, e.value]
+                force_infer_unions = False
             constructor = CallableType(
-                [ktdef, vtdef],
-                [nodes.ARG_POS, nodes.ARG_POS],
-                [None, None],
+                arg_types,
+                arg_kinds,
+                arg_names,
                 self.chk.named_generic_type("builtins.dict", [ktdef, vtdef]),
                 self.chk.named_type("builtins.function"),
                 name="<dictionary-comprehension>",
                 variables=[ktdef, vtdef],
             )
-            if e.key is None:
-                self.chk.fail("PEP 798 is not supported yet", e)
-                return AnyType(TypeOfAny.from_error)
-            return self.check_call(
-                constructor, [e.key, e.value], [nodes.ARG_POS, nodes.ARG_POS], e
-            )[0]
+            if force_infer_unions:
+                old_infer_unions = type_state.infer_unions
+                type_state.infer_unions = True
+            res = self.check_call(constructor, args, arg_kinds, e)
+            if force_infer_unions:
+                type_state.infer_unions = old_infer_unions
+            return res[0]
 
     def check_for_comp(self, e: GeneratorExpr | DictionaryComprehension) -> None:
         """Check the for_comp part of comprehensions. That is the part from 'for':

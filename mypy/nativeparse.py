@@ -1620,7 +1620,6 @@ def read_expression(state: State, data: ReadBuffer) -> Expression:
         expr = DictionaryComprehension(key, value, indices, sequences, condlists, is_async)
         read_loc(data, expr)
         if key is None:
-            # TODO: add similar check to other kinds of comprehensions.
             state.check_min_version("Unpacking in comprehensions", (3, 15), expr.line, expr.column)
         expect_end_tag(data)
         return expr
@@ -1804,6 +1803,10 @@ def read_expression_list(state: State, data: ReadBuffer) -> list[Expression]:
 def read_generator_expr(state: State, data: ReadBuffer) -> GeneratorExpr:
     """Helper function to read comprehension data (shared by Generator, ListComp, SetComp)"""
     left_expr = read_expression(state, data)
+    if isinstance(left_expr, StarExpr):
+        state.check_min_version(
+            "Unpacking in comprehensions", (3, 15), left_expr.line, left_expr.column
+        )
     n_generators = read_int(data)
     indices = [read_expression(state, data) for _ in range(n_generators)]
     sequences = [read_expression(state, data) for _ in range(n_generators)]
