@@ -1150,7 +1150,8 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             # Homogeneous tuple[T, ...]: any index has type T.
             return get_proper_type(typ.args[0])
         if isinstance(typ, TupleType):
-            if find_unpack_in_list(typ.items) is not None:
+            items = flatten_nested_tuples(typ.items)
+            if find_unpack_in_list(items) is not None:
                 return None
             index = args[0]
             if not isinstance(index, RawExpressionType) or not isinstance(
@@ -1158,11 +1159,11 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             ):
                 return None
             i = index.literal_value
-            n = len(typ.items)
+            n = len(items)
             if i < 0:
                 i += n
             if 0 <= i < n:
-                return get_proper_type(typ.items[i])
+                return get_proper_type(items[i])
         return None
 
     def visit_any(self, t: AnyType) -> Type:
