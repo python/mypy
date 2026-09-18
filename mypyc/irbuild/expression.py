@@ -1391,7 +1391,7 @@ def _visit_display(
 
 def transform_list_comprehension(builder: IRBuilder, o: ListComprehension) -> Value:
     if isinstance(o.generator.left_expr, StarExpr):
-        builder.error("PEP 798 is not supported yet", o.line)
+        builder.error("Unpacking in comprehensions is not supported yet", o.line)
         return builder.none()
     gen = o.generator
     if gen in builder.comprehension_to_fitem:
@@ -1403,7 +1403,7 @@ def transform_list_comprehension(builder: IRBuilder, o: ListComprehension) -> Va
 
 def transform_set_comprehension(builder: IRBuilder, o: SetComprehension) -> Value:
     if isinstance(o.generator.left_expr, StarExpr):
-        builder.error("PEP 798 is not supported yet", o.line)
+        builder.error("Unpacking in comprehensions is not supported yet", o.line)
         return builder.none()
     gen = o.generator
     if gen in builder.comprehension_to_fitem:
@@ -1430,7 +1430,7 @@ def _dict_comp_body(builder: IRBuilder, o: DictionaryComprehension) -> Value:
         if o.key is not None:
             k = builder.accept(o.key)
         else:
-            builder.error("PEP 798 is not supported yet", o.line)
+            builder.error("Unpacking in comprehensions is not supported yet", o.line)
             k = builder.none()
         v = builder.accept(o.value)
         builder.call_c(exact_dict_set_item_op, [builder.read(d, o.line), k, v], o.line)
@@ -1480,7 +1480,7 @@ def transform_slice_expr(builder: IRBuilder, expr: SliceExpr) -> Value:
 
 def transform_generator_expr(builder: IRBuilder, o: GeneratorExpr) -> Value:
     if isinstance(o.left_expr, StarExpr):
-        builder.error("PEP 798 is not supported yet", o.line)
+        builder.error("Unpacking in comprehensions is not supported yet", o.line)
         return builder.none()
     builder.warning("Treating generator comprehension as list", o.line)
     if o in builder.comprehension_to_fitem:
