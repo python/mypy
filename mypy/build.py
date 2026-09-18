@@ -4790,7 +4790,7 @@ def process_stale_scc(graph: Graph, ascc: SCC, manager: BuildManager) -> None:
     This will process module interfaces first (when possible). This mirrors
     how things are done in parallel type checking.
     """
-    if not manager.options.local_partial_types:
+    if not all(graph[id].options.local_partial_types for id in ascc.mod_ids):
         # If local partial types are disabled we must process each file sequentially.
         process_stale_scc_full(graph, ascc, manager)
         return
