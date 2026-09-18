@@ -57,7 +57,7 @@ class Frame:
     operations. It also records whether it is possible to reach that
     point at all.
 
-    We add a new frame wherenever there is a new scope or control flow
+    We add a new frame whenever there is a new scope or control flow
     branching.
 
     This information is not copied into a new Frame when it is pushed

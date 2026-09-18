@@ -426,7 +426,7 @@ class DataDrivenTestCase(pytest.Item):
         second step, etc. Each operation can either be a file modification/creation (UpdateFile)
         or deletion (DeleteFile).
 
-        Defaults to having two steps if there aern't any operations.
+        Defaults to having two steps if there aren't any operations.
         """
         return self.steps
 
