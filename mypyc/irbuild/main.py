@@ -47,6 +47,7 @@ from mypyc.irbuild.prepare import (
 from mypyc.irbuild.visitor import IRBuilderVisitor
 from mypyc.irbuild.vtable import compute_vtable
 from mypyc.options import CompilerOptions
+from mypyc.transform.generator_spills import promote_generator_registers
 
 # The stubs for callable contextmanagers are busted so cast it to the
 # right type...
@@ -122,6 +123,13 @@ def build_ir(
         )
         result[module.fullname] = module_ir
         class_irs.extend(builder.classes)
+
+    # Generator helper calls are fresh C activations after every suspension.
+    # Move values that must outlive one activation to the private frame before
+    # attribute-definedness and the remaining IR transforms run.
+    for class_ir in class_irs:
+        if class_ir.env_user_function is not None:
+            promote_generator_registers(class_ir.env_user_function, class_ir)
 
     analyze_always_defined_attrs(class_irs)
 

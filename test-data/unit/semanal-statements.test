@@ -557,7 +557,7 @@ MypyFile:1(
 def f(x, y) -> None:
     del x, y + 1
 [out]
-main:2: error: Cannot delete expression
+main:2: error: Invalid delete target
 
 [case testTry]
 class c: pass

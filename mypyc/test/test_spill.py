@@ -7,6 +7,7 @@ from mypyc.common import (
     GENERATOR_ATTRIBUTE_PREFIX,
     NEXT_LABEL_ATTR_NAME,
     TEMP_ATTR_NAME,
+    generator_frame_attribute_prefix,
 )
 from mypyc.ir.rtypes import RInstance
 from mypyc.test.testutil import build_ir_for_single_file2
@@ -14,7 +15,7 @@ from mypyc.transform.spill import insert_spills
 
 
 class TestSpill(unittest.TestCase):
-    def test_separate_generator_environment_keeps_private_frame_state(self) -> None:
+    def test_separate_generator_environment_keeps_spills_on_frame(self) -> None:
         # A nested generator needs a separate environment. Since make() is
         # evaluated before the yield, its result must be spilled across the
         # suspension point by the post-IRBuild spill pass.
@@ -24,11 +25,12 @@ def make() -> str:
 
 def outer():
     def nested(value: str):
+        result = ""
         for item in [value]:
-            # The loop iterator uses IR-builder-managed spill slots, while the
-            # result of make() is spilled later by the spill transform.
-            return make() + (yield item)
-        return "unreachable"
+            # The loop iterator is promoted from a register during IR building,
+            # while the result of make() is spilled by the later transform.
+            result += make() + (yield item)
+        return result
     return nested("right")
 """
         module, _, _, _ = build_ir_for_single_file2(source.splitlines())
@@ -45,8 +47,45 @@ def outer():
         # is protected by the running flag and can use plain attribute access.
         assert frame.attrs_are_thread_confined()
         assert NEXT_LABEL_ATTR_NAME in frame.attributes
-        assert any(name.startswith(TEMP_ATTR_NAME + "1_") for name in frame.attributes)
         assert any(name.startswith(TEMP_ATTR_NAME + "2_") for name in frame.attributes)
+        assert any(name.startswith(TEMP_ATTR_NAME + "3_") for name in frame.attributes)
 
-        # Source-level variables stay in the shared environment.
-        assert GENERATOR_ATTRIBUTE_PREFIX + "value" in environment.attributes
+        # Noncaptured source-level variables also stay on the private frame.
+        frame_prefix = generator_frame_attribute_prefix(
+            frame.fullname, is_final_class=frame.is_final_class
+        )
+        assert frame_prefix + "value" in frame.attributes
+        assert GENERATOR_ATTRIBUTE_PREFIX + "value" not in environment.attributes
+
+    def test_generator_locals_use_private_frame_unless_captured(self) -> None:
+        source = """\
+def outer():
+    def nested(captured: str, private: str):
+        def callback() -> str:
+            return captured
+
+        private_local = private
+        yield callback()
+        yield private_local
+    return nested("captured", "private")
+"""
+        module, _, _, _ = build_ir_for_single_file2(source.splitlines())
+        frame = next(cl for cl in module.classes if cl.has_running_flag)
+
+        env_type = frame.attributes[ENV_ATTR_NAME]
+        assert isinstance(env_type, RInstance)
+        environment = env_type.class_ir
+        frame_attrs = set(frame.attributes)
+        environment_attrs = set(environment.attributes)
+
+        assert frame.attrs_are_thread_confined()
+        assert not environment.attrs_are_thread_confined()
+
+        frame_prefix = generator_frame_attribute_prefix(
+            frame.fullname, is_final_class=frame.is_final_class
+        )
+        assert GENERATOR_ATTRIBUTE_PREFIX + "captured" in environment_attrs
+        assert frame_prefix + "captured" not in frame_attrs
+        for name in ("private", "private_local", "callback"):
+            assert frame_prefix + name in frame_attrs
+            assert GENERATOR_ATTRIBUTE_PREFIX + name not in environment_attrs

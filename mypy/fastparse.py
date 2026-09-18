@@ -206,12 +206,14 @@ def parse(
         options = Options()
     errors.set_file(fnam, module, options=options)
     is_stub_file = fnam.endswith(".pyi")
-    if is_stub_file:
+    if ignore_errors:
+        feature_version = sys.version_info[1]
+    elif is_stub_file:
         feature_version = defaults.PYTHON3_VERSION[1]
-        if options.python_version[0] == 3 and options.python_version[1] > feature_version:
-            feature_version = options.python_version[1]
     else:
         assert options.python_version[0] >= 3
+        feature_version = options.python_version[1]
+    if options.python_version[0] == 3 and options.python_version[1] > feature_version:
         feature_version = options.python_version[1]
     try:
         # Disable
@@ -1567,9 +1569,15 @@ class ASTConverter:
         iters = [self.visit(c.iter) for c in n.generators]
         ifs_list = [self.translate_expr_list(c.ifs) for c in n.generators]
         is_async = [bool(c.is_async) for c in n.generators]
-        e = DictionaryComprehension(
-            self.visit(n.key), self.visit(n.value), targets, iters, ifs_list, is_async
-        )
+        key = self.visit(n.key)
+        if n.value is not None:
+            value = self.visit(n.value)
+        else:
+            # Our convention for ** unpack in dictionary comprehension matches Ruff
+            # parser, while Python parser has an opposite one.
+            value = key  # type: ignore[unreachable]
+            key = None
+        e = DictionaryComprehension(key, value, targets, iters, ifs_list, is_async)
         return self.set_line(e, n)
 
     # GeneratorExp(expr elt, comprehension* generators)

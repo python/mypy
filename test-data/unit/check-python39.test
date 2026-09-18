@@ -1,10 +1,10 @@
-[case testGivingSameKeywordArgumentTwice_no_native_parse]
+[case testGivingSameKeywordArgumentTwice]
 # This test was originally in check-kwargs.test
 import typing
 def f(a: 'A', b: 'B') -> None: pass
 class A: pass
 class B: pass
-f(a=A(), b=B(), a=A()) # E: "f" gets multiple values for keyword argument "a"
+f(a=A(), b=B(), a=A()) # E: Duplicate keyword argument "a"
 
 
 [case testPEP614]

@@ -667,7 +667,7 @@ def fun4(x: U, y: P[U, U]) -> U:
     pass
 reveal_type(fun4('a', C())) # N: Revealed type is "builtins.object"
 
-[case testUnrealtedGenericProtocolsEquivalent]
+[case testUnrelatedGenericProtocolsEquivalent]
 from typing import TypeVar, Protocol
 T = TypeVar('T')
 
@@ -954,7 +954,7 @@ if int():
 [builtins fixtures/list.pyi]
 [typing fixtures/typing-medium.pyi]
 
-[case testMutuallyRecursiveProtocolsTypesWithSubteMismatch]
+[case testMutuallyRecursiveProtocolsTypesWithSubtleMismatch]
 from typing import Protocol, Sequence, List
 
 class P1(Protocol):

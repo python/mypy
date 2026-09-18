@@ -1556,3 +1556,28 @@ def test_dunder_arg_check() -> None:
         2**63 in o
     with assertRaises(IndexError):
         1 in o
+
+[case testI64DefinednessAcrossYield]
+from typing import Final, Iterator
+
+from mypy_extensions import i64
+from testutil import assertRaises
+
+MAGIC: Final = -113
+
+def error_value() -> Iterator[i64]:
+    value: i64 = MAGIC
+    yield 0
+    yield value
+
+def conditional(define: bool) -> Iterator[i64]:
+    if define:
+        value: i64 = 5
+    yield 0
+    yield value
+
+def test_i64_definedness_across_yield() -> None:
+    assert list(error_value()) == [0, MAGIC]
+    assert list(conditional(True)) == [0, 5]
+    with assertRaises(AttributeError):
+        list(conditional(False))

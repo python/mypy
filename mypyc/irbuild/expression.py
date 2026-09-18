@@ -315,6 +315,8 @@ def transform_member_expr(builder: IRBuilder, expr: MemberExpr) -> Value:
 
     is_final = builder.is_final_native_attr_ref(expr)
     scope = KEEP_ALIVE_SHORT_LIVED
+    # TODO: Support borrowing in subexpressions evaluated before suspension, such as
+    #       `await f(obj.final_attr)` and `yield f(obj.final_attr)`.
     if (
         is_final
         and builder.expression_depth > 1
@@ -1388,6 +1390,9 @@ def _visit_display(
 
 
 def transform_list_comprehension(builder: IRBuilder, o: ListComprehension) -> Value:
+    if isinstance(o.generator.left_expr, StarExpr):
+        builder.error("Unpacking in comprehensions is not supported yet", o.line)
+        return builder.none()
     gen = o.generator
     if gen in builder.comprehension_to_fitem:
         return _translate_comprehension_with_scope(
@@ -1397,6 +1402,9 @@ def transform_list_comprehension(builder: IRBuilder, o: ListComprehension) -> Va
 
 
 def transform_set_comprehension(builder: IRBuilder, o: SetComprehension) -> Value:
+    if isinstance(o.generator.left_expr, StarExpr):
+        builder.error("Unpacking in comprehensions is not supported yet", o.line)
+        return builder.none()
     gen = o.generator
     if gen in builder.comprehension_to_fitem:
         return _translate_comprehension_with_scope(
@@ -1415,14 +1423,14 @@ def transform_dictionary_comprehension(builder: IRBuilder, o: DictionaryComprehe
 
 
 def _dict_comp_body(builder: IRBuilder, o: DictionaryComprehension) -> Value:
-    d = builder.maybe_spill(builder.call_c(dict_new_op, [], o.line))
+    d = builder.call_c(dict_new_op, [], o.line)
     loop_params = list(zip(o.indices, o.sequences, o.condlists, o.is_async))
 
     def gen_inner_stmts() -> None:
         if o.key is not None:
             k = builder.accept(o.key)
         else:
-            builder.error("PEP 798 is not supported yet", o.line)
+            builder.error("Unpacking in comprehensions is not supported yet", o.line)
             k = builder.none()
         v = builder.accept(o.value)
         builder.call_c(exact_dict_set_item_op, [builder.read(d, o.line), k, v], o.line)
@@ -1471,6 +1479,9 @@ def transform_slice_expr(builder: IRBuilder, expr: SliceExpr) -> Value:
 
 
 def transform_generator_expr(builder: IRBuilder, o: GeneratorExpr) -> Value:
+    if isinstance(o.left_expr, StarExpr):
+        builder.error("Unpacking in comprehensions is not supported yet", o.line)
+        return builder.none()
     builder.warning("Treating generator comprehension as list", o.line)
     if o in builder.comprehension_to_fitem:
         return builder.primitive_op(
