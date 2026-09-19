@@ -2989,7 +2989,7 @@ class TupleType(ProperType):
                 else:
                     return None
             else:
-                # TODO: there some additional cases we can support for homogeneous variadic
+                # TODO: there are some additional cases we can support for homogeneous variadic
                 # items, we can "eat away" finite number of items.
                 return None
         else:
@@ -4446,6 +4446,20 @@ def type_vars_as_args(type_vars: Sequence[TypeVarLikeType]) -> tuple[Type, ...]:
         else:
             args.append(tv)
     return tuple(args)
+
+
+def get_variadic_item(tup: TupleType) -> tuple[int, Type] | None:
+    """If this is tuple[X, *tuple[Y, ...], Z], return Y, otherwise None."""
+    unpack_index = find_unpack_in_list(tup.items)
+    if unpack_index is None:
+        return None
+    unpack = tup.items[unpack_index]
+    assert isinstance(unpack, UnpackType)
+    unpacked = get_proper_type(unpack.type)
+    if not isinstance(unpacked, Instance):
+        return None
+    assert unpacked.type.fullname == "builtins.tuple"
+    return unpack_index, unpacked.args[0]
 
 
 # See docstring for mypy/cache.py for reserved tag ranges.
