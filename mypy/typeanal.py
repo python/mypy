@@ -1007,17 +1007,19 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         # context. This is slightly problematic as it allows using the type 'Any'
         # as a base class -- however, this will fail soon at runtime so the problem
         # is pretty minor.
+        #
+        # Also allow indexing a tuple-typed value that yields Any (or type / Type[Any])
+        # in base class position, e.g. class C(args[1]) where args: tuple[int, Any].
         if isinstance(sym.node, Var):
             typ = get_proper_type(sym.node.type)
-            if isinstance(typ, AnyType):
-                return AnyType(
-                    TypeOfAny.from_unimported_type, missing_import_name=typ.missing_import_name
-                )
-            elif self.allow_type_any:
-                if isinstance(typ, Instance) and typ.type.fullname == "builtins.type":
-                    return AnyType(TypeOfAny.special_form)
-                if isinstance(typ, TypeType) and isinstance(typ.item, AnyType):
-                    return AnyType(TypeOfAny.from_another_any, source_any=typ.item)
+            runtime_type = self.anal_type_from_runtime_value(typ)
+            if runtime_type is not None:
+                return runtime_type
+            if self.allow_type_any and t.args:
+                item = self.indexed_tuple_item_type(typ, t.args)
+                runtime_type = self.anal_type_from_runtime_value(item)
+                if runtime_type is not None:
+                    return runtime_type
         # Option 2:
         # Unbound type variable. Currently these may be still valid,
         # for example when defining a generic type alias.
@@ -1120,6 +1122,49 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         # are more detailed, on the other hand, some of them may be bogus,
         # see https://github.com/python/mypy/issues/4987.
         return t
+
+    def anal_type_from_runtime_value(self, typ: ProperType | None) -> Type | None:
+        """Return a type if a runtime value of this type may be used as a type.
+
+        This is used for dynamic base classes: a variable of type Any, type, or
+        Type[Any] is a valid base. Returns None if the value is not valid as a type.
+        """
+        if isinstance(typ, AnyType):
+            return AnyType(
+                TypeOfAny.from_unimported_type, missing_import_name=typ.missing_import_name
+            )
+        if self.allow_type_any:
+            if isinstance(typ, Instance) and typ.type.fullname == "builtins.type":
+                return AnyType(TypeOfAny.special_form)
+            if isinstance(typ, TypeType) and isinstance(typ.item, AnyType):
+                return AnyType(TypeOfAny.from_another_any, source_any=typ.item)
+        return None
+
+    def indexed_tuple_item_type(
+        self, typ: ProperType | None, args: tuple[Type, ...]
+    ) -> ProperType | None:
+        """If this looks like indexing a tuple-typed value, return the item type."""
+        if typ is None or len(args) != 1:
+            return None
+        if isinstance(typ, Instance) and typ.type.fullname in TUPLE_NAMES and typ.args:
+            # Homogeneous tuple[T, ...]: any index has type T.
+            return get_proper_type(typ.args[0])
+        if isinstance(typ, TupleType):
+            items = flatten_nested_tuples(typ.items)
+            if find_unpack_in_list(items) is not None:
+                return None
+            index = args[0]
+            if not isinstance(index, RawExpressionType) or not isinstance(
+                index.literal_value, int
+            ):
+                return None
+            i = index.literal_value
+            n = len(items)
+            if i < 0:
+                i += n
+            if 0 <= i < n:
+                return get_proper_type(items[i])
+        return None
 
     def visit_any(self, t: AnyType) -> Type:
         return t
