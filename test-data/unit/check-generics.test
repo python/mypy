@@ -3737,3 +3737,11 @@ def test(tp: type[T]) -> T: ...
 
 class C(Generic[T]): ...
 reveal_type(test(C))  # N: Revealed type is "__main__.C[Any]"
+
+[case testGenericSpecialFormAsType]
+from typing import Generic
+
+g: type[Generic] = Generic
+
+def f(t: type[Generic]) -> None: ...
+f(Generic)

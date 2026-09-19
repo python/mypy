@@ -18,7 +18,8 @@ class _SpecialForm:
         pass
 
 NamedTuple = 0
-Protocol: _SpecialForm = ...
+class _Protocol: ...
+Protocol: type[_Protocol]
 def runtime_checkable(x: _T) -> _T: pass
 runtime = runtime_checkable
 
