@@ -175,6 +175,7 @@ static inline size_t CPy_FindAttrOffset(PyTypeObject *trait, CPyVTableItem *vtab
 CPyTagged CPyTagged_FromSsize_t(Py_ssize_t value);
 CPyTagged CPyTagged_FromVoidPtr(void *ptr);
 CPyTagged CPyTagged_FromInt64(int64_t value);
+CPyTagged CPyTagged_FromUInt64(uint64_t value);
 CPyTagged CPyTagged_FromUInt32(uint32_t value);
 PyObject *CPyTagged_AsObject(CPyTagged x);
 PyObject *CPyTagged_StealAsObject(CPyTagged x);
@@ -219,6 +220,8 @@ int16_t CPyLong_AsInt16_(PyObject *o);
 int16_t CPyInt16_Divide(int16_t x, int16_t y);
 int16_t CPyInt16_Remainder(int16_t x, int16_t y);
 void CPyInt16_Overflow(void);
+uint64_t CPyLong_AsUInt64_(PyObject *o);
+void CPyUInt64_Overflow(void);
 uint32_t CPyLong_AsUInt32_(PyObject *o);
 void CPyUInt32_Overflow(void);
 uint16_t CPyLong_AsUInt16_(PyObject *o);
@@ -486,6 +489,29 @@ static inline uint32_t CPyLong_AsUInt32(PyObject *o) {
     }
     // Slow path
     return CPyLong_AsUInt32_(o);
+}
+
+static inline uint64_t CPyLong_AsUInt64(PyObject *o) {
+    if (likely(PyLong_Check(o))) {
+    #if CPY_3_12_FEATURES
+        PyLongObject *lobj = (PyLongObject *)o;
+        size_t tag = CPY_LONG_TAG(lobj);
+        if (likely(tag == (1 << CPY_NON_SIZE_BITS))) {
+            return CPY_LONG_DIGIT(lobj, 0);
+        } else if (likely(tag == CPY_SIGN_ZERO)) {
+            return 0;
+        }
+    #else
+        PyLongObject *lobj = (PyLongObject *)o;
+        Py_ssize_t size = lobj->ob_base.ob_size;
+        if (likely(size == 1)) {
+            return lobj->ob_digit[0];
+        } else if (likely(size == 0)) {
+            return 0;
+        }
+    #endif
+    }
+    return CPyLong_AsUInt64_(o);
 }
 
 static inline uint16_t CPyLong_AsUInt16(PyObject *o) {
@@ -876,6 +902,8 @@ PyObject *CPyList_GetItemShort(PyObject *list, CPyTagged index);
 PyObject *CPyList_GetItemInt64(PyObject *list, int64_t index);
 bool CPyList_SetItem(PyObject *list, CPyTagged index, PyObject *value);
 bool CPyList_SetItemInt64(PyObject *list, int64_t index, PyObject *value);
+PyObject *CPyList_GetItemUInt64(PyObject *list, uint64_t index);
+bool CPyList_SetItemUInt64(PyObject *list, uint64_t index, PyObject *value);
 
 #else
 
@@ -924,11 +952,29 @@ static inline bool CPyList_SetItemInt64(PyObject *list, int64_t index, PyObject 
     return PyList_SetItem(list, index, value) >= 0;
 }
 
+static inline PyObject *CPyList_GetItemUInt64(PyObject *list, uint64_t index) {
+    if (unlikely(index > (uint64_t)PY_SSIZE_T_MAX)) {
+        PyErr_SetString(PyExc_IndexError, "list index out of range");
+        return NULL;
+    }
+    return PyList_GetItemRef(list, (Py_ssize_t)index);
+}
+
+static inline bool CPyList_SetItemUInt64(PyObject *list, uint64_t index, PyObject *value) {
+    if (unlikely(index > (uint64_t)PY_SSIZE_T_MAX)) {
+        Py_DECREF(value);
+        PyErr_SetString(PyExc_IndexError, "list assignment index out of range");
+        return false;
+    }
+    return PyList_SetItem(list, (Py_ssize_t)index, value) >= 0;
+}
+
 #endif
 
 PyObject *CPyList_GetItemBorrow(PyObject *list, CPyTagged index);
 PyObject *CPyList_GetItemShortBorrow(PyObject *list, CPyTagged index);
 PyObject *CPyList_GetItemInt64Borrow(PyObject *list, int64_t index);
+PyObject *CPyList_GetItemUInt64Borrow(PyObject *list, uint64_t index);
 void CPyList_SetItemUnsafe(PyObject *list, Py_ssize_t index, PyObject *value);
 PyObject *CPyList_Build(Py_ssize_t len, ...);
 PyObject *CPyList_PopLast(PyObject *obj);
