@@ -509,6 +509,20 @@ match m, (n, o):
         pass  # E: Statement is unreachable
 [builtins fixtures/tuple.pyi]
 
+[case testMatchUnpackedTupleSubjectExpressionNoCrash]
+# flags: --strict-equality --warn-unreachable
+# See: https://github.com/python/mypy/issues/21468
+
+foo: int = 1
+bar: tuple[int, int] = 1, 2
+
+match foo, *bar:
+    case x, y, z:
+        reveal_type(x) # N: Revealed type is "builtins.int"
+        reveal_type(y) # N: Revealed type is "builtins.int"
+        reveal_type(z) # N: Revealed type is "builtins.int"
+[builtins fixtures/tuple.pyi]
+
 -- Mapping Pattern --
 
 [case testMatchMappingPatternCaptures]
