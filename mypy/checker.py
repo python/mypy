@@ -211,7 +211,7 @@ from mypy.nodes import (
 )
 from mypy.operators import flip_ops, int_op_to_method, neg_ops
 from mypy.options import PRECISE_TUPLE_TYPES, Options
-from mypy.patterns import AsPattern, StarredPattern
+from mypy.patterns import AsPattern, OrPattern, Pattern, StarredPattern, sub_patterns
 from mypy.plugin import Plugin
 from mypy.plugins import dataclasses as dataclasses_plugin
 from mypy.scope import Scope
@@ -6014,6 +6014,8 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
         return
 
     def visit_match_stmt(self, s: MatchStmt) -> None:
+        if not self.current_node_deferred:
+            self.check_irrefutable_match_patterns(s)
         # In sync with similar actions elsewhere, narrow the target if
         # we are matching an AssignmentExpr
         unwrapped_subject = collapse_walrus(s.subject)
@@ -6099,6 +6101,53 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
             # after the match.
             with self.binder.frame_context(can_skip=False, fall_through=2):
                 pass
+
+    def check_irrefutable_match_patterns(self, s: MatchStmt) -> None:
+        """Report capture and wildcard patterns that CPython rejects at compile time.
+
+        An unguarded capture or wildcard in a non-final case, or in a non-final
+        alternative of an or-pattern, makes the remaining patterns unreachable,
+        so CPython refuses such files with a SyntaxError (PEP 634). Mirror that
+        here so files that cannot even be imported don't type check clean.
+        """
+        for i, (pattern, guard) in enumerate(zip(s.patterns, s.guards)):
+            # Only a final case, or a case with a guard, can be irrefutable.
+            allow_irrefutable = i == len(s.patterns) - 1 or guard is not None
+            self.check_irrefutable_pattern(pattern, allow_irrefutable)
+
+    def check_irrefutable_pattern(self, pattern: Pattern, allow_irrefutable: bool) -> None:
+        """Check a pattern in a position where a capture would be irrefutable.
+
+        Captures inside composite patterns (e.g. '[x]' or 'Cls(x)') are always
+        allowed, matching CPython, but a nested or-pattern is checked anywhere
+        it appears.
+        """
+        if isinstance(pattern, AsPattern):
+            if pattern.pattern is None:
+                # A capture pattern ('x') or a wildcard pattern ('_').
+                if not allow_irrefutable:
+                    if pattern.name is not None:
+                        self.msg.fail(
+                            "Name capture "
+                            f"'{pattern.name.name}' makes remaining patterns unreachable",
+                            pattern,
+                        )
+                    else:
+                        self.msg.fail("Wildcard makes remaining patterns unreachable", pattern)
+                return
+            # An as pattern is irrefutable iff its inner pattern is.
+            self.check_irrefutable_pattern(pattern.pattern, allow_irrefutable)
+        elif isinstance(pattern, OrPattern):
+            *alternatives, last = pattern.patterns
+            for alternative in alternatives:
+                self.check_irrefutable_pattern(alternative, False)
+            self.check_irrefutable_pattern(last, allow_irrefutable)
+        else:
+            for sub_pattern in sub_patterns(pattern):
+                # Captures in composite patterns are always allowed, so
+                # check sub-patterns as if they were in a final case, but
+                # an or-pattern alternative position still rejects them.
+                self.check_irrefutable_pattern(sub_pattern, True)
 
     def _make_named_statement_for_match(self, s: MatchStmt, subject: Expression) -> Expression:
         """Construct a fake NameExpr for inference if a match clause is complex."""

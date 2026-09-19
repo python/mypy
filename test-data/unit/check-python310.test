@@ -4005,3 +4005,85 @@ def enum_then_dummy_class(arg: DummyClass | Literal[MyEnum.RELEVANT]):
         case _:
             pass  # E: Statement is unreachable
 [builtins fixtures/tuple.pyi]
+
+-- Irrefutable patterns making remaining cases unreachable --
+
+[case testMatchIrrefutableCaptureNotLast]
+def f(x: int) -> None:
+    match x:
+        case y:  # E: Name capture 'y' makes remaining patterns unreachable
+            pass
+        case _:
+            pass
+
+[case testMatchIrrefutableWildcardNotLast]
+def f(x: int) -> None:
+    match x:
+        case _:  # E: Wildcard makes remaining patterns unreachable
+            pass
+        case 1:
+            pass
+
+[case testMatchIrrefutableCaptureWithGuard]
+def f(x: int, cond: bool) -> None:
+    match x:
+        case y if cond:
+            pass
+        case _:
+            pass
+
+[case testMatchIrrefutableLastCase]
+def f(x: int) -> None:
+    match x:
+        case 1:
+            pass
+        case y:
+            pass
+
+[case testMatchIrrefutableOrPatternNotLast]
+def f(x: int) -> None:
+    match x:
+        case _ | 1:  # E: Wildcard makes remaining patterns unreachable
+            pass
+        case 2:
+            pass
+
+[case testMatchIrrefutableOrPatternLast]
+def f(x: int) -> None:
+    match x:
+        case 1 | _:
+            pass
+
+[case testMatchIrrefutableNestedOrPattern]
+def f(x: int) -> None:
+    match x:
+        case [1, _ | 2]:  # E: Wildcard makes remaining patterns unreachable
+            pass
+        case _:
+            pass
+
+[case testMatchIrrefutableCompositeCaptureAllowed]
+def f(x: int) -> None:
+    match x:
+        case [y]:
+            pass
+        case _:
+            pass
+
+[case testMatchIrrefutableCaptureAs]
+def f(x: int) -> None:
+    match x:
+        case y as z:  # E: Name capture 'y' makes remaining patterns unreachable
+            pass
+        case _:
+            pass
+
+[case testMatchIrrefutableTwoCaptures]
+def f(x: int) -> None:
+    match x:
+        case y:  # E: Name capture 'y' makes remaining patterns unreachable
+            pass
+        case z:  # E: Name capture 'z' makes remaining patterns unreachable
+            pass
+        case _:
+            pass
