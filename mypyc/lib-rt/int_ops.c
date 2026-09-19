@@ -558,6 +558,29 @@ void CPyInt16_Overflow() {
     PyErr_SetString(PyExc_ValueError, "int too large to convert to i16");
 }
 
+// u16 unboxing slow path
+uint16_t CPyLong_AsUInt16_(PyObject *o) {
+    int overflow;
+    long result = PyLong_AsLongAndOverflow(o, &overflow);
+    if (result < 0 || result >= 65536) {
+        overflow = 1;
+        result = -1;
+    }
+    if (result == -1) {
+        if (PyErr_Occurred()) {
+            return CPY_LL_UINT_ERROR;
+        } else if (overflow) {
+            PyErr_SetString(PyExc_ValueError, "int too large or small to convert to u16");
+            return CPY_LL_UINT_ERROR;
+        }
+    }
+    return result;
+}
+
+void CPyUInt16_Overflow() {
+    PyErr_SetString(PyExc_ValueError, "int too large or small to convert to u16");
+}
+
 // u8 unboxing slow path
 uint8_t CPyLong_AsUInt8_(PyObject *o) {
     int overflow;

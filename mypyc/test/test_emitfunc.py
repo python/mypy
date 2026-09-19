@@ -75,6 +75,9 @@ from mypyc.ir.rtypes import (
     pointer_rprimitive,
     short_int_rprimitive,
     str_rprimitive,
+    uint8_rprimitive,
+    uint16_rprimitive,
+    uint32_rprimitive,
 )
 from mypyc.irbuild.vtable import compute_vtable
 from mypyc.namegen import NameGenerator
@@ -118,6 +121,12 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
         self.i32_1 = add_local("i32_1", int32_rprimitive)
         self.i64 = add_local("i64", int64_rprimitive)
         self.i64_1 = add_local("i64_1", int64_rprimitive)
+        self.u8 = add_local("u8", uint8_rprimitive)
+        self.u8_1 = add_local("u8_1", uint8_rprimitive)
+        self.u16 = add_local("u16", uint16_rprimitive)
+        self.u16_1 = add_local("u16_1", uint16_rprimitive)
+        self.u32 = add_local("u32", uint32_rprimitive)
+        self.u32_1 = add_local("u32_1", uint32_rprimitive)
         self.ptr = add_local("ptr", pointer_rprimitive)
         self.t = add_local("t", RTuple([int_rprimitive, bool_rprimitive]))
         self.tt = add_local(
@@ -988,6 +997,30 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
         self.assert_emit(
             IntOp(short_int_rprimitive, self.i64, self.i64_1, IntOp.RIGHT_SHIFT, 1),
             """cpy_r_r0 = cpy_r_i64 >> cpy_r_i64_1;""",
+        )
+
+    def test_int_op_narrow_unsigned(self) -> None:
+        # Unsigned types narrower than int would be promoted to signed int in C,
+        # and e.g. u16 * u16 could overflow int (undefined behavior)
+        self.assert_emit(
+            IntOp(uint16_rprimitive, self.u16, self.u16_1, IntOp.MUL, 1),
+            """cpy_r_r0 = (unsigned int)cpy_r_u16 * cpy_r_u16_1;""",
+        )
+        self.assert_emit(
+            IntOp(uint16_rprimitive, self.u16, self.u16_1, IntOp.LEFT_SHIFT, 1),
+            """cpy_r_r0 = (unsigned int)cpy_r_u16 << cpy_r_u16_1;""",
+        )
+        self.assert_emit(
+            IntOp(uint8_rprimitive, self.u8, self.u8_1, IntOp.MUL, 1),
+            """cpy_r_r0 = (unsigned int)cpy_r_u8 * cpy_r_u8_1;""",
+        )
+        self.assert_emit(
+            IntOp(uint16_rprimitive, self.u16, self.u16_1, IntOp.ADD, 1),
+            """cpy_r_r0 = cpy_r_u16 + cpy_r_u16_1;""",
+        )
+        self.assert_emit(
+            IntOp(uint32_rprimitive, self.u32, self.u32_1, IntOp.MUL, 1),
+            """cpy_r_r0 = cpy_r_u32 * cpy_r_u32_1;""",
         )
 
     def test_comparison_op(self) -> None:
