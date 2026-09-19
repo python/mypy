@@ -450,7 +450,7 @@ $ make -s -j16
 $ ./python -m venv ~/<venv-location>  # Use ./python.exe -m venv ... on macOS
 $ source ~/<venv-location>/bin/activate
 $ cd <mypy-repo-dir>
-$ pip install -r test-requirements.txt
+$ pip install -r dev-requirements.txt
 ```
 
 ### IR Tests
