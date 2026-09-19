@@ -1050,6 +1050,11 @@ class ConstraintBuilderVisitor(TypeVisitor[list[Constraint]]):
         """
         res = []
         for member in protocol.type.protocol_members:
+            if member == "__class__":
+                # Every object exposes __class__, but it is not a useful
+                # structural constraint and can infer an unrelated protocol
+                # type variable from the concrete class object.
+                continue
             inst = mypy.subtypes.find_member(member, instance, subtype, class_obj=class_obj)
             temp = mypy.subtypes.find_member(member, template, subtype)
             if inst is None or temp is None:
