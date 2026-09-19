@@ -61,6 +61,7 @@ from mypy.types import (
     TypedDictType,
     TypeOfAny,
     TypeType,
+    TypeVarLikeType,
     TypeVarTupleType,
     TypeVarType,
     TypeVisitor,
@@ -2203,7 +2204,7 @@ def union_function_signatures(callables: list[CallableType]) -> CallableType | N
 
 def merge_typevars_in_callables_by_name(
     callables: Sequence[CallableType],
-) -> tuple[list[CallableType], list[TypeVarType]]:
+) -> tuple[list[CallableType], list[TypeVarLikeType]]:
     """Takes all the typevars present in the callables and 'combines' the ones with the same name.
 
     For example, suppose we have two callables with signatures "f(x: T, y: S) -> T" and
@@ -2221,21 +2222,15 @@ def merge_typevars_in_callables_by_name(
     Returns both the new list of callables and a list of all distinct TypeVarType objects used.
     """
     output: list[CallableType] = []
-    unique_typevars: dict[str, TypeVarType] = {}
-    variables: list[TypeVarType] = []
+    unique_typevars: dict[str, TypeVarLikeType] = {}
+    variables: list[TypeVarLikeType] = []
 
     for target in callables:
         if target.is_generic():
-            target = freshen_function_type_vars(target)
-
             rename = {}  # Mapping TypeVarId -> TypeVar
             for tv in target.variables:
                 name = tv.fullname
                 if name not in unique_typevars:
-                    # TODO: support ParamSpecType and TypeVarTuple.
-                    if isinstance(tv, (ParamSpecType, TypeVarTupleType)):
-                        continue
-                    assert isinstance(tv, TypeVarType)
                     unique_typevars[name] = tv
                     variables.append(tv)
                 rename[tv.id] = unique_typevars[name]
