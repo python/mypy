@@ -3396,7 +3396,13 @@ class LiteralType(ProperType):
         if isinstance(self.value, SentinelValue):
             return self.value.name
 
-        raw = repr(self.value)
+        try:
+            raw = repr(self.value)
+        except ValueError:
+            # int -> str conversion is limited by sys.set_int_max_str_digits(); a literal
+            # type built from a folded power can exceed it. Fall back to a lossless form.
+            assert isinstance(self.value, int)
+            raw = hex(self.value)
         fallback_name = self.fallback.type.fullname
 
         # If this is backed by an enum,
