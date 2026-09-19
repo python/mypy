@@ -80,7 +80,7 @@ from mypy.util import is_sunder, is_typeshed_file, short_type
 from mypy.visitor import ExpressionVisitor, NodeVisitor, StatementVisitor
 
 if TYPE_CHECKING:
-    from mypy.patterns import Pattern
+    from mypy.patterns import ConcretePattern
 
 
 @unique
@@ -2200,14 +2200,14 @@ class MatchStmt(Statement):
 
     subject: Expression
     subject_dummy: NameExpr | None
-    patterns: list[Pattern]
+    patterns: list[ConcretePattern]
     guards: list[Expression | None]
     bodies: list[Block]
 
     def __init__(
         self,
         subject: Expression,
-        patterns: list[Pattern],
+        patterns: list[ConcretePattern],
         guards: list[Expression | None],
         bodies: list[Block],
     ) -> None:
