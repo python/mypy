@@ -2631,8 +2631,56 @@ class Bar(Foo[AnyStr]):
     def method1(self, s: AnyStr, t: AnyStr) -> None:
         super().method1('x', b'y')  # Should be an error
 [out]
-main:10: error: Argument 1 to "method1" of "Foo" has incompatible type "str"; expected "AnyStr"
-main:10: error: Argument 2 to "method1" of "Foo" has incompatible type "bytes"; expected "AnyStr"
+main:10: error: Argument 1 to "method1" of "Foo" has incompatible type "str"; expected "bytes"
+main:10: error: Argument 2 to "method1" of "Foo" has incompatible type "bytes"; expected "str"
+
+[case testConstrainedGenericSuperNoFalsePositiveSameTypeVar]
+# https://github.com/python/mypy/issues/14774
+from typing import Generic, TypeVar
+
+T = TypeVar("T", float, int)
+
+class C(Generic[T]):
+    def __init__(self, i: T) -> None:
+        self.i: T = i
+
+class B(C[T]):
+    def __init__(self, i: T) -> None:
+        super().__init__(i)
+[out]
+
+[case testConstrainedGenericSuperNoFalsePositiveDistinctTypeVar]
+# https://github.com/python/mypy/issues/17757
+from typing import Generic, TypeVar
+
+T = TypeVar("T")
+N = TypeVar("N", int, float)
+
+class C(Generic[T]):
+    def __init__(self, c: T):
+        self.c = c
+
+class C2(C[N]):
+    def __init__(self, c: N):
+        super().__init__(c)
+[out]
+
+[case testConstrainedGenericSuperClassmethodNoFalsePositive]
+from typing import Generic, TypeVar
+
+N = TypeVar("N", int, float)
+
+class C(Generic[N]):
+    @classmethod
+    def make(cls, c: N) -> None:
+        pass
+
+class C2(C[N]):
+    @classmethod
+    def make(cls, c: N) -> None:
+        super().make(c)
+[builtins fixtures/classmethod.pyi]
+[out]
 
 [case testTypeVariableClashVar]
 from typing import Generic, TypeVar, Callable
