@@ -1359,6 +1359,7 @@ class MeetSuite(Suite):
 
     def test_literal_type(self) -> None:
         a = self.fx.a
+        b = self.fx.b
         lit1 = self.fx.lit1
         lit2 = self.fx.lit2
         lit3 = self.fx.lit3
@@ -1375,6 +1376,30 @@ class MeetSuite(Suite):
 
         assert is_same_type(lit1, narrow_declared_type(lit1, a))
         assert is_same_type(lit2, narrow_declared_type(lit2, a))
+
+        # Union-union narrowing keeps overlapping literals and drops the rest.
+        assert is_same_type(
+            lit2, narrow_declared_type(UnionType([lit1, lit2]), UnionType([lit2, lit3]))
+        )
+        # Mixed literal/instance unions still use the overlap predicate.
+        assert is_same_type(
+            UnionType([lit1, b]), narrow_declared_type(UnionType([lit1, a]), UnionType([lit1, b]))
+        )
+
+    def test_narrow_declared_type_large_literal_unions(self) -> None:
+        # Equality narrowing explodes enums into large literal unions. Intersecting
+        # those unions used to be quadratic; this should stay effectively linear.
+        fx = self.fx
+        left = [LiteralType("v%d" % i, fx.str_type) for i in range(2000)]
+        right = [LiteralType("v%d" % i, fx.str_type) for i in range(500, 2500)]
+        result = get_proper_type(narrow_declared_type(UnionType(left), UnionType(right)))
+        assert isinstance(result, UnionType)
+        values = set()
+        for item in result.items:
+            proper = get_proper_type(item)
+            if isinstance(proper, LiteralType):
+                values.add(proper.value)
+        assert values == {"v%d" % i for i in range(500, 2000)}
 
     # FIX generic interfaces + ranges
 

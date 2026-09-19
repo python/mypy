@@ -114,6 +114,66 @@ def meet_types(s: Type, t: Type) -> ProperType:
     return t.accept(TypeMeetVisitor(s))
 
 
+def _is_simple_union_item(t: ProperType) -> bool:
+    """Items that overlap another simple item iff they compare equal."""
+    return isinstance(t, (LiteralType, NoneType, UninhabitedType))
+
+
+def _union_items_may_narrow(declared: Type, narrowed: Type) -> bool:
+    """Keep the historical union-narrowing overlap predicate.
+
+    This special-casing is needed to support checking branches like this:
+
+        x: Union[float, complex]
+        if isinstance(x, int):
+            ...
+
+    And assignments like this:
+
+        x: float | None
+        y: int | None
+        x = y
+    """
+    return is_overlapping_types(declared, narrowed, ignore_promotions=True) or is_subtype(
+        narrowed, declared, ignore_promotions=False
+    )
+
+
+def _narrow_declared_union_items(
+    declared_items: list[Type], narrowed_items: list[Type]
+) -> ProperType:
+    """Intersect two unions, hashing simple items to avoid O(N*M) overlap checks.
+
+    After equality narrowing, enums explode into unions of literals. Intersecting
+    two such unions pairwise is quadratic and dominates match-statement checking
+    on large enums (see #21997). Literal/None/Never items can be intersected via
+    hashing; remaining items still use the original overlap predicate.
+    """
+    simple_narrowed: dict[ProperType, Type] = {}
+    complex_narrowed: list[Type] = []
+    for item in narrowed_items:
+        proper = get_proper_type(item)
+        if _is_simple_union_item(proper):
+            simple_narrowed[proper] = item
+        else:
+            complex_narrowed.append(item)
+
+    result: list[Type] = []
+    for declared in declared_items:
+        proper = get_proper_type(declared)
+        if _is_simple_union_item(proper):
+            if proper in simple_narrowed:
+                result.append(declared)
+            for narrowed in complex_narrowed:
+                if _union_items_may_narrow(declared, narrowed):
+                    result.append(narrow_declared_type(declared, narrowed))
+        else:
+            for narrowed in narrowed_items:
+                if _union_items_may_narrow(declared, narrowed):
+                    result.append(narrow_declared_type(declared, narrowed))
+    return make_simplified_union(result)
+
+
 def narrow_declared_type(declared: Type, narrowed: Type) -> Type:
     """Return the declared type narrowed down to another type."""
     # TODO: check infinite recursion for aliases here.
@@ -133,30 +193,12 @@ def narrow_declared_type(declared: Type, narrowed: Type) -> Type:
         return original_declared
     if isinstance(declared, UnionType):
         declared_items = declared.relevant_items()
+        narrowed_items: list[Type]
         if isinstance(narrowed, UnionType):
             narrowed_items = narrowed.relevant_items()
         else:
             narrowed_items = [narrowed]
-        return make_simplified_union(
-            [
-                narrow_declared_type(d, n)
-                for d in declared_items
-                for n in narrowed_items
-                # This (ugly) special-casing is needed to support checking
-                # branches like this:
-                # x: Union[float, complex]
-                # if isinstance(x, int):
-                #     ...
-                # And assignments like this:
-                # x: float | None
-                # y: int | None
-                # x = y
-                if (
-                    is_overlapping_types(d, n, ignore_promotions=True)
-                    or is_subtype(n, d, ignore_promotions=False)
-                )
-            ]
-        )
+        return _narrow_declared_union_items(declared_items, narrowed_items)
     if is_enum_overlapping_union(declared, narrowed):
         # Quick check before reaching `is_overlapping_types`. If it's enum/literal overlap,
         # avoid full expansion and make it faster.
