@@ -2083,8 +2083,93 @@ match m6:
     case (1, "a"):
         reveal_type(m6)  # N: Revealed type is "tuple[Literal[1], Literal['a']]"
     case _:
-        reveal_type(m6)  # N: Revealed type is "tuple[Literal[1] | Literal[2], Literal['a'] | Literal['b']]"
+        reveal_type(m6)  # N: Revealed type is "tuple[Literal[2], Literal['a'] | Literal['b']] | tuple[Literal[1], Literal['b']]"
 
+[builtins fixtures/tuple.pyi]
+
+[case testMatchSequencePatternNegativeNarrowingMultiplePositions]
+# flags: --strict-equality --warn-unreachable
+from typing import Literal, Tuple
+
+m1: Tuple[bool, bool]
+
+match m1:
+    case (True, True):
+        reveal_type(m1)  # N: Revealed type is "tuple[Literal[True], Literal[True]]"
+    case (True, False):
+        reveal_type(m1)  # N: Revealed type is "tuple[Literal[True], Literal[False]]"
+    case (False, True):
+        reveal_type(m1)  # N: Revealed type is "tuple[Literal[False], Literal[True]]"
+    case _:
+        reveal_type(m1)  # N: Revealed type is "tuple[Literal[False], Literal[False]]"
+
+m2: Tuple[bool, int, bool]
+
+match m2:
+    case (True, _, True):
+        reveal_type(m2)  # N: Revealed type is "tuple[Literal[True], builtins.int, Literal[True]]"
+    case _:
+        reveal_type(m2)  # N: Revealed type is "tuple[Literal[False], builtins.int, builtins.bool] | tuple[Literal[True], builtins.int, Literal[False]]"
+
+m3: Tuple[Literal[1], Literal[2]]
+
+match m3:
+    case (1, 3):
+        reveal_type(m3)  # E: Statement is unreachable
+    case _:
+        reveal_type(m3)  # N: Revealed type is "tuple[Literal[1], Literal[2]]"
+
+def f(a: bool, b: bool) -> None:
+    match a, b:
+        case True, True:
+            reveal_type(a)  # N: Revealed type is "Literal[True]"
+            reveal_type(b)  # N: Revealed type is "Literal[True]"
+        case True, False:
+            reveal_type(a)  # N: Revealed type is "Literal[True]"
+            reveal_type(b)  # N: Revealed type is "Literal[False]"
+        case False, _:
+            reveal_type(a)  # N: Revealed type is "Literal[False]"
+            reveal_type(b)  # N: Revealed type is "builtins.bool"
+        case _:
+            reveal_type(a)  # E: Statement is unreachable
+[builtins fixtures/tuple.pyi]
+
+[case testMatchExhaustiveTupleOfBoolsAndEnums]
+# flags: --enable-error-code exhaustive-match
+from enum import Enum
+from typing import Tuple
+
+class Color(Enum):
+    RED = 1
+    BLUE = 2
+
+def f1(a: bool, b: bool) -> float:
+    match a, b:
+        case True, True:
+            return 1
+        case True, False:
+            return 0.9
+        case False, True:
+            return 0.5
+        case False, False:
+            return 0
+
+def f2(t: Tuple[Color, Color]) -> int:
+    match t:
+        case (Color.RED, Color.RED):
+            return 1
+        case (Color.RED, Color.BLUE):
+            return 2
+        case (Color.BLUE, _):
+            return 3
+
+def f3(a: bool, b: bool) -> int:  # E: Missing return statement
+    match a, b:  # E: Match statement has unhandled case for values of type "tuple[Literal[False], Literal[False]]" \
+                 # N: If match statement is intended to be non-exhaustive, add `case _: pass`
+        case True, _:
+            return 1
+        case False, True:
+            return 2
 [builtins fixtures/tuple.pyi]
 
 [case testMatchSequenceWildcardRefutability]
