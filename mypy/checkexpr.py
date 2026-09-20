@@ -2993,7 +2993,10 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         The only exception is if the starred argument is something like a Tuple or a
         NamedTuple, which has a definitive "shape". If so, we don't move the corresponding
         alternative to the front since we can infer a more precise match using the original
-        order."""
+        order.
+
+        The return also contains the original overload index for each plausible target.
+        """
 
         def has_shape(typ: Type) -> bool:
             typ = get_proper_type(typ)
@@ -3061,6 +3064,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         matches: list[tuple[int, CallableType]] = []
         return_types: list[Type] = []
         inferred_types: list[Type] = []
+        # bound_arg are recorded only if the original object type contained any.
         args_contain_any = any(map(has_any_type, arg_types)) or bound_args is not None
         type_maps: list[dict[Expression, Type]] = []
 
@@ -6940,10 +6944,10 @@ def any_causes_overload_ambiguity(
                 # Any maps to multiple different types, and the return types of these items differ.
                 return True
 
+    # If the original object type for methods contained Any, check the self-types as well.
     if bound_args is not None:
         matching_bound = [bound_args[idx] for idx, _ in items]
         if not all_same_types(matching_bound):
-            # Any maps to multiple different self-types.
             return True
     return False
 

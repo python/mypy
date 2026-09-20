@@ -2754,6 +2754,17 @@ class Overloaded(FunctionLike):
         super().__init__(items[0].line, items[0].column)
         self._items = items
         self.fallback = items[0].fallback
+        if bound_args is not None:
+            assert len(bound_args) == len(items)
+        # The bound arguments record the original inferred self-types when binding
+        # an overloaded method. As an optimization, we only do this when we know
+        # self-types can potentially cause an overload ambiguity, since this is
+        # the only use case for them. Namely:
+        #   * We ignore them in bind_self_fast(), used when is_trivial_self is True
+        #     on the overloaded function definition.
+        #   * We ignore them if the object type doesn't contain Any tpes.
+        # Since this is a "technical" attribute, various type queries should skip it,
+        # and type translators should keep it intact.
         self.bound_args = bound_args
 
     @property

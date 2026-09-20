@@ -465,6 +465,7 @@ def bind_self(
     """
     if isinstance(method, Overloaded):
         items = []
+        # If the original object type has Any, we record the inferred self-types,
         if original_type and has_any_type(original_type, ignore_in_type_obj=True):
             bound_args: list[Type] | None = []
         else:
@@ -474,6 +475,7 @@ def bind_self(
             if bound is None:
                 items.append(c)
                 bound_args = None
+                # If some items can't be bound, we ignore them all for simplicity.
                 continue
             func, variables = bound
             res = func.copy_modified(
@@ -509,6 +511,7 @@ def bind_self_inner(
     is_classmethod: bool = False,
     ignore_instances: bool = False,
 ) -> tuple[CallableType, Sequence[TypeVarLikeType]] | None:
+    """Implementation of bind_self()."""
     if not func.arg_types:
         # Invalid method, return something.
         return None
