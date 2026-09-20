@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Callable, Iterable, Iterator
+from collections.abc import Callable, Iterable, Iterator, Sequence
 from contextlib import contextmanager
 from typing import Any, Final, TypeAlias as _TypeAlias, TypeVar, cast
 
@@ -20,6 +20,7 @@ from mypy.maptype import map_instance_to_supertype
 # Circular import; done in the function instead.
 # import mypy.solve
 from mypy.nodes import (
+    ARG_POS,
     ARG_STAR,
     ARG_STAR2,
     CONTRAVARIANT,
@@ -60,6 +61,7 @@ from mypy.types import (
     TypedDictType,
     TypeOfAny,
     TypeType,
+    TypeVarLikeType,
     TypeVarTupleType,
     TypeVarType,
     TypeVisitor,
@@ -1069,6 +1071,12 @@ class SubtypeVisitor(TypeVisitor[bool]):
             for item in left.items:
                 if self._is_subtype(item, right):
                     return True
+            # If simple logic failed, check a (somewhat ad hoc but important)
+            # edge case: Overloaded(def (int) -> int, def (str) -> str) is
+            # a subtype of def (int | str) -> int | str.
+            combined = union_function_signatures(left.items)
+            if combined is not None and self._is_subtype(combined, right):
+                return True
             return False
         elif isinstance(right, Overloaded):
             if left == self.right:
@@ -2201,6 +2209,92 @@ def unify_generic_callable(
     if had_errors:
         return None
     return cast(NormalizedCallableType, applied)
+
+
+def union_function_signatures(callables: list[CallableType]) -> CallableType | None:
+    """Combine a list of functions by taking the union of all the arguments and return types."""
+    if len(callables) == 1:
+        return callables[0]
+
+    # Note: we are assuming here that if a user uses some TypeVar 'T' in
+    # two different functions, they meant for that TypeVar to mean the
+    # same thing.
+    #
+    # This function will make sure that all instances of that TypeVar 'T'
+    # refer to the same underlying TypeVarType objects to simplify the union-ing
+    # logic below.
+    #
+    # (If the user did *not* mean for 'T' to be consistently bound to the
+    # same type in their overloads, well, their code is probably too
+    # confusing and ought to be re-written anyway.)
+    callables, variables = merge_typevars_in_callables_by_name(callables)
+
+    new_args: list[list[Type]] = [[] for _ in callables[0].arg_types]
+    new_kinds = list(callables[0].arg_kinds)
+    new_returns: list[Type] = []
+
+    for target in callables:
+        # TODO: Enhance the merging logic to handle a wider variety of signatures.
+        if len(new_kinds) != len(target.arg_kinds):
+            return None
+        for i, (new_kind, target_kind) in enumerate(zip(new_kinds, target.arg_kinds)):
+            if new_kind == target_kind:
+                continue
+            if new_kind.is_positional() and target_kind.is_positional():
+                new_kinds[i] = ARG_POS
+            else:
+                return None
+
+        for i, arg in enumerate(target.arg_types):
+            new_args[i].append(arg)
+        new_returns.append(target.ret_type)
+
+    return callables[0].copy_modified(
+        arg_types=[mypy.typeops.make_simplified_union(args) for args in new_args],
+        arg_kinds=new_kinds,
+        ret_type=mypy.typeops.make_simplified_union(new_returns),
+        variables=variables,
+        implicit=True,
+    )
+
+
+def merge_typevars_in_callables_by_name(
+    callables: Sequence[CallableType],
+) -> tuple[list[CallableType], list[TypeVarLikeType]]:
+    """Takes all the typevars present in the callables and 'combines' the ones with the same name.
+
+    For example, suppose we have two callables with signatures "f(x: T, y: S) -> T" and
+    "f(x: List[Tuple[T, S]]) -> Tuple[T, S]". Both callables use typevars named "T" and
+    "S", but we treat them as distinct, unrelated typevars. (E.g. they could both have
+    distinct ids.)
+
+    If we pass in both callables into this function, it returns a list containing two
+    new callables that are identical in signature, but use the same underlying TypeVarType
+    for T and S.
+
+    This is useful if we want to take the output lists and "merge" them into one callable
+    in some way -- for example, when unioning together overloads.
+
+    Returns both the new list of callables and a list of all distinct TypeVarType objects used.
+    """
+    output: list[CallableType] = []
+    unique_typevars: dict[str, TypeVarLikeType] = {}
+    variables: list[TypeVarLikeType] = []
+
+    for target in callables:
+        if target.is_generic():
+            rename = {}  # Mapping TypeVarId -> TypeVar
+            for tv in target.variables:
+                name = tv.fullname
+                if name not in unique_typevars:
+                    unique_typevars[name] = tv
+                    variables.append(tv)
+                rename[tv.id] = unique_typevars[name]
+
+            target = expand_type(target, rename)
+        output.append(target)
+
+    return output, variables
 
 
 def try_restrict_literal_union(t: UnionType, s: Type) -> list[Type] | None:
