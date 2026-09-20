@@ -4334,9 +4334,8 @@ class SemanticAnalyzer(
         elif isinstance(s.rvalue, RefExpr):
             s.rvalue.is_alias_rvalue = True
 
+        updated = False
         if existing:
-            # An alias gets updated.
-            updated = False
             if isinstance(existing.node, TypeAlias):
                 # Invalidate recursive status cache in case it was previously set.
                 existing.node._is_recursive = None
@@ -4352,15 +4351,6 @@ class SemanticAnalyzer(
                 # Otherwise just replace existing placeholder with type alias *in place*.
                 existing._node = alias_node
                 updated = True
-            # TODO: switch type aliases to if has_placeholder(): process_placeholder() pattern.
-            # Type aliases are last notable exception from this logic.
-            if updated:
-                if self.final_iteration:
-                    self.cannot_resolve_name(lvalue.name, "name", s)
-                    return True
-                else:
-                    # We need to defer so that this change can get propagated to base classes.
-                    self.defer(s, force_progress=True)
         else:
             self.add_symbol(lvalue.name, alias_node, s)
         if isinstance(rvalue, RefExpr) and isinstance(rvalue.node, TypeAlias):
@@ -4368,6 +4358,10 @@ class SemanticAnalyzer(
         current_node = existing.node if existing else alias_node
         assert isinstance(current_node, TypeAlias)
         self.disable_invalid_recursive_aliases(s, current_node, s.rvalue)
+        # Check for placeholders only after we disable invalid recursive aliases.
+        # Otherwise, we may get an infinite recursion while visiting the target.
+        if updated or has_placeholder(res):
+            self.process_placeholder(lvalue.name, "name", s, force_progress=updated)
         if self.is_class_scope():
             assert self.type is not None
             if self.type.is_protocol:
