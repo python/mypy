@@ -2746,14 +2746,15 @@ class Overloaded(FunctionLike):
     implementation.
     """
 
-    __slots__ = ("_items",)
+    __slots__ = ("_items", "bound_args")
 
     _items: list[CallableType]  # Must not be empty
 
-    def __init__(self, items: list[CallableType]) -> None:
+    def __init__(self, items: list[CallableType], bound_args: list[Type] | None = None) -> None:
         super().__init__(items[0].line, items[0].column)
         self._items = items
         self.fallback = items[0].fallback
+        self.bound_args = bound_args
 
     @property
     def items(self) -> list[CallableType]:
@@ -2776,14 +2777,14 @@ class Overloaded(FunctionLike):
         ni: list[CallableType] = []
         for it in self._items:
             ni.append(it.with_name(name))
-        return Overloaded(ni)
+        return Overloaded(ni, self.bound_args)
 
     def get_name(self) -> str | None:
         return self._items[0].name
 
     def with_unpacked_kwargs(self) -> Overloaded:
         if any(i.unpack_kwargs for i in self.items):
-            return Overloaded([i.with_unpacked_kwargs() for i in self.items])
+            return Overloaded([i.with_unpacked_kwargs() for i in self.items], self.bound_args)
         return self
 
     def accept(self, visitor: TypeVisitor[T]) -> T:
@@ -2798,16 +2799,32 @@ class Overloaded(FunctionLike):
         return self.items == other.items
 
     def serialize(self) -> JsonDict:
-        return {".class": "Overloaded", "items": [t.serialize() for t in self.items]}
+        return {
+            ".class": "Overloaded",
+            "items": [t.serialize() for t in self.items],
+            "bound_args": (
+                [b.serialize() for b in self.bound_args] if self.bound_args is not None else None
+            ),
+        }
 
     @classmethod
     def deserialize(cls, data: JsonDict) -> Overloaded:
         assert data[".class"] == "Overloaded"
-        return Overloaded([CallableType.deserialize(t) for t in data["items"]])
+        items = [CallableType.deserialize(t) for t in data["items"]]
+        bound_args = (
+            [deserialize_type(t) for t in data["bound_args"]]
+            if data["bound_args"] is not None
+            else None
+        )
+        return Overloaded(items, bound_args)
 
     def write(self, data: WriteBuffer) -> None:
         write_tag(data, OVERLOADED)
         write_type_list(data, self.items)
+        if self.bound_args is None:
+            write_tag(data, LITERAL_NONE)
+        else:
+            write_type_list(data, self.bound_args)
         write_tag(data, END_TAG)
 
     @classmethod
@@ -2817,8 +2834,15 @@ class Overloaded(FunctionLike):
         for _ in range(read_int_bare(data)):
             assert read_tag(data) == CALLABLE_TYPE
             items.append(CallableType.read(data))
+        tag = read_tag(data)
+        if tag == LITERAL_NONE:
+            bound_args = None
+        else:
+            assert tag == LIST_GEN
+            size = read_int_bare(data)
+            bound_args = [read_type(data) for _ in range(size)]
         assert read_tag(data) == END_TAG
-        return Overloaded(items)
+        return Overloaded(items, bound_args)
 
 
 class TupleType(ProperType):

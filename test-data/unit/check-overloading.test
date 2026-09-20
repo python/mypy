@@ -1906,6 +1906,81 @@ a: Any
 reveal_type(f(a))     # N: Revealed type is "def (*Any, **Any) -> Any"
 reveal_type(f(a)(a))  # N: Revealed type is "Any"
 
+[case testOverloadWithOverlappingItemsAndAnyArgumentSelf1]
+from typing import Generic, TypeVar, overload, Any
+
+T = TypeVar("T")
+
+class Some(Generic[T]):
+    @overload
+    def method(self: Some[int]) -> bool: ...
+    @overload
+    def method(self: Some[str]) -> float: ...
+    def method(self): ...
+
+s: Some[Any]
+reveal_type(s.method())  # N: Revealed type is "Any"
+
+[case testOverloadWithOverlappingItemsAndAnyArgumentSelf2]
+from typing import Generic, TypeVar, overload, Any
+
+T = TypeVar("T")
+
+class Some(Generic[T]):
+    @overload
+    def method(self: Some[int]) -> bool: ...
+    @overload
+    def method(self: Some[str]) -> bool: ...
+    def method(self): ...
+
+s: Some[Any]
+reveal_type(s.method())  # N: Revealed type is "builtins.bool"
+
+[case testOverloadWithOverlappingItemsAndAnyArgumentSelf3]
+from typing import Generic, TypeVar, overload, Any
+
+T = TypeVar("T")
+
+class Some(Generic[T]):
+    @overload
+    def method(self: Some[int]) -> list[bool]: ...
+    @overload
+    def method(self: Some[str]) -> list[float]: ...
+    def method(self): ...
+
+s: Some[Any]
+reveal_type(s.method())  # N: Revealed type is "builtins.list[Any]"
+
+[case testOverloadWithOverlappingItemsAndAnyArgumentSelf4]
+from typing import Generic, TypeVar, overload, Any
+
+T = TypeVar("T")
+
+class Some(Generic[T]):
+    @overload
+    def method(self, x: int) -> bool: ...
+    @overload
+    def method(self, x: object) -> int: ...
+    def method(self): ...
+
+s: Some[Any]
+reveal_type(s.method(42))  # N: Revealed type is "builtins.bool"
+
+[case testOverloadWithOverlappingItemsAndAnyArgumentSelf5]
+from typing import Generic, TypeVar, overload, Any
+
+T = TypeVar("T")
+
+class Some(Generic[T]):
+    @overload
+    def method(self: Some[int], x: int) -> bool: ...
+    @overload
+    def method(self: Some[int], x: object) -> int: ...
+    def method(self): ...
+
+s: Some[Any]
+reveal_type(s.method(42))  # N: Revealed type is "builtins.bool"
+
 [case testOverloadOnOverloadWithType]
 from typing import Any, Type, TypeVar, overload
 from mod import MyInt

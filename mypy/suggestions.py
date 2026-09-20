@@ -34,7 +34,6 @@ from typing import NamedTuple, TypedDict, TypeVar, cast
 
 from mypy.argmap import map_actuals_to_formals
 from mypy.build import Graph, State
-from mypy.checkexpr import has_any_type
 from mypy.find_sources import InvalidSourceList, SourceFinder
 from mypy.join import join_type_list
 from mypy.meet import meet_type_list
@@ -60,7 +59,7 @@ from mypy.plugin import FunctionContext, MethodContext, Plugin
 from mypy.server.update import FineGrainedBuildManager
 from mypy.state import state
 from mypy.traverser import TraverserVisitor
-from mypy.typeops import bind_self, make_simplified_union
+from mypy.typeops import bind_self, has_any_type, make_simplified_union
 from mypy.types import (
     AnyType,
     CallableType,
