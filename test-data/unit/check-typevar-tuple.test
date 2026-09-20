@@ -2962,3 +2962,139 @@ def g(x: K) -> None:
     assert d is not None
     reveal_type(d)  # N: Revealed type is "tuple[K | list[int], ...] | tuple[*tuple[int | list[int], ...], int]"
 [builtins fixtures/tuple.pyi]
+
+[case testVariadicTupleSubtypingWithAnyBasic]
+from typing import Any, Unpack
+
+Ge1 = tuple[int, Unpack[tuple[Any, ...]]]
+
+def ge1_to_0(shape: Ge1) -> tuple[()]:
+    return shape  # E: Incompatible return value type (got "tuple[int, Unpack[tuple[Any, ...]]]", expected "tuple[()]")
+def ge1_to_1(shape: Ge1) -> tuple[int]:
+    return shape
+def ge1_to_2(shape: Ge1) -> tuple[int, int]:
+    return shape
+[builtins fixtures/tuple.pyi]
+
+[case testVariadicTupleSubtypingWithAnyExtra]
+from typing import Any, Unpack
+
+def foo(x: tuple[int, str]) -> None: ...
+def bar(x: tuple[int, int]) -> None: ...
+
+t1: tuple[int, Unpack[tuple[Any, ...]], str]
+t2: tuple[Unpack[tuple[Any, ...]], int, str]
+t3: tuple[int, str, Unpack[tuple[Any, ...]]]
+t4: tuple[int, Unpack[tuple[Any, ...]], int]
+foo(t1)
+foo(t2)
+foo(t3)
+foo(t4)  # E: Argument 1 to "foo" has incompatible type "tuple[int, Unpack[tuple[Any, ...]], int]"; expected "tuple[int, str]"
+
+tt1: tuple[int, Unpack[tuple[Any, ...]], int, int]
+tt2: tuple[int, int, Unpack[tuple[Any, ...]], int]
+tt3: tuple[Unpack[tuple[Any, ...]], int]
+tt4: tuple[Unpack[tuple[Any, ...]], str]
+bar(tt1)  # E: Argument 1 to "bar" has incompatible type "tuple[int, Unpack[tuple[Any, ...]], int, int]"; expected "tuple[int, int]"
+bar(tt2)  # E: Argument 1 to "bar" has incompatible type "tuple[int, int, Unpack[tuple[Any, ...]], int]"; expected "tuple[int, int]"
+bar(tt3)
+bar(tt4)  # E: Argument 1 to "bar" has incompatible type "tuple[Unpack[tuple[Any, ...]], str]"; expected "tuple[int, int]"
+[builtins fixtures/tuple.pyi]
+
+[case testVariadicTupleSubtypingWithAnyExtraTypeVar]
+from typing import Any, Unpack, TypeVarTuple
+
+t1: tuple[int, Unpack[tuple[Any, ...]], int]
+t2: tuple[int, int, Unpack[tuple[Any, ...]], int, int]
+t3: tuple[int, int, int, Unpack[tuple[Any, ...]], int, int, int]
+
+Ts = TypeVarTuple("Ts")
+def test(x: tuple[int, int, Unpack[Ts], int, int]) -> None:
+    x = t1
+    x = t2
+    x = t3  # E: Incompatible types in assignment (expression has type "tuple[int, int, int, Unpack[tuple[Any, ...]], int, int, int]", variable has type "tuple[int, int, Unpack[Ts], int, int]")
+[builtins fixtures/tuple.pyi]
+
+[case testVariadicTupleSubtypingWithAnyExtraVariadic]
+from typing import Any, Unpack
+
+def foo(x: tuple[int, Unpack[tuple[int, ...]], int]) -> None: ...
+
+t1: tuple[int, Unpack[tuple[Any, ...]]]
+t2: tuple[Unpack[tuple[Any, ...]], int]
+t3: tuple[Unpack[tuple[Any, ...]], str]
+t4: tuple[Unpack[tuple[Any, ...]], int, int, int]
+
+foo(t1)
+foo(t2)
+foo(t3)  # E: Argument 1 to "foo" has incompatible type "tuple[Unpack[tuple[Any, ...]], str]"; expected "tuple[int, Unpack[tuple[int, ...]], int]"
+foo(t4)
+[builtins fixtures/tuple.pyi]
+
+[case testVariadicTupleSubclassSubtypingWithAny]
+from typing import Any, Generic, Unpack, TypeVar, TypeVarTuple
+
+T = TypeVar("T")
+Ts = TypeVarTuple("Ts")
+class Array(tuple[Unpack[Ts]], Generic[T, Unpack[Ts]]): ...
+
+Float2D = Array[float, int, int]
+FloatND = Array[float, Unpack[tuple[Any, ...]]]
+
+def from_2d(a: Float2D) -> FloatND:
+    return a
+
+def into_2d(a: FloatND) -> Float2D:
+    return a
+[builtins fixtures/tuple.pyi]
+
+[case testVariadicInstanceSubtypingWithAny]
+from typing import Any, Generic, Unpack, TypeVarTuple
+
+Ts = TypeVarTuple("Ts")
+class C(Generic[Unpack[Ts]]): ...
+
+def foo(x: C[int, str]) -> None: ...
+def bar(x: C[int, int]) -> None: ...
+def baz(x: C[int, int, int]) -> None: ...
+
+t1: C[int, Unpack[tuple[Any, ...]], str]
+t2: C[Unpack[tuple[Any, ...]], int, str]
+t3: C[int, str, Unpack[tuple[Any, ...]]]
+t4: C[int, Unpack[tuple[Any, ...]], int]
+foo(t1)
+foo(t2)
+foo(t3)
+foo(t4)  # E: Argument 1 to "foo" has incompatible type "C[int, Unpack[tuple[Any, ...]], int]"; expected "C[int, str]"
+
+tt1: C[int, Unpack[tuple[Any, ...]], int, int]
+tt2: C[int, int, Unpack[tuple[Any, ...]], int]
+tt3: C[Unpack[tuple[Any, ...]], int]
+tt4: C[Unpack[tuple[Any, ...]], str]
+bar(tt1)  # E: Argument 1 to "bar" has incompatible type "C[int, Unpack[tuple[Any, ...]], int, int]"; expected "C[int, int]"
+bar(tt2)  # E: Argument 1 to "bar" has incompatible type "C[int, int, Unpack[tuple[Any, ...]], int]"; expected "C[int, int]"
+bar(tt3)
+bar(tt4)  # E: Argument 1 to "bar" has incompatible type "C[Unpack[tuple[Any, ...]], str]"; expected "C[int, int]"
+
+baz(tt3)
+baz(t4)
+[builtins fixtures/tuple.pyi]
+
+[case testVariadicInstanceSubtypingWithAnyVariadic]
+from typing import Any, Generic, Unpack, TypeVarTuple
+
+Ts = TypeVarTuple("Ts")
+class C(Generic[Unpack[Ts]]): ...
+
+def foo(x: C[int, Unpack[tuple[int, ...]], int]) -> None: ...
+
+t1: C[int, Unpack[tuple[Any, ...]]]
+t2: C[Unpack[tuple[Any, ...]], int]
+t3: C[Unpack[tuple[Any, ...]], str]
+t4: C[Unpack[tuple[Any, ...]], int, int, int]
+
+foo(t1)
+foo(t2)
+foo(t3)  # E: Argument 1 to "foo" has incompatible type "C[Unpack[tuple[Any, ...]], str]"; expected "C[int, Unpack[tuple[int, ...]], int]"
+foo(t4)
+[builtins fixtures/tuple.pyi]

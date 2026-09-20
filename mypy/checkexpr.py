@@ -126,7 +126,9 @@ from mypy.subtypes import (
     find_member,
     is_same_type,
     is_subtype,
+    merge_typevars_in_callables_by_name,
     non_method_protocol_members,
+    union_function_signatures,
 )
 from mypy.traverser import (
     all_name_and_member_expressions,
@@ -3299,7 +3301,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
 
     def combine_function_signatures(self, types: list[ProperType]) -> AnyType | CallableType:
         """Accepts a list of function signatures and attempts to combine them together into a
-        new CallableType consisting of the union of all of the given arguments and return types.
+        new CallableType consisting of the union of all the given arguments and return types.
 
         If there is at least one non-callable type, return Any (this can happen if there is
         an ambiguity because of Any in arguments).
@@ -3307,67 +3309,22 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         assert types, "Trying to merge no callables"
         if not all(isinstance(c, CallableType) for c in types):
             return AnyType(TypeOfAny.special_form)
-
         callables = cast("list[CallableType]", types)
-        if len(callables) == 1:
-            return callables[0]
 
-        # Note: we are assuming here that if a user uses some TypeVar 'T' in
-        # two different functions, they meant for that TypeVar to mean the
-        # same thing.
-        #
-        # This function will make sure that all instances of that TypeVar 'T'
-        # refer to the same underlying TypeVarType objects to simplify the union-ing
-        # logic below.
-        #
-        # (If the user did *not* mean for 'T' to be consistently bound to the
-        # same type in their overloads, well, their code is probably too
-        # confusing and ought to be re-written anyways.)
+        combined = union_function_signatures(callables)
+        if combined is not None:
+            return combined
+
+        # We fall back to Callable[..., Union[<returns>]] if the functions do not have
+        # the exact same signature. The only exception is if one arg is optional and
+        # the other is positional (and expect a positional arg).
         callables, variables = merge_typevars_in_callables_by_name(callables)
-
-        new_args: list[list[Type]] = [[] for _ in callables[0].arg_types]
-        new_kinds = list(callables[0].arg_kinds)
-        new_returns: list[Type] = []
-        too_complex = False
-
-        for target in callables:
-            # We fall back to Callable[..., Union[<returns>]] if the functions do not have
-            # the exact same signature. The only exception is if one arg is optional and
-            # the other is positional: in that case, we continue unioning (and expect a
-            # positional arg).
-            # TODO: Enhance the merging logic to handle a wider variety of signatures.
-            if len(new_kinds) != len(target.arg_kinds):
-                too_complex = True
-                break
-            for i, (new_kind, target_kind) in enumerate(zip(new_kinds, target.arg_kinds)):
-                if new_kind == target_kind:
-                    continue
-                if new_kind.is_positional() and target_kind.is_positional():
-                    new_kinds[i] = ARG_POS
-                else:
-                    too_complex = True
-                    break
-            if too_complex:
-                break
-            for i, arg in enumerate(target.arg_types):
-                new_args[i].append(arg)
-            new_returns.append(target.ret_type)
-
-        union_return = make_simplified_union(new_returns)
-        if too_complex:
-            any = AnyType(TypeOfAny.special_form)
-            return callables[0].copy_modified(
-                arg_types=[any, any],
-                arg_kinds=[ARG_STAR, ARG_STAR2],
-                arg_names=[None, None],
-                ret_type=union_return,
-                variables=variables,
-                implicit=True,
-            )
-
+        union_return = make_simplified_union([c.ret_type for c in callables])
+        any = AnyType(TypeOfAny.special_form)
         return callables[0].copy_modified(
-            arg_types=[make_simplified_union(args) for args in new_args],
-            arg_kinds=new_kinds,
+            arg_types=[any, any],
+            arg_kinds=[ARG_STAR, ARG_STAR2],
+            arg_names=[None, None],
             ret_type=union_return,
             variables=variables,
             implicit=True,
@@ -6976,51 +6933,6 @@ def all_same_types(types: list[Type]) -> bool:
     if not types:
         return True
     return all(is_same_type(t, types[0]) for t in types[1:])
-
-
-def merge_typevars_in_callables_by_name(
-    callables: Sequence[CallableType],
-) -> tuple[list[CallableType], list[TypeVarType]]:
-    """Takes all the typevars present in the callables and 'combines' the ones with the same name.
-
-    For example, suppose we have two callables with signatures "f(x: T, y: S) -> T" and
-    "f(x: List[Tuple[T, S]]) -> Tuple[T, S]". Both callables use typevars named "T" and
-    "S", but we treat them as distinct, unrelated typevars. (E.g. they could both have
-    distinct ids.)
-
-    If we pass in both callables into this function, it returns a list containing two
-    new callables that are identical in signature, but use the same underlying TypeVarType
-    for T and S.
-
-    This is useful if we want to take the output lists and "merge" them into one callable
-    in some way -- for example, when unioning together overloads.
-
-    Returns both the new list of callables and a list of all distinct TypeVarType objects used.
-    """
-    output: list[CallableType] = []
-    unique_typevars: dict[str, TypeVarType] = {}
-    variables: list[TypeVarType] = []
-
-    for target in callables:
-        if target.is_generic():
-            target = freshen_function_type_vars(target)
-
-            rename = {}  # Dict[TypeVarId, TypeVar]
-            for tv in target.variables:
-                name = tv.fullname
-                if name not in unique_typevars:
-                    # TODO: support ParamSpecType and TypeVarTuple.
-                    if isinstance(tv, (ParamSpecType, TypeVarTupleType)):
-                        continue
-                    assert isinstance(tv, TypeVarType)
-                    unique_typevars[name] = tv
-                    variables.append(tv)
-                rename[tv.id] = unique_typevars[name]
-
-            target = expand_type(target, rename)
-        output.append(target)
-
-    return output, variables
 
 
 def try_getting_literal(typ: Type) -> ProperType:

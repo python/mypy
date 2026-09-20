@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Callable, Iterable, Iterator
+from collections.abc import Callable, Iterable, Iterator, Sequence
 from contextlib import contextmanager
 from typing import Any, Final, TypeAlias as _TypeAlias, TypeVar, cast
 
@@ -20,6 +20,7 @@ from mypy.maptype import map_instance_to_supertype
 # Circular import; done in the function instead.
 # import mypy.solve
 from mypy.nodes import (
+    ARG_POS,
     ARG_STAR,
     ARG_STAR2,
     CONTRAVARIANT,
@@ -60,6 +61,7 @@ from mypy.types import (
     TypedDictType,
     TypeOfAny,
     TypeType,
+    TypeVarLikeType,
     TypeVarTupleType,
     TypeVarType,
     TypeVisitor,
@@ -67,6 +69,7 @@ from mypy.types import (
     UninhabitedType,
     UnionType,
     UnpackType,
+    extend_args_for_prefix_and_suffix,
     find_unpack_in_list,
     flatten_nested_unions,
     get_proper_type,
@@ -509,18 +512,17 @@ class SubtypeVisitor(TypeVisitor[bool]):
                     if isinstance(unpacked, Instance):
                         return self._is_subtype(left, unpacked)
             if left.type.has_base(right.partial_fallback.type.fullname):
+                mapped = map_instance_to_supertype(left, right.partial_fallback.type)
+                # Special cases to consider:
+                #   * tuple[Any, ...] instance is a (non-proper) subtype of all tuple types.
+                #   * Foo[*tuple[X, ...]] (normalized) instance is a subtype of all
+                #     tuples with appropriate fallback (e.g. for variadic NamedTuples).
                 if not self.proper_subtype:
-                    # Special cases to consider:
-                    #   * Plain tuple[Any, ...] instance is a subtype of all tuple types.
-                    #   * Foo[*tuple[Any, ...]] (normalized) instance is a subtype of all
-                    #     tuples with fallback to Foo (e.g. for variadic NamedTuples).
-                    mapped = map_instance_to_supertype(left, right.partial_fallback.type)
-                    if is_erased_instance(mapped):
-                        if (
-                            mapped.type.fullname == "builtins.tuple"
-                            or mapped.type.has_type_var_tuple_type
-                        ):
-                            return True
+                    if is_erased_instance(mapped) and mapped.type.fullname == "builtins.tuple":
+                        return True
+                if is_normalized_instance(mapped):
+                    if self._is_subtype(mapped, right.partial_fallback):
+                        return True
             return False
         if isinstance(right, TypeVarTupleType):
             # tuple[Any, ...] is like Any in the world of tuples (see special case above).
@@ -819,9 +821,12 @@ class SubtypeVisitor(TypeVisitor[bool]):
         elif isinstance(right, TupleType):
             # If right has a variadic unpack this needs special handling. If there is a TypeVarTuple
             # unpack, item count must coincide. If the left has variadic unpack but right
-            # doesn't have one, we will fall through to False down the line.
+            # doesn't have one, we will fall through.
             if self.variadic_tuple_subtype(left, right):
                 return True
+            # The only case where variadic can be subtype of fixed is when left variadic item is Any.
+            # Otherwise, the original left will be returned, causing fall through to False.
+            left = self.adjust_left_if_possible(left, right)
             if len(left.items) != len(right.items):
                 return False
             if any(not self._is_subtype(l, r) for l, r in zip(left.items, right.items)):
@@ -841,6 +846,57 @@ class SubtypeVisitor(TypeVisitor[bool]):
         else:
             return False
 
+    def adjust_left_if_possible(self, left: TupleType, right: TupleType) -> TupleType:
+        """Adjust shape of left containing *tuple[Any, ...] to match right.
+
+        Note: this only works if right is fixed size (including *Ts), the variadic
+        right are handled by the caller, currently with variadic_tuple_subtype().
+        """
+        left_variadic = self.get_variadic_item(left)
+        if left_variadic is None:
+            return left
+        left_unpack_index, left_item = left_variadic
+        if not isinstance(get_proper_type(left_item), AnyType):
+            return left
+        right_unpack_index = find_unpack_in_list(right.items)
+        if right_unpack_index is None:
+            if len(left.items) > len(right.items) + 1:
+                return left
+            num_anys = len(right.items) - len(left.items) + 1
+            return left.copy_modified(
+                items=left.items[:left_unpack_index]
+                + [left_item] * num_anys
+                + left.items[left_unpack_index + 1 :]
+            )
+        right_unpack = right.items[right_unpack_index]
+        assert isinstance(right_unpack, UnpackType)
+        right_unpacked = get_proper_type(right_unpack.type)
+        if isinstance(right_unpacked, Instance):
+            return left
+        right_prefix = right_unpack_index
+        right_suffix = len(right.items) - right_prefix - 1
+        left_prefix = left_unpack_index
+        left_suffix = len(left.items) - left_prefix - 1
+        if left_prefix > right_prefix or left_suffix > right_suffix:
+            return left
+        new_items = extend_args_for_prefix_and_suffix(
+            tuple(left.items), right_prefix, right_suffix
+        )
+        return left.copy_modified(items=list(new_items))
+
+    def get_variadic_item(self, tup: TupleType) -> tuple[int, Type] | None:
+        """If this is tuple[X, *tuple[Y, ...], Z], return Y, otherwise None."""
+        unpack_index = find_unpack_in_list(tup.items)
+        if unpack_index is None:
+            return None
+        unpack = tup.items[unpack_index]
+        assert isinstance(unpack, UnpackType)
+        unpacked = get_proper_type(unpack.type)
+        if not isinstance(unpacked, Instance):
+            return None
+        assert unpacked.type.fullname == "builtins.tuple"
+        return unpack_index, unpacked.args[0]
+
     def variadic_tuple_subtype(self, left: TupleType, right: TupleType) -> bool:
         """Check subtyping between two potentially variadic tuples.
 
@@ -850,18 +906,11 @@ class SubtypeVisitor(TypeVisitor[bool]):
         Note: the cases where right is fixed or has *Ts unpack should be handled
         by the caller.
         """
-        right_unpack_index = find_unpack_in_list(right.items)
-        if right_unpack_index is None:
+        right_variadic = self.get_variadic_item(right)
+        if right_variadic is None:
             # This case should be handled by the caller.
             return False
-        right_unpack = right.items[right_unpack_index]
-        assert isinstance(right_unpack, UnpackType)
-        right_unpacked = get_proper_type(right_unpack.type)
-        if not isinstance(right_unpacked, Instance):
-            # This case should be handled by the caller.
-            return False
-        assert right_unpacked.type.fullname == "builtins.tuple"
-        right_item = right_unpacked.args[0]
+        right_unpack_index, right_item = right_variadic
         right_prefix = right_unpack_index
         right_suffix = len(right.items) - right_prefix - 1
         left_unpack_index = find_unpack_in_list(left.items)
@@ -883,16 +932,16 @@ class SubtypeVisitor(TypeVisitor[bool]):
                 return False
             return all(self._is_subtype(li, right_item) for li in middle)
         else:
-            if len(left.items) < len(right.items):
-                # There are some items on the left that will never have a matching length
-                # on the right.
-                return False
             left_prefix = left_unpack_index
             left_suffix = len(left.items) - left_prefix - 1
             left_unpack = left.items[left_unpack_index]
             assert isinstance(left_unpack, UnpackType)
             left_unpacked = get_proper_type(left_unpack.type)
             if not isinstance(left_unpacked, Instance):
+                if len(left.items) < len(right.items):
+                    # There are some items on the left that will never have a matching length
+                    # on the right.
+                    return False
                 # *Ts unpack can't be split, except if it is all mapped to Anys or objects.
                 if self.is_top_type(right_item):
                     right_prefix_types, middle, right_suffix_types = split_with_prefix_and_suffix(
@@ -914,6 +963,12 @@ class SubtypeVisitor(TypeVisitor[bool]):
             # subtyping: *each* item on the left, must be a subtype of *some* item on the right.
             # For this we first check the "asymptotic case", i.e. that both unpacks a subtypes,
             # and then check subtyping for all finite overlaps.
+            # Note: if the left item is Any we use any() semantics instead of all().
+            use_any = isinstance(get_proper_type(left_item), AnyType)
+            if not use_any and len(left.items) < len(right.items):
+                # There are some items on the left that will never have a matching length
+                # on the right.
+                return False
             if not self._is_subtype(left_item, right_item):
                 return False
             max_overlap = max(0, right_prefix - left_prefix, right_suffix - left_suffix)
@@ -923,8 +978,11 @@ class SubtypeVisitor(TypeVisitor[bool]):
                     repr_items += left.items[-left_suffix:]
                 left_repr = left.copy_modified(items=repr_items)
                 if not self._is_subtype(left_repr, right):
-                    return False
-            return True
+                    if not use_any:
+                        return False
+                elif use_any:
+                    return True
+            return not use_any
 
     def is_top_type(self, typ: Type) -> bool:
         if not self.proper_subtype and isinstance(get_proper_type(typ), AnyType):
@@ -1013,6 +1071,12 @@ class SubtypeVisitor(TypeVisitor[bool]):
             for item in left.items:
                 if self._is_subtype(item, right):
                     return True
+            # If simple logic failed, check a (somewhat ad hoc but important)
+            # edge case: Overloaded(def (int) -> int, def (str) -> str) is
+            # a subtype of def (int | str) -> int | str.
+            combined = union_function_signatures(left.items)
+            if combined is not None and self._is_subtype(combined, right):
+                return True
             return False
         elif isinstance(right, Overloaded):
             if left == self.right:
@@ -2147,6 +2211,92 @@ def unify_generic_callable(
     return cast(NormalizedCallableType, applied)
 
 
+def union_function_signatures(callables: list[CallableType]) -> CallableType | None:
+    """Combine a list of functions by taking the union of all the arguments and return types."""
+    if len(callables) == 1:
+        return callables[0]
+
+    # Note: we are assuming here that if a user uses some TypeVar 'T' in
+    # two different functions, they meant for that TypeVar to mean the
+    # same thing.
+    #
+    # This function will make sure that all instances of that TypeVar 'T'
+    # refer to the same underlying TypeVarType objects to simplify the union-ing
+    # logic below.
+    #
+    # (If the user did *not* mean for 'T' to be consistently bound to the
+    # same type in their overloads, well, their code is probably too
+    # confusing and ought to be re-written anyway.)
+    callables, variables = merge_typevars_in_callables_by_name(callables)
+
+    new_args: list[list[Type]] = [[] for _ in callables[0].arg_types]
+    new_kinds = list(callables[0].arg_kinds)
+    new_returns: list[Type] = []
+
+    for target in callables:
+        # TODO: Enhance the merging logic to handle a wider variety of signatures.
+        if len(new_kinds) != len(target.arg_kinds):
+            return None
+        for i, (new_kind, target_kind) in enumerate(zip(new_kinds, target.arg_kinds)):
+            if new_kind == target_kind:
+                continue
+            if new_kind.is_positional() and target_kind.is_positional():
+                new_kinds[i] = ARG_POS
+            else:
+                return None
+
+        for i, arg in enumerate(target.arg_types):
+            new_args[i].append(arg)
+        new_returns.append(target.ret_type)
+
+    return callables[0].copy_modified(
+        arg_types=[mypy.typeops.make_simplified_union(args) for args in new_args],
+        arg_kinds=new_kinds,
+        ret_type=mypy.typeops.make_simplified_union(new_returns),
+        variables=variables,
+        implicit=True,
+    )
+
+
+def merge_typevars_in_callables_by_name(
+    callables: Sequence[CallableType],
+) -> tuple[list[CallableType], list[TypeVarLikeType]]:
+    """Takes all the typevars present in the callables and 'combines' the ones with the same name.
+
+    For example, suppose we have two callables with signatures "f(x: T, y: S) -> T" and
+    "f(x: List[Tuple[T, S]]) -> Tuple[T, S]". Both callables use typevars named "T" and
+    "S", but we treat them as distinct, unrelated typevars. (E.g. they could both have
+    distinct ids.)
+
+    If we pass in both callables into this function, it returns a list containing two
+    new callables that are identical in signature, but use the same underlying TypeVarType
+    for T and S.
+
+    This is useful if we want to take the output lists and "merge" them into one callable
+    in some way -- for example, when unioning together overloads.
+
+    Returns both the new list of callables and a list of all distinct TypeVarType objects used.
+    """
+    output: list[CallableType] = []
+    unique_typevars: dict[str, TypeVarLikeType] = {}
+    variables: list[TypeVarLikeType] = []
+
+    for target in callables:
+        if target.is_generic():
+            rename = {}  # Mapping TypeVarId -> TypeVar
+            for tv in target.variables:
+                name = tv.fullname
+                if name not in unique_typevars:
+                    unique_typevars[name] = tv
+                    variables.append(tv)
+                rename[tv.id] = unique_typevars[name]
+
+            target = expand_type(target, rename)
+        output.append(target)
+
+    return output, variables
+
+
 def try_restrict_literal_union(t: UnionType, s: Type) -> list[Type] | None:
     """Return the items of t, excluding any occurrence of s, if and only if
       - t only contains simple literals
@@ -2384,3 +2534,21 @@ def is_erased_instance(t: Instance) -> bool:
         elif not isinstance(get_proper_type(arg), AnyType):
             return False
     return True
+
+
+def is_normalized_instance(t: Instance) -> bool:
+    """Is this instance type a normalized representation of a tuple type?
+
+    Type like class C[T, *Ts](tuple[T, *Ts]) are internally represented as
+    tuple types, so that e.g. C[int, str] is tuple[int, str, fallback=C[int, str]].
+    However, in case of a variadic argument they are normalized, similar to how
+    tuple[*tuple[int, ...]] (TupleType) is normalized to tuple[int, ...] (Instance).
+    For example, C[int, *tuple[str, ...]] is represented as an instance. This
+    function detects such instances, when they need special-casing.
+    """
+    if not t.args:
+        return False
+    if not t.type.tuple_type:
+        return False
+    expanded = expand_type_by_instance(t.type.tuple_type, t)
+    return isinstance(expanded, Instance)
