@@ -769,7 +769,8 @@ class Server:
                 state = graph[nxt.module]
                 ancestors = state.ancestors or []
                 for dep in state.dependencies + ancestors:
-                    if dep not in seen:
+                    # Namespace package ancestors don't always have a graph node.
+                    if dep not in seen and dep in graph:
                         seen.add(dep)
                         worklist.append(BuildSource(graph[dep].path, graph[dep].id, followed=True))
         return changed, new_files
