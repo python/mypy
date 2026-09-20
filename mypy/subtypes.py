@@ -972,6 +972,8 @@ class SubtypeVisitor(TypeVisitor[bool]):
             if not self._is_subtype(left_item, right_item):
                 return False
             max_overlap = max(0, right_prefix - left_prefix, right_suffix - left_suffix)
+            # We need to also handle the case where overlap is positive on both sides.
+            max_overlap = max(max_overlap, right_prefix - left_prefix + right_suffix - left_suffix)
             for overlap in range(max_overlap + 1):
                 repr_items = left.items[:left_prefix] + [left_item] * overlap
                 if left_suffix:
