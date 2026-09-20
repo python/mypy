@@ -5893,12 +5893,12 @@ class SemanticAnalyzer(
             alias_node.default_depends = default_depends
             s.alias_node = alias_node
 
+            updated = False
             if (
                 existing
                 and isinstance(existing.node, (PlaceholderNode, TypeAlias))
                 and existing.node.line == s.line
             ):
-                updated = False
                 if isinstance(existing.node, TypeAlias):
                     # Invalidate recursive status cache in case it was previously set.
                     existing.node._is_recursive = None
@@ -5916,20 +5916,14 @@ class SemanticAnalyzer(
                     # Otherwise just replace existing placeholder with type alias *in place*.
                     existing._node = alias_node
                     updated = True
-
-                if updated:
-                    if self.final_iteration:
-                        self.cannot_resolve_name(s.name.name, "name", s)
-                        return
-                    else:
-                        # We need to defer so that this change can get propagated to base classes.
-                        self.defer(s, force_progress=True)
             else:
                 self.add_symbol(s.name.name, alias_node, s)
 
             current_node = existing.node if existing else alias_node
             assert isinstance(current_node, TypeAlias)
             self.disable_invalid_recursive_aliases(s, current_node, s.value)
+            if updated or has_placeholder(res):
+                self.process_placeholder(s.name.name, "name", s, force_progress=updated)
             s.name.accept(self)
         finally:
             self.pop_type_args(s.type_args)

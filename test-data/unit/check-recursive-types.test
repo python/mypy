@@ -1044,11 +1044,10 @@ def f(obj: OneClass) -> None:
 [case testAliasWithTypeVarDefaultPlaceholderInImportCycle]
 import a
 from a import Base
-reveal_type(Base().inst())
-reveal_type(Base().group())
+reveal_type(Base().inst())  # N: Revealed type is "c.Inst"
+reveal_type(Base().group())  # N: Revealed type is "TypedDict('d.Group', {'params': builtins.tuple[a.Base[c.Inst] | (def ()), ...]})"
 [file a.py]
-from typing import Generic, TYPE_CHECKING
-from typing_extensions import TypeVar
+from typing import Generic, TYPE_CHECKING, TypeVar
 
 if TYPE_CHECKING:
     from c import Inst
@@ -1082,6 +1081,3 @@ if TYPE_CHECKING:
 class Group(TypedDict):
     params: "Tuple[Alias, ...]"
 [builtins fixtures/tuple.pyi]
-[out]
-main:3: note: Revealed type is "c.Inst"
-main:4: note: Revealed type is "TypedDict('d.Group', {'params': builtins.tuple[a.Base[c.Inst] | (def ()), ...]})"
