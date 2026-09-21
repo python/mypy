@@ -2069,7 +2069,7 @@ def find_cache_meta(
         is_parallel = manager.options.num_workers > 0
         if not local_partial_types and cached_options["is_parallel"] != is_parallel:
             # If local partial types are disabled, behavior is too different for
-            # parallel and sequential runs, see write_cache for details.
+            # parallel and sequential runs, see write_cache() for details.
             return None
         del cached_options["is_parallel"]
     else:
