@@ -2389,10 +2389,7 @@ def write_cache(
     #   processing logic depending on whether they are enabled or disabled.
     #   * In parallel run they are always on, and we give an error if a user
     #   tries to disable them.
-    extra_options = {
-        "local_partial_types": local_partial_types,
-        "is_parallel": is_parallel,
-    }
+    extra_options = {"local_partial_types": local_partial_types, "is_parallel": is_parallel}
     meta = CacheMeta(
         id=id,
         path=path,
