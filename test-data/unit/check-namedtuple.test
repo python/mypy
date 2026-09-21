@@ -1542,3 +1542,255 @@ from foo import DEFERRED_INT, DEFERRED_STR
 DEFERRED_INT = 1
 DEFERRED_STR = "a"
 [builtins fixtures/tuple.pyi]
+
+[case testConditionalNamedTupleFieldPy312]
+# flags: --python-version 3.12
+from typing import NamedTuple
+import sys
+
+class NT(NamedTuple):
+    x: int
+    if sys.version_info >= (3, 12):
+        y: str
+
+reveal_type(NT.x)
+reveal_type(NT.y)
+
+[out]
+main:10: note: Revealed type is "builtins.int"
+main:11: note: Revealed type is "builtins.str"
+
+[builtins fixtures/tuple.pyi]
+
+[case testConditionalNamedTupleFieldPy311]
+# flags: --python-version 3.11
+from typing import NamedTuple
+import sys
+
+class NT(NamedTuple):
+    x: int
+    if sys.version_info >= (3, 12):
+        y: str
+
+reveal_type(NT.x)
+NT.y
+
+[out]
+main:10: note: Revealed type is "builtins.int"
+main:11: error: "type[NT]" has no attribute "y"
+
+[builtins fixtures/tuple.pyi]
+
+[case testConditionalNamedTupleElseBranch]
+# flags: --python-version 3.11
+from typing import NamedTuple
+import sys
+
+class NT(NamedTuple):
+    x: int
+
+    if sys.version_info >= (3, 12):
+        y: str
+    else:
+        z: int
+
+reveal_type(NT.z)
+NT.y
+
+[out]
+main:13: note: Revealed type is "builtins.int"
+main:14: error: "type[NT]" has no attribute "y"
+
+[builtins fixtures/tuple.pyi]
+
+[case testConditionalNamedTupleElseBranchPy312]
+# flags: --python-version 3.12
+from typing import NamedTuple
+import sys
+
+class NT(NamedTuple):
+    x: int
+
+    if sys.version_info >= (3, 12):
+        y: str
+    else:
+        z: int
+
+reveal_type(NT.y)
+NT.z
+
+[out]
+main:13: note: Revealed type is "builtins.str"
+main:14: error: "type[NT]" has no attribute "z"
+
+[builtins fixtures/tuple.pyi]
+
+[case testConditionalNamedTupleElif]
+# flags: --python-version 3.12
+from typing import NamedTuple
+import sys
+
+class NT(NamedTuple):
+    x: int
+
+    if sys.version_info >= (3, 13):
+        a: int
+    elif sys.version_info >= (3, 12):
+        b: str
+    else:
+        c: bool
+
+reveal_type(NT.b)
+NT.a
+NT.c
+
+[out]
+main:15: note: Revealed type is "builtins.str"
+main:16: error: "type[NT]" has no attribute "a"
+main:17: error: "type[NT]" has no attribute "c"
+
+[builtins fixtures/tuple.pyi]
+
+[case testConditionalNamedTupleNestedIf]
+# flags: --python-version 3.12
+from typing import NamedTuple
+import sys
+
+class NT(NamedTuple):
+    x: int
+
+    if sys.version_info >= (3, 12):
+        if sys.version_info >= (3, 12):
+            y: str
+
+reveal_type(NT.y)
+
+[out]
+main:12: note: Revealed type is "builtins.str"
+
+[builtins fixtures/tuple.pyi]
+
+[case testConditionalNamedTupleUnknownCondition]
+from typing import NamedTuple
+
+SOME_FLAG = True
+
+class NT(NamedTuple):
+    x: int
+
+    if SOME_FLAG:
+        y: str
+
+NT.y
+
+[out]
+main:11: error: "type[NT]" has no attribute "y"
+
+[builtins fixtures/tuple.pyi]
+
+[case testConditionalNamedTupleMultipleFields]
+# flags: --python-version 3.12
+from typing import NamedTuple
+import sys
+
+class NT(NamedTuple):
+    if sys.version_info >= (3, 12):
+        x: int
+        y: str
+
+reveal_type(NT.x)
+reveal_type(NT.y)
+
+[out]
+main:10: note: Revealed type is "builtins.int"
+main:11: note: Revealed type is "builtins.str"
+
+[builtins fixtures/tuple.pyi]
+
+[case testConditionalNamedTupleMultipleElif]
+# flags: --python-version 3.12
+from typing import NamedTuple
+import sys
+
+class NT(NamedTuple):
+    if sys.version_info >= (3, 14):
+        a: int
+    elif sys.version_info >= (3, 13):
+        b: int
+    elif sys.version_info >= (3, 12):
+        c: str
+    else:
+        d: bool
+
+reveal_type(NT.c)
+NT.a
+NT.b
+NT.d
+
+[out]
+main:15: note: Revealed type is "builtins.str"
+main:16: error: "type[NT]" has no attribute "a"
+main:17: error: "type[NT]" has no attribute "b"
+main:18: error: "type[NT]" has no attribute "d"
+
+[builtins fixtures/tuple.pyi]
+
+[case testConditionalNamedTupleEmptyBranch]
+# flags: --python-version 3.12
+from typing import NamedTuple
+import sys
+
+class NT(NamedTuple):
+    x: int
+
+    if sys.version_info >= (3, 12):
+        pass
+    else:
+        y: str
+
+NT.y
+
+[out]
+main:13: error: "type[NT]" has no attribute "y"
+
+[builtins fixtures/tuple.pyi]
+
+[case testConditionalNamedTupleUnknownConditionElse]
+from typing import NamedTuple
+
+FLAG = True
+
+class NT(NamedTuple):
+    x: int
+
+    if FLAG:
+        y: str
+    else:
+        z: int
+
+NT.y
+NT.z
+
+[out]
+main:13: error: "type[NT]" has no attribute "y"
+main:14: error: "type[NT]" has no attribute "z"
+
+[builtins fixtures/tuple.pyi]
+
+[case testConditionalNamedTupleDefaultValue]
+# flags: --python-version 3.12
+from typing import NamedTuple
+import sys
+
+class NT(NamedTuple):
+    if sys.version_info >= (3, 12):
+        x: int = 1
+
+reveal_type(NT.x)
+reveal_type(NT().x)
+
+[out]
+main:9: note: Revealed type is "builtins.int"
+main:10: note: Revealed type is "builtins.int"
+
+[builtins fixtures/tuple.pyi]
