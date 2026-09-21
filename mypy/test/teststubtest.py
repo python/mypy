@@ -3079,7 +3079,6 @@ assert annotations
             error=None,
         )
 
-
     @collect_cases
     def test_object_marker(self) -> Iterator[Case]:
         yield Case(
