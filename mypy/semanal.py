@@ -461,7 +461,6 @@ class SemanticAnalyzer(
         errors: Errors,
         plugin: Plugin,
         import_map: dict[str, set[str]],
-        parallel_worker: bool,
     ) -> None:
         """Construct semantic analyzer.
 
@@ -495,8 +494,6 @@ class SemanticAnalyzer(
         self.errors = errors
         self.modules = modules
         self.import_map = import_map
-        # True if this analysis is run in a parallel worker process.
-        self.parallel_worker = parallel_worker
         self.msg = MessageBuilder(errors, modules)
         self.missing_modules = missing_modules
         self.missing_names = [set()]
@@ -740,7 +737,7 @@ class SemanticAnalyzer(
             self.ad_hoc_error(
                 "--allow-redefinition-old and --allow-redefinition should not be used together"
             )
-        if not self.options.local_partial_types and self.parallel_worker:
+        if not self.options.local_partial_types and self.options.num_workers > 0:
             self.ad_hoc_error("--local-partial-types must be enabled in parallel mode")
         self.recurse_into_functions = False
         self.add_implicit_module_attrs(file_node)

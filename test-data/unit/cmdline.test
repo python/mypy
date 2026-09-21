@@ -1330,3 +1330,23 @@ error: Cache must be enabled in parallel mode
 from foo.api import bar as bar
 [file foo-stubs/api/bar.pyi]
 [out]
+
+[case testCacheInvalidatedForNoLocalPartialTypesParallelVsSequential]
+# cmd: mypy a.py
+# cmd2: mypy a.py --num-workers=2
+[file a.py]
+# mypy: no-local-partial-types
+
+items = []
+
+def add() -> None:
+    items.append(1)
+
+reveal_type(items)
+[out]
+a.py:8: note: Revealed type is "list[int]"
+== Return code: 0
+[out2]
+a.py:1: error: --local-partial-types must be enabled in parallel mode
+a.py:3: error: Need type annotation for "items" (hint: "items: list[<type>] = ...")
+a.py:8: note: Revealed type is "list[Any]"

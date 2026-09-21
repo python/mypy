@@ -898,7 +898,6 @@ class BuildManager:
             self.errors,
             self.plugin,
             self.import_map,
-            parallel_worker,
         )
         self.all_types: dict[Expression, Type] = {}  # Enabled by export_types
         self.indirection_detector = TypeIndirectionVisitor()
@@ -2056,7 +2055,7 @@ def find_cache_meta(
 
     # Ignore cache if (relevant) options aren't the same.
     # Note that it's fine to mutilate cached_options since it's only used here.
-    cached_options = m.options
+    cached_options = m.options.copy()
     current_options = options_snapshot(id, manager)
     if manager.options.skip_version_check:
         # When we're lax about version we're also lax about platform.
@@ -2064,6 +2063,18 @@ def find_cache_meta(
     if "debug_cache" in cached_options:
         # Older versions included debug_cache, but it's silly to compare it.
         del cached_options["debug_cache"]
+    if "local_partial_types" in cached_options:
+        local_partial_types = cached_options["local_partial_types"]
+        del cached_options["local_partial_types"]
+        is_parallel = manager.options.num_workers > 0
+        if not local_partial_types and cached_options["is_parallel"] != is_parallel:
+            # If local partial types are disabled, behavior is too different for
+            # parallel and sequential runs, see write_cache for details.
+            return None
+        del cached_options["is_parallel"]
+    else:
+        # Cache from an old mypy version.
+        return None
     if cached_options != current_options:
         manager.log(f"Metadata abandoned for {id}: options differ")
         if manager.options.verbosity >= 2:
@@ -2227,7 +2238,6 @@ def validate_meta(
             meta.mtime = mtime
             meta.path = path
             meta.size = size
-            meta.options = options_snapshot(id, manager)
             meta_file, _, _ = get_cache_names(id, path, manager.options)
             if manager.logging_enabled:
                 manager.log(
@@ -2272,6 +2282,8 @@ def write_cache(
     trans_dep_hash: bytes,
     source_hash: str,
     ignore_all: bool,
+    local_partial_types: bool,
+    is_parallel: bool,
     manager: BuildManager,
 ) -> tuple[bytes, tuple[CacheMeta, str] | None]:
     """Write cache files for a module.
@@ -2371,6 +2383,16 @@ def write_cache(
     # important, or otherwise the options would never match when
     # verifying the cache.
     assert source_hash is not None
+    # Local partial types need special handling as they behave differently
+    # in sequential and parallel runs:
+    #   * In sequential run we respected the option, but use different SCC
+    #   processing logic depending on whether they are enabled or disabled.
+    #   * In parallel run they are always on, and we give an error if a user
+    #   tries to disable them.
+    extra_options = {
+        "local_partial_types": local_partial_types,
+        "is_parallel": is_parallel,
+    }
     meta = CacheMeta(
         id=id,
         path=path,
@@ -2382,7 +2404,7 @@ def write_cache(
         data_file=data_file,
         suppressed=suppressed,
         imports_ignored=imports_ignored,
-        options=options_snapshot(id, manager),
+        options=options_snapshot(id, manager) | extra_options,
         suppressed_deps_opts=suppressed_deps_opts,
         dep_prios=dep_prios,
         dep_lines=dep_lines,
@@ -2727,6 +2749,11 @@ class State:
                 meta, meta_ex = meta_pair
                 interface_hash = meta.interface_hash
                 meta_source_hash = meta.hash
+                # Update the local partial types in case they were set by an inline config.
+                # So we can select the correct SCC processing logic without reading the file.
+                local_partial_types = meta.options["local_partial_types"]
+                if options.local_partial_types != local_partial_types:
+                    options = options.apply_changes({"local_partial_types": local_partial_types})
         if path and source is None and manager.fscache.isdir(path):
             source = ""
 
@@ -3637,6 +3664,8 @@ class State:
             self.trans_dep_hash,
             self.source_hash,
             self.ignore_all,
+            self.options.local_partial_types,
+            self.options.num_workers > 0,
             self.manager,
         )
         if new_interface_hash == self.interface_hash:

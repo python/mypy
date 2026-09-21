@@ -58,7 +58,7 @@ def test_python_cmdline(testcase: DataDrivenTestCase, step: int) -> None:
     with open(program_path, "w", encoding="utf8") as file:
         for s in testcase.input:
             file.write(f"{s}\n")
-    args = parse_args(normalize_devnull(testcase.input[0]))
+    args = parse_args(normalize_devnull(testcase.input[step - 1]), step)
     custom_cwd = parse_cwd(testcase.input[1]) if len(testcase.input) > 1 else None
     args.append("--show-traceback")
     if "--error-summary" not in args:
@@ -122,7 +122,7 @@ def test_python_cmdline(testcase: DataDrivenTestCase, step: int) -> None:
         )
 
 
-def parse_args(line: str) -> list[str]:
+def parse_args(line: str, step: int) -> list[str]:
     """Parse the first line of the program for the command line.
 
     This should have the form
@@ -133,7 +133,8 @@ def parse_args(line: str) -> list[str]:
 
       # cmd: mypy pkg/
     """
-    m = re.match("# cmd: mypy (.*)$", line)
+    step_str = "" if step == 1 else str(step)
+    m = re.match(f"# cmd{step_str}: mypy (.*)$", line)
     if not m:
         return []  # No args; mypy will spit out an error.
     return shlex.split(m.group(1))

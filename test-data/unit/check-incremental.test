@@ -8251,3 +8251,27 @@ y = 2
 [stale]
 [out2]
 [out3]
+
+[case testNoLocalPartialTypesInlineRespectedIncremental_no_parallel]
+import a
+[file a.py]
+# mypy: no-local-partial-types
+import dep
+
+items = []
+
+def add() -> None:
+    items.append(1)
+
+reveal_type(items)
+[file dep.py]
+value: int = 1
+[file dep.py.2]
+value: str = "x"
+[builtins fixtures/list.pyi]
+[rechecked a, dep]
+[stale dep]
+[out]
+tmp/a.py:9: note: Revealed type is "builtins.list[builtins.int]"
+[out2]
+tmp/a.py:9: note: Revealed type is "builtins.list[builtins.int]"
