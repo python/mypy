@@ -123,6 +123,11 @@ class frozenset(Generic[T]): ...
 
 class function: pass
 
+class sentinel:
+    __name__: str
+    __module__: str
+    def __new__(cls, name: str, /, *, repr: str | None = None) -> sentinel: ...
+
 class int: ...
 class float: ...
 class bool(int): ...
@@ -3070,6 +3075,59 @@ assert annotations
 
             class ArgumentParser:
                 def __init__(self, formatter_class=HelpFormatter): ...
+            """,
+            error=None,
+        )
+
+
+    @collect_cases
+    def test_object_marker(self) -> Iterator[Case]:
+        yield Case(
+            stub="""
+            def f(x: int = ...) -> None: ...
+            """,
+            runtime="""
+            _MISSING = object()
+
+
+            def f(x=_MISSING):
+                pass
+            """,
+            error=None,
+        )
+
+    @collect_cases
+    def test_sentinel_object_like_marker(self) -> Iterator[Case]:
+        yield Case(
+            stub="""
+            def f(x: int = ...) -> None: ...
+            """,
+            runtime="""
+            from typing_extensions import sentinel
+
+            _MISSING = sentinel("_MISSING")
+
+
+            def f(x=_MISSING):
+                pass
+            """,
+            error=None,
+        )
+
+    @collect_cases
+    def test_legacy_sentinel_object_like_marker(self) -> Iterator[Case]:
+        yield Case(
+            stub="""
+            def f(x: int = ...) -> None: ...
+            """,
+            runtime="""
+            from typing_extensions import Sentinel
+
+            _MISSING = Sentinel("_MISSING")
+
+
+            def f(x=_MISSING):
+                pass
             """,
             error=None,
         )
