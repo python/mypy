@@ -216,6 +216,18 @@ class CFunctionStub:
 _Missing = enum.Enum("_Missing", "VALUE")
 
 
+def _is_sentinel_object(obj: object) -> bool:
+    """Is ``obj`` an instance of ``typing_extensions.sentinel()``/``Sentinel()``?"""
+    typ = type(obj)
+    return typ.__module__ in ("builtins", "typing_extensions") and typ.__name__ in (
+        "sentinel",
+        # typing_extensions 4.14.0-4.15.x named the class `Sentinel`, with no
+        # lowercase alias; the rename (and `Sentinel = sentinel` alias) landed
+        # in 4.16.0.
+        "Sentinel",
+    )
+
+
 class InspectionStubGenerator(BaseStubGenerator):
     """Stub generator that does not parse code.
 
@@ -323,6 +335,10 @@ class InspectionStubGenerator(BaseStubGenerator):
                 if default_value is not _Missing.VALUE:
                     if arg in annotations:
                         argtype = get_annotation(arg)
+                    elif _is_sentinel_object(default_value):
+                        # The runtime type of a `sentinel()` marker object is not a
+                        # useful annotation for the parameter it defaults.
+                        argtype = self.add_name("_typeshed.Incomplete")
                     else:
                         argtype = self.get_type_annotation(default_value)
                         if argtype == "None":
