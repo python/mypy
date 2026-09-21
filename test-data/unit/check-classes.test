@@ -9853,3 +9853,45 @@ def across_the_unpack(*args: *tuple[int, *tuple[Any, ...], int]) -> None:
                           # E: Invalid type: try using Literal[-2] instead?
         pass
 [builtins fixtures/tuple.pyi]
+
+[case testSubclassAnyFromNestedUnpackedUnboundedStarArgsIndexInsideUnambiguous]
+# https://github.com/python/mypy/issues/21998
+# flags: --python-version 3.12
+from typing import Any
+
+def from_unpacked(*args: *tuple[Any, ...]) -> None:
+    reveal_type(args[0]) # N: Revealed type is "Any"
+    reveal_type(args[1]) # N: Revealed type is "Any"
+    class Sub(args[0]):
+        pass
+    class Sub2(args[1]):
+        pass
+
+def from_unpacked2(*args: *tuple[*tuple[Any, ...]]) -> None:
+    reveal_type(args[0]) # N: Revealed type is "Any"
+    reveal_type(args[1]) # N: Revealed type is "Any"
+    class Sub(args[0]):
+        pass
+    class Sub2(args[1]):
+        pass
+
+def from_unpacked_type_annotation(*args: *tuple[Any, ...]) -> None:
+    reveal_type(args[0]) # N: Revealed type is "Any"
+    reveal_type(args[1]) # N: Revealed type is "Any"
+    x: type = args[0]
+    class Sub(x):
+        pass
+    x1: type = args[1]
+    class Sub2(x1):
+        pass
+
+def from_unpacked2_type_annotation(*args: *tuple[*tuple[Any, ...]]) -> None:
+    reveal_type(args[0]) # N: Revealed type is "Any"
+    reveal_type(args[1]) # N: Revealed type is "Any"
+    x: type = args[0]
+    class Sub(x):
+        pass
+    x1: type = args[1]
+    class Sub2(x1):
+        pass
+[builtins fixtures/tuple.pyi]

@@ -1165,6 +1165,12 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 if 0 <= i < n:
                     return get_proper_type(items[i])
                 return None
+            if n == 1:
+                unpack_item = items[unpack]
+                assert isinstance(unpack_item, UnpackType)
+                unpacked = get_proper_type(unpack_item.type)
+                if isinstance(unpacked, Instance) and unpacked.type.fullname in TUPLE_NAMES:
+                    return get_proper_type(unpacked.args[0])
             # A variadic item leaves the length unknown, so only an index that stays on
             # the same side of it resolves: counted from the left before the unpack, or
             # from the right after it. Anything that could land inside it is ambiguous.
