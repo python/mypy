@@ -981,7 +981,7 @@ Foo = TypedDict("Bar", {})  # E: First argument "Bar" to TypedDict() does not ma
 [typing fixtures/typing-typeddict.pyi]
 
 [case testTruthyBool]
-# flags: --enable-error-code truthy-bool --no-local-partial-types
+# flags: --enable-error-code truthy-bool
 from typing import List, Union, Any
 
 class Foo:

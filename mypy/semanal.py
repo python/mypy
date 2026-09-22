@@ -719,24 +719,26 @@ class SemanticAnalyzer(
                 self.accept(node)
         del self.patches
 
+    def ad_hoc_error(self, msg: str) -> None:
+        n = TempNode(AnyType(TypeOfAny.special_form))
+        n.line = 1
+        n.column = 0
+        n.end_line = 1
+        n.end_column = 0
+        self.fail(msg, n)
+
     def refresh_top_level(self, file_node: MypyFile) -> None:
         """Reanalyze a stale module top-level in fine-grained incremental mode."""
         if self.options.allow_redefinition and not self.options.local_partial_types:
-            n = TempNode(AnyType(TypeOfAny.special_form))
-            n.line = 1
-            n.column = 0
-            n.end_line = 1
-            n.end_column = 0
-            self.fail("--local-partial-types must be enabled if using --allow-redefinition", n)
-        if self.options.allow_redefinition and self.options.allow_redefinition_old:
-            n = TempNode(AnyType(TypeOfAny.special_form))
-            n.line = 1
-            n.column = 0
-            n.end_line = 1
-            n.end_column = 0
-            self.fail(
-                "--allow-redefinition-old and --allow-redefinition should not be used together", n
+            self.ad_hoc_error(
+                "--local-partial-types must be enabled if using --allow-redefinition"
             )
+        if self.options.allow_redefinition and self.options.allow_redefinition_old:
+            self.ad_hoc_error(
+                "--allow-redefinition-old and --allow-redefinition should not be used together"
+            )
+        if not self.options.local_partial_types and self.options.num_workers > 0:
+            self.ad_hoc_error("--local-partial-types must be enabled in parallel mode")
         self.recurse_into_functions = False
         self.add_implicit_module_attrs(file_node)
         for d in file_node.defs:
@@ -4797,6 +4799,10 @@ class SemanticAnalyzer(
                     self.type.names[lval.name] = SymbolTableNode(MDEF, v, implicit=True)
                     for func in self.scope.functions:
                         func.def_or_infer_vars = True
+
+        if self.is_self_member_ref(lval) or self.is_cls_member_ref(lval):
+            assert self.type, "Self or cls member outside a class"
+            cur_node = self.type.names.get(lval.name)
             if (
                 cur_node
                 and isinstance(cur_node.node, Var)
@@ -4813,6 +4819,13 @@ class SemanticAnalyzer(
             return False
         node = memberexpr.expr.node
         return isinstance(node, Var) and node.is_self
+
+    def is_cls_member_ref(self, memberexpr: MemberExpr) -> bool:
+        """Does memberexpr to refer to an attribute of cls?"""
+        if not isinstance(memberexpr.expr, NameExpr):
+            return False
+        node = memberexpr.expr.node
+        return isinstance(node, Var) and node.is_cls
 
     def check_lvalue_validity(self, node: Expression | SymbolNode | None, ctx: Context) -> None:
         if isinstance(node, TypeVarExpr):
