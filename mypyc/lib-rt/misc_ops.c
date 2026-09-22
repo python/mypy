@@ -1721,14 +1721,26 @@ PyObject *CPyImport_ImportNative(PyObject *module_name,
     // We then check sys.modules to determine whether the module body
     // has already been executed (or is being executed in a circular import).
     PyObject *module_lock;
-    int lock_result = CPyImport_AcquireLock(lock_api, module_name, &module_lock);
-    if (lock_result == CPY_LOCK_DEADLOCK) {
+    int lock_result;
+    bool retried_after_execution = false;
+    while ((lock_result = CPyImport_AcquireLock(lock_api, module_name, &module_lock)) ==
+           CPY_LOCK_DEADLOCK) {
         PyObject *partial = PyDict_GetItemWithError(PyImport_GetModuleDict(), module_name);
         if (partial != NULL &&
                 (*module_static == NULL || partial == (PyObject *)*module_static)) {
             CPyImport_ReplaceModuleCacheUnverified(module_cache, partial);
             Py_INCREF(partial);
             return partial;
+        }
+        // Multiple threads can detect the same cycle concurrently on a
+        // free-threaded build. If the target body has finished but the module
+        // is temporarily absent during importlib's pop/reinsert, retry once to
+        // wait for finalization. If it's still missing quit and report an error
+        // to not spin infinitely.
+        if (partial == NULL && !PyErr_Occurred() && CPyImport_IsExecuted(state) &&
+                !retried_after_execution) {
+            retried_after_execution = true;
+            continue;
         }
         if (!PyErr_Occurred()) {
             PyErr_Format(PyExc_ImportError,
