@@ -3109,15 +3109,20 @@ foo(t4)
 # https://github.com/python/mypy/issues/21878
 from typing import Generic, TypeVarTuple, Unpack
 Ts = TypeVarTuple("Ts")
+Us = TypeVarTuple("Us")
 
 class A(Generic[Unpack[Ts]]):
     def __init__(self, *state: Unpack[Ts]) -> None: ...
     def add(self: "A[Unpack[Ts], int, int]") -> "A[Unpack[Ts], int]": ...
-    def drop_first(self: "A[int, Unpack[Ts]]") -> "A[Unpack[Ts]]": ...
     def plain(self: "A[Unpack[Ts]]") -> "A[Unpack[Ts]]": ...
+    def meth_tv(self: "A[Unpack[Us]]", x: tuple[Unpack[Us]]) -> "A[Unpack[Us]]": ...
 
-reveal_type(A(1, 2, 3).add())  # N: Revealed type is "__main__.A[Literal[1]?, builtins.int]"
-reveal_type(A(1, 2, 3).drop_first())  # N: Revealed type is "__main__.A[Literal[2]?, Literal[3]?]"
+# A class-level TypeVarTuple cannot take two different values in the same scope,
+# so the explicit self-type below can never match: it is checked with Ts bound
+# to the full instance arguments, i.e. as A[1, 2, 3, int, int].
+A(1, 2, 3).add()  # E: Invalid self argument "A[int, int, int]" to attribute function "add" with type "Callable[[A[Unpack[Ts], int, int]], A[Unpack[Ts], int]]"
+# Ordinary explicit self-types still work ...
 reveal_type(A(1, 2, 3).plain())  # N: Revealed type is "__main__.A[Literal[1]?, Literal[2]?, Literal[3]?]"
-A("x").add()  # E: Invalid self argument "A[str]" to attribute function "add" with type "Callable[[A[Unpack[Ts], int, int]], A[Unpack[Ts], int]]"
+# ... as do method-level TypeVarTuples in self-types.
+reveal_type(A(1, 2, 3).meth_tv((1, 2, 3)))  # N: Revealed type is "__main__.A[Literal[1]?, Literal[2]?, Literal[3]?]"
 [builtins fixtures/tuple.pyi]
