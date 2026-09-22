@@ -1318,7 +1318,7 @@ class ConstraintBuilderVisitor(TypeVisitor[list[Constraint]]):
                     a_unpack = actual.items[a_unpack_index]
                     assert isinstance(a_unpack, UnpackType)
                     a_unpacked = get_proper_type(a_unpack.type)
-                    if len(actual.items) + 1 <= len(template.items):
+                    if len(actual.items) <= len(template.items) + 1:
                         a_prefix_len = a_unpack_index
                         a_suffix_len = len(actual.items) - a_unpack_index - 1
                         t_prefix, t_middle, t_suffix = split_with_prefix_and_suffix(
