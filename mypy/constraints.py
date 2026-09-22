@@ -22,6 +22,7 @@ from mypy.nodes import (
     TypeInfo,
 )
 from mypy.types import (
+    MAX_PROTOCOL_DEPTH,
     TUPLE_LIKE_INSTANCE_NAMES,
     AnyType,
     CallableType,
@@ -750,8 +751,13 @@ class ConstraintBuilderVisitor(TypeVisitor[list[Constraint]]):
         if isinstance(actual, (CallableType, Overloaded)) and template.type.is_protocol:
             if "__call__" in template.type.protocol_members:
                 # Special case: a generic callback protocol
-                if not any(template == t for t in template.type.inferring):
-                    template.type.inferring.append(template)
+                inferring = template.type.inferring
+                if len(inferring) >= MAX_PROTOCOL_DEPTH:
+                    raise ValueError
+                if len(inferring) < MAX_PROTOCOL_DEPTH and not any(
+                    template == t for t in inferring
+                ):
+                    inferring.append(template)
                     call = mypy.subtypes.find_member(
                         "__call__", template, actual, is_operator=True
                     )
@@ -763,7 +769,7 @@ class ConstraintBuilderVisitor(TypeVisitor[list[Constraint]]):
                         and mypy.subtypes.is_subtype(erase_typevars(call), actual)
                     ):
                         res.extend(infer_constraints(call, actual, self.direction))
-                    template.type.inferring.pop()
+                    inferring.pop()
         if isinstance(actual, CallableType) and actual.fallback is not None:
             if (
                 actual.is_type_obj()
@@ -941,6 +947,9 @@ class ConstraintBuilderVisitor(TypeVisitor[list[Constraint]]):
                         res.extend(infer_constraints(template_arg, mapped_arg, SUBTYPE_OF))
                         res.extend(infer_constraints(template_arg, mapped_arg, SUPERTYPE_OF))
                 return res
+            inferring = template.type.inferring
+            if len(inferring) >= MAX_PROTOCOL_DEPTH:
+                raise ValueError
             if (
                 template.type.is_protocol
                 and self.direction == SUPERTYPE_OF
@@ -953,32 +962,34 @@ class ConstraintBuilderVisitor(TypeVisitor[list[Constraint]]):
                 # Note that we use is_protocol_implementation instead of is_subtype
                 # because some type may be considered a subtype of a protocol
                 # due to _promote, but still not implement the protocol.
-                not any(template == t for t in reversed(template.type.inferring))
+                len(inferring) < MAX_PROTOCOL_DEPTH
+                and not any(template == t for t in reversed(inferring))
                 and mypy.subtypes.is_protocol_implementation(instance, erased, skip=["__call__"])
             ):
-                template.type.inferring.append(template)
+                inferring.append(template)
                 res.extend(
                     self.infer_constraints_from_protocol_members(
                         instance, template, original_actual, template
                     )
                 )
-                template.type.inferring.pop()
+                inferring.pop()
                 return res
             elif (
                 instance.type.is_protocol
                 and self.direction == SUBTYPE_OF
                 and
                 # We avoid infinite recursion for structural subtypes also here.
-                not any(instance == i for i in reversed(instance.type.inferring))
+                len(inferring) < MAX_PROTOCOL_DEPTH
+                and not any(instance == i for i in reversed(inferring))
                 and mypy.subtypes.is_protocol_implementation(erased, instance, skip=["__call__"])
             ):
-                instance.type.inferring.append(instance)
+                inferring.append(instance)
                 res.extend(
                     self.infer_constraints_from_protocol_members(
                         instance, template, template, instance
                     )
                 )
-                instance.type.inferring.pop()
+                inferring.pop()
                 return res
         if res:
             return res
@@ -1010,17 +1021,21 @@ class ConstraintBuilderVisitor(TypeVisitor[list[Constraint]]):
             assert isinstance(erased, ProperType) and isinstance(erased, Instance)
             # Special-case protocols before using fallback to get more precise constraints
             # for custom tuple types like NamedTuples.
+            inferring = template.type.inferring
+            if len(inferring) >= MAX_PROTOCOL_DEPTH:
+                raise ValueError
             if (
                 template.type.is_protocol
                 and self.direction == SUPERTYPE_OF
-                and not any(template == t for t in reversed(template.type.inferring))
+                and len(inferring) < MAX_PROTOCOL_DEPTH
+                and not any(template == t for t in reversed(inferring))
                 and mypy.subtypes.is_protocol_implementation(instance, erased, skip=["__call__"])
             ):
-                template.type.inferring.append(template)
+                inferring.append(template)
                 res = self.infer_constraints_from_protocol_members(
                     instance, template, original_actual, template
                 )
-                template.type.inferring.pop()
+                inferring.pop()
                 return res
             return infer_constraints(template, instance, self.direction)
         elif isinstance(actual, TypeVarType):

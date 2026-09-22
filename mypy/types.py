@@ -222,6 +222,8 @@ _dummy: Final[Any] = object()
 # A placeholder for int parameters
 _dummy_int: Final = -999999
 
+MAX_PROTOCOL_DEPTH: Final = 3
+
 
 class TypeOfAny:
     """
