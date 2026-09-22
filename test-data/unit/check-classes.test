@@ -9901,4 +9901,3 @@ from typing import Any, Sequence
 
 def f(y: Sequence[Any]) -> None:
     class A(y[0]): pass
-
