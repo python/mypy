@@ -2633,6 +2633,48 @@ with ThreadPoolExecutor(max_workers=2) as executor:
 assert other_a.other_value == "b"
 assert other_b.other_value == "a"
 
+[case testConcurrentCircularNativeFromImports]
+# separate: [(["other_a.py", "other_b.py"], "testgroup")]
+pass
+
+[file import_sync.py]
+from threading import Barrier
+
+barrier = Barrier(2)
+
+[file other_a.py]
+from import_sync import barrier
+
+def value() -> str:
+    return "a"
+
+barrier.wait(timeout=15)
+from other_b import value as other_value_fn
+other_value = other_value_fn()
+
+[file other_b.py]
+from import_sync import barrier
+
+def value() -> str:
+    return "b"
+
+barrier.wait(timeout=15)
+from other_a import value as other_value_fn
+other_value = other_value_fn()
+
+[file driver.py]
+from concurrent.futures import ThreadPoolExecutor
+import importlib
+
+with ThreadPoolExecutor(max_workers=2) as executor:
+    future_a = executor.submit(importlib.import_module, "other_a")
+    future_b = executor.submit(importlib.import_module, "other_b")
+    other_a = future_a.result(timeout=15)
+    other_b = future_b.result(timeout=15)
+
+assert other_a.other_value == "b"
+assert other_b.other_value == "a"
+
 [case testNativeModuleReimportBehavior]
 value = 42
 

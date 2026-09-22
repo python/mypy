@@ -560,7 +560,8 @@ def transform_import_from_buckets(
             ]
             transform_imports_without_grouping(builder, group)
         elif bucket.kind == IMPORT_NATIVE_ATTR:
-            builder.gen_import(module_id, line)
+            native_module = builder.gen_import(module_id, line)
+            assert native_module is not None
             names_literal = builder.add(LoadLiteral(tuple(bucket.names), object_rprimitive))
             if bucket.as_names == bucket.names:
                 as_names_literal = names_literal
@@ -570,12 +571,7 @@ def transform_import_from_buckets(
                 )
             builder.call_c(
                 get_native_attrs_op,
-                [
-                    builder.load_str(module_id),
-                    names_literal,
-                    as_names_literal,
-                    builder.load_globals_dict(),
-                ],
+                [native_module, names_literal, as_names_literal, builder.load_globals_dict()],
                 line,
             )
         else:
