@@ -1485,8 +1485,7 @@ t[y:]  # E: Invalid index type "slice[str, None, None]" for "tuple[int, str]"; e
 
 [case testTupleSliceStepZeroNoCrash]
 # This was crashing: https://github.com/python/mypy/issues/18062
-# TODO: emit better error when 0 is used for step
-()[::0]  # E: Ambiguous slice of a variadic tuple
+()[::0]  # E: Slice step cannot be zero
 [builtins fixtures/tuple.pyi]
 
 [case testInferTupleTypeFallbackAgainstInstance]

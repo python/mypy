@@ -4705,6 +4705,10 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
 
         items: list[Type] = []
         for b, e, s in itertools.product(begin, end, stride):
+            if s == 0:
+                self.chk.fail("Slice step cannot be zero", slic)
+                items.append(self.named_type("builtins.tuple"))
+                continue
             item = left_type.slice(b, e, s, fallback=self.named_type("builtins.tuple"))
             if item is None:
                 left_variadic = get_variadic_item(left_type)

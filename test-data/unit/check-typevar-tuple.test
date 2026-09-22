@@ -1583,12 +1583,18 @@ reveal_type(t2[-42])  # N: Revealed type is "Any"
 reveal_type(t[1:3:2])  # N: Revealed type is "builtins.tuple[builtins.int | Any | builtins.str, ...]"
 reveal_type(t1[1:3:2])  # N: Revealed type is "builtins.tuple[builtins.int | Any, ...]"
 reveal_type(t2[1:3:2])  # N: Revealed type is "builtins.tuple[Any | builtins.str, ...]"
+bt = t[::0]  # E: Slice step cannot be zero
+reveal_type(bt)  # N: Revealed type is "builtins.tuple[Any, ...]"
 [builtins fixtures/tuple.pyi]
 
 [case testAnyVariadicTupleLenientUnpacking]
 from typing import Any, Unpack
 
 t: tuple[int, Unpack[tuple[Any, ...]], str]
+
+x0, y0 = t
+reveal_type(x0)  # N: Revealed type is "builtins.int"
+reveal_type(y0)  # N: Revealed type is "builtins.str"
 
 x, y, z = t
 reveal_type(x)  # N: Revealed type is "builtins.int"

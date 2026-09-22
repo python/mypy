@@ -2946,9 +2946,6 @@ class TupleType(ProperType):
         if fallback is None:
             fallback = self.partial_fallback
 
-        if stride == 0:
-            return None
-
         if any(isinstance(t, UnpackType) for t in self.items):
             total = len(self.items)
             unpack_index = find_unpack_in_list(self.items)
