@@ -73,6 +73,7 @@ from mypy.types import (
     find_unpack_in_list,
     flatten_nested_unions,
     get_proper_type,
+    get_variadic_item,
     is_named_instance,
     split_with_prefix_and_suffix,
 )
@@ -852,7 +853,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
         Note: this only works if right is fixed size (including *Ts), the variadic
         right are handled by the caller, currently with variadic_tuple_subtype().
         """
-        left_variadic = self.get_variadic_item(left)
+        left_variadic = get_variadic_item(left)
         if left_variadic is None:
             return left
         left_unpack_index, left_item = left_variadic
@@ -884,19 +885,6 @@ class SubtypeVisitor(TypeVisitor[bool]):
         )
         return left.copy_modified(items=list(new_items))
 
-    def get_variadic_item(self, tup: TupleType) -> tuple[int, Type] | None:
-        """If this is tuple[X, *tuple[Y, ...], Z], return Y, otherwise None."""
-        unpack_index = find_unpack_in_list(tup.items)
-        if unpack_index is None:
-            return None
-        unpack = tup.items[unpack_index]
-        assert isinstance(unpack, UnpackType)
-        unpacked = get_proper_type(unpack.type)
-        if not isinstance(unpacked, Instance):
-            return None
-        assert unpacked.type.fullname == "builtins.tuple"
-        return unpack_index, unpacked.args[0]
-
     def variadic_tuple_subtype(self, left: TupleType, right: TupleType) -> bool:
         """Check subtyping between two potentially variadic tuples.
 
@@ -906,7 +894,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
         Note: the cases where right is fixed or has *Ts unpack should be handled
         by the caller.
         """
-        right_variadic = self.get_variadic_item(right)
+        right_variadic = get_variadic_item(right)
         if right_variadic is None:
             # This case should be handled by the caller.
             return False

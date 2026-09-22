@@ -200,6 +200,7 @@ from mypy.types import (
     flatten_nested_unions,
     get_proper_type,
     get_proper_types,
+    get_variadic_item,
     has_recursive_types,
     has_type_vars,
     is_named_instance,
@@ -4654,6 +4655,10 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             if n >= self.min_tuple_length(left):
                 # For tuple[int, *tuple[str, ...], int] we allow either index 0 or 1,
                 # since variadic item may have zero items.
+                if isinstance(get_proper_type(middle), AnyType):
+                    # The only exception is when the variadic item is Any,
+                    # which is handled leniently.
+                    return UnionType.make_union([middle] + left.items[unpack_index + 1 :])
                 return None
             if n < unpack_index:
                 return left.items[n]
@@ -4666,6 +4671,8 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         n += self.min_tuple_length(left)
         if n < 0:
             # Similar to above, we only allow -1, and -2 for tuple[int, *tuple[str, ...], int]
+            if isinstance(get_proper_type(middle), AnyType):
+                return UnionType.make_union(left.items[:unpack_index] + [middle])
             return None
         if n >= unpack_index + extra_items:
             return left.items[n - extra_items + 1]
@@ -4698,8 +4705,18 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
 
         items: list[Type] = []
         for b, e, s in itertools.product(begin, end, stride):
+            if s == 0:
+                self.chk.fail("Slice step cannot be zero", slic)
+                items.append(self.named_type("builtins.tuple"))
+                continue
             item = left_type.slice(b, e, s, fallback=self.named_type("builtins.tuple"))
             if item is None:
+                left_variadic = get_variadic_item(left_type)
+                if left_variadic is not None:
+                    _, left_item = left_variadic
+                    if isinstance(get_proper_type(left_item), AnyType):
+                        # If the tuple has *tuple[Any, ...] slice should never fail.
+                        return self.nonliteral_tuple_index_helper(left_type, slic)
                 self.chk.fail(message_registry.AMBIGUOUS_SLICE_OF_VARIADIC_TUPLE, slic)
                 return AnyType(TypeOfAny.from_error)
             items.append(item)
