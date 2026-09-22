@@ -3104,3 +3104,20 @@ foo(t2)
 foo(t3)  # E: Argument 1 to "foo" has incompatible type "C[Unpack[tuple[Any, ...]], str]"; expected "C[int, Unpack[tuple[int, ...]], int]"
 foo(t4)
 [builtins fixtures/tuple.pyi]
+
+[case testTypeVarTupleExplicitSelfTypeWithExtraArgs]
+# https://github.com/python/mypy/issues/21878
+from typing import Generic, TypeVarTuple, Unpack
+Ts = TypeVarTuple("Ts")
+
+class A(Generic[Unpack[Ts]]):
+    def __init__(self, *state: Unpack[Ts]) -> None: ...
+    def add(self: "A[Unpack[Ts], int, int]") -> "A[Unpack[Ts], int]": ...
+    def drop_first(self: "A[int, Unpack[Ts]]") -> "A[Unpack[Ts]]": ...
+    def plain(self: "A[Unpack[Ts]]") -> "A[Unpack[Ts]]": ...
+
+reveal_type(A(1, 2, 3).add())  # N: Revealed type is "__main__.A[Literal[1]?, builtins.int]"
+reveal_type(A(1, 2, 3).drop_first())  # N: Revealed type is "__main__.A[Literal[2]?, Literal[3]?]"
+reveal_type(A(1, 2, 3).plain())  # N: Revealed type is "__main__.A[Literal[1]?, Literal[2]?, Literal[3]?]"
+A("x").add()  # E: Invalid self argument "A[str]" to attribute function "add" with type "Callable[[A[Unpack[Ts], int, int]], A[Unpack[Ts], int]]"
+[builtins fixtures/tuple.pyi]
