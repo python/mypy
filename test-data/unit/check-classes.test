@@ -9895,3 +9895,10 @@ def from_unpacked2_type_annotation(*args: *tuple[*tuple[Any, ...]]) -> None:
     class Sub2(x1):
         pass
 [builtins fixtures/tuple.pyi]
+
+[case testSubclassFromSequenceIndexed]
+from typing import Any, Sequence
+
+def f(y: Sequence[Any]) -> None:
+    class A(y[0]): pass
+

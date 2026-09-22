@@ -1146,9 +1146,17 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         """If this looks like indexing a tuple-typed value, return the item type."""
         if typ is None or len(args) != 1:
             return None
-        if isinstance(typ, Instance) and typ.type.fullname in TUPLE_NAMES and typ.args:
-            # Homogeneous tuple[T, ...]: any index has type T.
-            return get_proper_type(typ.args[0])
+        if isinstance(typ, Instance):
+            if typ.type.fullname in TUPLE_NAMES and typ.args:
+                # Homogeneous tuple[T, ...]: any index has type T.
+                return get_proper_type(typ.args[0])
+            if typ.type.has_base("typing.Sequence"):
+                from mypy.maptype import map_instance_to_supertype
+
+                seq_info = typ.type.get_base("typing.Sequence")
+                mapped = map_instance_to_supertype(typ, seq_info)
+                if mapped.args:
+                    return get_proper_type(mapped.args[0])
         if isinstance(typ, TupleType):
             items = flatten_nested_tuples(typ.items)
             index = args[0]
