@@ -1658,6 +1658,18 @@ static int CPyImport_ReleaseLockPreservingException(PyObject *module_lock) {
     return result;
 }
 
+static void CPyImport_SetModuleReplacedError(PyObject *module_name) {
+    PyErr_Format(PyExc_ImportError,
+                 "native module '%U' in sys.modules was replaced after initialization",
+                 module_name);
+}
+
+static void CPyImport_SetModuleMissingError(PyObject *module_name) {
+    PyErr_Format(PyExc_ImportError,
+                 "initialized native module '%U' is missing from sys.modules",
+                 module_name);
+}
+
 // Execute a module once; caller holds the module lock.
 int CPyImport_Exec(PyObject *module, int (*exec_fn)(PyObject *), CPyImportState *state,
                    CPyModuleCache *module_cache) {
@@ -1782,9 +1794,7 @@ PyObject *CPyImport_ImportNative(PyObject *module_name,
                 }
                 return existing;
             }
-            PyErr_Format(PyExc_ImportError,
-                         "native module '%U' in sys.modules was replaced after initialization",
-                         module_name);
+            CPyImport_SetModuleReplacedError(module_name);
             CPyImport_ReleaseLockPreservingException(module_lock);
             return NULL;
         }
@@ -1796,9 +1806,7 @@ PyObject *CPyImport_ImportNative(PyObject *module_name,
 
     if (CPyImport_IsInitialized(state) ||
             CPyImport_GetModuleCache(module_cache) == (PyObject *)*module_static) {
-        PyErr_Format(PyExc_ImportError,
-                     "initialized native module '%U' is missing from sys.modules",
-                     module_name);
+        CPyImport_SetModuleMissingError(module_name);
         CPyImport_ReleaseLockPreservingException(module_lock);
         return NULL;
     }
@@ -1831,6 +1839,20 @@ PyObject *CPyImport_ImportNative(PyObject *module_name,
 
     // Now execute the module body, with __file__ and __package__ already set.
     if (exec_fn(modobj) != 0) {
+        goto fail;
+    }
+
+    // Direct imports bypass importlib's final sys.modules lookup. Reject changes
+    // to the entry instead of returning an object different from future imports.
+    PyObject *current = PyDict_GetItemWithError(module_dict, module_name);
+    if (current == NULL) {
+        if (!PyErr_Occurred()) {
+            CPyImport_SetModuleMissingError(module_name);
+        }
+        goto fail;
+    }
+    if (current != modobj) {
+        CPyImport_SetModuleReplacedError(module_name);
         goto fail;
     }
 

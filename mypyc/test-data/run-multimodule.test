@@ -438,6 +438,63 @@ else:
 
 assert sys.modules["other_top"] is fake
 
+[case testNativeImportRejectsSysModulesReplacementDuringInitialization]
+# separate: [(["native.py", "other_target.py"], "testgroup")]
+def load_target() -> None:
+    import other_target
+
+[file other_target.py]
+import sys
+
+replacement = object()
+sys.modules[__name__] = replacement
+
+[file sys/__init__.pyi]
+modules: dict[str, object]
+
+[file driver.py]
+import sys
+
+import native
+
+from testutil import assertRaises
+
+with assertRaises(
+    ImportError,
+    "native module 'other_target' in sys.modules was replaced after initialization",
+):
+    native.load_target()
+
+assert "other_target" not in sys.modules
+
+[case testNativeImportRejectsSysModulesRemovalDuringInitialization]
+# separate: [(["native.py", "other_target.py"], "testgroup")]
+def load_target() -> None:
+    import other_target
+
+[file other_target.py]
+import sys
+
+del sys.modules[__name__]
+
+[file sys/__init__.pyi]
+modules: dict[str, object]
+
+[file driver.py]
+import sys
+
+import native
+
+from testutil import assertRaises
+
+with assertRaises(
+    ImportError,
+    "initialized native module 'other_target' is missing from sys.modules",
+):
+    native.load_target()
+
+assert "other_target" not in sys.modules
+
 [case testMultiModuleFastpaths]
 [file other_main.py]
 
