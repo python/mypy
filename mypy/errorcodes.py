@@ -165,6 +165,9 @@ NO_UNTYPED_CALL: Final = ErrorCode(
     "Disallow calling functions without type annotations from annotated functions",
     "General",
 )
+REDUNDANT_ANNOTATION: Final = ErrorCode(
+    "redundant-annotation", "Check that the annotation is necessary or can be omitted", "General"
+)
 REDUNDANT_CAST: Final = ErrorCode(
     "redundant-cast", "Check that cast changes type of expression", "General"
 )

@@ -635,6 +635,15 @@ Configuring warnings
 For more information, see the :ref:`Configuring warnings <configuring-warnings>`
 section of the command line docs.
 
+.. confval:: warn_redundant_annotation
+
+    :type: boolean
+    :default: False
+
+    Warns when the annotation type is the same as the inferred type.
+
+    This option may only be set in the global section (``[mypy]``).
+
 .. confval:: warn_redundant_casts
 
     :type: boolean
