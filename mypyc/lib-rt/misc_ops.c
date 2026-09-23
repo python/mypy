@@ -906,33 +906,24 @@ PyObject *CPyImport_ImportFromMany(PyObject *mod_id, PyObject *names, PyObject *
     return mod;
 }
 
-// Import attributes from an already-imported native module and store them
+// Import attributes from an already-imported native module object and store them
 // in the globals dict.  Returns the module on success, NULL on error.
-PyObject *CPyImport_GetNativeAttrs(PyObject *mod_id, PyObject *names,
+PyObject *CPyImport_GetNativeAttrs(PyObject *mod, PyObject *names,
                                    PyObject *as_names, PyObject *globals) {
-    PyObject *mod = PyImport_GetModule(mod_id);
-    if (mod == NULL) {
-        if (!PyErr_Occurred()) {
-            PyErr_Format(PyExc_ImportError, "module '%U' is not in sys.modules", mod_id);
-        }
-        return NULL;
-    }
     for (Py_ssize_t i = 0; i < PyTuple_GET_SIZE(names); i++) {
         PyObject *name = PyTuple_GET_ITEM(names, i);
         PyObject *as_name = PyTuple_GET_ITEM(as_names, i);
         PyObject *obj = PyObject_GetAttr(mod, name);
         if (obj == NULL) {
-            Py_DECREF(mod);
             return NULL;
         }
         int ret = CPyDict_SetItem(globals, as_name, obj);
         Py_DECREF(obj);
         if (ret < 0) {
-            Py_DECREF(mod);
             return NULL;
         }
     }
-    return mod;
+    return Py_NewRef(mod);
 }
 
 // From CPython
@@ -1667,6 +1658,18 @@ static int CPyImport_ReleaseLockPreservingException(PyObject *module_lock) {
     return result;
 }
 
+static void CPyImport_SetModuleReplacedError(PyObject *module_name) {
+    PyErr_Format(PyExc_ImportError,
+                 "native module '%U' in sys.modules was replaced after initialization",
+                 module_name);
+}
+
+static void CPyImport_SetModuleMissingError(PyObject *module_name) {
+    PyErr_Format(PyExc_ImportError,
+                 "initialized native module '%U' is missing from sys.modules",
+                 module_name);
+}
+
 // Execute a module once; caller holds the module lock.
 int CPyImport_Exec(PyObject *module, int (*exec_fn)(PyObject *), CPyImportState *state,
                    CPyModuleCache *module_cache) {
@@ -1721,14 +1724,26 @@ PyObject *CPyImport_ImportNative(PyObject *module_name,
     // We then check sys.modules to determine whether the module body
     // has already been executed (or is being executed in a circular import).
     PyObject *module_lock;
-    int lock_result = CPyImport_AcquireLock(lock_api, module_name, &module_lock);
-    if (lock_result == CPY_LOCK_DEADLOCK) {
+    int lock_result;
+    bool retried_after_execution = false;
+    while ((lock_result = CPyImport_AcquireLock(lock_api, module_name, &module_lock)) ==
+           CPY_LOCK_DEADLOCK) {
         PyObject *partial = PyDict_GetItemWithError(PyImport_GetModuleDict(), module_name);
         if (partial != NULL &&
                 (*module_static == NULL || partial == (PyObject *)*module_static)) {
             CPyImport_ReplaceModuleCacheUnverified(module_cache, partial);
             Py_INCREF(partial);
             return partial;
+        }
+        // Multiple threads can detect the same cycle concurrently on a
+        // free-threaded build. If the target body has finished but the module
+        // is temporarily absent during importlib's pop/reinsert, retry once to
+        // wait for finalization. If it's still missing quit and report an error
+        // to not spin infinitely.
+        if (partial == NULL && !PyErr_Occurred() && CPyImport_IsExecuted(state) &&
+                !retried_after_execution) {
+            retried_after_execution = true;
+            continue;
         }
         if (!PyErr_Occurred()) {
             PyErr_Format(PyExc_ImportError,
@@ -1779,9 +1794,7 @@ PyObject *CPyImport_ImportNative(PyObject *module_name,
                 }
                 return existing;
             }
-            PyErr_Format(PyExc_ImportError,
-                         "native module '%U' in sys.modules was replaced after initialization",
-                         module_name);
+            CPyImport_SetModuleReplacedError(module_name);
             CPyImport_ReleaseLockPreservingException(module_lock);
             return NULL;
         }
@@ -1793,9 +1806,7 @@ PyObject *CPyImport_ImportNative(PyObject *module_name,
 
     if (CPyImport_IsInitialized(state) ||
             CPyImport_GetModuleCache(module_cache) == (PyObject *)*module_static) {
-        PyErr_Format(PyExc_ImportError,
-                     "initialized native module '%U' is missing from sys.modules",
-                     module_name);
+        CPyImport_SetModuleMissingError(module_name);
         CPyImport_ReleaseLockPreservingException(module_lock);
         return NULL;
     }
@@ -1828,6 +1839,20 @@ PyObject *CPyImport_ImportNative(PyObject *module_name,
 
     // Now execute the module body, with __file__ and __package__ already set.
     if (exec_fn(modobj) != 0) {
+        goto fail;
+    }
+
+    // Direct imports bypass importlib's final sys.modules lookup. Reject changes
+    // to the entry instead of returning an object different from future imports.
+    PyObject *current = PyDict_GetItemWithError(module_dict, module_name);
+    if (current == NULL) {
+        if (!PyErr_Occurred()) {
+            CPyImport_SetModuleMissingError(module_name);
+        }
+        goto fail;
+    }
+    if (current != modobj) {
+        CPyImport_SetModuleReplacedError(module_name);
         goto fail;
     }
 
