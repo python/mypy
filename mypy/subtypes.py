@@ -2202,7 +2202,9 @@ def unify_generic_callable(
     return cast(NormalizedCallableType, applied)
 
 
-def union_function_signatures(callables: list[CallableType]) -> CallableType | None:
+def union_function_signatures(
+    callables: list[CallableType], *, simplify_unions: bool = False
+) -> CallableType | None:
     """Combine a list of functions by taking the union of all the arguments and return types."""
     if len(callables) == 1:
         return callables[0]
@@ -2240,10 +2242,17 @@ def union_function_signatures(callables: list[CallableType]) -> CallableType | N
             new_args[i].append(arg)
         new_returns.append(target.ret_type)
 
+    if simplify_unions:
+        arg_types = [mypy.typeops.make_simplified_union(args) for args in new_args]
+        ret_type = mypy.typeops.make_simplified_union(new_returns)
+    else:
+        arg_types = [UnionType.make_union(args) for args in new_args]
+        ret_type = UnionType.make_union(new_returns)
+
     return callables[0].copy_modified(
-        arg_types=[mypy.typeops.make_simplified_union(args) for args in new_args],
+        arg_types=arg_types,
         arg_kinds=new_kinds,
-        ret_type=mypy.typeops.make_simplified_union(new_returns),
+        ret_type=ret_type,
         variables=variables,
         implicit=True,
     )

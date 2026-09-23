@@ -3311,7 +3311,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             return AnyType(TypeOfAny.special_form)
         callables = cast("list[CallableType]", types)
 
-        combined = union_function_signatures(callables)
+        combined = union_function_signatures(callables, simplify_unions=True)
         if combined is not None:
             return combined
 
