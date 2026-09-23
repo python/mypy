@@ -74,19 +74,39 @@ def f(x=...) -> None: ...
 
 [case testDefaultArgSentinel]
 from typing_extensions import sentinel
+
 _MISSING = sentinel('_MISSING')
+
 def f(x=_MISSING): ...
 [out]
 def f(x=...) -> None: ...
 
 [case testDefaultArgSentinel_inspect]
 from typing_extensions import sentinel
+
 _MISSING = sentinel('_MISSING')
+
 def f(x=_MISSING): ...
 [out]
+import typing_extensions
 from _typeshed import Incomplete
 
-def f(x: Incomplete = ...): ...
+_MISSING: typing_extensions.sentinel
+def f(x: Incomplete | _MISSING = ...): ...
+
+[case testDefaultArgSentinelCrossModule_inspect]
+from other import MISSING
+
+def f(x=MISSING): ...
+[file other.py]
+from typing_extensions import sentinel
+
+MISSING = sentinel('MISSING')
+[out]
+import other
+from _typeshed import Incomplete
+
+def f(x: Incomplete | other.MISSING = ...): ...
 
 [case testPreserveFunctionAnnotation]
 def f(x: Foo) -> Bar: ...

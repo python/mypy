@@ -1064,7 +1064,21 @@ class StubgencSuite(unittest.TestCase):
                 docstring=getattr(TestClass, "__doc__", None),
             ),
         )
-        assert_equal(output, ["def test(self, arg0: Incomplete = ...) -> None: ..."])
+        assert_equal(output, ["def test(self, arg0: Incomplete | _MISSING = ...) -> None: ..."])
+
+    def test_generate_variable_stub_sentinel_ignores_privacy(self) -> None:
+        from typing_extensions import sentinel
+
+        _MISSING = sentinel("_MISSING")
+        mod = ModuleType(__name__, "")
+        gen = InspectionStubGenerator(mod.__name__, known_modules=[mod.__name__], module=mod)
+        gen.is_c_module = False
+        output: list[str] = []
+        gen.generate_variable_stub("_MISSING", _MISSING, output=output)
+        # A sentinel's declaration is always emitted, even for a private-looking
+        # name, since it may be referenced from a default value's type elsewhere.
+        assert len(output) == 1
+        assert output[0].startswith("_MISSING: ")
 
     def test_non_c_generate_signature_with_kw_only_args(self) -> None:
         class TestClass:

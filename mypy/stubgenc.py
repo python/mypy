@@ -337,8 +337,13 @@ class InspectionStubGenerator(BaseStubGenerator):
                         argtype = get_annotation(arg)
                     elif _is_sentinel_object(default_value):
                         # The runtime type of a `sentinel()` marker object is not a
-                        # useful annotation for the parameter it defaults.
-                        argtype = self.add_name("_typeshed.Incomplete")
+                        # useful annotation for the parameter it defaults. Reference
+                        # the sentinel itself by name when possible, e.g.
+                        # `Incomplete | _MISSING`, importing it if it lives in
+                        # another module.
+                        incomplete = self.add_name("_typeshed.Incomplete")
+                        sentinel_ref = self._sentinel_type_ref(default_value)
+                        argtype = f"{incomplete} | {sentinel_ref}" if sentinel_ref else incomplete
                     else:
                         argtype = self.get_type_annotation(default_value)
                         if argtype == "None":
@@ -552,8 +557,37 @@ class InspectionStubGenerator(BaseStubGenerator):
             return self.add_name("typing.Callable")
         elif isinstance(obj, ModuleType):
             return self.add_name("types.ModuleType", require=False)
+        elif _is_sentinel_object(obj):
+            # On 3.15+, typing_extensions.sentinel is builtins.sentinel, so
+            # type(obj).__module__ is "builtins" there and "typing_extensions"
+            # otherwise. Always use the portable spelling instead of whichever
+            # one happens to match the interpreter running stubgen. Use the
+            # dotted form (not add_name) since a module constructing a
+            # sentinel will itself have already imported the bare `sentinel`
+            # name, which would otherwise force an alias here.
+            return "typing_extensions.sentinel"
         else:
             return self.get_type_fullname(type(obj))
+
+    def _sentinel_type_ref(self, sentinel_obj: object) -> str | None:
+        """Return a reference to the name a sentinel object is bound to.
+
+        ``sentinel()``/``Sentinel()`` objects record the module and name they
+        were assigned to (this is how they support pickling), so we can point
+        directly at them (importing from another module if needed), rather
+        than using their unhelpful runtime type. Returns None if we can't (e.g.
+        the name isn't a valid identifier).
+
+        A leading-underscore sentinel name is treated the same as a public
+        one: ``generate_variable_stub`` always emits sentinel declarations
+        regardless of privacy, since a sentinel used as a default is part of
+        the (typed) signature even when its name looks private.
+        """
+        name = getattr(sentinel_obj, "__name__", None)
+        module = getattr(sentinel_obj, "__module__", None)
+        if not isinstance(name, str) or not name.isidentifier() or not module:
+            return None
+        return f"{module}.{name}"
 
     def is_function(self, obj: object) -> bool:
         if self.is_c_module:
@@ -929,7 +963,15 @@ class InspectionStubGenerator(BaseStubGenerator):
         The result lines will be appended to 'output'. If necessary, any
         required names will be added to 'imports'.
         """
-        if self.is_private_name(name, f"{self.module_name}.{name}") or self.is_not_in_all(name):
+        if (
+            # A sentinel's name is emitted regardless of privacy/`__all__`, since it may
+            # be referenced from the type of a default value elsewhere in the stub.
+            not _is_sentinel_object(obj)
+            and (
+                self.is_private_name(name, f"{self.module_name}.{name}")
+                or self.is_not_in_all(name)
+            )
+        ):
             return
         self.record_name(name)
         type_str = self.strip_or_import(self.get_type_annotation(obj))
