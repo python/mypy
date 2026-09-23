@@ -2373,3 +2373,16 @@ if TYPE_CHECKING:
 class Group(TypedDict):
     params: "Tuple[Alias, ...]"
 [builtins fixtures/tuple.pyi]
+
+[case testPEP695TypeAliasRecursiveConcatenateNoCrash]
+from typing import Callable
+from typing_extensions import Concatenate
+
+type A[**P] = Callable[[Callable[P, None]], A[Concatenate[int, P]]]  # E: Invalid recursive alias: type variable nesting on right hand side
+type B[**P] = Callable[[Callable[P, None]], B[P]]
+
+def foo[**P](a: A[P], b: B[P]) -> None:
+    reveal_type(a)  # N: Revealed type is "Any"
+    reveal_type(b)  # N: Revealed type is "def (def (*P.args, **P.kwargs)) -> ..."
+[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-full.pyi]
