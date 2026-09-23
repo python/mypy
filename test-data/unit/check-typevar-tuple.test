@@ -3105,6 +3105,117 @@ foo(t3)  # E: Argument 1 to "foo" has incompatible type "C[Unpack[tuple[Any, ...
 foo(t4)
 [builtins fixtures/tuple.pyi]
 
+[case testInferAgainstVariadicAnySplit]
+from typing import Generic, TypeVar, Optional, Any
+from typing_extensions import TypeVarTuple, Unpack
+
+T = TypeVar("T", bound=Any)
+Ts = TypeVarTuple("Ts")
+
+class Result(Generic[Unpack[Ts]]):
+    def foo(self: Result[T, Unpack[tuple[Any, ...]]]) -> Optional[T]: ...
+    def bar(self: Result[Unpack[tuple[Any, ...]], T]) -> Optional[T]: ...
+
+result: Result[Unpack[tuple[Any, ...]]]
+reveal_type(result.foo)  # N: Revealed type is "def () -> Any | None"
+reveal_type(result.bar)  # N: Revealed type is "def () -> Any | None"
+[builtins fixtures/tuple.pyi]
+
+[case testInferAgainstVariadicPrefixProtocol]
+from typing import Any, Protocol, TypeVar
+from typing_extensions import TypeVarTuple, Unpack
+
+T = TypeVar("T")
+Ts = TypeVarTuple("Ts")
+
+class WithTuple(Protocol[Unpack[Ts]]):
+    tup: tuple[Unpack[Ts]]
+
+def get_tuple(e: WithTuple[Unpack[Ts]]) -> tuple[Unpack[Ts]]:
+    return e.tup
+
+def get_first(e: WithTuple[T, Unpack[tuple[Any, ...]]]) -> T:
+    return e.tup[0]
+
+class X:
+    tup: tuple[int, str]
+
+reveal_type(get_tuple(X()))  # N: Revealed type is "tuple[builtins.int, builtins.str]"
+reveal_type(get_first(X()))  # N: Revealed type is "builtins.int"
+[builtins fixtures/tuple.pyi]
+
+[case testInferAgainstVariadicPrefixSuffix]
+from typing import Any, Protocol, TypeVar
+from typing_extensions import TypeVarTuple, Unpack
+
+T = TypeVar("T")
+T1 = TypeVar("T1")
+T2 = TypeVar("T2")
+T3 = TypeVar("T3")
+T4 = TypeVar("T4")
+Ts = TypeVarTuple("Ts")
+
+def first_last(t: tuple[T1, Unpack[tuple[Any, ...]], T2]) -> tuple[T1, T2]: ...
+def first_last_2(t: tuple[T1, T2, Unpack[Ts], T3, T4]) -> tuple[tuple[T1, T2, T3, T4], tuple[Unpack[Ts]]]: ...
+def first_last_middle(t: tuple[T1, Unpack[Ts], T2]) -> tuple[tuple[T1, T2], tuple[Unpack[Ts]]]: ...
+
+t1: tuple[Any, ...]
+t2i: tuple[str, Unpack[tuple[int, ...]], bytes]
+t2a: tuple[str, Unpack[tuple[Any, ...]], bytes]
+t3: tuple[str, bytes, Unpack[tuple[int, ...]], float, bool]
+
+reveal_type(first_last(t1))  # N: Revealed type is "tuple[Any, Any]"
+reveal_type(first_last(t2i))  # N: Revealed type is "tuple[builtins.str, builtins.bytes]"
+reveal_type(first_last(t3))  # N: Revealed type is "tuple[builtins.str, builtins.bool]"
+
+reveal_type(first_last_2(t1))  # N: Revealed type is "tuple[tuple[Any, Any, Any, Any], builtins.tuple[Any, ...]]"
+reveal_type(first_last_2(t2a))  # N: Revealed type is "tuple[tuple[builtins.str, Any, Any, builtins.bytes], builtins.tuple[Any, ...]]"
+reveal_type(first_last_2(t3))  # N: Revealed type is "tuple[tuple[builtins.str, builtins.bytes, builtins.float, builtins.bool], builtins.tuple[builtins.int, ...]]"
+
+reveal_type(first_last_middle(t3))  # N: Revealed type is "tuple[tuple[builtins.str, builtins.bool], tuple[builtins.bytes, Unpack[builtins.tuple[builtins.int, ...]], builtins.float]]"
+[builtins fixtures/tuple.pyi]
+
+[case testInferAgainstVariadicPrefixSuffix2]
+from typing import Any, TypeVar, Generic
+from typing_extensions import TypeVarTuple, Unpack
+
+T = TypeVar("T")
+T1 = TypeVar("T1")
+T2 = TypeVar("T2")
+Ts = TypeVarTuple("Ts")
+
+def mix(x: tuple[T1, T2, Unpack[Ts]]) -> tuple[T1, T2, tuple[Unpack[Ts]]]: ...
+a: tuple[str, Unpack[tuple[Any, ...]], bytes, float]
+
+reveal_type(mix(a))  # N: Revealed type is "tuple[builtins.str, Any, tuple[Unpack[builtins.tuple[Any, ...]], builtins.bytes, builtins.float]]"
+
+class C(Generic[T1, Unpack[Ts], T2]):
+     start: T1
+     end: T2
+     middle: tuple[Unpack[Ts]]
+
+c: C[str, bool, Unpack[tuple[int, ...]]]
+reveal_type(c)  # N: Revealed type is "__main__.C[builtins.str, builtins.bool, Unpack[builtins.tuple[builtins.int, ...]]]"
+reveal_type(c.start)  # N: Revealed type is "builtins.str"
+reveal_type(c.middle)  # N: Revealed type is "tuple[builtins.bool, Unpack[builtins.tuple[builtins.int, ...]]]"
+reveal_type(c.end)  # N: Revealed type is "builtins.int"
+
+cs: C[Unpack[tuple[int, ...]], str, bool]
+reveal_type(cs)  # N: Revealed type is "__main__.C[Unpack[builtins.tuple[builtins.int, ...]], builtins.str, builtins.bool]"
+reveal_type(cs.start)  # N: Revealed type is "builtins.int"
+reveal_type(cs.middle)  # N: Revealed type is "tuple[Unpack[builtins.tuple[builtins.int, ...]], builtins.str]"
+reveal_type(cs.end)  # N: Revealed type is "builtins.bool"
+
+def mix2(x: tuple[T1, T, T2]) -> tuple[T, tuple[T1, T2]]: ...
+b1: tuple[int, str, Unpack[tuple[Any, ...]]]
+b2: tuple[int, Unpack[tuple[Any, ...]], str]
+b3: tuple[Unpack[tuple[Any, ...]], int, str]
+
+reveal_type(mix2(b1))  # N: Revealed type is "tuple[builtins.str, tuple[builtins.int, Any]]"
+reveal_type(mix2(b2))  # N: Revealed type is "tuple[Any, tuple[builtins.int, builtins.str]]"
+reveal_type(mix2(b3))  # N: Revealed type is "tuple[builtins.int, tuple[Any, builtins.str]]"
+[builtins fixtures/tuple.pyi]
+
 [case testTypeVarTupleExplicitSelfTypeWithExtraArgs]
 # https://github.com/python/mypy/issues/21878
 from typing import Generic, TypeVarTuple, Unpack
@@ -3125,4 +3236,3 @@ A(1, 2, 3).add()  # E: Invalid self argument "A[int, int, int]" to attribute fun
 reveal_type(A(1, 2, 3).plain())  # N: Revealed type is "__main__.A[Literal[1]?, Literal[2]?, Literal[3]?]"
 # ... as do method-level TypeVarTuples in self-types.
 reveal_type(A(1, 2, 3).meth_tv((1, 2, 3)))  # N: Revealed type is "__main__.A[Literal[1]?, Literal[2]?, Literal[3]?]"
-[builtins fixtures/tuple.pyi]

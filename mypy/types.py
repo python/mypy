@@ -4253,7 +4253,15 @@ def has_recursive_types(typ: Type) -> bool:
 def split_with_prefix_and_suffix(
     types: tuple[Type, ...], prefix: int, suffix: int
 ) -> tuple[tuple[Type, ...], tuple[Type, ...], tuple[Type, ...]]:
-    if len(types) <= prefix + suffix:
+    # The caller must validate that the split can be satisfied, i.e. there is
+    # enough capacity in either initial type list or there is a variadic unpack.
+    # Otherwise, this function may return nonsensical result.
+    # TODO: should we add an assert here?
+    needs_extend = False
+    index = find_unpack_in_list(types)
+    if index is not None:
+        needs_extend = index < prefix or len(types) - index - 1 < suffix
+    if needs_extend:
         types = extend_args_for_prefix_and_suffix(types, prefix, suffix)
     if suffix:
         return types[:prefix], types[prefix:-suffix], types[-suffix:]

@@ -438,6 +438,63 @@ else:
 
 assert sys.modules["other_top"] is fake
 
+[case testNativeImportRejectsSysModulesReplacementDuringInitialization]
+# separate: [(["native.py", "other_target.py"], "testgroup")]
+def load_target() -> None:
+    import other_target
+
+[file other_target.py]
+import sys
+
+replacement = object()
+sys.modules[__name__] = replacement
+
+[file sys/__init__.pyi]
+modules: dict[str, object]
+
+[file driver.py]
+import sys
+
+import native
+
+from testutil import assertRaises
+
+with assertRaises(
+    ImportError,
+    "native module 'other_target' in sys.modules was replaced after initialization",
+):
+    native.load_target()
+
+assert "other_target" not in sys.modules
+
+[case testNativeImportRejectsSysModulesRemovalDuringInitialization]
+# separate: [(["native.py", "other_target.py"], "testgroup")]
+def load_target() -> None:
+    import other_target
+
+[file other_target.py]
+import sys
+
+del sys.modules[__name__]
+
+[file sys/__init__.pyi]
+modules: dict[str, object]
+
+[file driver.py]
+import sys
+
+import native
+
+from testutil import assertRaises
+
+with assertRaises(
+    ImportError,
+    "initialized native module 'other_target' is missing from sys.modules",
+):
+    native.load_target()
+
+assert "other_target" not in sys.modules
+
 [case testMultiModuleFastpaths]
 [file other_main.py]
 
@@ -2619,6 +2676,48 @@ def value() -> str:
 barrier.wait(timeout=15)
 import other_a
 other_value = other_a.value()
+
+[file driver.py]
+from concurrent.futures import ThreadPoolExecutor
+import importlib
+
+with ThreadPoolExecutor(max_workers=2) as executor:
+    future_a = executor.submit(importlib.import_module, "other_a")
+    future_b = executor.submit(importlib.import_module, "other_b")
+    other_a = future_a.result(timeout=15)
+    other_b = future_b.result(timeout=15)
+
+assert other_a.other_value == "b"
+assert other_b.other_value == "a"
+
+[case testConcurrentCircularNativeFromImports]
+# separate: [(["other_a.py", "other_b.py"], "testgroup")]
+pass
+
+[file import_sync.py]
+from threading import Barrier
+
+barrier = Barrier(2)
+
+[file other_a.py]
+from import_sync import barrier
+
+def value() -> str:
+    return "a"
+
+barrier.wait(timeout=15)
+from other_b import value as other_value_fn
+other_value = other_value_fn()
+
+[file other_b.py]
+from import_sync import barrier
+
+def value() -> str:
+    return "b"
+
+barrier.wait(timeout=15)
+from other_a import value as other_value_fn
+other_value = other_value_fn()
 
 [file driver.py]
 from concurrent.futures import ThreadPoolExecutor

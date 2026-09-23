@@ -6013,7 +6013,9 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             )
             if e.key is None:
                 # Logic and motivation here is similar to check_generator_or_comprehension().
-                arg_types = [self.chk.named_generic_type("typing.Mapping", [ktdef, vtdef])]
+                arg_types = [
+                    self.chk.named_generic_type("_typeshed.SupportsKeysAndGetItem", [ktdef, vtdef])
+                ]
                 arg_kinds = [nodes.ARG_POS]
                 arg_names = [None]
                 args = [e.value]
