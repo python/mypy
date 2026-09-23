@@ -65,8 +65,9 @@ class IPCBase:
 
     def __init__(self, name: str, timeout: float | None) -> None:
         self.name = name
-        self.timeout = timeout  # Connections
-        self.io_timeout = timeout  # Reads and writes
+        self.timeout = timeout
+        # Windows-specific I/O timeout overrides should be applied here.
+        self.win_io_timeout = timeout
         self.message_size: int | None = None
         self.buffer = bytearray()
 
@@ -103,7 +104,9 @@ class IPCBase:
                 try:
                     if err == _winapi.ERROR_IO_PENDING:
                         timeout = (
-                            int(self.io_timeout * 1000) if self.io_timeout else _winapi.INFINITE
+                            int(self.win_io_timeout * 1000)
+                            if self.win_io_timeout
+                            else _winapi.INFINITE
                         )
                         res = _winapi.WaitForSingleObject(ov.event, timeout)
                         if res != _winapi.WAIT_OBJECT_0:
@@ -162,7 +165,9 @@ class IPCBase:
                 try:
                     if err == _winapi.ERROR_IO_PENDING:
                         timeout = (
-                            int(self.io_timeout * 1000) if self.io_timeout else _winapi.INFINITE
+                            int(self.win_io_timeout * 1000)
+                            if self.win_io_timeout
+                            else _winapi.INFINITE
                         )
                         res = _winapi.WaitForSingleObject(ov.event, timeout)
                         if res != _winapi.WAIT_OBJECT_0:
@@ -252,12 +257,12 @@ class IPCServer(IPCBase):
         else:
             name = f"{name}.sock"
         super().__init__(name, timeout)
-        # Unlike the client, a server applies its timeout only to accepting a
-        # connection, never to the traffic that follows: see __enter__ below. Once a
-        # peer is connected it may legitimately stay silent for a long time while it
-        # computes.
-        self.io_timeout = None
         if sys.platform == "win32":
+            # Unlike the client, a server applies its timeout only to accepting a
+            # connection, never to the traffic that follows: see __enter__() below.
+            # On POSIX this happens naturally after the sock.accept() call. On
+            # Windows we need to set this manually to ensure equivalent behavior.
+            self.io_timeout = None
             self.connection = _winapi.CreateNamedPipe(
                 self.name,
                 _winapi.PIPE_ACCESS_DUPLEX
@@ -308,10 +313,6 @@ class IPCServer(IPCBase):
                 assert err == 0
         else:
             try:
-                # Note self.timeout is set on the listening socket in __init__, but this
-                # applies to accept() only: the socket returned below is always blocking
-                # (see socket.accept()). This is why self.io_timeout is None -- it ensures
-                # equivalent behavior between Windows and POSIX.
                 self.connection, _ = self.sock.accept()
                 # This is already default on Linux, we set same buffer size
                 # for macOS vs Linux consistency to simplify reasoning.
