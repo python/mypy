@@ -262,7 +262,7 @@ class IPCServer(IPCBase):
             # connection, never to the traffic that follows: see __enter__() below.
             # On POSIX this happens naturally after the sock.accept() call. On
             # Windows we need to set this manually to ensure equivalent behavior.
-            self.io_timeout = None
+            self.win_io_timeout = None
             self.connection = _winapi.CreateNamedPipe(
                 self.name,
                 _winapi.PIPE_ACCESS_DUPLEX
