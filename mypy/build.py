@@ -288,12 +288,13 @@ class WorkerClient:
 
     def connect(self) -> None:
         end_time = time.time() + WORKER_START_TIMEOUT
-        last_exception: Exception | None = None
-        while time.time() < end_time:
+        while True:
             try:
                 data = read_status(self.status_file)
             except BadStatus as exc:
                 last_exception = exc
+                if time.time() >= end_time:
+                    break
                 time.sleep(WORKER_START_INTERVAL)
                 continue
             try:
