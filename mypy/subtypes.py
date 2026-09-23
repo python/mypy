@@ -2221,15 +2221,23 @@ def union_function_signatures(
     # confusing and ought to be re-written anyway.)
     callables, variables = merge_typevars_in_callables_by_name(callables)
 
-    new_args: list[list[Type]] = [[] for _ in callables[0].arg_types]
-    new_kinds = list(callables[0].arg_kinds)
+    new_callable = callables[0].with_unpacked_kwargs().with_normalized_var_args()
+    new_args: list[list[Type]] = [[] for _ in new_callable.arg_types]
+    new_kinds = list(new_callable.arg_kinds)
     new_returns: list[Type] = []
 
     for target in callables:
+        target = target.with_unpacked_kwargs().with_normalized_var_args()
         # TODO: Enhance the merging logic to handle a wider variety of signatures.
+        # In particular, allow name-only arguments that appear in different order.
         if len(new_kinds) != len(target.arg_kinds):
             return None
         for i, (new_kind, target_kind) in enumerate(zip(new_kinds, target.arg_kinds)):
+            if target_kind.is_named() and target.arg_names[i] != new_callable.arg_names[i]:
+                return None
+            if isinstance(target.arg_types[i], (ParamSpecType, UnpackType)):
+                # It is risky to put these inside a union.
+                return None
             if new_kind == target_kind:
                 continue
             if new_kind.is_positional() and target_kind.is_positional():
@@ -2248,7 +2256,7 @@ def union_function_signatures(
         arg_types = [UnionType.make_union(args) for args in new_args]
         ret_type = UnionType.make_union(new_returns)
 
-    return callables[0].copy_modified(
+    return new_callable.copy_modified(
         arg_types=arg_types,
         arg_kinds=new_kinds,
         ret_type=ret_type,
