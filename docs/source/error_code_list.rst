@@ -438,6 +438,19 @@ Example:
     #        variable has type "str")  [assignment]
     r.name = 5
 
+Less obviously, this can also occur when importing, for the same underlying reason:
+
+.. code-block:: python
+
+    from m1 import *
+    from m2 import * # E: Incompatible import of "x" (imported name has type "int", local name has type "str") [assignment]
+
+    [file m1.py]
+    x = ''
+
+    [file m2.py]
+    x = 1
+
 .. _code-method-assign:
 
 Check that assignment target is not a method [method-assign]
