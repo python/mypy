@@ -67,3 +67,23 @@ class ParseTestDataSuite(Suite):
         assert (
             "version==3.7 always false since minimum runtime version is (3, 10)" in actual.stdout
         )
+
+    def test_typical_error_comment(self) -> None:
+        # Act
+        actual = _run_pytest("""
+            [case abc]
+            a # E: typical-looking error comment
+            """)
+
+        # Assert
+        assert "typical-looking error comment" in actual.stderr
+
+    def test_lineleading_error_comment(self) -> None:
+        # Act
+        actual = _run_pytest("""
+            [case abc]
+            # E: line-leading error comment
+            """)
+
+        # Assert
+        assert "line-leading error comment" in actual.stderr
