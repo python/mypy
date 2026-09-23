@@ -355,7 +355,7 @@ def _type_form_item_can_be_union(item: Type) -> bool:
     is a union expression such as `int | str`.
     """
     item = get_proper_type(item)
-    if isinstance(item, AnyType) or isinstance(item, UnionType):
+    if isinstance(item, (AnyType, UnionType)):
         return True
     if isinstance(item, TypeVarType):
         if item.values:
