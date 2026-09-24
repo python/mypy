@@ -968,16 +968,13 @@ class ASTConverter:
                             blocker=False,
                         )
                     translated_args: list[Type] = TypeConverter(
-                        self.errors,
-                        line=lineno,
-                        override_column=n.col_offset,
-                        is_fragment=True,
+                        self.errors, line=lineno, override_column=n.col_offset, is_fragment=True
                     ).translate_expr_list(func_type_ast.argtypes)
                     # Use a cast to work around `list` invariance
                     arg_types = cast(list[Type | None], translated_args)
-                return_type = TypeConverter(
-                    self.errors, line=lineno, is_fragment=True
-                ).visit(func_type_ast.returns)
+                return_type = TypeConverter(self.errors, line=lineno, is_fragment=True).visit(
+                    func_type_ast.returns
+                )
 
                 # add implicit self type
                 in_method_scope = self.class_and_function_stack[-2:] == ["C", "D"]
