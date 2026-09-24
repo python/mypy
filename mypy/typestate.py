@@ -113,6 +113,7 @@ class TypeState:
         self.inferring = []
         self.infer_unions = False
         self.infer_polymorphic = False
+        self.keep_unions = False
 
     def is_assumed_subtype(self, left: Type, right: Type) -> bool:
         for l, r in reversed(self._assuming):
