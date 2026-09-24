@@ -1016,6 +1016,13 @@ class A(Generic[T]):
           # E: Free type variable expected in Generic[...]
 [out]
 
+[case testSelfReferenceInGenericBase]
+from typing import Generic
+class C(Generic[C]): pass \
+    # E: Free type variable expected in Generic[...] \
+    # E: Cannot resolve name "C" (possible cyclic definition)
+[out]
+
 [case testRedeclaredTypeVarWithinNestedGenericClass]
 from typing import Generic, Iterable, TypeVar
 T = TypeVar('T')
