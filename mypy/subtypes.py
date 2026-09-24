@@ -1063,9 +1063,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
             # If simple logic failed, check a (somewhat ad hoc but important)
             # edge case: Overloaded(def (int) -> int, def (str) -> str) is
             # a subtype of def (int | str) -> int | str.
-            combined = union_function_signatures(
-                left.items, ignore_pos_arg_names=self.subtype_context.ignore_pos_arg_names
-            )
+            combined = union_function_signatures(left.items)
             if combined is not None and self._is_subtype(combined, right):
                 return True
             return False
@@ -2203,10 +2201,7 @@ def unify_generic_callable(
 
 
 def union_function_signatures(
-    callables: list[CallableType],
-    *,
-    simplify_unions: bool = False,
-    ignore_pos_arg_names: bool = False,
+    callables: list[CallableType], *, simplify_unions: bool = False
 ) -> CallableType | None:
     """Combine a list of functions by taking the union of all the arguments and return types."""
     if len(callables) == 1:
@@ -2238,10 +2233,10 @@ def union_function_signatures(
         if len(new_kinds) != len(target.arg_kinds):
             return None
         for i, (new_kind, target_kind) in enumerate(zip(new_kinds, target.arg_kinds)):
-            if target_kind.is_named() and target.arg_names[i] != new_callable.arg_names[i]:
-                return None
-            if not ignore_pos_arg_names and target_kind.is_positional():
-                if target.arg_names[i] != new_callable.arg_names[i]:
+            if target.arg_names[i] != new_callable.arg_names[i]:
+                if target_kind.is_named():
+                    return None
+                if target_kind.is_positional():
                     new_names[i] = None
             if isinstance(target.arg_types[i], (ParamSpecType, UnpackType)):
                 # It is risky to put these inside a union.
