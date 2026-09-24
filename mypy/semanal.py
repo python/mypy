@@ -243,6 +243,7 @@ from mypy.semanal_typeddict import TypedDictAnalyzer
 from mypy.tvar_scope import TypeVarLikeScope
 from mypy.typeanal import (
     SELF_TYPE_NAMES,
+    DeferredBaseClassVar,
     FindTypeVarVisitor,
     TypeAnalyser,
     TypeVarDefaultTranslator,
@@ -2034,7 +2035,7 @@ class SemanticAnalyzer(
             self.mark_incomplete(defn.name, defn)
             return
 
-        base_types, base_error = bases_result
+        base_types, base_error, deferred_bases = bases_result
         if any(isinstance(base, PlaceholderType) for base, _ in base_types):
             # We need to know the TypeInfo of each base to construct the MRO. Placeholder types
             # are okay in nested positions, since they can't affect the MRO.
@@ -2071,6 +2072,7 @@ class SemanticAnalyzer(
         defn.info.default_depends = default_depends
         if base_error:
             defn.info.fallback_to_any = True
+        defn.info.deferred_base_classes = deferred_bases
         if any_meta:
             defn.info.meta_fallback_to_any = True
 
@@ -2622,7 +2624,7 @@ class SemanticAnalyzer(
 
     def analyze_base_classes(
         self, cls_name: str, base_type_exprs: list[Expression]
-    ) -> tuple[list[tuple[ProperType, Expression]], bool] | None:
+    ) -> tuple[list[tuple[ProperType, Expression]], bool, list[tuple[Var, Expression]]] | None:
         """Analyze base class types.
 
         Return None if some definition was incomplete. Otherwise, return a tuple
@@ -2630,9 +2632,15 @@ class SemanticAnalyzer(
 
          * List of (analyzed type, original expression) tuples
          * Boolean indicating whether one of the bases had a semantic analysis error
+         * List of (variable, original expression) tuples for bases whose validity
+           could not be checked yet, because the variable's type has not been
+           inferred (inference happens in the type checker). These are
+           provisionally treated as having an Any base; the type checker
+           validates them once the type is known.
         """
         is_error = False
         bases = []
+        deferred: list[tuple[Var, Expression]] = []
         for i, base_expr in enumerate(base_type_exprs):
             if (
                 isinstance(base_expr, RefExpr)
@@ -2656,6 +2664,13 @@ class SemanticAnalyzer(
                     allow_type_any=True,
                     unique_name=inline_base(cls_name, i),
                 )
+            except DeferredBaseClassVar as e:
+                # The base is a variable whose type will only be known after
+                # type checking (e.g. `x = args[1]` where `args[1]` is `Any`).
+                # Provisionally treat it as Any; the type checker verifies the
+                # inferred type (see TypeChecker.check_deferred_base_classes).
+                deferred.append((e.var, base_expr))
+                base = AnyType(TypeOfAny.special_form)
             except TypeTranslationError:
                 name = self.get_name_repr_of_expr(base_expr)
                 if isinstance(base_expr, CallExpr):
@@ -2671,7 +2686,7 @@ class SemanticAnalyzer(
                 return None
             base = get_proper_type(base)
             bases.append((base, base_expr))
-        return bases, is_error
+        return bases, is_error, deferred
 
     def configure_base_classes(
         self, defn: ClassDef, bases: list[tuple[ProperType, Expression]]
@@ -2695,11 +2710,18 @@ class SemanticAnalyzer(
                 base_types.append(base)
             elif isinstance(base, AnyType):
                 if self.options.disallow_subclassing_any:
-                    if isinstance(base_expr, (NameExpr, MemberExpr)):
-                        msg = f'Class cannot subclass "{base_expr.name}" (has type "Any")'
-                    else:
-                        msg = 'Class cannot subclass value of type "Any"'
-                    self.fail(msg, base_expr)
+                    # A deferred base class is provisionally treated as Any;
+                    # the type checker reports this error once the actual
+                    # inferred type is known, if it is Any.
+                    is_deferred = any(
+                        expr is base_expr for _, expr in defn.info.deferred_base_classes
+                    )
+                    if not is_deferred:
+                        if isinstance(base_expr, (NameExpr, MemberExpr)):
+                            msg = f'Class cannot subclass "{base_expr.name}" (has type "Any")'
+                        else:
+                            msg = 'Class cannot subclass value of type "Any"'
+                        self.fail(msg, base_expr)
                 info.fallback_to_any = True
             elif isinstance(base, TypedDictType):
                 base_types.append(base.fallback)
