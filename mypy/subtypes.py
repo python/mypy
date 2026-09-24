@@ -37,6 +37,7 @@ from mypy.nodes import (
 from mypy.options import Options
 from mypy.state import state
 from mypy.types import (
+    MAX_PROTOCOL_DEPTH,
     MYPYC_NATIVE_INT_NAMES,
     TUPLE_LIKE_INSTANCE_NAMES,
     TYPED_NAMEDTUPLE_NAMES,
@@ -1309,6 +1310,8 @@ def is_protocol_implementation(
         if not members_right.issubset(members_left):
             return False
     assuming = right.type.assuming_proper if proper_subtype else right.type.assuming
+    if len(assuming) > MAX_PROTOCOL_DEPTH:
+        return True
     for l, r in reversed(assuming):
         if l == left and r == right:
             return True

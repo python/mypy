@@ -60,6 +60,8 @@ WORKER_START_INTERVAL: Final = 0.03 if slow_fs else 0.01
 WORKER_START_TIMEOUT: Final = 10 if slow_fs else 3
 WORKER_SHUTDOWN_TIMEOUT: Final = 3 if sys.platform != "win32" else 10
 
-WORKER_CONNECTION_TIMEOUT: Final = 10
+# On macOS some (binary) mypy plugins can take a lot of time to import
+# because of XProtect scanning.
+WORKER_CONNECTION_TIMEOUT: Final = 30 if sys.platform == "darwin" else 10
 WORKER_IDLE_TIMEOUT: Final = 600
 WORKER_DONE_TIMEOUT: Final = 600

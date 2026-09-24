@@ -22,6 +22,7 @@ from mypy.nodes import (
     TypeInfo,
 )
 from mypy.types import (
+    MAX_PROTOCOL_DEPTH,
     TUPLE_LIKE_INSTANCE_NAMES,
     AnyType,
     CallableType,
@@ -750,7 +751,9 @@ class ConstraintBuilderVisitor(TypeVisitor[list[Constraint]]):
         if isinstance(actual, (CallableType, Overloaded)) and template.type.is_protocol:
             if "__call__" in template.type.protocol_members:
                 # Special case: a generic callback protocol
-                if not any(template == t for t in template.type.inferring):
+                if len(template.type.inferring) < MAX_PROTOCOL_DEPTH and not any(
+                    template == t for t in template.type.inferring
+                ):
                     template.type.inferring.append(template)
                     call = mypy.subtypes.find_member(
                         "__call__", template, actual, is_operator=True
@@ -944,6 +947,7 @@ class ConstraintBuilderVisitor(TypeVisitor[list[Constraint]]):
             if (
                 template.type.is_protocol
                 and self.direction == SUPERTYPE_OF
+                and len(template.type.inferring) < MAX_PROTOCOL_DEPTH
                 and
                 # We avoid infinite recursion for structural subtypes by checking
                 # whether this type already appeared in the inference chain.
@@ -967,6 +971,7 @@ class ConstraintBuilderVisitor(TypeVisitor[list[Constraint]]):
             elif (
                 instance.type.is_protocol
                 and self.direction == SUBTYPE_OF
+                and len(instance.type.inferring) < MAX_PROTOCOL_DEPTH
                 and
                 # We avoid infinite recursion for structural subtypes also here.
                 not any(instance == i for i in reversed(instance.type.inferring))
@@ -1013,6 +1018,7 @@ class ConstraintBuilderVisitor(TypeVisitor[list[Constraint]]):
             if (
                 template.type.is_protocol
                 and self.direction == SUPERTYPE_OF
+                and len(template.type.inferring) < MAX_PROTOCOL_DEPTH
                 and not any(template == t for t in reversed(template.type.inferring))
                 and mypy.subtypes.is_protocol_implementation(instance, erased, skip=["__call__"])
             ):
