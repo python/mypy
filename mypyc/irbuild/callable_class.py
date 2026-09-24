@@ -9,7 +9,17 @@ from __future__ import annotations
 from mypyc.common import CPYFUNCTION_NAME, ENV_ATTR_NAME, PROPSET_PREFIX, SELF_NAME
 from mypyc.ir.class_ir import ClassIR
 from mypyc.ir.func_ir import FuncDecl, FuncIR, FuncSignature, RuntimeArg
-from mypyc.ir.ops import BasicBlock, Call, GetAttr, Integer, Register, Return, SetAttr, Value
+from mypyc.ir.ops import (
+    BasicBlock,
+    Branch,
+    Call,
+    GetAttr,
+    Integer,
+    Register,
+    Return,
+    SetAttr,
+    Value,
+)
 from mypyc.ir.rtypes import RInstance, c_pointer_rprimitive, int_rprimitive, object_rprimitive
 from mypyc.irbuild.builder import IRBuilder
 from mypyc.irbuild.context import FuncInfo, ImplicitClass
@@ -119,7 +129,18 @@ def add_coroutine_properties(
     line = builder.fn_info.fitem.line
 
     def get_func_wrapper() -> Value:
-        return builder.add(GetAttr(builder.self(), CPYFUNCTION_NAME, line))
+        # The wrapper is created lazily on first introspection, since creating it
+        # (including a code object) for every instance is expensive.
+        self_reg = builder.self()
+        init, done = BasicBlock(), BasicBlock()
+        cur = builder.add(
+            GetAttr(self_reg, CPYFUNCTION_NAME, line, borrow=True, allow_error_value=True)
+        )
+        builder.add(Branch(cur, init, done, Branch.IS_ERROR))
+        builder.activate_block(init)
+        builder.add_coroutine_setup_call(callable_class_ir.name, self_reg)
+        builder.goto_and_activate(done)
+        return builder.add(GetAttr(self_reg, CPYFUNCTION_NAME, line))
 
     for name, primitive in properties.items():
         with builder.enter_method(callable_class_ir, name, object_rprimitive, internal=True):
@@ -243,9 +264,6 @@ def instantiate_callable_class(builder: IRBuilder, fn_info: FuncInfo) -> Value:
         # happens before the callable can escape.
         set_env.mark_as_initializer()
         builder.add(set_env)
-    # Initialize function wrapper for callable classes. As opposed to regular functions,
-    # each instance of a callable class needs its own wrapper because they might be instantiated
-    # inside other functions.
-    if not fn_info.in_non_ext and fn_info.is_coroutine:
-        builder.add_coroutine_setup_call(fn_info.callable_class.ir.name, func_reg)
+    # Callable classes of coroutines need their own function wrapper per instance
+    # (for introspection), but it's created lazily by the property getters/setters.
     return func_reg
