@@ -2820,7 +2820,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
             and typ.type_of_any == TypeOfAny.from_another_any
             and typ.source_any is not None
         ):
-            typ = get_proper_type(typ.source_any)
+            typ = typ.source_any
         return isinstance(typ, AnyType) and typ.type_of_any != TypeOfAny.unannotated
 
     def check_deferred_base_classes(self, defn: ClassDef) -> None:
@@ -2835,16 +2835,17 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
         semantic analysis deferred.
         """
         for var, base_expr in defn.info.deferred_base_classes:
-            typ = get_proper_type(var.type)
+            var_type = var.type
+            typ = get_proper_type(var_type) if var_type is not None else None
             # Mirror the cases semantic analysis accepts for an explicitly
             # typed variable (see TypeAnalyser.analyze_unbound_type_without_type_info).
             # An inferred plain ``Any`` is only accepted if it comes from an
             # explicit annotation; ``Any`` leaking in from unannotated code is
             # still rejected, as before.
-            is_any = (
+            is_any = typ is not None and (
                 self.is_explicit_any(typ)
                 or (isinstance(typ, Instance) and typ.type.fullname == "builtins.type")
-                or (isinstance(typ, TypeType) and self.is_explicit_any(get_proper_type(typ.item)))
+                or (isinstance(typ, TypeType) and self.is_explicit_any(typ.item))
             )
             if is_any:
                 if self.options.disallow_subclassing_any:
