@@ -3171,6 +3171,10 @@ class State:
         * Non-trivial shadow file mapping.
         * Various "fake" files like namespace packages, etc.
         """
+        if self.options.transform_source is not None:
+            # The transform is a Python callable that the native parser cannot
+            # apply itself, so the source must be read (and transformed) first.
+            return True
         if (
             self.manager.shadow_map
             and self.manager.maybe_swap_for_shadow_path(self.xpath) != self.xpath
