@@ -3236,3 +3236,4 @@ A(1, 2, 3).add()  # E: Invalid self argument "A[int, int, int]" to attribute fun
 reveal_type(A(1, 2, 3).plain())  # N: Revealed type is "__main__.A[Literal[1]?, Literal[2]?, Literal[3]?]"
 # ... as do method-level TypeVarTuples in self-types.
 reveal_type(A(1, 2, 3).meth_tv((1, 2, 3)))  # N: Revealed type is "__main__.A[Literal[1]?, Literal[2]?, Literal[3]?]"
+[builtins fixtures/tuple.pyi]
