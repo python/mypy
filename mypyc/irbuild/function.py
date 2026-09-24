@@ -28,6 +28,7 @@ from mypy.nodes import (
     TypeInfo,
     Var,
 )
+
 from mypy.types import CallableType, Type, UnboundType, get_proper_type
 from mypyc.common import FAST_PREFIX, LAMBDA_NAME, PROPSET_PREFIX, SELF_NAME
 from mypyc.ir.class_ir import ClassIR, NonExtClassInfo

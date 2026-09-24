@@ -12,7 +12,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Final
 
-from mypy.constant_fold import constant_fold_binary_op, constant_fold_unary_op
 from mypy.nodes import (
     BytesExpr,
     ComplexExpr,
@@ -26,6 +25,8 @@ from mypy.nodes import (
     UnaryExpr,
     Var,
 )
+
+from mypy.constant_fold import constant_fold_binary_op, constant_fold_unary_op
 from mypyc.irbuild.util import bytes_from_str
 
 if TYPE_CHECKING:

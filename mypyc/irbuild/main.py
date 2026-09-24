@@ -25,8 +25,9 @@ from __future__ import annotations
 from collections.abc import Callable
 from typing import Any, TypeVar, cast
 
-from mypy.build import Graph
 from mypy.nodes import ClassDef, Expression, FuncDef, MypyFile
+
+from mypy.build import Graph
 from mypy.state import state
 from mypy.types import Type
 from mypyc.analysis.attrdefined import analyze_always_defined_attrs

@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections.abc import Callable, Mapping
 
 from mypy.nodes import ARG_STAR, ARG_STAR2
+
 from mypyc.codegen.cstring import c_string_initializer
 from mypyc.codegen.emit import (
     Emitter,

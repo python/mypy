@@ -17,7 +17,6 @@ from collections import defaultdict
 from collections.abc import Iterable
 from typing import NamedTuple
 
-from mypy.build import Graph
 from mypy.nodes import (
     ARG_STAR,
     ARG_STAR2,
@@ -38,6 +37,8 @@ from mypy.nodes import (
     Var,
 )
 from mypy.semanal import refers_to_fullname
+
+from mypy.build import Graph
 from mypy.traverser import TraverserVisitor
 from mypy.types import Instance, Type, get_proper_type
 from mypyc.common import (

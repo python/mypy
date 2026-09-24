@@ -20,6 +20,7 @@ from mypy.nodes import (
     UnaryExpr,
     Var,
 )
+
 from mypyc.ir.ops import BasicBlock
 from mypyc.ir.rtypes import is_fixed_width_rtype, is_tagged
 from mypyc.irbuild.builder import IRBuilder
