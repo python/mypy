@@ -105,6 +105,10 @@ class SubtypeContext:
         # Proper subtype flags
         erase_instances: bool = False,
         keep_erased_types: bool = False,
+        # In proper subtype checks, allow Any in covariant/contravariant type
+        # argument positions to be compatible with any type (as in non-proper
+        # checks), while invariant positions still require exact matches.
+        allow_any_in_variant_positions: bool = False,
         options: Options | None = None,
     ) -> None:
         self.ignore_type_params = ignore_type_params
@@ -114,6 +118,7 @@ class SubtypeContext:
         self.ignore_promotions = ignore_promotions
         self.erase_instances = erase_instances
         self.keep_erased_types = keep_erased_types
+        self.allow_any_in_variant_positions = allow_any_in_variant_positions
         self.options = options
 
     def check_context(self, proper_subtype: bool) -> None:
@@ -201,6 +206,7 @@ def is_proper_subtype(
     ignore_promotions: bool = False,
     erase_instances: bool = False,
     keep_erased_types: bool = False,
+    allow_any_in_variant_positions: bool = False,
 ) -> bool:
     """Is left a proper subtype of right?
 
@@ -210,6 +216,9 @@ def is_proper_subtype(
     If erase_instances is True, erase left instance *after* mapping it to supertype
     (this is useful for runtime isinstance() checks). If keep_erased_types is True,
     do not consider ErasedType a subtype of all types (used by type inference against unions).
+    If allow_any_in_variant_positions is True, type arguments in covariant and
+    contravariant positions use ordinary (Any-compatible) subtype checks, while
+    invariant positions still use proper checks.
     """
     if left == right:
         return True
@@ -218,10 +227,14 @@ def is_proper_subtype(
             ignore_promotions=ignore_promotions,
             erase_instances=erase_instances,
             keep_erased_types=keep_erased_types,
+            allow_any_in_variant_positions=allow_any_in_variant_positions,
         )
     else:
         assert (
-            not ignore_promotions and not erase_instances and not keep_erased_types
+            not ignore_promotions
+            and not erase_instances
+            and not keep_erased_types
+            and not allow_any_in_variant_positions
         ), "Don't pass both context and individual flags"
     if type_state.is_assumed_proper_subtype(left, right):
         return True
@@ -394,11 +407,18 @@ def check_type_parameter(
     # avoid these cases altogether.
     if variance == COVARIANT or variance == VARIANCE_NOT_READY:
         if proper_subtype:
+            if subtype_context.allow_any_in_variant_positions:
+                # Any is compatible with every type in variant positions, so fall
+                # back to an ordinary subtype check here (invariant positions are
+                # still checked properly by the caller).
+                return is_subtype(left, right, subtype_context=subtype_context)
             return is_proper_subtype(left, right, subtype_context=subtype_context)
         else:
             return is_subtype(left, right, subtype_context=subtype_context)
     elif variance == CONTRAVARIANT:
         if proper_subtype:
+            if subtype_context.allow_any_in_variant_positions:
+                return is_subtype(right, left, subtype_context=subtype_context)
             return is_proper_subtype(right, left, subtype_context=subtype_context)
         else:
             return is_subtype(right, left, subtype_context=subtype_context)
@@ -444,6 +464,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
             subtype_context.ignore_promotions,
             subtype_context.erase_instances,
             subtype_context.keep_erased_types,
+            subtype_context.allow_any_in_variant_positions,
         )
 
     def _is_subtype(self, left: Type, right: Type) -> bool:
@@ -2342,6 +2363,12 @@ def restrict_subtype_away(t: Type, s: Type, *, consider_runtime_isinstance: bool
         if is_proper_subtype(t, s, ignore_promotions=True):
             return UninhabitedType()
         if is_proper_subtype(t, s, ignore_promotions=True, erase_instances=True):
+            return UninhabitedType()
+        # A type like C[Any] (with a covariant/contravariant type variable) is a
+        # subtype of C[object], so it cannot survive a negative TypeIs check for
+        # C[object]. The strict proper subtype check above rejects this only
+        # because of Any, so retry allowing Any in variant positions.
+        if is_proper_subtype(t, s, ignore_promotions=True, allow_any_in_variant_positions=True):
             return UninhabitedType()
         return t
 
