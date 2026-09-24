@@ -2396,3 +2396,14 @@ class Bar(Enum):
     def bar(cls) -> Bar:
         ...
 [builtins fixtures/classmethod.pyi]
+
+[case testSelfTypeBoundOverload]
+# The no-key sort() overload requires list[SupportsRichComparisonT], so it
+# must not apply to list[int | None] (None violates the bound).
+xs: list[int | None]
+xs.sort()  # E: Missing named argument "key" for "sort" of "list"
+xs.sort(key=lambda x: 0)
+ys: list[int]
+ys.sort()
+ys.sort(key=lambda x: 0)
+[builtins fixtures/list-sort-selftype.pyi]
