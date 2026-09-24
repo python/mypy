@@ -419,14 +419,16 @@ def transform_imports_without_grouping(
 ) -> None:
     globals = builder.load_globals_dict()
     for mod_id, as_name, line in group:
-        builder.gen_import(mod_id, line)
+        imported = builder.gen_import(mod_id, line)
         globals_id, globals_name = import_globals_id_and_name(mod_id, as_name)
+        globals_name_value = builder.load_str(globals_name)
+        module = (
+            imported
+            if imported is not None and globals_id == mod_id
+            else builder.get_module(globals_id, line)
+        )
         builder.gen_method_call(
-            globals,
-            "__setitem__",
-            [builder.load_str(globals_name), builder.get_module(globals_id, line)],
-            result_type=None,
-            line=line,
+            globals, "__setitem__", [globals_name_value, module], result_type=None, line=line
         )
 
 
@@ -558,7 +560,8 @@ def transform_import_from_buckets(
             ]
             transform_imports_without_grouping(builder, group)
         elif bucket.kind == IMPORT_NATIVE_ATTR:
-            builder.gen_import(module_id, line)
+            native_module = builder.gen_import(module_id, line)
+            assert native_module is not None
             names_literal = builder.add(LoadLiteral(tuple(bucket.names), object_rprimitive))
             if bucket.as_names == bucket.names:
                 as_names_literal = names_literal
@@ -568,12 +571,7 @@ def transform_import_from_buckets(
                 )
             builder.call_c(
                 get_native_attrs_op,
-                [
-                    builder.load_str(module_id),
-                    names_literal,
-                    as_names_literal,
-                    builder.load_globals_dict(),
-                ],
+                [native_module, names_literal, as_names_literal, builder.load_globals_dict()],
                 line,
             )
         else:

@@ -2664,7 +2664,7 @@ reveal_type(bar(None))  # N: Revealed type is "None"
 [out]
 
 [case testNoComplainInferredNone]
-# flags: --no-strict-optional --no-local-partial-types
+# flags: --no-strict-optional
 from typing import TypeVar, Optional
 T = TypeVar('T')
 def X(val: T) -> T: ...

@@ -2055,7 +2055,7 @@ def find_cache_meta(
 
     # Ignore cache if (relevant) options aren't the same.
     # Note that it's fine to mutilate cached_options since it's only used here.
-    cached_options = m.options
+    cached_options = m.options.copy()
     current_options = options_snapshot(id, manager)
     if manager.options.skip_version_check:
         # When we're lax about version we're also lax about platform.
@@ -2063,6 +2063,18 @@ def find_cache_meta(
     if "debug_cache" in cached_options:
         # Older versions included debug_cache, but it's silly to compare it.
         del cached_options["debug_cache"]
+    if "local_partial_types" in cached_options:
+        local_partial_types = cached_options["local_partial_types"]
+        del cached_options["local_partial_types"]
+        is_parallel = manager.options.num_workers > 0
+        if not local_partial_types and cached_options["is_parallel"] != is_parallel:
+            # If local partial types are disabled, behavior is too different for
+            # parallel and sequential runs, see write_cache() for details.
+            return None
+        del cached_options["is_parallel"]
+    else:
+        # Cache from an old mypy version.
+        return None
     if cached_options != current_options:
         manager.log(f"Metadata abandoned for {id}: options differ")
         if manager.options.verbosity >= 2:
@@ -2226,7 +2238,6 @@ def validate_meta(
             meta.mtime = mtime
             meta.path = path
             meta.size = size
-            meta.options = options_snapshot(id, manager)
             meta_file, _, _ = get_cache_names(id, path, manager.options)
             if manager.logging_enabled:
                 manager.log(
@@ -2271,6 +2282,8 @@ def write_cache(
     trans_dep_hash: bytes,
     source_hash: str,
     ignore_all: bool,
+    local_partial_types: bool,
+    is_parallel: bool,
     manager: BuildManager,
 ) -> tuple[bytes, tuple[CacheMeta, str] | None]:
     """Write cache files for a module.
@@ -2370,6 +2383,13 @@ def write_cache(
     # important, or otherwise the options would never match when
     # verifying the cache.
     assert source_hash is not None
+    # Local partial types need special handling as they behave differently
+    # in sequential and parallel runs:
+    #   * In sequential run we respected the option, but use different SCC
+    #   processing logic depending on whether they are enabled or disabled.
+    #   * In parallel run they are always on, and we give an error if a user
+    #   tries to disable them.
+    extra_options = {"local_partial_types": local_partial_types, "is_parallel": is_parallel}
     meta = CacheMeta(
         id=id,
         path=path,
@@ -2381,7 +2401,7 @@ def write_cache(
         data_file=data_file,
         suppressed=suppressed,
         imports_ignored=imports_ignored,
-        options=options_snapshot(id, manager),
+        options=options_snapshot(id, manager) | extra_options,
         suppressed_deps_opts=suppressed_deps_opts,
         dep_prios=dep_prios,
         dep_lines=dep_lines,
@@ -2726,6 +2746,11 @@ class State:
                 meta, meta_ex = meta_pair
                 interface_hash = meta.interface_hash
                 meta_source_hash = meta.hash
+                # Update the local partial types in case they were set by an inline config.
+                # So we can select the correct SCC processing logic without reading the file.
+                local_partial_types = meta.options["local_partial_types"]
+                if options.local_partial_types != local_partial_types:
+                    options = options.apply_changes({"local_partial_types": local_partial_types})
         if path and source is None and manager.fscache.isdir(path):
             source = ""
 
@@ -3636,6 +3661,8 @@ class State:
             self.trans_dep_hash,
             self.source_hash,
             self.ignore_all,
+            self.options.local_partial_types,
+            self.options.num_workers > 0,
             self.manager,
         )
         if new_interface_hash == self.interface_hash:
@@ -4636,18 +4663,7 @@ def process_graph(graph: Graph, manager: BuildManager) -> None:
             # type-checking this is already done and results should be empty here.
             if not manager.workers:
                 assert not results
-            for id, result in results.items():
-                # Interface and implementation results may be mixed in the same batch
-                # from different workers, process each one accordingly.
-                if result.interface_hash is not None:
-                    new_hash = bytes.fromhex(result.interface_hash)
-                    if new_hash != graph[id].interface_hash:
-                        graph[id].mark_interface_stale()
-                        graph[id].interface_hash = new_hash
-                else:
-                    manager.flush_errors(
-                        manager.errors.simplify_path(graph[id].xpath), result.error_lines, False
-                    )
+            process_results(results, graph, manager)
         ready = []
         for done_scc in done:
             for dependent in done_scc.direct_dependents:
@@ -4657,6 +4673,26 @@ def process_graph(graph: Graph, manager: BuildManager) -> None:
                     not_ready.remove(dep_scc)
                     ready.append(dep_scc)
     manager.trace(f"Transitive deps cache size: {sys.getsizeof(manager.transitive_deps_cache)}")
+
+
+def process_results(results: dict[str, ModuleResult], graph: Graph, manager: BuildManager) -> None:
+    """Process results of type-checking given modules.
+
+    This will update interface hashes and flush type-checking errors (if any).
+    Blockers should have been already handled by the caller.
+    """
+    for id, result in results.items():
+        # Interface and implementation results may be mixed in the same batch
+        # from different workers, process each one accordingly.
+        if result.interface_hash is not None:
+            new_hash = bytes.fromhex(result.interface_hash)
+            if new_hash != graph[id].interface_hash:
+                graph[id].mark_interface_stale()
+                graph[id].interface_hash = new_hash
+        else:
+            manager.flush_errors(
+                manager.errors.simplify_path(graph[id].xpath), result.error_lines, False
+            )
 
 
 def order_ascc(graph: Graph, ascc: AbstractSet[str], pri_max: int = PRI_INDIRECT) -> list[str]:
@@ -4776,7 +4812,45 @@ def maybe_load_deps(graph: Graph, ascc: SCC, manager: BuildManager) -> None:
 
 
 def process_stale_scc(graph: Graph, ascc: SCC, manager: BuildManager) -> None:
-    """Process the modules in one SCC from source code."""
+    """Process the modules in one SCC from source code.
+
+    This will process module interfaces first (when possible). This mirrors
+    how things are done in parallel type checking.
+    """
+    if not all(graph[id].options.local_partial_types for id in ascc.mod_ids):
+        # If local partial types are disabled we must process each file sequentially.
+        process_stale_scc_full(graph, ascc, manager)
+        return
+    manager.parse_all([graph[id] for id in ascc.mod_ids], post_parse=False)
+    scc_result = process_stale_scc_interface(
+        graph, ascc, manager, from_cache={id for id in ascc.mod_ids if graph[id].meta}
+    )
+    manager.commit()
+
+    # Process interface results before starting implementations
+    # (to mimic parallel checking 1:1).
+    mod_results = {}
+    stale = []
+    meta_files = []
+    for id, mod_result, meta_file in scc_result:
+        stale.append(id)
+        mod_results[id] = mod_result
+        meta_files.append(meta_file)
+    process_results(mod_results, graph, manager)
+
+    mod_results = {}
+    for id, meta_file in zip(stale, meta_files):
+        mod_results |= process_stale_scc_implementation(graph, [id], manager, [meta_file])
+    manager.commit()
+    process_results(mod_results, graph, manager)
+
+
+def process_stale_scc_full(graph: Graph, ascc: SCC, manager: BuildManager) -> None:
+    """Process the modules in one SCC from source code.
+
+    This is the legacy function that processes each file sequentially (line-by-line),
+    thus it may interleave processing interface and implementation parts.
+    """
     # First verify if all transitive dependencies are loaded in the current process.
     t0 = time.time()
     maybe_load_deps(graph, ascc, manager)
@@ -4879,7 +4953,7 @@ def process_stale_scc(graph: Graph, ascc: SCC, manager: BuildManager) -> None:
 
 def process_stale_scc_interface(
     graph: Graph, ascc: SCC, manager: BuildManager, from_cache: set[str]
-) -> list[tuple[str, ModuleResult, str]]:
+) -> list[tuple[str, ModuleResult, str | None]]:
     """Process the modules' interfaces in one SCC from source code."""
     # First verify if all transitive dependencies are loaded in the current process.
     t0 = time.time()
@@ -4925,16 +4999,19 @@ def process_stale_scc_interface(
     for id in stale:
         meta_tuple = meta_tuples[id]
         if meta_tuple is None:
-            continue
-        meta, meta_file = meta_tuple
+            meta = meta_file = None
+        else:
+            meta, meta_file = meta_tuple
         state = graph[id]
-        meta.dep_hashes = [
-            graph[dep].interface_hash
-            for dep in state.dependencies
-            if state.priorities.get(dep) != PRI_INDIRECT
-        ]
-        write_cache_meta(meta, manager, meta_file)
-        manager.commit_module(meta_file)
+        if meta is not None:
+            assert meta_file is not None
+            meta.dep_hashes = [
+                graph[dep].interface_hash
+                for dep in state.dependencies
+                if state.priorities.get(dep) != PRI_INDIRECT
+            ]
+            write_cache_meta(meta, manager, meta_file)
+            manager.commit_module(meta_file)
         scc_result.append((id, ModuleResult(graph[id].interface_hash.hex(), []), meta_file))
     manager.done_sccs.add(ascc.id)
     manager.add_stats(
@@ -4948,7 +5025,7 @@ def process_stale_scc_interface(
 
 
 def process_stale_scc_implementation(
-    graph: Graph, stale: list[str], manager: BuildManager, meta_files: list[str]
+    graph: Graph, stale: list[str], manager: BuildManager, meta_files: list[str | None]
 ) -> dict[str, ModuleResult]:
     """Process implementations (top-level function/method bodies) in an SCC."""
     t0 = time.time()
@@ -4963,7 +5040,10 @@ def process_stale_scc_implementation(
             continue
         # We need to reset deferral count after possibly deferring any methods that
         # are considered part of the top-level (because they define/infer variables).
-        checker.pass_num = 0
+        # Note we need to add one pass to compensate for function bodies not visited in
+        # type_check_first_pass(). So with current DEFAULT_LAST_PASS = 2 each function
+        # will be visited at most three times, for both single-phase and two-phase logic.
+        checker.pass_num = -1
         checker.deferred_nodes.clear()
         tree = graph[id].tree
         assert tree is not None
@@ -4993,6 +5073,18 @@ def process_stale_scc_implementation(
     scc_result = {}
     for id, meta_file in zip(stale, meta_files):
         state = graph[id]
+        # If there are no errors, only write the cache, don't send anything back
+        # to the caller (as a micro-optimization).
+        if graph[id].xpath not in manager.errors.ignored_files:
+            errors = manager.errors.file_messages(graph[id].xpath)
+            formatted = manager.errors.format_messages(
+                graph[id].xpath, errors, formatter=manager.error_formatter
+            )
+            scc_result[id] = ModuleResult(None, formatted)
+        else:
+            errors = []
+        if meta_file is None:
+            continue
         indirect = [dep for dep in state.dependencies if state.priorities.get(dep) == PRI_INDIRECT]
         meta_ex = CacheMetaEx(
             dependencies=indirect,
@@ -5000,20 +5092,9 @@ def process_stale_scc_implementation(
                 dep for dep in state.suppressed if state.priorities.get(dep) == PRI_INDIRECT
             ],
             dep_hashes=[graph[dep].interface_hash for dep in indirect],
-            error_lines=[],
+            error_lines=errors,
         )
-        if graph[id].xpath not in manager.errors.ignored_files:
-            errors = manager.errors.file_messages(graph[id].xpath)
-            formatted = manager.errors.format_messages(
-                graph[id].xpath, errors, formatter=manager.error_formatter
-            )
-            meta_ex.error_lines = errors
-            write_cache_meta_ex(meta_file, meta_ex, manager)
-            scc_result[id] = ModuleResult(None, formatted)
-        else:
-            # If there are no errors, only write the cache, don't send anything back
-            # to the caller (as a micro-optimization).
-            write_cache_meta_ex(meta_file, meta_ex, manager)
+        write_cache_meta_ex(meta_file, meta_ex, manager)
         manager.commit_module(meta_file)
 
     manager.add_stats(type_check_time_implementation=time.time() - t0)
