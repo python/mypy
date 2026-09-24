@@ -997,3 +997,61 @@ def main(f: Callable[[], int | Awaitable[int]] | Callable[[], Awaitable[int]]) -
         reveal_type(f)  # N: Revealed type is "def () -> builtins.int | typing.Awaitable[builtins.int]"
 
 [builtins fixtures/tuple.pyi]
+
+[case testTypeIsNarrowsTypeObject]
+# https://github.com/python/mypy/issues/21677
+from typing_extensions import TypeIs
+
+class A: ...
+class M: ...
+class B(A): ...
+class C(M, A): ...
+
+def is_m(t: type) -> TypeIs[type[M]]:
+    return issubclass(t, M)
+
+cls: type[A] = C
+if is_m(cls):
+    reveal_type(cls)  # N: Revealed type is "type[__main__.<subclass of "__main__.A" and "__main__.M">]"
+[builtins fixtures/isinstancelist.pyi]
+
+[case testTypeIsNarrowsTypeObjectInComprehension]
+# https://github.com/python/mypy/issues/21677
+from typing import Type
+from typing_extensions import TypeIs
+
+class A: ...
+class M: ...
+class B(A): ...
+class C(M, A): ...
+
+def is_m(t: type) -> TypeIs[Type[M]]:
+    return issubclass(t, M)
+
+alist: list[Type[A]] = [B, C]
+mlist: list[Type[M]] = [cls for cls in alist if is_m(cls)]
+reveal_type(mlist)  # N: Revealed type is "builtins.list[type[__main__.M]]"
+[builtins fixtures/isinstancelist.pyi]
+
+[case testTypeIsNarrowsTypeObjectInComprehensionDataclass]
+# https://github.com/python/mypy/issues/21677
+from dataclasses import dataclass
+from typing import Type
+from typing_extensions import TypeIs
+
+@dataclass
+class A: ...
+@dataclass
+class M: ...
+@dataclass
+class B(A): ...
+@dataclass
+class C(M, A): ...
+
+def is_m(t: type) -> TypeIs[Type[M]]:
+    return issubclass(t, M)
+
+alist: list[Type[A]] = [B, C]
+mlist: list[Type[M]] = [cls for cls in alist if is_m(cls)]
+reveal_type(mlist)  # N: Revealed type is "builtins.list[type[__main__.M]]"
+[builtins fixtures/isinstancelist.pyi]
