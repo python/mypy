@@ -740,17 +740,16 @@ class SubtypeVisitor(TypeVisitor[bool]):
                 # Similarly, if one function has `TypeIs` and the other does not,
                 # they are not compatible.
                 return False
+            strict_concatenate = False
+            if options := self.options:
+                strict_concatenate = options.extra_checks or options.strict_concatenate
             return is_callable_compatible(
                 left,
                 right,
                 is_compat=self._is_subtype,
                 is_proper_subtype=self.proper_subtype,
                 ignore_pos_arg_names=self.subtype_context.ignore_pos_arg_names,
-                strict_concatenate=(
-                    (self.options.extra_checks or self.options.strict_concatenate)
-                    if self.options
-                    else False
-                ),
+                strict_concatenate=strict_concatenate,
             )
         elif isinstance(right, Overloaded):
             return all(self._is_subtype(left, item) for item in right.items)
@@ -1064,7 +1063,9 @@ class SubtypeVisitor(TypeVisitor[bool]):
             # If simple logic failed, check a (somewhat ad hoc but important)
             # edge case: Overloaded(def (int) -> int, def (str) -> str) is
             # a subtype of def (int | str) -> int | str.
-            combined = union_function_signatures(left.items)
+            combined = union_function_signatures(
+                left.items, ignore_pos_arg_names=self.subtype_context.ignore_pos_arg_names
+            )
             if combined is not None and self._is_subtype(combined, right):
                 return True
             return False
@@ -2202,7 +2203,10 @@ def unify_generic_callable(
 
 
 def union_function_signatures(
-    callables: list[CallableType], *, simplify_unions: bool = False
+    callables: list[CallableType],
+    *,
+    simplify_unions: bool = False,
+    ignore_pos_arg_names: bool = False,
 ) -> CallableType | None:
     """Combine a list of functions by taking the union of all the arguments and return types."""
     if len(callables) == 1:
@@ -2224,6 +2228,7 @@ def union_function_signatures(
     new_callable = callables[0].with_unpacked_kwargs().with_normalized_var_args()
     new_args: list[list[Type]] = [[] for _ in new_callable.arg_types]
     new_kinds = list(new_callable.arg_kinds)
+    new_names = list(new_callable.arg_names)
     new_returns: list[Type] = []
 
     for target in callables:
@@ -2235,6 +2240,9 @@ def union_function_signatures(
         for i, (new_kind, target_kind) in enumerate(zip(new_kinds, target.arg_kinds)):
             if target_kind.is_named() and target.arg_names[i] != new_callable.arg_names[i]:
                 return None
+            if not ignore_pos_arg_names and target_kind.is_positional():
+                if target.arg_names[i] != new_callable.arg_names[i]:
+                    new_names[i] = None
             if isinstance(target.arg_types[i], (ParamSpecType, UnpackType)):
                 # It is risky to put these inside a union.
                 return None
@@ -2259,9 +2267,9 @@ def union_function_signatures(
     return new_callable.copy_modified(
         arg_types=arg_types,
         arg_kinds=new_kinds,
+        arg_names=new_names,
         ret_type=ret_type,
         variables=variables,
-        implicit=True,
     )
 
 
