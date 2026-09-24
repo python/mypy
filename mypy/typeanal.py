@@ -67,6 +67,7 @@ from mypy.types import (
     LITERAL_TYPE_NAMES,
     MYPYC_NATIVE_INT_NAMES,
     NEVER_NAMES,
+    PROTOCOL_NAMES,
     TUPLE_NAMES,
     TYPE_ALIAS_NAMES,
     TYPE_NAMES,
@@ -702,6 +703,29 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 self.fail(f'{type_str} can\'t contain "{bad_item_name}"', t, code=codes.VALID_TYPE)
                 item = AnyType(TypeOfAny.from_error)
             return TypeType.make_normalized(item, line=t.line, column=t.column)
+        elif fullname in PROTOCOL_NAMES or fullname == "typing.Generic":
+            # A bare reference to Protocol or Generic in type expression position.
+            # Stubs declare both as X: type[_X] (mirroring the runtime, where they
+            # are classes on 3.12+), so e.g. 'type[Protocol]' must accept the
+            # special form itself.
+            # https://github.com/python/mypy/issues/21940
+            if t.args or t.empty_tuple_index:
+                # 'Protocol[...]'/ 'Generic[...]' are class base syntax, not a type.
+                return None
+            private = "_Protocol" if fullname in PROTOCOL_NAMES else "_Generic"
+            module = "typing_extensions" if fullname.startswith("typing_extensions.") else "typing"
+            sym = self.api.lookup_fully_qualified_or_none(f"{module}.{private}")
+            if sym is not None and isinstance(sym.node, PlaceholderNode):
+                if self.api.is_incomplete_namespace(module):
+                    # The private class is not defined yet, defer until it is.
+                    self.api.record_incomplete_ref()
+                    return AnyType(TypeOfAny.special_form)
+                return None
+            if sym is None or not isinstance(sym.node, TypeInfo):
+                # Stub sets that do not declare the private class yet: keep the
+                # regular 'not valid as a type' error instead of resolving to Any.
+                return None
+            return Instance(sym.node, [], line=t.line, column=t.column)
         elif fullname in ("typing_extensions.TypeForm", "typing.TypeForm"):
             if len(t.args) == 0:
                 any_type = self.get_omitted_any(t)

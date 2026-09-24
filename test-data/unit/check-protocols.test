@@ -4789,3 +4789,23 @@ bad_rep(t)  # E: Argument 1 to "bad_rep" has incompatible type "C"; expected "P[
             # N:     Got: \
             # N:         def rep(self) -> C
 [builtins fixtures/tuple.pyi]
+
+[case testProtocolSpecialFormAsType]
+from typing import Protocol
+
+x: type[Protocol] = Protocol
+
+def f(t: type[Protocol]) -> None: ...
+f(Protocol)
+
+ts: tuple[type[Protocol], ...] = (Protocol,)
+[builtins fixtures/bool.pyi]
+
+[case testTypingExtensionsProtocolSpecialFormAsType]
+from typing_extensions import Protocol
+
+x: type[Protocol] = Protocol
+
+def f(t: type[Protocol]) -> None: ...
+f(Protocol)
+[builtins fixtures/dict.pyi]

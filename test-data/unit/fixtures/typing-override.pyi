@@ -1,5 +1,6 @@
 TypeVar = 0
-Generic = 0
+class _Generic: ...
+Generic: type[_Generic]
 Any = object()
 overload = 0
 Type = 0

@@ -14,8 +14,10 @@ Any = object()
 Union = 0
 Optional = 0
 TypeVar = 0
-Generic = 0
-Protocol = 0
+class _Generic: ...
+Generic: type[_Generic]
+class _Protocol: ...
+Protocol: type[_Protocol]
 Tuple = 0
 Callable = 0
 NamedTuple = 0
