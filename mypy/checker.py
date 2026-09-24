@@ -7279,13 +7279,6 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
             else:
                 continue
 
-            p_expr_type = get_proper_type(operand_types[i])
-            if isinstance(p_expr_type, TypeType) and isinstance(p_expr_type.item, TypeVarType):
-                # This mirrors logic in comparison_type_narrowing_helper
-                # In theory, this is like `i not in narrowable_indices`, except that
-                # narrowable_indices filters all type(x) narrowing as it's a call
-                continue
-
             for j in expr_indices:
                 if i == j:
                     continue
