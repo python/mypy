@@ -49,7 +49,6 @@ from mypy.nodes import (
     YieldExpr,
     YieldFromExpr,
 )
-
 from mypyc.common import (
     GENERATOR_HELPER_NAME,
     KEEP_ALIVE_SHORT_LIVED,

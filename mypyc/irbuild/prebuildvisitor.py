@@ -22,7 +22,6 @@ from mypy.nodes import (
     TupleExpr,
     Var,
 )
-
 from mypy.traverser import ExtendedTraverserVisitor, TraverserVisitor
 from mypy.types import Type
 from mypyc.errors import Errors

@@ -11,8 +11,6 @@ import sys
 from collections.abc import Iterable
 from typing import TypeVar
 
-from mypy.nodes import MypyFile, TypeInfo
-
 from mypy.build import (
     BuildResult,
     BuildSource,
@@ -25,6 +23,7 @@ from mypy.build import (
 )
 from mypy.errors import CompileError
 from mypy.fscache import FileSystemCache
+from mypy.nodes import MypyFile, TypeInfo
 from mypy.options import Options
 from mypy.plugin import Plugin, ReportConfigContext
 from mypy.util import hash_digest, json_dumps

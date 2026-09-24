@@ -5,8 +5,6 @@ from __future__ import annotations
 from enum import Enum, unique
 from typing import Final
 
-from mypy.nodes import Context, Expression
-
 from mypy.checkstrformat import (
     ConversionSpecifier,
     parse_conversion_specifiers,
@@ -14,6 +12,7 @@ from mypy.checkstrformat import (
 )
 from mypy.errors import Errors
 from mypy.messages import MessageBuilder
+from mypy.nodes import Context, Expression
 from mypy.options import Options
 from mypyc.ir.ops import Integer, Value
 from mypyc.ir.rtypes import (

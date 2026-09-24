@@ -32,7 +32,6 @@ from mypy.nodes import (
     is_class_var,
 )
 from mypy.semanal import refers_to_fullname
-
 from mypy.types import FINAL_DECORATOR_NAMES
 from mypyc.errors import Errors
 from mypyc.ir.class_ir import ClassIR

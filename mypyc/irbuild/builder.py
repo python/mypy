@@ -9,6 +9,8 @@ from collections.abc import Callable, Iterator, Sequence
 from contextlib import contextmanager
 from typing import Any, Final, overload
 
+from mypy.build import Graph
+from mypy.maptype import map_instance_to_supertype
 from mypy.nodes import (
     ARG_NAMED,
     ARG_POS,
@@ -48,9 +50,6 @@ from mypy.nodes import (
     YieldExpr,
     YieldFromExpr,
 )
-
-from mypy.build import Graph
-from mypy.maptype import map_instance_to_supertype
 from mypy.traverser import TraverserVisitor
 from mypy.types import (
     AnyType,

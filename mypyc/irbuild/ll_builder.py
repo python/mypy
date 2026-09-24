@@ -11,9 +11,8 @@ from collections.abc import Callable, Iterator, Sequence
 from contextlib import contextmanager
 from typing import Final, TypeGuard, cast
 
-from mypy.nodes import ARG_POS, ARG_STAR, ARG_STAR2, ArgKind
-
 from mypy.argmap import map_actuals_to_formals
+from mypy.nodes import ARG_POS, ARG_STAR, ARG_STAR2, ArgKind
 from mypy.operators import op_methods, unary_op_methods
 from mypy.types import AnyType, TypeOfAny
 from mypyc.common import (

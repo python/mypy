@@ -4,7 +4,6 @@ from collections.abc import Generator
 from contextlib import contextmanager
 
 from mypy.nodes import MatchStmt, NameExpr, TypeInfo
-
 from mypy.patterns import (
     AsPattern,
     ClassPattern,

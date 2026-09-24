@@ -7,7 +7,6 @@ from collections.abc import Sequence
 from typing import Final
 
 from mypy.nodes import ARG_POS, ArgKind, Block, FuncDef
-
 from mypyc.common import BITMAP_BITS, JsonDict, bitmap_name, get_id_from_name, short_id_from_name
 from mypyc.ir.ops import (
     Assign,

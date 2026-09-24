@@ -84,7 +84,6 @@ from mypy.nodes import (
     YieldExpr,
     YieldFromExpr,
 )
-
 from mypyc.ir.ops import Value
 from mypyc.irbuild.builder import IRBuilder, IRVisitor, UnsupportedException
 from mypyc.irbuild.classdef import transform_class_def

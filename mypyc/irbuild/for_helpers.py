@@ -27,7 +27,6 @@ from mypy.nodes import (
     TypeAlias,
     Var,
 )
-
 from mypy.types import LiteralType, TupleType, get_proper_type, get_proper_types
 from mypyc.common import GENERATOR_HELPER_NAME, IS_FREE_THREADED
 from mypyc.ir.ops import (

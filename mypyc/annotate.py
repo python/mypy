@@ -11,6 +11,7 @@ import sys
 from html import escape
 from typing import Final
 
+from mypy.build import BuildResult
 from mypy.nodes import (
     AssignmentStmt,
     CallExpr,
@@ -38,8 +39,6 @@ from mypy.nodes import (
     Var,
     WithStmt,
 )
-
-from mypy.build import BuildResult
 from mypy.traverser import TraverserVisitor
 from mypy.types import AnyType, Instance, ProperType, Type, TypeOfAny, get_proper_type
 from mypy.util import FancyFormatter

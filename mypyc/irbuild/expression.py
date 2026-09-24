@@ -49,7 +49,6 @@ from mypy.nodes import (
     UnaryExpr,
     Var,
 )
-
 from mypy.types import (
     AnyType,
     Instance,

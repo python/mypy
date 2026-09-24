@@ -29,7 +29,6 @@ from mypy.nodes import (
     Var,
     is_class_var,
 )
-
 from mypy.types import Instance, UnboundType, get_proper_type
 from mypyc.common import GENERATOR_HELPER_NAME, MYPYC_DEFAULTS_SETUP, PROPSET_PREFIX
 from mypyc.ir.class_ir import ClassIR, NonExtClassInfo

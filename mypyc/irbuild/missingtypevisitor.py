@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from mypy.nodes import Expression, Node
-
 from mypy.traverser import ExtendedTraverserVisitor
 from mypy.types import AnyType, Type, TypeOfAny
 

@@ -9,11 +9,10 @@ import re
 import shutil
 from collections.abc import Callable, Iterator
 
-from mypy.nodes import Expression, MypyFile
-
 from mypy import build
 from mypy.errors import CompileError
 from mypy.main import process_options
+from mypy.nodes import Expression, MypyFile
 from mypy.options import Options
 from mypy.test.config import test_temp_dir
 from mypy.test.data import DataDrivenTestCase, DataSuite
