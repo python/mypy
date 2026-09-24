@@ -3737,3 +3737,14 @@ def test(tp: type[T]) -> T: ...
 
 class C(Generic[T]): ...
 reveal_type(test(C))  # N: Revealed type is "__main__.C[Any]"
+
+[case testConstrainedTypeVarWithUnpackedArgs]
+from typing import Callable, Tuple, TypeVar
+from typing_extensions import Unpack
+
+T = TypeVar("T", str, bytes)
+
+def generic_fun(a: Callable[..., T], *args: Unpack[Tuple[int, float]]) -> None: ...
+
+generic_fun(lambda: "value", 1, 2.0)
+[builtins fixtures/tuple.pyi]
