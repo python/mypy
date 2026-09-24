@@ -325,7 +325,7 @@ def parse_type_comment(
             ignored = None
         assert isinstance(typ, ast3.Expression)
         converted = TypeConverter(
-            errors, line=line, override_column=column, is_evaluated=False
+            errors, line=line, override_column=column, is_evaluated=False, is_fragment=True
         ).visit(typ.body)
         return ignored, converted
 
@@ -968,11 +968,16 @@ class ASTConverter:
                             blocker=False,
                         )
                     translated_args: list[Type] = TypeConverter(
-                        self.errors, line=lineno, override_column=n.col_offset
+                        self.errors,
+                        line=lineno,
+                        override_column=n.col_offset,
+                        is_fragment=True,
                     ).translate_expr_list(func_type_ast.argtypes)
                     # Use a cast to work around `list` invariance
                     arg_types = cast(list[Type | None], translated_args)
-                return_type = TypeConverter(self.errors, line=lineno).visit(func_type_ast.returns)
+                return_type = TypeConverter(
+                    self.errors, line=lineno, is_fragment=True
+                ).visit(func_type_ast.returns)
 
                 # add implicit self type
                 in_method_scope = self.class_and_function_stack[-2:] == ["C", "D"]
@@ -1886,12 +1891,17 @@ class TypeConverter:
         line: int = -1,
         override_column: int = -1,
         is_evaluated: bool = True,
+        is_fragment: bool = False,
     ) -> None:
         self.errors = errors
         self.line = line
         self.override_column = override_column
         self.node_stack: list[AST] = []
         self.is_evaluated = is_evaluated
+        # If True, the converted nodes were parsed from a type comment or string
+        # fragment, so their line numbers are relative to the fragment and the
+        # fixed outer line must be used instead.
+        self.is_fragment = is_fragment
 
     def convert_column(self, column: int) -> int:
         """Apply column override if defined; otherwise return column.
@@ -2120,7 +2130,11 @@ class TypeConverter:
             result = UnboundType(
                 value.name,
                 params,
-                line=self.line,
+                # Use the real source line for nested subscripts, so that both
+                # parsers report errors at the same line. Nodes parsed from a
+                # type comment or string fragment only have fragment-relative
+                # line numbers, so keep using the fixed outer line for those.
+                line=self.line if self.is_fragment else n.lineno,
                 column=value.column,
                 empty_tuple_index=empty_tuple_index,
             )
