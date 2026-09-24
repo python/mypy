@@ -1074,6 +1074,25 @@ def check_self_arg(
         dispatched_arg_type = TypeType.make_normalized(dispatched_arg_type)
     p_dispatched_arg_type = get_proper_type(dispatched_arg_type)
 
+    def effective_selfarg(item: CallableType) -> ProperType:
+        selfarg = get_proper_type(item.arg_types[0])
+        if (
+            isinstance(selfarg, Instance)
+            and isinstance(p_dispatched_arg_type, Instance)
+            and selfarg.type is p_dispatched_arg_type.type
+            and selfarg.args
+            and any(isinstance(tv, TypeVarTupleType) for tv in get_all_type_vars(selfarg))
+        ):
+            # If the explicit self-type contains an unpack of a class-level
+            # TypeVarTuple (e.g. A[*TS, int, int]), first substitute the class
+            # type variables using the receiver, so that e.g. accessing .add on
+            # A[1, 2, 3] checks against A[1, 2, 3, int, int] (see #21878).
+            # Otherwise the unpack would make the overlap/subtype checks below
+            # vacuously succeed, and expand_type_by_instance() would later
+            # splice the whole instance argument tuple into *TS.
+            selfarg = expand_type_by_instance(selfarg, p_dispatched_arg_type)
+        return selfarg
+
     for item in items:
         if not item.arg_types or item.arg_kinds[0] not in (ARG_POS, ARG_STAR):
             # No positional first (self) argument (*args is okay).
@@ -1081,7 +1100,7 @@ def check_self_arg(
             # This is pretty bad, so just return the original signature if
             # there is at least one such error.
             return functype
-        selfarg = get_proper_type(item.arg_types[0])
+        selfarg = effective_selfarg(item)
         if isinstance(selfarg, Instance) and isinstance(p_dispatched_arg_type, Instance):
             if selfarg.type is p_dispatched_arg_type.type and selfarg.args:
                 if not is_overlapping_types(p_dispatched_arg_type, selfarg):
@@ -1096,7 +1115,7 @@ def check_self_arg(
         new_items = []
 
     for item in items:
-        selfarg = get_proper_type(item.arg_types[0])
+        selfarg = effective_selfarg(item)
         # This matches similar special-casing in bind_self(), see more details there.
         self_callable = name == "__call__" and isinstance(selfarg, CallableType)
         if self_callable or is_subtype(
