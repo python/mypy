@@ -207,6 +207,7 @@ from mypy.nodes import (
     WithStmt,
     YieldExpr,
     get_func_def,
+    get_member_expr_fullname,
     is_final_node,
 )
 from mypy.operators import flip_ops, int_op_to_method, neg_ops
@@ -291,10 +292,12 @@ from mypy.types import (
     UninhabitedType,
     UnionType,
     UnpackType,
+    extend_args_for_prefix_and_suffix,
     find_unpack_in_list,
     flatten_nested_unions,
     get_proper_type,
     get_proper_types,
+    get_variadic_item,
     instance_cache,
     is_literal_type,
     is_named_instance,
@@ -2805,9 +2808,78 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
         ):
             self.msg.incorrect__exit__return(defn)
 
+    def is_explicit_any(self, typ: ProperType) -> bool:
+        """Is this an Any type that comes from an explicit annotation?
+
+        Unlike ``Any`` that leaks in from unannotated (dynamically typed) code,
+        an explicitly written ``Any`` means the user opted into dynamic typing,
+        so it is treated like an explicitly ``Any``-typed variable.
+        """
+        while (
+            isinstance(typ, AnyType)
+            and typ.type_of_any == TypeOfAny.from_another_any
+            and typ.source_any is not None
+        ):
+            typ = get_proper_type(typ.source_any)
+        return isinstance(typ, AnyType) and typ.type_of_any != TypeOfAny.unannotated
+
+    def check_deferred_base_classes(self, defn: ClassDef) -> None:
+        """Validate base classes deferred from semantic analysis.
+
+        A base class that is a variable with an inferred (not declared) type --
+        e.g. ``x = args[1]`` where ``args[1]`` is ``Any`` -- could not be
+        validated during semantic analysis, since the type is only inferred by
+        the type checker. Such bases were provisionally treated as ``Any``;
+        now that the type is known, accept it if it is ``Any`` (like an
+        explicitly ``Any``-typed variable) and otherwise report the errors that
+        semantic analysis deferred.
+        """
+        for var, base_expr in defn.info.deferred_base_classes:
+            typ = get_proper_type(var.type)
+            # Mirror the cases semantic analysis accepts for an explicitly
+            # typed variable (see TypeAnalyser.analyze_unbound_type_without_type_info).
+            # An inferred plain ``Any`` is only accepted if it comes from an
+            # explicit annotation; ``Any`` leaking in from unannotated code is
+            # still rejected, as before.
+            is_any = (
+                self.is_explicit_any(typ)
+                or (isinstance(typ, Instance) and typ.type.fullname == "builtins.type")
+                or (isinstance(typ, TypeType) and self.is_explicit_any(get_proper_type(typ.item)))
+            )
+            if is_any:
+                if self.options.disallow_subclassing_any:
+                    if isinstance(base_expr, (NameExpr, MemberExpr)):
+                        msg = f'Class cannot subclass "{base_expr.name}" (has type "Any")'
+                    else:
+                        msg = 'Class cannot subclass value of type "Any"'
+                    self.fail(msg, base_expr)
+                continue
+            if isinstance(base_expr, NameExpr):
+                name_repr: str | None = base_expr.name
+            elif isinstance(base_expr, MemberExpr):
+                name_repr = get_member_expr_fullname(base_expr)
+            else:
+                name_repr = None
+            self.fail(
+                f'Variable "{var.fullname}" is not valid as a type',
+                base_expr,
+                code=codes.VALID_TYPE,
+            )
+            self.note(
+                "See https://mypy.readthedocs.io/en/stable/common_issues.html"
+                "#variables-vs-type-aliases",
+                base_expr,
+                code=codes.VALID_TYPE,
+            )
+            msg = "Invalid base class"
+            if name_repr:
+                msg += f' "{name_repr}"'
+            self.fail(msg, base_expr)
+
     def visit_class_def(self, defn: ClassDef) -> None:
         """Type check a class definition."""
         typ = defn.info
+        self.check_deferred_base_classes(defn)
         for base in typ.mro[1:]:
             if base.is_final:
                 self.fail(message_registry.CANNOT_INHERIT_FROM_FINAL.format(base.name), defn)
@@ -4389,6 +4461,36 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
             res.append(lv)
         return res
 
+    def adjust_rvalue_type_if_possible(
+        self, rvalue_type: TupleType, lvalues: list[Lvalue]
+    ) -> TupleType:
+        """Adjust type of rvalue to match the shape/structure of lvalues.
+
+        Currently, we only allow this if the rvalue type has contains *tuple[Any, ...].
+        """
+        right_variadic = get_variadic_item(rvalue_type)
+        if right_variadic is None:
+            return rvalue_type
+        right_unpack_index, right_item = right_variadic
+        if not isinstance(get_proper_type(right_item), AnyType):
+            return rvalue_type
+        left_star_index = next(
+            (i for i, lv in enumerate(lvalues) if isinstance(lv, StarExpr)), None
+        )
+        if left_star_index is None:
+            extra = len(lvalues) - len(rvalue_type.items) + 1
+            if extra < 0:
+                return rvalue_type
+            return rvalue_type.copy_modified(
+                items=rvalue_type.items[:right_unpack_index]
+                + [right_item] * extra
+                + rvalue_type.items[right_unpack_index + 1 :]
+            )
+        new_items = extend_args_for_prefix_and_suffix(
+            tuple(rvalue_type.items), left_star_index, len(lvalues) - left_star_index - 1
+        )
+        return rvalue_type.copy_modified(items=list(new_items))
+
     def check_multi_assignment_from_tuple(
         self,
         lvalues: list[Lvalue],
@@ -4399,6 +4501,9 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
         infer_lvalue_type: bool = True,
     ) -> None:
         rvalue_unpack = find_unpack_in_list(rvalue_type.items)
+        if rvalue_unpack is not None:
+            rvalue_type = self.adjust_rvalue_type_if_possible(rvalue_type, lvalues)
+            rvalue_unpack = find_unpack_in_list(rvalue_type.items)
         if self.check_rvalue_count_in_assignment(
             lvalues, len(rvalue_type.items), context, rvalue_unpack=rvalue_unpack
         ):
@@ -4440,7 +4545,13 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                 if isinstance(reinferred_rvalue_type, TupleType):
                     # This branch will usually be taken, but in some cases context can
                     # e.g. select a different overload
+                    # TODO: reinferred tuple may be of a different (invalid) shape.
                     rvalue_type = reinferred_rvalue_type
+
+            # Reinferring the type can undo the shape adjustment, so do it again.
+            rvalue_unpack = find_unpack_in_list(rvalue_type.items)
+            if rvalue_unpack is not None:
+                rvalue_type = self.adjust_rvalue_type_if_possible(rvalue_type, lvalues)
 
             left_rv_types, star_rv_types, right_rv_types = self.split_around_star(
                 rvalue_type.items, star_index, len(lvalues)

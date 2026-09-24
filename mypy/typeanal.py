@@ -186,6 +186,25 @@ def analyze_type_alias(
     return res, analyzer.aliases_used
 
 
+class DeferredBaseClassVar(Exception):
+    """A base class is a variable whose type hasn't been inferred yet.
+
+    Semantic analysis runs before type checking, so when a class uses a variable
+    with an inferred (not declared) type as a base class -- e.g. ``x = args[1]``
+    where ``args[1]`` is ``Any`` -- the variable's type is not yet known. The
+    class is provisionally treated as having an ``Any`` base; the type checker
+    validates the inferred type once it is known (see
+    ``TypeChecker.check_deferred_base_classes``).
+
+    The variable is carried on the exception so the checker can inspect its
+    inferred type without re-resolving the base class expression.
+    """
+
+    def __init__(self, var: nodes.Var) -> None:
+        super().__init__()
+        self.var = var
+
+
 class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
     """Semantic analyzer for types.
 
@@ -1018,6 +1037,12 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                     return AnyType(TypeOfAny.special_form)
                 if isinstance(typ, TypeType) and isinstance(typ.item, AnyType):
                     return AnyType(TypeOfAny.from_another_any, source_any=typ.item)
+                if typ is None:
+                    # The variable's type has not been inferred yet (inference
+                    # happens in the type checker, after semantic analysis).
+                    # Defer the validity check; the type checker will verify
+                    # the inferred type. Provisionally treat the base as Any.
+                    raise DeferredBaseClassVar(sym.node)
         # Option 2:
         # Unbound type variable. Currently these may be still valid,
         # for example when defining a generic type alias.

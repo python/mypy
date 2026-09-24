@@ -3686,6 +3686,7 @@ class TypeInfo(SymbolNode):
         "type_object_type",
         "default_depends",
         "typeddict_data",
+        "deferred_base_classes",
     )
 
     _fullname: str  # Fully qualified name
@@ -3920,6 +3921,12 @@ class TypeInfo(SymbolNode):
         self.dataclass_transform_spec = None
         self.is_type_check_only = False
         self.deprecated = None
+        # Base classes that are variables whose types had not been inferred yet
+        # during semantic analysis. Each entry is a (variable, expression) tuple.
+        # The type checker validates them once the types are known (see
+        # TypeChecker.check_deferred_base_classes). This is not serialized; it
+        # is only meaningful within a single build.
+        self.deferred_base_classes: list[tuple[Var, Expression]] = []
         self.type_object_type = None
         self.default_depends = {}
         self.typeddict_data = None
