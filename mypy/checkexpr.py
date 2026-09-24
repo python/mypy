@@ -392,8 +392,8 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                 result.ret_type.column = e.column
             if is_type_type_context(self.type_context[-1]):
                 # This is the type in a type[] expression, so substitute type
-                # variables with Any.
-                result = erasetype.erase_typevars(result)
+                # variables with their defaults if they have one, else Any.
+                result = erasetype.erase_typevars_with_defaults(result)
         assert result is not None
         return result
 
