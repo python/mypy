@@ -1494,6 +1494,23 @@ def func() -> None:
 
 class C(Self): ...  # E: Self type is only allowed in annotations within class definition
 
+[case testTypingSelfInvalidTypeParamPositions]
+# https://github.com/python/mypy/issues/21960
+# flags: --python-version 3.13
+from typing import Self
+
+class Foo:
+    def meth[T: Self](self: T) -> None: ...  # E: Self type cannot be used in type parameter bound
+
+class Bar[T: Self]: ...  # E: Self type cannot be used in type parameter bound
+
+def func[T: (Self, int)](x: T) -> None: ...  # E: Self type cannot be used in type parameter constraint
+
+type Alias[T: Self] = list[T]  # E: Self type cannot be used in type parameter bound
+
+class Ok[T]:
+    def meth(self: Self) -> None: ...
+
 [case testTypingSelfInvalidArgs]
 from typing import Self, List
 
