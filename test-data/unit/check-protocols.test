@@ -4789,3 +4789,17 @@ bad_rep(t)  # E: Argument 1 to "bad_rep" has incompatible type "C"; expected "P[
             # N:     Got: \
             # N:         def rep(self) -> C
 [builtins fixtures/tuple.pyi]
+
+[case testDivergingProtocol]
+from typing import Protocol, TypeVar, List
+
+T = TypeVar("T")
+class P(Protocol[T]):
+    def meth(self) -> P[List[T]]: ...
+
+class C:
+    def meth(self) -> C: ...
+
+# This should not cause infinite recursion.
+x: P[int] = C()
+[builtins fixtures/tuple.pyi]
