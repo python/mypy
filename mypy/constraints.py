@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, Final, TypeGuard, cast
 import mypy.subtypes
 import mypy.typeops
 from mypy.argmap import ArgTypeExpander
-from mypy.erasetype import erase_typevars
+from mypy.erasetype import erase_typevars, erase_typevars_with_defaults
 from mypy.expandtype import expand_type_by_instance
 from mypy.maptype import map_instance_to_supertype
 from mypy.nodes import (
@@ -1426,14 +1426,14 @@ class ConstraintBuilderVisitor(TypeVisitor[list[Constraint]]):
             if self.actual.is_type_obj():
                 instance_type = self.actual.get_instance_type()
                 if self.erase_types:
-                    instance_type = erase_typevars(instance_type)
+                    instance_type = erase_typevars_with_defaults(instance_type)
                 return infer_constraints(template.item, instance_type, self.direction)
             return infer_constraints(template.item, self.actual.ret_type, self.direction)
         elif isinstance(self.actual, Overloaded):
             if self.actual.is_type_obj():
                 instance_type = self.actual.items[0].get_instance_type()
                 if self.erase_types:
-                    instance_type = erase_typevars(instance_type)
+                    instance_type = erase_typevars_with_defaults(instance_type)
                 return infer_constraints(template.item, instance_type, self.direction)
             return infer_constraints(template.item, self.actual.items[0].ret_type, self.direction)
         elif isinstance(self.actual, TypeType):
