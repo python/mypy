@@ -2163,10 +2163,12 @@ def unify_generic_callable(
         return_constraint_direction = mypy.constraints.SUBTYPE_OF
 
     constraints: list[mypy.constraints.Constraint] = []
-    # There is some special logic for inference in callables, so better use them
-    # as wholes instead of picking separate arguments.
+    # This code is hot in numerical libraries, so we use a faster inference
+    #  algorithm (that may give slightly worse results in rare cases).
     keep_unions_old = type_state.keep_unions
     type_state.keep_unions = True
+    # There is some special logic for inference in callables, so better use them
+    # as wholes instead of picking separate arguments.
     cs = mypy.constraints.infer_constraints(
         type.copy_modified(ret_type=UninhabitedType()),
         target.copy_modified(ret_type=UninhabitedType()),
