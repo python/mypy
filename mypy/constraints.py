@@ -386,6 +386,18 @@ def _infer_constraints(
             res.extend(infer_constraints(t_item, actual, direction))
         return res
     if direction == SUPERTYPE_OF and isinstance(actual, UnionType):
+        # Case when *both* template and actual are unions needs special-casing:
+        # * First, remove identical items that appear in both unions.
+        # * Then, restore any unions that where split in the loop below
+        #   (see comment above about plain type variables for why this is important).
+        # See e.g. testOptionalUnionInferencePrecise for situations where this helps.
+        nested_type_vars = None
+        if isinstance(template, UnionType):
+            nested_type_vars = [it for it in template.items if isinstance(it, TypeVarType)]
+            template, actual = remove_common_items(template, actual)
+            if not isinstance(actual, UnionType):
+                # Not a union after simplification, restart from the top.
+                return infer_constraints(template, actual, direction)
         res = []
         for a_item in actual.items:
             # `orig_template` has to be preserved intact in case it's recursive.
@@ -394,6 +406,8 @@ def _infer_constraints(
             if type_type_unwrapped:
                 a_item = TypeType.make_normalized(a_item)
             res.extend(infer_constraints(orig_template, a_item, direction))
+        if nested_type_vars:
+            res = restore_union(res, actual, nested_type_vars)
         return res
 
     # Now the potential subtype is known not to be a Union or a type
@@ -1496,6 +1510,37 @@ def find_matching_overload_items(
         # it maintains backward compatibility.
         res = items.copy()
     return res
+
+
+def remove_common_items(s: UnionType, t: UnionType) -> tuple[ProperType, ProperType]:
+    """Remove all items that appear in both unions."""
+    common = set(s.items) & set(t.items)
+    new_s = UnionType.make_union([it for it in s.items if it not in common])
+    new_t = UnionType.make_union([it for it in t.items if it not in common])
+    return get_proper_type(new_s), get_proper_type(new_t)
+
+
+def restore_union(
+    constraints: list[Constraint], union: UnionType, type_vars: list[TypeVarType]
+) -> list[Constraint]:
+    """Merge constrains against each item of a union to a single constraint against the union.
+
+    For each type variable we check whether all constraints for this type variable match
+    T :> Item for every item in the union, then replace such constraint group with a single
+    constraint. This will avoid accidentally inferring join from union.
+    """
+    union_set = {get_proper_type(it) for it in union.items}
+    to_restore = set()
+    for tv in type_vars:
+        relevant_cs = [c for c in constraints if c.type_var == tv.id]
+        if not all(c.op == SUPERTYPE_OF for c in relevant_cs):
+            continue
+        if union_set == {get_proper_type(c.target) for c in relevant_cs}:
+            to_restore.add(tv)
+
+    original = [c for c in constraints if c.type_var not in to_restore]
+    restored = [Constraint(tv, SUPERTYPE_OF, union) for tv in to_restore]
+    return original + restored
 
 
 def get_tuple_fallback_from_unpack(unpack: UnpackType) -> TypeInfo:
