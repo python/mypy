@@ -9741,3 +9741,22 @@ class C:
 
 reveal_type(C.x)  # N: Revealed type is "builtins.int | None"
 [builtins fixtures/classmethod.pyi]
+
+[case testSubclassInferredAnyVariable]
+# flags: --python-version=3.11
+from typing import Any
+def f(*args: *tuple[int, Any]) -> Any:
+    x = args[1]
+    class Sub(x): pass
+    return Sub()
+[builtins fixtures/tuple.pyi]
+
+[case testSubclassInferredNonAnyVariable]
+from typing import Any
+def f(x: Any) -> None:
+    y = x
+    class Sub1(y): pass
+    z = 1
+    class Sub2(z): pass  # E: Variable "z" is not valid as a type \
+                         # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases \
+                         # E: Invalid base class "z"
