@@ -211,7 +211,15 @@ from mypy.nodes import (
 )
 from mypy.operators import flip_ops, int_op_to_method, neg_ops
 from mypy.options import PRECISE_TUPLE_TYPES, Options
-from mypy.patterns import AsPattern, StarredPattern
+from mypy.patterns import (
+    AsPattern,
+    ClassPattern,
+    MappingPattern,
+    OrPattern,
+    Pattern,
+    SequencePattern,
+    StarredPattern,
+)
 from mypy.plugin import Plugin
 from mypy.plugins import dataclasses as dataclasses_plugin
 from mypy.scope import Scope
@@ -6071,6 +6079,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
             # will be a union of all capture types). This pass ignores
             # guard expressions.
             pattern_types = [self.pattern_checker.accept(p, subject_type) for p in s.patterns]
+            self.check_irrefutable_match_patterns(s)
             type_maps: list[TypeMap] = [t.captures for t in pattern_types]
             inferred_types = self.infer_variable_types_from_type_maps(type_maps)
 
@@ -6140,6 +6149,79 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
             # after the match.
             with self.binder.frame_context(can_skip=False, fall_through=2):
                 pass
+
+    def check_irrefutable_match_patterns(self, s: MatchStmt) -> None:
+        for pattern, guard in zip(s.patterns[:-1], s.guards[:-1]):
+            self.check_irrefutable_or_pattern_alternatives(pattern)
+            if (
+                guard is None
+                and self.is_syntactically_irrefutable_pattern(pattern)
+                and not self.has_irrefutable_nonfinal_or_alternative(pattern)
+            ):
+                self.msg.fail("Irrefutable pattern makes remaining patterns unreachable", pattern)
+        if s.patterns:
+            self.check_irrefutable_or_pattern_alternatives(s.patterns[-1])
+
+    def is_syntactically_irrefutable_pattern(self, pattern: Pattern) -> bool:
+        if isinstance(pattern, AsPattern):
+            return pattern.pattern is None or self.is_syntactically_irrefutable_pattern(
+                pattern.pattern
+            )
+        if isinstance(pattern, OrPattern):
+            return any(
+                self.is_syntactically_irrefutable_pattern(subpattern)
+                for subpattern in pattern.patterns
+            )
+        return False
+
+    def has_irrefutable_nonfinal_or_alternative(self, pattern: Pattern) -> bool:
+        if isinstance(pattern, OrPattern):
+            return any(
+                self.is_syntactically_irrefutable_pattern(subpattern)
+                for subpattern in pattern.patterns[:-1]
+            ) or any(
+                self.has_irrefutable_nonfinal_or_alternative(subpattern)
+                for subpattern in pattern.patterns
+            )
+        if isinstance(pattern, AsPattern) and pattern.pattern is not None:
+            return self.has_irrefutable_nonfinal_or_alternative(pattern.pattern)
+        if isinstance(pattern, SequencePattern):
+            return any(
+                self.has_irrefutable_nonfinal_or_alternative(subpattern)
+                for subpattern in pattern.patterns
+            )
+        if isinstance(pattern, MappingPattern):
+            return any(
+                self.has_irrefutable_nonfinal_or_alternative(subpattern)
+                for subpattern in pattern.values
+            )
+        if isinstance(pattern, ClassPattern):
+            return any(
+                self.has_irrefutable_nonfinal_or_alternative(subpattern)
+                for subpattern in pattern.positionals + pattern.keyword_values
+            )
+        return False
+
+    def check_irrefutable_or_pattern_alternatives(self, pattern: Pattern) -> None:
+        if isinstance(pattern, OrPattern):
+            for subpattern in pattern.patterns[:-1]:
+                if self.is_syntactically_irrefutable_pattern(subpattern):
+                    self.msg.fail(
+                        "Irrefutable alternative makes remaining patterns unreachable", subpattern
+                    )
+            for subpattern in pattern.patterns:
+                self.check_irrefutable_or_pattern_alternatives(subpattern)
+        elif isinstance(pattern, AsPattern) and pattern.pattern is not None:
+            self.check_irrefutable_or_pattern_alternatives(pattern.pattern)
+        elif isinstance(pattern, SequencePattern):
+            for subpattern in pattern.patterns:
+                self.check_irrefutable_or_pattern_alternatives(subpattern)
+        elif isinstance(pattern, MappingPattern):
+            for subpattern in pattern.values:
+                self.check_irrefutable_or_pattern_alternatives(subpattern)
+        elif isinstance(pattern, ClassPattern):
+            for subpattern in pattern.positionals + pattern.keyword_values:
+                self.check_irrefutable_or_pattern_alternatives(subpattern)
 
     def _make_named_statement_for_match(self, s: MatchStmt, subject: Expression) -> Expression:
         """Construct a fake NameExpr for inference if a match clause is complex."""

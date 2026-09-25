@@ -9,6 +9,36 @@ match m:
     case a:
         reveal_type(a)  # N: Revealed type is "__main__.A"
 
+[case testMatchIrrefutablePatternBeforeLastCase]
+# flags: --strict-equality
+def f(x: int) -> str:
+    match x:
+        case y:  # E: Irrefutable pattern makes remaining patterns unreachable
+            return "capture"
+        case _:
+            return "wildcard"
+
+[case testMatchGuardedIrrefutablePatternBeforeLastCase]
+# flags: --strict-equality
+def f(x: int) -> str:
+    match x:
+        case y if True:
+            return "positive"
+        case _:
+            return "fallback"
+
+[case testMatchIrrefutableOrPatternAlternative]
+# flags: --strict-equality
+def f(x: object) -> None:
+    match x:
+        case _ | 1:  # E: Irrefutable alternative makes remaining patterns unreachable
+            pass
+
+def g(x: object) -> None:
+    match x:
+        case [_ | 0]:  # E: Irrefutable alternative makes remaining patterns unreachable
+            pass
+
 -- Literal Pattern --
 
 [case testMatchLiteralPatternNarrows]
