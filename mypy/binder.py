@@ -517,7 +517,7 @@ class ConditionalTypeBinder:
                         for item in all_items
                     ]
                     self.put(expr, UnionType(new_items))
-                elif any(is_imprecise_any(item) for item in all_items):
+                elif any(isinstance(get_proper_type(item), AnyType) for item in all_items):
                     # Third case: a union already containing Any (most likely from
                     # an un-imported name), in this case we allow assigning Any as well.
                     self.put(expr, type)
@@ -643,7 +643,7 @@ def get_declaration(expr: BindableExpression) -> Type | None:
     if isinstance(expr, RefExpr):
         if isinstance(expr.node, Var):
             type = expr.node.type
-            if not isinstance(get_proper_type(type), PartialType):
+            if not isinstance(type, PartialType):
                 return type
         elif isinstance(expr.node, TypeInfo):
             return TypeType(fill_typevars_with_any(expr.node))
