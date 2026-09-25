@@ -553,13 +553,7 @@ class InspectionStubGenerator(BaseStubGenerator):
         elif isinstance(obj, ModuleType):
             return self.add_name("types.ModuleType", require=False)
         elif _is_sentinel_object(obj):
-            # On 3.15+, typing_extensions.sentinel is builtins.sentinel, so
-            # type(obj).__module__ is "builtins" there and "typing_extensions"
-            # otherwise. Always use the portable spelling instead of whichever
-            # one happens to match the interpreter running stubgen. Use the
-            # dotted form (not add_name) since a module constructing a
-            # sentinel will itself have already imported the bare `sentinel`
-            # name, which would otherwise force an alias here.
+            # Works across all supported Python versions
             return "typing_extensions.sentinel"
         else:
             return self.get_type_fullname(type(obj))
