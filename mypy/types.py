@@ -261,6 +261,20 @@ class TypeOfAny:
     suggestion_engine: Final = 9
 
 
+# Some parts of the code distinguish two categories of Any types:
+# * Intentional: explicit, from_error, special_form - these are what other
+#   languages/type-checkers may call "Dynamic", i.e. too tricky to express.
+# * Imprecise: unannotated, from_unimported_type, from_omitted_generics - these
+#   are what other languages/type-checkers may call "Unknown", i.e. values in
+#   partially annotated legacy code. These are usually "non-sticky", after assigning
+#   such value to a variable, the variable keeps the original (more precise) type.
+IMPRECISE_ANYS: Final = (
+    TypeOfAny.unannotated,
+    TypeOfAny.from_unimported_type,
+    TypeOfAny.from_omitted_generics,
+)
+
+
 def deserialize_type(data: JsonDict | str) -> Type:
     if isinstance(data, str):
         return Instance.deserialize(data)
