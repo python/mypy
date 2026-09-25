@@ -224,10 +224,9 @@ _dummy_int: Final = -999999
 
 # Maximum protocol subtyping assumptions depth. We need this to avoid infinite
 # recursion for protocols that are genuinely undecidable, see testDivergingProtocol.
-# Note we set very large cut-off for now, since some numerical libraries currently
-# use ~25 assumptions, and we want to avoid false negatives with them. We may be able
-# to reduce this in the future if we will optimize our callable unification logic.
-MAX_PROTOCOL_DEPTH: Final = 40
+# We set a conservative cut-off, since some numerical libraries currently
+# use ~10 assumptions, and we want to avoid false negatives with them.
+MAX_PROTOCOL_DEPTH: Final = 20
 
 
 class TypeOfAny:
