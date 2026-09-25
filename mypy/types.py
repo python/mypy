@@ -227,7 +227,7 @@ _dummy_int: Final = -999999
 # Note we set very large cut-off for now, since some numerical libraries currently
 # use ~25 assumptions, and we want to avoid false negatives with them. We may be able
 # to reduce this in the future if we will optimize our callable unification logic.
-MAX_PROTOCOL_DEPTH: Final = 40
+MAX_PROTOCOL_DEPTH: Final = 10
 
 
 class TypeOfAny:

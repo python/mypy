@@ -1310,7 +1310,7 @@ def is_protocol_implementation(
             return False
     assuming = right.type.assuming_proper if proper_subtype else right.type.assuming
     if len(assuming) > MAX_PROTOCOL_DEPTH:
-        return True
+        raise ValueError
     for l, r in reversed(assuming):
         if l == left and r == right:
             return True
