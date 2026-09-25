@@ -2109,7 +2109,7 @@ class CompiledBase:
 [case testFinalMethodCallsWithinAndAcrossModules]
 from other import FinalMethods
 
-def cross_module_calls(obj: FinalMethods) -> tuple[int, int, int, int, int, int]:
+def cross_module_calls(obj: FinalMethods) -> tuple[int, int, int, int, int, int, int]:
     return (
         obj.regular(2),
         obj.class_method(2),
@@ -2117,6 +2117,7 @@ def cross_module_calls(obj: FinalMethods) -> tuple[int, int, int, int, int, int]
         sum(obj.generator(2)),
         FinalMethods.class_method(3),
         FinalMethods.static_method(3),
+        obj.decorated_final(2),
     )
 
 async def cross_module_async(obj: FinalMethods) -> tuple[int, int, int, int, int]:
@@ -2130,8 +2131,13 @@ async def cross_module_async(obj: FinalMethods) -> tuple[int, int, int, int, int
 
 [file other.py]
 from collections.abc import Iterator
-from typing import final
+from typing import TypeVar, final
 from mypy_extensions import mypyc_attr
+
+T = TypeVar("T")
+
+def identity(value: T) -> T:
+    return value
 
 @mypyc_attr(allow_interpreted_subclasses=True)
 class FinalMethods:
@@ -2171,7 +2177,12 @@ class FinalMethods:
         yield self.base + value + 50
         yield self.base + value + 60
 
-def same_module_calls(obj: FinalMethods) -> tuple[int, int, int, int, int, int]:
+    @final
+    @identity
+    def decorated_final(self, value: int) -> int:
+        return self.base + value + 90
+
+def same_module_calls(obj: FinalMethods) -> tuple[int, int, int, int, int, int, int]:
     return (
         obj.regular(2),
         obj.class_method(2),
@@ -2179,6 +2190,7 @@ def same_module_calls(obj: FinalMethods) -> tuple[int, int, int, int, int, int]:
         sum(obj.generator(2)),
         FinalMethods.class_method(3),
         FinalMethods.static_method(3),
+        obj.decorated_final(2),
     )
 
 async def same_module_async(obj: FinalMethods) -> tuple[int, int, int, int, int]:
@@ -2196,7 +2208,7 @@ from native import cross_module_calls, cross_module_async
 from other import FinalMethods, same_module_calls, same_module_async
 
 obj = FinalMethods(10)
-expected = (12, 22, 32, 134, 23, 33)
+expected = (12, 22, 32, 134, 23, 33, 102)
 assert same_module_calls(obj) == expected
 assert cross_module_calls(obj) == expected
 expected_async = (52, 72, 82, 73, 83)

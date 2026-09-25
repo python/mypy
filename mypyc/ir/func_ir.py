@@ -255,7 +255,7 @@ class FuncDecl:
             is_prop_getter=data["is_prop_getter"],
             is_generator=data["is_generator"],
             is_coroutine=data["is_coroutine"],
-            is_final=data.get("is_final", False),
+            is_final=data["is_final"],
             implicit=data["implicit"],
             internal=data["internal"],
         )
