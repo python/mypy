@@ -1504,7 +1504,14 @@ def generate_coroutine_setup(
                 f"{wrapper_name});"
             )
         else:
-            emitter.emit_line(f"(({struct_name} *)type)->{attr} = {wrapper_name};")
+            # Creating the wrapper may run arbitrary code (e.g. via GC), which could
+            # have initialized the attribute already.
+            field = f"(({struct_name} *)type)->{attr}"
+            emitter.emit_line(f"if ({field} == NULL) {{")
+            emitter.emit_line(f"{field} = {wrapper_name};")
+            emitter.emit_line("} else {")
+            emitter.emit_line(f"Py_DECREF({wrapper_name});")
+            emitter.emit_line("}")
         return success()
 
     if not any(fn.decl.is_coroutine for fn in cl.methods.values()):
