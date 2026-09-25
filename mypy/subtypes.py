@@ -61,6 +61,7 @@ from mypy.types import (
     TypeAliasType,
     TypedDictType,
     TypeOfAny,
+    TypeStrVisitor,
     TypeType,
     TypeVarLikeType,
     TypeVarTupleType,
@@ -1310,7 +1311,11 @@ def is_protocol_implementation(
             return False
     assuming = right.type.assuming_proper if proper_subtype else right.type.assuming
     if len(assuming) > MAX_PROTOCOL_DEPTH:
-        raise ValueError
+        visitor = TypeStrVisitor(options=options or Options())
+        pairs = []
+        for l, r in assuming:
+            pairs.append((l.accept(visitor), r.accept(visitor)))
+        raise ValueError(pairs)
     for l, r in reversed(assuming):
         if l == left and r == right:
             return True

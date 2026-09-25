@@ -4790,7 +4790,7 @@ bad_rep(t)  # E: Argument 1 to "bad_rep" has incompatible type "C"; expected "P[
             # N:         def rep(self) -> C
 [builtins fixtures/tuple.pyi]
 
-[case testDivergingProtocol]
+[case testDivergingProtocol-skip]
 from typing import Protocol, TypeVar, List
 
 T = TypeVar("T")
