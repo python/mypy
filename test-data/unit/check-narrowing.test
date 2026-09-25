@@ -1548,6 +1548,28 @@ def f(t: Type[T], a: A, b: B) -> None:
     else:
         reveal_type(b)  # N: Revealed type is "__main__.B"
 
+[case testNarrowingTypeIsWithUnboundedTypeVar]
+# flags: --strict-equality --warn-unreachable
+from typing import TypeVar
+
+V = TypeVar("V")
+
+def takes_float(x: float) -> None: ...
+
+def f(s1: V) -> None:
+    if type(s1) is float:
+        takes_float(s1)
+        reveal_type(s1)  # N: Revealed type is "V`-1"
+    else:
+        reveal_type(s1)  # N: Revealed type is "V`-1"
+
+def g(s2: V) -> None:
+    if type(s2) is not float:
+        reveal_type(s2)  # N: Revealed type is "V`-1"
+    else:
+        takes_float(s2)
+[builtins fixtures/primitives.pyi]
+
 [case testNarrowingNestedUnionOfTypedDicts]
 # flags: --strict-equality --warn-unreachable
 from typing import Literal, TypedDict, Union
