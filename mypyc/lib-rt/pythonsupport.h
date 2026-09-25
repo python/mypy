@@ -129,6 +129,19 @@ static inline void CPy_SetAttrRef(PyObject *owner, PyObject **field, PyObject *v
     Py_XDECREF(old);
 }
 
+// Publish a lazily created attribute once. Concurrent initializers may create
+// separate values; only the first is installed, and the others are discarded.
+// Decref outside the owner's critical section in case it runs Python code.
+static inline void CPy_InitAttrRefIfNull(PyObject *owner, PyObject **field, PyObject *value) {
+    Py_BEGIN_CRITICAL_SECTION(owner);
+    if (_Py_atomic_load_ptr_relaxed(field) == NULL) {
+        _Py_atomic_store_ptr_release(field, value);
+        value = NULL;
+    }
+    Py_END_CRITICAL_SECTION();
+    Py_XDECREF(value);
+}
+
 // Initialize a native attribute that is known to be previously undefined (NULL),
 // stealing the reference to 'value'.
 //

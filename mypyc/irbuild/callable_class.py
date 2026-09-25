@@ -6,7 +6,7 @@ non-local variables defined in outer scopes.
 
 from __future__ import annotations
 
-from mypyc.common import CPYFUNCTION_NAME, ENV_ATTR_NAME, PROPSET_PREFIX, SELF_NAME
+from mypyc.common import CPYFUNCTION_NAME, ENV_ATTR_NAME, IS_FREE_THREADED, PROPSET_PREFIX, SELF_NAME
 from mypyc.ir.class_ir import ClassIR
 from mypyc.ir.func_ir import FuncDecl, FuncIR, FuncSignature, RuntimeArg
 from mypyc.ir.ops import (
@@ -134,7 +134,13 @@ def add_coroutine_properties(
         self_reg = builder.self()
         init, done = BasicBlock(), BasicBlock()
         cur = builder.add(
-            GetAttr(self_reg, CPYFUNCTION_NAME, line, borrow=True, allow_error_value=True)
+            GetAttr(
+                self_reg,
+                CPYFUNCTION_NAME,
+                line,
+                borrow=not IS_FREE_THREADED,
+                allow_error_value=True,
+            )
         )
         builder.add(Branch(cur, init, done, Branch.IS_ERROR))
         builder.activate_block(init)

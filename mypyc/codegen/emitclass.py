@@ -1498,7 +1498,13 @@ def generate_coroutine_setup(
         wrapper_name = emit_instance(cl.methods["__call__"], cl.coroutine_name)
         struct_name = cl.struct_name(emitter.names)
         attr = emitter.attr(CPYFUNCTION_NAME)
-        emitter.emit_line(f"(({struct_name} *)type)->{attr} = {wrapper_name};")
+        if IS_FREE_THREADED:
+            emitter.emit_line(
+                f"CPy_InitAttrRefIfNull(type, (PyObject **)&(({struct_name} *)type)->{attr}, "
+                f"{wrapper_name});"
+            )
+        else:
+            emitter.emit_line(f"(({struct_name} *)type)->{attr} = {wrapper_name};")
         return success()
 
     if not any(fn.decl.is_coroutine for fn in cl.methods.values()):

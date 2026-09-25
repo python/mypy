@@ -2205,6 +2205,55 @@ def test_freed_instance_reuse() -> None:
 [file asyncio/__init__.pyi]
 def run(x: object) -> object: ...
 
+[case testNestedCoroutineConcurrentFirstIntrospection]
+from typing import Any
+
+def make() -> Any:
+    async def inner() -> None:
+        pass
+
+    return inner
+
+[file driver.py]
+import gc
+import threading
+
+from native import make
+
+workers = 16
+rounds = 300
+start = threading.Barrier(workers + 1)
+done = threading.Barrier(workers + 1)
+current = [None]
+
+def worker():
+    for _ in range(rounds):
+        start.wait()
+        f = current[0]
+        assert f.__name__ == "inner"
+        done.wait()
+
+threads = [threading.Thread(target=worker) for _ in range(workers)]
+for thread in threads:
+    thread.start()
+
+f = make()
+assert f.__name__ == "inner"
+wrapper_type = type(f.__cpyfunction__)
+del f
+gc.collect()
+before = sum(type(obj) is wrapper_type for obj in gc.get_objects())
+for _ in range(rounds):
+    current[0] = make()
+    start.wait()
+    done.wait()
+    current[0] = None
+for thread in threads:
+    thread.join()
+gc.collect()
+after = sum(type(obj) is wrapper_type for obj in gc.get_objects())
+assert after == before, (before, after)
+
 [case testCPyFunctionVariableNameConflict]
 class C:
     async def operation(self) -> int:
