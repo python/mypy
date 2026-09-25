@@ -2165,21 +2165,26 @@ def unify_generic_callable(
     if return_constraint_direction is None:
         return_constraint_direction = mypy.constraints.SUBTYPE_OF
 
-    constraints: list[mypy.constraints.Constraint] = []
-    # There is some special logic for inference in callables, so better use them
-    # as wholes instead of picking separate arguments.
-    cs = mypy.constraints.infer_constraints(
-        type.copy_modified(ret_type=UninhabitedType()),
-        target.copy_modified(ret_type=UninhabitedType()),
-        mypy.constraints.SUBTYPE_OF,
-        skip_neg_op=True,
-    )
-    constraints.extend(cs)
-    if not ignore_return:
-        c = mypy.constraints.infer_constraints(
-            type.ret_type, target.ret_type, return_constraint_direction
+    # This code is hot in numerical libraries, so we use a faster inference
+    #  algorithm (that may give slightly worse results in rare cases).
+    keep_unions_old = type_state.keep_unions
+    type_state.keep_unions = True
+    try:
+        # There is some special logic for inference in callables, so better use
+        # them as wholes instead of picking separate arguments.
+        constraints = mypy.constraints.infer_constraints(
+            type.copy_modified(ret_type=UninhabitedType()),
+            target.copy_modified(ret_type=UninhabitedType()),
+            mypy.constraints.SUBTYPE_OF,
+            skip_neg_op=True,
         )
-        constraints.extend(c)
+        if not ignore_return:
+            c = mypy.constraints.infer_constraints(
+                type.ret_type, target.ret_type, return_constraint_direction
+            )
+            constraints.extend(c)
+    finally:
+        type_state.keep_unions = keep_unions_old
     inferred_vars, _ = mypy.solve.solve_constraints(
         type.variables, constraints, allow_polymorphic=True
     )
