@@ -1346,6 +1346,42 @@ def print_custom_table() -> None:
 [out]
 _testLoadsOfOverloads.py:24: note: Revealed type is "str"
 
+[case testOverloadNestedAnyWithFullStubs]
+# Full-stub counterpart of #21768: collections.abc.Sequence, dict, tuple.
+from collections.abc import Sequence
+from typing import Any, overload
+
+@overload
+def f(s: Sequence[int]) -> int: ...
+@overload
+def f(s: object) -> object: ...
+def f(s: object) -> object:
+    return 0
+
+concrete: Sequence[int] = [1]
+nested: Sequence[Any] = [1]
+as_str: Sequence[str] = ["x"]
+print(f(concrete), f(nested), f(as_str))
+reveal_type(f(concrete))
+reveal_type(f(nested))
+reveal_type(f(as_str))
+
+@overload
+def g(s: dict[str, int]) -> int: ...
+@overload
+def g(s: object) -> object: ...
+def g(s: object) -> object:
+    return 0
+
+d: dict[str, Any] = {"a": 1}
+print(g(d))
+reveal_type(g(d))
+[out]
+_testOverloadNestedAnyWithFullStubs.py:16: note: Revealed type is "int"
+_testOverloadNestedAnyWithFullStubs.py:17: note: Revealed type is "Any"
+_testOverloadNestedAnyWithFullStubs.py:18: note: Revealed type is "object"
+_testOverloadNestedAnyWithFullStubs.py:29: note: Revealed type is "Any"
+
 [case testReduceWithAnyInstance]
 from typing import Iterable
 from functools import reduce
