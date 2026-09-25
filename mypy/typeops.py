@@ -34,6 +34,7 @@ from mypy.nodes import (
     Var,
 )
 from mypy.state import state
+from mypy.type_visitor import ANY_STRATEGY, BoolTypeQuery
 from mypy.types import (
     ELLIPSIS_TYPE_NAMES,
     NOT_IMPLEMENTED_TYPE_NAMES,
@@ -463,15 +464,57 @@ def bind_self(
 
     """
     if isinstance(method, Overloaded):
-        items = [
-            bind_self(c, original_type, is_classmethod, ignore_instances) for c in method.items
-        ]
-        return cast(F, Overloaded(items))
+        items = []
+        # If the original object type has Any, we record the inferred self-types,
+        if original_type and has_any_type(original_type, ignore_in_type_obj=True):
+            bound_args: list[Type] | None = []
+        else:
+            bound_args = None
+        for c in method.items:
+            bound = bind_self_inner(c, original_type, is_classmethod, ignore_instances)
+            if bound is None:
+                items.append(c)
+                bound_args = None
+                # If some items can't be bound, we ignore them all for simplicity.
+                continue
+            func, variables = bound
+            res = func.copy_modified(
+                arg_types=func.arg_types[1:],
+                arg_kinds=func.arg_kinds[1:],
+                arg_names=func.arg_names[1:],
+                variables=variables,
+                is_bound=True,
+            )
+            items.append(res)
+            if bound_args is not None:
+                bound_args.append(func.arg_types[0])
+        return cast(F, Overloaded(items, bound_args))
+
     assert isinstance(method, CallableType)
-    func: CallableType = method
+    bound = bind_self_inner(method, original_type, is_classmethod, ignore_instances)
+    if bound is None:
+        return method
+    func, variables = bound
+    res = func.copy_modified(
+        arg_types=func.arg_types[1:],
+        arg_kinds=func.arg_kinds[1:],
+        arg_names=func.arg_names[1:],
+        variables=variables,
+        is_bound=True,
+    )
+    return cast(F, res)
+
+
+def bind_self_inner(
+    func: CallableType,
+    original_type: Type | None = None,
+    is_classmethod: bool = False,
+    ignore_instances: bool = False,
+) -> tuple[CallableType, Sequence[TypeVarLikeType]] | None:
+    """Implementation of bind_self()."""
     if not func.arg_types:
         # Invalid method, return something.
-        return method
+        return None
     if func.arg_kinds[0] in (ARG_STAR, ARG_STAR2):
         # The signature is of the form 'def foo(*args, ...)'.
         # In this case we shouldn't drop the first arg,
@@ -480,7 +523,8 @@ def bind_self(
 
         # In the case of **kwargs we should probably emit an error, but
         # for now we simply skip it, to avoid crashes down the line.
-        return method
+        return None
+
     self_param_type = get_proper_type(func.arg_types[0])
 
     variables: Sequence[TypeVarLikeType]
@@ -527,15 +571,7 @@ def bind_self(
         variables = [v for v in func.variables if v not in self_vars]
     else:
         variables = func.variables
-
-    res = func.copy_modified(
-        arg_types=func.arg_types[1:],
-        arg_kinds=func.arg_kinds[1:],
-        arg_names=func.arg_names[1:],
-        variables=variables,
-        is_bound=True,
-    )
-    return cast(F, res)
+    return func, variables
 
 
 def erase_to_bound(t: Type) -> Type:
@@ -1353,3 +1389,34 @@ def can_have_shared_disjoint_base(instances: list[Instance]) -> bool:
         else:
             return False
     return True
+
+
+def has_any_type(t: Type, ignore_in_type_obj: bool = False) -> bool:
+    """Whether t contains an Any type"""
+    return t.accept(HasAnyType(ignore_in_type_obj))
+
+
+class HasAnyType(BoolTypeQuery):
+    def __init__(self, ignore_in_type_obj: bool) -> None:
+        super().__init__(ANY_STRATEGY)
+        self.ignore_in_type_obj = ignore_in_type_obj
+
+    def visit_any(self, t: AnyType) -> bool:
+        return t.type_of_any != TypeOfAny.special_form  # special forms are not real Any types
+
+    def visit_callable_type(self, t: CallableType) -> bool:
+        if self.ignore_in_type_obj and t.is_type_obj():
+            return False
+        return super().visit_callable_type(t)
+
+    def visit_type_var(self, t: TypeVarType) -> bool:
+        default = [t.default] if t.has_default() else []
+        return self.query_types([t.upper_bound, *default] + t.values)
+
+    def visit_param_spec(self, t: ParamSpecType) -> bool:
+        default = [t.default] if t.has_default() else []
+        return self.query_types([t.upper_bound, *default, t.prefix])
+
+    def visit_type_var_tuple(self, t: TypeVarTupleType) -> bool:
+        default = [t.default] if t.has_default() else []
+        return self.query_types([t.upper_bound, *default])

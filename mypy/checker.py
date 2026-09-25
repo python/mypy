@@ -246,6 +246,7 @@ from mypy.typeops import (
     false_only,
     fixup_partial_type,
     function_type,
+    has_any_type,
     is_literal_type_like,
     is_singleton_equality_type,
     is_singleton_identity_type,
@@ -6011,7 +6012,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
         if not self.options.disallow_any_decorated or self.is_stub or self.current_node_deferred:
             return
 
-        if mypy.checkexpr.has_any_type(typ):
+        if has_any_type(typ):
             self.msg.untyped_decorated_function(typ, func)
 
     def check_async_with_item(

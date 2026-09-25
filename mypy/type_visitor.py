@@ -332,7 +332,7 @@ class TypeTranslator(TypeVisitor[Type]):
             new = item.accept(self)
             assert isinstance(new, CallableType)  # type: ignore[misc]
             items.append(new)
-        return Overloaded(items=items)
+        return Overloaded(items=items, bound_args=t.bound_args)
 
     def visit_type_type(self, t: TypeType, /) -> Type:
         return TypeType.make_normalized(
