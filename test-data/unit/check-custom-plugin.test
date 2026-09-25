@@ -908,6 +908,19 @@ reveal_type(dynamic_signature(b))  # N: Revealed type is "builtins.bytes"
 \[mypy]
 plugins=<ROOT>/test-data/unit/plugins/function_sig_hook.py
 
+[case testFunctionSigHookCalledOnDecorator]
+# flags: --config-file tmp/mypy.ini
+
+def dynamic_signature(arg1: str) -> str: ...
+
+@dynamic_signature
+def f() -> None: ...
+
+reveal_type(f)  # N: Revealed type is "def ()"
+[file mypy.ini]
+\[mypy]
+plugins=<ROOT>/test-data/unit/plugins/function_sig_hook.py
+
 [case testPluginCalledCorrectlyWhenMethodInDecorator]
 # flags: --config-file tmp/mypy.ini
 from typing import TypeVar, Callable
