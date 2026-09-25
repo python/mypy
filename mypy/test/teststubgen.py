@@ -1078,7 +1078,7 @@ class StubgencSuite(unittest.TestCase):
         # A sentinel's declaration is always emitted, even for a private-looking
         # name, since it may be referenced from a default value's type elsewhere.
         assert len(output) == 1
-        assert output[0].startswith("_MISSING: ")
+        assert output[0] == "_MISSING = typing_extensions.sentinel('_MISSING')"
 
     def test_non_c_generate_signature_with_kw_only_args(self) -> None:
         class TestClass:

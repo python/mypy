@@ -91,7 +91,7 @@ def f(x=_MISSING): ...
 import typing_extensions
 from _typeshed import Incomplete
 
-_MISSING: typing_extensions.sentinel
+_MISSING = typing_extensions.sentinel('_MISSING')
 def f(x: Incomplete | _MISSING = ...): ...
 
 [case testDefaultArgSentinelCrossModule_inspect]

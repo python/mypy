@@ -963,15 +963,14 @@ class InspectionStubGenerator(BaseStubGenerator):
         The result lines will be appended to 'output'. If necessary, any
         required names will be added to 'imports'.
         """
-        if (
-            # A sentinel's name is emitted regardless of privacy/`__all__`, since it may
-            # be referenced from the type of a default value elsewhere in the stub.
-            not _is_sentinel_object(obj)
-            and (
-                self.is_private_name(name, f"{self.module_name}.{name}")
-                or self.is_not_in_all(name)
-            )
-        ):
+        # A sentinel's name is emitted regardless of privacy/`__all__`, since it may
+        # be referenced from the type of a default value elsewhere in the stub.
+        if _is_sentinel_object(obj):
+            self.record_name(name)
+            self.add_import_line("import typing_extensions\n")
+            output.append(f"{name} = typing_extensions.sentinel('{name}')")
+            return
+        if self.is_private_name(name, f"{self.module_name}.{name}") or self.is_not_in_all(name):
             return
         self.record_name(name)
         type_str = self.strip_or_import(self.get_type_annotation(obj))
