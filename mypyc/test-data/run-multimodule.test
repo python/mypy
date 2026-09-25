@@ -2106,6 +2106,80 @@ class CompiledBase:
     def value(self) -> int:
         raise NotImplementedError
 
+[case testFinalMethodCallsWithinAndAcrossModules]
+from other import FinalMethods
+
+def cross_module_calls(obj: FinalMethods) -> tuple[int, int, int, int, int, int]:
+    return (
+        obj.regular(2),
+        obj.class_method(2),
+        obj.static_method(2),
+        sum(obj.generator(2)),
+        FinalMethods.class_method(3),
+        FinalMethods.static_method(3),
+    )
+
+async def cross_module_async(obj: FinalMethods) -> int:
+    return await obj.async_method(2)
+
+[file other.py]
+from collections.abc import Iterator
+from typing import final
+from mypy_extensions import mypyc_attr
+
+@mypyc_attr(allow_interpreted_subclasses=True)
+class FinalMethods:
+    def __init__(self, base: int) -> None:
+        self.base = base
+
+    @final
+    def regular(self, value: int) -> int:
+        return self.base + value
+
+    @classmethod
+    @final
+    def class_method(cls, value: int) -> int:
+        return value + 20
+
+    @staticmethod
+    @final
+    def static_method(value: int) -> int:
+        return value + 30
+
+    @final
+    async def async_method(self, value: int) -> int:
+        return self.base + value + 40
+
+    @final
+    def generator(self, value: int) -> Iterator[int]:
+        yield self.base + value + 50
+        yield self.base + value + 60
+
+def same_module_calls(obj: FinalMethods) -> tuple[int, int, int, int, int, int]:
+    return (
+        obj.regular(2),
+        obj.class_method(2),
+        obj.static_method(2),
+        sum(obj.generator(2)),
+        FinalMethods.class_method(3),
+        FinalMethods.static_method(3),
+    )
+
+async def same_module_async(obj: FinalMethods) -> int:
+    return await obj.async_method(2)
+
+[file driver.py]
+import asyncio
+from native import cross_module_calls, cross_module_async
+from other import FinalMethods, same_module_calls, same_module_async
+
+obj = FinalMethods(10)
+expected = (12, 22, 32, 134, 23, 33)
+assert same_module_calls(obj) == expected
+assert cross_module_calls(obj) == expected
+assert asyncio.run(same_module_async(obj)) == 52
+assert asyncio.run(cross_module_async(obj)) == 52
+
 [case testCallFunctionInLazilyImportedModule]
 import my_lib
 

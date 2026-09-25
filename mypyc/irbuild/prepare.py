@@ -256,6 +256,7 @@ def prepare_func_def(
         kind,
         is_generator=fdef.is_generator,
         is_coroutine=fdef.is_coroutine,
+        is_final=fdef.is_final,
     )
     mapper.func_to_decl[fdef] = decl
     return decl
