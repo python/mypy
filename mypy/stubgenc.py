@@ -12,6 +12,7 @@ import importlib
 import inspect
 import keyword
 import os.path
+import types
 from collections.abc import Callable, Mapping
 from types import FunctionType, ModuleType
 from typing import Any
@@ -768,11 +769,26 @@ class InspectionStubGenerator(BaseStubGenerator):
 
                 rw_properties.append(f"{self._indent}{name}: {inferred_type}")
 
-    def get_type_fullname(self, typ: type) -> str:
+    def get_type_fullname(self, typ: object) -> str:
         """Given a type, return a string representation"""
         if typ is Any:
             return "Any"
-        typename = getattr(typ, "__qualname__", typ.__name__)
+        if typ is type(None):
+            return "None"
+        # PEP 604 unions (X | Y) are instances of types.UnionType at runtime.
+        # They have neither __qualname__ nor __name__, so format them explicitly.
+        if isinstance(typ, types.UnionType):
+            return " | ".join(self.get_type_fullname(arg) for arg in typ.__args__)
+        # Avoid evaluating typ.__name__ as a getattr default: that is evaluated
+        # eagerly and crashes for types.UnionType and similar constructs.
+        typename = getattr(typ, "__qualname__", None)
+        if typename is None:
+            typename = getattr(typ, "__name__", None)
+        if typename is None:
+            # This should not normally happen, but some types may resist our
+            # introspection attempts too hard. See
+            # https://github.com/python/mypy/issues/19031
+            return "_typeshed.Incomplete"
         module_name = self.get_obj_module(typ)
         if module_name is None:
             # This should not normally happen, but some types may resist our
