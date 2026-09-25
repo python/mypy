@@ -2746,6 +2746,19 @@ class B2(B1):  # E: A NamedTuple cannot be a dataclass
 
 [builtins fixtures/tuple.pyi]
 
+[case testNoCrashForDataclassFieldAssignedFunctionalNamedTuple]
+from collections import namedtuple
+from dataclasses import dataclass
+
+@dataclass
+class C:
+    p: "Point" = namedtuple("Point", ["x", "y"])  # E: First argument to namedtuple() should be "p", not "Point"
+
+@dataclass
+class D:
+    Point: "Point" = namedtuple("Point", ["x", "y"])
+[builtins fixtures/tuple.pyi]
+
 [case testDataclassesTypeGuard]
 import dataclasses
 
