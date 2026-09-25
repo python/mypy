@@ -1535,13 +1535,13 @@ def restore_union(
     union_set = {get_proper_type(it) for it in union.items}
     to_restore = set()
     for tv in type_vars:
-        relevant_cs = [c for c in constraints if c.type_var == tv.id]
+        relevant_cs = [c for c in constraints if c.origin_type_var == tv]
         if not all(c.op == SUPERTYPE_OF for c in relevant_cs):
             continue
         if union_set == {get_proper_type(c.target) for c in relevant_cs}:
             to_restore.add(tv)
 
-    original = [c for c in constraints if c.type_var not in to_restore]
+    original = [c for c in constraints if c.origin_type_var not in to_restore]
     restored = [Constraint(tv, SUPERTYPE_OF, union) for tv in to_restore]
     return original + restored
 

@@ -4378,3 +4378,18 @@ def foo(x: list[T]) -> list[Union[int, str, T]]: ...
 y: list[Union[int, str]]
 y = foo(y)
 [builtins fixtures/list.pyi]
+
+[case testOptionalUnionInferencePreciseSubclass]
+from typing import Generic, Optional, TypeVar, Union
+
+T = TypeVar("T")
+T_co = TypeVar("T_co", covariant=True)
+
+class A(Generic[T_co]): ...
+class B(Generic[T_co]): ...
+class C(A[Union[int, str]], B[Union[int, str, None]]): ...
+
+def f(x: Union[A[T], B[Optional[T]]]) -> T: ...
+
+reveal_type(f(C()))  # N: Revealed type is "builtins.int | builtins.str"
+[builtins fixtures/list.pyi]
