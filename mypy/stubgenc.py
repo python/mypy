@@ -332,15 +332,14 @@ class InspectionStubGenerator(BaseStubGenerator):
                 if default_value is not _Missing.VALUE:
                     if arg in annotations:
                         argtype = get_annotation(arg)
+                    elif _is_sentinel_object(default_value):
+                        # Reference the sentinel itself by name when possible, e.g.
+                        # `Incomplete | _MISSING`.
+                        incomplete = self.add_name("_typeshed.Incomplete")
+                        ref = self._sentinel_type_ref(default_value)
+                        argtype = f"{incomplete} | {ref}" if ref else incomplete
                     else:
                         argtype = self.get_type_annotation(default_value)
-                        if _is_sentinel_object(default_value):
-                            # Reference the sentinel itself by name when possible, e.g.
-                            # `Incomplete | _MISSING`.
-                            incomplete = self.add_name("_typeshed.Incomplete")
-                            ref = self._sentinel_type_ref(default_value)
-                            argtype = f"{incomplete} | {ref}" if ref else incomplete
-
                         if argtype == "None":
                             # None is not a useful annotation, but we can infer that the arg
                             # is optional
