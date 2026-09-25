@@ -217,14 +217,11 @@ _Missing = enum.Enum("_Missing", "VALUE")
 
 
 def _is_sentinel_object(obj: object) -> bool:
-    """Is ``obj`` an instance of ``typing_extensions.sentinel()``/``Sentinel()``?"""
+    """Whether obj is a sentinel object."""
     typ = type(obj)
     return typ.__module__ in ("builtins", "typing_extensions") and typ.__name__ in (
-        "sentinel",
-        # typing_extensions 4.14.0-4.15.x named the class `Sentinel`, with no
-        # lowercase alias; the rename (and `Sentinel = sentinel` alias) landed
-        # in 4.16.0.
-        "Sentinel",
+        "sentinel",  # 4.16+
+        "Sentinel",  # 4.14 - 4.15
     )
 
 
@@ -335,17 +332,15 @@ class InspectionStubGenerator(BaseStubGenerator):
                 if default_value is not _Missing.VALUE:
                     if arg in annotations:
                         argtype = get_annotation(arg)
-                    elif _is_sentinel_object(default_value):
-                        # The runtime type of a `sentinel()` marker object is not a
-                        # useful annotation for the parameter it defaults. Reference
-                        # the sentinel itself by name when possible, e.g.
-                        # `Incomplete | _MISSING`, importing it if it lives in
-                        # another module.
-                        incomplete = self.add_name("_typeshed.Incomplete")
-                        sentinel_ref = self._sentinel_type_ref(default_value)
-                        argtype = f"{incomplete} | {sentinel_ref}" if sentinel_ref else incomplete
                     else:
                         argtype = self.get_type_annotation(default_value)
+                        if _is_sentinel_object(default_value):
+                            # Reference the sentinel itself by name when possible, e.g.
+                            # `Incomplete | _MISSING`.
+                            incomplete = self.add_name("_typeshed.Incomplete")
+                            ref = self._sentinel_type_ref(default_value)
+                            argtype = f"{incomplete} | {ref}" if ref else incomplete
+
                         if argtype == "None":
                             # None is not a useful annotation, but we can infer that the arg
                             # is optional
@@ -572,22 +567,17 @@ class InspectionStubGenerator(BaseStubGenerator):
     def _sentinel_type_ref(self, sentinel_obj: object) -> str | None:
         """Return a reference to the name a sentinel object is bound to.
 
-        ``sentinel()``/``Sentinel()`` objects record the module and name they
-        were assigned to (this is how they support pickling), so we can point
-        directly at them (importing from another module if needed), rather
-        than using their unhelpful runtime type. Returns None if we can't (e.g.
-        the name isn't a valid identifier).
+        The sentinel spec says __name__ and __module__ are always present,
+        typing-extensions 4.16+ implements these, and stubs always use the
+        latest typing-extensions.
 
-        A leading-underscore sentinel name is treated the same as a public
-        one: ``generate_variable_stub`` always emits sentinel declarations
-        regardless of privacy, since a sentinel used as a default is part of
-        the (typed) signature even when its name looks private.
+        - https://docs.python.org/3.15/builtins/functions.html#sentinel.__name__
+        - https://docs.python.org/3.15/builtins/functions.html#sentinel.__module__
         """
-        name = getattr(sentinel_obj, "__name__", None)
-        module = getattr(sentinel_obj, "__module__", None)
-        if not isinstance(name, str) or not name.isidentifier() or not module:
-            return None
-        return f"{module}.{name}"
+        if (name := getattr(sentinel_obj, "__name__", None)) and name.isidentifier():
+            return f"{sentinel_obj.__module__}.{name}"
+
+        return None
 
     def is_function(self, obj: object) -> bool:
         if self.is_c_module:
