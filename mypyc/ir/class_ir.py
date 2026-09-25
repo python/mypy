@@ -369,12 +369,21 @@ class ClassIR:
         return True
 
     def is_method_final(self, name: str) -> bool:
+        method_decl: FuncDecl | None = None
+        try:
+            method_decl = self.method_decl(name)
+        except KeyError:
+            pass
+        # A declared @final method cannot be overridden in checked code. Trust
+        # this even when interpreted subclasses cannot be enumerated.
+        if method_decl is not None and method_decl.is_final:
+            return True
+
         subs = self.subclasses()
         if subs is None:
             return self.is_final_class
 
-        if self.has_method(name):
-            method_decl = self.method_decl(name)
+        if method_decl is not None:
             for subc in subs:
                 if subc.method_decl(name) != method_decl:
                     return False
