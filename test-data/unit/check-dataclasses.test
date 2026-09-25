@@ -1514,6 +1514,18 @@ class Some:
         self.y = 1  # E: Trying to assign name "y" that is not in "__slots__" of type "__main__.Some"
 [builtins fixtures/dataclasses.pyi]
 
+[case testDataclassGeneratedSlotsClassVariableOverride]
+from dataclasses import dataclass
+from typing import ClassVar
+
+@dataclass(slots=True)
+class Base:
+    value: int
+
+class Child(Base):
+    __slots__: ClassVar[tuple[str, ...]] = ()
+[builtins fixtures/tuple.pyi]
+
 [case testDataclassWithSlotsDef]
 from dataclasses import dataclass
 
