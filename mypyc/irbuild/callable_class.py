@@ -6,7 +6,13 @@ non-local variables defined in outer scopes.
 
 from __future__ import annotations
 
-from mypyc.common import CPYFUNCTION_NAME, ENV_ATTR_NAME, IS_FREE_THREADED, PROPSET_PREFIX, SELF_NAME
+from mypyc.common import (
+    CPYFUNCTION_NAME,
+    ENV_ATTR_NAME,
+    IS_FREE_THREADED,
+    PROPSET_PREFIX,
+    SELF_NAME,
+)
 from mypyc.ir.class_ir import ClassIR
 from mypyc.ir.func_ir import FuncDecl, FuncIR, FuncSignature, RuntimeArg
 from mypyc.ir.ops import (
