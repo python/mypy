@@ -396,6 +396,9 @@ def _infer_constraints(
             nested_type_vars = [it for it in template.items if isinstance(it, TypeVarType)]
             template, actual = remove_common_items(template, actual)
             if not isinstance(actual, UnionType):
+                if isinstance(actual, UninhabitedType):
+                    # Empty after simplification: do not infer spurious constraints.
+                    return []
                 # Not a union after simplification, restart from the top.
                 return infer_constraints(template, actual, direction)
         res = []
