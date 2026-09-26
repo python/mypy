@@ -1,19 +1,20 @@
-From 5ab958030bd7d4ed9cb3e2afa656b68ea5a07901 Mon Sep 17 00:00:00 2001
+From aedc9789b31650f3564d1c4ca6003d3c1b2c02af Mon Sep 17 00:00:00 2001
 From: hauntsaninja <hauntsaninja@gmail.com>
 Date: Wed, 6 May 2026 19:49:41 -0700
 Subject: [PATCH] Revert operator changes
 
 ---
- mypy/typeshed/stdlib/_operator.pyi | 58 ++++++++----------------------
- 1 file changed, 14 insertions(+), 44 deletions(-)
+ mypy/typeshed/stdlib/_operator.pyi | 59 +++++++-----------------------
+ 1 file changed, 14 insertions(+), 45 deletions(-)
 
 diff --git a/mypy/typeshed/stdlib/_operator.pyi b/mypy/typeshed/stdlib/_operator.pyi
-index 04dae79dc..29a6d7057 100644
+index 565bb4169..ff419842e 100644
 --- a/mypy/typeshed/stdlib/_operator.pyi
 +++ b/mypy/typeshed/stdlib/_operator.pyi
-@@ -1,15 +1,5 @@
+@@ -1,16 +1,5 @@
  import sys
 -from _typeshed import (
+-    ReadableBuffer,
 -    SupportsAdd,
 -    SupportsGetItem,
 -    SupportsMod,
@@ -24,11 +25,11 @@ index 04dae79dc..29a6d7057 100644
 -    SupportsRSub,
 -    SupportsSub,
 -)
-+from _typeshed import SupportsGetItem
++from _typeshed import ReadableBuffer, SupportsGetItem
  from collections.abc import Callable, Container, Iterable, MutableMapping, MutableSequence, Sequence
  from operator import attrgetter as attrgetter, itemgetter as itemgetter, methodcaller as methodcaller
- from typing import Any, AnyStr, ParamSpec, Protocol, SupportsAbs, SupportsIndex, TypeAlias, TypeVar, overload, type_check_only
-@@ -18,7 +8,6 @@ from typing_extensions import TypeIs
+ from typing import Any, ParamSpec, Protocol, SupportsAbs, SupportsIndex, TypeAlias, TypeVar, overload, type_check_only
+@@ -19,7 +8,6 @@ from typing_extensions import TypeIs
  _R = TypeVar("_R")
  _T = TypeVar("_T")
  _T_co = TypeVar("_T_co", covariant=True)
@@ -36,7 +37,7 @@ index 04dae79dc..29a6d7057 100644
  _K = TypeVar("_K")
  _V = TypeVar("_V")
  _P = ParamSpec("_P")
-@@ -69,43 +58,24 @@ def truth(a: object, /) -> bool: ...
+@@ -70,43 +58,24 @@ def truth(a: object, /) -> bool: ...
  def is_(a: object, b: object, /) -> bool: ...
  def is_not(a: object, b: object, /) -> bool: ...
  def abs(a: SupportsAbs[_T], /) -> _T: ...
@@ -94,5 +95,5 @@ index 04dae79dc..29a6d7057 100644
  def contains(a: Container[object], b: object, /) -> bool: ...
  def countOf(a: Iterable[object], b: object, /) -> int: ...
 -- 
-2.54.0
+2.46.0.dropbox.17
 
