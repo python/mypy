@@ -1,7 +1,7 @@
 import bz2
 import io
 import sys
-from _typeshed import ReadableBuffer, StrOrBytesPath, StrPath, SupportsRead, WriteableBuffer
+from _typeshed import FileDescriptorOrPath, ReadableBuffer, StrOrBytesPath, StrPath, SupportsRead, WriteableBuffer
 from builtins import list as _list  # aliases to avoid name clashes with fields named "type" or "list"
 from collections.abc import Callable, Iterable, Iterator, Mapping
 from gzip import _ReadableFileobj as _GzipReadableFileobj, _WritableFileobj as _GzipWritableFileobj
@@ -732,7 +732,7 @@ class TarFile:
 
 open = TarFile.open
 
-def is_tarfile(name: StrOrBytesPath | IO[bytes]) -> bool: ...
+def is_tarfile(name: FileDescriptorOrPath | IO[bytes]) -> bool: ...
 
 class TarError(Exception): ...
 class ReadError(TarError): ...
@@ -792,7 +792,6 @@ class TarInfo:
         "_link_target",
     )
     name: str
-    path: str
     size: int
     mtime: int | float
     chksum: int
@@ -822,6 +821,11 @@ class TarInfo:
     def frombuf(cls, buf: bytes | bytearray, encoding: str, errors: str) -> Self: ...
     @classmethod
     def fromtarfile(cls, tarfile: TarFile) -> Self: ...
+
+    @property
+    def path(self) -> str: ...
+    @path.setter
+    def path(self, name: str) -> None: ...
 
     @property
     def linkpath(self) -> str: ...
