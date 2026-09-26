@@ -21,7 +21,7 @@ if sys.version_info >= (3, 12):
     from _csv import QUOTE_NOTNULL as QUOTE_NOTNULL, QUOTE_STRINGS as QUOTE_STRINGS
 from _csv import Reader, Writer
 from _typeshed import SupportsWrite
-from collections.abc import Collection, Iterable, Iterator, Mapping, Sequence
+from collections.abc import Collection, Iterable, Mapping, Sequence
 from types import GenericAlias
 from typing import Any, Generic, Literal, TypeVar, overload
 from typing_extensions import Self
@@ -69,7 +69,7 @@ class excel(Dialect): ...
 class excel_tab(excel): ...
 class unix_dialect(Dialect): ...
 
-class DictReader(Iterator[dict[_T | Any, str | Any]], Generic[_T]):
+class DictReader(Generic[_T]):
     fieldnames: Sequence[_T] | None
     restkey: _T | None
     restval: str | Any | None
