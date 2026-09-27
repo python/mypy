@@ -2855,7 +2855,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                     old_allow_abstract_call = self.allow_abstract_call
                     self.allow_abstract_call = True
                     sig, _ = self.expr_checker.check_call(
-                        dec, [temp], [nodes.ARG_POS], defn, callable_name=fullname
+                        dec, [temp], [nodes.ARG_POS], decorator, callable_name=fullname
                     )
                     self.allow_abstract_call = old_allow_abstract_call
                 # TODO: Apply the sig to the actual TypeInfo so we can handle decorators
@@ -3345,8 +3345,8 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                     continue
 
             self.accept(s)
-            # Clear expression cache after each statement to avoid unlimited growth.
-            self.expr_checker.expr_cache.clear()
+            # Clear expression caches after each statement to avoid unlimited growth.
+            self.expr_checker.reset()
 
     def should_report_unreachable_issues(self) -> bool:
         return (
@@ -5906,7 +5906,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                 fullname = self.expr_checker.method_fullname(object_type, d.name)
             self.check_for_untyped_decorator(e.func, dec, d)
             sig, t2 = self.expr_checker.check_call(
-                dec, [temp], [nodes.ARG_POS], e, callable_name=fullname, object_type=object_type
+                dec, [temp], [nodes.ARG_POS], d, callable_name=fullname, object_type=object_type
             )
         if non_trivial_decorator:
             self.check_untyped_after_decorator(sig, e.func)
