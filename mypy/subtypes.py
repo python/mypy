@@ -36,6 +36,7 @@ from mypy.nodes import (
 )
 from mypy.options import Options
 from mypy.state import state
+from mypy.type_visitor import ANY_STRATEGY, BoolTypeQuery
 from mypy.types import (
     MAX_PROTOCOL_DEPTH,
     MYPYC_NATIVE_INT_NAMES,
@@ -2538,11 +2539,52 @@ def erase_return_self_types(typ: Type, self_type: Instance) -> Type:
 
 
 def common_type(types: list[Type]) -> Type | None:
-    """Return first type in the list that is both subtype and supertype of all other types."""
+    """Return a type in the list that is both subtype and supertype of all other types.
+
+    If there are more than one such type, choose the one that has an Any component,
+    otherwise return None.
+    """
+    candidates = []
     for candidate in types:
         if all(is_equivalent(candidate, other) for other in types):
-            return candidate
+            candidates.append(candidate)
+    if len(candidates) == 1:
+        return candidates[0]
+    candidates = [c for c in candidates if has_any_type(c)]
+    if len(candidates) == 1:
+        return candidates[0]
     return None
+
+
+def has_any_type(t: Type, ignore_in_type_obj: bool = False) -> bool:
+    """Whether t contains an Any type"""
+    return t.accept(HasAnyType(ignore_in_type_obj))
+
+
+class HasAnyType(BoolTypeQuery):
+    def __init__(self, ignore_in_type_obj: bool) -> None:
+        super().__init__(ANY_STRATEGY)
+        self.ignore_in_type_obj = ignore_in_type_obj
+
+    def visit_any(self, t: AnyType) -> bool:
+        return t.type_of_any != TypeOfAny.special_form  # special forms are not real Any types
+
+    def visit_callable_type(self, t: CallableType) -> bool:
+        if self.ignore_in_type_obj and t.is_type_obj():
+            return False
+        return super().visit_callable_type(t)
+
+    def visit_type_var(self, t: TypeVarType) -> bool:
+        default = [t.default] if t.has_default() else []
+        return self.query_types([t.upper_bound, *default] + t.values)
+
+    def visit_param_spec(self, t: ParamSpecType) -> bool:
+        default = [t.default] if t.has_default() else []
+        return self.query_types([t.upper_bound, *default, t.prefix])
+
+    def visit_type_var_tuple(self, t: TypeVarTupleType) -> bool:
+        default = [t.default] if t.has_default() else []
+        return self.query_types([t.upper_bound, *default])
 
 
 def is_erased_instance(t: Instance) -> bool:

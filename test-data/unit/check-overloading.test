@@ -1786,8 +1786,8 @@ a: Any
 b: List[Any]
 c: List[str]
 d: List[int]
-reveal_type(f(a)) # N: Revealed type is "builtins.list[builtins.int]"
-reveal_type(f(b))  # N: Revealed type is "builtins.list[builtins.int]"
+reveal_type(f(a)) # N: Revealed type is "builtins.list[Any]"
+reveal_type(f(b))  # N: Revealed type is "builtins.list[Any]"
 reveal_type(f(c))  # N: Revealed type is "builtins.list[Any]"
 reveal_type(f(d))  # N: Revealed type is "builtins.list[builtins.int]"
 
@@ -6589,7 +6589,7 @@ eggs = lambda: 'eggs'
 reveal_type(func(eggs))  # N: Revealed type is "def (builtins.str) -> builtins.str"
 
 spam: Callable[..., str] = lambda x, y: 'baz'
-reveal_type(func(spam))  # N: Revealed type is "def (*Any, **Any) -> builtins.str"
+reveal_type(func(spam))  # N: Revealed type is "def (*Any, **Any) -> Any"
 [builtins fixtures/paramspec.pyi]
 
 [case testGenericOverloadOverlapWithType]
@@ -6931,4 +6931,24 @@ class B(A):
     @overload
     def f(self, y: str) -> None: ...  # This is currently allowed (note different name)
     def f(self, *args, **kwargs) -> None: ...
+[builtins fixtures/tuple.pyi]
+
+[case testRespectPreciseOverloadFallbackIfPossible]
+from typing import overload, Any
+
+@overload
+def f(x: list[int]) -> list[tuple[int, ...]]: ...
+@overload
+def f(x: list[Any]) -> list[tuple[Any, ...]]: ...
+def f(x): pass
+
+a: Any
+la: list[Any]
+li: list[int]
+ls: list[str]
+
+reveal_type(f(a))  # N: Revealed type is "builtins.list[builtins.tuple[Any, ...]]"
+reveal_type(f(la))  # N: Revealed type is "builtins.list[builtins.tuple[Any, ...]]"
+reveal_type(f(li))  # N: Revealed type is "builtins.list[builtins.tuple[builtins.int, ...]]"
+reveal_type(f(ls))  # N: Revealed type is "builtins.list[builtins.tuple[Any, ...]]"
 [builtins fixtures/tuple.pyi]
