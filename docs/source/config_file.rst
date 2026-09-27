@@ -876,7 +876,7 @@ section of the command line docs.
    :type: boolean
    :default: False
 
-   Enable all optional error checking flags.  You can see the list of
+   Enable selected optional error checking flags.  You can see the list of
    flags enabled by strict mode in the full :option:`mypy --help`
    output.
 
