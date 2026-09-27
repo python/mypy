@@ -6901,3 +6901,34 @@ class B(A):
     @overload
     def f(self, x: T) -> T: ...
     def f(self, x: Optional[T]) -> Optional[T]: ...
+
+[case testOverloadSubtypingRespectPosArgNames]
+from typing import Protocol, overload, Union
+
+class P(Protocol):
+    def __call__(self, __x: Union[int, str]) -> Union[int, str]: ...
+
+class PBad(Protocol):
+    def __call__(self, x: Union[int, str]) -> Union[int, str]: ...
+
+@overload
+def f(x: int) -> int: ...
+@overload
+def f(y: str) -> str: ...
+def f(*args, **kwargs):
+    pass
+
+p: P = f
+pb: PBad = f  # E: Incompatible types in assignment (expression has type overloaded function, variable has type "PBad") \
+              # N: "PBad.__call__" has type "def __call__(self, x: int | str) -> int | str"
+
+class A:
+    def f(self, x: Union[int, str]) -> None: ...
+
+class B(A):
+    @overload
+    def f(self, x: int) -> None: ...
+    @overload
+    def f(self, y: str) -> None: ...  # This is currently allowed (note different name)
+    def f(self, *args, **kwargs) -> None: ...
+[builtins fixtures/tuple.pyi]

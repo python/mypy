@@ -3215,3 +3215,20 @@ reveal_type(mix2(b1))  # N: Revealed type is "tuple[builtins.str, tuple[builtins
 reveal_type(mix2(b2))  # N: Revealed type is "tuple[Any, tuple[builtins.int, builtins.str]]"
 reveal_type(mix2(b3))  # N: Revealed type is "tuple[builtins.int, tuple[Any, builtins.str]]"
 [builtins fixtures/tuple.pyi]
+
+[case testTypeVarTupleOverloadNoCrash]
+from typing import Any, overload, Callable
+from typing_extensions import TypeVarTuple, Unpack
+
+Ts = TypeVarTuple("Ts")
+
+@overload
+def foo(x: int, *args: Unpack[Ts]) -> tuple[int, Unpack[Ts]]: ...
+@overload
+def foo(x: str, *args: Unpack[Ts]) -> tuple[str, Unpack[Ts]]: ...
+def foo(x, *args):
+    pass
+
+def test(f: Callable[[object], object]) -> None: ...
+test(foo)  # E: Argument 1 to "test" has incompatible type overloaded function; expected "Callable[[object], object]"
+[builtins fixtures/tuple.pyi]

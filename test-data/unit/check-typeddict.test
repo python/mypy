@@ -6126,3 +6126,25 @@ class Callback(Model):
     def __init__(self, **kwargs: Unpack[_CallbackInit]) -> None: ...
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
+
+[case testOverloadTypedDictUnpackNoCrash]
+from typing import Any, overload, Callable
+from typing_extensions import Unpack, TypedDict
+
+class A(TypedDict):
+    bar: int
+
+class B(TypedDict):
+    baz: int
+
+@overload
+def foo(x: int, **kwargs: Unpack[A]) -> int: ...
+@overload
+def foo(x: str, **kwargs: Unpack[B]) -> str: ...
+def foo(x, **kwargs):
+    pass
+
+def test(f: Callable[[object], object]) -> None: ...
+test(foo)  # E: Argument 1 to "test" has incompatible type overloaded function; expected "Callable[[object], object]"
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
