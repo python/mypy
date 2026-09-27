@@ -3231,9 +3231,20 @@ class State:
 
     def parse_file_inner(self, source: str | None, raw_data: FileRawData | None = None) -> None:
         t0 = time_ref()
-        self.tree = self.manager.parse_file(
-            self.id, self.xpath, source, options=self.options, raw_data=raw_data
-        )
+        try:
+            self.tree = self.manager.parse_file(
+                self.id, self.xpath, source, options=self.options, raw_data=raw_data
+            )
+        except ValueError as decodeerr:
+            # The native parser reads files as UTF-8 and does not support PEP 263
+            # 'coding' declarations; surface a user-facing error instead of
+            # crashing (see issue #22055).
+            err = (
+                f"{self.path}: error: Cannot decode file: {decodeerr}. Note: the native "
+                "parser requires files to be valid UTF-8 and does not support PEP 263 "
+                "'coding' declarations."
+            )
+            raise CompileError([err], module_with_blocker=self.id) from decodeerr
         self.time_spent_us += time_spent_us(t0)
 
     def parse_file(self, *, temporary: bool = False, raw_data: FileRawData | None = None) -> None:

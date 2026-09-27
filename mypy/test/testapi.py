@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import os
 import sys
+import tempfile
 from io import StringIO
 
 import mypy.api
@@ -43,3 +45,21 @@ class APISuite(Suite):
         stdout, _, _ = mypy.api.run(["--version"])
         assert isinstance(stdout, str)
         assert stdout != ""
+
+    def test_decode_error_is_reported_not_raised(self) -> None:
+        """A file that is not valid UTF-8 produces an error, not a crash.
+
+        The native parser reads files as UTF-8 and does not support PEP 263
+        'coding' declarations (issue #22055).
+        """
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            file_path = os.path.join(tmp_dir, "latin1.py")
+            # "s = 'café'" encoded as latin-1: invalid UTF-8 bytes.
+            with open(file_path, "wb") as f:
+                f.write(b"s = 'caf\xe9'\n")
+
+            stdout, stderr, status = mypy.api.run(["--cache-dir", os.devnull, file_path])
+        assert "Cannot decode file" in stderr
+        assert "did not contain valid UTF-8" in stderr
+        assert "errors prevented further checking" in stdout
+        assert status == 2

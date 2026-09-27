@@ -6,6 +6,13 @@
 
 - No longer provide mypyc-accelerated wheels for macOS x86_64 [mypyc-wheels #119](https://github.com/mypyc/mypy_mypyc-wheels/pull/119)
 
+### Bug Fixes
+
+- The native parser no longer crashes with a traceback when checking a file
+  that is not valid UTF-8 (for example, a file with a PEP 263
+  ``# coding: latin-1`` declaration); a clean error message is reported
+  instead. (PR by @inchang-ing)
+
 ## Mypy 2.3
 
 We've just uploaded mypy 2.3.0 to the Python Package Index ([PyPI](https://pypi.org/project/mypy/)).
