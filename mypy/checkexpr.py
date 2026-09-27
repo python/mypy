@@ -122,6 +122,7 @@ from mypy.plugin import (
 from mypy.semanal_enum import ENUM_BASES
 from mypy.state import state
 from mypy.subtypes import (
+    common_type,
     covers_at_runtime,
     find_member,
     is_same_type,
@@ -204,6 +205,7 @@ from mypy.types import (
     has_recursive_types,
     has_type_vars,
     is_named_instance,
+    remove_dups,
     split_with_prefix_and_suffix,
 )
 from mypy.types_utils import (
@@ -228,6 +230,9 @@ ArgChecker: _TypeAlias = Callable[
 # see https://github.com/python/mypy/pull/5255#discussion_r196896335 for discussion.
 MAX_UNIONS: Final = 5
 
+# Maximum number or unique matched overload return types caused by Any
+# ambiguity where we try to find a precise fallback.
+MAX_PRECISE_OVERLOAD_FALLBACK: Final = 8
 
 # Types considered safe for comparisons with --strict-equality due to known behaviour of __eq__.
 # NOTE: All these types are subtypes of AbstractSet.
@@ -3097,11 +3102,17 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         if not matches:
             return None
         elif any_causes_overload_ambiguity(matches, return_types, arg_types, arg_kinds, arg_names):
+            return_types = remove_dups(return_types)
             # An argument of type or containing the type 'Any' caused ambiguity.
             # We try returning a precise type if we can. If not, we give up and just return 'Any'.
             if all_same_types(return_types):
                 self.chk.store_types(type_maps[0])
                 return return_types[0], inferred_types[0]
+            elif len(return_types) < MAX_PRECISE_OVERLOAD_FALLBACK and (
+                common := common_type(return_types)
+            ):
+                self.chk.store_types(type_maps[0])
+                return common, erase_type(inferred_types[0])
             elif all_same_types([erase_type(typ) for typ in return_types]):
                 self.chk.store_types(type_maps[0])
                 return erase_type(return_types[0]), erase_type(inferred_types[0])

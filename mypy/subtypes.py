@@ -2537,6 +2537,14 @@ def erase_return_self_types(typ: Type, self_type: Instance) -> Type:
     return typ
 
 
+def common_type(types: list[Type]) -> Type | None:
+    """Return first type in the list that is both subtype and supertype of all other types."""
+    for candidate in types:
+        if all(is_equivalent(candidate, other) for other in types):
+            return candidate
+    return None
+
+
 def is_erased_instance(t: Instance) -> bool:
     """Is this an instance where all args are Any types?"""
     if not t.args:
