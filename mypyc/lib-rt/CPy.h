@@ -1085,7 +1085,7 @@ bool CPyImport_ImportMany(PyObject *modules, CPyModuleCache *statics[], PyObject
                           PyObject *tb_path, PyObject *tb_function, Py_ssize_t *tb_lines);
 PyObject *CPyImport_ImportFromMany(PyObject *mod_id, PyObject *names, PyObject *as_names,
                                    PyObject *globals);
-PyObject *CPyImport_GetNativeAttrs(PyObject *mod_id, PyObject *names, PyObject *as_names,
+PyObject *CPyImport_GetNativeAttrs(PyObject *mod, PyObject *names, PyObject *as_names,
                                    PyObject *globals);
 PyObject *CPyImport_ImportNative(PyObject *module_name,
                                  PyObject *(*init_only_fn)(void),

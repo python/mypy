@@ -22,6 +22,7 @@ from mypy.nodes import (
     TypeInfo,
 )
 from mypy.types import (
+    MAX_PROTOCOL_DEPTH,
     TUPLE_LIKE_INSTANCE_NAMES,
     AnyType,
     CallableType,
@@ -333,9 +334,9 @@ def _infer_constraints(
     # Type inference shouldn't be affected by whether union types have been simplified.
     # We however keep any ErasedType items, so that the caller will see it when using
     # checkexpr.has_erased_component().
-    if isinstance(template, UnionType):
+    if not type_state.keep_unions and isinstance(template, UnionType):
         template = mypy.typeops.make_simplified_union(template.items, keep_erased=True)
-    if isinstance(actual, UnionType):
+    if not type_state.keep_unions and isinstance(actual, UnionType):
         actual = mypy.typeops.make_simplified_union(actual.items, keep_erased=True)
 
     # Ignore Any types from the type suggestion engine to avoid them
@@ -386,6 +387,21 @@ def _infer_constraints(
             res.extend(infer_constraints(t_item, actual, direction))
         return res
     if direction == SUPERTYPE_OF and isinstance(actual, UnionType):
+        # Case when *both* template and actual are unions needs special-casing:
+        # * First, remove identical items that appear in both unions.
+        # * Then, restore any unions that where split in the loop below
+        #   (see comment above about plain type variables for why this is important).
+        # See e.g. testOptionalUnionInferencePrecise for situations where this helps.
+        nested_type_vars = None
+        if isinstance(template, UnionType):
+            nested_type_vars = [it for it in template.items if isinstance(it, TypeVarType)]
+            template, actual = remove_common_items(template, actual)
+            if not isinstance(actual, UnionType):
+                if isinstance(actual, UninhabitedType):
+                    # Empty after simplification: do not infer spurious constraints.
+                    return []
+                # Not a union after simplification, restart from the top.
+                return infer_constraints(template, actual, direction)
         res = []
         for a_item in actual.items:
             # `orig_template` has to be preserved intact in case it's recursive.
@@ -394,6 +410,8 @@ def _infer_constraints(
             if type_type_unwrapped:
                 a_item = TypeType.make_normalized(a_item)
             res.extend(infer_constraints(orig_template, a_item, direction))
+        if nested_type_vars:
+            res = restore_union(res, actual, nested_type_vars)
         return res
 
     # Now the potential subtype is known not to be a Union or a type
@@ -750,7 +768,9 @@ class ConstraintBuilderVisitor(TypeVisitor[list[Constraint]]):
         if isinstance(actual, (CallableType, Overloaded)) and template.type.is_protocol:
             if "__call__" in template.type.protocol_members:
                 # Special case: a generic callback protocol
-                if not any(template == t for t in template.type.inferring):
+                if len(template.type.inferring) < MAX_PROTOCOL_DEPTH and not any(
+                    template == t for t in template.type.inferring
+                ):
                     template.type.inferring.append(template)
                     call = mypy.subtypes.find_member(
                         "__call__", template, actual, is_operator=True
@@ -944,6 +964,7 @@ class ConstraintBuilderVisitor(TypeVisitor[list[Constraint]]):
             if (
                 template.type.is_protocol
                 and self.direction == SUPERTYPE_OF
+                and len(template.type.inferring) < MAX_PROTOCOL_DEPTH
                 and
                 # We avoid infinite recursion for structural subtypes by checking
                 # whether this type already appeared in the inference chain.
@@ -967,6 +988,7 @@ class ConstraintBuilderVisitor(TypeVisitor[list[Constraint]]):
             elif (
                 instance.type.is_protocol
                 and self.direction == SUBTYPE_OF
+                and len(instance.type.inferring) < MAX_PROTOCOL_DEPTH
                 and
                 # We avoid infinite recursion for structural subtypes also here.
                 not any(instance == i for i in reversed(instance.type.inferring))
@@ -1013,6 +1035,7 @@ class ConstraintBuilderVisitor(TypeVisitor[list[Constraint]]):
             if (
                 template.type.is_protocol
                 and self.direction == SUPERTYPE_OF
+                and len(template.type.inferring) < MAX_PROTOCOL_DEPTH
                 and not any(template == t for t in reversed(template.type.inferring))
                 and mypy.subtypes.is_protocol_implementation(instance, erased, skip=["__call__"])
             ):
@@ -1318,7 +1341,7 @@ class ConstraintBuilderVisitor(TypeVisitor[list[Constraint]]):
                     a_unpack = actual.items[a_unpack_index]
                     assert isinstance(a_unpack, UnpackType)
                     a_unpacked = get_proper_type(a_unpack.type)
-                    if len(actual.items) + 1 <= len(template.items):
+                    if len(actual.items) <= len(template.items) + 1:
                         a_prefix_len = a_unpack_index
                         a_suffix_len = len(actual.items) - a_unpack_index - 1
                         t_prefix, t_middle, t_suffix = split_with_prefix_and_suffix(
@@ -1498,6 +1521,37 @@ def find_matching_overload_items(
     return res
 
 
+def remove_common_items(s: UnionType, t: UnionType) -> tuple[ProperType, ProperType]:
+    """Remove all items that appear in both unions."""
+    common = set(s.items) & set(t.items)
+    new_s = UnionType.make_union([it for it in s.items if it not in common])
+    new_t = UnionType.make_union([it for it in t.items if it not in common])
+    return get_proper_type(new_s), get_proper_type(new_t)
+
+
+def restore_union(
+    constraints: list[Constraint], union: UnionType, type_vars: list[TypeVarType]
+) -> list[Constraint]:
+    """Merge constrains against each item of a union to a single constraint against the union.
+
+    For each type variable we check whether all constraints for this type variable match
+    T :> Item for every item in the union, then replace such constraint group with a single
+    constraint. This will avoid accidentally inferring join from union.
+    """
+    union_set = {get_proper_type(it) for it in union.items}
+    to_restore = set()
+    for tv in type_vars:
+        relevant_cs = [c for c in constraints if c.origin_type_var == tv]
+        if not all(c.op == SUPERTYPE_OF for c in relevant_cs):
+            continue
+        if union_set == {get_proper_type(c.target) for c in relevant_cs}:
+            to_restore.add(tv)
+
+    original = [c for c in constraints if c.origin_type_var not in to_restore]
+    restored = [Constraint(tv, SUPERTYPE_OF, union) for tv in to_restore]
+    return original + restored
+
+
 def get_tuple_fallback_from_unpack(unpack: UnpackType) -> TypeInfo:
     """Get builtins.tuple type from available types to construct homogeneous tuples."""
     tp = get_proper_type(unpack.type)
@@ -1591,6 +1645,17 @@ def build_constraints_for_simple_unpack(
             # This is the only case where we can guarantee there will be no partial overlap
             # (note however partial overlap is OK for variadic tuples, it is handled below).
             t_unpack = template_args[template_unpack]
+        else:
+            # A special case for a variadic actual tuple unpack, we can infer T <: X from
+            # tuple[..., *tuple[T, ...], ...] <: tuple[..., *tuple[X, ...], ...] etc.
+            actual_unpack_type = actual_args[actual_unpack]
+            assert isinstance(actual_unpack_type, UnpackType)
+            a_unpacked = get_proper_type(actual_unpack_type.type)
+            if isinstance(a_unpacked, Instance) and a_unpacked.type.fullname == "builtins.tuple":
+                t_unpack = template_args[template_unpack]
+                # In this case we can "eat away" as much as we need.
+                common_prefix = template_prefix
+                common_suffix = template_suffix
 
     # Handle constraints from prefixes/suffixes first.
     start, middle, end = split_with_prefix_and_suffix(
@@ -1619,18 +1684,6 @@ def build_constraints_for_simple_unpack(
                         res.extend(infer_constraints(tp.args[0], a_tp.args[0], direction))
         elif isinstance(tp, TypeVarTupleType):
             res.append(Constraint(tp, direction, TupleType(list(middle), tp.tuple_fallback)))
-    elif actual_unpack is not None:
-        # A special case for a variadic tuple unpack, we simply infer T <: X from
-        # Tuple[..., *tuple[T, ...], ...] <: Tuple[..., *tuple[X, ...], ...].
-        actual_unpack_type = actual_args[actual_unpack]
-        assert isinstance(actual_unpack_type, UnpackType)
-        a_unpacked = get_proper_type(actual_unpack_type.type)
-        if isinstance(a_unpacked, Instance) and a_unpacked.type.fullname == "builtins.tuple":
-            t_unpack = template_args[template_unpack]
-            assert isinstance(t_unpack, UnpackType)
-            tp = get_proper_type(t_unpack.type)
-            if isinstance(tp, Instance) and tp.type.fullname == "builtins.tuple":
-                res.extend(infer_constraints(tp.args[0], a_unpacked.args[0], direction))
     return res
 
 

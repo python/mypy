@@ -438,6 +438,63 @@ else:
 
 assert sys.modules["other_top"] is fake
 
+[case testNativeImportRejectsSysModulesReplacementDuringInitialization]
+# separate: [(["native.py", "other_target.py"], "testgroup")]
+def load_target() -> None:
+    import other_target
+
+[file other_target.py]
+import sys
+
+replacement = object()
+sys.modules[__name__] = replacement
+
+[file sys/__init__.pyi]
+modules: dict[str, object]
+
+[file driver.py]
+import sys
+
+import native
+
+from testutil import assertRaises
+
+with assertRaises(
+    ImportError,
+    "native module 'other_target' in sys.modules was replaced after initialization",
+):
+    native.load_target()
+
+assert "other_target" not in sys.modules
+
+[case testNativeImportRejectsSysModulesRemovalDuringInitialization]
+# separate: [(["native.py", "other_target.py"], "testgroup")]
+def load_target() -> None:
+    import other_target
+
+[file other_target.py]
+import sys
+
+del sys.modules[__name__]
+
+[file sys/__init__.pyi]
+modules: dict[str, object]
+
+[file driver.py]
+import sys
+
+import native
+
+from testutil import assertRaises
+
+with assertRaises(
+    ImportError,
+    "initialized native module 'other_target' is missing from sys.modules",
+):
+    native.load_target()
+
+assert "other_target" not in sys.modules
+
 [case testMultiModuleFastpaths]
 [file other_main.py]
 
@@ -2049,6 +2106,305 @@ class CompiledBase:
     def value(self) -> int:
         raise NotImplementedError
 
+[case testFinalMethodCallsWithinAndAcrossModules]
+from other import FinalMethods, NativeBaseWithFinals, FinalTrait, SubclassOfNativeBase, SubclassOfTrait
+
+def cross_module_calls(obj: FinalMethods) -> tuple[int, int, int, int, int, int, int]:
+    return (
+        obj.regular(2),
+        obj.class_method(2),
+        obj.static_method(2),
+        sum(obj.generator(2)),
+        FinalMethods.class_method(3),
+        FinalMethods.static_method(3),
+        obj.decorated_final(2),
+    )
+
+async def cross_module_async(obj: FinalMethods) -> tuple[int, int, int, int, int]:
+    return (
+        await obj.async_method(2),
+        await obj.async_class_method(2),
+        await obj.async_static_method(2),
+        await FinalMethods.async_class_method(3),
+        await FinalMethods.async_static_method(3),
+    )
+
+def cross_module_property_calls(obj: FinalMethods) -> tuple[int, int]:
+    return (obj.final_prop, obj.computed_prop)
+
+def cross_module_native_base_calls(obj: NativeBaseWithFinals) -> tuple[int, int, int]:
+    return (obj.base_method(5), obj.base_prop, obj.computed_base_prop)
+
+def cross_module_trait_calls(obj: FinalTrait) -> tuple[int, int]:
+    return (obj.trait_method(7), obj.trait_prop)
+
+def cross_module_inherited_from_native(obj: SubclassOfNativeBase) -> tuple[int, int, int, int]:
+    return (obj.base_method(5), obj.base_prop, obj.computed_base_prop, obj.sub_method(3))
+
+def cross_module_inherited_from_trait(obj: SubclassOfTrait) -> tuple[int, int, int]:
+    return (obj.trait_method(7), obj.trait_prop, obj.sub_value(2))
+
+[file other.py]
+from collections.abc import Iterator
+from typing import Callable, TypeVar, final
+from mypy_extensions import mypyc_attr, trait
+
+def times_two(fn: Callable[[FinalMethods, int], int]) -> Callable[[FinalMethods, int], int]:
+    def inner(self, value: int) -> int:
+        return fn(self, value) * 2
+    return inner
+
+@mypyc_attr(allow_interpreted_subclasses=True)
+class FinalMethods:
+    def __init__(self, base: int) -> None:
+        self.base = base
+        self._prop_value = base * 2
+        self._computed = base * 3
+
+    @final
+    def regular(self, value: int) -> int:
+        return self.base + value
+
+    @classmethod
+    @final
+    def class_method(cls, value: int) -> int:
+        return value + 20
+
+    @staticmethod
+    @final
+    def static_method(value: int) -> int:
+        return value + 30
+
+    @final
+    async def async_method(self, value: int) -> int:
+        return self.base + value + 40
+
+    @classmethod
+    @final
+    async def async_class_method(cls, value: int) -> int:
+        return value + 70
+
+    @staticmethod
+    @final
+    async def async_static_method(value: int) -> int:
+        return value + 80
+
+    @final
+    def generator(self, value: int) -> Iterator[int]:
+        yield self.base + value + 50
+        yield self.base + value + 60
+
+    @final
+    @times_two
+    def decorated_final(self, value: int) -> int:
+        return self.base + value + 90
+
+    @property
+    @final
+    def final_prop(self) -> int:
+        return self._prop_value
+
+    @property
+    @final
+    def computed_prop(self) -> int:
+        return self._computed + 5
+
+@mypyc_attr(allow_interpreted_subclasses=True)
+class NativeBaseWithFinals:
+    def __init__(self, value: int) -> None:
+        self._value = value
+        self._base_computed = value * 2
+
+    @final
+    def base_method(self, x: int) -> int:
+        return self._value + x
+
+    @property
+    @final
+    def base_prop(self) -> int:
+        return self._value
+
+    @property
+    @final
+    def computed_base_prop(self) -> int:
+        return self._base_computed + 10
+
+@trait
+class FinalTrait:
+    def __init__(self) -> None:
+        self._trait_value = 100
+
+    @final
+    def trait_method(self, x: int) -> int:
+        return self._trait_value + x
+
+    @property
+    @final
+    def trait_prop(self) -> int:
+        return self._trait_value
+
+class SubclassOfNativeBase(NativeBaseWithFinals):
+    def sub_method(self, x: int) -> int:
+        return x * 10
+
+class SubclassOfTrait(FinalTrait):
+    def __init__(self) -> None:
+        FinalTrait.__init__(self)
+
+    def sub_value(self, x: int) -> int:
+        return x + 200
+
+def same_module_calls(obj: FinalMethods) -> tuple[int, int, int, int, int, int, int]:
+    return (
+        obj.regular(2),
+        obj.class_method(2),
+        obj.static_method(2),
+        sum(obj.generator(2)),
+        FinalMethods.class_method(3),
+        FinalMethods.static_method(3),
+        obj.decorated_final(2),
+    )
+
+async def same_module_async(obj: FinalMethods) -> tuple[int, int, int, int, int]:
+    return (
+        await obj.async_method(2),
+        await obj.async_class_method(2),
+        await obj.async_static_method(2),
+        await FinalMethods.async_class_method(3),
+        await FinalMethods.async_static_method(3),
+    )
+
+def same_module_property_calls(obj: FinalMethods) -> tuple[int, int]:
+    return (obj.final_prop, obj.computed_prop)
+
+def same_module_native_base_calls(obj: NativeBaseWithFinals) -> tuple[int, int, int]:
+    return (obj.base_method(5), obj.base_prop, obj.computed_base_prop)
+
+def same_module_trait_calls(obj: FinalTrait) -> tuple[int, int]:
+    return (obj.trait_method(7), obj.trait_prop)
+
+def same_module_inherited_from_native(obj: SubclassOfNativeBase) -> tuple[int, int, int, int]:
+    return (obj.base_method(5), obj.base_prop, obj.computed_base_prop, obj.sub_method(3))
+
+def same_module_inherited_from_trait(obj: SubclassOfTrait) -> tuple[int, int, int]:
+    return (obj.trait_method(7), obj.trait_prop, obj.sub_value(2))
+
+[file driver.py]
+import asyncio
+from native import (
+    cross_module_calls, cross_module_async, cross_module_property_calls,
+    cross_module_native_base_calls, cross_module_trait_calls,
+    cross_module_inherited_from_native, cross_module_inherited_from_trait
+)
+from other import (
+    FinalMethods, NativeBaseWithFinals, SubclassOfNativeBase, SubclassOfTrait,
+    same_module_calls, same_module_async, same_module_property_calls,
+    same_module_native_base_calls, same_module_trait_calls,
+    same_module_inherited_from_native, same_module_inherited_from_trait
+)
+
+obj = FinalMethods(10)
+expected = (12, 22, 32, 134, 23, 33, 204)
+assert same_module_calls(obj) == expected
+assert cross_module_calls(obj) == expected
+expected_async = (52, 72, 82, 73, 83)
+assert asyncio.run(same_module_async(obj)) == expected_async
+assert asyncio.run(cross_module_async(obj)) == expected_async
+
+expected_props = (20, 35)
+assert same_module_property_calls(obj) == expected_props
+assert cross_module_property_calls(obj) == expected_props
+
+base_obj = NativeBaseWithFinals(15)
+expected_base = (20, 15, 40)
+assert same_module_native_base_calls(base_obj) == expected_base
+assert cross_module_native_base_calls(base_obj) == expected_base
+
+sub_native = SubclassOfNativeBase(25)
+expected_sub_native = (30, 25, 60, 30)
+assert same_module_inherited_from_native(sub_native) == expected_sub_native
+assert cross_module_inherited_from_native(sub_native) == expected_sub_native
+
+sub_trait = SubclassOfTrait()
+expected_sub_trait = (107, 100, 202)
+assert same_module_inherited_from_trait(sub_trait) == expected_sub_trait
+assert cross_module_inherited_from_trait(sub_trait) == expected_sub_trait
+
+[case testFinalMethodsWithInterpretedSubclassesAndNestedInheritance]
+from other import BaseWithFinals, CompiledMiddle
+
+def call_final_through_base(obj: BaseWithFinals) -> tuple[int, int, int]:
+    return (obj.final_method(5), obj.final_prop, obj.nested_final())
+
+def call_final_through_middle(obj: CompiledMiddle) -> tuple[int, int, int, int]:
+    return (obj.final_method(5), obj.final_prop, obj.nested_final(), obj.middle_method())
+
+[file other.py]
+from typing import final
+from mypy_extensions import mypyc_attr
+
+@mypyc_attr(allow_interpreted_subclasses=True)
+class BaseWithFinals:
+    def __init__(self, value: int) -> None:
+        self._value = value
+        self._prop = value * 2
+
+    @final
+    def final_method(self, x: int) -> int:
+        return self._value + x
+
+    @property
+    @final
+    def final_prop(self) -> int:
+        return self._prop
+
+    @final
+    def nested_final(self) -> int:
+        return self.final_method(10) + self.final_prop
+
+@mypyc_attr(allow_interpreted_subclasses=True)
+class CompiledMiddle(BaseWithFinals):
+    def middle_method(self) -> int:
+        return self.final_method(3) + self.final_prop
+
+def same_module_base_calls(obj: BaseWithFinals) -> tuple[int, int, int]:
+    return (obj.final_method(5), obj.final_prop, obj.nested_final())
+
+def same_module_middle_calls(obj: CompiledMiddle) -> tuple[int, int, int, int]:
+    return (obj.final_method(5), obj.final_prop, obj.nested_final(), obj.middle_method())
+
+[file interpreted_subclass.py]
+from other import CompiledMiddle
+
+class InterpretedSubclass(CompiledMiddle):
+    def interpreted_method(self) -> int:
+        return self.final_method(7) + self.final_prop
+
+[file driver.py]
+from native import call_final_through_base, call_final_through_middle
+from other import BaseWithFinals, CompiledMiddle, same_module_base_calls, same_module_middle_calls
+from interpreted_subclass import InterpretedSubclass
+
+base = BaseWithFinals(10)
+expected_base = (15, 20, 40)
+assert same_module_base_calls(base) == expected_base
+assert call_final_through_base(base) == expected_base
+
+middle = CompiledMiddle(15)
+expected_middle = (20, 30, 55, 48)
+assert same_module_middle_calls(middle) == expected_middle
+assert call_final_through_middle(middle) == expected_middle
+
+interpreted = InterpretedSubclass(20)
+assert interpreted.final_method(5) == 25
+assert interpreted.final_prop == 40
+assert interpreted.nested_final() == 70
+assert interpreted.middle_method() == 63
+assert interpreted.interpreted_method() == 67
+
+assert call_final_through_base(interpreted) == (25, 40, 70)
+assert call_final_through_middle(interpreted) == (25, 40, 70, 63)
+
 [case testCallFunctionInLazilyImportedModule]
 import my_lib
 
@@ -2619,6 +2975,48 @@ def value() -> str:
 barrier.wait(timeout=15)
 import other_a
 other_value = other_a.value()
+
+[file driver.py]
+from concurrent.futures import ThreadPoolExecutor
+import importlib
+
+with ThreadPoolExecutor(max_workers=2) as executor:
+    future_a = executor.submit(importlib.import_module, "other_a")
+    future_b = executor.submit(importlib.import_module, "other_b")
+    other_a = future_a.result(timeout=15)
+    other_b = future_b.result(timeout=15)
+
+assert other_a.other_value == "b"
+assert other_b.other_value == "a"
+
+[case testConcurrentCircularNativeFromImports]
+# separate: [(["other_a.py", "other_b.py"], "testgroup")]
+pass
+
+[file import_sync.py]
+from threading import Barrier
+
+barrier = Barrier(2)
+
+[file other_a.py]
+from import_sync import barrier
+
+def value() -> str:
+    return "a"
+
+barrier.wait(timeout=15)
+from other_b import value as other_value_fn
+other_value = other_value_fn()
+
+[file other_b.py]
+from import_sync import barrier
+
+def value() -> str:
+    return "b"
+
+barrier.wait(timeout=15)
+from other_a import value as other_value_fn
+other_value = other_value_fn()
 
 [file driver.py]
 from concurrent.futures import ThreadPoolExecutor

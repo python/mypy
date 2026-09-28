@@ -402,7 +402,7 @@ class PatternChecker(PatternVisitor[PatternType]):
         return PatternType(new_type, rest_type, captures)
 
     def contract_starred_pattern_types(
-        self, types: list[Type], star_pos: int | None, num_patterns: int
+        self, types: list[Type], star_pos: int | None, num_required_patterns: int
     ) -> list[Type]:
         """
         Contracts a list of types in a sequence pattern depending on the position of a starred
@@ -422,15 +422,13 @@ class PatternChecker(PatternVisitor[PatternType]):
             # This should be guaranteed by the normalization in the caller.
             assert isinstance(unpacked, Instance) and unpacked.type.fullname == "builtins.tuple"
             if star_pos is None:
-                missing = num_patterns - len(types) + 1
+                missing = num_required_patterns - len(types) + 1
                 new_types = types[:unpack_index]
                 new_types += [unpacked.args[0]] * missing
                 new_types += types[unpack_index + 1 :]
                 return new_types
             prefix, middle, suffix = split_with_prefix_and_suffix(
-                tuple([UnpackType(unpacked) if isinstance(t, UnpackType) else t for t in types]),
-                star_pos,
-                num_patterns - star_pos,
+                tuple(types), star_pos, num_required_patterns - star_pos
             )
             new_middle = []
             for m in middle:
@@ -445,7 +443,7 @@ class PatternChecker(PatternVisitor[PatternType]):
             if star_pos is None:
                 return types
             new_types = types[:star_pos]
-            star_length = len(types) - num_patterns
+            star_length = len(types) - num_required_patterns
             new_types.append(make_simplified_union(types[star_pos : star_pos + star_length]))
             new_types += types[star_pos + star_length :]
             return new_types

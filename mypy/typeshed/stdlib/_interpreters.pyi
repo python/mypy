@@ -1,3 +1,4 @@
+import sys
 import types
 from collections.abc import Callable
 from typing import Any, Final, Literal, SupportsIndex, TypeAlias, TypeVar, overload
@@ -10,7 +11,12 @@ _SharedDict: TypeAlias = dict[str, Any]  # many objects can be shared
 
 class InterpreterError(Exception): ...
 class InterpreterNotFoundError(InterpreterError): ...
-class NotShareableError(ValueError): ...
+
+if sys.version_info >= (3, 14):
+    class NotShareableError(TypeError): ...
+
+else:
+    class NotShareableError(ValueError): ...
 
 @disjoint_base
 class CrossInterpreterBufferView:

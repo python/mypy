@@ -719,24 +719,26 @@ class SemanticAnalyzer(
                 self.accept(node)
         del self.patches
 
+    def ad_hoc_error(self, msg: str) -> None:
+        n = TempNode(AnyType(TypeOfAny.special_form))
+        n.line = 1
+        n.column = 0
+        n.end_line = 1
+        n.end_column = 0
+        self.fail(msg, n)
+
     def refresh_top_level(self, file_node: MypyFile) -> None:
         """Reanalyze a stale module top-level in fine-grained incremental mode."""
         if self.options.allow_redefinition and not self.options.local_partial_types:
-            n = TempNode(AnyType(TypeOfAny.special_form))
-            n.line = 1
-            n.column = 0
-            n.end_line = 1
-            n.end_column = 0
-            self.fail("--local-partial-types must be enabled if using --allow-redefinition", n)
-        if self.options.allow_redefinition and self.options.allow_redefinition_old:
-            n = TempNode(AnyType(TypeOfAny.special_form))
-            n.line = 1
-            n.column = 0
-            n.end_line = 1
-            n.end_column = 0
-            self.fail(
-                "--allow-redefinition-old and --allow-redefinition should not be used together", n
+            self.ad_hoc_error(
+                "--local-partial-types must be enabled if using --allow-redefinition"
             )
+        if self.options.allow_redefinition and self.options.allow_redefinition_old:
+            self.ad_hoc_error(
+                "--allow-redefinition-old and --allow-redefinition should not be used together"
+            )
+        if not self.options.local_partial_types and self.options.num_workers > 0:
+            self.ad_hoc_error("--local-partial-types must be enabled in parallel mode")
         self.recurse_into_functions = False
         self.add_implicit_module_attrs(file_node)
         for d in file_node.defs:
@@ -4334,9 +4336,8 @@ class SemanticAnalyzer(
         elif isinstance(s.rvalue, RefExpr):
             s.rvalue.is_alias_rvalue = True
 
+        updated = False
         if existing:
-            # An alias gets updated.
-            updated = False
             if isinstance(existing.node, TypeAlias):
                 # Invalidate recursive status cache in case it was previously set.
                 existing.node._is_recursive = None
@@ -4352,15 +4353,6 @@ class SemanticAnalyzer(
                 # Otherwise just replace existing placeholder with type alias *in place*.
                 existing._node = alias_node
                 updated = True
-            # TODO: switch type aliases to if has_placeholder(): process_placeholder() pattern.
-            # Type aliases are last notable exception from this logic.
-            if updated:
-                if self.final_iteration:
-                    self.cannot_resolve_name(lvalue.name, "name", s)
-                    return True
-                else:
-                    # We need to defer so that this change can get propagated to base classes.
-                    self.defer(s, force_progress=True)
         else:
             self.add_symbol(lvalue.name, alias_node, s)
         if isinstance(rvalue, RefExpr) and isinstance(rvalue.node, TypeAlias):
@@ -4368,6 +4360,10 @@ class SemanticAnalyzer(
         current_node = existing.node if existing else alias_node
         assert isinstance(current_node, TypeAlias)
         self.disable_invalid_recursive_aliases(s, current_node, s.rvalue)
+        # Check for placeholders only after we disable invalid recursive aliases.
+        # Otherwise, we may get an infinite recursion while visiting the target.
+        if updated or has_placeholder(res):
+            self.process_placeholder(lvalue.name, "name", s, force_progress=updated)
         if self.is_class_scope():
             assert self.type is not None
             if self.type.is_protocol:
@@ -4803,6 +4799,10 @@ class SemanticAnalyzer(
                     self.type.names[lval.name] = SymbolTableNode(MDEF, v, implicit=True)
                     for func in self.scope.functions:
                         func.def_or_infer_vars = True
+
+        if self.is_self_member_ref(lval) or self.is_cls_member_ref(lval):
+            assert self.type, "Self or cls member outside a class"
+            cur_node = self.type.names.get(lval.name)
             if (
                 cur_node
                 and isinstance(cur_node.node, Var)
@@ -4819,6 +4819,13 @@ class SemanticAnalyzer(
             return False
         node = memberexpr.expr.node
         return isinstance(node, Var) and node.is_self
+
+    def is_cls_member_ref(self, memberexpr: MemberExpr) -> bool:
+        """Does memberexpr to refer to an attribute of cls?"""
+        if not isinstance(memberexpr.expr, NameExpr):
+            return False
+        node = memberexpr.expr.node
+        return isinstance(node, Var) and node.is_cls
 
     def check_lvalue_validity(self, node: Expression | SymbolNode | None, ctx: Context) -> None:
         if isinstance(node, TypeVarExpr):
@@ -5899,12 +5906,12 @@ class SemanticAnalyzer(
             alias_node.default_depends = default_depends
             s.alias_node = alias_node
 
+            updated = False
             if (
                 existing
                 and isinstance(existing.node, (PlaceholderNode, TypeAlias))
                 and existing.node.line == s.line
             ):
-                updated = False
                 if isinstance(existing.node, TypeAlias):
                     # Invalidate recursive status cache in case it was previously set.
                     existing.node._is_recursive = None
@@ -5922,20 +5929,14 @@ class SemanticAnalyzer(
                     # Otherwise just replace existing placeholder with type alias *in place*.
                     existing._node = alias_node
                     updated = True
-
-                if updated:
-                    if self.final_iteration:
-                        self.cannot_resolve_name(s.name.name, "name", s)
-                        return
-                    else:
-                        # We need to defer so that this change can get propagated to base classes.
-                        self.defer(s, force_progress=True)
             else:
                 self.add_symbol(s.name.name, alias_node, s)
 
             current_node = existing.node if existing else alias_node
             assert isinstance(current_node, TypeAlias)
             self.disable_invalid_recursive_aliases(s, current_node, s.value)
+            if updated or has_placeholder(res):
+                self.process_placeholder(s.name.name, "name", s, force_progress=updated)
             s.name.accept(self)
         finally:
             self.pop_type_args(s.type_args)

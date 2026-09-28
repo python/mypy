@@ -95,8 +95,13 @@ class TypeState:
     # Whether to use new type inference algorithm that can infer polymorphic types.
     # This is temporary and will be removed soon when new algorithm is more polished.
     infer_polymorphic: bool
+    # No not simplify/normalize unions during type inference in this flag is set.
+    # Technically, union simplification gives strictly better type inference, but it
+    # may have bad performance (since it is quadratic). So we may want to disable
+    # it situations where performance is important.
+    keep_unions: bool
 
-    # N.B: We do all of the accesses to these properties through
+    # N.B: We do all the accesses to these properties through
     # TypeState, instead of making these classmethods and accessing
     # via the cls parameter, since mypyc can optimize accesses to
     # Final attributes of a directly referenced type.
@@ -113,6 +118,7 @@ class TypeState:
         self.inferring = []
         self.infer_unions = False
         self.infer_polymorphic = False
+        self.keep_unions = False
 
     def is_assumed_subtype(self, left: Type, right: Type) -> bool:
         for l, r in reversed(self._assuming):
