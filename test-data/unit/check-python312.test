@@ -2373,3 +2373,31 @@ if TYPE_CHECKING:
 class Group(TypedDict):
     params: "Tuple[Alias, ...]"
 [builtins fixtures/tuple.pyi]
+
+[case testUnwrapUnionNewSyntaxPrecise]
+from typing import Sequence
+
+class A: ...
+class B: ...
+class C: ...
+type ThingOrA[T] = T | A
+
+def foo[T](x: ThingOrA[T]) -> T: ...
+obj: B | C
+reveal_type(foo(obj))  # N: Revealed type is "__main__.B | __main__.C"
+obj_a: A | B | C
+reveal_type(foo(obj_a))  # N: Revealed type is "__main__.B | __main__.C"
+
+def bar[T](xs: list[ThingOrA[T]]) -> list[T]: ...
+objs: list[B | C]
+objs_a: list[A | B | C]
+reveal_type(bar(objs_a))  # N: Revealed type is "builtins.list[__main__.B | __main__.C]"
+bar(objs)  # E: Argument 1 to "bar" has incompatible type "list[B | C]"; expected "list[B | C | A]" \
+           # N: "list" is invariant -- see https://mypy.readthedocs.io/en/stable/common_issues.html#variance \
+           # N: Consider using "Sequence" instead, which is covariant
+
+def baz[T](xs: Sequence[ThingOrA[T]]) -> list[T]: ...
+reveal_type(baz(objs))  # N: Revealed type is "builtins.list[__main__.B | __main__.C]"
+reveal_type(baz(objs_a))  # N: Revealed type is "builtins.list[__main__.B | __main__.C]"
+[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-full.pyi]
