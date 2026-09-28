@@ -19,6 +19,7 @@ from mypy.checker_shared import ExpressionCheckerSharedApi
 from mypy.checkmember import analyze_member_access, has_operator
 from mypy.checkstrformat import StringFormatterChecker
 from mypy.constant_fold import constant_fold_expr
+from mypy.constraints import Constraint
 from mypy.erasetype import erase_type, remove_instance_last_known_values, replace_meta_vars
 from mypy.errors import ErrorInfo, ErrorWatcher, report_internal_error
 from mypy.expandtype import (
@@ -1792,8 +1793,10 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                     callee = freshen_function_type_vars(callee)
                 self.freshen_cache[(context, original_callee)] = callee
 
+        fresh_callee = callee
+        constraints: list[Constraint] = []
         if callee.is_generic():
-            callee = self.infer_function_type_arguments_using_context(callee, context)
+            callee, constraints = self.infer_function_type_arguments_using_context(callee, context)
 
         formal_to_actual = map_actuals_to_formals(
             arg_kinds,
@@ -1825,12 +1828,12 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                     )
                     callee = callee.copy_modified(arg_types=[new_arg_type])
 
-        if callee.is_generic():
+        if fresh_callee.is_generic():
             need_refresh = any(
-                isinstance(v, (ParamSpecType, TypeVarTupleType)) for v in callee.variables
+                isinstance(v, (ParamSpecType, TypeVarTupleType)) for v in fresh_callee.variables
             )
             callee = self.infer_function_type_arguments(
-                callee, args, arg_kinds, arg_names, formal_to_actual, need_refresh, context
+                callee, fresh_callee, constraints, args, arg_kinds, arg_names, formal_to_actual, need_refresh, context
             )
             if need_refresh:
                 # Argument kinds etc. may have changed due to
@@ -2113,7 +2116,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
 
     def infer_function_type_arguments_using_context(
         self, callable: CallableType, error_context: Context
-    ) -> CallableType:
+    ) -> tuple[CallableType, list[Constraint]]:
         """Unify callable return type to type context to infer type vars.
 
         For example, if the return type is set[t] where 't' is a type variable
@@ -2122,7 +2125,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         """
         ctx = self.type_context[-1]
         if not ctx:
-            return callable
+            return callable, []
         # The return type may have references to type metavariables that
         # we are inferring right now. We must consider them as indeterminate
         # and they are not potential results; thus we replace them with the
@@ -2179,8 +2182,8 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             # TODO: we may want to add similar exception if all arguments are lambdas, since
             # in this case external context is almost everything we have.
             if not is_generic_instance(ctx) and not is_literal_type_like(ctx):
-                return callable.copy_modified()
-        args = infer_type_arguments(
+                return callable.copy_modified(), []
+        args, constraints = infer_type_arguments(
             callable.variables, ret_type, erased_ctx, skip_unsatisfied=True
         )
         # Only substitute non-Uninhabited and non-erased types.
@@ -2194,11 +2197,13 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         # We will use argument context to infer more variables.
         return self.apply_generic_arguments(
             callable, new_args, error_context, skip_unsatisfied=True
-        )
+        ), constraints
 
     def infer_function_type_arguments(
         self,
         callee_type: CallableType,
+        fresh_callee: CallableType,
+        ret_constraints: list[Constraint],
         args: list[Expression],
         arg_kinds: list[ArgKind],
         arg_names: Sequence[str | None] | None,
@@ -2234,15 +2239,35 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                     pass1_args.append(arg)
 
             inferred_args, _ = infer_function_type_arguments(
-                callee_type,
+                fresh_callee,
                 pass1_args,
                 arg_kinds,
                 arg_names,
                 formal_to_actual,
                 context=self.argument_infer_context(),
                 strict=self.chk.in_checked_function(),
+                extra_constraints=ret_constraints,
             )
+            if not any(
+                a is None
+                or isinstance(get_proper_type(a), UninhabitedType)
+                or has_erased_component(a)
+                or set(get_type_vars(a)) & set(callee_type.variables)
+                for a in inferred_args
+            ):
+                return self.apply_inferred_arguments(fresh_callee, inferred_args, context)
+            else:
+                inferred_args, _ = infer_function_type_arguments(
+                    callee_type,
+                    pass1_args,
+                    arg_kinds,
+                    arg_names,
+                    formal_to_actual,
+                    context=self.argument_infer_context(),
+                    strict=self.chk.in_checked_function(),
+                )
 
+            partially_applied = False
             if 2 in arg_pass_nums:
                 # Second pass of type inference.
                 callee_type, inferred_args = self.infer_function_type_arguments_pass2(
@@ -2255,6 +2280,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                     need_refresh,
                     context,
                 )
+                partially_applied = True
 
             if (
                 callee_type.special_sig == "dict"
@@ -2303,6 +2329,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                     context=self.argument_infer_context(),
                     strict=self.chk.in_checked_function(),
                     allow_polymorphic=True,
+                    # extra_constraints=ret_constraints if not partially_applied else None,
                 )
                 poly_callee_type = self.apply_generic_arguments(
                     callee_type, poly_inferred_args, context
