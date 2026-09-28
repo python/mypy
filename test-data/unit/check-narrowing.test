@@ -4299,3 +4299,50 @@ def func(y: H) -> H:
     else:
         return y
 [builtins fixtures/primitives.pyi]
+
+[case testNarrowingToAnyDifferentKinds]
+# flags: --ignore-missing-imports
+from typing import Any
+from whatever import Unimported
+
+explicit: Any
+
+def foo(): ...
+imprecise = foo()
+unimported: Unimported
+
+x: int
+if int():
+    x = explicit
+    reveal_type(x)  # N: Revealed type is "Any"
+
+y: int
+if int():
+    y = from_error  # type: ignore
+    reveal_type(y)  # N: Revealed type is "Any"
+
+x1: int
+if int():
+    x1 = imprecise
+    reveal_type(x1)  # N: Revealed type is "builtins.int"
+
+y1: int
+if int():
+    y1 = unimported
+    reveal_type(y)  # N: Revealed type is "builtins.int"
+
+[case testNarrowingToImpreciseAnyFromUnionWithExplicit]
+from typing import Any, Union
+
+def foo(): ...
+imprecise = foo()
+
+x: Union[Any, int]
+if int():
+    x = imprecise
+    reveal_type(x)  # N: Revealed type is "Any"
+
+y: Union[str, int]
+if int():
+    y = imprecise
+    reveal_type(y)  # N: Revealed type is "builtins.str | builtins.int"
