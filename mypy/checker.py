@@ -2834,7 +2834,15 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
         explicitly ``Any``-typed variable) and otherwise report the errors that
         semantic analysis deferred.
         """
-        for var, base_expr in defn.info.deferred_base_classes:
+        if not self.in_checked_function():
+            # Semantic analysis silently drops these errors in unchecked
+            # functions; do the same here to avoid new reports.
+            return
+        for var, base_expr, defining_literal in defn.info.deferred_base_classes:
+            if defining_literal:
+                # Semantic analysis does not report "not valid as a type" for
+                # variables inside Literal[...]; do the same here.
+                continue
             var_type = var.type
             typ = get_proper_type(var_type) if var_type is not None else None
             # Mirror the cases semantic analysis accepts for an explicitly
