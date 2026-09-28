@@ -200,9 +200,14 @@ class DeferredBaseClassVar(Exception):
     inferred type without re-resolving the base class expression.
     """
 
-    def __init__(self, var: nodes.Var) -> None:
+    def __init__(self, var: nodes.Var, defining_literal: bool) -> None:
         super().__init__()
         self.var = var
+        # Whether the base class expression was being analyzed as part of a
+        # Literal[...] type. Semantic analysis does not report "not valid as a
+        # type" for variables in that position, so the type checker must not
+        # either.
+        self.defining_literal = defining_literal
 
 
 class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
@@ -1042,7 +1047,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                     # happens in the type checker, after semantic analysis).
                     # Defer the validity check; the type checker will verify
                     # the inferred type. Provisionally treat the base as Any.
-                    raise DeferredBaseClassVar(sym.node)
+                    raise DeferredBaseClassVar(sym.node, defining_literal)
         # Option 2:
         # Unbound type variable. Currently these may be still valid,
         # for example when defining a generic type alias.
