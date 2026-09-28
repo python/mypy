@@ -2624,7 +2624,9 @@ class SemanticAnalyzer(
 
     def analyze_base_classes(
         self, cls_name: str, base_type_exprs: list[Expression]
-    ) -> tuple[list[tuple[ProperType, Expression]], bool, list[tuple[Var, Expression, bool]]] | None:
+    ) -> (
+        tuple[list[tuple[ProperType, Expression]], bool, list[tuple[Var, Expression, bool]]] | None
+    ):
         """Analyze base class types.
 
         Return None if some definition was incomplete. Otherwise, return a tuple
