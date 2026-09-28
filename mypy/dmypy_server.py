@@ -769,7 +769,7 @@ class Server:
                 state = graph[nxt.module]
                 ancestors = state.ancestors or []
                 for dep in state.dependencies + ancestors:
-                    if dep not in seen:
+                    if dep not in seen and dep in graph:
                         seen.add(dep)
                         worklist.append(BuildSource(graph[dep].path, graph[dep].id, followed=True))
         return changed, new_files
@@ -779,7 +779,11 @@ class Server:
     ) -> list[BuildSource]:
         """Return the direct imports of module not included in seen."""
         state = graph[module[0]]
-        return [BuildSource(graph[dep].path, dep, followed=True) for dep in state.dependencies]
+        return [
+            BuildSource(graph[dep].path, dep, followed=True)
+            for dep in state.dependencies
+            if dep in graph
+        ]
 
     def find_added_suppressed(
         self, graph: mypy.build.Graph, seen: set[str], search_paths: SearchPaths
