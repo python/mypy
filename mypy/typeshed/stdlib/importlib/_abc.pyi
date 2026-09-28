@@ -5,7 +5,9 @@ from importlib.machinery import ModuleSpec
 from typing_extensions import deprecated
 
 class Loader(metaclass=ABCMeta):
-    def load_module(self, fullname: str) -> types.ModuleType: ...
+    if sys.version_info < (3, 15):
+        @deprecated("Deprecated since Python 3.10; removed in Python 3.15. Use `exec_module()` instead.")
+        def load_module(self, fullname: str) -> types.ModuleType: ...
     if sys.version_info < (3, 12):
         @deprecated(
             "Deprecated since Python 3.4; removed in Python 3.12. "

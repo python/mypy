@@ -9,7 +9,8 @@ from typing_extensions import Self
 __all__ = ["Client", "Listener", "Pipe", "wait"]
 
 # https://docs.python.org/3/library/multiprocessing.html#address-formats
-_Address: TypeAlias = str | tuple[str, int]
+# bytes: Linux abstract AF_UNIX socket name (starts with a null byte)
+_Address: TypeAlias = str | bytes | tuple[str, int]
 
 # Defaulting to Any to avoid forcing generics on a lot of pre-existing code
 _SendT_contra = TypeVar("_SendT_contra", contravariant=True, default=Any)
@@ -52,10 +53,12 @@ class Listener:
         def accept(self) -> Connection[Incomplete, Incomplete] | PipeConnection[Incomplete, Incomplete]: ...
 
     def close(self) -> None: ...
+    # Any: the concrete type depends on the address family and platform
+    # (e.g. str or bytes for AF_UNIX), cf. _socket._RetAddress
     @property
-    def address(self) -> _Address: ...
+    def address(self) -> Any: ...
     @property
-    def last_accepted(self) -> _Address | None: ...
+    def last_accepted(self) -> Any | None: ...
     def __enter__(self) -> Self: ...
     def __exit__(
         self, exc_type: type[BaseException] | None, exc_value: BaseException | None, exc_tb: TracebackType | None
