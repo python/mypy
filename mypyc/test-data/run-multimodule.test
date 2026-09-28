@@ -2303,7 +2303,6 @@ from other import (
     same_module_inherited_from_native, same_module_inherited_from_trait
 )
 
-# Test final methods
 obj = FinalMethods(10)
 expected = (12, 22, 32, 134, 23, 33, 204)
 assert same_module_calls(obj) == expected
