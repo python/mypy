@@ -9975,3 +9975,26 @@ def f(y: Sequence[Any]) -> None:
                          # E: Invalid base class "y" \
                          # E: Invalid type: try using Literal[0] instead?
 [builtins fixtures/tuple.pyi]
+
+[case testDeferredBaseClassUncheckedFunction]
+# Dynamic base classes in unchecked functions were silently accepted before;
+# the deferred checker must not report new errors there.
+def f(base):
+    class A(base):
+        pass
+    return A
+def g(x):
+    y = x
+    class B(y):
+        pass
+[builtins fixtures/tuple.pyi]
+
+[case testDeferredBaseClassInLiteral]
+# A variable inside Literal[...] in a base class: semanal does not report
+# "not valid as a type" there, so the deferred checker must not either.
+from typing import Literal, Generic, TypeVar
+T = TypeVar("T")
+class B(Generic[T]): pass
+x = 1
+class C(B["Literal[x]"]): pass  # E: Parameter 1 of Literal[...] is invalid
+[builtins fixtures/tuple.pyi]
