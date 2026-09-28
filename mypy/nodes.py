@@ -3926,7 +3926,7 @@ class TypeInfo(SymbolNode):
         # The type checker validates them once the types are known (see
         # TypeChecker.check_deferred_base_classes). This is not serialized; it
         # is only meaningful within a single build.
-        self.deferred_base_classes: list[tuple[Var, Expression]] = []
+        self.deferred_base_classes: list[tuple[Var, Expression, bool]] = []
         self.type_object_type = None
         self.default_depends = {}
         self.typeddict_data = None
