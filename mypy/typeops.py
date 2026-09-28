@@ -488,29 +488,7 @@ def bind_self(
     # this special-casing looks not very principled, there is nothing meaningful we can infer
     # from such definition, since it is inherently indefinitely recursive.
     allow_callable = func.name is None or not func.name.startswith("__call__ of")
-
-    # Find which of method type variables appear in the type of "self".
-    all_self_tvs = get_all_type_vars(self_param_type)
-    self_ids = {tv.id for tv in all_self_tvs}
-    self_vars = [tv for tv in func.variables if tv.id in self_ids]
-    method_var_ids = {tv.id for tv in func.variables}
-    if original_type is not None:
-        # Additionally, solve class-level variadic type variables (e.g. TypeVarTuple)
-        # that appear in an explicit self-type with extra arguments, such as
-        # A[*TS, int, int]. These cannot be left for expand_type_by_instance(),
-        # which would splice the whole instance argument tuple into *TS, ignoring
-        # the extra fixed arguments in the self-type (see #21878).
-        seen_ids = set(method_var_ids)
-        class_vars = []
-        for tv in all_self_tvs:
-            if isinstance(tv, TypeVarTupleType) and tv.id not in seen_ids:
-                seen_ids.add(tv.id)
-                class_vars.append(tv)
-        solve_vars: Sequence[TypeVarLikeType] = self_vars + class_vars
-    else:
-        solve_vars = self_vars
-
-    if solve_vars and supported_self_type(
+    if func.variables and supported_self_type(
         self_param_type, allow_callable=allow_callable, allow_instances=not ignore_instances
     ):
         from mypy.infer import infer_type_arguments
@@ -520,9 +498,13 @@ def bind_self(
             original_type = erase_to_bound(self_param_type)
         original_type = get_proper_type(original_type)
 
+        # Find which of method type variables appear in the type of "self".
+        self_ids = {tv.id for tv in get_all_type_vars(self_param_type)}
+        self_vars = [tv for tv in func.variables if tv.id in self_ids]
+
         # Solve for these type arguments using the actual class or instance type.
         typeargs = infer_type_arguments(
-            solve_vars, self_param_type, original_type, is_supertype=True, erase_types=False
+            self_vars, self_param_type, original_type, is_supertype=True, erase_types=False
         )
         if (
             is_classmethod
@@ -531,7 +513,7 @@ def bind_self(
         ):
             # In case we call a classmethod through an instance x, fallback to type(x).
             typeargs = infer_type_arguments(
-                solve_vars,
+                self_vars,
                 self_param_type,
                 TypeType(original_type),
                 is_supertype=True,
@@ -540,22 +522,8 @@ def bind_self(
 
         # Update the method signature with the solutions found.
         # Technically, some constraints might be unsolvable, make them Never.
-        # Class-level type variables that could not be solved (no solution or an
-        # ambiguous Never) are left alone, they will be handled by
-        # expand_type_by_instance() as before.
-        replacements = {}
-        for tv, arg in zip(solve_vars, typeargs):
-            if arg is None:
-                if tv.id in method_var_ids:
-                    replacements[tv.id] = UninhabitedType()
-                continue
-            proper_arg = get_proper_type(arg)
-            if tv.id not in method_var_ids and (
-                isinstance(proper_arg, UninhabitedType) and proper_arg.ambiguous
-            ):
-                continue
-            replacements[tv.id] = arg
-        func = expand_type(func, replacements)
+        to_apply = [t if t is not None else UninhabitedType() for t in typeargs]
+        func = expand_type(func, {tv.id: arg for tv, arg in zip(self_vars, to_apply)})
         variables = [v for v in func.variables if v not in self_vars]
     else:
         variables = func.variables
