@@ -2523,6 +2523,7 @@ class DivergingAliasDetector(TrivialSyntheticTypeTranslator):
             for arg in t.args:
                 if not (
                     isinstance(arg, TypeVarLikeType)
+                    and not (isinstance(arg, ParamSpecType) and arg.prefix.arg_types)
                     or isinstance(arg, UnpackType)
                     and isinstance(arg.type, TypeVarLikeType)
                 ) and has_type_vars(arg):
