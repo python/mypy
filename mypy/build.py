@@ -3231,9 +3231,14 @@ class State:
 
     def parse_file_inner(self, source: str | None, raw_data: FileRawData | None = None) -> None:
         t0 = time_ref()
-        self.tree = self.manager.parse_file(
-            self.id, self.xpath, source, options=self.options, raw_data=raw_data
-        )
+        try:
+            self.tree = self.manager.parse_file(
+                self.id, self.xpath, source, options=self.options, raw_data=raw_data
+            )
+        except (UnicodeDecodeError, DecodeError) as decodeerr:
+            # Convert a decode error to a standard-looking blocker.
+            err = f"{self.path}: error: Cannot decode file: {str(decodeerr)}"
+            raise CompileError([err], module_with_blocker=self.id) from decodeerr
         self.time_spent_us += time_spent_us(t0)
 
     def parse_file(self, *, temporary: bool = False, raw_data: FileRawData | None = None) -> None:
