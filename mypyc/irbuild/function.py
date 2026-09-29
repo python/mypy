@@ -369,6 +369,7 @@ def gen_func_ir(
                 is_prop_setter=func_decl.is_prop_setter,
                 is_generator=func_decl.is_generator,
                 is_coroutine=func_decl.is_coroutine,
+                is_final=func_decl.is_final,
                 implicit=func_decl.implicit,
                 internal=func_decl.internal,
             )
