@@ -47,7 +47,6 @@ class bool(int): pass
 class str: pass # For convenience
 class object: pass
 class type: pass
-class ellipsis: pass
 class SupportsIndex(Protocol):
     def __index__(self) -> int: pass
 class list(Sequence[_T], Generic[_T]):

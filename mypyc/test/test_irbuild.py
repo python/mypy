@@ -73,6 +73,9 @@ if sys.version_info >= (3, 12):
 if sys.version_info >= (3, 14):
     files.append("irbuild-python314.test")
 
+if sys.version_info >= (3, 15):
+    files.append("irbuild-python315.test")
+
 
 class TestGenOps(MypycDataSuite):
     files = files

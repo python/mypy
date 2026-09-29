@@ -222,6 +222,12 @@ _dummy: Final[Any] = object()
 # A placeholder for int parameters
 _dummy_int: Final = -999999
 
+# Maximum protocol subtyping assumptions depth. We need this to avoid infinite
+# recursion for protocols that are genuinely undecidable, see testDivergingProtocol.
+# We set a conservative cut-off, since some numerical libraries currently
+# use ~10 assumptions, and we want to avoid false negatives with them.
+MAX_PROTOCOL_DEPTH: Final = 20
+
 
 class TypeOfAny:
     """
@@ -252,6 +258,20 @@ class TypeOfAny:
     # used to ignore Anys inserted by the suggestion engine when
     # generating constraints.
     suggestion_engine: Final = 9
+
+
+# Some parts of the code distinguish two categories of Any types:
+# * Intentional: explicit, from_error, special_form - these are what other
+#   languages/type-checkers may call "Dynamic", i.e. too tricky to express.
+# * Imprecise: unannotated, from_unimported_type, from_omitted_generics - these
+#   are what other languages/type-checkers may call "Unknown", i.e. values in
+#   partially annotated legacy code. These are usually "non-sticky", after assigning
+#   such value to a variable, the variable keeps the original (more precise) type.
+IMPRECISE_ANYS: Final = (
+    TypeOfAny.unannotated,
+    TypeOfAny.from_unimported_type,
+    TypeOfAny.from_omitted_generics,
+)
 
 
 def deserialize_type(data: JsonDict | str) -> Type:
@@ -2946,9 +2966,6 @@ class TupleType(ProperType):
         if fallback is None:
             fallback = self.partial_fallback
 
-        if stride == 0:
-            return None
-
         if any(isinstance(t, UnpackType) for t in self.items):
             total = len(self.items)
             unpack_index = find_unpack_in_list(self.items)
@@ -2989,7 +3006,7 @@ class TupleType(ProperType):
                 else:
                     return None
             else:
-                # TODO: there some additional cases we can support for homogeneous variadic
+                # TODO: there are some additional cases we can support for homogeneous variadic
                 # items, we can "eat away" finite number of items.
                 return None
         else:
@@ -4256,7 +4273,15 @@ def has_recursive_types(typ: Type) -> bool:
 def split_with_prefix_and_suffix(
     types: tuple[Type, ...], prefix: int, suffix: int
 ) -> tuple[tuple[Type, ...], tuple[Type, ...], tuple[Type, ...]]:
-    if len(types) <= prefix + suffix:
+    # The caller must validate that the split can be satisfied, i.e. there is
+    # enough capacity in either initial type list or there is a variadic unpack.
+    # Otherwise, this function may return nonsensical result.
+    # TODO: should we add an assert here?
+    needs_extend = False
+    index = find_unpack_in_list(types)
+    if index is not None:
+        needs_extend = index < prefix or len(types) - index - 1 < suffix
+    if needs_extend:
         types = extend_args_for_prefix_and_suffix(types, prefix, suffix)
     if suffix:
         return types[:prefix], types[prefix:-suffix], types[-suffix:]
@@ -4446,6 +4471,20 @@ def type_vars_as_args(type_vars: Sequence[TypeVarLikeType]) -> tuple[Type, ...]:
         else:
             args.append(tv)
     return tuple(args)
+
+
+def get_variadic_item(tup: TupleType) -> tuple[int, Type] | None:
+    """If this is tuple[X, *tuple[Y, ...], Z], return Y, otherwise None."""
+    unpack_index = find_unpack_in_list(tup.items)
+    if unpack_index is None:
+        return None
+    unpack = tup.items[unpack_index]
+    assert isinstance(unpack, UnpackType)
+    unpacked = get_proper_type(unpack.type)
+    if not isinstance(unpacked, Instance):
+        return None
+    assert unpacked.type.fullname == "builtins.tuple"
+    return unpack_index, unpacked.args[0]
 
 
 # See docstring for mypy/cache.py for reserved tag ranges.

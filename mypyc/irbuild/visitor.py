@@ -313,6 +313,11 @@ class IRBuilderVisitor(IRVisitor):
         return transform_dict_expr(self.builder, expr)
 
     def visit_template_str_expr(self, expr: TemplateStrExpr) -> Value:
+        if expr.has_surrogates:
+            self.builder.error(
+                "Surrogate codepoints in string literals not supported, use chr(...) instead",
+                expr.line,
+            )
         self.bail("Template strings are not supported by mypyc", expr.line)
 
     def visit_set_expr(self, expr: SetExpr) -> Value:

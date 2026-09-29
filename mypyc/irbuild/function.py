@@ -255,10 +255,9 @@ def gen_func_item(
         generator_class_ir = builder.mapper.fdef_to_generator[fitem]
         builder.fn_info.generator_class = GeneratorClass(generator_class_ir)
 
-    # Functions that contain nested functions need an environment class to store variables that
-    # are free in their nested functions. Generator functions need an environment class to
-    # store a variable denoting the next instruction to be executed when the __next__ function
-    # is called, along with all the variables inside the function itself.
+    # Functions that contain nested functions need an environment class to store captured
+    # variables. A generator also needs a separate environment class when it is nested or its
+    # generated class is non-final.
     if contains_nested or (
         is_generator and not builder.fn_info.can_merge_generator_and_env_classes()
     ):
@@ -370,6 +369,7 @@ def gen_func_ir(
                 is_prop_setter=func_decl.is_prop_setter,
                 is_generator=func_decl.is_generator,
                 is_coroutine=func_decl.is_coroutine,
+                is_final=func_decl.is_final,
                 implicit=func_decl.implicit,
                 internal=func_decl.internal,
             )

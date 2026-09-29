@@ -1652,7 +1652,7 @@ tmp/a.py: note: In member "g" of class "A":
 tmp/a.py:10: error: Type argument "str" of "C" must be a subtype of "int"
 tmp/a.py:11: error: Type argument "str" of "C" must be a subtype of "int"
 
-[case testNewAnalyzerTypeArgBoundCheckDifferentNodes_no_native_parse]
+[case testNewAnalyzerTypeArgBoundCheckDifferentNodes]
 from typing import TypeVar, TypedDict, Generic, NamedTuple, NewType, Union, Any, cast, overload
 
 T = TypeVar('T', bound=int)
@@ -1681,12 +1681,6 @@ class D(
 TD3 = TypedDict('TD3', {'x': C[str]}) # E: Type argument "str" of "C" must be a subtype of "int"
 
 a: Any
-for i in a: # type: C[str]  # E: Type argument "str" of "C" must be a subtype of "int"
-    pass
-
-with a as w: # type: C[str]  # E: Type argument "str" of "C" must be a subtype of "int"
-    pass
-
 cast(C[str], a)  # E: Type argument "str" of "C" must be a subtype of "int"
 C[str]()  # E: Value of type variable "T" of "C" cannot be "str"
 
@@ -1701,6 +1695,19 @@ def g(x: Union[C[str], int]) -> int:  # E: Type argument "str" of "C" must be a 
     return 0
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
+
+[case testNewAnalyzerTypeArgBoundCheckDifferentNodesForWith_old_parser]
+from typing import TypeVar, Generic, Any
+
+T = TypeVar('T', bound=int)
+class C(Generic[T]): pass
+
+a: Any
+for i in a: # type: C[str]  # E: Type argument "str" of "C" must be a subtype of "int"
+    pass
+
+with a as w: # type: C[str]  # E: Type argument "str" of "C" must be a subtype of "int"
+    pass
 
 [case testNewAnalyzerTypeArgBoundCheckWithStrictOptional]
 # flags: --config-file tmp/mypy.ini

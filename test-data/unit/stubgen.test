@@ -2350,7 +2350,7 @@ def f(x):
     return ''
 
 [out]
-def f(x): ...
+def f(x) -> int: ...
 
 [case testFunctionPartiallyAnnotated]
 def f(x) -> None:

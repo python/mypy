@@ -14,6 +14,7 @@ from mypyc.codegen.emit import (
 )
 from mypyc.codegen.emitfunc import native_function_header
 from mypyc.codegen.emitwrapper import (
+    generate_am_send_wrapper,
     generate_bin_op_wrapper,
     generate_bool_wrapper,
     generate_contains_wrapper,
@@ -29,11 +30,13 @@ from mypyc.common import (
     BITMAP_BITS,
     BITMAP_TYPE,
     CPYFUNCTION_NAME,
+    GENERATOR_HELPER_NAME,
     IS_FREE_THREADED,
     MYPYC_DEFAULTS_SETUP,
     NATIVE_PREFIX,
     PREFIX,
     REG_PREFIX,
+    RUNNING_FIELD,
     short_id_from_name,
 )
 from mypyc.ir.class_ir import ClassIR, VTableEntries
@@ -148,6 +151,9 @@ AS_ASYNC_SLOT_DEFS: SlotTable = {
     "__await__": ("am_await", native_slot),
     "__aiter__": ("am_aiter", native_slot),
     "__anext__": ("am_anext", native_slot),
+    # Generator and coroutine classes get an am_send slot based on the generator helper
+    # method, so that PyIter_Send can drive them without raising StopIteration.
+    GENERATOR_HELPER_NAME: ("am_send", generate_am_send_wrapper),
 }
 
 SIDE_TABLES = [
@@ -264,7 +270,7 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
     fields: dict[str, str] = {"tp_name": f'"{name}"'}
 
     generate_full = not cl.is_trait and not cl.builtin_base
-    needs_getseters = cl.needs_getseters or not cl.is_generated or cl.has_dict
+    needs_getseters = cl.needs_getseters_table
 
     if not cl.builtin_base:
         fields["tp_new"] = new_name
@@ -484,6 +490,13 @@ def generate_object_struct(cl: ClassIR, emitter: Emitter) -> None:
     lines += ["typedef struct {", "PyObject_HEAD", "CPyVTableItem *vtable;"]
     if cl.has_method("__call__"):
         lines.append("vectorcallfunc vectorcall;")
+    # The flag affects attribute offsets, so concrete bases must agree on its presence.
+    assert all(
+        base.has_running_flag == cl.has_running_flag for base in cl.base_mro
+    ), f"{cl.name} disagrees with a base class about the running flag"
+    if cl.has_running_flag:
+        # This implementation field is intentionally absent from the IR attributes.
+        lines.append(f"uint32_t {RUNNING_FIELD};")
     bitmap_attrs = []
     for base in reversed(cl.base_mro):
         if not base.is_trait:
@@ -1243,21 +1256,22 @@ def generate_getter(cl: ClassIR, attr: str, rtype: RType, emitter: Emitter) -> N
     attr_expr = f"self->{attr_field}"
 
     if IS_FREE_THREADED and is_simple_refcounted_pointer(rtype):
-        # In free-threaded builds, load the attribute and take a new reference
-        # atomically to avoid a use-after-free race with a concurrent setter.
+        # In free-threaded builds, load the attribute and take a new reference with
+        # an optimistic validated incref to avoid racing with a concurrent setter.
         # CPy_GetAttrRef returns NULL if the attribute is undefined (NULL field),
         # which is exactly the error/undefined value for a 'PyObject *' field.
         #
         # Final attributes are never rebound (no setter), so there is no concurrent
         # writer to race with: a plain load + incref is safe. Use the cheaper
-        # CPy_GetAttrRefFinal, which skips the try-incref and _Py_NewRefWithLock
-        # slow path entirely (an unconditional Py_INCREF needs no maybe-weakref).
+        # CPy_GetAttrRefFinal, which skips the try-incref and the locked
+        # _Py_XNewRefWithLock fallback entirely (an unconditional Py_INCREF needs no
+        # maybe-weakref).
         # This getter is generated per defining class, so a direct membership test
         # matches the read-only getset table above (no need to walk the MRO).
         if attr in cl.final_attributes:
             getattr_ref = f"CPy_GetAttrRefFinal((PyObject **)&{attr_expr})"
         else:
-            getattr_ref = f"CPy_GetAttrRef((PyObject **)&{attr_expr})"
+            getattr_ref = f"CPy_GetAttrRef((PyObject *)self, (PyObject **)&{attr_expr})"
         emitter.emit_line(f"PyObject *retval = {getattr_ref};")
         emitter.emit_line("if (unlikely(retval == NULL)) {")
         emitter.emit_line("PyErr_SetString(PyExc_AttributeError,")
@@ -1306,11 +1320,12 @@ def generate_setter(cl: ClassIR, attr: str, rtype: RType, emitter: Emitter) -> N
         emitter.emit_line("}")
 
     if IS_FREE_THREADED and is_simple_refcounted_pointer(rtype):
-        # In free-threaded builds, publish the new value atomically via
-        # CPy_SetAttrRef so a concurrent reader (see CPy_GetAttrRef) never sees a
-        # torn pointer or a freed old value. CPy_SetAttrRef steals its value and
-        # reclaims the old one, so we cast/type-check the incoming value, take a
-        # new reference (the setter only borrows 'value'), then hand it over.
+        # In free-threaded builds, publish the new value via CPy_SetAttrRef, which
+        # takes the owner's critical section so a concurrent reader (see
+        # CPy_GetAttrRef) can always secure a reference to the value it observes,
+        # even though the old value is decrefed right away. CPy_SetAttrRef steals its
+        # value and reclaims the old one, so we cast/type-check the incoming value,
+        # take a new reference (the setter only borrows 'value'), then hand it over.
         # A NULL value deletes the attribute (reclaims the old value, stores NULL).
         if deletable:
             emitter.emit_line("if (value != NULL) {")
@@ -1320,10 +1335,14 @@ def generate_setter(cl: ClassIR, attr: str, rtype: RType, emitter: Emitter) -> N
             emitter.emit_cast("value", "tmp", rtype, declare_dest=True)
             emitter.emit_lines("if (!tmp)", "    return -1;")
         emitter.emit_inc_ref("tmp", rtype)
-        emitter.emit_line(f"CPy_SetAttrRef((PyObject **)&self->{attr_field}, tmp);")
+        emitter.emit_line(
+            f"CPy_SetAttrRef((PyObject *)self, (PyObject **)&self->{attr_field}, tmp);"
+        )
         if deletable:
             emitter.emit_line("} else {")
-            emitter.emit_line(f"CPy_SetAttrRef((PyObject **)&self->{attr_field}, NULL);")
+            emitter.emit_line(
+                f"CPy_SetAttrRef((PyObject *)self, (PyObject **)&self->{attr_field}, NULL);"
+            )
             emitter.emit_line("}")
         emitter.emit_line("return 0;")
         emitter.emit_line("}")
@@ -1479,7 +1498,20 @@ def generate_coroutine_setup(
         wrapper_name = emit_instance(cl.methods["__call__"], cl.coroutine_name)
         struct_name = cl.struct_name(emitter.names)
         attr = emitter.attr(CPYFUNCTION_NAME)
-        emitter.emit_line(f"(({struct_name} *)type)->{attr} = {wrapper_name};")
+        if IS_FREE_THREADED:
+            emitter.emit_line(
+                f"CPy_InitAttrRefIfNull(type, (PyObject **)&(({struct_name} *)type)->{attr}, "
+                f"{wrapper_name});"
+            )
+        else:
+            # Creating the wrapper may run arbitrary code (e.g. via GC), which could
+            # have initialized the attribute already.
+            field = f"(({struct_name} *)type)->{attr}"
+            emitter.emit_line(f"if ({field} == NULL) {{")
+            emitter.emit_line(f"{field} = {wrapper_name};")
+            emitter.emit_line("} else {")
+            emitter.emit_line(f"Py_DECREF({wrapper_name});")
+            emitter.emit_line("}")
         return success()
 
     if not any(fn.decl.is_coroutine for fn in cl.methods.values()):
@@ -1493,7 +1525,7 @@ def generate_coroutine_setup(
 
         name = short_id_from_name(fn.name, fn.decl.shortname, fn.line)
         wrapper_name = emit_instance(fn, name)
-        name_obj = f"{wrapper_name}_name"
+        name_obj = f"name_{wrapper_name}"
         emitter.emit_line(f'PyObject *{name_obj} = PyUnicode_FromString("{fn.name}");')
         emitter.emit_line(f"if (unlikely(!{name_obj}))")
         emitter.emit_line(error_stmt)

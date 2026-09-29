@@ -12,6 +12,7 @@ from mypyc.ir.class_ir import ClassIR
 from mypyc.ir.ops import (
     ERR_NEVER,
     NO_TRACEBACK_LINE_NO,
+    Assign,
     BasicBlock,
     Branch,
     Call,
@@ -24,7 +25,6 @@ from mypyc.ir.ops import (
     Value,
 )
 from mypyc.ir.rtypes import object_rprimitive
-from mypyc.irbuild.targets import AssignmentTarget
 from mypyc.primitives.exc_ops import restore_exc_info_op, set_stop_iteration_value
 
 if TYPE_CHECKING:
@@ -93,6 +93,11 @@ class GeneratorNonlocalControl(BaseNonlocalControl):
     """Default nonlocal control in a generator function outside statements."""
 
     def gen_return(self, builder: IRBuilder, value: Value, line: int) -> None:
+        # Frame cleanup may clear an attribute holding the return value. Copy it
+        # first so later spill transforms can place any required load here.
+        result = Register(value.type)
+        builder.add(Assign(result, value, line))
+
         gen_generator_func_cleanup(builder, line)
 
         # Raise a StopIteration containing a field for the value that
@@ -120,7 +125,7 @@ class GeneratorNonlocalControl(BaseNonlocalControl):
         builder.activate_block(true)
         # The default/slow path is to raise a StopIteration exception with
         # return value.
-        builder.call_c(set_stop_iteration_value, [value], NO_TRACEBACK_LINE_NO)
+        builder.call_c(set_stop_iteration_value, [result], NO_TRACEBACK_LINE_NO)
         builder.add(Unreachable())
         builder.builder.pop_error_handler()
 
@@ -128,7 +133,7 @@ class GeneratorNonlocalControl(BaseNonlocalControl):
         # The fast path is to store return value via caller-provided pointer
         # instead of raising an exception. This can only be used when the
         # caller is a native function.
-        builder.add(SetMem(object_rprimitive, stop_iter_reg, value))
+        builder.add(SetMem(object_rprimitive, stop_iter_reg, result))
         builder.add(Return(Integer(0, object_rprimitive)))
 
 
@@ -178,7 +183,7 @@ class TryFinallyNonlocalControl(NonlocalControl):
 
     def __init__(self, target: BasicBlock) -> None:
         self.target = target
-        self.ret_reg: None | Register | AssignmentTarget = None
+        self.ret_reg: Register | None = None
 
     def gen_break(self, builder: IRBuilder, line: int) -> None:
         builder.error("break inside try/finally block is unimplemented", line)
@@ -188,13 +193,7 @@ class TryFinallyNonlocalControl(NonlocalControl):
 
     def gen_return(self, builder: IRBuilder, value: Value, line: int) -> None:
         if self.ret_reg is None:
-            if builder.fn_info.is_generator:
-                self.ret_reg = builder.make_spill_target(builder.ret_types[-1])
-            else:
-                self.ret_reg = Register(builder.ret_types[-1])
-        # assert needed because of apparent mypy bug... it loses track of the union
-        # and infers the type as object
-        assert isinstance(self.ret_reg, (Register, AssignmentTarget)), self.ret_reg
+            self.ret_reg = Register(builder.ret_types[-1])
         builder.assign(self.ret_reg, value, line)
 
         builder.add(Goto(self.target))
@@ -207,7 +206,7 @@ class ExceptNonlocalControl(CleanupNonlocalControl):
     This is super annoying.
     """
 
-    def __init__(self, outer: NonlocalControl, saved: Value | AssignmentTarget) -> None:
+    def __init__(self, outer: NonlocalControl, saved: Value) -> None:
         super().__init__(outer)
         self.saved = saved
 

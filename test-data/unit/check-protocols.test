@@ -667,7 +667,7 @@ def fun4(x: U, y: P[U, U]) -> U:
     pass
 reveal_type(fun4('a', C())) # N: Revealed type is "builtins.object"
 
-[case testUnrealtedGenericProtocolsEquivalent]
+[case testUnrelatedGenericProtocolsEquivalent]
 from typing import TypeVar, Protocol
 T = TypeVar('T')
 
@@ -954,7 +954,7 @@ if int():
 [builtins fixtures/list.pyi]
 [typing fixtures/typing-medium.pyi]
 
-[case testMutuallyRecursiveProtocolsTypesWithSubteMismatch]
+[case testMutuallyRecursiveProtocolsTypesWithSubtleMismatch]
 from typing import Protocol, Sequence, List
 
 class P1(Protocol):
@@ -2920,7 +2920,6 @@ hs(None)
 
 
 [case testPartialTypeProtocol]
-# flags: --no-local-partial-types
 from typing import Protocol
 
 class Flapper(Protocol):
@@ -2941,25 +2940,7 @@ class Gleemer:
 
 
 [case testPartialTypeProtocolHashable]
-# flags: --no-strict-optional --no-local-partial-types
-from typing import Protocol
-
-class Hashable(Protocol):
-    def __hash__(self) -> int: ...
-
-class ObjectHashable:
-    def __hash__(self) -> int: ...
-
-class DataArray(ObjectHashable):
-    __hash__ = None
-
-    def f(self, x: Hashable) -> None:
-        reveal_type([self, x])  # N: Revealed type is "builtins.list[builtins.object]"
-[builtins fixtures/tuple.pyi]
-
-
-[case testPartialTypeProtocolHashableLocalPartialTypes]
-# flags: --no-strict-optional --local-partial-types
+# flags: --no-strict-optional
 from typing import Protocol
 
 class Hashable(Protocol):
@@ -2977,7 +2958,7 @@ class DataArray(ObjectHashable):
 
 
 [case testPartialAttributeNoneType]
-# flags: --no-strict-optional --no-local-partial-types
+# flags: --no-strict-optional
 from typing import Optional, Protocol, runtime_checkable
 
 @runtime_checkable
@@ -2995,7 +2976,6 @@ class MyClass:
 
 
 [case testPartialAttributeNoneTypeStrictOptional]
-# flags: --no-local-partial-types
 from typing import Optional, Protocol, runtime_checkable
 
 @runtime_checkable
@@ -4808,4 +4788,18 @@ bad_rep(t)  # E: Argument 1 to "bad_rep" has incompatible type "C"; expected "P[
             # N:         def rep(self) -> tuple[str, int] \
             # N:     Got: \
             # N:         def rep(self) -> C
+[builtins fixtures/tuple.pyi]
+
+[case testDivergingProtocol]
+from typing import Protocol, TypeVar, List
+
+T = TypeVar("T")
+class P(Protocol[T]):
+    def meth(self) -> P[List[T]]: ...
+
+class C:
+    def meth(self) -> C: ...
+
+# This should not cause infinite recursion.
+x: P[int] = C()
 [builtins fixtures/tuple.pyi]

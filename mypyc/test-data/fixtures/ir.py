@@ -2,6 +2,7 @@
 # test cases.
 
 import _typeshed
+import types
 from typing import (
     Self, TypeVar, Generic, List, Iterator, Iterable, Dict, Optional, Tuple, Any, Set,
     overload, Mapping, Union, Callable, Sequence, FrozenSet, Protocol
@@ -56,8 +57,6 @@ class type:
     def __new__(cls, *args: object) -> Any: ...
     __name__ : str
     __annotations__: Dict[str, Any]
-
-class ellipsis: pass
 
 # Primitive types are special in generated code.
 

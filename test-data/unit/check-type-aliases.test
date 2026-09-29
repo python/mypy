@@ -1164,7 +1164,7 @@ reveal_type(xp)  # N: Revealed type is "__main__.G[[builtins.int], builtins.str]
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-full.pyi]
 
-[case testTypeAliasTypeInvalidGeneric_no_native_parse]
+[case testTypeAliasTypeInvalidGeneric]
 from typing_extensions import TypeAliasType, TypeVarTuple, ParamSpec
 from typing import Callable, Dict, Generic, TypeVar, Tuple, Unpack
 
@@ -1199,9 +1199,9 @@ reveal_type(unbound_tvt_alias)  # N: Revealed type is "builtins.tuple[Any, ...]"
 class G(Generic[P, T]): ...
 Ta7 = TypeAliasType("Ta7", G[P, T])  # E: ParamSpec "P" is not included in type_params \
                                      # E: Type variable "T" is not included in type_params
-unbound_ps_alias: Ta7[[int], str]  # E: Bracketed expression "[...]" is not valid as a type \
-                                   # N: Did you mean "List[...]"? \
-                                   # E: Bad number of arguments for type alias, expected 0, given 2
+unbound_ps_alias: Ta7[[int], str]  # E: Bad number of arguments for type alias, expected 0, given 2 \
+                                   # E: Bracketed expression "[...]" is not valid as a type \
+                                   # N: Did you mean "List[...]"?
 reveal_type(unbound_ps_alias)  # N: Revealed type is "__main__.G[Any, Any]"
 
 Ta8 = TypeAliasType("Ta8", Callable[P, int])  # E: ParamSpec "P" is not included in type_params

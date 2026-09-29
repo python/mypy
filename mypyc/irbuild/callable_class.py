@@ -6,10 +6,26 @@ non-local variables defined in outer scopes.
 
 from __future__ import annotations
 
-from mypyc.common import CPYFUNCTION_NAME, ENV_ATTR_NAME, PROPSET_PREFIX, SELF_NAME
+from mypyc.common import (
+    CPYFUNCTION_NAME,
+    ENV_ATTR_NAME,
+    IS_FREE_THREADED,
+    PROPSET_PREFIX,
+    SELF_NAME,
+)
 from mypyc.ir.class_ir import ClassIR
 from mypyc.ir.func_ir import FuncDecl, FuncIR, FuncSignature, RuntimeArg
-from mypyc.ir.ops import BasicBlock, Call, GetAttr, Integer, Register, Return, SetAttr, Value
+from mypyc.ir.ops import (
+    BasicBlock,
+    Branch,
+    Call,
+    GetAttr,
+    Integer,
+    Register,
+    Return,
+    SetAttr,
+    Value,
+)
 from mypyc.ir.rtypes import RInstance, c_pointer_rprimitive, int_rprimitive, object_rprimitive
 from mypyc.irbuild.builder import IRBuilder
 from mypyc.irbuild.context import FuncInfo, ImplicitClass
@@ -78,6 +94,9 @@ def setup_callable_class(builder: IRBuilder) -> None:
     # this is a toplevel lambda), don't set up an environment.
     if builder.fn_infos[-2].contains_nested:
         callable_class_ir.attributes[ENV_ATTR_NAME] = RInstance(builder.fn_infos[-2].env_class)
+        # The link is initialized before the callable is published and is never rebound.
+        # Treating it as Final permits plain loads on free-threaded builds.
+        callable_class_ir.final_attributes.add(ENV_ATTR_NAME)
     callable_class_ir.mro = [callable_class_ir]
     builder.fn_info.callable_class = ImplicitClass(callable_class_ir)
     builder.classes.append(callable_class_ir)
@@ -116,7 +135,24 @@ def add_coroutine_properties(
     line = builder.fn_info.fitem.line
 
     def get_func_wrapper() -> Value:
-        return builder.add(GetAttr(builder.self(), CPYFUNCTION_NAME, line))
+        # The wrapper is created lazily on first introspection, since creating it
+        # (including a code object) for every instance is expensive.
+        self_reg = builder.self()
+        init, done = BasicBlock(), BasicBlock()
+        cur = builder.add(
+            GetAttr(
+                self_reg,
+                CPYFUNCTION_NAME,
+                line,
+                borrow=not IS_FREE_THREADED,
+                allow_error_value=True,
+            )
+        )
+        builder.add(Branch(cur, init, done, Branch.IS_ERROR))
+        builder.activate_block(init)
+        builder.add_coroutine_setup_call(callable_class_ir.name, self_reg)
+        builder.goto_and_activate(done)
+        return builder.add(GetAttr(self_reg, CPYFUNCTION_NAME, line))
 
     for name, primitive in properties.items():
         with builder.enter_method(callable_class_ir, name, object_rprimitive, internal=True):
@@ -235,10 +271,11 @@ def instantiate_callable_class(builder: IRBuilder, fn_info: FuncInfo) -> Value:
     elif builder.fn_info.contains_nested:
         curr_env_reg = builder.fn_info.curr_env_reg
     if curr_env_reg:
-        builder.add(SetAttr(func_reg, ENV_ATTR_NAME, curr_env_reg, fitem.line))
-    # Initialize function wrapper for callable classes. As opposed to regular functions,
-    # each instance of a callable class needs its own wrapper because they might be instantiated
-    # inside other functions.
-    if not fn_info.in_non_ext and fn_info.is_coroutine:
-        builder.add_coroutine_setup_call(fn_info.callable_class.ir.name, func_reg)
+        set_env = SetAttr(func_reg, ENV_ATTR_NAME, curr_env_reg, fitem.line)
+        # A new or freelist-reused callable has had all of its fields cleared, and this store
+        # happens before the callable can escape.
+        set_env.mark_as_initializer()
+        builder.add(set_env)
+    # Callable classes of coroutines need their own function wrapper per instance
+    # (for introspection), but it's created lazily by the property getters/setters.
     return func_reg

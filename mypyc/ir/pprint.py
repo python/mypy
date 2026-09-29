@@ -432,7 +432,7 @@ def format_blocks(
             and not source_to_error.get(ops[-1], [])
         ):
             # Hide the last goto if it just goes to the next basic block,
-            # and there are no assocatiated errors with the op.
+            # and there are no associated errors with the op.
             ops = ops[:-1]
         for op in ops:
             line = "    " + op.accept(visitor)

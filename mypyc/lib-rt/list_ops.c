@@ -283,7 +283,7 @@ PyObject *CPyList_PopLast(PyObject *list)
     Py_ssize_t index = PyList_GET_SIZE(list) - 1;
     return list_pop_index(list, index);
 #else
-    // I tried a specalized version of pop_impl for just removing the
+    // I tried a specialized version of pop_impl for just removing the
     // last element and it wasn't any faster in microbenchmarks than
     // the generic one so I ditched it.
     return list_pop_impl((PyListObject *)list, -1);

@@ -1,6 +1,7 @@
 # builtins stub for paramspec-related test cases
 
 import _typeshed
+import types
 from typing import (
     Sequence, Generic, TypeVar, Iterable, Iterator, Tuple, Mapping, Optional, Union, Type, overload,
     Protocol
@@ -15,7 +16,6 @@ class object:
     def __init__(self) -> None: ...
 
 class function: ...
-class ellipsis: ...
 class classmethod: ...
 
 class type:
