@@ -327,7 +327,7 @@ def parse_to_binary_ast(
             )
         else:
             # Convert everything unexpected to a standard-looking blocker.
-            raise CompileError([f"{filename}: error: Cannot parse file: {exc}"])
+            raise CompileError([f"{filename}: error: Cannot parse file: {exc}"]) from exc
     return (
         ast_bytes,
         errors,
