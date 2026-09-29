@@ -694,6 +694,17 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         elif isinstance(object_type, TypeType):
             object_type = object_type.item
 
+        # A TypeVar has no qualified name of its own. For `.get`, resolve a
+        # TypedDict upper bound through the same fallback owner as a direct
+        # TypedDict (typing.Mapping.get) so the existing hooks can run. The
+        # original receiver type is left unchanged outside this lookup. Other
+        # methods stay unnamed: their hooks assume a TypedDict receiver and
+        # would rewrite signatures for a TypeVar. Other bound kinds are unchanged.
+        if isinstance(object_type, TypeVarType) and method_name == "get":
+            bound = get_proper_type(object_type.upper_bound)
+            if isinstance(bound, TypedDictType):
+                object_type = bound
+
         type_name = None
         if isinstance(object_type, Instance):
             type_name = object_type.type.fullname

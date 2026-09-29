@@ -2401,3 +2401,48 @@ reveal_type(baz(objs))  # N: Revealed type is "builtins.list[__main__.B | __main
 reveal_type(baz(objs_a))  # N: Revealed type is "builtins.list[__main__.B | __main__.C]"
 [builtins fixtures/tuple.pyi]
 [typing fixtures/typing-full.pyi]
+
+[case testPEP695TypedDictGetBound]
+# https://github.com/python/mypy/issues/16872
+from typing import TypedDict
+
+class MyDict(TypedDict):
+    foo: list[str]
+    bar: int
+
+class Partial(TypedDict, total=False):
+    foo: list[str]
+    bar: int
+
+class Child(MyDict):
+    extra: int
+
+def required[T: MyDict](d: T, direct: MyDict) -> T:
+    reveal_type(d)  # N: Revealed type is "T`-1"
+    reveal_type(d['foo'])  # N: Revealed type is "builtins.list[builtins.str]"
+    reveal_type(direct['foo'])  # N: Revealed type is "builtins.list[builtins.str]"
+    reveal_type(d.get('foo'))  # N: Revealed type is "builtins.list[builtins.str]"
+    reveal_type(direct.get('foo'))  # N: Revealed type is "builtins.list[builtins.str]"
+    reveal_type(d.get('foo', ['x']))  # N: Revealed type is "builtins.list[builtins.str]"
+    reveal_type(direct.get('foo', ['x']))  # N: Revealed type is "builtins.list[builtins.str]"
+    reveal_type(d.get('bar'))  # N: Revealed type is "builtins.int"
+    reveal_type(direct.get('bar', 0))  # N: Revealed type is "builtins.int"
+    reveal_type(d.get('bar', 0))  # N: Revealed type is "builtins.int"
+    return d
+
+def optional[T: Partial](d: T, direct: Partial) -> T:
+    reveal_type(d.get('foo'))  # N: Revealed type is "builtins.list[builtins.str] | None"
+    reveal_type(direct.get('foo'))  # N: Revealed type is "builtins.list[builtins.str] | None"
+    reveal_type(d.get('bar', None))  # N: Revealed type is "builtins.int | None"
+    reveal_type(direct.get('bar', None))  # N: Revealed type is "builtins.int | None"
+    reveal_type(d.get('foo', []))  # N: Revealed type is "builtins.list[builtins.str]"
+    reveal_type(direct.get('foo', []))  # N: Revealed type is "builtins.list[builtins.str]"
+    reveal_type(d.get('bar', 1))  # N: Revealed type is "builtins.int"
+    reveal_type(direct.get('bar', 1))  # N: Revealed type is "builtins.int"
+    return d
+
+def use(child: Child, partial: Partial) -> None:
+    reveal_type(required(child, child))  # N: Revealed type is "TypedDict('__main__.Child', {'foo': builtins.list[builtins.str], 'bar': builtins.int, 'extra': builtins.int})"
+    reveal_type(optional(partial, partial))  # N: Revealed type is "TypedDict('__main__.Partial', {'foo'?: builtins.list[builtins.str], 'bar'?: builtins.int})"
+[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-full.pyi]
