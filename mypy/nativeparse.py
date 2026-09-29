@@ -158,7 +158,7 @@ from mypy.types import (
     UnionType,
     UnpackType,
 )
-from mypy.util import decode_python_encoding, unnamed_function
+from mypy.util import decode_python_encoding, hash_digest, unnamed_function
 
 TypeIgnores = list[tuple[int, list[str]]]
 
@@ -312,9 +312,10 @@ def parse_to_binary_ast(
     except ValueError as exc:
         if source is None:
             # Try reading/encoding manually, since native parser only supports UTF-8.
-            # If we still cannot decode, decode error will buble up to caller.
+            # If we still cannot decode, decode error will bubble up to caller.
             with open(filename, "rb") as f:
-                source = decode_python_encoding(f.read())
+                source_bytes = f.read()
+                source = decode_python_encoding(source_bytes)
             ast_bytes, errors, ignores, import_bytes, ast_data = ast_serialize.parse(
                 filename,
                 source,
@@ -325,6 +326,9 @@ def parse_to_binary_ast(
                 always_false=options.always_false,
                 cache_version=5,
             )
+            # Compute hash using original non-UTF-8 bytes, so that
+            # incremental mode works correctly.
+            ast_data["source_hash"] = hash_digest(source_bytes)
         else:
             # Convert everything unexpected to a standard-looking blocker.
             raise CompileError([f"{filename}: error: Cannot parse file: {exc}"]) from exc

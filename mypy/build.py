@@ -3191,31 +3191,10 @@ class State:
         with self.wrap_context():
             source = self.source
             if self.path and source is None:
-                try:
+                with self.handle_file_read_errors():
                     path = manager.maybe_swap_for_shadow_path(self.path)
                     source = decode_python_encoding(manager.fscache.read(path))
                     self.source_hash = manager.fscache.hash_digest(path)
-                except OSError as ioerr:
-                    # ioerr.strerror differs for os.stat failures between Windows and
-                    # other systems, but os.strerror(ioerr.errno) does not, so we use that.
-                    # (We want the error messages to be platform-independent so that the
-                    # tests have predictable output.)
-                    assert ioerr.errno is not None
-                    raise CompileError(
-                        [
-                            "mypy: error: Cannot read file '{}': {}".format(
-                                self.path.replace(os.getcwd() + os.sep, ""),
-                                os.strerror(ioerr.errno),
-                            )
-                        ],
-                        module_with_blocker=self.id,
-                    ) from ioerr
-                except (UnicodeDecodeError, DecodeError) as decodeerr:
-                    if self.path.endswith(".pyd"):
-                        err = f"{self.path}: error: Stubgen does not support .pyd files"
-                    else:
-                        err = f"{self.path}: error: Cannot decode file: {str(decodeerr)}"
-                    raise CompileError([err], module_with_blocker=self.id) from decodeerr
             elif self.path and manager.fscache.isdir(self.path):
                 source = ""
                 self.source_hash = ""
@@ -3229,16 +3208,37 @@ class State:
         self.time_spent_us += time_spent_us(t0)
         return source
 
+    @contextlib.contextmanager
+    def handle_file_read_errors(self) -> Iterator[None]:
+        try:
+            yield
+        except OSError as ioerr:
+            # ioerr.strerror differs for os.stat failures between Windows and
+            # other systems, but os.strerror(ioerr.errno) does not, so we use that.
+            # (We want the error messages to be platform-independent so that the
+            # tests have predictable output.)
+            assert ioerr.errno is not None
+            err_path = self.manager.errors.simplify_path(self.xpath)
+            raise CompileError(
+                [f"{err_path}: error: Cannot read file: {os.strerror(ioerr.errno)}"],
+                module_with_blocker=self.id,
+            ) from ioerr
+        except (UnicodeDecodeError, DecodeError) as decodeerr:
+            err_path = self.manager.errors.simplify_path(self.xpath)
+            if err_path.endswith(".pyd"):
+                err = f"{err_path}: error: Stubgen does not support .pyd files"
+            else:
+                err = f"{err_path}: error: Cannot decode file: {str(decodeerr)}"
+            raise CompileError([err], module_with_blocker=self.id) from decodeerr
+
     def parse_file_inner(self, source: str | None, raw_data: FileRawData | None = None) -> None:
         t0 = time_ref()
-        try:
+        # Error handling here matches get_source(), since in case of an error in
+        # the new parser we fall back to reading the file manually ourselves.
+        with self.handle_file_read_errors():
             self.tree = self.manager.parse_file(
                 self.id, self.xpath, source, options=self.options, raw_data=raw_data
             )
-        except (UnicodeDecodeError, DecodeError) as decodeerr:
-            # Convert a decode error to a standard-looking blocker.
-            err = f"{self.path}: error: Cannot decode file: {str(decodeerr)}"
-            raise CompileError([err], module_with_blocker=self.id) from decodeerr
         self.time_spent_us += time_spent_us(t0)
 
     def parse_file(self, *, temporary: bool = False, raw_data: FileRawData | None = None) -> None:
