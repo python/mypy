@@ -1421,6 +1421,27 @@ import native
 0
 None
 
+[case testIncrementalCompilationWithNonExtClass]
+import other_a
+[file other_a.py]
+from other_b import C
+[file other_a.py.2]
+from other_b import C
+c = C(5)
+print(c.x)
+[file other_b.py]
+from mypy_extensions import mypyc_attr
+
+@mypyc_attr(native_class=False)
+class C:
+    def __init__(self, x: int) -> None:
+        self.x = x
+[file driver.py]
+import native
+[out]
+[out2]
+5
+
 [case testIncrementalCompilationWithNonClassTypeDef]
 import other_a
 [file other_a.py]
