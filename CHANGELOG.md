@@ -76,7 +76,7 @@ You can read the full documentation for this release on [Read the Docs](http://m
 
 - Fix crash in match statements with unpacked tuple subjects (NIYONSHUTI Emmanuel, PR [21989](https://github.com/python/mypy/pull/21989))
 - Fix crash on invalid `Concatenate` usage (themylogin, PR [21562](https://github.com/python/mypy/pull/21562))
-- Handle diverging protocol (Ivan Levkivskyi, PRs [22036](https://github.com/python/mypy/pull/22036) and [22053](https://github.com/python/mypy/pull/22053))
+- Fix crashes involving diverging recursive protocols (Ivan Levkivskyi, PRs [22036](https://github.com/python/mypy/pull/22036) and [22053](https://github.com/python/mypy/pull/22053))
 
 ### Documentation Updates
 
@@ -85,7 +85,7 @@ You can read the full documentation for this release on [Read the Docs](http://m
 
 ### Packaging changes
 
-- No longer provide mypyc-accelerated wheels for macOS `x86_64` [mypyc-wheels #119](https://github.com/mypyc/mypy_mypyc-wheels/pull/119)
+- No longer provide mypyc-accelerated wheels for macOS `x86_64` [mypyc-wheels PR 119](https://github.com/mypyc/mypy_mypyc-wheels/pull/119)
 
 ### Other Notable Fixes and Improvements
 
