@@ -2334,7 +2334,7 @@ tmp/c.py:1: error: Module "d" has no attribute "x"
 [delete nonexistent.py.2]
 [out]
 [out2]
-mypy: error: Cannot read file 'tmp/nonexistent.py': No such file or directory
+tmp/nonexistent.py: error: Cannot read file: No such file or directory
 
 [case testSerializeAbstractPropertyIncremental]
 from abc import abstractmethod
@@ -8275,3 +8275,21 @@ value: str = "x"
 tmp/a.py:9: note: Revealed type is "builtins.list[builtins.int]"
 [out2]
 tmp/a.py:9: note: Revealed type is "builtins.list[builtins.int]"
+
+[case testIncrementalWorksCorrectlyWithNonUtf8]
+import a
+[file a.py]
+import b_latin1
+[file a.py.2]
+import b_latin1
+# touch
+[file b_latin1.py]
+# coding: latin-1
+Jérôme = False
+[file b_latin1.py.2]
+# coding: latin-1
+Jérôme = False
+[rechecked a]
+[stale]
+[out]
+[out2]
