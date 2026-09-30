@@ -286,6 +286,62 @@ produce new type errors that need to be fixed, such as missing `None` in
 types (`str` instead of `str | None`), or `bytearray` or `memoryview` values
 used where `bytes` is expected.
 
+### `if TYPE_CHECKING` and `if MYPY` Blocks
+
+Mypy treats `TYPE_CHECKING` (and a module-level `MYPY = False` constant) as
+always true, so it considers any code that only runs when the condition is
+false at runtime unreachable. Mypyc compiles such unreachable code into code
+that raises `RuntimeError: Reached allegedly unreachable code!`. In a
+compiled module, these all fail at runtime (at import time if at module
+level):
+
+```
+if TYPE_CHECKING:
+    from foo import Foo
+else:
+    Foo = object  # RuntimeError (even if the else block is just "pass")
+
+if not TYPE_CHECKING:
+    setup_runtime_hooks()  # RuntimeError
+
+def f() -> str:
+    if TYPE_CHECKING:
+        return "a"
+    else:
+        return "b"  # RuntimeError when f() is called
+```
+
+An `if TYPE_CHECKING:` block without an `else` branch works as expected: it
+isn't executed at runtime. This is the recommended way to import names
+only used in annotations, e.g. to break an import cycle. Annotations that use
+these names are still checked at runtime:
+
+```
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from foo import Foo
+
+def process(x: Foo) -> None:  # OK
+    ...
+```
+
+Fix code that runs when the condition is false at runtime:
+
+* Remove `else` branches that only define placeholder names for annotations
+  (such as `Foo = object` above). Use `from __future__ import annotations` or
+  string literal annotations instead, so that the names aren't needed at
+  runtime.
+* Move other code in `else` branches and `if not TYPE_CHECKING:` blocks out
+  of the conditional, so that it runs unconditionally. If the `if
+  TYPE_CHECKING:` branch defines the same name (e.g. a more precise
+  type for mypy), you may need to restructure the code. If it's not
+  clear how to do this without changing behavior, mention it in your summary.
+* Replace `if MYPY:` with `if TYPE_CHECKING:` (import it from `typing`), and
+  remove the `MYPY = False` definition.
+
 ### Annotations Are Enforced at Runtime
 
 Compiled code checks argument, return and attribute types at runtime,
