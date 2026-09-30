@@ -10,14 +10,14 @@ description: Migrate Python source files to be compiled with mypyc.
 
 ## Summary of Key Changes
 
-* In target files, perform these refactoring (don't modify behavior):
+* In target files, perform these simple refactoring (don't modify behavior):
   * Annotate all constants in module top level and class bodies using `Final` annotation.
     Import `Final` from `typing`.
   * Annotate all class variables using `ClassVar` imported from `typing`. Prefer
     `Final` to `ClassVar` when possible, but don't use both.
   * Replace uses of the `six` package with the modern Python 3 ways of doing things.
   * Add `@final` class decorator to internal/helper classes that conform to these rules,
-    if the class clearly isn't intended to be subclasses:
+    if the class clearly isn't intended to be subclassed:
     * They don't have any subclasses in the codebase.
     * They aren't an ABC or a protocol.
     * They aren't an exception class.
@@ -31,11 +31,13 @@ description: Migrate Python source files to be compiled with mypyc.
   * Use `@mypyc_attr(native_class=False)` (import from `mypy_extensions`)
     for classes that have non-trivial metaclasses (`ABCMeta` is trivial,
     and also `GenericMeta`).
-  * Also make class non-native if class has an unsupported baseclass from
+  * Also make class non-native if class has an unsupported base class from
     `stdlib` or a third-party library (see
     https://mypyc.readthedocs.io/en/stable/native_classes.html#inheritance).
+* Check for code patterns that won't compile or will behave differently when
+  compiled, and fix them (see "Code That Won't Compile or Will Break" below).
 
-## Examples
+## Basic Examples
 
 ### Annotate Constant
 
@@ -112,6 +114,7 @@ Use `str` instead of `six.string_types`:
 ```
 def foo(x: object) -> bool:
     return isinstance(x, str)
+```
 
 Another example of using `six` usage:
 
@@ -161,3 +164,342 @@ class MyError(Exception):
 
 `MyError` shouldn't be final, since is an exception class and also subclasses
 a stdlib class. It doesn't help to make these final.
+
+### Class Nested within Function
+
+Mypyc doesn't support classes defined within functions, so move them to
+the module top level:
+
+```
+def process(items: list[str]) -> list[str]:
+    class Visitor:
+        def __init__(self) -> None:
+            self.seen: set[str] = set()
+
+        def visit(self, item: str) -> bool:
+            if item in self.seen:
+                return False
+            self.seen.add(item)
+            return True
+
+    v = Visitor()
+    return [item for item in items if v.visit(item)]
+```
+
+Move the class to the top level and add an underscore prefix to the name
+to mark it as internal (also add `@final` if the rules above allow it):
+
+```
+from typing import final
+
+@final
+class _Visitor:
+    def __init__(self) -> None:
+        self.seen: set[str] = set()
+
+    def visit(self, item: str) -> bool:
+        if item in self.seen:
+            return False
+        self.seen.add(item)
+        return True
+
+
+def process(items: list[str]) -> list[str]:
+    v = _Visitor()
+    return [item for item in items if v.visit(item)]
+```
+
+If the nested class refers to local variables or arguments of the enclosing
+function, it can't be moved as is. Pass the values explicitly to the
+constructor and store them as attributes instead:
+
+```
+def make_filter(prefix: str) -> Callable[[str], bool]:
+    class PrefixFilter:
+        def __call__(self, s: str) -> bool:
+            return s.startswith(prefix)
+
+    return PrefixFilter()
+```
+
+Make `prefix` an explicit attribute:
+
+```
+from typing import Callable, final
+
+@final
+class _PrefixFilter:
+    def __init__(self, prefix: str) -> None:
+        self.prefix = prefix
+
+    def __call__(self, s: str) -> bool:
+        return s.startswith(self.prefix)
+
+
+def make_filter(prefix: str) -> Callable[[str], bool]:
+    return _PrefixFilter(prefix)
+```
+
+If the captured variable is reassigned after the class is defined (in the
+enclosing function or via `nonlocal` in a method), the class sees the
+updated value. Preserve these semantics, for example by storing a
+reference to a shared mutable object instead of a copy of the value.
+If this gets complicated, leave the class nested and mention it in
+your summary.
+
+Don't move the class if it's intentionally created anew on each call,
+for example if it's built with a base class or class attributes that
+depend on function arguments, or if the code relies on each call producing
+a distinct class object. Also check whether anything depends on the class
+name (e.g. `__name__` or `__qualname__` used in reprs, logging, pickling or
+test assertions), since moving and renaming the class changes these.
+
+## Code That Won't Compile or Will Break
+
+Before migrating, check the target files for these patterns. Many of them
+need a search across the whole repository (including tests), since the
+problem is often in code that uses the migrated module, not in the module
+itself. If a fix would change behavior, or would require non-trivial
+refactoring, mention it in your summary instead of guessing.
+
+### Type Check Errors
+
+The target files must type check cleanly with mypy, since mypyc won't compile
+code with type errors. Don't use `# type: ignore` to silence errors in
+compiled code unless there is no alternative, as it can result in incorrect
+compiled code.
+
+### Conditional Function and Class Definitions
+
+Defining the same function or class in multiple branches of an `if`
+statement is a compile error:
+
+```
+if HAS_FAST_IMPL:
+    def process(data: bytes) -> bytes:
+        return fast_process(data)
+else:
+    def process(data: bytes) -> bytes:  # Error
+        return slow_process(data)
+```
+
+Define the function once, and move the condition inside it:
+
+```
+def process(data: bytes) -> bytes:
+    if HAS_FAST_IMPL:
+        return fast_process(data)
+    else:
+        return slow_process(data)
+```
+
+A single definition guarded by a runtime condition compiles, but the function
+is always defined, even if the condition is false. Look out for code that
+checks for the existence of the function (e.g. using `hasattr` or
+`globals()`).
+
+Checks against `sys.version_info` and `sys.platform` are fine, since mypy
+evaluates them statically. A `try`/`except ImportError` fallback definition
+also works.
+
+### `if __name__ == "__main__"`
+
+The `__name__` of a compiled module is never `"__main__"`, and compiled
+modules can't be run using `python -m`. Move the main block to a separate
+script that isn't compiled and that imports the module:
+
+```
+# mod.py (compiled)
+def main() -> None:
+    ...
+
+# mod_main.py (not compiled)
+from mod import main
+
+if __name__ == "__main__":
+    main()
+```
+
+### Monkey Patching and Mocking
+
+Functions and classes in compiled modules can't be monkey patched. Calls
+within the same compilation unit are bound at compile time, so replacing a
+module attribute has no effect on compiled callers, and replacing methods of
+native classes fails:
+
+```
+# In a test
+with mock.patch("mylib.util.fetch") as m:  # Compiled code calling fetch() isn't affected
+    ...
+
+with mock.patch.object(Client, "send"):  # Error: can't set attributes of native class
+    ...
+
+Client.send = fake_send  # Error
+```
+
+Search the tests (and other code) for `mock.patch`, `patch.object`,
+`monkeypatch.setattr` and direct assignments that target the migrated
+modules. Possible fixes:
+
+* Inject the dependency explicitly (e.g. as an argument or an attribute)
+  instead of patching it.
+* Patch something outside the compiled modules.
+* Make the class non-native using `@mypyc_attr(native_class=False)`, if
+  methods of the class need to be patched (this is slower).
+
+### Undeclared Attributes
+
+Native classes only support attributes that are assigned in the class body
+or in methods of the class (similar to `__slots__`). Setting other
+attributes from outside the class raises `AttributeError`:
+
+```
+class Request:
+    def __init__(self, url: str) -> None:
+        self.url = url
+
+req = Request("...")
+req.retry_count = 0  # Error at runtime
+```
+
+Declare the attribute in the class body (or initialize it in `__init__`):
+
+```
+class Request:
+    retry_count: int = 0
+
+    def __init__(self, url: str) -> None:
+        self.url = url
+```
+
+Also look for `setattr()` calls with attribute names that aren't known in
+advance and uses of `obj.__dict__` or `vars(obj)`, since instances of native
+classes don't have a `__dict__`. Make the class non-native if these are
+needed.
+
+### Deleting Attributes
+
+Attributes of native classes can't be deleted by default. List any attributes
+that are deleted using `del` in `__deletable__` in the class body:
+
+```
+class Cache:
+    value: int | None
+
+    __deletable__ = ["value"]
+
+    def clear(self) -> None:
+        del self.value
+```
+
+### Unsupported Dunder Methods
+
+`__getattribute__`, `__delattr__` and `__index__` don't work in native
+classes. Make classes that define them non-native.
+
+### Descriptors
+
+Native classes only support `@property`, `@staticmethod` and `@classmethod`
+descriptors. Other descriptors, such as `functools.cached_property` or custom
+descriptor classes used as class attributes, require a non-native class, or
+the code must be rewritten. For example, `cached_property` can be replaced
+with a property that stores the value in an attribute:
+
+```
+class Config:
+    @cached_property
+    def settings(self) -> dict[str, str]:
+        return load_settings()
+```
+
+Rewrite as:
+
+```
+class Config:
+    def __init__(self) -> None:
+        self._settings: dict[str, str] | None = None
+
+    @property
+    def settings(self) -> dict[str, str]:
+        if self._settings is None:
+            self._settings = load_settings()
+        return self._settings
+```
+
+### Class Decorators
+
+Classes that use class decorators other than `@dataclass`,
+`@attr.s(auto_attribs=True)`, `@trait` and `@mypyc_attr` are silently
+compiled as non-native classes (similar to classes with unsupported
+metaclasses). This is slow but works. Mark them explicitly using
+`@mypyc_attr(native_class=False)` to make this clear.
+
+Conversely, you can use `@mypyc_attr(native_class=True)` for important
+classes to make it a compile error if the class can't be native.
+
+### Multiple Inheritance
+
+Native classes only support single inheritance, with the exception of trait
+types. Mixin classes can often be turned into traits using `@trait` (import
+from `mypy_extensions`). Traits must come after the regular base class:
+
+```
+from mypy_extensions import trait
+
+@trait
+class LoggingMixin:
+    def log(self, msg: str) -> None:
+        print(msg)
+
+class Service(BaseService, LoggingMixin):  # Trait must come last
+    ...
+```
+
+If this doesn't work, make the class non-native.
+
+### Pickling and Copying
+
+Instances of native classes can't be pickled or copied using `copy.copy` or
+`copy.deepcopy` if `__init__` has required arguments. Search for uses of
+`pickle`, `copy` (and libraries that pickle objects, such as
+`multiprocessing`) involving migrated classes, and use
+`@mypyc_attr(serializable=True)` for these classes:
+
+```
+from mypy_extensions import mypyc_attr
+
+@mypyc_attr(serializable=True)
+class Job:
+    def __init__(self, job_id: int) -> None:
+        self.job_id = job_id
+```
+
+### Subclassing in Non-compiled Code
+
+By default, native classes can't be subclassed in non-compiled code, or in
+another compilation unit. Search for subclasses of migrated classes outside
+the migrated files, including test doubles and fakes in tests. Use
+`@mypyc_attr(allow_interpreted_subclasses=True)` for these classes (and don't
+make them `@final`):
+
+```
+from mypy_extensions import mypyc_attr
+
+@mypyc_attr(allow_interpreted_subclasses=True)
+class Handler:
+    def handle(self, item: str) -> None:
+        ...
+```
+
+Also don't mark methods `@final` if they are overridden in non-compiled
+subclasses, since compiled code will ignore the overrides.
+
+### Reassigned Final Values
+
+References to `Final` module-level constants and class attributes are
+replaced with the value at compile time, when the value is known during
+compilation. If other code or tests reassign a constant (e.g.
+`config.MAX_RETRIES = 0` or `monkeypatch.setattr(config, "MAX_RETRIES", 0)`),
+compiled code won't see the new value. Don't make these `Final`; leave
+them as regular variables.
