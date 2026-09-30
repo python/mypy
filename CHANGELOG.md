@@ -85,7 +85,7 @@ You can read the full documentation for this release on [Read the Docs](http://m
 
 ### Packaging changes
 
-- No longer provide mypyc-accelerated wheels for macOS x86_64 [mypyc-wheels #119](https://github.com/mypyc/mypy_mypyc-wheels/pull/119)
+- No longer provide mypyc-accelerated wheels for macOS `x86_64` [mypyc-wheels #119](https://github.com/mypyc/mypy_mypyc-wheels/pull/119)
 
 ### Other Notable Fixes and Improvements
 
@@ -124,9 +124,30 @@ Please see [git log](https://github.com/python/typeshed/commits/main?after=6d045
 ### Acknowledgements
 
 Thanks to all mypy contributors who contributed to this release:
-< Contributor List>
-I'd also like to thank my employer, Dropbox, for supporting mypy development.
 
+- A5rocks
+- Adam Dangoor
+- Alex Waygood
+- Ali Hamdan
+- Brian Helba
+- Chad Dombrova
+- David Foster
+- dnwpark
+- Edgar Ramírez Mondragón
+- Giorgos Michas
+- Ivan Levkivskyi
+- Jelle Zijlstra
+- Jukka Lehtosalo
+- Marc Mueller
+- Michael R. Crusoe
+- NIYONSHUTI Emmanuel
+- Piotr Sawicki
+- Shantanu
+- themylogin
+- Vaggelis Danias
+- Willy Bruns
+
+I'd also like to thank my employer, Dropbox, for supporting mypy development.
 
 ## Mypy 2.3
 
