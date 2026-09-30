@@ -271,6 +271,39 @@ code with type errors. Don't use `# type: ignore` to silence errors in
 compiled code unless there is no alternative, as it can result in incorrect
 compiled code.
 
+### Assigning `int` Values to `float` Variables
+
+Mypy allows an `int` value to be used where a `float` is expected, but
+`int` and `float` values have different runtime representations in compiled
+code. Assigning an `int` value to a variable or attribute declared as
+`float` is a compile error, even in the initial assignment:
+
+```
+def average(values: list[float], n: int) -> float:
+    total: float = 0  # Error
+    for v in values:
+        total += v
+    if n == 0:
+        total = n  # Error
+    return total / max(n, 1)
+```
+
+Use a float literal, or convert explicitly using `float(...)`:
+
+```
+def average(values: list[float], n: int) -> float:
+    total = 0.0
+    for v in values:
+        total += v
+    if n == 0:
+        total = float(n)
+    return total / max(n, 1)
+```
+
+The same applies to attributes, such as `self.ratio: float = 1` in
+`__init__`. Passing an `int` value as a `float` argument or returning it from
+a function with a `float` return type works.
+
 ### Conditional Function and Class Definitions
 
 Defining the same function or class in multiple branches of an `if`
@@ -321,6 +354,106 @@ from mod import main
 if __name__ == "__main__":
     main()
 ```
+
+### Async Generators
+
+Async generators (`async def` functions that contain `yield`) aren't
+supported by mypyc. This includes functions decorated with
+`@asynccontextmanager`. Rewrite them as classes that implement the async
+iterator protocol (`__aiter__` and `__anext__`) or the async context
+manager protocol (`__aenter__` and `__aexit__`). Keep the original function
+as a thin wrapper, so that callers don't need to change.
+
+An async generator used as an async iterator:
+
+```
+from typing import AsyncIterator
+
+async def countdown(n: int) -> AsyncIterator[int]:
+    while n > 0:
+        yield n
+        n -= 1
+```
+
+Rewrite as a class with `__aiter__` and `__anext__`. Local variables that are
+preserved between `yield`s become attributes, and `StopAsyncIteration` is
+raised at the end of iteration:
+
+```
+from typing import AsyncIterator, final
+
+@final
+class _Countdown:
+    def __init__(self, n: int) -> None:
+        self.n = n
+
+    def __aiter__(self) -> "_Countdown":
+        return self
+
+    async def __anext__(self) -> int:
+        if self.n <= 0:
+            raise StopAsyncIteration
+        n = self.n
+        self.n -= 1
+        return n
+
+
+def countdown(n: int) -> AsyncIterator[int]:
+    return _Countdown(n)
+```
+
+An async context manager:
+
+```
+from contextlib import asynccontextmanager
+from typing import AsyncIterator
+
+@asynccontextmanager
+async def connect(name: str) -> AsyncIterator[str]:
+    print("open")
+    try:
+        yield name
+    finally:
+        print("close")
+```
+
+Rewrite as a class with `__aenter__` and `__aexit__`. Code before `yield`
+goes into `__aenter__`, and the yielded value is returned from it. Code
+after `yield` (or in a `finally` block) goes into `__aexit__`:
+
+```
+from contextlib import AbstractAsyncContextManager
+from types import TracebackType
+from typing import final
+
+@final
+class _Connection:
+    def __init__(self, name: str) -> None:
+        self.name = name
+
+    async def __aenter__(self) -> str:
+        print("open")
+        return self.name
+
+    async def __aexit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc: BaseException | None,
+        tb: TracebackType | None,
+    ) -> None:
+        print("close")
+
+
+def connect(name: str) -> AbstractAsyncContextManager[str]:
+    return _Connection(name)
+```
+
+If the original function catches exceptions raised within the `async with`
+block (an `except` clause around `yield`), handle them in `__aexit__` using
+`exc`, and return `True` from `__aexit__` if the exception should be
+suppressed (declare the return type as `bool` in this case). If the async generator is complex (e.g. it has multiple
+`yield` statements in different places), mention it in your summary instead
+of rewriting it.
 
 ### Monkey Patching and Mocking
 
@@ -496,6 +629,99 @@ class Handler:
 
 Also don't mark methods `@final` if they are overridden in non-compiled
 subclasses, since compiled code will ignore the overrides.
+
+### Class Attributes Overridden in Non-compiled Subclasses
+
+If a non-compiled subclass assigns a new value to an attribute in the class
+body, compiled code in the base class won't see the new value, since a class
+attribute without a `ClassVar` annotation is an instance attribute with a
+default value in a native class:
+
+```
+# Compiled
+@mypyc_attr(allow_interpreted_subclasses=True)
+class Base:
+    timeout = 10
+
+    def get_timeout(self) -> int:
+        return self.timeout
+
+# Not compiled
+class Child(Base):
+    timeout = 30
+
+Child().timeout  # 30
+Child().get_timeout()  # 10 (!)
+```
+
+Search for subclasses that override class attributes. If the attribute is
+never assigned via an instance, annotate it with `ClassVar` in the base class
+(but not `Final`, since that prevents overriding):
+
+```
+from typing import ClassVar
+
+@mypyc_attr(allow_interpreted_subclasses=True)
+class Base:
+    timeout: ClassVar = 10
+```
+
+Otherwise the subclass can assign the attribute in `__init__` instead
+(`self.timeout = 30`).
+
+The same problem affects instance attributes that are assigned in methods
+of the base class, if a non-compiled subclass defines a class attribute with
+the same name. Compiled code and non-compiled code then see different
+values, and compiled code may fail with `AttributeError` if the attribute
+was never assigned (normal Python would fall back to the class attribute):
+
+```
+# Compiled
+@mypyc_attr(allow_interpreted_subclasses=True)
+class Connection:
+    def __init__(self) -> None:
+        self.retries = 3
+
+    def get_retries(self) -> int:
+        return self.retries
+
+@mypyc_attr(allow_interpreted_subclasses=True)
+class Job:
+    result: str  # Only assigned in run()
+
+    def get_result(self) -> str:
+        return self.result
+
+    def run(self) -> None:
+        self.result = "done"
+
+# Not compiled
+class FastConnection(Connection):
+    retries = 1  # Class attribute shadows an instance attribute
+
+c = FastConnection()
+c.retries  # 1 (would be 3 in normal Python)
+c.get_retries()  # 3
+
+class DefaultJob(Job):
+    result = "pending"
+
+DefaultJob().get_result()  # AttributeError (would be "pending")
+```
+
+Fix these by assigning the value in the subclass `__init__` (after calling
+`super().__init__()`), instead of using a class attribute:
+
+```
+class FastConnection(Connection):
+    def __init__(self) -> None:
+        super().__init__()
+        self.retries = 1
+```
+
+For attributes that are only sometimes assigned, such as `Job.result`, it
+may be simpler to give the attribute a default value in the base class and
+set it in the subclass `__init__`.
 
 ### Reassigned Final Values
 
