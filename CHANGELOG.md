@@ -12,6 +12,10 @@ improvements and bug fixes. You can install it as follows:
 
 You can read the full documentation for this release on [Read the Docs](http://mypy.readthedocs.io).
 
+### Python 3.15 Support (TODO)
+
+Mypy 2.4 supports running on Python 3.15 and type checking most Python 3.15 features.
+
 ### Native Parser Enabled by Default
 
 - Make the native parser the default (Ivan Levkivskyi, PR [21823](https://github.com/python/mypy/pull/21823))
@@ -20,6 +24,19 @@ You can read the full documentation for this release on [Read the Docs](http://m
 - Preserve docstrings in the native parser (Ivan Levkivskyi, PR [21890](https://github.com/python/mypy/pull/21890))
 - Use the native parser for `parse_type_string()` (Ivan Levkivskyi, PR [21965](https://github.com/python/mypy/pull/21965))
 - Fall back to sequential parsing when threads are unavailable (Jukka Lehtosalo, PR [21993](https://github.com/python/mypy/pull/21993))
+- Various improvements to `ast-serialize` (Ivan Levkivskyi)
+
+### Stable Parallel Checking
+
+Parallel type checking is no longer experimental.
+
+- Use two-phase type checking in sequential mode (Ivan Levkivskyi, PR [21973](https://github.com/python/mypy/pull/21973))
+- Use a more thorough cleanup of parallel workers (Ivan Levkivskyi, PR [21981](https://github.com/python/mypy/pull/21981))
+- Increase `riscv64` worker startup timeout (Michael R. Crusoe, PR [21988](https://github.com/python/mypy/pull/21988))
+- Fix errors with multi-process workers on Windows (Chad Dombrova, PR [22016](https://github.com/python/mypy/pull/22016))
+- Increase worker connection timeout on macOS (Ivan Levkivskyi, PR [22029](https://github.com/python/mypy/pull/22029))
+- Try adding a simple retry on worker startup (Ivan Levkivskyi, PR [21980](https://github.com/python/mypy/pull/21980))
+- Support automatic worker selection (Kevin Kannammalil, PR [21983](https://github.com/python/mypy/pull/21983))
 
 ### Support for PEP 661 Sentinels
 
@@ -29,6 +46,12 @@ You can read the full documentation for this release on [Read the Docs](http://m
 - Represent sentinels as first-class literal types (Ivan Levkivskyi, PR [21919](https://github.com/python/mypy/pull/21919))
 - Recognize plain aliases of an existing sentinel as sentinel declarations (Edgar Ramírez Mondragón, PR [21972](https://github.com/python/mypy/pull/21972))
 - Fix stubtest false positive for sentinel default values (Edgar Ramírez Mondragón, PR [22017](https://github.com/python/mypy/pull/22017))
+
+### More Lenient Handling of `*tuple[Any, ...]`
+
+- Lenient handling of `*tuple[Any, ...]` (part 1) (Ivan Levkivskyi, PR [22001](https://github.com/python/mypy/pull/22001))
+- Lenient handling of `*tuple[Any, ...]` (part 2) (Ivan Levkivskyi, PR [22006](https://github.com/python/mypy/pull/22006))
+- Lenient handling of `*tuple[Any, ...]` (part 3) (Ivan Levkivskyi, PR [22014](https://github.com/python/mypy/pull/22014))
 
 ### Mypyc Generator and Coroutine Improvements
 
@@ -43,10 +66,11 @@ You can read the full documentation for this release on [Read the Docs](http://m
 - Avoid polluting generator environment layouts (Jukka Lehtosalo, PR [21990](https://github.com/python/mypy/pull/21990))
 - Move non-captured generator state to private frames (Jukka Lehtosalo, PR [21991](https://github.com/python/mypy/pull/21991))
 - Create function wrappers of nested coroutines lazily (Jukka Lehtosalo, PR [22048](https://github.com/python/mypy/pull/22048))
+- Treat callable environment links as final (Jukka Lehtosalo, PR [21956](https://github.com/python/mypy/pull/21956))
+- Borrow callable environment links (Jukka Lehtosalo, PR [21957](https://github.com/python/mypy/pull/21957))
 
 ### Performance Improvements
 
-- Support automatic worker selection (Kevin Kannammalil, PR [21983](https://github.com/python/mypy/pull/21983))
 - Reduce `TypeForm` recognition slowdown (David Foster, PR [21833](https://github.com/python/mypy/pull/21833))
 - Try not simplifying unions during unification (Ivan Levkivskyi, PR [22035](https://github.com/python/mypy/pull/22035))
 
@@ -65,12 +89,11 @@ You can read the full documentation for this release on [Read the Docs](http://m
 - Specialize `bytearray(bytes_value[i:j])` (Shantanu, PR [21901](https://github.com/python/mypy/pull/21901))
 - Fix error handling when unboxing tuples (Jukka Lehtosalo, PR [21952](https://github.com/python/mypy/pull/21952))
 - Error on Unicode surrogates in mypyc (Ivan Levkivskyi, PR [21936](https://github.com/python/mypy/pull/21936))
-- Treat callable environment links as final (Jukka Lehtosalo, PR [21956](https://github.com/python/mypy/pull/21956))
-- Borrow callable environment links (Jukka Lehtosalo, PR [21957](https://github.com/python/mypy/pull/21957))
 - Fix name conflicts when creating `CPyFunction` variables (Piotr Sawicki, PR [21992](https://github.com/python/mypy/pull/21992))
 - Synchronize native-to-native imports (Piotr Sawicki, PR [21887](https://github.com/python/mypy/pull/21887))
 - Make native attribute writes faster with free threading (Jukka Lehtosalo, PR [21748](https://github.com/python/mypy/pull/21748))
 - Fix missing modules during concurrent circular imports (Piotr Sawicki, PR [22027](https://github.com/python/mypy/pull/22027))
+- Use a shared value for a `Final` attribute initialized in a class body (Jukka Lehtosalo, PR [21932](https://github.com/python/mypy/pull/21932))
 
 ### Fixes to Crashes
 
@@ -91,11 +114,6 @@ You can read the full documentation for this release on [Read the Docs](http://m
 
 - Add basic support for PEP 798 (Ivan Levkivskyi, PR [21976](https://github.com/python/mypy/pull/21976))
 - Generalise PEP 798 support to `SupportsKeysAndGetItem` (Shantanu, PR [22021](https://github.com/python/mypy/pull/22021))
-- Use two-phase type checking in sequential mode (Ivan Levkivskyi, PR [21973](https://github.com/python/mypy/pull/21973))
-- Lenient handling of `*tuple[Any, ...]` (part 1) (Ivan Levkivskyi, PR [22001](https://github.com/python/mypy/pull/22001))
-- Lenient handling of `*tuple[Any, ...]` (part 2) (Ivan Levkivskyi, PR [22006](https://github.com/python/mypy/pull/22006))
-- Lenient handling of `*tuple[Any, ...]` (part 3) (Ivan Levkivskyi, PR [22014](https://github.com/python/mypy/pull/22014))
-- Use a shared value for a `Final` attribute initialized in a class body (Jukka Lehtosalo, PR [21932](https://github.com/python/mypy/pull/21932))
 - Improve stubtest handling of expected dunder methods (Alex Waygood, PR [21764](https://github.com/python/mypy/pull/21764))
 - Fix another variance issue with `__replace__` (Shantanu, PR [21737](https://github.com/python/mypy/pull/21737))
 - Avoid false `unused-awaitable` errors for task groups (A5rocks, PR [21766](https://github.com/python/mypy/pull/21766))
@@ -109,11 +127,6 @@ You can read the full documentation for this release on [Read the Docs](http://m
 - Don't error unnecessarily about new syntax in dependencies where errors are ignored (A5rocks, PR [21883](https://github.com/python/mypy/pull/21883))
 - Handle edge case in overload subtyping (Ivan Levkivskyi, PRs [22007](https://github.com/python/mypy/pull/22007) and [22030](https://github.com/python/mypy/pull/22030))
 - Unify type alias deferral logic (Ivan Levkivskyi, PR [22015](https://github.com/python/mypy/pull/22015))
-- Try adding a simple retry on worker startup (Ivan Levkivskyi, PR [21980](https://github.com/python/mypy/pull/21980))
-- Use a more thorough cleanup of parallel workers (Ivan Levkivskyi, PR [21981](https://github.com/python/mypy/pull/21981))
-- Increase `riscv64` worker startup timeout (Michael R. Crusoe, PR [21988](https://github.com/python/mypy/pull/21988))
-- Fix errors with multi-process workers on Windows (Chad Dombrova, PR [22016](https://github.com/python/mypy/pull/22016))
-- Increase worker connection timeout on macOS (Ivan Levkivskyi, PR [22029](https://github.com/python/mypy/pull/22029))
 - Narrow match-pattern AST annotations to concrete variants (Adam Dangoor, PR [22000](https://github.com/python/mypy/pull/22000))
 - Narrow built-in signature-hook return types (Adam Dangoor, PR [21995](https://github.com/python/mypy/pull/21995))
 
