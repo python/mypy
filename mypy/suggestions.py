@@ -58,6 +58,7 @@ from mypy.options import Options
 from mypy.plugin import FunctionContext, MethodContext, Plugin
 from mypy.server.update import FineGrainedBuildManager
 from mypy.state import state
+from mypy.subtypes import has_any_type
 from mypy.traverser import TraverserVisitor
 from mypy.typeops import bind_self, has_any_type, make_simplified_union
 from mypy.types import (

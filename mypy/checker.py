@@ -222,6 +222,7 @@ from mypy.sharedparse import BINARY_MAGIC_METHODS
 from mypy.state import state
 from mypy.subtypes import (
     find_member,
+    has_any_type,
     infer_class_variances,
     is_callable_compatible,
     is_equivalent,
