@@ -102,12 +102,37 @@ When benchmarking:
   variation between runs.
 * Don't leave throwaway benchmarks in the project, unless asked to.
 
-Benchmarks can also be profiled to find where time is spent. `cProfile`
-and `profile` only work well with non-compiled code, since they don't see
-calls within compiled code. Use a native profiler such as `perf` on Linux
-(`perf record -g python3 bench.py` followed by `perf report`), or `py-spy`
-with `--native`. Compiled functions have names with the prefix `CPyDef_`
-in profiles (e.g. `CPyDef_mod___parse` for `parse` in module `mod`).
+Benchmarks can also be profiled to find where time is spent (see
+"Profiling").
+
+## Profiling
+
+Profile the code (or a benchmark) to find the hot functions before
+optimizing, and to check where time is spent after a change. Use a native
+(sampling) profiler that shows C-level frames. Good options to try, if
+they are available:
+
+* `py-spy record --native -o profile.svg -- python3 bench.py` (native
+  frames are supported on Linux and Windows)
+* `perf` on Linux (`perf record -g python3 bench.py`, then `perf report`)
+* On macOS: Instruments (Time Profiler), `samply`, or `sample`
+* On Windows: the Visual Studio profiler, or Windows Performance Recorder
+  and Analyzer
+
+Don't use `cProfile` or `profile`. They don't produce native frames, and
+don't see calls within compiled code, so the results are misleading for
+compiled modules.
+
+Compiled functions have names with the prefix `CPyDef_` in profiles (e.g.
+`CPyDef_mod___parse` for function `parse` in module `mod`). Functions with
+the prefix `CPyPy_` are wrappers used when compiled functions are called
+from non-compiled code.
+
+Call stacks can be incomplete if CPython or the compiled extensions were
+built without frame pointers. A custom CPython build (and compiled modules)
+with `-fno-omit-frame-pointer`, or a profiler mode that uses DWARF debug
+information for stack unwinding, can give better results. Look up the
+current recommended approach for the profiler and Python version used.
 
 ## Inspect Generated Code
 
