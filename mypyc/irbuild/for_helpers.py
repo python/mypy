@@ -28,7 +28,7 @@ from mypy.nodes import (
     Var,
 )
 from mypy.types import LiteralType, TupleType, get_proper_type, get_proper_types
-from mypyc.common import GENERATOR_HELPER_NAME, IS_FREE_THREADED
+from mypyc.common import GENERATOR_HELPER_NAME
 from mypyc.ir.ops import (
     ERR_NEVER,
     BasicBlock,
@@ -868,7 +868,7 @@ def unsafe_index(builder: IRBuilder, target: Value, index: Value, line: int) -> 
     # since we want to use __getitem__ if we don't have an unsafe version,
     # so we just check manually.
     if is_list_rprimitive(target.type):
-        if not IS_FREE_THREADED:
+        if not builder.options.target_python.free_threaded:
             return builder.primitive_op(list_get_item_unsafe_op, [target, index], line)
         else:
             return builder.primitive_op(list_get_item_int64_op, [target, index], line)

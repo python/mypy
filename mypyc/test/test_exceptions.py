@@ -11,13 +11,15 @@ from mypy.errors import CompileError
 from mypy.test.config import test_temp_dir
 from mypy.test.data import DataDrivenTestCase
 from mypyc.analysis.blockfreq import frequently_executed_blocks
-from mypyc.common import IS_FREE_THREADED, TOP_LEVEL_NAME
+from mypyc.common import TOP_LEVEL_NAME
 from mypyc.ir.pprint import format_func
+from mypyc.options import CompilerOptions, TargetPython
 from mypyc.test.testutil import (
     ICODE_GEN_BUILTINS,
     MypycDataSuite,
     assert_test_output,
     build_ir_for_single_file,
+    infer_free_threaded_from_test_name,
     remove_comment_lines,
     use_custom_builtins,
 )
@@ -35,17 +37,13 @@ class TestExceptionTransform(MypycDataSuite):
     def run_case(self, testcase: DataDrivenTestCase) -> None:
         """Perform a runtime checking transformation test case."""
 
-        if "_withgil" in testcase.name and IS_FREE_THREADED:
-            # Test case should only run on a non-free-threaded build.
-            return
-        if "_nogil" in testcase.name and not IS_FREE_THREADED:
-            # Test case should only run on a free-threaded build.
-            return
-
+        options = CompilerOptions(
+            target_python=TargetPython((3, 10), infer_free_threaded_from_test_name(testcase.name))
+        )
         with use_custom_builtins(os.path.join(self.data_prefix, ICODE_GEN_BUILTINS), testcase):
             expected_output = remove_comment_lines(testcase.output)
             try:
-                ir = build_ir_for_single_file(testcase.input)
+                ir = build_ir_for_single_file(testcase.input, options)
             except CompileError as e:
                 actual = e.messages
             else:

@@ -6,7 +6,6 @@ See the docstring of class LowLevelIRBuilder for more information.
 
 from __future__ import annotations
 
-import sys
 from collections.abc import Callable, Iterator, Sequence
 from contextlib import contextmanager
 from typing import Final, TypeGuard, cast
@@ -19,7 +18,6 @@ from mypyc.common import (
     BITMAP_BITS,
     FAST_ISINSTANCE_MAX_SUBCLASSES,
     FAST_PREFIX,
-    IS_FREE_THREADED,
     KEEP_ALIVE_SHORT_LIVED,
     MAX_LITERAL_SHORT_INT,
     MAX_SHORT_INT,
@@ -2513,6 +2511,8 @@ class LowLevelIRBuilder:
                 continue
             if desc.experimental and not self.options.experimental_features:
                 continue
+            if desc.gil_only and self.options.target_python.free_threaded:
+                continue
             if all(
                 # formal is not None and # TODO
                 is_subtype(actual.type, formal, relaxed=not strict)
@@ -2835,7 +2835,8 @@ class LowLevelIRBuilder:
 
     def set_immortal_if_free_threaded(self, v: Value, line: int) -> None:
         """Make an object immortal on free-threaded builds (to avoid contention)."""
-        if IS_FREE_THREADED and sys.version_info >= (3, 14):
+        target = self.options.target_python
+        if target.free_threaded and target.version >= (3, 14):
             self.primitive_op(set_immortal_op, [v], line)
 
     # Internal helpers
