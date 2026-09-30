@@ -583,6 +583,166 @@ To build a string from code points, use `librt.strings.StringWriter`
 These changes make code slower when it's not compiled, so only do this in
 modules that are compiled.
 
+## Move Nested Functions to Module Level or Methods
+
+Each time the enclosing function is called, a nested function (or a
+lambda) must be allocated, together with an environment object for the
+captured variables. This is relatively slow, and it adds up if the
+enclosing function is called often. Module-level functions and methods
+don't have this overhead:
+
+```
+def total(a: list[int], k: int) -> int:
+    def weight(x: int) -> int:
+        return x * k + 1
+
+    t = 0
+    for x in a:
+        t += weight(x)
+    return t
+```
+
+Move the nested function to the module level, and pass captured variables
+as arguments:
+
+```
+def _weight(x: int, k: int) -> int:
+    return x * k + 1
+
+def total(a: list[int], k: int) -> int:
+    t = 0
+    for x in a:
+        t += _weight(x, k)
+    return t
+```
+
+If the nested function is within a method and uses `self`, make it a
+method instead (e.g. `self._weight(x)`).
+
+Only do this if the nested function is simple enough (it captures only a
+few variables, and it doesn't assign captured variables using
+`nonlocal`), or if it's very performance-critical. Otherwise the
+refactored code may be harder to read.
+
+If the function is only used as a callback, such as
+`sorted(a, key=lambda x: x[0])`, or passed as an argument with type
+`Callable[...]`, it's called using a generic operation either way. In
+these cases, the only benefit is avoiding the allocation, so move the
+function only if the enclosing function is called often.
+
+## Use `vec` Instead of `list` for Packed Item Types
+
+`vec` (from `librt.vecs`) is a growable array type that stores items of
+certain types, such as `i64`, `i32`, `u8`, `float` and `bool`, in a packed
+binary representation, without boxing. Building, iterating over, and
+indexing a `vec` with a packed item type is much faster than with a
+`list[int]` or `list[float]` in compiled code, and uses much less memory.
+Consider using a `vec` instead of an internal list of integers or floats
+in performance-critical code:
+
+```
+class Offsets:
+    def __init__(self) -> None:
+        self.offsets: list[int] = []
+
+    def add(self, x: int) -> None:
+        self.offsets.append(x)
+
+    def total(self) -> int:
+        t = 0
+        for x in self.offsets:
+            t += x
+        return t
+```
+
+Use `vec[i64]` instead:
+
+```
+from librt.vecs import append, vec
+from mypy_extensions import i64
+
+class Offsets:
+    def __init__(self) -> None:
+        self.offsets = vec[i64]()
+
+    def add(self, x: i64) -> None:
+        self.offsets = append(self.offsets, x)
+
+    def total(self) -> i64:
+        t: i64 = 0
+        for x in self.offsets:
+            t += x
+        return t
+```
+
+Only do this if the list is internal and changing it doesn't change a
+public API. Check all uses of the list, including in tests and
+non-compiled code. Be careful to preserve behavior:
+
+* The length of a `vec` value can't be changed. `append`, `extend`,
+  `remove` and `pop` are functions that return a new value, which must be
+  assigned back (as in `add` above). If other code holds a reference to
+  the same list (for example, it was passed to another object that also
+  appends to it), the references no longer share changes. Don't convert
+  lists that are shared like this.
+* `vec` isn't a full sequence type, and it doesn't support all `list`
+  operations and methods (such as `sort`). Don't pass it to code that
+  expects a `list`.
+* Integer values must fit in the item type (e.g. 64 bits for `i64`).
+  Arithmetic on native integer types isn't checked for overflow. Use
+  native integer types for related local variables too (such as `t`
+  above), since conversions between `int` and native integers have a
+  cost.
+* In free-threaded Python builds, `vec` gives fewer thread safety
+  guarantees than `list`.
+
+Check the `librt.vecs` documentation (`mypyc/doc/librt_vecs.rst` in the
+mypy repository) first, and only use `vec` if the project depends on
+`librt` (see "Use librt"). The benefit is much smaller for other item
+types, such as `str`, which aren't packed, and there is no benefit in
+non-compiled code.
+
+## Generators
+
+Generators are efficient in compiled code. Don't replace a generator with
+a function that returns a `list`, even if the result is always fully
+consumed, as building the list is usually slower.
+
+An exception is a generator that yields values of a type that `vec` (from
+`librt.vecs`) stores in a packed representation, such as `i64` or `float`.
+Returning a `vec` can be faster than a generator, especially if the caller
+also uses native integer types:
+
+```
+from typing import Iterator
+
+def evens(a: list[int]) -> Iterator[int]:
+    for x in a:
+        if x % 2 == 0:
+            yield x
+```
+
+Return a `vec` instead:
+
+```
+from librt.vecs import append, vec
+from mypy_extensions import i64
+
+def evens(a: list[int]) -> vec[i64]:
+    result = vec[i64]()
+    for x in a:
+        if x % 2 == 0:
+            result = append(result, x)
+    return result
+```
+
+This doesn't help for other item types, such as `vec[str]`. Only do this
+for internal functions where all callers can be updated, if the values fit
+in the fixed-size type, and if the project depends on `librt` (see "Use
+librt"). Check the `librt.vecs` documentation first, since `vec` isn't a
+full sequence type. Measure the change using a benchmark (see "Measure
+Performance").
+
 ## Replace itertools and functools with Plain Code
 
 Mypyc compiles `for` loops over lists, `range(...)` and other primitive
@@ -697,6 +857,9 @@ features, optimized for compiled code:
 * `librt.random`: pseudorandom numbers (faster than the `random` module).
 * `librt.time.time()`: faster than `time.time()`.
 * `librt.threading.Lock`: faster than `threading.Lock`.
+* `librt.vecs.vec`: a growable array type with a packed representation
+  for item types such as `i64` and `float` (see "Generators" for an
+  example).
 
 Example of using `StringWriter`:
 
