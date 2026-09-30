@@ -36,6 +36,8 @@ description: Migrate Python source files to be compiled with mypyc.
     https://mypyc.readthedocs.io/en/stable/native_classes.html#inheritance).
 * Check for code patterns that won't compile or will behave differently when
   compiled, and fix them (see "Code That Won't Compile or Will Break" below).
+* Apply the simple performance improvements described in "Cheap Performance
+  Wins" below.
 
 ## Basic Examples
 
@@ -503,3 +505,37 @@ compilation. If other code or tests reassign a constant (e.g.
 `config.MAX_RETRIES = 0` or `monkeypatch.setattr(config, "MAX_RETRIES", 0)`),
 compiled code won't see the new value. Don't make these `Final`; leave
 them as regular variables.
+
+## Cheap Performance Wins
+
+These changes are simple and don't change behavior, but they can make a big
+difference in compiled code.
+
+### Don't Cache Bound Methods in Local Variables
+
+Caching a method in a local variable is a common CPython optimization, but it
+makes compiled code slower, since the call can no longer be bound at compile
+time:
+
+```
+def squares(n: int) -> list[int]:
+    a = []
+    append = a.append  # Slow in compiled code
+    for i in range(n):
+        append(i * i)
+    return a
+```
+
+Call the method directly:
+
+```
+def squares(n: int) -> list[int]:
+    a = []
+    for i in range(n):
+        a.append(i * i)
+    return a
+```
+
+The same applies to caching global functions or module attributes in local
+variables or default argument values (e.g. `def f(x, _len=len)`) — refer to
+them directly instead.
