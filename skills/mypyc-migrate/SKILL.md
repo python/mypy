@@ -11,13 +11,14 @@ description: Migrate Python source files to be compiled with mypyc.
 ## Summary of Key Changes
 
 * In target files, perform these simple refactoring (don't modify behavior):
-  * Annotate all constants in module top level and class bodies using `Final` annotation.
-    Import `Final` from `typing`.
-  * Annotate all class variables using `ClassVar` imported from `typing`. Prefer
-    `Final` to `ClassVar` when possible, but don't use both.
-  * Replace uses of the `six` package with the modern Python 3 ways of doing things.
-  * Add `@final` class decorator to internal/helper classes that conform to these rules,
-    if the class clearly isn't intended to be subclassed:
+  * Annotate all constants in module top level and class bodies using
+    `Final` annotation. Import `Final` from `typing`.
+  * Annotate all class variables using `ClassVar` imported from `typing`.
+    Prefer `Final` to `ClassVar` when possible, but don't use both.
+  * Replace uses of the `six` package with the modern Python 3 ways of
+    doing things.
+  * Add `@final` class decorator to internal/helper classes that conform to
+    these rules, if the class clearly isn't intended to be subclassed:
     * They don't have any subclasses in the codebase.
     * They aren't an ABC or a protocol.
     * They aren't an exception class.
@@ -577,10 +578,12 @@ native classes fails:
 
 ```
 # In a test
-with mock.patch("mylib.util.fetch") as m:  # Compiled code calling fetch() isn't affected
+# Compiled code calling fetch() isn't affected
+with mock.patch("mylib.util.fetch") as m:
     ...
 
-with mock.patch.object(Client, "send"):  # Error: can't set attributes of native class
+# Error: can't set attributes of native class
+with mock.patch.object(Client, "send"):
     ...
 
 Client.send = fake_send  # Error
