@@ -69,7 +69,6 @@ from mypy.util import module_prefix, split_target
 from mypy.visitor import ExpressionVisitor, StatementVisitor
 from mypyc.common import (
     BITMAP_BITS,
-    EXT_SUFFIX,
     GENERATOR_ATTRIBUTE_PREFIX,
     KEEP_ALIVE_SHORT_LIVED,
     KEEP_ALIVE_WHOLE_EXPRESSION,
@@ -588,7 +587,7 @@ class IRBuilder:
                 shared_lib_file = self.py_get_attr(shared_lib_obj, "__file__", line)
             else:
                 shared_lib_file = self.none_object(line)
-            ext_suffix = self.load_str(EXT_SUFFIX, line)
+            ext_suffix = self.load_str(self.options.target_python.ext_suffix, line)
             is_pkg = self.is_package_module(module)
             value = self.call_c(
                 native_import_op,
