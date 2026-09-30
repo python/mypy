@@ -1494,6 +1494,18 @@ def func() -> None:
 
 class C(Self): ...  # E: Self type is only allowed in annotations within class definition
 
+[case testTypingSelfInvalidAsTypeParameterBound]
+# flags: --python-version 3.12
+from typing import Self, TypeVar
+
+class C:
+    def f[T: Self](self, x: T) -> T: ...  # E: Self type cannot be used in a type variable bound
+
+class D:
+    T = TypeVar("T", bound=Self)  # E: Self type cannot be used in a type variable bound # E: TypeVar "bound" must be a type
+
+class E[T: Self]: ...  # E: Self type cannot be used in a type variable bound
+
 [case testTypingSelfInvalidArgs]
 from typing import Self, List
 

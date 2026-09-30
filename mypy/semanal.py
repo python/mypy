@@ -1902,7 +1902,11 @@ class SemanticAnalyzer(
     ) -> TypeVarLikeExpr | None:
         fullname = self.qualified_name(type_param.name)
         if type_param.upper_bound:
-            upper_bound = self.anal_type(type_param.upper_bound, allow_placeholder=True)
+            upper_bound = self.anal_type(
+                type_param.upper_bound,
+                allow_placeholder=True,
+                prohibit_self_type="a type variable bound",
+            )
             # TODO: we should validate the upper bound is valid for a given kind.
             if upper_bound is None:
                 # This and below copies special-casing for old-style type variables, that
@@ -5067,7 +5071,13 @@ class SemanticAnalyzer(
                 if has_values:
                     self.fail("TypeVar cannot have both values and an upper bound", context)
                     return None
-                tv_arg = self.get_typevarlike_argument("TypeVar", param_name, param_value, context)
+                tv_arg = self.get_typevarlike_argument(
+                    "TypeVar",
+                    param_name,
+                    param_value,
+                    context,
+                    prohibit_self_type="a type variable bound",
+                )
                 if tv_arg is None:
                     return None
                 upper_bound = tv_arg
@@ -5119,6 +5129,7 @@ class SemanticAnalyzer(
         allow_param_spec_literals: bool = False,
         allow_unpack: bool = False,
         report_invalid_typevar_arg: bool = True,
+        prohibit_self_type: str | None = None,
     ) -> Type | None:
         try:
             # We want to use our custom error message below, so we suppress
@@ -5131,6 +5142,7 @@ class SemanticAnalyzer(
                 allow_param_spec_literals=allow_param_spec_literals,
                 allow_unpack=allow_unpack,
                 analyzing_tvar_def=param_name == "default",
+                prohibit_self_type=prohibit_self_type,
             )
             if analyzed is None:
                 # Type variables are special: we need to place them in the symbol table
@@ -7824,6 +7836,7 @@ class SemanticAnalyzer(
         allow_unpack: bool = False,
         unique_name: str | None = None,
         analyzing_tvar_def: bool = False,
+        prohibit_self_type: str | None = None,
     ) -> Type | None:
         if unique_name is not None and isinstance(expr, CallExpr):
             # This is a legacy syntax intended mostly for Python 2, we keep it for
@@ -7856,6 +7869,7 @@ class SemanticAnalyzer(
             allow_param_spec_literals=allow_param_spec_literals,
             allow_unpack=allow_unpack,
             analyzing_tvar_def=analyzing_tvar_def,
+            prohibit_self_type=prohibit_self_type,
         )
 
     def analyze_type_expr(self, expr: Expression) -> None:
