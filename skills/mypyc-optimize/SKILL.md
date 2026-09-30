@@ -96,9 +96,10 @@ the decorator.
 
 If a performance-critical class has non-trivial base classes (other than
 `object`, `ABC`, `Generic[...]` or native classes in the same project), a
-metaclass other than `ABCMeta`, or class decorators, add `@mypyc_attr(native_class=True)` (import from `mypy_extensions`), so
-that the class can't accidentally become non-native later. Don't add it to
-other classes, as they are unlikely to become non-native.
+metaclass other than `ABCMeta`, or class decorators, add
+`@mypyc_attr(native_class=True)` (import from `mypy_extensions`), so that the
+class can't accidentally become non-native later. Don't add it to other
+classes, as they are unlikely to become non-native.
 
 ### Replace Dataclasses with Regular Classes
 
@@ -214,6 +215,145 @@ class Parser:
 
 Only do this if the attribute or variable isn't part of a public interface
 and all uses can be updated, and document the marker value in a comment.
+
+## Initialize Attributes Before `self` Escapes in `__init__`
+
+Mypyc analyzes `__init__` methods to find attributes that are always
+initialized. Reading these attributes doesn't need a check for an undefined
+value (which would raise `AttributeError`), which makes reads faster. The
+analysis stops once `self` may escape: `self` is passed to a function, a
+method is called on `self`, or a property of `self` is accessed. Attributes
+assigned after this point aren't considered always defined. Calls that
+don't involve `self` are fine.
+
+```
+class Connection:
+    def __init__(self, host: str) -> None:
+        self.host = host
+        self.register()  # 'self' escapes
+        self.retries = 0  # Not always defined
+```
+
+Assign attributes before `self` escapes, when this doesn't change behavior:
+
+```
+class Connection:
+    def __init__(self, host: str) -> None:
+        self.host = host
+        self.retries = 0  # Always defined
+        self.register()
+```
+
+A call to `super().__init__()` only makes `self` escape if the base class
+`__init__` makes `self` escape (for example, if it calls a method of
+`self`). In this case, initialize attributes defined in the subclass before
+calling `super().__init__()`, if the values don't depend on `self`:
+
+```
+class Base:
+    def __init__(self, name: str) -> None:
+        self.name = name
+        self.setup()  # 'self' escapes
+
+class Child(Base):
+    def __init__(self, name: str) -> None:
+        # Always defined, since assigned before super().__init__()
+        self.count = 0
+        super().__init__(name)
+```
+
+Only reorder assignments if the code that runs after `self` escapes (the
+called methods, including methods overridden in subclasses, and the base
+class `__init__`) doesn't read or assign the attributes being moved, and if
+the assigned values don't depend on anything that is initialized later.
+
+The analysis is only performed for native classes where all subclasses are
+known at compile time. It's not performed for classes with
+`allow_interpreted_subclasses=True` or `serializable=True`, for example.
+An attribute defined in a base class is only always defined if it's always
+defined in all subclasses.
+
+## Use `is` to Compare Enum Values
+
+Comparing an enum value using `is` can be much faster than `==`, when the
+value has an optional type such as `Color | None` (about 6x faster in a
+benchmark), or when the enum class is defined in a module that isn't compiled
+together with the target files. If both operands have the same enum type and
+the enum is compiled, `==` is already fast.
+
+```
+def is_red(c: Color | None) -> bool:
+    return c == Color.RED  # Slow
+```
+
+Use `is` (and `is not` instead of `!=`):
+
+```
+def is_red(c: Color | None) -> bool:
+    return c is Color.RED  # Fast
+```
+
+This changes behavior for `IntEnum`, `StrEnum` and other enums that
+inherit from a type such as `int` or `str`, since `==` also matches plain
+`int` or `str` values, and for enums that define `__eq__`. Only use `is`
+with these if you are sure that the other operand is always an enum member.
+
+## Use Integer Code Points Instead of One-character Strings
+
+When processing strings character by character, operating on integer code
+points is much faster in compiled code than operating on one-character
+strings (often 5x to 15x faster in benchmarks). `ord(s[i])` is a fast
+operation when `s` has type `str`, and `ord("x")` of a string literal is a
+compile-time constant:
+
+```
+def count_separators(s: str) -> int:
+    n = 0
+    for c in s:
+        if c == "," or c == ";":
+            n += 1
+    return n
+
+def count_digits(s: str) -> int:
+    n = 0
+    for c in s:
+        if "0" <= c <= "9":
+            n += 1
+    return n
+```
+
+Use `ord(...)` instead:
+
+```
+def count_separators(s: str) -> int:
+    n = 0
+    for i in range(len(s)):
+        c = ord(s[i])
+        if c == ord(",") or c == ord(";"):
+            n += 1
+    return n
+
+def count_digits(s: str) -> int:
+    n = 0
+    for i in range(len(s)):
+        c = ord(s[i])
+        if ord("0") <= c <= ord("9"):
+            n += 1
+    return n
+```
+
+For `str` methods such as `c.isdigit()`, `c.isspace()`, `c.isalpha()`,
+`c.isalnum()`, `c.upper()` and `c.lower()` on a one-character string, use the
+corresponding functions in `librt.strings` that take a code point (see "Use
+librt" below), e.g. `isdigit(ord(s[i]))`. Note that `librt.strings.toupper`
+and `tolower` leave code points unchanged if the result would have multiple
+code points (e.g. `"ß".upper()` is `"SS"`).
+
+To build a string from code points, use `librt.strings.StringWriter`
+(`w.append(c)`).
+
+These changes make code slower when it's not compiled, so only do this in
+modules that are compiled.
 
 ## Use librt
 
