@@ -1,5 +1,5 @@
 ---
-name: prepare-for-mypyc
+name: mypyc-migrate
 description: Migrate Python source files to be compiled with mypyc.
   Useful for migrating existing code and newly written Python code.
   Make changes that are needed for compatibility and to avoid major
@@ -10,7 +10,7 @@ description: Migrate Python source files to be compiled with mypyc.
 
 ## Summary of Key Changes
 
-* In target files, perform these simple refactoring (don't modify behavior):
+* In target files, perform these simple refactorings (don't modify behavior):
   * Annotate all constants in module top level and class bodies using
     `Final` annotation. Import `Final` from `typing`.
   * Annotate all class variables using `ClassVar` imported from `typing`.
@@ -24,7 +24,7 @@ description: Migrate Python source files to be compiled with mypyc.
     * They aren't an exception class.
     * They don't subclass any stdlib class (other than `object`).
   * Refactor classes defined within functions into top-level classes with
-    an underscore name prefix to mark it as internal. Mypyc doesn't support
+    an underscore name prefix to mark them as internal. Mypyc doesn't support
     classes defined within functions.
   * Refactor classes defined within classes into top-level classes. If other
     code refers to the class by name, you can add an alias to class body
@@ -42,9 +42,9 @@ description: Migrate Python source files to be compiled with mypyc.
 
 ## Basic Examples
 
-### Annotate Constant
+### Annotate Constants
 
-Module-level constant should be annotated:
+Module-level constants should be annotated:
 
 ```
 MAX_ITEMS = 100
@@ -58,7 +58,7 @@ from typing import Final
 MAX_ITEMS: Final = 100
 ```
 
-Class-level should also be annotated:
+Class-level constants should also be annotated:
 
 ```
 class Foo:
@@ -74,7 +74,7 @@ class Foo:
     MAX_ITEMS: Final = 100
 ```
 
-## Class Variable
+### Class Variables
 
 Class variables should always be annotated, since otherwise mypyc treats
 them as instance attributes that take space in each instance:
@@ -119,20 +119,20 @@ def foo(x: object) -> bool:
     return isinstance(x, str)
 ```
 
-Another example of using `six` usage:
+Another example of `six` usage:
 
 ```
 def f(d: dict[str, int]) -> None:
-   for x in six.itervalues(d):
-       print(x)
+    for x in six.itervalues(d):
+        print(x)
 ```
 
 Just use the `values()` method:
 
 ```
 def f(d: dict[str, int]) -> None:
-   for x in d.values():
-       print(x)
+    for x in d.values():
+        print(x)
 ```
 
 ### Add @final Decorator
@@ -148,7 +148,7 @@ class Node:
 
 Now we can mark `Node` as final, assuming there are no subclasses
 anywhere in the repository, since it looks like a simple utility
-class that is unlikely to be subclasses:
+class that is unlikely to be subclassed:
 
 ```
 from typing import final
@@ -165,8 +165,8 @@ class MyError(Exception):
     pass
 ```
 
-`MyError` shouldn't be final, since is an exception class and also subclasses
-a stdlib class. It doesn't help to make these final.
+`MyError` shouldn't be final, since it's an exception class and also
+subclasses a stdlib class. It doesn't help to make these final.
 
 ### Class Nested within Function
 

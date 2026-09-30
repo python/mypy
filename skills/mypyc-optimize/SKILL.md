@@ -179,20 +179,9 @@ current recommended approach for the profiler and Python version used.
 
 Looking at the code mypyc generates can reveal bottlenecks that aren't
 obvious from the source code, such as unexpected `Any` types that cause
-slow, generic operations to be used. Compile with `-a` to generate an
-HTML report of the source code, with lines that use generic operations
-highlighted and explained:
+slow, generic operations to be used.
 
-```
-python3 -m mypyc -a report.html mod.py
-```
-
-For example, if `items` has type `Any`, the report says "For loop uses
-generic operations (iterable has type "Any")" for a `for x in items:` line.
-Annotating the variable where it gets its value (such as
-`items: list[dict[str, int]] = json.loads(data)`) fixes this.
-
-Mypyc also writes the generated intermediate representation (IR) to
+Mypyc writes the generated intermediate representation (IR) to
 `build/ops.txt` and the generated C code to `build/__native*.c`. The IR is
 easier to read than C. Signs of generic operations include calls to
 C API functions such as `PyObject_GetAttr`, `CPyObject_GetAttr`,
@@ -1059,8 +1048,8 @@ features, optimized for compiled code:
 * `librt.time.time()`: faster than `time.time()`.
 * `librt.threading.Lock`: faster than `threading.Lock`.
 * `librt.vecs.vec`: a growable array type with a packed representation
-  for item types such as `i64` and `float` (see "Generators" for an
-  example).
+  for item types such as `i64` and `float` (see "Use `vec` Instead of
+  `list` for Packed Item Types").
 
 Example of using `StringWriter`:
 
