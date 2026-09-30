@@ -355,6 +355,108 @@ To build a string from code points, use `librt.strings.StringWriter`
 These changes make code slower when it's not compiled, so only do this in
 modules that are compiled.
 
+## Replace itertools and functools with Plain Code
+
+Mypyc compiles `for` loops over lists, `range(...)` and other primitive
+types into fast code, but `itertools` and `functools` functions are called
+through the generic Python API. Replacing them with plain loops and calls
+is often 2x to 10x faster in performance-critical code (and 20x faster in a
+benchmark where a callback created using `functools.partial` was replaced
+with a direct call):
+
+```
+import functools
+import itertools
+import operator
+
+def total(a: list[int], b: list[int]) -> int:
+    t = 0
+    for x in itertools.chain(a, b):
+        t += x
+    return t
+
+def grid_sum(a: list[int], b: list[int]) -> int:
+    t = 0
+    for x, y in itertools.product(a, b):
+        t += x * y
+    return t
+
+def deltas(a: list[int]) -> int:
+    t = 0
+    for x, y in itertools.pairwise(a):
+        t += y - x
+    return t
+
+def sum_all(a: list[int]) -> int:
+    return functools.reduce(operator.add, a, 0)
+
+def triple_all(a: list[int]) -> int:
+    return apply_all(functools.partial(scale, 3), a)
+```
+
+Use plain loops, indexing and lambdas instead:
+
+```
+def total(a: list[int], b: list[int]) -> int:
+    t = 0
+    for x in a:
+        t += x
+    for x in b:
+        t += x
+    return t
+
+def grid_sum(a: list[int], b: list[int]) -> int:
+    t = 0
+    for x in a:
+        for y in b:
+            t += x * y
+    return t
+
+def deltas(a: list[int]) -> int:
+    t = 0
+    for i in range(1, len(a)):
+        t += a[i] - a[i - 1]
+    return t
+
+def sum_all(a: list[int]) -> int:
+    t = 0
+    for x in a:
+        t += x
+    return t
+
+def triple_all(a: list[int]) -> int:
+    return apply_all(lambda x: scale(3, x), a)
+```
+
+If the function that receives the callback is simple and in the same
+module, calling `scale` directly in a loop instead is even faster.
+
+Be careful to preserve behavior:
+
+* Replacing `itertools.product` with nested loops is only equivalent if the
+  inner iterable can be iterated multiple times (`product` makes a copy of
+  each iterable first).
+* Indexing only works for sequences such as lists, not for arbitrary
+  iterables or iterators.
+* `functools.partial` evaluates its arguments once when it's created, but a
+  lambda evaluates the expressions each time it's called. If an argument is
+  a variable that may be reassigned later, or an expression with side
+  effects, assign it to a local variable first.
+* A `partial` object has attributes such as `func` and `args`, and a
+  different `repr`. Check that no code depends on these.
+
+Only do this in modules that are compiled, as the plain code can be slower
+when it's not compiled.
+
+The speedup depends on the function, the types involved and how much work
+each iteration does. For functions not covered above, or if you aren't sure
+which replacement to use (e.g. a lambda, a small native class with
+`__call__`, or inlining the call into a loop), write a short
+microbenchmark first. Compile it with mypyc and compare the variants on
+realistic inputs, taking the best of several runs. Check that the module
+was actually compiled (`mod.__file__` should end in `.so` or `.pyd`), and
+only refactor if there is a clear win.
+
 ## Use librt
 
 The `librt` package has faster alternatives to some standard library
