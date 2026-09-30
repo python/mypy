@@ -31,14 +31,18 @@ Optimize incrementally:
    functions (e.g. error handling is likely not hot).
 2. Make one change, or a small set of related changes, at a time.
 3. Run the project's tests after each change, including tests that run
-   the compiled code, if there are any. If each iteration is slow, you
-   can make changes in larger batches if it seems to improve speed.
+   the compiled code, if there are any. If running the tests or
+   benchmarks is slow, you can make changes in larger batches to make
+   the process faster.
 4. Measure whether the change helps (see "Measure Performance"). Revert
    changes that don't clearly help, unless they are simple or also make
-   the code cleaner (such as adding missing annotations). If no benchmark
-   is available, assume changes improve performance if they follow the
-   instructions below. First try to show impact using extracted synthetic
-   microbenchmarks that simulate the actual code.
+   the code cleaner (such as adding missing annotations). Keep simple
+   changes even if their effect can't be measured: many simple changes
+   are helpful, but the impact of each one in isolation is often too small
+   to measure. If no benchmark is available, first try to show the impact
+   using extracted synthetic microbenchmarks that simulate the actual
+   code. If this isn't practical, assume that changes that follow the
+   instructions below (including their conditions) improve performance.
 
 In your summary, list the changes you made and the measured effect, if
 any. Also list changes that you tried but reverted since they didn't help,
