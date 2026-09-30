@@ -1,8 +1,4 @@
-"""Tests for the experimental native mypy parser.
-
-To run these, you will need to manually install ast_serialize from
-https://github.com/mypyc/ast_serialize first (see the README for the details).
-"""
+"""Tests for the native mypy parser."""
 
 from __future__ import annotations
 
@@ -12,6 +8,7 @@ import tempfile
 import unittest
 from collections.abc import Iterator
 
+import pytest
 from librt.internal import ReadBuffer
 
 from mypy import defaults, nodes
@@ -27,36 +24,24 @@ from mypy.cache import (
 )
 from mypy.config_parser import parse_mypy_comments
 from mypy.errors import CompileError
+from mypy.nativeparse import (
+    State,
+    deserialize_imports,
+    native_parse,
+    parse_to_binary_ast,
+    read_statements,
+)
 from mypy.nodes import MypyFile, ParseError
 from mypy.options import Options
 from mypy.test.data import DataDrivenTestCase, DataSuite
 from mypy.test.helpers import assert_string_arrays_equal
 from mypy.util import get_mypy_comments
 
-# If the experimental ast_serialize module isn't installed, the following import will fail
-# and we won't run any native parser tests.
-try:
-    from mypy.nativeparse import (
-        State,
-        deserialize_imports,
-        native_parse,
-        parse_to_binary_ast,
-        read_statements,
-    )
-
-    has_nativeparse = True
-except ImportError:
-    has_nativeparse = False
-
 
 class NativeParserSuite(DataSuite):
     required_out_section = True
     base_path = "."
-    files = (
-        ["native-parser.test", "native-parser-python311.test", "native-parser-python312.test"]
-        if has_nativeparse
-        else []
-    )
+    files = ["native-parser.test", "native-parser-python311.test", "native-parser-python312.test"]
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
         test_parser(testcase)
@@ -65,7 +50,7 @@ class NativeParserSuite(DataSuite):
 class NativeParserImportsSuite(DataSuite):
     required_out_section = True
     base_path = "."
-    files = ["native-parser-imports.test"] if has_nativeparse else []
+    files = ["native-parser-imports.test"]
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
         test_parser_imports(testcase)
@@ -238,7 +223,6 @@ def format_reachable_imports(node: MypyFile) -> list[str]:
     return output
 
 
-@unittest.skipUnless(has_nativeparse, "nativeparse not available")
 class TestNativeParserBinaryFormat(unittest.TestCase):
     def _assert_trivial_binary_data(self, b: bytes, /) -> None:
         # A quick sanity check to ensure the serialized data looks as expected. Only covers
@@ -296,14 +280,27 @@ class TestNativeParserBinaryFormat(unittest.TestCase):
         self._assert_trivial_binary_data(b)
 
     def test_invalid_bytes_raises(self) -> None:
-        with self.assertRaises(UnicodeDecodeError):
+        with self.assertRaises(CompileError):
             parse_to_binary_ast("", Options(), b"\xff")
 
 
+class TestNativeParserCustomEncoding(unittest.TestCase):
+    def test_latin1(self) -> None:
+        source = "# coding: latin1\nJérôme = False"
+        with temp_source(source, encoding="latin1") as fnam:
+            parse_to_binary_ast(fnam, Options())
+
+    def test_latin1_broken(self) -> None:
+        source = "# coding: ascii\nJérôme = False"
+        with temp_source(source, encoding="latin1") as fnam:
+            with pytest.raises(UnicodeDecodeError):
+                parse_to_binary_ast(fnam, Options())
+
+
 @contextlib.contextmanager
-def temp_source(text: str) -> Iterator[str]:
+def temp_source(text: str, encoding: str = "utf-8") -> Iterator[str]:
     with tempfile.TemporaryDirectory() as temp_dir:
         temp_path = os.path.join(temp_dir, "t.py")
-        with open(temp_path, "w") as f:
-            f.write(text)
+        with open(temp_path, "wb") as f:
+            f.write(text.encode(encoding))
         yield temp_path

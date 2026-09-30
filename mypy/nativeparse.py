@@ -46,6 +46,7 @@ from mypy.cache import (
     read_str_opt,
     read_tag,
 )
+from mypy.errors import CompileError
 from mypy.nodes import (
     ARG_KINDS,
     ARG_POS,
@@ -157,7 +158,7 @@ from mypy.types import (
     UnionType,
     UnpackType,
 )
-from mypy.util import unnamed_function
+from mypy.util import decode_python_encoding, hash_digest, unnamed_function
 
 TypeIgnores = list[tuple[int, list[str]]]
 
@@ -297,16 +298,40 @@ def parse_to_binary_ast(
     source: str | bytes | None = None,
     skip_function_bodies: bool = False,
 ) -> tuple[bytes, list[ParseError], TypeIgnores, bytes, bool, bool, str, list[tuple[int, str]]]:
-    ast_bytes, errors, ignores, import_bytes, ast_data = ast_serialize.parse(
-        filename,
-        source,
-        skip_function_bodies=skip_function_bodies,
-        python_version=options.python_version,
-        platform=options.platform,
-        always_true=options.always_true,
-        always_false=options.always_false,
-        cache_version=5,
-    )
+    try:
+        ast_bytes, errors, ignores, import_bytes, ast_data = ast_serialize.parse(
+            filename,
+            source,
+            skip_function_bodies=skip_function_bodies,
+            python_version=options.python_version,
+            platform=options.platform,
+            always_true=options.always_true,
+            always_false=options.always_false,
+            cache_version=5,
+        )
+    except ValueError as exc:
+        if source is None:
+            # Try reading/encoding manually, since native parser only supports UTF-8.
+            # If we still cannot decode, decode error will bubble up to caller.
+            with open(filename, "rb") as f:
+                source_bytes = f.read()
+                source = decode_python_encoding(source_bytes)
+            ast_bytes, errors, ignores, import_bytes, ast_data = ast_serialize.parse(
+                filename,
+                source,
+                skip_function_bodies=skip_function_bodies,
+                python_version=options.python_version,
+                platform=options.platform,
+                always_true=options.always_true,
+                always_false=options.always_false,
+                cache_version=5,
+            )
+            # Compute hash using original non-UTF-8 bytes, so that
+            # incremental mode works correctly.
+            ast_data["source_hash"] = hash_digest(source_bytes)
+        else:
+            # Convert everything unexpected to a standard-looking blocker.
+            raise CompileError([f"{filename}: error: Cannot parse file: {exc}"]) from exc
     return (
         ast_bytes,
         errors,
