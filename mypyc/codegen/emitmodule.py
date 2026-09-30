@@ -7,7 +7,6 @@ from __future__ import annotations
 
 import json
 import os
-import sys
 from collections.abc import Iterable
 from typing import TypeVar
 
@@ -48,7 +47,6 @@ from mypyc.codegen.literals import Literals
 from mypyc.common import (
     EXT_SUFFIX,
     GENERATOR_HELPER_NAME,
-    IS_FREE_THREADED,
     MODULE_PREFIX,
     PREFIX,
     RUNTIME_C_FILES,
@@ -651,7 +649,11 @@ class GroupGenerator:
         self.modules = modules
         self.source_paths = source_paths
         self.context = EmitterContext(
-            names, compiler_options.strict_traceback_checks, group_name, group_map
+            names,
+            compiler_options.strict_traceback_checks,
+            group_name,
+            group_map,
+            target_python=compiler_options.target_python,
         )
         self.names = names
         # Initializations of globals to simple values that we can't
@@ -663,7 +665,7 @@ class GroupGenerator:
         self.multi_file = compiler_options.multi_file
         # Multi-phase init is needed to enable free-threading. In the future we'll
         # probably want to enable it always, but we'll wait until it's stable.
-        self.multi_phase_init = IS_FREE_THREADED
+        self.multi_phase_init = compiler_options.target_python.free_threaded
 
     @property
     def group_suffix(self) -> str:
@@ -1186,13 +1188,13 @@ class GroupGenerator:
 
         emitter.emit_line(f"static PyModuleDef_Slot {name}[] = {{")
         emitter.emit_line(f"{{Py_mod_exec, {exec_name}}},")
-        if sys.version_info >= (3, 12):
+        if emitter.capi_version >= (3, 12):
             # Multiple interpreter support requires not using any C global state,
             # which we don't support yet.
             emitter.emit_line(
                 "{Py_mod_multiple_interpreters, Py_MOD_MULTIPLE_INTERPRETERS_NOT_SUPPORTED},"
             )
-        if sys.version_info >= (3, 13):
+        if emitter.capi_version >= (3, 13):
             # Declare support for free-threading to enable experimentation,
             # even if we don't properly support it.
             emitter.emit_line("{Py_mod_gil, Py_MOD_GIL_NOT_USED},")

@@ -19,13 +19,13 @@ from mypy.test.data import DataDrivenTestCase, DataSuite
 from mypy.test.helpers import assert_string_arrays_equal
 from mypy.types import Type
 from mypyc.analysis.ircheck import assert_func_ir_valid
-from mypyc.common import IS_32_BIT_PLATFORM, PLATFORM_SIZE
+from mypyc.common import IS_32_BIT_PLATFORM, IS_FREE_THREADED, PLATFORM_SIZE
 from mypyc.errors import Errors
 from mypyc.ir.func_ir import FuncIR
 from mypyc.ir.module_ir import ModuleIR
 from mypyc.irbuild.main import build_ir
 from mypyc.irbuild.mapper import Mapper
-from mypyc.options import CompilerOptions
+from mypyc.options import CompilerOptions, TargetPython
 from mypyc.test.config import test_data_prefix
 
 # The builtins stub used during icode generation test cases.
@@ -301,9 +301,25 @@ def infer_ir_build_options_from_test_name(name: str) -> CompilerOptions | None:
         options.python_version = options.capi_version
     elif "_py" in name or "_Python" in name:
         assert False, f"Invalid _py* suffix (should be _pythonX_Y): {name}"
+    options.target_python = TargetPython(
+        options.capi_version, infer_free_threaded_from_test_name(name)
+    )
     if has_test_name_tag(name, "experimental"):
         options.experimental_features = True
     return options
+
+
+def infer_free_threaded_from_test_name(name: str) -> bool:
+    """Should a test case target a free-threaded build?
+
+    A _nogil suffix targets a free-threaded build and _withgil targets a build
+    with the GIL. Otherwise, match the running interpreter.
+    """
+    if "_nogil" in name:
+        return True
+    if "_withgil" in name:
+        return False
+    return IS_FREE_THREADED
 
 
 def has_test_name_tag(name: str, tag: str) -> bool:

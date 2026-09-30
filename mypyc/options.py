@@ -1,6 +1,64 @@
 from __future__ import annotations
 
+import re
 import sys
+from typing import Final
+
+from mypyc.common import IS_FREE_THREADED
+
+
+class TargetPython:
+    """The Python build that generated code targets.
+
+    This defaults to the running interpreter, but can be overridden so that
+    the C code can be generated on a different Python than the one that will
+    compile and run it.
+    """
+
+    def __init__(self, version: tuple[int, int], free_threaded: bool = False) -> None:
+        # Python (C API) version, such as (3, 13)
+        self.version: Final = version
+        # Is this a free-threaded (GIL disabled) build?
+        self.free_threaded: Final = free_threaded
+
+    @classmethod
+    def host(cls) -> TargetPython:
+        """Target the running interpreter."""
+        return cls(sys.version_info[:2], IS_FREE_THREADED)
+
+    @classmethod
+    def parse(cls, target: str) -> TargetPython:
+        """Parse a target such as "3.13" or "3.14t" ("t" means free-threaded)."""
+        m = re.fullmatch(r"3\.(\d+)(t?)", target.strip())
+        if m is None:
+            raise ValueError(f'Invalid target Python "{target}" (expected e.g. "3.13" or "3.14t")')
+        result = cls((3, int(m.group(1))), m.group(2) == "t")
+        if result.version < (3, 10):
+            raise ValueError(f'Unsupported target Python "{target}" (3.10 or later is required)')
+        if result.free_threaded and result.version < (3, 13):
+            raise ValueError(f'Free-threaded builds require Python 3.13 or later (got "{target}")')
+        return result
+
+    @property
+    def have_immortal(self) -> bool:
+        """Does the target have immortal objects (introduced in 3.12, see PEP 683)?"""
+        return self.version >= (3, 12)
+
+    def __eq__(self, other: object) -> bool:
+        return (
+            isinstance(other, TargetPython)
+            and self.version == other.version
+            and self.free_threaded == other.free_threaded
+        )
+
+    def __hash__(self) -> int:
+        return hash((self.version, self.free_threaded))
+
+    def __str__(self) -> str:
+        return f"{self.version[0]}.{self.version[1]}{'t' if self.free_threaded else ''}"
+
+    def __repr__(self) -> str:
+        return f"TargetPython({str(self)!r})"
 
 
 class CompilerOptions:
@@ -20,6 +78,7 @@ class CompilerOptions:
         depends_on_librt_internal: bool = False,
         experimental_features: bool = False,
         strict_traceback_checks: bool = False,
+        target_python: TargetPython | None = None,
     ) -> None:
         self.strip_asserts = strip_asserts
         self.multi_file = multi_file
@@ -30,11 +89,11 @@ class CompilerOptions:
         self.include_runtime_files = (
             include_runtime_files if include_runtime_files is not None else not multi_file
         )
-        # The target Python C API version. Overriding this is mostly
-        # useful in IR tests, since there's no guarantee that
-        # binaries are backward compatible even if no recent API
-        # features are used.
-        self.capi_version = capi_version or sys.version_info[:2]
+        # The Python build to generate code for (see TargetPython). The generated
+        # C must be compiled against the headers of this Python build.
+        self.target_python = target_python or TargetPython.host()
+        if capi_version is not None:
+            self.capi_version = capi_version
         self.python_version = python_version
         # Make possible to inline dunder methods in the generated code.
         # Typically, the convention is the dunder methods can return `NotImplemented`
@@ -73,3 +132,17 @@ class CompilerOptions:
         # tests to make sure that no new code which leads to incorrect tracebacks is
         # added.
         self.strict_traceback_checks = strict_traceback_checks
+
+    @property
+    def capi_version(self) -> tuple[int, int]:
+        """The target Python C API version.
+
+        Overriding only this is mostly useful in IR tests, since there's no
+        guarantee that binaries are backward compatible even if no recent API
+        features are used.
+        """
+        return self.target_python.version
+
+    @capi_version.setter
+    def capi_version(self, version: tuple[int, int]) -> None:
+        self.target_python = TargetPython(version, self.target_python.free_threaded)
