@@ -60,7 +60,7 @@ from mypy.server.update import FineGrainedBuildManager
 from mypy.state import state
 from mypy.subtypes import has_any_type
 from mypy.traverser import TraverserVisitor
-from mypy.typeops import bind_self, has_any_type, make_simplified_union
+from mypy.typeops import bind_self, make_simplified_union
 from mypy.types import (
     AnyType,
     CallableType,

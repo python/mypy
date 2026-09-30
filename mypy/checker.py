@@ -247,7 +247,6 @@ from mypy.typeops import (
     false_only,
     fixup_partial_type,
     function_type,
-    has_any_type,
     is_literal_type_like,
     is_singleton_equality_type,
     is_singleton_identity_type,

@@ -11,6 +11,7 @@ import itertools
 from collections.abc import Callable, Iterable, Sequence
 from typing import Any, TypeVar, cast
 
+import mypy.subtypes
 from mypy.checker_state import checker_state
 from mypy.copytype import copy_type
 from mypy.expandtype import expand_type, expand_type_by_instance
@@ -34,7 +35,6 @@ from mypy.nodes import (
     Var,
 )
 from mypy.state import state
-from mypy.type_visitor import ANY_STRATEGY, BoolTypeQuery
 from mypy.types import (
     ELLIPSIS_TYPE_NAMES,
     NOT_IMPLEMENTED_TYPE_NAMES,
@@ -337,8 +337,6 @@ def class_callable(
     variables.extend(info.defn.type_vars)
     variables.extend(init_type.variables)
 
-    from mypy.subtypes import is_equivalent, is_subtype
-
     init_ret_type = get_proper_type(init_type.ret_type)
     orig_self_type = get_proper_type(orig_self_type)
     default_ret_type = fill_typevars(info)
@@ -357,7 +355,9 @@ def class_callable(
         and (
             isinstance(explicit_type, AnyType)
             and explicit_type.type_of_any != TypeOfAny.unannotated
-            or not is_equivalent(default_def_ret_type, explicit_type, ignore_type_params=True)
+            or not mypy.subtypes.is_equivalent(
+                default_def_ret_type, explicit_type, ignore_type_params=True
+            )
         )
     ):
         ret_type = explicit_type
@@ -368,7 +368,7 @@ def class_callable(
         and isinstance(default_ret_type, Instance)
         and not default_ret_type.type.is_protocol
         # Use the declared self in __init__ if it is a subtype of what we would use otherwise.
-        and is_subtype(explicit_type, default_ret_type, ignore_type_params=True)
+        and mypy.subtypes.is_subtype(explicit_type, default_ret_type, ignore_type_params=True)
     ):
         ret_type = explicit_type
     else:
@@ -466,7 +466,7 @@ def bind_self(
     if isinstance(method, Overloaded):
         items = []
         # If the original object type has Any, we record the inferred self-types,
-        if original_type and has_any_type(original_type, ignore_in_type_obj=True):
+        if original_type and mypy.subtypes.has_any_type(original_type, ignore_in_type_obj=True):
             bound_args: list[Type] | None = []
         else:
             bound_args = None
@@ -1389,34 +1389,3 @@ def can_have_shared_disjoint_base(instances: list[Instance]) -> bool:
         else:
             return False
     return True
-
-
-def has_any_type(t: Type, ignore_in_type_obj: bool = False) -> bool:
-    """Whether t contains an Any type"""
-    return t.accept(HasAnyType(ignore_in_type_obj))
-
-
-class HasAnyType(BoolTypeQuery):
-    def __init__(self, ignore_in_type_obj: bool) -> None:
-        super().__init__(ANY_STRATEGY)
-        self.ignore_in_type_obj = ignore_in_type_obj
-
-    def visit_any(self, t: AnyType) -> bool:
-        return t.type_of_any != TypeOfAny.special_form  # special forms are not real Any types
-
-    def visit_callable_type(self, t: CallableType) -> bool:
-        if self.ignore_in_type_obj and t.is_type_obj():
-            return False
-        return super().visit_callable_type(t)
-
-    def visit_type_var(self, t: TypeVarType) -> bool:
-        default = [t.default] if t.has_default() else []
-        return self.query_types([t.upper_bound, *default] + t.values)
-
-    def visit_param_spec(self, t: ParamSpecType) -> bool:
-        default = [t.default] if t.has_default() else []
-        return self.query_types([t.upper_bound, *default, t.prefix])
-
-    def visit_type_var_tuple(self, t: TypeVarTupleType) -> bool:
-        default = [t.default] if t.has_default() else []
-        return self.query_types([t.upper_bound, *default])

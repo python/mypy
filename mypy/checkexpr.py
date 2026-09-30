@@ -156,7 +156,6 @@ from mypy.typeops import (
     freeze_all_type_vars,
     get_all_type_vars,
     get_type_vars,
-    has_any_type,
     is_literal_type_like,
     make_simplified_union,
     true_only,
