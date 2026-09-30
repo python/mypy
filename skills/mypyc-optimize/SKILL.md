@@ -216,6 +216,127 @@ class Parser:
 Only do this if the attribute or variable isn't part of a public interface
 and all uses can be updated, and document the marker value in a comment.
 
+## Use Native Classes Instead of Dictionaries as Records
+
+Dictionaries with a fixed set of string keys are often used as records.
+Creating a native class instance and accessing its attributes is much
+faster (about 4x faster than `dict[str, Any]` and 2.5x faster than a
+`TypedDict` in a benchmark):
+
+```
+def make_loc(name: str, line: int) -> dict[str, Any]:
+    return {"name": name, "line": line}
+
+def next_line(loc: dict[str, Any]) -> int:
+    return loc["line"] + 1
+```
+
+Use a native class instead:
+
+```
+from typing import final
+
+@final
+class Loc:
+    def __init__(self, name: str, line: int) -> None:
+        self.name = name
+        self.line = line
+
+def make_loc(name: str, line: int) -> Loc:
+    return Loc(name, line)
+
+def next_line(loc: Loc) -> int:
+    return loc.line + 1
+```
+
+This also gives precise attribute types instead of `Any`. Only do this if
+you can find and update all code that uses the dictionaries. Don't do this
+if the dictionaries are part of a public interface, if keys are added or
+removed dynamically, or if the dictionaries are passed to code that
+requires a dictionary (for example, `json.dumps`, `**` unpacking, iteration
+over keys, or `.get()` with a default).
+
+## Return Multiple Values Using Fixed-length Tuples
+
+Fixed-length tuple types such as `tuple[int, str]` are unboxed in
+compiled code: returning and unpacking them doesn't allocate an object.
+Other ways of returning multiple values are much slower. In a benchmark,
+returning two `int` values as a `tuple[int, int]` was about 7x faster than
+returning a native class instance, 8x faster than `tuple[int, ...]`, and
+40x faster than a `NamedTuple`.
+
+Named tuples are particularly inefficient for this, since creating a named
+tuple instance is slow in compiled code (about 7x slower than creating a
+native class instance in a benchmark). Accessing items by name, by index or
+by unpacking is fairly fast (about as fast as with a regular tuple), but
+still slower than accessing native class attributes:
+
+```
+from typing import NamedTuple
+
+class QR(NamedTuple):
+    q: int
+    r: int
+
+def div(a: int, b: int) -> QR:
+    return QR(a // b, a % b)
+
+q, r = div(x, 7)
+```
+
+Use a fixed-length tuple type instead:
+
+```
+def div(a: int, b: int) -> tuple[int, int]:
+    return a // b, a % b
+
+q, r = div(x, 7)
+```
+
+Only do this for internal functions where all callers can be updated,
+since callers may access items by name (such as `div(x, 7).q`), and
+named tuples have a different `repr`. If there are more than a few items,
+or the names are important for readability, use a small native class
+instead (see below). Use a precise, fixed-length tuple type in annotations
+instead of `tuple[int, ...]` when the length is known.
+
+### Replace Named Tuples with Native Classes
+
+A simple named tuple that is used like a record (items are accessed by
+name) can be replaced with a native class with `Final` attributes. In a
+benchmark, creating instances was about 7x faster and accessing attributes
+about 3.5x faster. This helps most if many instances are created:
+
+```
+from typing import NamedTuple
+
+class Span(NamedTuple):
+    start: int
+    end: int
+```
+
+Use a native class instead:
+
+```
+from typing import Final, final
+
+@final
+class Span:
+    def __init__(self, start: int, end: int) -> None:
+        self.start: Final = start
+        self.end: Final = end
+
+    def __repr__(self) -> str:
+        return f"Span(start={self.start!r}, end={self.end!r})"
+```
+
+Only do this if the tuple behavior isn't needed. Check that no code
+unpacks the values (`start, end = span`), indexes or iterates over them,
+compares them using `==` or `<`, hashes them (uses them as dictionary keys
+or in sets), passes them where a tuple is expected, or uses named tuple
+methods such as `_replace` or `_asdict`. If equality or hashing is needed,
+define `__eq__` and `__hash__` explicitly.
+
 ## Initialize Attributes Before `self` Escapes in `__init__`
 
 Mypyc analyzes `__init__` methods to find attributes that are always
