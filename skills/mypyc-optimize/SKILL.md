@@ -119,6 +119,13 @@ they are available:
 * On Windows: the Visual Studio profiler, or Windows Performance Recorder
   and Analyzer
 
+If the profiled workload seems realistic enough, focus most optimization
+effort on the functions where the profile shows the most time is spent
+(including time spent in functions they call). Optimizing code that
+barely shows up in the profile rarely makes a noticeable difference, and
+makes the code more verbose for little gain. The simple, mechanical steps
+from the migrate skill can still be applied everywhere.
+
 Don't use `cProfile` or `profile`. They don't produce native frames, and
 don't see calls within compiled code, so the results are misleading for
 compiled modules.
