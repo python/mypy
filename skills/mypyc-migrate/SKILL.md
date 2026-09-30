@@ -271,6 +271,48 @@ code with type errors. Don't use `# type: ignore` to silence errors in
 compiled code unless there is no alternative, as it can result in incorrect
 compiled code.
 
+### Unsupported Mypy Options
+
+Mypyc refuses to compile code if these mypy options are used:
+
+* `--no-strict-optional` (`strict_optional = False` in a config file)
+* `--no-strict-bytes` (`strict_bytes = False` in a config file)
+
+Check the mypy configuration (`mypy.ini`, `setup.cfg`, `pyproject.toml`),
+including per-module sections that match the target files, and inline
+`# mypy: no-strict-optional` comments in the target files. If these options
+are used, the target files must type check without them. This can
+produce new type errors that need to be fixed, such as missing `None` in
+types (`str` instead of `str | None`), or `bytearray` or `memoryview` values
+used where `bytes` is expected.
+
+### Annotations Are Enforced at Runtime
+
+Compiled code checks argument, return and attribute types at runtime,
+and raises `TypeError` if a value has the wrong type. Code that worked
+despite an inaccurate annotation may fail after compilation:
+
+```
+def greet(name: str) -> str:
+    if name is None:
+        return "Hello!"
+    return f"Hello, {name}!"
+
+greet(None)  # TypeError when compiled: str object expected; got None
+```
+
+If callers can pass `None` (e.g. from non-compiled or untyped code), fix
+the annotation:
+
+```
+def greet(name: str | None) -> str:
+    ...
+```
+
+Look for signs of inaccurate annotations, such as `is None` checks on values
+whose type doesn't include `None`, or `isinstance` checks against types that
+aren't allowed by the annotation.
+
 ### Assigning `int` Values to `float` Variables
 
 Mypy allows an `int` value to be used where a `float` is expected, but
@@ -303,6 +345,21 @@ def average(values: list[float], n: int) -> float:
 The same applies to attributes, such as `self.ratio: float = 1` in
 `__init__`. Passing an `int` value as a `float` argument or returning it from
 a function with a `float` return type works.
+
+### Surrogate Code Points in String Literals
+
+String literals can't contain lone surrogate code points (U+D800 to U+DFFF),
+such as `"\ud800"`. Use `chr(...)`, or compare against the integer code point
+using `ord(...)`:
+
+```
+from typing import Final
+
+HIGH_SURROGATE: Final = chr(0xD800)  # Instead of "\ud800"
+
+def is_high_surrogate(c: str) -> bool:
+    return 0xD800 <= ord(c) <= 0xDBFF  # Instead of "\ud800" <= c <= "\udbff"
+```
 
 ### Conditional Function and Class Definitions
 
@@ -451,9 +508,9 @@ def connect(name: str) -> AbstractAsyncContextManager[str]:
 If the original function catches exceptions raised within the `async with`
 block (an `except` clause around `yield`), handle them in `__aexit__` using
 `exc`, and return `True` from `__aexit__` if the exception should be
-suppressed (declare the return type as `bool` in this case). If the async generator is complex (e.g. it has multiple
-`yield` statements in different places), mention it in your summary instead
-of rewriting it.
+suppressed (declare the return type as `bool` in this case). If the async
+generator is complex (e.g. it has multiple `yield` statements in different
+places), mention it in your summary instead of rewriting it.
 
 ### Monkey Patching and Mocking
 
