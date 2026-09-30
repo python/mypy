@@ -1,9 +1,10 @@
 ---
 name: mypyc-optimize
 description: Optimize Python source files that are compiled with mypyc (or
-  will be compiled). Apply the performance-related changes from the
-  mypyc-migrate skill, and improve type annotations so that mypyc can
-  generate faster code.
+  will be compiled), or identify performance bottlenecks and optimization
+  opportunities in them without making changes. Also apply the
+  performance-related changes from the mypyc-migrate skill, and improve
+  type annotations so that mypyc can generate faster code.
 ---
 
 # Optimize Python Code Compiled with Mypyc
@@ -11,9 +12,38 @@ description: Optimize Python source files that are compiled with mypyc (or
 This skill builds on the mypyc-migrate skill (`../mypyc-migrate/SKILL.md`).
 Read that skill first; it has examples and details for the steps below.
 
+This skill can also be used to only identify bottlenecks and optimization
+opportunities, without changing the code. In this case, use the
+techniques below (profiling, inspecting generated code, and so on) to find
+issues, and report them to the user, ordered by expected impact.
+
 Don't change behavior in significant ways. If an improvement would require
 non-trivial refactoring or might change behavior, mention it in your summary
 instead.
+
+## Workflow
+
+Optimize incrementally:
+
+1. Find the hot functions using a profile of a realistic workload (see
+   "Profiling"), unless the user already told you what to optimize. If
+   no profile is available, make educated guesses about likely hot
+   functions (e.g. error handling is likely not hot).
+2. Make one change, or a small set of related changes, at a time.
+3. Run the project's tests after each change, including tests that run
+   the compiled code, if there are any. If each iteration is slow, you
+   can make changes in larger batches if it seems to improve speed.
+4. Measure whether the change helps (see "Measure Performance"). Revert
+   changes that don't clearly help, unless they are simple or also make
+   the code cleaner (such as adding missing annotations). If no benchmark
+   is available, assume changes improve performance if they follow the
+   instructions below. First try to show impact using extracted synthetic
+   microbenchmarks that simulate the actual code.
+
+In your summary, list the changes you made and the measured effect, if
+any. Also list changes that you tried but reverted since they didn't help,
+and potential bottlenecks that you found but didn't fix (see "Report Other
+Potential Bottlenecks").
 
 ## Steps from the Migrate Skill
 
@@ -170,6 +200,44 @@ Common causes of generic operations include values with type `Any`,
 missing annotations, non-native classes, and values that come from
 non-compiled modules. Fix these using the other techniques in this skill,
 such as annotating variables that get their value from untyped code.
+
+### Operations with Fast Implementations
+
+The mypyc documentation lists the operations that have fast,
+specialized implementations for each primitive type. Operations that
+aren't listed use generic operations. Check these when choosing between
+alternative ways of writing a hot function:
+
+* `mypyc/doc/native_operations.rst` (native classes and functions)
+* `mypyc/doc/int_operations.rst`, `float_operations.rst` and
+  `bool_operations.rst`
+* `mypyc/doc/str_operations.rst`, `bytes_operations.rst` and
+  `bytearray_operations.rst`
+* `mypyc/doc/list_operations.rst`, `dict_operations.rst`,
+  `set_operations.rst`, `frozenset_operations.rst` and
+  `tuple_operations.rst`
+
+These files are in the mypy repository, and they are also available at
+https://mypyc.readthedocs.io/. For example, a `str` method that isn't
+listed in `str_operations.rst` is called using a generic method call.
+
+## Compile Related Modules Together
+
+All modules compiled in a single mypyc invocation (a single `mypyc`
+command, or a single `mypycify(...)` call in `setup.py`) form a
+*compilation unit*. Calls to functions, methods and classes within a
+compilation unit use fast, direct calls, and `Final` values are inlined.
+References to other compilation units use slow, generic operations, and
+are about as slow as references to non-compiled modules. Using
+`separate=True` with `mypycify` still keeps all the modules in the same
+compilation unit.
+
+If modules that frequently call each other are compiled using separate
+invocations, suggest compiling them together, or report this to the
+user. Similarly, if a hot function frequently calls a module that isn't
+compiled, consider compiling that module too (after applying the
+migrate skill to it). Don't change the build configuration without
+asking the user, since it may affect packaging and build times.
 
 ## Keep Classes Native
 
@@ -362,6 +430,67 @@ if the dictionaries are part of a public interface, if keys are added or
 removed dynamically, or if the dictionaries are passed to code that
 requires a dictionary (for example, `json.dumps`, `**` unpacking, iteration
 over keys, or `.get()` with a default).
+
+## Dictionary Lookups
+
+### Use a Single `dict.get` Instead of `in` Followed by Indexing
+
+Checking for a key using `in` and then indexing performs two dictionary
+lookups. A single `get` is faster if the key is usually present:
+
+```
+if key in counts:
+    total += counts[key]
+```
+
+Use `get` instead:
+
+```
+n = counts.get(key)
+if n is not None:
+    total += n
+```
+
+This is only equivalent if the dictionary never contains `None` values.
+If the key is usually missing, `in` alone is slightly faster, so only do
+this if the key is expected to be present in most cases.
+
+### Replace `defaultdict` with a Plain `dict`
+
+Mypyc has fast, specialized operations for `dict`, but `defaultdict` is
+a subclass that doesn't get all of these optimizations. Replacing an
+internal `defaultdict` with a plain `dict` is somewhat faster:
+
+```
+from collections import defaultdict
+
+counts: defaultdict[str, int] = defaultdict(int)
+groups: defaultdict[str, list[int]] = defaultdict(list)
+for i, key in enumerate(keys):
+    counts[key] += 1
+    groups[key].append(i)
+```
+
+Use `get` and `setdefault` with a plain `dict` instead:
+
+```
+counts: dict[str, int] = {}
+groups: dict[str, list[int]] = {}
+for i, key in enumerate(keys):
+    counts[key] = counts.get(key, 0) + 1
+    groups.setdefault(key, []).append(i)
+```
+
+Mypyc special-cases `setdefault` with an empty `[]`, `{}` or `set()`
+default, so that the empty collection is only created if the key is
+missing. Other default values are evaluated on each call, even if the key
+is present.
+
+Only do this if the dictionary is internal (it's not returned to callers
+or stored in a public attribute), since code that reads a `defaultdict`
+may rely on missing keys getting a default value. Check all places where
+the dictionary is indexed. The benefit is small, so prioritize this only
+in very hot code.
 
 ## Return Multiple Values Using Fixed-length Tuples
 
@@ -696,6 +825,14 @@ non-compiled code. Be careful to preserve behavior:
 * In free-threaded Python builds, `vec` gives fewer thread safety
   guarantees than `list`.
 
+Avoid union types that include vecs, such as `vec[i64] | vec[float]`,
+in performance-critical code. Operations on these use slow, generic
+operations, which can make the code much slower than with a `list`.
+Optional types such as `vec[i64] | None` are also slower than `vec[i64]`,
+even after narrowing using `is not None`. If `None` is only used to mean
+"no items", use an empty `vec` instead (an empty `vec` is cheap, since it
+doesn't allocate a buffer).
+
 Check the `librt.vecs` documentation (`mypyc/doc/librt_vecs.rst` in the
 mypy repository) first, and only use `vec` if the project depends on
 `librt` (see "Use librt"). The benefit is much smaller for other item
@@ -742,6 +879,66 @@ in the fixed-size type, and if the project depends on `librt` (see "Use
 librt"). Check the `librt.vecs` documentation first, since `vec` isn't a
 full sequence type. Measure the change using a benchmark (see "Measure
 Performance").
+
+## Replace `@contextmanager` with a Class
+
+`contextlib.contextmanager` is implemented in non-compiled Python code,
+and entering and exiting the context manager involves several slow
+operations, even if the decorated generator function is compiled. This is
+significant if the `with` statement is on a hot path and the context
+manager does little work:
+
+```
+from contextlib import contextmanager
+from typing import Iterator
+
+@contextmanager
+def nested(s: State) -> Iterator[None]:
+    s.depth += 1
+    try:
+        yield
+    finally:
+        s.depth -= 1
+```
+
+Use a native class with `__enter__` and `__exit__` methods instead. Use
+precise types for the `__exit__` arguments (instead of `*args`), as this
+may be faster:
+
+```
+from types import TracebackType
+from typing import final
+
+@final
+class nested:
+    def __init__(self, s: State) -> None:
+        self.s = s
+
+    def __enter__(self) -> None:
+        self.s.depth += 1
+
+    def __exit__(
+        self,
+        typ: type[BaseException] | None,
+        exc: BaseException | None,
+        tb: TracebackType | None,
+    ) -> None:
+        self.s.depth -= 1
+```
+
+The `with nested(s):` statements don't need to be changed. Be careful to
+preserve behavior:
+
+* Code after `yield` in a `finally:` block runs whether or not there was
+  an exception, and so does `__exit__`. Code after `yield` that isn't
+  in a `finally:` block only runs if there was no exception, so in
+  `__exit__`, only run it if `typ is None`.
+* If the generator catches exceptions raised at `yield` (using
+  `except`), the exception is suppressed unless it's re-raised. Return
+  `True` from `__exit__` to suppress an exception, and make the return
+  type `bool`.
+* If the generator yields a value (used as `with nested(s) as x:`),
+  return it from `__enter__`.
 
 ## Replace itertools and functools with Plain Code
 
@@ -901,3 +1098,67 @@ differences:
 Only use `librt` if the project already depends on it (or you add it as a
 dependency). It's installed together with mypy, but compiled code
 deployed without mypy needs an explicit dependency.
+
+## Tune Garbage Collection
+
+Compiled code often allocates objects faster than non-compiled code, so a
+larger fraction of CPU time can be spent in the CPython garbage collector
+(GC). Only consider tuning the GC if the GC shows up as expensive in a CPU
+profile of a realistic workload (look for CPython functions related to
+garbage collection, which usually have names that start with `gc_`).
+
+Options include making collections less frequent (`gc.set_threshold`),
+moving long-lived objects out of GC tracking after startup
+(`gc.freeze()`), or disabling the GC during an allocation-heavy phase
+(`gc.disable()` followed by `gc.enable()`). The effects vary a lot between
+Python versions, since the GC implementation changes between releases,
+and some of these can make performance worse or increase memory use.
+Measure the effect using a realistic workload.
+
+GC settings affect the whole process, so they belong in the application
+entry point, not in library code. Suggest the change to the user instead
+of making it, unless you were asked to tune the application as a whole.
+
+## Report Other Potential Bottlenecks
+
+Some code patterns are slow in compiled code, but replacing them often
+requires non-trivial tradeoffs, such as changing an API, losing
+flexibility, or duplicating code. Don't change these. Instead, report them
+to the user as potential bottlenecks if they are on a hot path, and
+explain what could be done:
+
+* Calls to functions that take `*args` or `**kwargs`, and calls that use
+  `*args` or `**kwargs` to pass arguments. These use slow, generic calls
+  instead of fast, direct calls. Explicit parameters would be faster.
+* Functions decorated using wrapper decorators (decorators other than
+  special-cased ones such as `@property`, `@staticmethod` and
+  `@classmethod`), for example decorators used for logging,
+  tracing, caching or validation. Calls to decorated functions go through
+  the wrapper using generic calls, and often also use `*args` and
+  `**kwargs`, which can make each call much slower than calling an
+  undecorated function. Possible fixes include calling an undecorated
+  helper from the hot path, or removing the decorator where it's not
+  needed. If the decorator runs code before and after each call (such as
+  for tracing or timing), a `with` statement in the function body that
+  uses a native context manager class (see "Replace `@contextmanager`
+  with a Class") can be much faster:
+
+  ```
+  @traced
+  def parse(s: str) -> Node:
+      ...
+  ```
+
+  Use a `with` statement instead (`tracing` is a native class with
+  `__enter__` and `__exit__` methods):
+
+  ```
+  def parse(s: str) -> Node:
+      with tracing("parse"):
+          ...
+  ```
+
+  This is only equivalent if the decorator doesn't change the arguments
+  or the return value, and if nothing depends on the function being
+  wrapped (for example, by checking for attributes added by the
+  decorator).
