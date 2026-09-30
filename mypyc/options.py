@@ -4,7 +4,7 @@ import re
 import sys
 from typing import Final
 
-from mypyc.common import IS_FREE_THREADED
+from mypyc.common import EXT_SUFFIX, IS_FREE_THREADED
 
 
 class TargetPython:
@@ -44,6 +44,15 @@ class TargetPython:
         """Does the target have immortal objects (introduced in 3.12, see PEP 683)?"""
         return self.version >= (3, 12)
 
+    @property
+    def ext_suffix(self) -> str:
+        """File name suffix of extension modules, e.g. ".cpython-314t-x86_64-linux-gnu.so".
+
+        This is the running interpreter's suffix with the version tag replaced, since
+        only the Python version (not the platform) can differ from the host.
+        """
+        return replace_ext_suffix_version(EXT_SUFFIX, self)
+
     def __eq__(self, other: object) -> bool:
         return (
             isinstance(other, TargetPython)
@@ -59,6 +68,12 @@ class TargetPython:
 
     def __repr__(self) -> str:
         return f"TargetPython({str(self)!r})"
+
+
+def replace_ext_suffix_version(suffix: str, target: TargetPython) -> str:
+    """Replace the Python version tag in an extension suffix such as ".cp313-win_amd64.pyd"."""
+    tag = f"{target.version[0]}{target.version[1]}{'t' if target.free_threaded else ''}"
+    return re.sub(r"(\.cpython-|\.cp)\d+t?(?=-)", rf"\g<1>{tag}", suffix, count=1)
 
 
 class CompilerOptions:
