@@ -64,6 +64,81 @@ values of other types, such as `None`. Adding annotations to a function that
 previously had none also causes mypy to type check its body; fix any new type
 errors that this produces.
 
+## Measure Performance
+
+The speedup from the optimizations below varies a lot, depending on the
+code, and some changes don't help at all in a particular case. Measure
+whether a change helps before keeping it, especially if it makes the code
+more verbose or harder to read.
+
+If the target code is self-contained enough, write a throwaway benchmark
+script that imports the compiled modules and runs a realistic workload
+(for example, the main entry point on representative input). Run it before
+and after each change (or set of related changes, and don't run it too
+often if the benchmark runs slowly). Make sure each benchmark run isn't
+very slow -- since these are synthetic workloads, they may not show very
+minor performance changes reliably.
+
+If the code isn't self-contained (for example, it needs a server, a
+database, or a large application to run), extract the hot functions into a
+separate module and write microbenchmarks that simulate the behavior of
+the original functions. Keep the same type annotations and similar data
+(types, sizes and shapes of the values), since these determine what code
+mypyc generates. Use these microbenchmarks as synthetic proxies for the
+performance of the real code, for example to decide which of several ways
+of writing a function is fastest.
+
+When benchmarking:
+
+* Compile benchmarks in a temporary directory, since `mypyc` writes build
+  files to the `build/` directory under the current working directory.
+* Check that the benchmarked module was actually compiled
+  (`mod.__file__` should end in `.so` or `.pyd`), and that mypyc reported
+  no errors.
+* Run the benchmarked code many times, or in a loop, so that each
+  measurement takes at least several milliseconds, and take the best (or
+  the median) of several runs using `time.perf_counter()`. Timings can be
+  noisy, so only trust differences that are clearly larger than the
+  variation between runs.
+* Don't leave throwaway benchmarks in the project, unless asked to.
+
+Benchmarks can also be profiled to find where time is spent. `cProfile`
+and `profile` only work well with non-compiled code, since they don't see
+calls within compiled code. Use a native profiler such as `perf` on Linux
+(`perf record -g python3 bench.py` followed by `perf report`), or `py-spy`
+with `--native`. Compiled functions have names with the prefix `CPyDef_`
+in profiles (e.g. `CPyDef_mod___parse` for `parse` in module `mod`).
+
+## Inspect Generated Code
+
+Looking at the code mypyc generates can reveal bottlenecks that aren't
+obvious from the source code, such as unexpected `Any` types that cause
+slow, generic operations to be used. Compile with `-a` to generate an
+HTML report of the source code, with lines that use generic operations
+highlighted and explained:
+
+```
+python3 -m mypyc -a report.html mod.py
+```
+
+For example, if `items` has type `Any`, the report says "For loop uses
+generic operations (iterable has type "Any")" for a `for x in items:` line.
+Annotating the variable where it gets its value (such as
+`items: list[dict[str, int]] = json.loads(data)`) fixes this.
+
+Mypyc also writes the generated intermediate representation (IR) to
+`build/ops.txt` and the generated C code to `build/__native*.c`. The IR is
+easier to read than C. Signs of generic operations include calls to
+C API functions such as `PyObject_GetAttr`, `CPyObject_GetAttr`,
+`PyObject_GetItem`, `PyObject_Vectorcall`, `PyObject_GetIter`,
+`PyIter_Next` or `PyNumber_Add` (and other `PyNumber_` functions) in a
+hot function. Specialized operations have names such as `CPyTagged_Add`
+(for `int` values) or `CPyList_GetItem`, or use native attribute access.
+Common causes of generic operations include values with type `Any`,
+missing annotations, non-native classes, and values that come from
+non-compiled modules. Fix these using the other techniques in this skill,
+such as annotating variables that get their value from untyped code.
+
 ## Keep Classes Native
 
 Native classes are much faster than regular Python classes (non-native
@@ -573,10 +648,8 @@ The speedup depends on the function, the types involved and how much work
 each iteration does. For functions not covered above, or if you aren't sure
 which replacement to use (e.g. a lambda, a small native class with
 `__call__`, or inlining the call into a loop), write a short
-microbenchmark first. Compile it with mypyc and compare the variants on
-realistic inputs, taking the best of several runs. Check that the module
-was actually compiled (`mod.__file__` should end in `.so` or `.pyd`), and
-only refactor if there is a clear win.
+microbenchmark that compares the variants first (see "Measure
+Performance"), and only refactor if there is a clear win.
 
 ## Use librt
 
