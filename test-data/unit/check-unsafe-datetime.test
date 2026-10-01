@@ -1,0 +1,143 @@
+[case testUnsafeDatetime]
+# flags: --show-error-codes --python-version 3.10
+from datetime import date, datetime, timedelta
+from typing import NewType, TypeVar
+
+d: date
+dt: datetime
+
+if dt < d:  # E: Unsupported operand types for < ("datetime" and "date")  [operator]
+    pass
+if d > dt:  # E: Unsupported operand types for > ("date" and "datetime")  [operator]
+    pass
+if dt <= d:  # E: Unsupported operand types for <= ("datetime" and "date")  [operator]
+    pass
+if d >= dt:  # E: Unsupported operand types for >= ("date" and "datetime")  [operator]
+    pass
+
+d - dt  # E: Unsupported operand types for - ("date" and "datetime")  [operator]
+
+# Equality and identity do not raise TypeError.
+if dt == d:
+    pass
+if d != dt:
+    pass
+if dt is d:
+    pass
+
+# Do not warn when both operands have the same static type.
+d2: date
+dt2: datetime
+if d < d2:
+    pass
+if dt < dt2:
+    pass
+d - d2
+dt - dt2
+
+# Normal subtyping is preserved.
+d = datetime.now()
+
+def accept_date(value: date) -> None:
+    pass
+
+accept_date(datetime.now())
+
+# Narrowed optional operands and bounded type variables retain their precise type.
+optional_dt: datetime | None
+if optional_dt is not None and optional_dt < d2:  # E: Unsupported operand types for < ("datetime" and "date")  [operator]
+    pass
+
+DT = TypeVar("DT", bound=datetime)
+
+def compare(value: DT, other: date) -> bool:
+    return value < other  # E: Unsupported operand types for < ("DT" and "date")  [operator]
+
+# Descendants with inherited date and datetime behavior are unsafe as well.
+class DateSubclass(date):
+    pass
+
+class DatetimeSubclass(datetime):
+    pass
+
+sub_d: DateSubclass
+sub_dt: DatetimeSubclass
+# Before Python 3.13, a date subclass on the left is compared by date only.
+sub_d < sub_dt
+sub_dt < sub_d  # E: Unsupported operand types for < ("DatetimeSubclass" and "DateSubclass")  [operator]
+sub_d - sub_dt  # E: Unsupported operand types for - ("DateSubclass" and "DatetimeSubclass")  [operator]
+
+DateNewType = NewType("DateNewType", date)
+DatetimeNewType = NewType("DatetimeNewType", datetime)
+new_d: DateNewType
+new_dt: DatetimeNewType
+new_d < new_dt  # E: Unsupported operand types for < ("DateNewType" and "DatetimeNewType")  [operator]
+new_d - new_dt  # E: Unsupported operand types for - ("DateNewType" and "DatetimeNewType")  [operator]
+
+# Descendants from the same side of the date/datetime boundary are safe.
+sub_d2: DateSubclass
+sub_dt2: DatetimeSubclass
+sub_d < sub_d2
+sub_dt < sub_dt2
+new_d < new_d
+new_dt < new_dt
+
+# Do not warn when a descendant overrides an operator to support mixed operands.
+class ComparableDate(date):
+    def __lt__(self, other: date) -> bool: ...
+    def __sub__(self, other: date) -> timedelta: ...
+
+class ComparableDatetime(datetime):
+    def __gt__(self, other: date) -> bool: ...  # type: ignore[override]
+
+comparable_d: ComparableDate
+comparable_dt: ComparableDatetime
+comparable_d < sub_dt
+sub_d < comparable_dt
+comparable_d - sub_dt
+
+[builtins fixtures/classmethod.pyi]
+[file datetime.pyi]
+class timedelta: ...
+
+class date:
+    @classmethod
+    def today(cls) -> date: ...
+    def __lt__(self, other: date) -> bool: ...
+    def __le__(self, other: date) -> bool: ...
+    def __gt__(self, other: date) -> bool: ...
+    def __ge__(self, other: date) -> bool: ...
+    def __eq__(self, other: object) -> bool: ...
+    def __ne__(self, other: object) -> bool: ...
+    def __sub__(self, other: date) -> timedelta: ...
+
+class datetime(date):
+    @classmethod
+    def now(cls) -> datetime: ...
+    def __lt__(self, other: datetime) -> bool: ...  # type: ignore[override]
+    def __le__(self, other: datetime) -> bool: ...  # type: ignore[override]
+    def __gt__(self, other: datetime) -> bool: ...  # type: ignore[override]
+    def __ge__(self, other: datetime) -> bool: ...  # type: ignore[override]
+    def __sub__(self, other: datetime) -> timedelta: ...  # type: ignore[override]
+
+[case testUnsafeDatetimeSubclassComparisonPython313]
+# flags: --show-error-codes --python-version 3.13
+from datetime import date, datetime
+
+class DateSubclass(date):
+    pass
+
+class DatetimeSubclass(datetime):
+    pass
+
+d: DateSubclass
+dt: DatetimeSubclass
+d < dt  # E: Unsupported operand types for < ("DateSubclass" and "DatetimeSubclass")  [operator]
+[file datetime.pyi]
+class date:
+    def __lt__(self, other: date) -> bool: ...
+    def __gt__(self, other: date) -> bool: ...
+
+class datetime(date):
+    def __lt__(self, other: datetime) -> bool: ...  # type: ignore[override]
+    def __gt__(self, other: datetime) -> bool: ...  # type: ignore[override]
