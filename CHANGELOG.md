@@ -12,11 +12,67 @@ improvements and bug fixes. You can install it as follows:
 
 You can read the full documentation for this release on [Read the Docs](http://mypy.readthedocs.io).
 
-### Python 3.15 Support (TODO)
+### Python 3.15 Support
 
-Mypy 2.4 supports running on Python 3.15 and type checking most Python 3.15 features.
+Mypy 2.4 supports running on Python 3.15 and type checking most Python
+3.15 features. This includes the new builtin `sentinel` type for
+sentinel values (PEP 661), which mypy now supports (see below for
+details). Closed TypedDicts (PEP 728) have been supported since mypy
+2.2, but the `extra_items` TypedDict argument, also introduced in PEP
+728, is still unsupported. Support for `extra_items` will be added in
+a future mypy release.
 
 ### Native Parser Enabled by Default
+
+Mypy now uses the new native parser by default. It's based on the Ruff
+parser, and it's significantly faster than the legacy parser, which
+uses the stdlib `ast` module. The native parser also has other
+benefits:
+
+- You can target newer Python versions and use recent Python syntax
+  even when running mypy on an older Python version. For example, you
+  can use `--python-version 3.15` when running mypy on Python 3.14.
+- Stub files can use syntax that is newer than the target Python
+  version. For example, stubs can use the PEP 695 generic class syntax
+  (`class Box[T]: ...`) when running on or targeting Python 3.10.
+- Parallel type checking requires the native parser.
+
+The legacy parser is still available through `--no-native-parser`, or
+`native_parser = False` in the config file (`native_parser = false`
+under `[tool.mypy]` in pyproject.toml). We are planning to remove the
+legacy parser in early 2027. If you run into a problem with the native
+parser, please report it on the
+[issue tracker](https://github.com/python/mypy/issues).
+
+Unlike the legacy parser, the native parser doesn't support type
+comments for variables defined by `for` and `with` statements. These
+type comments are silently ignored, and the types of the variables are
+inferred instead. This is a very rarely used feature that predates
+variable annotations that were introduced in Python 3.6. Other forms
+of type comments are still supported. Examples of type comments that
+are now ignored:
+
+```python
+for i in x:  # type: int
+    ...
+
+with foo() as a:  # type: Foo
+    ...
+```
+
+You can use variable annotations before the statements instead:
+
+```python
+i: int
+for i in x:
+    ...
+
+a: Foo
+with foo() as a:
+    ...
+```
+
+Related changes:
 
 - Make the native parser the default (Ivan Levkivskyi, PR [21823](https://github.com/python/mypy/pull/21823))
 - Fix native parser crash caused by invalid assignment expression (Jukka Lehtosalo, PR [21882](https://github.com/python/mypy/pull/21882))
@@ -26,9 +82,27 @@ Mypy 2.4 supports running on Python 3.15 and type checking most Python 3.15 feat
 - Fall back to sequential parsing when threads are unavailable (Jukka Lehtosalo, PR [21993](https://github.com/python/mypy/pull/21993))
 - Various improvements to `ast-serialize` (Ivan Levkivskyi)
 
-### Stable Parallel Checking
+### Parallel Checking No Longer Experimental
 
-Parallel type checking is no longer experimental.
+Parallel type checking is no longer experimental, and it will be
+enabled by default in a future mypy release. Use `-n8` or
+`--num-workers 8` to manually specify the number of workers.
+
+Mypy now also supports automatic determination of worker count using
+`-n auto`, which selects the number of workers based on the CPU cores
+available to mypy. The auto mode is capped at 8, since very large
+numbers of workers can use a lot of memory if type checking large
+projects, but you can manually specify higher numbers.
+
+You can also specify these in mypy.ini (e.g. `num_workers = auto` under
+`[mypy]`) or pyproject.toml (e.g. `num_workers = "auto"` under `[tool.mypy]`).
+
+We've seen up to a 5x speedup when using 8 workers.
+
+Refer to the [documentation](https://mypy.readthedocs.io/en/stable/command_line.html#parallel)
+for more information.
+
+Related changes:
 
 - Use two-phase type checking in sequential mode (Ivan Levkivskyi, PR [21973](https://github.com/python/mypy/pull/21973))
 - Use a more thorough cleanup of parallel workers (Ivan Levkivskyi, PR [21981](https://github.com/python/mypy/pull/21981))
@@ -40,6 +114,26 @@ Parallel type checking is no longer experimental.
 
 ### Support for PEP 661 Sentinels
 
+Mypy now supports sentinel values ([PEP 661](https://peps.python.org/pep-0661/)).
+Sentinels are useful for distinguishing a missing argument from valid values such
+as `None`. You can use a sentinel directly in a type annotation, and mypy narrows
+the type when you check its identity with `is` or `is not`.
+
+```python
+# On Python 3.15, sentinel is a builtin and the import isn't needed
+from typing_extensions import sentinel
+
+MISSING = sentinel("MISSING")
+
+def process(value: int | None | MISSING = MISSING) -> None:
+    if value is MISSING:
+        print("No value")
+    else:
+        reveal_type(value)  # int | None
+```
+
+Related changes:
+
 - Add support for PEP 661 sentinels (Edgar Ramírez Mondragón, PR [21647](https://github.com/python/mypy/pull/21647))
 - Improve sentinel narrowing (Marc Mueller, PR [21844](https://github.com/python/mypy/pull/21844))
 - Fix sentinel identity loss through generic substitution and inference (Edgar Ramírez Mondragón, PR [21888](https://github.com/python/mypy/pull/21888))
@@ -49,11 +143,38 @@ Parallel type checking is no longer experimental.
 
 ### More Lenient Handling of `*tuple[Any, ...]`
 
+Mypy now treats `*tuple[Any, ...]` more leniently in tuple types and
+variadic generic types. The unpacked portion can match any number of
+items when checking compatibility, while explicitly specified items
+still need to match. This also improves type inference and support for
+indexing, slicing, and unpacking these tuples.
+
+```python
+from typing import Any
+
+def process(values: tuple[int, str]) -> None:
+    ...
+
+def example(values: tuple[int, *tuple[Any, ...]]) -> None:
+    process(values)  # Now accepted
+    first, second = values  # Now accepted
+    reveal_type(first)   # int
+    reveal_type(second)  # Any
+```
+
+Related changes:
+
 - Lenient handling of `*tuple[Any, ...]` (part 1) (Ivan Levkivskyi, PR [22001](https://github.com/python/mypy/pull/22001))
 - Lenient handling of `*tuple[Any, ...]` (part 2) (Ivan Levkivskyi, PR [22006](https://github.com/python/mypy/pull/22006))
 - Lenient handling of `*tuple[Any, ...]` (part 3) (Ivan Levkivskyi, PR [22014](https://github.com/python/mypy/pull/22014))
 
 ### Mypyc Generator and Coroutine Improvements
+
+This release includes many improvements to the performance of generators and
+async functions. The improvements are particularly significant on free-threaded
+Python builds (over 2x faster in microbenchmarks compared to mypy 2.3).
+
+Related changes:
 
 - Keep generator local state in C locals when possible (Jukka Lehtosalo, PR [21982](https://github.com/python/mypy/pull/21982))
 - Ensure a generator can't be entered while it's being executed (Jukka Lehtosalo, PR [21939](https://github.com/python/mypy/pull/21939))
