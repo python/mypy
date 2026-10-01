@@ -437,7 +437,7 @@ class Connection:
     ) -> Literal[False]: ...
 
 @disjoint_base
-class Cursor(Iterator[Any]):
+class Cursor:
     arraysize: int
     @property
     def connection(self) -> Connection: ...
