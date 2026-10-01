@@ -17,10 +17,11 @@ You can read the full documentation for this release on [Read the Docs](http://m
 Mypy 2.4 supports running on Python 3.15 and type checking most Python
 3.15 features. This includes the new builtin `sentinel` type for
 sentinel values (PEP 661), which mypy now supports (see below for
-details). Closed TypedDicts (PEP 728) have been supported since mypy
-2.2, but the `extra_items` TypedDict argument, also introduced in PEP
-728, is still unsupported. Support for `extra_items` will be added in
-a future mypy release.
+details). Lazy imports (PEP 810) and unpacking in comprehensions
+(PEP 798) are also supported. Closed TypedDicts (PEP 728) have been
+supported since mypy 2.2, but the `extra_items` TypedDict argument,
+also introduced in PEP 728, is still unsupported. Support for
+`extra_items` will be added in a future mypy release.
 
 ### Native Parser Enabled by Default
 
@@ -146,8 +147,10 @@ Related changes:
 Mypy now treats `*tuple[Any, ...]` more leniently in tuple types and
 variadic generic types. The unpacked portion can match any number of
 items when checking compatibility, while explicitly specified items
-still need to match. This also improves type inference and support for
-indexing, slicing, and unpacking these tuples.
+still need to match. Variadic tuples with a non-`Any` item type, such
+as `*tuple[int, ...]`, are still handled strictly. This also improves
+type inference and support for indexing, slicing, and unpacking these
+tuples.
 
 ```python
 from typing import Any
