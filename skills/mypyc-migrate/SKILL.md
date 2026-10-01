@@ -370,6 +370,14 @@ Look for signs of inaccurate annotations, such as `is None` checks on values
 whose type doesn't include `None`, or `isinstance` checks against types that
 aren't allowed by the annotation.
 
+Tests that deliberately pass a value of the wrong type (for example, to test
+validation code in the function) will get a `TypeError` when the function is
+called, before the validation code runs. If the code is always compiled,
+update these tests to expect `TypeError` (for example,
+`pytest.raises(TypeError)` instead of `pytest.raises(ValueError)`), or make
+the test accept both exception types if the tests are also run against
+non-compiled code.
+
 ### Assigning `int` Values to `float` Variables
 
 Mypy allows an `int` value to be used where a `float` is expected, but
