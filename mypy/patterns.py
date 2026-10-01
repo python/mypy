@@ -160,3 +160,19 @@ ConcretePattern: TypeAlias = (
     | MappingPattern
     | ClassPattern
 )
+
+
+def sub_patterns(pattern: Pattern) -> list[ConcretePattern]:
+    """Return the direct sub-patterns of a composite pattern.
+
+    Captures inside composite patterns (e.g. '[x]' or 'Cls(x)') are always
+    allowed by CPython's irrefutability check, which only inspects them in
+    top-level positions and or-pattern alternatives.
+    """
+    if isinstance(pattern, SequencePattern):
+        return pattern.patterns
+    if isinstance(pattern, MappingPattern):
+        return pattern.values
+    if isinstance(pattern, ClassPattern):
+        return [*pattern.positionals, *pattern.keyword_values]
+    return []
