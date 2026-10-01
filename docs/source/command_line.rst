@@ -1068,7 +1068,8 @@ Notes:
   tune the number of workers on a given machine is to start from 3-4 workers
   and increase the number while you see a performance improvement.
 
-* Parallel mode requires and automatically enables :option:`--native-parser`.
+* Parallel mode requires the native parser, which is enabled by default since
+  mypy 2.4 (see :option:`--no-native-parser <mypy --no-native-parser>`).
 
 
 Advanced options
@@ -1144,10 +1145,14 @@ in developing or debugging mypy internals.
     cause mypy to type check the contents of ``temp.py`` instead of  ``original.py``,
     but error messages will still reference ``original.py``.
 
-.. option:: --native-parser
+.. option:: --no-native-parser
 
-    This enables fast Rust-based parser that parses directly to mypy AST.
-    It will become the default parser in one of the next mypy releases.
+    This disables the fast Rust-based native parser that parses directly
+    to mypy AST, and uses the legacy parser based on the stdlib :py:mod:`ast`
+    module instead. The native parser is the default since mypy 2.4.
+
+    The legacy parser can only parse syntax supported by the Python version
+    used to run mypy. The legacy parser will be removed in a future mypy release.
 
 
 Report generation
