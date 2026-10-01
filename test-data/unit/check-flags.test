@@ -1634,7 +1634,10 @@ if BLAH:
 [file mypy.ini]
 \[mypy]
 ignore_missing_imports = True
-always_true = YOLO1, YOLO
+# Keep `YOLO` last to verify it is parsed when the list has a trailing comma.
+always_true =
+  YOLO1,
+  YOLO,
 always_false = BLAH, BLAH1
 [builtins fixtures/bool.pyi]
 
@@ -1663,7 +1666,10 @@ def bar():
     pass
 [file mypy.ini]
 \[mypy]
-disable_error_code = import, no-untyped-def
+# Keep `no-untyped-def` last to verify it is parsed when the list has a trailing comma.
+disable_error_code =
+  import,
+  no-untyped-def,
 
 
 [case testDisableErrorCodeConfigFilePyProjectTOML]
@@ -2529,7 +2535,11 @@ if foo: ...  # E: Function "foo" could always be true in boolean context
 42 + "no"  # type: ignore
 [file mypy.ini]
 \[mypy]
-enable_error_code = ignore-without-code, truthy-bool, used-before-def
+# Keep `truthy-bool` last to verify it is parsed when the list has a trailing comma.
+enable_error_code =
+  used-before-def,
+  ignore-without-code,
+  truthy-bool,
 
 \[mypy-tests.*]
 disable_error_code = ignore-without-code
