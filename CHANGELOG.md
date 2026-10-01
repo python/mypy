@@ -77,7 +77,7 @@ Related changes:
 
 - Make the native parser the default (Ivan Levkivskyi, PR [21823](https://github.com/python/mypy/pull/21823))
 - Fix native parser crash caused by invalid assignment expression (Jukka Lehtosalo, PR [21882](https://github.com/python/mypy/pull/21882))
-- Fix crashes when the native parser reads source files with non-UTF-8 encodings (Ivan Levkivskyi, PR [22066](https://github.com/python/mypy/pull/22066))
+- Fix native parser crashes on non-UTF-8 encoded source files (Ivan Levkivskyi, PR 22066)
 - Match native parser behavior for positional-only arguments (Ivan Levkivskyi, PR [21891](https://github.com/python/mypy/pull/21891))
 - Preserve docstrings in the native parser (Ivan Levkivskyi, PR [21890](https://github.com/python/mypy/pull/21890))
 - Use the native parser for `parse_type_string()` (Ivan Levkivskyi, PR [21965](https://github.com/python/mypy/pull/21965))
