@@ -89,6 +89,11 @@ generic operations.
 * Annotate variables that get their value from untyped code (for example,
   a library without type annotations), so that the variable doesn't have type
   `Any`.
+* If you can infer a more precise type for a value from the surrounding
+  context, but there's no `isinstance` check (or similar) that would narrow
+  the type, use `cast` (import from `typing`) to give mypyc the precise type.
+  Assign the result to a new variable, since mypyc uses the declared type of
+  a variable.
 
 Only use a type if you are confident that it's correct. Compiled code checks
 types at runtime and raises `TypeError` if a value has the wrong type (see
@@ -310,6 +315,32 @@ define these methods explicitly, as otherwise the behavior changes. Also
 check for uses of `dataclasses` functions such as `dataclasses.replace`,
 `dataclasses.asdict` or `dataclasses.fields` on the class. Don't replace the
 dataclass if these are used.
+
+## Declare Attributes Assigned Only in `__init__` as `Final`
+
+Reading a `Final` attribute of a native class can be faster, since mypyc
+knows that the attribute can't be reassigned after construction. For example,
+mypyc can often avoid reference count manipulation when reading the attribute,
+and reads are cheaper on free-threaded Python builds:
+
+```
+from typing import Final, final
+
+@final
+class Span:
+    def __init__(self, start: int, end: int) -> None:
+        self.start: Final = start
+        self.end: Final = end
+```
+
+A `Final` attribute is read-only at runtime, so assigning it outside
+`__init__` fails, including assignments in non-compiled code (such as tests)
+that mypy may not check.
+Only make an attribute `Final` if it's clearly assigned only in `__init__`
+(for example, in an internal class that is only used in a few places), and
+you have access to the tests, so that you can verify that they don't assign
+the attribute (for example, to set up a test scenario, or using
+monkeypatching).
 
 ## Avoid Mutable Module-level Variables
 
@@ -1042,6 +1073,9 @@ features, optimized for compiled code:
   or `"".join(list_of_parts)`).
 * `librt.strings.BytesWriter`: build a `bytes` object (faster than
   `io.BytesIO`, `bytearray` or `b"".join(...)`).
+* `librt.strings` `read_*` and `write_*` functions: read and write packed
+  binary integers and floats (much faster than `struct`, `int.from_bytes` and
+  `int.to_bytes`; see "Reading and Writing Binary Data" below).
 * `librt.base64`: `b64encode`, `b64decode` and related functions (faster
   than the `base64` module).
 * `librt.random`: pseudorandom numbers (faster than the `random` module).
@@ -1074,6 +1108,66 @@ def join_items(items: list[str]) -> str:
         w.append(ord(","))  # ord(...) of a literal is a compile-time constant
     return w.getvalue()
 ```
+
+### Reading and Writing Binary Data
+
+`librt.strings` has `read_*` and `write_*` functions for signed 16, 32 and
+64-bit integers (`i16`, `i32`, `i64`) and 32 and 64-bit floats (`f32`,
+`f64`), in little-endian (`_le`) and big-endian (`_be`) byte order. In
+compiled code they are much faster than `struct` and `int.from_bytes`,
+which use generic operations:
+
+```
+import struct
+
+def total(data: bytes) -> int:
+    t = 0
+    for i in range(0, len(data), 4):
+        t += struct.unpack_from("<i", data, i)[0]
+        # or: t += int.from_bytes(data[i:i + 4], "little", signed=True)
+    return t
+
+def encode(items: list[int]) -> bytes:
+    return b"".join(struct.pack("<i", n) for n in items)
+```
+
+Use `read_i32_le` and `write_i32_le` instead:
+
+```
+from librt.strings import BytesWriter, read_i32_le, write_i32_le
+
+def total(data: bytes) -> int:
+    t = 0
+    for i in range(0, len(data), 4):
+        t += int(read_i32_le(data, i))
+    return t
+
+def encode(items: list[int]) -> bytes:
+    b = BytesWriter()
+    for n in items:
+        write_i32_le(b, n)
+    return b.getvalue()
+```
+
+Read single bytes using `data[i]`, and write them using `BytesWriter.append`.
+Check these differences before replacing anything:
+
+* The integer `read_*` functions return native integers (such as `i32`).
+  Arithmetic on native integers that overflows has undefined behavior, so
+  convert the result using `int(...)` before using it in arithmetic that could
+  exceed the range, such as computing a sum (as above).
+* There are no unsigned variants. To read an unsigned 16 or 32-bit value,
+  mask the result (`int(read_i32_le(data, i)) & 0xFFFFFFFF`). Leave
+  unsigned 64-bit values and unsigned writes as they are, unless you can
+  verify that all values fit in the signed range.
+* Only replace `struct` formats with an explicit standard byte order (`<`,
+  `>` or `!`). Native formats (`@`, `=` or no prefix) can use a different
+  byte order, size or alignment.
+* `read_*` functions only accept `bytes` (not `bytearray` or `memoryview`),
+  and raise `IndexError` instead of `struct.error` if there isn't enough
+  data. Passing a value that doesn't fit to a `write_*` function raises
+  `ValueError` instead of `struct.error`. Check whether any code catches
+  `struct.error`.
 
 These aren't always drop-in replacements. Check the librt documentation
 (`mypyc/doc/librt*.rst` in the mypy repository, or
