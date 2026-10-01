@@ -1087,10 +1087,12 @@ These options may only be set in the global section (``[mypy]``).
 .. confval:: native_parser
 
     :type: boolean
-    :default: False
+    :default: True
 
-    This enables fast Rust-based parser that parses directly to mypy AST.
-    It will become the default parser in one of the next mypy releases.
+    Use the fast Rust-based native parser that parses directly to mypy AST.
+    Set this to ``False`` to use the legacy parser based on the stdlib
+    :py:mod:`ast` module instead. See :option:`--no-native-parser <mypy --no-native-parser>`
+    for more details.
 
 
 Report generation
