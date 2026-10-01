@@ -2,7 +2,7 @@
 
 ## Next Release
 
-## Mypy 2.4 (Unreleased)
+## Mypy 2.4
 
 We've just uploaded mypy 2.4.0 to the Python Package Index ([PyPI](https://pypi.org/project/mypy/)).
 Mypy is a static type checker for Python. This release includes new features, performance
@@ -77,6 +77,7 @@ Related changes:
 
 - Make the native parser the default (Ivan Levkivskyi, PR [21823](https://github.com/python/mypy/pull/21823))
 - Fix native parser crash caused by invalid assignment expression (Jukka Lehtosalo, PR [21882](https://github.com/python/mypy/pull/21882))
+- Fix native parser crashes on non-UTF-8 encoded source files (Ivan Levkivskyi, PR 22066)
 - Match native parser behavior for positional-only arguments (Ivan Levkivskyi, PR [21891](https://github.com/python/mypy/pull/21891))
 - Preserve docstrings in the native parser (Ivan Levkivskyi, PR [21890](https://github.com/python/mypy/pull/21890))
 - Use the native parser for `parse_type_string()` (Ivan Levkivskyi, PR [21965](https://github.com/python/mypy/pull/21965))
@@ -230,7 +231,7 @@ Related changes:
 - Update docs for modern setuptools (Shantanu, PR [21792](https://github.com/python/mypy/pull/21792))
 - Document the lack of `abi3` support in mypyc (Michael R. Crusoe, PR [22033](https://github.com/python/mypy/pull/22033))
 
-### Packaging changes
+### Packaging Changes
 
 - No longer provide mypyc-accelerated wheels for macOS `x86_64` [mypyc-wheels PR 119](https://github.com/mypyc/mypy_mypyc-wheels/pull/119)
 
