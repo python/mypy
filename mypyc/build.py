@@ -199,6 +199,9 @@ def fail(message: str) -> NoReturn:
 def emit_messages(options: Options, messages: list[str], dt: float, serious: bool = False) -> None:
     # ... you know, just in case.
     if options.junit_xml:
+        if options.bazel:
+            # Elapsed time would make the output non-reproducible.
+            dt = 0.0
         py_version = f"{options.python_version[0]}_{options.python_version[1]}"
         write_junit_xml(
             dt,

@@ -4,7 +4,8 @@ import os
 import tempfile
 import unittest
 
-from mypyc.build import get_header_deps, resolve_cfile_deps
+from mypy.options import Options
+from mypyc.build import emit_messages, get_header_deps, resolve_cfile_deps
 from mypyc.ir.ops import BasicBlock
 from mypyc.ir.pprint import format_blocks, generate_names_for_ir
 from mypyc.irbuild.ll_builder import LowLevelIRBuilder
@@ -23,6 +24,18 @@ class TestMisc(unittest.TestCase):
         names = generate_names_for_ir([], [block])
         code = format_blocks([block], names, {})
         assert code[:-1] == ["L0:", "    r0 = 'foo'", "    CPyDebug_PrintObject(r0)"]
+
+    def test_junit_time_is_zero_in_bazel_mode(self) -> None:
+        # Output must be reproducible under Bazel, so elapsed time is not included.
+        with tempfile.TemporaryDirectory() as tmpdir:
+            options = Options()
+            options.bazel = True
+            options.junit_xml = os.path.join(tmpdir, "junit.xml")
+            emit_messages(options, [], 1.23)
+            with open(options.junit_xml) as f:
+                result = f.read()
+        assert 'time="0.000"' in result
+        assert "1.230" not in result
 
 
 class TestHeaderDeps(unittest.TestCase):
