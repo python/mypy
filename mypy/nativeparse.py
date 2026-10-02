@@ -240,6 +240,7 @@ def native_parse(
         source_hash,
         mypy_comments,
     ) = parse_to_binary_ast(filename, options, source, skip_function_bodies)
+    ignores = normalize_error_codes(ignores)
     node = MypyFile([], [])
     node.path = filename
     node.raw_data = FileRawData(
@@ -253,6 +254,14 @@ def native_parse(
         mypy_comments,
     )
     return node, errors, ignores
+
+
+def normalize_error_codes(ignores: TypeIgnores) -> TypeIgnores:
+    """Remove mypy: prefix from error codes (if present)."""
+    normalized = []
+    for line, codes in ignores:
+        normalized.append((line, [c.removeprefix("mypy:") for c in codes]))
+    return normalized
 
 
 def native_parse_type_string(

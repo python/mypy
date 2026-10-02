@@ -300,3 +300,6 @@ except Exception:
 [file foobar.py]
 [file barfoo.py]
 [builtins fixtures/exception.pyi]
+
+[case testNamespaceErrorCodes]
+x: str = 42  # type: ignore[mypy:assignment, other:foobar]
