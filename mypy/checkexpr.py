@@ -3118,24 +3118,40 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             if all_same_types(return_types):
                 self.chk.store_types(type_maps[0])
                 return return_types[0], inferred_types[0]
-            elif len(return_types) < MAX_PRECISE_OVERLOAD_FALLBACK and (
-                common := common_type(return_types)
-            ):
-                self.chk.store_types(type_maps[0])
-                return common, erase_type(inferred_types[0])
-            elif all_same_types([erase_type(typ) for typ in return_types]):
+
+            # This is quite ad-hoc, but this is needed to support some numerical libraries.
+            # They add "fake" overload to some __op__ methods, to prevent fallback to __rop__
+            # where it would fail at runtime. We can ignore such overloads when deciding
+            # ambiguous overload fallback to get a more precise type, see #22011.
+            return_types = [
+                rt
+                for rt in return_types
+                if not isinstance(p := get_proper_type(rt), UninhabitedType) or p.ambiguous
+            ]
+
+            # Before using the erased types, try checking if there is "best" fallback,
+            # such that it is a unique return type that is both (non-proper) subtype and
+            # supertype of all other return types. We do this only if there are few matches,
+            # since this check is expensive.
+            if len(return_types) < MAX_PRECISE_OVERLOAD_FALLBACK:
+                common = common_type(return_types)
+                if common is not None:
+                    self.chk.store_types(type_maps[0])
+                    return common, erase_type(inferred_types[0])
+
+            if all_same_types([erase_type(typ) for typ in return_types]):
                 self.chk.store_types(type_maps[0])
                 return erase_type(return_types[0]), erase_type(inferred_types[0])
-            else:
-                return self.check_call(
-                    callee=AnyType(TypeOfAny.special_form),
-                    args=args,
-                    arg_kinds=arg_kinds,
-                    arg_names=arg_names,
-                    context=context,
-                    callable_name=callable_name,
-                    object_type=object_type,
-                )
+
+            return self.check_call(
+                callee=AnyType(TypeOfAny.special_form),
+                args=args,
+                arg_kinds=arg_kinds,
+                arg_names=arg_names,
+                context=context,
+                callable_name=callable_name,
+                object_type=object_type,
+            )
         else:
             # Success! No ambiguity; return the first match.
             self.chk.store_types(type_maps[0])
