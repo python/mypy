@@ -485,6 +485,63 @@ if int():
     x = x | C.b
 [builtins fixtures/enum.pyi]
 
+[case testFlagEnumEqualityNarrowing]
+from enum import Flag, auto
+
+class Programs(Flag):
+    NONE = 0
+    P1 = auto()
+    P2 = auto()
+    P3 = auto()
+    ALL = P1 | P2 | P3
+
+def f1(programs: Programs) -> None:
+    if programs == Programs.NONE:
+        return
+    if programs == Programs.P2:
+        return
+    # Flag values can hold any combination of members, so narrowing by member
+    # equality would be unsound here (e.g. `Programs.P1 | Programs.P2`).
+    reveal_type(programs)  # N: Revealed type is "__main__.Programs"
+
+def f2(programs: Programs) -> None:
+    if programs != Programs.P2:
+        reveal_type(programs)  # N: Revealed type is "__main__.Programs"
+[builtins fixtures/primitives.pyi]
+
+[case testFlagEnumIdentityNarrowing]
+from enum import Flag, auto
+
+class Programs(Flag):
+    NONE = 0
+    P1 = auto()
+    P2 = auto()
+    P3 = auto()
+    ALL = P1 | P2 | P3
+
+def f(programs: Programs) -> None:
+    if programs is not Programs.P2:
+        reveal_type(programs)  # N: Revealed type is "__main__.Programs"
+[builtins fixtures/primitives.pyi]
+
+[case testIntFlagEnumEqualityNarrowing]
+from enum import IntFlag, auto
+
+class Programs(IntFlag):
+    NONE = 0
+    P1 = auto()
+    P2 = auto()
+    P3 = auto()
+    ALL = P1 | P2 | P3
+
+def f(programs: Programs) -> None:
+    if programs == Programs.NONE:
+        return
+    if programs == Programs.P2:
+        return
+    reveal_type(programs)  # N: Revealed type is "__main__.Programs"
+[builtins fixtures/primitives.pyi]
+
 [case testAnonymousEnum]
 from enum import Enum
 class A:
