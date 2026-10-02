@@ -303,3 +303,7 @@ except Exception:
 
 [case testNamespaceErrorCodes]
 x: str = 42  # type: ignore[mypy:assignment, other:foobar]
+y: str = 42  # type: ignore[mypy:arg-type, other:foobar]
+[out]
+main:2: error: Incompatible types in assignment (expression has type "int", variable has type "str")
+main:2: note: Error code "assignment" not covered by "type: ignore[arg-type, other:foobar]" comment
