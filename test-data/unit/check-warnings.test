@@ -49,13 +49,27 @@ from typing import cast
 a = 1
 b = cast(object, 1)
 
-[case testCastFromLiteralRedundant]
-# flags: --warn-redundant-casts
-from typing import cast
+[case testLiteralRedundantCast]
+# https://github.com/python/mypy/issues/19055
+# flags: --warn-redundant-cast
 
-cast(int, 1)
-[out]
-main:4: error: Redundant cast to "int"
+from typing import Literal, cast
+
+# "a" is an AnyOf[str, Literal["a"]], denoted Literal['a']?
+# See: https://github.com/python/typing/issues/566
+
+# This cast is not redundant because Literal["a"]? is not identical to Literal["a"]
+LiteralOnly = Literal["a"]
+reveal_type("a")  # N: Revealed type is "Literal['a']?"
+cast(LiteralOnly, "a")
+
+# This cast is redundant because the type is already Literal["a"]
+already_literal: Literal["a"] = "a"
+reveal_type(already_literal)  # N: Revealed type is "Literal['a']"
+cast(LiteralOnly, already_literal)  # E: Redundant cast to "Literal['a']"
+
+LiteralUnion = Literal["a", "b"]
+cast(LiteralUnion, "a")
 
 [case testCastFromUnionOfAnyOk]
 # flags: --warn-redundant-casts
