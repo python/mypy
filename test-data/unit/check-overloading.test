@@ -6952,3 +6952,38 @@ reveal_type(f(la))  # N: Revealed type is "builtins.list[builtins.tuple[Any, ...
 reveal_type(f(li))  # N: Revealed type is "builtins.list[builtins.tuple[builtins.int, ...]]"
 reveal_type(f(ls))  # N: Revealed type is "builtins.list[builtins.tuple[Any, ...]]"
 [builtins fixtures/tuple.pyi]
+
+[case testOverloadOnlyWidenDisagreeingTypeParams]
+from collections.abc import Sequence
+from typing import Any, Generic, Protocol, assert_type, overload
+from typing_extensions import TypeVar
+
+S1 = TypeVar('S1')
+
+class EA: ...
+
+A = TypeVar('A', bound=EA, default=EA, covariant=True)
+S2 = TypeVar('S2', bound=EA)
+S2_contra = TypeVar('S2_contra', bound=EA, contravariant=True)
+
+class Supports_ProtoAdd(Protocol[S2_contra, S2]):
+    def _proto_add(self, other: S2_contra, /) -> 'Ser2[S2, EA]': ...
+
+class Ser2(Generic[S1, A]):
+    def _proto_add(self, other: Any, /) -> 'Ser2[Any, EA]':
+        pass
+
+    @overload
+    def __add__(
+        self: Supports_ProtoAdd[S2_contra, S2],
+        other: 'S2_contra | Sequence[S2_contra]',
+    ) -> 'Ser2[S2]': ...
+    @overload
+    def __add__(self: 'Ser2[bool, EA]', other: Sequence[Any]) -> 'Ser2[int]': ...
+    def __add__(self, other: Any) -> Any:
+        pass
+
+def f(a2: 'Ser2[Any, EA]', seq: 'Sequence[Any]') -> None:
+    reveal_type(a2 + seq)  # N: Revealed type is "__main__.Ser2[Any, __main__.EA]"
+    assert_type(a2 + seq, 'Ser2[Any, EA]')
+[builtins fixtures/tuple.pyi]
