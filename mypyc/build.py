@@ -37,12 +37,12 @@ from mypy.options import Options
 from mypy.util import write_junit_xml
 from mypyc.annotate import generate_annotated_html
 from mypyc.codegen import emitmodule
-from mypyc.common import IS_FREE_THREADED, RUNTIME_C_FILES, shared_lib_name
+from mypyc.common import RUNTIME_C_FILES, shared_lib_name
 from mypyc.errors import Errors
 from mypyc.ir.deps import SourceDep
 from mypyc.ir.pprint import format_modules
 from mypyc.namegen import exported_name
-from mypyc.options import CompilerOptions
+from mypyc.options import CompilerOptions, TargetPython
 
 
 class ModDesc(NamedTuple):
@@ -222,6 +222,9 @@ def get_mypy_config(
     fscache: FileSystemCache | None,
 ) -> tuple[list[BuildSource], list[BuildSource], Options]:
     """Construct mypy BuildSources and Options from file and options lists"""
+    for arg in mypy_options:
+        if arg == "--python-version" or arg.startswith("--python-version="):
+            fail("error: mypyc does not accept --python-version")
     all_sources, options = process_options(mypy_options, fscache=fscache, mypyc=True)
     if only_compile_paths is not None:
         paths_set = set(only_compile_paths)
@@ -236,8 +239,8 @@ def get_mypy_config(
         return mypyc_sources, all_sources, options
 
     # Override whatever python_version is inferred from the .ini file,
-    # and set the python_version to be the currently used version.
-    options.python_version = sys.version_info[:2]
+    # and set the python_version to be the target version.
+    options.python_version = compiler_options.target_python.version
 
     if options.python_version[0] == 2:
         fail("Python 2 not supported")
@@ -261,7 +264,11 @@ def is_package_source(source: BuildSource) -> bool:
 
 
 def generate_c_extension_shim(
-    full_module_name: str, module_name: str, dir_name: str, group_name: str
+    full_module_name: str,
+    module_name: str,
+    dir_name: str,
+    group_name: str,
+    target_python: TargetPython | None = None,
 ) -> str:
     """Create a C extension shim with a passthrough PyInit function.
 
@@ -270,11 +277,13 @@ def generate_c_extension_shim(
         module_name: the final component of the module name
         dir_name: the directory to place source code
         group_name: the name of the group
+        target_python: the Python build to generate code for (default: running Python)
     """
+    target_python = target_python or TargetPython.host()
     cname = "%s.c" % full_module_name.replace(".", os.sep)
     cpath = os.path.join(dir_name, cname)
 
-    if IS_FREE_THREADED:
+    if target_python.free_threaded:
         # We use multi-phase init in free-threaded builds to enable free threading.
         shim_name = "module_shim_no_gil_multiphase.tmpl"
     else:
@@ -377,6 +386,7 @@ def build_using_shared_lib(
     build_dir: str,
     extra_compile_args: list[str],
     extra_include_dirs: list[str],
+    target_python: TargetPython | None = None,
 ) -> list[Extension]:
     """Produce the list of extension modules when a shared library is needed.
 
@@ -401,7 +411,9 @@ def build_using_shared_lib(
 
     for source in sources:
         module_name = source.module.split(".")[-1]
-        shim_file = generate_c_extension_shim(source.module, module_name, build_dir, group_name)
+        shim_file = generate_c_extension_shim(
+            source.module, module_name, build_dir, group_name, target_python
+        )
 
         # We include the __init__ in the "module name" we stick in the Extension,
         # since this seems to be needed for it to end up in the right place.
@@ -896,6 +908,7 @@ def mypycify(
     depends_on_librt_internal: bool = False,
     install_librt: bool = False,
     experimental_features: bool = False,
+    target_python: str | TargetPython | None = None,
 ) -> list[Extension]:
     """Main entry point to building using mypyc.
 
@@ -954,7 +967,16 @@ def mypycify(
         experimental_features: Enable experimental features (install_librt=True is
                                also needed if using experimental librt features). These
                                have no backward compatibility guarantees!
+        target_python: The Python build to generate code for, such as "3.13" or "3.14t"
+                       (a "t" suffix means free-threaded). Defaults to the running
+                       Python. The generated C must be compiled against the headers of
+                       the target Python.
     """
+    if isinstance(target_python, str):
+        try:
+            target_python = TargetPython.parse(target_python)
+        except ValueError as e:
+            fail(f"error: {e}")
 
     # Skip redundant inplace .so copies on every build_ext invocation.
     _patch_setuptools_copy_extensions_to_source()
@@ -972,6 +994,7 @@ def mypycify(
         log_trace=log_trace,
         depends_on_librt_internal=depends_on_librt_internal,
         experimental_features=experimental_features,
+        target_python=target_python,
     )
 
     # Generate all the actual important C code
@@ -1042,6 +1065,7 @@ def mypycify(
                     build_dir,
                     cflags,
                     extra_include_dirs,
+                    compiler_options.target_python,
                 )
             )
         else:

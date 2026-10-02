@@ -40,7 +40,7 @@ from __future__ import annotations
 from abc import abstractmethod
 from typing import TYPE_CHECKING, ClassVar, Final, Generic, TypeGuard, TypeVar, Union, final
 
-from mypyc.common import HAVE_IMMORTAL, IS_32_BIT_PLATFORM, PLATFORM_SIZE, JsonDict, short_name
+from mypyc.common import IS_32_BIT_PLATFORM, PLATFORM_SIZE, JsonDict, short_name
 from mypyc.ir.deps import LIBRT_RANDOM, LIBRT_STRINGS, LIBRT_THREADING, LIBRT_VECS, Dependency
 from mypyc.namegen import NameGenerator
 
@@ -259,7 +259,7 @@ class RPrimitive(RType):
         self._ctype = ctype
         self.size = size
         self.error_overlap = error_overlap
-        self._may_be_immortal = may_be_immortal and HAVE_IMMORTAL
+        self._may_be_immortal = may_be_immortal
         self.dependencies = dependencies
         if ctype == "CPyTagged":
             self.c_undefined = "CPY_INT_TAG"

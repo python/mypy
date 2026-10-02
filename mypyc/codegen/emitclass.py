@@ -31,7 +31,6 @@ from mypyc.common import (
     BITMAP_TYPE,
     CPYFUNCTION_NAME,
     GENERATOR_HELPER_NAME,
-    IS_FREE_THREADED,
     MYPYC_DEFAULTS_SETUP,
     NATIVE_PREFIX,
     PREFIX,
@@ -1255,7 +1254,7 @@ def generate_getter(cl: ClassIR, attr: str, rtype: RType, emitter: Emitter) -> N
     emitter.emit_line("{")
     attr_expr = f"self->{attr_field}"
 
-    if IS_FREE_THREADED and is_simple_refcounted_pointer(rtype):
+    if emitter.target_python.free_threaded and is_simple_refcounted_pointer(rtype):
         # In free-threaded builds, load the attribute and take a new reference with
         # an optimistic validated incref to avoid racing with a concurrent setter.
         # CPy_GetAttrRef returns NULL if the attribute is undefined (NULL field),
@@ -1319,7 +1318,7 @@ def generate_setter(cl: ClassIR, attr: str, rtype: RType, emitter: Emitter) -> N
         emitter.emit_line("return -1;")
         emitter.emit_line("}")
 
-    if IS_FREE_THREADED and is_simple_refcounted_pointer(rtype):
+    if emitter.target_python.free_threaded and is_simple_refcounted_pointer(rtype):
         # In free-threaded builds, publish the new value via CPy_SetAttrRef, which
         # takes the owner's critical section so a concurrent reader (see
         # CPy_GetAttrRef) can always secure a reference to the value it observes,
@@ -1498,7 +1497,7 @@ def generate_coroutine_setup(
         wrapper_name = emit_instance(cl.methods["__call__"], cl.coroutine_name)
         struct_name = cl.struct_name(emitter.names)
         attr = emitter.attr(CPYFUNCTION_NAME)
-        if IS_FREE_THREADED:
+        if emitter.target_python.free_threaded:
             emitter.emit_line(
                 f"CPy_InitAttrRefIfNull(type, (PyObject **)&(({struct_name} *)type)->{attr}, "
                 f"{wrapper_name});"
