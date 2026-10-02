@@ -13,8 +13,7 @@ project, then, looks like:
 
 See the mypycify docs for additional arguments.
 
-mypycify uses setuptools if it's installed. On Python versions before 3.12,
-it falls back to distutils if setuptools isn't installed.
+mypycify requires setuptools.
 
 setuptools and distutils are only imported when they are needed to build
 extensions (such as in mypycify), since importing them is slow and
