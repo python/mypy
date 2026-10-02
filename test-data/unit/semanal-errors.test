@@ -1016,6 +1016,7 @@ class A(Generic[T]):
           # E: Free type variable expected in Generic[...]
 [out]
 
+# A self-referential Generic[...] base must not crash the semantic analyzer
 [case testSelfReferenceInGenericBase]
 from typing import Generic
 class C(Generic[C]): pass \
