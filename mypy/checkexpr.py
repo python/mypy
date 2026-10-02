@@ -340,6 +340,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             tuple[Expression, Type | None],
             tuple[int, Type, list[ErrorInfo], dict[Expression, Type]],
         ] = {}
+        self.freshen_cache: dict[tuple[Context, CallableType], CallableType] = {}
         self.in_lambda_expr = False
 
         self._literal_true: Instance | None = None
@@ -347,6 +348,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
 
     def reset(self) -> None:
         self.expr_cache.clear()
+        self.freshen_cache.clear()
 
     def visit_name_expr(self, e: NameExpr) -> Type:
         """Type check a name expression.
@@ -1574,7 +1576,10 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             args: actual argument expressions
             arg_kinds: contains nodes.ARG_* constant for each argument in args
                  describing whether the argument is positional, *arg, etc.
-            context: current expression context, used for inference.
+            context: current expression context, used for inference. Note: for "synthetic"
+                 calls (such as decorators or comprehensions), pass the exact context, so
+                 that two conceptually different calls will not accidentally have same
+                 context (since it is used as a cache key for inference).
             arg_names: names of arguments (optional)
             callable_node: associate the inferred callable type to this node,
                 if specified
@@ -1763,18 +1768,31 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                         return AnyType(TypeOfAny.from_error), callee
                     seen_unpack = True
 
-        # This is tricky: return type may contain its own type variables, like in
-        # def [S] (S) -> def [T] (T) -> tuple[S, T], so we need to update their ids
-        # to avoid possible id clashes if this call itself appears in a generic
-        # function body.
-        ret_type = get_proper_type(callee.ret_type)
-        if isinstance(ret_type, CallableType) and ret_type.variables:
-            fresh_ret_type = freshen_all_functions_type_vars(callee.ret_type)
-            freeze_all_type_vars(fresh_ret_type)
-            callee = callee.copy_modified(ret_type=fresh_ret_type)
+        # If the callable is generic, we need to replace its type variables with unique
+        # meta variables. We however do this at most once per callable, so that expression
+        # cache stays efficient in absence of outer type context.
+        original_callee = callee
+        if (context, callee) in self.freshen_cache:
+            callee = self.freshen_cache[(context, callee)]
+        else:
+            should_cache = False
+            ret_type = get_proper_type(callee.ret_type)
+            if isinstance(ret_type, CallableType) and ret_type.variables:
+                # This is tricky: return type may contain its own type variables, like in
+                # def [S] (S) -> def [T] (T) -> tuple[S, T], so we need to update their ids
+                # to avoid possible id clashes if this call itself appears in a generic
+                # function body.
+                fresh_ret_type = freshen_all_functions_type_vars(callee.ret_type)
+                freeze_all_type_vars(fresh_ret_type)
+                callee = callee.copy_modified(ret_type=fresh_ret_type)
+                should_cache = True
+            if callee.is_generic():
+                callee = freshen_function_type_vars(callee)
+                should_cache = True
+            if should_cache:
+                self.freshen_cache[(context, original_callee)] = callee
 
         if callee.is_generic():
-            callee = freshen_function_type_vars(callee)
             callee = self.infer_function_type_arguments_using_context(callee, context)
 
         formal_to_actual = map_actuals_to_formals(
