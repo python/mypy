@@ -2816,6 +2816,21 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         # Only non-abstract non-protocol class can be given where Type[...] is expected...
         elif self.has_abstract_type_part(caller_type, callee_type):
             self.msg.concrete_only_call(callee_type, context)
+        # Semantic analysis tried and failed to parse this as a type expression.
+        elif (
+            isinstance(context, StrExpr)
+            and context.as_type is None
+            and isinstance(caller_type, Instance)
+            and caller_type.type.fullname == "builtins.str"
+            and isinstance(callee_type, TypeType)
+            and callee_type.is_type_form
+        ):
+            self.chk.fail(
+                "TypeForm containing a string annotation cannot be recognized here. "
+                "Surround with TypeForm(...) to recognize.",
+                context,
+                code=codes.MAYBE_UNRECOGNIZED_STR_TYPEFORM,
+            )
         elif not is_subtype(caller_type, callee_type, options=self.chk.options):
             error = self.msg.incompatible_argument(
                 n,
