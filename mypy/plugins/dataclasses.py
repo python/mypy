@@ -600,6 +600,11 @@ class DataclassTransformer:
                 # We will issue an error later.
                 continue
 
+            if isinstance(node, TypeInfo):
+                # A special form declaration (like a TypedDict or NamedTuple)
+                # with an (erroneous) annotation.
+                continue
+
             assert isinstance(node, Var), node
 
             # x: ClassVar[int] is ignored by dataclasses.
