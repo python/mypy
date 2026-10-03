@@ -2843,3 +2843,31 @@ class Bad1:
 class Bad2:
     x: InitVar[Final[int]]  # E: Final can be only used as an outermost qualifier in a variable annotation
 [builtins fixtures/dict.pyi]
+
+[case testNoCrashOnNestedSpecialFormsWithAnnotations]
+import dataclasses
+from typing import ClassVar, NamedTuple
+from typing_extensions import TypedDict
+
+@dataclasses.dataclass
+class X:
+    a: int
+    TD: ClassVar = TypedDict("TD", {"a": int})  # E: Cannot declare the type of a TypedDict declaration
+    NT: ClassVar = NamedTuple("NT", [("a", int)])  # E: Cannot declare the type of a NamedTuple declaration
+
+reveal_type(X)  # N: Revealed type is "def (a: builtins.int) -> __main__.X"
+
+@dataclasses.dataclass
+class XOK:
+    a: int
+    TD = TypedDict("TD", {"a": int})
+    NT = NamedTuple("NT", [("a", int)])
+
+reveal_type(XOK)  # N: Revealed type is "def (a: builtins.int) -> __main__.XOK"
+
+td: XOK.TD
+nt: XOK.NT
+
+reveal_type(td)  # N: Revealed type is "TypedDict('__main__.XOK.TD', {'a': builtins.int})"
+reveal_type(nt)  # N: Revealed type is "tuple[builtins.int, fallback=__main__.XOK.NT]"
+[builtins fixtures/dict.pyi]
