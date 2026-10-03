@@ -334,7 +334,7 @@ class TarFile:
         pax_headers: Mapping[str, str] | None = ...,
         debug: Literal[0, 1, 2, 3] | None = None,  # default 0
         errorlevel: Literal[0, 1, 2] | None = None,  # default 1
-        preset: Literal[0, 1, 2, 3, 4, 5, 6, 7, 8, 9] | None = ...,
+        preset: int | None = ...,
     ) -> Self: ...
     @overload
     @classmethod
@@ -354,7 +354,7 @@ class TarFile:
         pax_headers: Mapping[str, str] | None = ...,
         debug: Literal[0, 1, 2, 3] | None = None,  # default 0
         errorlevel: Literal[0, 1, 2] | None = None,  # default 1
-        preset: Literal[0, 1, 2, 3, 4, 5, 6, 7, 8, 9] | None = ...,
+        preset: int | None = ...,
     ) -> Self: ...
     if sys.version_info >= (3, 14):
         @overload
