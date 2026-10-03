@@ -10,6 +10,7 @@ from mypy.checker_shared import TypeCheckerSharedApi
 from mypy.erasetype import erase_typevars
 from mypy.expandtype import (
     expand_self_type,
+    expand_type,
     expand_type_by_instance,
     freshen_all_functions_type_vars,
 )
@@ -69,6 +70,7 @@ from mypy.types import (
     TypedDictType,
     TypeOfAny,
     TypeType,
+    TypeVarId,
     TypeVarLikeType,
     TypeVarTupleType,
     TypeVarType,
@@ -1111,6 +1113,10 @@ def check_self_arg(
             ),
             ignore_pos_arg_names=True,
         ):
+            if not self_callable and not has_valid_self_type_bounds(
+                item, selfarg, dispatched_arg_type
+            ):
+                continue
             new_items.append(item)
         elif isinstance(selfarg, ParamSpecType):
             # TODO: This is not always right. What's the most reasonable thing to do here?
@@ -1126,6 +1132,63 @@ def check_self_arg(
     if len(new_items) == 1:
         return new_items[0]
     return Overloaded(new_items)
+
+
+def has_valid_self_type_bounds(
+    item: CallableType, selfarg: ProperType, dispatched_arg_type: Type
+) -> bool:
+    """Check that inferred self type arguments satisfy their bounds/values.
+
+    For an explicit self annotation like ``self: list[T]`` (where T has a bound),
+    the type arguments inferred from the receiver must satisfy the bound, otherwise
+    the overload item does not apply. Plain ``Self`` is not affected, it is handled
+    separately.
+    """
+    if not item.variables or not supported_self_type(selfarg):
+        return True
+    self_ids = {tv.id for tv in get_all_type_vars(selfarg)}
+    self_vars = [
+        tv
+        for tv in item.variables
+        if tv.id in self_ids and not (isinstance(tv, TypeVarType) and tv.name == "Self")
+    ]
+    if not self_vars:
+        return True
+    # Deferred import to avoid an import cycle, same as in typeops.bind_self().
+    from mypy.infer import infer_type_arguments
+
+    # Use the same inference as bind_self() will use below, so that we validate
+    # exactly the solutions that will be substituted into the signature.
+    typeargs = infer_type_arguments(
+        self_vars, selfarg, dispatched_arg_type, is_supertype=True, erase_types=False
+    )
+    id_to_solution = {tv.id: arg for tv, arg in zip(self_vars, typeargs) if arg is not None}
+    return all(
+        self_type_argument_within_bounds(tvar, typ, id_to_solution)
+        for tvar, typ in zip(self_vars, typeargs)
+    )
+
+
+def self_type_argument_within_bounds(
+    tvar: TypeVarLikeType, typ: Type | None, id_to_solution: dict[TypeVarId, Type]
+) -> bool:
+    if typ is None or isinstance(tvar, (ParamSpecType, TypeVarTupleType)):
+        return True
+    assert isinstance(tvar, TypeVarType)
+    if tvar.values:
+        return any(
+            self_type_within_bound(typ, expand_type(value, id_to_solution))
+            for value in tvar.values
+        )
+    return self_type_within_bound(typ, expand_type(tvar.upper_bound, id_to_solution))
+
+
+def self_type_within_bound(typ: Type, bound: Type) -> bool:
+    if get_all_type_vars(bound):
+        # The bound still mentions unsolved type variables (e.g. from an
+        # enclosing class), so we cannot decide; do not filter the item.
+        return True
+    return is_subtype(typ, bound)
 
 
 def analyze_class_attribute_access(
