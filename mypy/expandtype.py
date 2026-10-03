@@ -508,7 +508,7 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
             assert isinstance(new_item, ProperType)
             assert isinstance(new_item, CallableType)
             items.append(new_item)
-        return Overloaded(items)
+        return Overloaded(items, t.bound_args)
 
     def expand_type_list_with_unpack(self, typs: list[Type]) -> list[Type]:
         """Expands a list of types that has an unpack."""
