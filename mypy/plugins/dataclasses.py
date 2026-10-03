@@ -360,12 +360,12 @@ class DataclassTransformer:
         if decorator_arguments["frozen"]:
             if any(not parent["frozen"] for parent in parent_decorator_arguments):
                 self._api.fail("Frozen dataclass cannot inherit from a non-frozen dataclass", info)
-            self._expand_callables(attributes)
+            self._propertize_callables(attributes, settable=False)
             self._freeze(attributes)
         else:
             if any(parent["frozen"] for parent in parent_decorator_arguments):
                 self._api.fail("Non-frozen dataclass cannot inherit from a frozen dataclass", info)
-            self._expand_callables(attributes)
+            self._propertize_callables(attributes)
 
         if decorator_arguments["slots"]:
             self.add_slots(info, attributes)
@@ -603,9 +603,11 @@ class DataclassTransformer:
             assert isinstance(node, Var), node
 
             if node is not lhs.node:
-                # There is an invalid redefinition. Avoid temptation to guess,
-                # and skip both, see testDataclassVariableBadRedefine.
-                continue
+                # We create new Vars in _propertize_callables(), so it is OK.
+                if not isinstance(get_proper_type(node.type), CallableType):
+                    # There is an invalid redefinition. Avoid temptation to guess,
+                    # and skip both, see testDataclassVariableBadRedefine.
+                    continue
 
             # x: ClassVar[int] is ignored by dataclasses.
             if node.is_classvar:
@@ -773,9 +775,6 @@ class DataclassTransformer:
                     if var.is_final:
                         continue  # do not turn `Final` attrs to `@property`
                     var.is_property = True
-                    # Checker may get confused when getting a property with this flag,
-                    # since normally it can be true only for real variables.
-                    var.is_initialized_in_class = False
             else:
                 var = attr.to_var(info)
                 var.info = info
@@ -783,17 +782,25 @@ class DataclassTransformer:
                 var._fullname = info.fullname + "." + var.name
                 info.names[var.name] = SymbolTableNode(MDEF, var)
 
-    def _expand_callables(self, attributes: list[DataclassAttribute]) -> None:
-        """Keep historical behavior for attributes with callable types."""
+    def _propertize_callables(
+        self, attributes: list[DataclassAttribute], settable: bool = True
+    ) -> None:
+        """Converts all attributes with callable types to @property methods.
+
+        This avoids the typechecker getting confused and thinking that
+        `my_dataclass_instance.callable_attr(foo)` is going to receive a
+        `self` argument (it is not).
+
+        """
         info = self._cls.info
         for attr in attributes:
             if isinstance(get_proper_type(attr.type), CallableType):
-                sym_node = info.names.get(attr.name)
-                if sym_node is not None:
-                    var = sym_node.node
-                    if isinstance(var, Var):
-                        # Expand types eagerly to support self-types.
-                        var.type = attr.expand_type(info)
+                var = attr.to_var(info)
+                var.info = info
+                var.is_property = True
+                var.is_settable_property = settable
+                var._fullname = info.fullname + "." + var.name
+                info.names[var.name] = SymbolTableNode(MDEF, var)
 
     def _is_kw_only_type(self, node: Type | None) -> bool:
         """Checks if the type of the node is the KW_ONLY sentinel value."""

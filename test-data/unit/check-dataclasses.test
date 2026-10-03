@@ -1774,8 +1774,7 @@ class A:
 def func() -> None:
     pass
 
-reveal_type(A.a)  # E: Cannot access instance-only attribute "a" on class object \
-                  # N: Revealed type is "def (*Any, **Any)"
+reveal_type(A.a)  # N: Revealed type is "def (*Any, **Any)"
 A(a=func).a()
 A(a=func).a = func  # E: Property "a" defined in "A" is read-only
 [builtins fixtures/dataclasses.pyi]
