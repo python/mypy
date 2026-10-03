@@ -695,6 +695,58 @@ reveal_type(Test)  # N: Revealed type is "def () -> __main__.Test"
 [builtins fixtures/dataclasses.pyi]
 [typing fixtures/typing-medium.pyi]
 
+[case testDataclassCallableAttrRegular]
+from dataclasses import dataclass
+from typing import Callable
+
+@dataclass
+class Defer(Parent):
+    b: int
+
+@dataclass
+class Parent:
+    key: Callable[[], str]
+    a: int
+
+reveal_type(Parent)  # N: Revealed type is "def (key: def () -> builtins.str, a: builtins.int) -> __main__.Parent"
+[builtins fixtures/dataclasses.pyi]
+[typing fixtures/typing-medium.pyi]
+
+[case testDataclassCallableAttrDefault]
+from dataclasses import dataclass
+from typing import Callable
+
+@dataclass
+class Defer(Parent):
+    b: int = 0
+
+@dataclass
+class Parent:
+    key: Callable[[], str] = lambda: "yes"
+    a: int = 0
+
+reveal_type(Parent)  # N: Revealed type is "def (key: def () -> builtins.str =, a: builtins.int =) -> __main__.Parent"
+reveal_type(Parent.key)  # N: Revealed type is "def () -> builtins.str"
+[builtins fixtures/dataclasses.pyi]
+[typing fixtures/typing-medium.pyi]
+
+[case testDataclassCallableAttrFrozen]
+from dataclasses import dataclass
+from typing import Callable
+
+@dataclass(frozen=True)
+class Defer(Parent):
+    b: int
+
+@dataclass(frozen=True)
+class Parent:
+    key: Callable[[], str]
+    a: int
+
+reveal_type(Parent)  # N: Revealed type is "def (key: def () -> builtins.str, a: builtins.int) -> __main__.Parent"
+[builtins fixtures/dataclasses.pyi]
+[typing fixtures/typing-medium.pyi]
+
 [case testDataclassOrdering]
 from dataclasses import dataclass
 
@@ -1722,7 +1774,8 @@ class A:
 def func() -> None:
     pass
 
-reveal_type(A.a)  # N: Revealed type is "def (*Any, **Any)"
+reveal_type(A.a)  # E: Cannot access instance-only attribute "a" on class object \
+                  # N: Revealed type is "def (*Any, **Any)"
 A(a=func).a()
 A(a=func).a = func  # E: Property "a" defined in "A" is read-only
 [builtins fixtures/dataclasses.pyi]

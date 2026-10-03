@@ -360,12 +360,10 @@ class DataclassTransformer:
         if decorator_arguments["frozen"]:
             if any(not parent["frozen"] for parent in parent_decorator_arguments):
                 self._api.fail("Frozen dataclass cannot inherit from a non-frozen dataclass", info)
-            self._propertize_callables(attributes, settable=False)
             self._freeze(attributes)
         else:
             if any(parent["frozen"] for parent in parent_decorator_arguments):
                 self._api.fail("Non-frozen dataclass cannot inherit from a frozen dataclass", info)
-            self._propertize_callables(attributes)
 
         if decorator_arguments["slots"]:
             self.add_slots(info, attributes)
@@ -777,26 +775,6 @@ class DataclassTransformer:
                 var = attr.to_var(info)
                 var.info = info
                 var.is_property = True
-                var._fullname = info.fullname + "." + var.name
-                info.names[var.name] = SymbolTableNode(MDEF, var)
-
-    def _propertize_callables(
-        self, attributes: list[DataclassAttribute], settable: bool = True
-    ) -> None:
-        """Converts all attributes with callable types to @property methods.
-
-        This avoids the typechecker getting confused and thinking that
-        `my_dataclass_instance.callable_attr(foo)` is going to receive a
-        `self` argument (it is not).
-
-        """
-        info = self._cls.info
-        for attr in attributes:
-            if isinstance(get_proper_type(attr.type), CallableType):
-                var = attr.to_var(info)
-                var.info = info
-                var.is_property = True
-                var.is_settable_property = settable
                 var._fullname = info.fullname + "." + var.name
                 info.names[var.name] = SymbolTableNode(MDEF, var)
 
