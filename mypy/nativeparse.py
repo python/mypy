@@ -269,6 +269,8 @@ def native_parse_type_string(
     data = ReadBuffer(ast_bytes)
     ret = read_type(state, data)
     assert isinstance(ret, ProperType)
+    if isinstance(ret, RawExpressionType) and expr_string == "None":
+        return UnboundType("None", line=line, column=column)
     return ret
 
 

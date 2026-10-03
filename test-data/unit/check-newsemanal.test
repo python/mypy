@@ -2311,6 +2311,12 @@ reveal_type(x.x)  # N: Revealed type is "builtins.int"
 C = NamedTuple('C', [('x', int)])
 [builtins fixtures/tuple.pyi]
 
+[case testNewAnalyzerCastNoneString]
+from typing import Any, cast
+
+def f(x: Any) -> None:
+    return cast("None", x)
+
 [case testNewAnalyzerApplicationForward1]
 # flags: --disable-error-code used-before-def
 from typing import Generic, TypeVar
