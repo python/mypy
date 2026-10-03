@@ -1780,6 +1780,34 @@ A(a=func).a()
 A(a=func).a = func  # E: Property "a" defined in "A" is read-only
 [builtins fixtures/dataclasses.pyi]
 
+[case testDataclassesCallableFrozenOverride]
+from dataclasses import dataclass
+from typing import Callable
+@dataclass(frozen=True)
+class A:
+    a: Callable[[int], str] = lambda x: "yes"
+
+def foo(x: int) -> str:
+    return "no"
+
+@dataclass(frozen=True)
+class Sub(A):
+    # This is no-op for attribute access on instances,
+    # so we effectively check the subtyping as if accessed on class.
+    a = foo
+[builtins fixtures/dataclasses.pyi]
+
+[case testDataclassesCallableFrozenSelf]
+from dataclasses import dataclass
+from typing import Self, Callable
+@dataclass(frozen=True)
+class A:
+    a: Callable[[Self], str]
+
+a: A
+reveal_type(a.a)  # N: Revealed type is "def (__main__.A) -> builtins.str"
+[builtins fixtures/dataclasses.pyi]
+
 [case testDataclassInFunctionDoesNotCrash]
 from dataclasses import dataclass
 
