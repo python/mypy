@@ -219,6 +219,25 @@ twice(a) # E: Value of type variable "T" of "twice" cannot be "int"
 [builtins fixtures/args.pyi]
 
 
+[case testBoundWithFreeTypeVar]
+# The upper bound contains a free type variable that does not appear
+# elsewhere in the signature; it should be solved from the argument.
+from typing import TypeVar, Callable, Any
+_FT = TypeVar("_FT")
+_F = TypeVar("_F", bound=Callable[..., _FT])
+
+def force_delegate(func: _F) -> _F:
+    return func
+
+def render(x: int, y: str) -> dict[str, Any]:
+    return {}
+
+force_delegate(render)
+reveal_type(force_delegate(render))  # N: Revealed type is "def (x: builtins.int, y: builtins.str) -> builtins.dict[builtins.str, Any]"
+force_delegate(1)  # E: Value of type variable "_F" of "force_delegate" cannot be "int"
+[builtins fixtures/args.pyi]
+
+
 [case testIterableBoundUnpacking]
 from typing import Tuple, TypeVar
 TupleT = TypeVar("TupleT", bound=Tuple[int, ...])
