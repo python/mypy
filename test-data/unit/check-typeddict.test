@@ -6148,3 +6148,208 @@ def test(f: Callable[[object], object]) -> None: ...
 test(foo)  # E: Argument 1 to "test" has incompatible type overloaded function; expected "Callable[[object], object]"
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictGetBoundTypeVarRequired]
+# https://github.com/python/mypy/issues/16872
+from typing import TypedDict, TypeVar
+
+class MyDict(TypedDict):
+    foo: list[str]
+
+class Child(MyDict):
+    extra: int
+
+class Unrelated: pass
+
+T = TypeVar('T', bound=MyDict)
+
+def f(d: T, direct: MyDict, u: Unrelated) -> T:
+    reveal_type(d)  # N: Revealed type is "T`-1"
+    reveal_type(d['foo'])  # N: Revealed type is "builtins.list[builtins.str]"
+    reveal_type(direct['foo'])  # N: Revealed type is "builtins.list[builtins.str]"
+    reveal_type(d.get('foo'))  # N: Revealed type is "builtins.list[builtins.str]"
+    reveal_type(direct.get('foo'))  # N: Revealed type is "builtins.list[builtins.str]"
+    reveal_type(d.get('foo', ['x']))  # N: Revealed type is "builtins.list[builtins.str]"
+    reveal_type(direct.get('foo', ['x']))  # N: Revealed type is "builtins.list[builtins.str]"
+    reveal_type(d.get('foo', []))  # N: Revealed type is "builtins.list[builtins.str]"
+    reveal_type(direct.get('foo', []))  # N: Revealed type is "builtins.list[builtins.str]"
+    reveal_type(d.get('foo', u))  # N: Revealed type is "builtins.list[builtins.str]"
+    reveal_type(direct.get('foo', u))  # N: Revealed type is "builtins.list[builtins.str]"
+    return d
+
+def g(child: Child) -> None:
+    reveal_type(f(child, child, Unrelated()))  # N: Revealed type is "TypedDict('__main__.Child', {'foo': builtins.list[builtins.str], 'extra': builtins.int})"
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictGetBoundTypeVarOptional]
+from typing import TypedDict, TypeVar
+from typing_extensions import NotRequired, Required
+
+class Unrelated: pass
+
+class Partial(TypedDict, total=False):
+    x: int
+    y: str
+
+class Mixed(TypedDict):
+    x: Required[int]
+    y: NotRequired[str]
+
+P = TypeVar('P', bound=Partial)
+M = TypeVar('M', bound=Mixed)
+
+def partial(d: P, direct: Partial, u: Unrelated) -> None:
+    reveal_type(d.get('x'))  # N: Revealed type is "builtins.int | None"
+    reveal_type(direct.get('x'))  # N: Revealed type is "builtins.int | None"
+    reveal_type(d.get('y', u))  # N: Revealed type is "builtins.str | __main__.Unrelated"
+    reveal_type(direct.get('y', u))  # N: Revealed type is "builtins.str | __main__.Unrelated"
+    reveal_type(d.get('x', 1))  # N: Revealed type is "builtins.int"
+    reveal_type(direct.get('x', 1))  # N: Revealed type is "builtins.int"
+    reveal_type(d.get('y', None))  # N: Revealed type is "builtins.str | None"
+    reveal_type(direct.get('y', None))  # N: Revealed type is "builtins.str | None"
+
+def mixed(d: M, direct: Mixed, u: Unrelated) -> None:
+    reveal_type(d.get('x'))  # N: Revealed type is "builtins.int"
+    reveal_type(direct.get('x'))  # N: Revealed type is "builtins.int"
+    reveal_type(d.get('y'))  # N: Revealed type is "builtins.str | None"
+    reveal_type(direct.get('y'))  # N: Revealed type is "builtins.str | None"
+    reveal_type(d.get('x', u))  # N: Revealed type is "builtins.int"
+    reveal_type(direct.get('x', u))  # N: Revealed type is "builtins.int"
+    reveal_type(d.get('y', u))  # N: Revealed type is "builtins.str | __main__.Unrelated"
+    reveal_type(direct.get('y', u))  # N: Revealed type is "builtins.str | __main__.Unrelated"
+    reveal_type(d.get('y', 'a'))  # N: Revealed type is "builtins.str"
+    reveal_type(direct.get('y', 'a'))  # N: Revealed type is "builtins.str"
+    reveal_type(d.get('x', 1))  # N: Revealed type is "builtins.int"
+    reveal_type(direct.get('x', 1))  # N: Revealed type is "builtins.int"
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictGetBoundTypeVarTypeContext]
+from typing import TypedDict, TypeVar
+
+class Inner(TypedDict):
+    a: int
+
+class Outer(TypedDict, total=False):
+    items: list[int]
+    nested: Inner
+
+class TotalOuter(TypedDict):
+    nested: Inner
+    items: list[int]
+
+T = TypeVar('T', bound=Outer)
+U = TypeVar('U', bound=TotalOuter)
+
+def optional(d: T, direct: Outer) -> None:
+    reveal_type(d.get('items', []))  # N: Revealed type is "builtins.list[builtins.int]"
+    reveal_type(direct.get('items', []))  # N: Revealed type is "builtins.list[builtins.int]"
+    reveal_type(d.get('nested', {}))  # N: Revealed type is "TypedDict('__main__.Inner', {'a'?: builtins.int})"
+    reveal_type(direct.get('nested', {}))  # N: Revealed type is "TypedDict('__main__.Inner', {'a'?: builtins.int})"
+    reveal_type(d.get('nested', {}).get('a'))  # N: Revealed type is "builtins.int | None"
+    reveal_type(direct.get('nested', {}).get('a'))  # N: Revealed type is "builtins.int | None"
+    reveal_type(d.get('nested', {})['a'])  # N: Revealed type is "builtins.int"
+    reveal_type(direct.get('nested', {})['a'])  # N: Revealed type is "builtins.int"
+
+def required(d: U, direct: TotalOuter) -> None:
+    reveal_type(d.get('nested', {}))  # N: Revealed type is "TypedDict('__main__.Inner', {'a': builtins.int})"
+    reveal_type(direct.get('nested', {}))  # N: Revealed type is "TypedDict('__main__.Inner', {'a': builtins.int})"
+    reveal_type(d.get('nested', {}).get('a'))  # N: Revealed type is "builtins.int"
+    reveal_type(direct.get('nested', {}).get('a'))  # N: Revealed type is "builtins.int"
+    reveal_type(d.get('items', []))  # N: Revealed type is "builtins.list[builtins.int]"
+    reveal_type(direct.get('items', []))  # N: Revealed type is "builtins.list[builtins.int]"
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictGetBoundTypeVarLiteralKeys]
+from typing import Literal, TypedDict, TypeVar
+from typing_extensions import NotRequired, Required
+
+class Unrelated: pass
+
+class Open(TypedDict):
+    x: Required[int]
+    y: Required[str]
+    z: NotRequired[str]
+
+T = TypeVar('T', bound=Open)
+
+def f(d: T, direct: Open, u: Unrelated) -> None:
+    x: Literal['x']
+    y: Literal['y']
+    z: Literal['z']
+    missing: Literal['missing']
+    x_or_y: Literal['x', 'y']
+    x_or_z: Literal['x', 'z']
+    y_or_missing: Literal['y', 'missing']
+    s = ''
+
+    reveal_type(d.get(x))  # N: Revealed type is "builtins.int"
+    reveal_type(direct.get(x))  # N: Revealed type is "builtins.int"
+    reveal_type(d.get(y, u))  # N: Revealed type is "builtins.str"
+    reveal_type(direct.get(y, u))  # N: Revealed type is "builtins.str"
+    reveal_type(d.get(z))  # N: Revealed type is "builtins.str | None"
+    reveal_type(direct.get(z))  # N: Revealed type is "builtins.str | None"
+    reveal_type(d.get(z, u))  # N: Revealed type is "builtins.str | __main__.Unrelated"
+    reveal_type(direct.get(z, u))  # N: Revealed type is "builtins.str | __main__.Unrelated"
+    reveal_type(d.get(z, 'a'))  # N: Revealed type is "builtins.str"
+    reveal_type(direct.get(z, 'a'))  # N: Revealed type is "builtins.str"
+    reveal_type(d.get(x_or_y))  # N: Revealed type is "builtins.int | builtins.str"
+    reveal_type(direct.get(x_or_y))  # N: Revealed type is "builtins.int | builtins.str"
+    reveal_type(d.get(x_or_y, u))  # N: Revealed type is "builtins.int | builtins.str"
+    reveal_type(direct.get(x_or_y, u))  # N: Revealed type is "builtins.int | builtins.str"
+    reveal_type(d.get(x_or_z))  # N: Revealed type is "builtins.int | builtins.str | None"
+    reveal_type(direct.get(x_or_z))  # N: Revealed type is "builtins.int | builtins.str | None"
+    reveal_type(d.get(x_or_z, u))  # N: Revealed type is "builtins.int | builtins.str | __main__.Unrelated"
+    reveal_type(direct.get(x_or_z, u))  # N: Revealed type is "builtins.int | builtins.str | __main__.Unrelated"
+    reveal_type(d.get(missing))  # N: Revealed type is "builtins.object"
+    reveal_type(direct.get(missing))  # N: Revealed type is "builtins.object"
+    reveal_type(d.get('missing'))  # N: Revealed type is "builtins.object"
+    reveal_type(direct.get('missing'))  # N: Revealed type is "builtins.object"
+    reveal_type(d.get(y_or_missing))  # N: Revealed type is "builtins.object"
+    reveal_type(direct.get(y_or_missing))  # N: Revealed type is "builtins.object"
+    reveal_type(d.get(y_or_missing, u))  # N: Revealed type is "builtins.object"
+    reveal_type(direct.get(y_or_missing, u))  # N: Revealed type is "builtins.object"
+    reveal_type(d.get(s))  # N: Revealed type is "builtins.object"
+    reveal_type(direct.get(s))  # N: Revealed type is "builtins.object"
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictGetBoundTypeVarInvalidArgs]
+from typing import TypedDict, TypeVar
+
+class MyDict(TypedDict):
+    x: int
+    y: str
+
+T = TypeVar('T', bound=MyDict)
+
+def f(d: T) -> None:
+    d.get()  # E: All overload variants of "get" of "Mapping" require at least one argument \
+             # N: Possible overload variants: \
+             # N:     def get(self, str, /) -> object \
+             # N:     def get(self, str, object, /) -> object \
+             # N:     def [V] get(self, str, V, /) -> object
+    d.get('x', 1, 2)  # E: No overload variant of "get" of "Mapping" matches argument types "str", "int", "int" \
+                      # N: Possible overload variants: \
+                      # N:     def get(self, str, /) -> object \
+                      # N:     def get(self, str, object, /) -> object \
+                      # N:     def [V] get(self, str, int | V, /) -> object
+    d.get('x', 1 + 'y')  # E: Unsupported operand types for + ("int" and "str")
+    s = ''
+    reveal_type(d.get(s))  # N: Revealed type is "builtins.object"
+    reveal_type(d.get('z'))  # N: Revealed type is "builtins.object"
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictGetBoundTypeVarUnrelated]
+from typing import TypeVar
+
+D = TypeVar('D', bound=dict[str, int])
+
+def f(d: D) -> None:
+    reveal_type(d.get('x'))  # N: Revealed type is "builtins.int | None"
+    reveal_type(d.get('x', 1))  # N: Revealed type is "builtins.int"
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]

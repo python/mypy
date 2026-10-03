@@ -226,6 +226,20 @@ def len_callback(ctx: FunctionContext) -> Type:
     return ctx.default_return_type
 
 
+def _typed_dict_get_receiver(typ: Type) -> TypedDictType | None:
+    """TypedDict for `.get`, including a TypeVar's proper upper bound.
+
+    The plugin context still carries the original receiver. Callers use this
+    only for field lookup, required keys, and closedness.
+    """
+    typ = get_proper_type(typ)
+    if isinstance(typ, TypeVarType):
+        typ = get_proper_type(typ.upper_bound)
+    if isinstance(typ, TypedDictType):
+        return typ
+    return None
+
+
 def typed_dict_get_signature_callback(ctx: MethodSigContext) -> CallableType:
     """Try to infer a better signature type for TypedDict.get.
 
@@ -233,8 +247,9 @@ def typed_dict_get_signature_callback(ctx: MethodSigContext) -> CallableType:
     depends on a TypedDict value type.
     """
     signature = ctx.default_signature
+    receiver = _typed_dict_get_receiver(ctx.type)
     if (
-        isinstance(ctx.type, TypedDictType)
+        receiver is not None
         and len(ctx.args) == 2
         and len(ctx.args[0]) == 1
         and isinstance(ctx.args[0][0], StrExpr)
@@ -243,7 +258,7 @@ def typed_dict_get_signature_callback(ctx: MethodSigContext) -> CallableType:
         and len(ctx.args[1]) == 1
     ):
         key = ctx.args[0][0].value
-        value_type = get_proper_type(ctx.type.items.get(key))
+        value_type = get_proper_type(receiver.items.get(key))
         ret_type = signature.ret_type
         if value_type:
             default_arg = ctx.args[1][0]
@@ -268,11 +283,8 @@ def typed_dict_get_signature_callback(ctx: MethodSigContext) -> CallableType:
 
 def typed_dict_get_callback(ctx: MethodContext) -> Type:
     """Infer a precise return type for TypedDict.get with literal first argument."""
-    if (
-        isinstance(ctx.type, TypedDictType)
-        and len(ctx.arg_types) >= 1
-        and len(ctx.arg_types[0]) == 1
-    ):
+    receiver = _typed_dict_get_receiver(ctx.type)
+    if receiver is not None and len(ctx.arg_types) >= 1 and len(ctx.arg_types[0]) == 1:
         keys = try_getting_str_literals(ctx.args[0][0], ctx.arg_types[0][0])
         if keys is None:
             return ctx.default_return_type
@@ -290,12 +302,12 @@ def typed_dict_get_callback(ctx: MethodContext) -> Type:
 
         output_types: list[Type] = []
         for key in keys:
-            value_type: Type | None = ctx.type.items.get(key)
+            value_type: Type | None = receiver.items.get(key)
             if value_type is None:
-                if not ctx.type.is_closed:
+                if not receiver.is_closed:
                     return ctx.default_return_type
                 output_types.append(default_type)
-            elif key in ctx.type.required_keys:
+            elif key in receiver.required_keys:
                 output_types.append(value_type)
             else:
                 # HACK to deal with get(key, {})
