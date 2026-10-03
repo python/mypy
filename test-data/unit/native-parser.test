@@ -3116,3 +3116,13 @@ MypyFile:1(
             Args(
               NameExpr(x)
               StrExpr())))))))
+
+[case testNoneInStringType]
+x: "None"
+[out]
+MypyFile:1(
+  AssignmentStmt:1(
+    NameExpr(x)
+    TempNode:1(
+      Any)
+    None?))
