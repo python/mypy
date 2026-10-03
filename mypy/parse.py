@@ -31,6 +31,8 @@ def parse(
     `source` must not be `None` if the old parser is used. The new parser will read and
     parse contents from path `fnam` if `source` is `None`.
     """
+    if options.transform_source is not None and source is not None:
+        source = options.transform_source(source)
     if options.native_parser:
         import mypy.nativeparse
 
@@ -50,8 +52,6 @@ def parse(
 
     if source is None:
         raise ValueError("Source cannot be `None` when using the old parser")
-    if options.transform_source is not None:
-        source = options.transform_source(source)
     import mypy.fastparse
 
     return mypy.fastparse.parse(source, fnam=fnam, module=module, errors=errors, options=options)
