@@ -602,6 +602,11 @@ class DataclassTransformer:
 
             assert isinstance(node, Var), node
 
+            if node is not lhs.node:
+                # There is an invalid redefinition. Avoid temptation to guess,
+                # and skip both, see testDataclassVariableBadRedefine.
+                continue
+
             # x: ClassVar[int] is ignored by dataclasses.
             if node.is_classvar:
                 continue

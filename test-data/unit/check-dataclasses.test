@@ -670,6 +670,31 @@ reveal_type(x)  # N: Revealed type is "typing._SpecialForm"
 [builtins fixtures/dataclasses.pyi]
 [typing fixtures/typing-medium.pyi]
 
+[case testFunctionAliasDataclassNoCrash]
+from dataclasses import dataclass
+
+def fn(a: int) -> int:
+    return a
+
+@dataclass
+class Test:
+    foo = fn
+    foo: int = 42  # E: Name "foo" already defined on line 8
+[builtins fixtures/dataclasses.pyi]
+[typing fixtures/typing-medium.pyi]
+
+[case testDataclassVariableBadRedefine]
+from dataclasses import dataclass
+
+@dataclass
+class Test:
+    foo = "test"
+    foo: int = 42  # E: Name "foo" already defined on line 5
+
+reveal_type(Test)  # N: Revealed type is "def () -> __main__.Test"
+[builtins fixtures/dataclasses.pyi]
+[typing fixtures/typing-medium.pyi]
+
 [case testDataclassOrdering]
 from dataclasses import dataclass
 
