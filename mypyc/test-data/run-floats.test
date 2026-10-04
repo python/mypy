@@ -556,3 +556,88 @@ def gen() -> Iterator[float]:
 
 def test_float_error_value_across_yield() -> None:
     assert list(gen()) == [0.0, FLOAT_MAGIC]
+
+[case testFloatAndComplexRealImag]
+from typing import Any, cast
+from testutil import assertRaises, float_vals, FLOAT_MAGIC
+from realimag import OverrideReal, OverrideImag, PlainComplex, BadReal
+
+def float_parts(x: float) -> tuple[float, float]:
+    return x.real, x.imag
+
+def complex_parts(z: complex) -> tuple[float, float]:
+    return z.real, z.imag
+
+def union_parts(x: float | complex) -> tuple[float, float]:
+    return x.real, x.imag
+
+def narrowed_parts(x: Any) -> tuple[float, float] | None:
+    if isinstance(x, (float, complex)):
+        return x.real, x.imag
+    return None
+
+class Point:
+    def __init__(self, z: complex) -> None:
+        self.z = z
+
+def point_parts(p: Point) -> tuple[float, float]:
+    return p.z.real, p.z.imag
+
+def same(a: object, b: object) -> bool:
+    # Unlike ==, this distinguishes -0.0 from 0.0 and treats nan as equal to itself
+    return repr(a) == repr(b)
+
+def test_float() -> None:
+    for x in float_vals:
+        expected = (x, 0.0)
+        assert same(float_parts(x), expected)
+        assert same(complex_parts(x), expected)
+        assert same(union_parts(x), expected)
+        assert same(narrowed_parts(x), expected)
+
+def test_complex() -> None:
+    for re in float_vals:
+        for im in [0.0, -0.0, 1.5, FLOAT_MAGIC, float("nan"), float("-inf")]:
+            z = complex(re, im)
+            assert same(complex_parts(z), (re, im))
+            assert same(union_parts(z), (re, im))
+            assert same(narrowed_parts(z), (re, im))
+    assert point_parts(Point(3 - 4j)) == (3.0, -4.0)
+    assert narrowed_parts("x") is None
+
+def test_int_and_bool() -> None:
+    assert complex_parts(5) == (5.0, 0.0)
+    assert union_parts(-7) == (-7.0, 0.0)
+    assert complex_parts(True) == (1.0, 0.0)
+
+def test_subclasses() -> None:
+    # Subclasses could override the properties, so they use a generic lookup
+    for parts in (complex_parts, union_parts, narrowed_parts):
+        assert parts(OverrideReal(1, 2)) == (42.0, 2.0)
+        assert parts(OverrideImag(2.5)) == (2.5, 7.0)
+        assert parts(PlainComplex(1, 2)) == (1.0, 2.0)
+
+def test_errors() -> None:
+    with assertRaises(AttributeError, "real"):
+        complex_parts(cast(Any, "x"))
+    with assertRaises(TypeError, "float object expected; got str"):
+        complex_parts(cast(Any, BadReal()))
+    with assertRaises(TypeError, "float object expected; got int"):
+        complex_parts(10**400)
+
+[file realimag.py]
+class OverrideReal(complex):
+    @property
+    def real(self) -> float:
+        return 42.0
+
+class OverrideImag(float):
+    @property
+    def imag(self) -> float:
+        return 7.0
+
+class PlainComplex(complex):
+    pass
+
+class BadReal:
+    real = "x"

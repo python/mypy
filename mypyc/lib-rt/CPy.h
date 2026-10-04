@@ -640,6 +640,28 @@ CPyTagged CPyFloat_Ceil(double x);
 double CPyFloat_FromTagged(CPyTagged x);
 bool CPyFloat_IsInf(double x);
 bool CPyFloat_IsNaN(double x);
+double CPyComplex_GetPartSlow(PyObject *o, const char *name);
+
+// o.real, where the static type of o is float or complex. Other types,
+// including subclasses that might override the property, use getattr.
+static inline double CPyComplex_Real(PyObject *o) {
+    if (PyComplex_CheckExact(o)) {
+        return ((PyComplexObject *)o)->cval.real;
+    } else if (PyFloat_CheckExact(o)) {
+        return PyFloat_AS_DOUBLE(o);
+    }
+    return CPyComplex_GetPartSlow(o, "real");
+}
+
+// o.imag, where the static type of o is float or complex
+static inline double CPyComplex_Imag(PyObject *o) {
+    if (PyComplex_CheckExact(o)) {
+        return ((PyComplexObject *)o)->cval.imag;
+    } else if (PyFloat_CheckExact(o)) {
+        return 0.0;
+    }
+    return CPyComplex_GetPartSlow(o, "imag");
+}
 
 
 // Generic operations (that work with arbitrary types)

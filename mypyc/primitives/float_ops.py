@@ -11,7 +11,7 @@ from mypyc.ir.rtypes import (
     object_rprimitive,
     str_rprimitive,
 )
-from mypyc.primitives.registry import binary_op, function_op, load_address_op
+from mypyc.primitives.registry import binary_op, custom_primitive_op, function_op, load_address_op
 
 # Get the 'builtins.float' type object.
 load_address_op(name="builtins.float", type=object_rprimitive, src="PyFloat_Type")
@@ -175,4 +175,22 @@ isinstance_float = function_op(
     return_type=bit_rprimitive,
     c_function_name="PyFloat_Check",
     error_kind=ERR_NEVER,
+)
+
+# obj.real, where obj is a float or a complex
+complex_real_op = custom_primitive_op(
+    name="complex.real",
+    arg_types=[object_rprimitive],
+    return_type=float_rprimitive,
+    c_function_name="CPyComplex_Real",
+    error_kind=ERR_MAGIC_OVERLAPPING,
+)
+
+# obj.imag, where obj is a float or a complex
+complex_imag_op = custom_primitive_op(
+    name="complex.imag",
+    arg_types=[object_rprimitive],
+    return_type=float_rprimitive,
+    c_function_name="CPyComplex_Imag",
+    error_kind=ERR_MAGIC_OVERLAPPING,
 )

@@ -54,8 +54,10 @@ from mypy.types import (
     Instance,
     ProperType,
     TupleType,
+    Type,
     TypeOfAny,
     TypeType,
+    UnionType,
     get_proper_type,
 )
 from mypyc.common import (
@@ -73,6 +75,7 @@ from mypyc.ir.ops import (
     CallC,
     Cast,
     ComparisonOp,
+    Float,
     GetAttr,
     Integer,
     LoadAddress,
@@ -96,6 +99,7 @@ from mypyc.ir.rtypes import (
     is_bytearray_rprimitive,
     is_bytes_rprimitive,
     is_fixed_width_rtype,
+    is_float_rprimitive,
     is_int64_rprimitive,
     is_int_rprimitive,
     is_list_rprimitive,
@@ -145,6 +149,7 @@ from mypyc.irbuild.vec import (
 )
 from mypyc.primitives.bytes_ops import bytes_slice_op
 from mypyc.primitives.dict_ops import dict_get_item_op, dict_new_op, exact_dict_set_item_op
+from mypyc.primitives.float_ops import complex_imag_op, complex_real_op
 from mypyc.primitives.generic_ops import iter_op, name_op
 from mypyc.primitives.list_ops import list_append_op, list_extend_op, list_slice_op
 from mypyc.primitives.misc_ops import ellipsis_op, get_module_dict_op, new_slice_op, type_op
@@ -303,6 +308,13 @@ def transform_member_expr(builder: IRBuilder, expr: MemberExpr) -> Value:
         # only apply to RInstance types.
         return builder.primitive_op(type_op, [obj], expr.line)
 
+    if expr.name in ("real", "imag") and is_float_or_complex_type(builder.types.get(expr.expr)):
+        if is_float_rprimitive(obj.type):
+            # Unboxed floats are always exact floats, so these can't be overridden
+            return obj if expr.name == "real" else Float(0.0, expr.line)
+        op = complex_real_op if expr.name == "real" else complex_imag_op
+        return builder.primitive_op(op, [obj], expr.line)
+
     # Special case: for named tuples transform attribute access to faster index access.
     typ = get_proper_type(builder.types.get(expr.expr))
     if isinstance(typ, TupleType) and typ.partial_fallback.type.is_named_tuple:
@@ -332,6 +344,17 @@ def transform_member_expr(builder: IRBuilder, expr: MemberExpr) -> Value:
     borrow = (can_borrow and builder.can_borrow) or scope == KEEP_ALIVE_WHOLE_EXPRESSION
     return builder.builder.get_attr(
         obj, expr.name, rtype, expr.line, borrow=borrow, borrow_scope=scope
+    )
+
+
+def is_float_or_complex_type(typ: Type | None) -> bool:
+    """Is typ float, complex or a union of them (and not a subclass)?"""
+    typ = get_proper_type(typ)
+    if isinstance(typ, UnionType):
+        return all(is_float_or_complex_type(item) for item in typ.items)
+    return isinstance(typ, Instance) and typ.type.fullname in (
+        "builtins.float",
+        "builtins.complex",
     )
 
 
