@@ -640,7 +640,7 @@ CPyTagged CPyFloat_Ceil(double x);
 double CPyFloat_FromTagged(CPyTagged x);
 bool CPyFloat_IsInf(double x);
 bool CPyFloat_IsNaN(double x);
-double CPyComplex_GetPartSlow(PyObject *o, const char *name);
+double CPyComplex_GetPartSlow(PyObject *o, PyObject *name);
 double CPyComplex_LongAsDouble(PyObject *o);
 
 // o.real, where the static type of o is float or complex. Other types,
@@ -654,7 +654,7 @@ static inline double CPyComplex_Real(PyObject *o) {
         // An int can be used where a float or complex is expected
         return CPyComplex_LongAsDouble(o);
     }
-    return CPyComplex_GetPartSlow(o, "real");
+    return CPyComplex_GetPartSlow(o, mypyc_interned_str.real);
 }
 
 // o.imag, where the static type of o is float or complex
@@ -664,7 +664,7 @@ static inline double CPyComplex_Imag(PyObject *o) {
     } else if (PyFloat_CheckExact(o) || PyLong_CheckExact(o)) {
         return 0.0;
     }
-    return CPyComplex_GetPartSlow(o, "imag");
+    return CPyComplex_GetPartSlow(o, mypyc_interned_str.imag);
 }
 
 // o.real, where the static type of o is a union such as int | float | complex,
@@ -677,7 +677,7 @@ static inline PyObject *CPyNumber_Real(PyObject *o) {
     } else if (PyComplex_CheckExact(o)) {
         return PyFloat_FromDouble(((PyComplexObject *)o)->cval.real);
     }
-    return PyObject_GetAttrString(o, "real");
+    return PyObject_GetAttr(o, mypyc_interned_str.real);
 }
 
 // o.imag, where the static type of o is a union such as int | float | complex
@@ -689,7 +689,7 @@ static inline PyObject *CPyNumber_Imag(PyObject *o) {
     } else if (PyComplex_CheckExact(o)) {
         return PyFloat_FromDouble(((PyComplexObject *)o)->cval.imag);
     }
-    return PyObject_GetAttrString(o, "imag");
+    return PyObject_GetAttr(o, mypyc_interned_str.imag);
 }
 
 

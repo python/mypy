@@ -239,8 +239,8 @@ double CPyFloat_Pow(double x, double y) {
 }
 
 // Look up o.real or o.imag and convert it to a C double (see CPyComplex_Real)
-double CPyComplex_GetPartSlow(PyObject *o, const char *name) {
-    PyObject *part = PyObject_GetAttrString(o, name);
+double CPyComplex_GetPartSlow(PyObject *o, PyObject *name) {
+    PyObject *part = PyObject_GetAttr(o, name);
     if (part == NULL) {
         return CPY_FLOAT_ERROR;
     }

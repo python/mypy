@@ -46,10 +46,12 @@ typedef struct mypyc_interned_str_struct {
     PyObject *dispatch_cache;
     PyObject *endswith;
     PyObject *get_type_hints;
+    PyObject *imag;
     PyObject *keys;
     PyObject *lower;
     PyObject *items;
     PyObject *join;
+    PyObject *real;
     PyObject *register_;
     PyObject *registry;
     PyObject *send;
