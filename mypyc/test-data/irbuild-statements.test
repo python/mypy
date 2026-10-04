@@ -78,6 +78,39 @@ L3:
 L4:
     return 1
 
+[case testForInRangeAnyArgs]
+from typing import Any
+
+def f(a: Any, b: Any) -> None:
+    for i in range(a, b):
+        pass
+[out]
+def f(a, b):
+    a, b, r0 :: object
+    r1 :: int
+    r2 :: object
+    r3, r4, i :: int
+    r5 :: bit
+    r6 :: int
+L0:
+    r0 = PyNumber_Index(a)
+    r1 = unbox(int, r0)
+    r2 = PyNumber_Index(b)
+    r3 = unbox(int, r2)
+    r4 = r1
+    i = r4
+L1:
+    r5 = int_lt r4, r3
+    if r5 goto L2 else goto L4 :: bool
+L2:
+    i = r4
+L3:
+    r6 = CPyTagged_Add(r4, 2)
+    r4 = r6
+    goto L1
+L4:
+    return 1
+
 [case testBreak]
 def f() -> None:
   n = 0

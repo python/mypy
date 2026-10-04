@@ -572,6 +572,56 @@ def test_range_object() -> None:
     except ValueError as e:
         assert "range() arg 3 must not be zero" in str(e)
 
+[case testRangeLoopIndexArgs]
+from typing import Any
+
+from testutil import assertRaises
+
+def loop_end(end: Any) -> list[int]:
+    result = []
+    for i in range(end):
+        result.append(i)
+    return result
+
+def loop(start: Any, end: Any) -> list[int]:
+    return [i for i in range(start, end)]
+
+def loop_down(start: Any) -> list[int]:
+    return [i for i in range(start, 0, -1)]
+
+def loop_bool(b: bool) -> list[int]:
+    return [i for i in range(b)]
+
+def test_index_args() -> None:
+    from index_types import Index
+    assert loop_end(Index(3)) == [0, 1, 2]
+    assert loop(Index(1), Index(3)) == [1, 2]
+    assert loop_down(Index(2)) == [2, 1]
+
+def test_int_args() -> None:
+    assert loop_end(3) == [0, 1, 2]
+    assert loop(True, 3) == [1, 2]
+    n = 2**100
+    assert loop(n, n + 2) == [n, n + 1]
+    assert loop_bool(True) == [0]
+    assert loop_bool(False) == []
+
+def test_invalid_args() -> None:
+    with assertRaises(TypeError, "'float' object cannot be interpreted as an integer"):
+        loop_end(2.5)
+    with assertRaises(TypeError, "'str' object cannot be interpreted as an integer"):
+        loop(0, "3")
+    with assertRaises(TypeError, "'float' object cannot be interpreted as an integer"):
+        loop_down(2.0)
+
+[file index_types.py]
+class Index:
+    def __init__(self, n: int) -> None:
+        self.n = n
+
+    def __index__(self) -> int:
+        return self.n
+
 [case testNamedTupleLoop]
 from collections.abc import Iterable
 from typing import NamedTuple, Any

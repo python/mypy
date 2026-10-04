@@ -54,6 +54,7 @@ from mypyc.ir.rtypes import (
     bool_rprimitive,
     c_pyssize_t_rprimitive,
     int_rprimitive,
+    is_bool_or_bit_rprimitive,
     is_dict_rprimitive,
     is_fixed_width_rtype,
     is_immutable_rprimitive,
@@ -61,6 +62,7 @@ from mypyc.ir.rtypes import (
     is_sequence_rprimitive,
     is_short_int_rprimitive,
     is_str_rprimitive,
+    is_tagged,
     is_tuple_rprimitive,
     object_pointer_rprimitive,
     object_rprimitive,
@@ -80,7 +82,7 @@ from mypyc.primitives.dict_ops import (
     dict_value_iter_op,
 )
 from mypyc.primitives.exc_ops import no_err_occurred_op, propagate_if_error_op
-from mypyc.primitives.generic_ops import aiter_op, anext_op, iter_op, next_op
+from mypyc.primitives.generic_ops import aiter_op, anext_op, index_op, iter_op, next_op
 from mypyc.primitives.list_ops import (
     list_append_op,
     list_get_item_int64_op,
@@ -1122,6 +1124,8 @@ class ForRange(ForGenerator):
 
     def init(self, start_reg: Value, end_reg: Value, step: int) -> None:
         builder = self.builder
+        start_reg = self.convert_arg(start_reg)
+        end_reg = self.convert_arg(end_reg)
         self.start_reg = start_reg
         self.end_reg = end_reg
         self.step = step
@@ -1138,6 +1142,17 @@ class ForRange(ForGenerator):
         # Initialize loop index to 0. Assert that the index target is assignable.
         self.index_target: Register | AssignmentTarget = builder.get_assignment_target(self.index)
         builder.assign(self.index_target, builder.read(self.index_reg, self.line), self.line)
+
+    def convert_arg(self, value: Value) -> Value:
+        """Convert a range() argument to an int using __index__, like range() does."""
+        if (
+            is_tagged(value.type)
+            or is_fixed_width_rtype(value.type)
+            or is_bool_or_bit_rprimitive(value.type)
+        ):
+            return value
+        index = self.builder.call_c(index_op, [value], self.line)
+        return self.builder.coerce(index, int_rprimitive, self.line)
 
     def gen_condition(self) -> None:
         builder = self.builder
