@@ -5904,7 +5904,9 @@ class SemanticAnalyzer(
                 python_3_12_type_alias=True,
             )
             alias_node.default_depends = default_depends
-            s.alias_node = alias_node
+            if s.alias_node is None:
+                # If there is an existing node, it will be modified in-place.
+                s.alias_node = alias_node
 
             updated = False
             if (
@@ -6329,9 +6331,11 @@ class SemanticAnalyzer(
         if types is None:
             return
         base = expr.base
-        expr.analyzed = TypeApplication(base, types)
-        expr.analyzed.line = expr.line
-        expr.analyzed.column = expr.column
+        if not isinstance(expr.analyzed, TypeAliasExpr):
+            # Do not re-point r.h.s. of a type alias, it is all set.
+            expr.analyzed = TypeApplication(base, types)
+            expr.analyzed.line = expr.line
+            expr.analyzed.column = expr.column
 
         if isinstance(base, RefExpr) and base.fullname == "librt.vecs.vec":
             # Apply restrictions specific to vec
