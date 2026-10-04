@@ -641,6 +641,7 @@ double CPyFloat_FromTagged(CPyTagged x);
 bool CPyFloat_IsInf(double x);
 bool CPyFloat_IsNaN(double x);
 double CPyComplex_GetPartSlow(PyObject *o, const char *name);
+double CPyComplex_LongAsDouble(PyObject *o);
 
 // o.real, where the static type of o is float or complex. Other types,
 // including subclasses that might override the property, use getattr.
@@ -649,6 +650,9 @@ static inline double CPyComplex_Real(PyObject *o) {
         return ((PyComplexObject *)o)->cval.real;
     } else if (PyFloat_CheckExact(o)) {
         return PyFloat_AS_DOUBLE(o);
+    } else if (PyLong_CheckExact(o)) {
+        // An int can be used where a float or complex is expected
+        return CPyComplex_LongAsDouble(o);
     }
     return CPyComplex_GetPartSlow(o, "real");
 }
@@ -657,10 +661,35 @@ static inline double CPyComplex_Real(PyObject *o) {
 static inline double CPyComplex_Imag(PyObject *o) {
     if (PyComplex_CheckExact(o)) {
         return ((PyComplexObject *)o)->cval.imag;
-    } else if (PyFloat_CheckExact(o)) {
+    } else if (PyFloat_CheckExact(o) || PyLong_CheckExact(o)) {
         return 0.0;
     }
     return CPyComplex_GetPartSlow(o, "imag");
+}
+
+// o.real, where the static type of o is a union such as int | float | complex,
+// so the result can be an int or a float. Other types use getattr.
+static inline PyObject *CPyNumber_Real(PyObject *o) {
+    if (PyLong_CheckExact(o) || PyFloat_CheckExact(o)) {
+        // int.real and float.real return the object itself
+        Py_INCREF(o);
+        return o;
+    } else if (PyComplex_CheckExact(o)) {
+        return PyFloat_FromDouble(((PyComplexObject *)o)->cval.real);
+    }
+    return PyObject_GetAttrString(o, "real");
+}
+
+// o.imag, where the static type of o is a union such as int | float | complex
+static inline PyObject *CPyNumber_Imag(PyObject *o) {
+    if (PyLong_CheckExact(o)) {
+        return PyLong_FromLong(0);
+    } else if (PyFloat_CheckExact(o)) {
+        return PyFloat_FromDouble(0.0);
+    } else if (PyComplex_CheckExact(o)) {
+        return PyFloat_FromDouble(((PyComplexObject *)o)->cval.imag);
+    }
+    return PyObject_GetAttrString(o, "imag");
 }
 
 

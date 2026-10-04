@@ -253,3 +253,14 @@ double CPyComplex_GetPartSlow(PyObject *o, const char *name) {
     Py_DECREF(part);
     return result;
 }
+
+// Convert the real part of an int to a C double (see CPyComplex_Real)
+double CPyComplex_LongAsDouble(PyObject *o) {
+    double result = PyLong_AsDouble(o);
+    if (result == -1.0 && PyErr_Occurred()) {
+        // Same error as unboxing the attribute value would produce
+        CPy_TypeError("float", o);
+        return CPY_FLOAT_ERROR;
+    }
+    return result;
+}

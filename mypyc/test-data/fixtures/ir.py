@@ -90,6 +90,10 @@ class int:
     def __ge__(self, n: int) -> bool: pass
     def to_bytes(self, length: int, order: str, *, signed: bool = False) -> bytes: pass
     def bit_length(self) -> int: pass
+    @property
+    def real(self) -> int: ...
+    @property
+    def imag(self) -> int: ...
 
 class str:
     @overload

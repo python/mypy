@@ -194,3 +194,21 @@ complex_imag_op = custom_primitive_op(
     c_function_name="CPyComplex_Imag",
     error_kind=ERR_MAGIC_OVERLAPPING,
 )
+
+# obj.real, where obj is an int, a float or a complex (the result can be an int)
+number_real_op = custom_primitive_op(
+    name="number.real",
+    arg_types=[object_rprimitive],
+    return_type=object_rprimitive,
+    c_function_name="CPyNumber_Real",
+    error_kind=ERR_MAGIC,
+)
+
+# obj.imag, where obj is an int, a float or a complex (the result can be an int)
+number_imag_op = custom_primitive_op(
+    name="number.imag",
+    arg_types=[object_rprimitive],
+    return_type=object_rprimitive,
+    c_function_name="CPyNumber_Imag",
+    error_kind=ERR_MAGIC,
+)
