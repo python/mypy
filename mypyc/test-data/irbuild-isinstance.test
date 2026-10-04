@@ -217,3 +217,132 @@ L4:
     r3 = 0
 L5:
     return r3
+
+[case testIsinstanceTupleOfPrimitiveAndOtherClasses]
+from typing import Any
+
+class C: pass
+
+def is_instance(x: Any) -> bool:
+    return isinstance(x, (float, ValueError, C))
+[out]
+def is_instance(x):
+    x, r0 :: object
+    r1 :: str
+    r2 :: object
+    r3 :: bit
+    r4 :: i32
+    r5 :: bit
+    r6 :: bool
+    r7 :: object
+    r8 :: ptr
+    r9 :: object
+    r10 :: bit
+    r11 :: bool
+L0:
+    r0 = builtins :: module
+    r1 = 'ValueError'
+    r2 = CPyObject_GetAttr(r0, r1)
+    r3 = PyFloat_Check(x)
+    if r3 goto L3 else goto L1 :: bool
+L1:
+    r4 = PyObject_IsInstance(x, r2)
+    r5 = r4 >= 0 :: signed
+    r6 = truncate r4: i32 to builtins.bool
+    if r6 goto L3 else goto L2 :: bool
+L2:
+    r7 = __main__.C :: type
+    r8 = get_element_ptr x ob_type :: PyObject
+    r9 = borrow load_mem r8 :: builtins.object*
+    keep_alive x
+    r10 = r9 == r7
+    if r10 goto L3 else goto L4 :: bool
+L3:
+    r11 = 1
+    goto L5
+L4:
+    r11 = 0
+L5:
+    return r11
+
+[case testIsinstanceNestedTuple]
+from typing import Any
+
+def is_instance(x: Any) -> bool:
+    return isinstance(x, (int, (float, str)))
+[out]
+def is_instance(x):
+    x :: object
+    r0, r1, r2 :: bit
+    r3 :: bool
+L0:
+    r0 = PyLong_Check(x)
+    if r0 goto L3 else goto L1 :: bool
+L1:
+    r1 = PyFloat_Check(x)
+    if r1 goto L3 else goto L2 :: bool
+L2:
+    r2 = PyUnicode_Check(x)
+    if r2 goto L3 else goto L4 :: bool
+L3:
+    r3 = 1
+    goto L5
+L4:
+    r3 = 0
+L5:
+    return r3
+
+[case testIsinstanceTupleWithNonNativeClass]
+from typing import Any
+from mypy_extensions import mypyc_attr
+
+@mypyc_attr(native_class=False)
+class M(type): pass
+
+class C(metaclass=M): pass
+
+def is_instance(x: Any) -> bool:
+    # M could override __instancecheck__
+    return isinstance(x, (C, int))
+[out]
+def is_instance(x):
+    x, r0 :: object
+    r1 :: i32
+    r2 :: bit
+    r3 :: bool
+    r4 :: bit
+    r5 :: bool
+L0:
+    r0 = __main__.C :: type
+    r1 = PyObject_IsInstance(x, r0)
+    r2 = r1 >= 0 :: signed
+    r3 = truncate r1: i32 to builtins.bool
+    if r3 goto L2 else goto L1 :: bool
+L1:
+    r4 = PyLong_Check(x)
+    if r4 goto L2 else goto L3 :: bool
+L2:
+    r5 = 1
+    goto L4
+L3:
+    r5 = 0
+L4:
+    return r5
+
+[case testIsinstanceEmptyTupleEvaluatesObject]
+def f() -> object:
+    return 1
+
+def is_instance() -> bool:
+    return isinstance(f(), ())
+[out]
+def f():
+    r0 :: object
+L0:
+    r0 = object 1
+    return r0
+def is_instance():
+    r0 :: object
+L0:
+    r0 = f()
+    return 0
