@@ -646,6 +646,8 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                         t,
                         code=codes.VALID_TYPE,
                     )
+                elif t.args:
+                    return self.anal_type(t.args[0])
             return AnyType(TypeOfAny.from_error)
         elif fullname in TUPLE_NAMES:
             # Tuple is special because it is involved in builtin import cycle
