@@ -1199,3 +1199,115 @@ def test_isinstance_multi() -> None:
     assert isinstance_multi("a") is True
     assert isinstance_multi(1) is True
     assert isinstance_multi(None) is False
+
+[case testIsInstanceMixedTuple]
+from typing import Any
+from mypy_extensions import mypyc_attr
+
+class Native: pass
+class NativeSub(Native): pass
+
+@mypyc_attr(native_class=False)
+class NonNative: pass
+
+@mypyc_attr(native_class=False)
+class AlwaysMeta(type):
+    def __instancecheck__(cls, inst: object) -> bool:
+        return True
+
+class Always(metaclass=AlwaysMeta): pass
+
+type_: Any = type
+InterpretedSub: Any = type_("InterpretedSub", (NonNative,), {})
+
+def float_or_complex(x: Any) -> bool:
+    return isinstance(x, (float, complex))
+def float_or_native(x: Any) -> bool:
+    return isinstance(x, (float, Native))
+def float_or_non_native(x: Any) -> bool:
+    return isinstance(x, (float, NonNative))
+def float_or_python_class(x: Any) -> bool:
+    return isinstance(x, (float, ValueError))
+def always_or_int(x: Any) -> bool:
+    return isinstance(x, (Always, int))
+def nested(x: Any) -> bool:
+    return isinstance(x, (int, (float, (complex, Native))))
+
+def test_primitives() -> None:
+    assert float_or_complex(1.5) is True
+    assert float_or_complex(1j) is True
+    assert float_or_complex(1) is False
+    assert float_or_complex("x") is False
+    assert float_or_complex(None) is False
+
+def test_native_class() -> None:
+    assert float_or_native(1.5) is True
+    assert float_or_native(Native()) is True
+    assert float_or_native(NativeSub()) is True
+    assert float_or_native(1j) is False
+    assert float_or_native(object()) is False
+
+def test_non_native_class() -> None:
+    assert float_or_non_native(1.5) is True
+    assert float_or_non_native(NonNative()) is True
+    assert float_or_non_native(InterpretedSub()) is True
+    assert float_or_non_native(Native()) is False
+
+def test_python_class() -> None:
+    assert float_or_python_class(1.5) is True
+    assert float_or_python_class(ValueError()) is True
+    assert float_or_python_class(KeyError()) is False
+    assert float_or_python_class(1) is False
+
+def test_metaclass_instancecheck() -> None:
+    assert always_or_int(1) is True
+    assert always_or_int("x") is True
+    assert always_or_int(None) is True
+
+def test_nested() -> None:
+    assert nested(1) is True
+    assert nested(1.5) is True
+    assert nested(1j) is True
+    assert nested(Native()) is True
+    assert nested(NativeSub()) is True
+    assert nested("x") is False
+
+[case testIsInstanceTupleEvaluation]
+from typing import Any
+from testutil import assertRaises
+
+calls: list[object] = []
+
+def get_class(cls: Any) -> Any:
+    calls.append(cls)
+    return cls
+
+def get_obj(x: Any) -> Any:
+    calls.append("obj")
+    return x
+
+def check(x: Any) -> bool:
+    return isinstance(get_obj(x), (int, get_class(str), float, get_class(bytes)))
+def check_empty(x: Any) -> bool:
+    return isinstance(get_obj(x), ())
+
+bad: Any = 5
+
+def check_bad(x: Any) -> bool:
+    return isinstance(x, (int, bad))
+
+def test_classes_evaluated_before_checks() -> None:
+    for x, expected in ((1, True), (b"x", True), (None, False)):
+        calls.clear()
+        assert check(x) is expected
+        assert calls == ["obj", str, bytes]
+
+def test_empty_tuple_evaluates_object() -> None:
+    calls.clear()
+    assert check_empty(1) is False
+    assert calls == ["obj"]
+
+def test_invalid_class() -> None:
+    assert check_bad(1) is True
+    with assertRaises(TypeError):
+        check_bad("x")
