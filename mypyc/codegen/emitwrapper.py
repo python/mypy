@@ -15,7 +15,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 
 from mypy.nodes import ARG_NAMED, ARG_NAMED_OPT, ARG_OPT, ARG_POS, ARG_STAR, ARG_STAR2, ArgKind
-from mypy.operators import op_methods_to_symbols, reverse_op_method_names, reverse_op_methods
+from mypy.operators import reverse_op_method_names, reverse_op_methods
 from mypyc.codegen.emit import AssignHandler, Emitter, ErrorHandler, GotoHandler, ReturnHandler
 from mypyc.common import (
     BITMAP_BITS,
@@ -364,11 +364,16 @@ def generate_bin_op_forward_only_wrapper(
 ) -> None:
     gen.emit_arg_processing(error=GotoHandler("typefail"), raise_exception=False)
     handle_third_pow_argument(fn, emitter, gen, if_unsupported=["goto typefail;"])
-    gen.emit_call(not_implemented_handler="goto typefail;")
+    gen.emit_call()
     gen.emit_error_handling()
     emitter.emit_label("typefail")
     # If some argument has an incompatible type, treat this the same as
-    # returning NotImplemented, and try to call the reverse operator method.
+    # returning NotImplemented, and let CPython try the reverse operator
+    # method of the right operand. Don't call the reverse method here:
+    # this class doesn't define one, so for an instance of this class
+    # (as in 'x + x' or '1 + x') the lookup would find the slot wrapper
+    # that CPython adds for this slot, which calls this wrapper again
+    # with the same arguments.
     #
     # Note that in normal Python you'd instead of an explicit
     # return of NotImplemented, but it doesn't generally work here
@@ -382,7 +387,8 @@ def generate_bin_op_forward_only_wrapper(
     #        if not isinstance(other, int):
     #            return NotImplemented
     #        ...
-    generate_bin_op_reverse_dunder_call(fn, emitter, reverse_op_methods[fn.name])
+    emitter.emit_line("Py_INCREF(Py_NotImplemented);")
+    emitter.emit_line("return Py_NotImplemented;")
     gen.finish()
 
 
@@ -439,29 +445,13 @@ def generate_bin_op_both_wrappers(
     handle_third_pow_argument(fn_rev, emitter, gen, if_unsupported=["goto typefail2;"])
     gen.emit_call()
     gen.emit_error_handling()
-    emitter.emit_line("} else {")
-    generate_bin_op_reverse_dunder_call(fn, emitter, fn_rev.name)
     emitter.emit_line("}")
+    # If the right operand has a different type, CPython tries its reverse
+    # method after we return NotImplemented.
     emitter.emit_label("typefail2")
     emitter.emit_line("Py_INCREF(Py_NotImplemented);")
     emitter.emit_line("return Py_NotImplemented;")
     gen.finish()
-
-
-def generate_bin_op_reverse_dunder_call(fn: FuncIR, emitter: Emitter, rmethod: str) -> None:
-    if fn.name in ("__pow__", "__rpow__"):
-        # Ternary pow() will never call the reverse dunder.
-        emitter.emit_line("if (obj_mod == Py_None) {")
-    emitter.emit_line(
-        'return CPy_CallReverseOpMethod(obj_left, obj_right, "{}", mypyc_interned_str.{});'.format(
-            op_methods_to_symbols[fn.name], rmethod
-        )
-    )
-    if fn.name in ("__pow__", "__rpow__"):
-        emitter.emit_line("} else {")
-        emitter.emit_line("Py_INCREF(Py_NotImplemented);")
-        emitter.emit_line("return Py_NotImplemented;")
-        emitter.emit_line("}")
 
 
 def handle_third_pow_argument(
