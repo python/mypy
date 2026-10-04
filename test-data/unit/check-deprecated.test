@@ -920,3 +920,29 @@ e = E()
 e.g()
 e + 1
 [builtins fixtures/tuple.pyi]
+
+[case testDeprecatedExcludeConfig]
+# flags: --config-file tmp/mypy.ini
+import m
+
+m.C()
+m.f()
+m.g()  # E: function m.g is deprecated: use h instead
+
+[file m.py]
+from typing_extensions import deprecated
+
+@deprecated("use C2 instead")
+class C: ...
+
+@deprecated("use h instead")
+def f() -> None: ...
+
+@deprecated("use h instead")
+def g() -> None: ...
+
+[file mypy.ini]
+\[mypy]
+enable_error_code = deprecated
+deprecated_calls_exclude = m.C, m.f
+[builtins fixtures/tuple.pyi]
