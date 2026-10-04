@@ -423,6 +423,7 @@ def analyze_type_callable_member_access(name: str, typ: FunctionLike, mx: Member
             # the corresponding method in the current instance to avoid this edge case.
             # See https://github.com/python/mypy/pull/1787 for more info.
             # TODO: do not rely on same type variables being present in all constructor overloads.
+            check_abstract_class_attribute_access(name, instance_type, mx)
             result = analyze_class_attribute_access(
                 instance_type,
                 name,
@@ -436,6 +437,36 @@ def analyze_type_callable_member_access(name: str, typ: FunctionLike, mx: Member
         return _analyze_member_access(name, typ.fallback, mx)
     else:
         assert False, f"Unexpected type {instance_type!r}"
+
+
+def check_abstract_class_attribute_access(
+    name: str, instance_type: Instance, mx: MemberContext
+) -> None:
+    """Report accessing an abstract static or class method through its own class.
+
+    Only reached for a direct reference to the class. Through `type[T]`, or on an
+    instance, the runtime object may be a subclass which implements the method,
+    which is also why instance methods are excluded here.
+    """
+    if mx.suppress_errors or not instance_type.type.is_abstract:
+        return
+    if all(attr != name for attr, _ in instance_type.type.abstract_attributes):
+        return
+
+    node = instance_type.type.get(name)
+    if node is None:
+        return
+    func = node.node.func if isinstance(node.node, Decorator) else node.node
+    if not isinstance(func, SYMBOL_FUNCBASE_TYPES):
+        return
+
+    if func.is_static:
+        kind = "static method"
+    elif func.is_class:
+        kind = "class method"
+    else:
+        return
+    mx.msg.cannot_access_abstract_class_attribute(instance_type.type.name, name, kind, mx.context)
 
 
 def analyze_type_type_member_access(
