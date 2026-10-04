@@ -2401,3 +2401,14 @@ reveal_type(baz(objs))  # N: Revealed type is "builtins.list[__main__.B | __main
 reveal_type(baz(objs_a))  # N: Revealed type is "builtins.list[__main__.B | __main__.C]"
 [builtins fixtures/tuple.pyi]
 [typing fixtures/typing-full.pyi]
+
+[case testDeferredNestedTupleAliasNewSyntax]
+type Inner = tuple[int, str]
+type Outer = tuple[bool, *Inner]
+
+class K(Base):
+    q: list[Outer] = list()
+
+class Base: ...
+reveal_type(K.q)  # N: Revealed type is "builtins.list[tuple[builtins.bool, builtins.int, builtins.str]]"
+[builtins fixtures/tuple.pyi]
