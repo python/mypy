@@ -1199,3 +1199,61 @@ def test_isinstance_multi() -> None:
     assert isinstance_multi("a") is True
     assert isinstance_multi(1) is True
     assert isinstance_multi(None) is False
+
+[case testIsInstanceOtherBuiltinTypes]
+from typing import Any
+
+class Getter:
+    def __getitem__(self, key: Any) -> Any:
+        return key
+
+def is_complex(x: Any) -> bool:
+    return isinstance(x, complex)
+def is_type(x: Any) -> bool:
+    return isinstance(x, type)
+def is_range(x: Any) -> bool:
+    return isinstance(x, range)
+def is_slice(x: Any) -> bool:
+    return isinstance(x, slice)
+def is_memoryview(x: Any) -> bool:
+    return isinstance(x, memoryview)
+def type_is_complex(x: Any) -> bool:
+    return type(x) is complex
+def is_float_or_complex(x: Any) -> bool:
+    return isinstance(x, (float, complex))
+
+type_: Any = type
+MyComplex: Any = type_("MyComplex", (complex,), {})
+MyMeta: Any = type_("MyMeta", (type,), {})
+
+def test_complex() -> None:
+    assert is_complex(1j) is True
+    assert is_complex(complex(1, 2)) is True
+    assert is_complex(MyComplex(1j)) is True
+    assert is_complex(1.5) is False
+    assert is_complex(1) is False
+    assert is_complex(None) is False
+    assert type_is_complex(1j) is True
+    assert type_is_complex(MyComplex(1j)) is False
+    assert type_is_complex(1.5) is False
+    assert is_float_or_complex(1.5) is True
+    assert is_float_or_complex(1j) is True
+    assert is_float_or_complex(MyComplex(1j)) is True
+    assert is_float_or_complex(1) is False
+    assert is_float_or_complex(None) is False
+
+def test_type() -> None:
+    assert is_type(int) is True
+    assert is_type(Getter) is True
+    assert is_type(type) is True
+    assert is_type(MyMeta("C", (), {})) is True
+    assert is_type(1) is False
+    assert is_type(Getter()) is False
+
+def test_range_slice_memoryview() -> None:
+    assert is_range(range(3)) is True
+    assert is_range([0, 1, 2]) is False
+    assert is_slice(Getter()[1:2]) is True
+    assert is_slice(Getter()[1]) is False
+    assert is_memoryview(memoryview(b"x")) is True
+    assert is_memoryview(b"x") is False

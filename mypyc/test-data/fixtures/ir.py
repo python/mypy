@@ -209,6 +209,9 @@ class bytearray:
     def endswith(self, t: bytes) -> bool: ...
     def __iter__(self) -> Iterator[int]: ...
 
+class memoryview:
+    def __init__(self, x: object) -> None: pass
+
 class bool(int):
     def __init__(self, o: object = ...) -> None: ...
     @overload
