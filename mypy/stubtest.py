@@ -833,6 +833,24 @@ def _verify_arg_name(
     )
 
 
+def _resolve_typevar_upper_bounds(stub_type: mypy.types.Type) -> mypy.types.Type:
+    """Replace type variables with their upper bounds, including inside a union.
+
+    Merging the items of an overload contributes one type variable per item, so an
+    argument annotated with the same ``TypeVar`` in several items ends up as a union of
+    distinct type variables. No runtime default value is a subtype of that.
+    """
+    proper_type = mypy.types.get_proper_type(stub_type)
+    if isinstance(proper_type, mypy.types.TypeVarType):
+        return proper_type.upper_bound
+    if isinstance(proper_type, mypy.types.UnionType):
+        with mypy.state.state.strict_optional_set(True):
+            return mypy.typeops.make_simplified_union(
+                [_resolve_typevar_upper_bounds(item) for item in proper_type.items]
+            )
+    return stub_type
+
+
 def _verify_arg_default_value(
     stub_arg: nodes.Argument, runtime_arg: inspect.Parameter
 ) -> Iterator[str]:
@@ -854,8 +872,8 @@ def _verify_arg_default_value(
             # UnboundTypes have ugly question marks following them, so default to var type.
             # Note we do this same fallback when constructing signatures in from_overloadedfuncdef
             stub_type = stub_arg.variable.type or stub_arg.type_annotation
-            if isinstance(stub_type, mypy.types.TypeVarType):
-                stub_type = stub_type.upper_bound
+            if stub_type is not None:
+                stub_type = _resolve_typevar_upper_bounds(stub_type)
             if (
                 runtime_type is not None
                 and stub_type is not None
