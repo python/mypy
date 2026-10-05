@@ -7334,6 +7334,29 @@ class D:
     def d2(self) -> None:
         self.x = 0
 
+[case testOrderBySubclassingMultipleLevels]
+class E(D):
+    def e(self) -> None: ...
+
+class D(B):
+    def d(self) -> None: ...
+    class N:
+        def n(self) -> None: ...
+    def d2(self) -> None: ...
+
+def f() -> None: ...
+
+class C(A):
+    def c(self) -> None: ...
+
+class B(A):
+    def b(self) -> None: ...
+
+class A:
+    def a(self) -> None: ...
+
+[targets __main__, __main__, __main__, __main__, __main__.D.N.n, __main__.f, __main__.A.a, __main__.C.c, __main__.B.b, __main__.D.d, __main__.D.d2, __main__.E.e]
+
 [case testNewReturnType1]
 class A:
     def __new__(cls) -> B:

@@ -29,6 +29,7 @@ from __future__ import annotations
 from collections import Counter
 from collections.abc import Callable, Iterator
 from contextlib import nullcontext
+from heapq import heappop, heappush
 from itertools import groupby
 from typing import TYPE_CHECKING, Final, TypeAlias as _TypeAlias
 
@@ -217,40 +218,46 @@ def process_top_levels(graph: Graph, scc: list[str], patches: Patches) -> None:
 
 
 def order_by_subclassing(targets: list[FullTargetInfo]) -> Iterator[FullTargetInfo]:
-    """Make sure that superclass methods are always processed before subclass methods.
-
-    This algorithm is not very optimal, but it is simple and should work well for lists
-    that are already almost correctly ordered.
-    """
+    """Make sure that superclass methods are always processed before subclass methods."""
 
     # A nested class can split its enclosing class's methods into multiple groups.
     grouped = [(k, list(g)) for k, g in groupby(targets, key=lambda x: x[3])]
     remaining_infos = Counter(info for info, _ in grouped if info is not None)
 
-    next_group = 0
-    while grouped:
-        if next_group >= len(grouped):
-            # This should never happen, if there is an MRO cycle, it should be reported
-            # and fixed during top-level processing.
-            raise ValueError("Cannot order method targets by MRO")
-        next_info, group = grouped[next_group]
-        if next_info is None:
-            # Trivial case, not methods but functions, process them straight away.
-            yield from group
-            grouped.pop(next_group)
-            continue
-        if any(parent in remaining_infos for parent in next_info.mro[1:]):
-            # We cannot process this method group yet, try a next one.
-            next_group += 1
-            continue
+    # Retry blocked groups in their original order when their first unprocessed
+    # superclass is processed, resuming the MRO scan where it stopped.
+    candidates = list(range(len(grouped)))
+    mro_start = [1] * len(grouped)
+    waiting: dict[TypeInfo, list[int]] = {}
+    while candidates:
+        i = heappop(candidates)
+        info, group = grouped[i]
+        if info is not None:
+            pos = find_remaining_parent(info, mro_start[i], remaining_infos)
+            if pos >= 0:
+                mro_start[i] = pos + 1
+                waiting.setdefault(info.mro[pos], []).append(i)
+                continue
         yield from group
-        grouped.pop(next_group)
-        remaining_infos[next_info] -= 1
-        if not remaining_infos[next_info]:
-            del remaining_infos[next_info]
-        # Each time after processing a method group we should retry from start,
-        # since there may be some groups that are not blocked on parents anymore.
-        next_group = 0
+        if info is not None:
+            remaining_infos[info] -= 1
+            if not remaining_infos[info]:
+                del remaining_infos[info]
+                for j in waiting.pop(info, []):
+                    heappush(candidates, j)
+    if waiting:
+        # This should never happen, if there is an MRO cycle, it should be reported
+        # and fixed during top-level processing.
+        raise ValueError("Cannot order method targets by MRO")
+
+
+def find_remaining_parent(info: TypeInfo, start: int, remaining_infos: Counter[TypeInfo]) -> int:
+    """Return index of the first class in info.mro[start:] in remaining_infos, or -1."""
+    mro = info.mro
+    for pos in range(start, len(mro)):
+        if mro[pos] in remaining_infos:
+            return pos
+    return -1
 
 
 def process_functions(graph: Graph, scc: list[str], patches: Patches) -> None:
