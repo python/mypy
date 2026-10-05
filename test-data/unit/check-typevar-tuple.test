@@ -3216,6 +3216,16 @@ reveal_type(mix2(b2))  # N: Revealed type is "tuple[Any, tuple[builtins.int, bui
 reveal_type(mix2(b3))  # N: Revealed type is "tuple[builtins.int, tuple[Any, builtins.str]]"
 [builtins fixtures/tuple.pyi]
 
+[case testTupleTypeCallableUnpackExpansionNoCrash]
+from typing import TypeVar, Unpack
+
+T = TypeVar("T", int, str)
+
+def foo(*args: Unpack[tuple[int, T]]) -> None:
+    reveal_type(args)  # N: Revealed type is "tuple[builtins.int, builtins.int]" \
+                       # N: Revealed type is "tuple[builtins.int, builtins.str]"
+[builtins fixtures/tuple.pyi]
+
 [case testTypeVarTupleOverloadNoCrash]
 from typing import Any, overload, Callable
 from typing_extensions import TypeVarTuple, Unpack
