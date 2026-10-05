@@ -3242,3 +3242,16 @@ def foo(x, *args):
 def test(f: Callable[[object], object]) -> None: ...
 test(foo)  # E: Argument 1 to "test" has incompatible type overloaded function; expected "Callable[[object], object]"
 [builtins fixtures/tuple.pyi]
+
+[case testDeferredNestedTupleAlias]
+from typing import Unpack
+
+Inner = tuple[int, str]
+Outer = tuple[bool, Unpack[Inner]]
+
+class K(Base):
+    q: list[Outer] = list()
+
+class Base: ...
+reveal_type(K.q)  # N: Revealed type is "builtins.list[tuple[builtins.bool, builtins.int, builtins.str]]"
+[builtins fixtures/tuple.pyi]
