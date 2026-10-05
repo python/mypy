@@ -680,6 +680,8 @@ def fn(a: int) -> int:
 class Test:
     foo = fn
     foo: int = 42  # E: Name "foo" already defined on line 8
+
+reveal_type(Test.foo)  # N: Revealed type is "def (a: builtins.int) -> builtins.int"
 [builtins fixtures/dataclasses.pyi]
 [typing fixtures/typing-medium.pyi]
 
@@ -692,6 +694,7 @@ class Test:
     foo: int = 42  # E: Name "foo" already defined on line 5
 
 reveal_type(Test)  # N: Revealed type is "def () -> __main__.Test"
+reveal_type(Test.foo)  # N: Revealed type is "builtins.str"
 [builtins fixtures/dataclasses.pyi]
 [typing fixtures/typing-medium.pyi]
 
