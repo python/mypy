@@ -24,6 +24,9 @@ graft docs
 prune docs/build
 prune docs/source/_build
 
+# skills
+prune skills
+
 # assorted mypyc requirements
 graft mypyc/external
 graft mypyc/lib-rt

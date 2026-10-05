@@ -98,7 +98,7 @@ class FileSystemCache:
         necessary for mypy to properly distinguish packages from other
         directories.
 
-        See https://docs.bazel.build/versions/master/be/python.html,
+        See https://bazel.build/reference/be/python,
         where this behavior is described under legacy_create_init.
         """
         if not self.package_root:

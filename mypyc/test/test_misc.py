@@ -1,14 +1,19 @@
 from __future__ import annotations
 
 import os
+import subprocess
+import sys
 import tempfile
+import textwrap
 import unittest
 
-from mypyc.build import get_header_deps, resolve_cfile_deps
+from mypy.options import Options
+from mypyc.build import emit_messages, get_header_deps, resolve_cfile_deps
 from mypyc.ir.ops import BasicBlock
 from mypyc.ir.pprint import format_blocks, generate_names_for_ir
 from mypyc.irbuild.ll_builder import LowLevelIRBuilder
 from mypyc.options import CompilerOptions
+from mypyc.test.config import PREFIX
 
 
 class TestMisc(unittest.TestCase):
@@ -23,6 +28,18 @@ class TestMisc(unittest.TestCase):
         names = generate_names_for_ir([], [block])
         code = format_blocks([block], names, {})
         assert code[:-1] == ["L0:", "    r0 = 'foo'", "    CPyDebug_PrintObject(r0)"]
+
+    def test_junit_time_is_zero_in_bazel_mode(self) -> None:
+        # Output must be reproducible under Bazel, so elapsed time is not included.
+        with tempfile.TemporaryDirectory() as tmpdir:
+            options = Options()
+            options.bazel = True
+            options.junit_xml = os.path.join(tmpdir, "junit.xml")
+            emit_messages(options, [], 1.23)
+            with open(options.junit_xml) as f:
+                result = f.read()
+        assert 'time="0.000"' in result
+        assert "1.230" not in result
 
 
 class TestHeaderDeps(unittest.TestCase):
@@ -150,3 +167,29 @@ class TestHeaderDeps(unittest.TestCase):
             assert resolve_cfile_deps(
                 cfile_dir=includer, direct_includes=[(True, "shared.h")], target_dir=target
             ) == {global_h}
+
+
+class TestLazySetuptoolsImport(unittest.TestCase):
+    @unittest.skipIf(sys.version_info < (3, 12), "setuptools is imported eagerly before 3.12")
+    def test_c_generation_does_not_import_setuptools(self) -> None:
+        # Importing setuptools is slow, and generating C via mypyc_build doesn't need it.
+        script = textwrap.dedent("""
+            import os
+            import sys
+            from mypyc.build import mypyc_build
+            from mypyc.options import CompilerOptions
+
+            mypyc_build(["a.py"], CompilerOptions(target_dir="build"), only_compile_paths=["a.py"])
+            assert any(f.endswith(".c") for f in os.listdir("build")), "no C generated"
+            loaded = {"setuptools", "distutils", "mypyc.build_setup"} & set(sys.modules)
+            assert not loaded, f"unexpectedly imported: {sorted(loaded)}"
+            """)
+        with tempfile.TemporaryDirectory() as tmpdir:
+            with open(os.path.join(tmpdir, "a.py"), "w") as f:
+                f.write("def f(x: int) -> int:\n    return x + 1\n")
+            env = os.environ.copy()
+            env["PYTHONPATH"] = PREFIX + os.pathsep + env.get("PYTHONPATH", "")
+            result = subprocess.run(
+                [sys.executable, "-c", script], cwd=tmpdir, env=env, capture_output=True, text=True
+            )
+        assert result.returncode == 0, result.stdout + result.stderr
