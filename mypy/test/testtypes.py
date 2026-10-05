@@ -297,6 +297,15 @@ class TypeOpsSuite(Suite):
         self.assert_expand(self.fx.t, [(self.fx.t.id, self.fx.a)], self.fx.a)
         self.assert_expand(self.fx.t, [(self.fx.s.id, self.fx.a)], self.fx.t)
 
+    def test_expand_unpack_union_replacement(self) -> None:
+        # GH#22108: expanding *Ts with a union replacement (e.g. inferred from a
+        # conditional expression) must not crash expand_unpack — the union is
+        # carried over into the expansion, same as the Any/Never replacements.
+        union_repl = UnionType([self.tuple(UnpackType(self.tuple(self.fx.anyt))), self.fx.anyt])
+        orig = self.tuple(UnpackType(self.fx.ts))
+        exp = mypy.expandtype.expand_type(orig, {self.fx.ts.id: union_repl})
+        self.assertIn("Any", str(exp))
+
     def test_expand_basic_generic_types(self) -> None:
         self.assert_expand(self.fx.gt, [(self.fx.t.id, self.fx.a)], self.fx.ga)
 

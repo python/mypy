@@ -392,9 +392,11 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
             or isinstance(repl, TypeVarTupleType)
         ):
             return [UnpackType(typ=repl)]
-        elif isinstance(repl, (AnyType, UninhabitedType)):
+        elif isinstance(repl, (AnyType, UninhabitedType, UnionType)):
             # Replace *Ts = Any with *Ts = *tuple[Any, ...] and same for Never.
             # These types may appear here as a result of user error or failed inference.
+            # Unions may be inferred from e.g. conditional expressions used as type
+            # arguments (GH#22108) — carry them over instead of crashing.
             return [UnpackType(t.type.tuple_fallback.copy_modified(args=[repl]))]
         else:
             raise RuntimeError(f"Invalid type replacement to expand: {repl}")
