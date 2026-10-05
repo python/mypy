@@ -2856,6 +2856,13 @@ class X:
     NT: ClassVar = NamedTuple("NT", [("a", int)])  # E: Cannot declare the type of a NamedTuple declaration
 
 reveal_type(X)  # N: Revealed type is "def (a: builtins.int) -> __main__.X"
+reveal_type(X.TD)  # N: Revealed type is "def (*, a: builtins.int) -> TypedDict('__main__.X.TD', {'a': builtins.int})"
+reveal_type(X.NT)  # N: Revealed type is "def (a: builtins.int) -> tuple[builtins.int, fallback=__main__.X.NT]"
+
+tdx: X.TD
+ntx: X.NT
+reveal_type(tdx)  # N: Revealed type is "TypedDict('__main__.X.TD', {'a': builtins.int})"
+reveal_type(ntx)  # N: Revealed type is "tuple[builtins.int, fallback=__main__.X.NT]"
 
 @dataclasses.dataclass
 class XOK:
@@ -2864,6 +2871,8 @@ class XOK:
     NT = NamedTuple("NT", [("a", int)])
 
 reveal_type(XOK)  # N: Revealed type is "def (a: builtins.int) -> __main__.XOK"
+reveal_type(XOK.TD)  # N: Revealed type is "def (*, a: builtins.int) -> TypedDict('__main__.XOK.TD', {'a': builtins.int})"
+reveal_type(XOK.NT)  # N: Revealed type is "def (a: builtins.int) -> tuple[builtins.int, fallback=__main__.XOK.NT]"
 
 td: XOK.TD
 nt: XOK.NT
