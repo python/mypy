@@ -387,8 +387,7 @@ def generate_bin_op_forward_only_wrapper(
     #        if not isinstance(other, int):
     #            return NotImplemented
     #        ...
-    emitter.emit_line("Py_INCREF(Py_NotImplemented);")
-    emitter.emit_line("return Py_NotImplemented;")
+    emitter.emit_line("Py_RETURN_NOTIMPLEMENTED;")
     gen.finish()
 
 
@@ -401,8 +400,7 @@ def generate_bin_op_reverse_only_wrapper(
     gen.emit_call()
     gen.emit_error_handling()
     emitter.emit_label("typefail")
-    emitter.emit_line("Py_INCREF(Py_NotImplemented);")
-    emitter.emit_line("return Py_NotImplemented;")
+    emitter.emit_line("Py_RETURN_NOTIMPLEMENTED;")
     gen.finish()
 
 
@@ -449,8 +447,7 @@ def generate_bin_op_both_wrappers(
     # If the right operand has a different type, CPython tries its reverse
     # method after we return NotImplemented.
     emitter.emit_label("typefail2")
-    emitter.emit_line("Py_INCREF(Py_NotImplemented);")
-    emitter.emit_line("return Py_NotImplemented;")
+    emitter.emit_line("Py_RETURN_NOTIMPLEMENTED;")
     gen.finish()
 
 
