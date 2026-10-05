@@ -603,10 +603,10 @@ class Emitter:
             self.emit_line(f"{prefix}_INCREF({dest});")
         elif not rtype.is_unboxed:
             # Always inline, since this is a simple but very hot op
-            if rtype.may_be_immortal or not self.target_python.have_immortal:
-                self.emit_line("CPy_INCREF(%s);" % dest)
-            else:
+            if rtype.should_use_nonimmortal_variant(self.target_python):
                 self.emit_line("CPy_INCREF_NO_IMM(%s);" % dest)
+            else:
+                self.emit_line("CPy_INCREF(%s);" % dest)
         # Otherwise assume it's an unboxed, pointerless value and do nothing.
 
     def emit_dec_ref(
@@ -637,10 +637,10 @@ class Emitter:
                 self.emit_line(f"CPy_{x}DecRef({dest});")
             else:
                 # Inlined
-                if rtype.may_be_immortal or not self.target_python.have_immortal:
-                    self.emit_line(f"CPy_{x}DECREF({dest});")
-                else:
+                if rtype.should_use_nonimmortal_variant(self.target_python):
                     self.emit_line(f"CPy_{x}DECREF_NO_IMM({dest});")
+                else:
+                    self.emit_line(f"CPy_{x}DECREF({dest});")
         elif rtype.is_refcounted:
             assert False, f"dec_ref not implemented for {rtype}"
         # Otherwise assume it's an unboxed, pointerless value and do nothing.

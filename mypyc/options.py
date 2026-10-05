@@ -2,56 +2,79 @@ from __future__ import annotations
 
 import re
 import sys
-from typing import Final
+import sysconfig
+from typing import Final, final
 
-from mypyc.common import EXT_SUFFIX, IS_FREE_THREADED
+from mypy.defaults import PYTHON3_VERSION_MIN
+from mypyc.common import EXT_SUFFIX
+
+# Is the running interpreter a free-threaded build (GIL disabled)? Use
+# TargetPython.host().free_threaded instead of this.
+_HOST_FREE_THREADED: Final = bool(sysconfig.get_config_var("Py_GIL_DISABLED"))
 
 
+@final
 class TargetPython:
     """The Python build that generated code targets.
 
     This defaults to the running interpreter, but can be overridden so that
     the C code can be generated on a different Python than the one that will
     compile and run it.
+
+    This is currently mostly meant for users that bring their own monolithic
+    build system (e.g. Bazel or Buck2), which call mypyc_build() to only generate
+    C and then compile it themselves against the headers of the target Python.
+    It's not exposed through the mypyc command line or mypycify().
+
+    WARNING: Never compile the generated C for a different Python than the
+    target. setuptools-based builds always compile using the running interpreter,
+    so a different target there produces extension modules that fail to compile
+    or, worse, compile but don't work (e.g. code for a GIL build has data races
+    on a free-threaded build).
     """
 
     def __init__(self, version: tuple[int, int], free_threaded: bool = False) -> None:
+        if version[0] != 3 or version < PYTHON3_VERSION_MIN:
+            min_version = ".".join(str(v) for v in PYTHON3_VERSION_MIN)
+            raise ValueError(
+                f"Unsupported target Python {version[0]}.{version[1]} "
+                f"({min_version} or later is required)"
+            )
+        if free_threaded and version < (3, 13):
+            raise ValueError(
+                f"Free-threaded builds require Python 3.13 or later "
+                f"(got {version[0]}.{version[1]})"
+            )
         # Python (C API) version, such as (3, 13)
         self.version: Final = version
         # Is this a free-threaded (GIL disabled) build?
         self.free_threaded: Final = free_threaded
+        # Python 3.12 introduced immortal objects, specified via a special reference
+        # count value. The reference counts of immortal objects are normally not
+        # modified, but it's not strictly wrong to modify them. See PEP 683 for more
+        # information, but note that some details in the PEP are out of date.
+        self.have_immortal: Final = version >= (3, 12)
+        # File name suffix of extension modules, e.g. ".cpython-314t-x86_64-linux-gnu.so".
+        # Only the Python version (not the platform) can differ from the host.
+        is_host = version == sys.version_info[:2] and free_threaded == _HOST_FREE_THREADED
+        self.ext_suffix: Final = (
+            EXT_SUFFIX
+            if is_host
+            else replace_ext_suffix_version(EXT_SUFFIX, version, free_threaded)
+        )
 
-    @classmethod
-    def host(cls) -> TargetPython:
+    @staticmethod
+    def host() -> TargetPython:
         """Target the running interpreter."""
-        return cls(sys.version_info[:2], IS_FREE_THREADED)
+        return TargetPython(sys.version_info[:2], _HOST_FREE_THREADED)
 
-    @classmethod
-    def parse(cls, target: str) -> TargetPython:
+    @staticmethod
+    def parse(target: str) -> TargetPython:
         """Parse a target such as "3.13" or "3.14t" ("t" means free-threaded)."""
-        m = re.fullmatch(r"3\.(\d+)(t?)", target.strip())
+        m = re.fullmatch(r"(\d+)\.(\d+)(t?)", target.strip())
         if m is None:
             raise ValueError(f'Invalid target Python "{target}" (expected e.g. "3.13" or "3.14t")')
-        result = cls((3, int(m.group(1))), m.group(2) == "t")
-        if result.version < (3, 10):
-            raise ValueError(f'Unsupported target Python "{target}" (3.10 or later is required)')
-        if result.free_threaded and result.version < (3, 13):
-            raise ValueError(f'Free-threaded builds require Python 3.13 or later (got "{target}")')
-        return result
-
-    @property
-    def have_immortal(self) -> bool:
-        """Does the target have immortal objects (introduced in 3.12, see PEP 683)?"""
-        return self.version >= (3, 12)
-
-    @property
-    def ext_suffix(self) -> str:
-        """File name suffix of extension modules, e.g. ".cpython-314t-x86_64-linux-gnu.so".
-
-        This is the running interpreter's suffix with the version tag replaced, since
-        only the Python version (not the platform) can differ from the host.
-        """
-        return replace_ext_suffix_version(EXT_SUFFIX, self)
+        return TargetPython((int(m.group(1)), int(m.group(2))), m.group(3) == "t")
 
     def __eq__(self, other: object) -> bool:
         return (
@@ -70,10 +93,16 @@ class TargetPython:
         return f"TargetPython({str(self)!r})"
 
 
-def replace_ext_suffix_version(suffix: str, target: TargetPython) -> str:
+def replace_ext_suffix_version(suffix: str, version: tuple[int, int], free_threaded: bool) -> str:
     """Replace the Python version tag in an extension suffix such as ".cp313-win_amd64.pyd"."""
-    tag = f"{target.version[0]}{target.version[1]}{'t' if target.free_threaded else ''}"
-    return re.sub(r"(\.cpython-|\.cp)\d+t?(?=-)", rf"\g<1>{tag}", suffix, count=1)
+    tag = f"{version[0]}{version[1]}{'t' if free_threaded else ''}"
+    result, n = re.subn(r"(\.cpython-|\.cp)\d+t?(?=-)", rf"\g<1>{tag}", suffix, count=1)
+    if n == 0:
+        raise ValueError(
+            f'Can\'t target Python {version[0]}.{version[1]}{"t" if free_threaded else ""}: '
+            f'unrecognized extension module suffix "{suffix}"'
+        )
+    return result
 
 
 class CompilerOptions:
@@ -85,8 +114,6 @@ class CompilerOptions:
         separate: bool = False,
         target_dir: str | None = None,
         include_runtime_files: bool | None = None,
-        capi_version: tuple[int, int] | None = None,
-        python_version: tuple[int, int] | None = None,
         strict_dunder_typing: bool = False,
         group_name: str | None = None,
         log_trace: bool = False,
@@ -104,12 +131,10 @@ class CompilerOptions:
         self.include_runtime_files = (
             include_runtime_files if include_runtime_files is not None else not multi_file
         )
-        # The Python build to generate code for (see TargetPython). The generated
-        # C must be compiled against the headers of this Python build.
+        # The Python build to generate code for (see TargetPython, including the
+        # warning there). This determines both the C API version and the Python
+        # version used for type checking.
         self.target_python = target_python or TargetPython.host()
-        if capi_version is not None:
-            self.capi_version = capi_version
-        self.python_version = python_version
         # Make possible to inline dunder methods in the generated code.
         # Typically, the convention is the dunder methods can return `NotImplemented`
         # even when its return type is just `bool`.
@@ -147,17 +172,3 @@ class CompilerOptions:
         # tests to make sure that no new code which leads to incorrect tracebacks is
         # added.
         self.strict_traceback_checks = strict_traceback_checks
-
-    @property
-    def capi_version(self) -> tuple[int, int]:
-        """The target Python C API version.
-
-        Overriding only this is mostly useful in IR tests, since there's no
-        guarantee that binaries are backward compatible even if no recent API
-        features are used.
-        """
-        return self.target_python.version
-
-    @capi_version.setter
-    def capi_version(self, version: tuple[int, int]) -> None:
-        self.target_python = TargetPython(version, self.target_python.free_threaded)

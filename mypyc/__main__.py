@@ -31,30 +31,9 @@ setup(
         debug_level="{}",
         strict_dunder_typing={},
         log_trace={},
-        target_python={!r},
     ),
 )
 """
-
-
-def extract_target_python(args: list[str]) -> tuple[list[str], str | None]:
-    """Remove --target-python from args (it's not a mypy option).
-
-    Return (remaining args, target python or None).
-    """
-    remaining = []
-    target_python = None
-    it = iter(args)
-    for arg in it:
-        if arg == "--target-python":
-            target_python = next(it, None)
-            if target_python is None:
-                sys.exit("error: --target-python requires an argument (e.g. 3.13 or 3.14t)")
-        elif arg.startswith("--target-python="):
-            target_python = arg.split("=", 1)[1]
-        else:
-            remaining.append(arg)
-    return remaining, target_python
 
 
 def main() -> None:
@@ -71,13 +50,11 @@ def main() -> None:
     # mypyc_trace.txt.
     log_trace = bool(int(os.getenv("MYPYC_LOG_TRACE", "0")))
 
-    args, target_python = extract_target_python(sys.argv[1:])
-
     setup_file = os.path.join(build_dir, "setup.py")
     with open(setup_file, "w") as f:
         f.write(
             setup_format.format(
-                args, opt_level, debug_level, strict_dunder_typing, log_trace, target_python
+                sys.argv[1:], opt_level, debug_level, strict_dunder_typing, log_trace
             )
         )
 

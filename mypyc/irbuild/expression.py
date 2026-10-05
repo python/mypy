@@ -291,7 +291,7 @@ def transform_member_expr(builder: IRBuilder, expr: MemberExpr) -> Value:
     if (
         is_object_rprimitive(obj.type)
         and expr.name == "__name__"
-        and builder.options.capi_version >= (3, 11)
+        and builder.options.target_python.version >= (3, 11)
     ):
         return builder.primitive_op(name_op, [obj], expr.line)
 

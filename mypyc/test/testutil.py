@@ -10,6 +10,7 @@ import shutil
 from collections.abc import Callable, Iterator
 
 from mypy import build
+from mypy.defaults import PYTHON3_VERSION_MIN
 from mypy.errors import CompileError
 from mypy.main import process_options
 from mypy.nodes import Expression, MypyFile
@@ -19,7 +20,7 @@ from mypy.test.data import DataDrivenTestCase, DataSuite
 from mypy.test.helpers import assert_string_arrays_equal
 from mypy.types import Type
 from mypyc.analysis.ircheck import assert_func_ir_valid
-from mypyc.common import IS_32_BIT_PLATFORM, IS_FREE_THREADED, PLATFORM_SIZE
+from mypyc.common import IS_32_BIT_PLATFORM, PLATFORM_SIZE
 from mypyc.errors import Errors
 from mypyc.ir.func_ir import FuncIR
 from mypyc.ir.module_ir import ModuleIR
@@ -107,7 +108,9 @@ def build_ir_for_single_file2(
 
     # By default, generate IR compatible with the earliest supported Python C API.
     # If a test needs more recent API features, this should be overridden.
-    compiler_options = compiler_options or CompilerOptions(capi_version=(3, 10))
+    compiler_options = compiler_options or CompilerOptions(
+        target_python=TargetPython(PYTHON3_VERSION_MIN)
+    )
     if flags:
         flag_list = flags.group(1).split()
         _, options = process_options(flag_list, require_targets=False)
@@ -117,7 +120,7 @@ def build_ir_for_single_file2(
     options.hide_error_codes = True
     options.use_builtins_fixtures = True
     options.strict_optional = True
-    options.python_version = compiler_options.python_version or (3, 10)
+    options.python_version = compiler_options.target_python.version
     options.export_types = True
     options.preserve_asts = True
     options.allow_empty_bodies = True
@@ -281,6 +284,8 @@ def infer_ir_build_options_from_test_name(name: str) -> CompilerOptions | None:
           Run test caseonly on 32-bit platforms
       *_python3_10* (or for any Python version):
           Use Python 3.10+ C API features (default: lowest supported version)
+      *_nogil*:
+          Target a free-threaded build (default: build with the GIL)
       *StripAssert*:
           Don't generate code for assert statements
     """
@@ -290,36 +295,33 @@ def infer_ir_build_options_from_test_name(name: str) -> CompilerOptions | None:
     if "_32bit" in name and not IS_32_BIT_PLATFORM:
         return None
     options = CompilerOptions(
-        strip_asserts="StripAssert" in name, capi_version=(3, 10), strict_traceback_checks=True
-    )
-    # A suffix like _python3_10 is used to set the target C API version.
-    m = re.search(r"_python([0-9]+)_([0-9]+)(_|\b)", name)
-    if m:
-        version = (int(m.group(1)), int(m.group(2)))
-        assert version >= (3, 10), f"Unsupported _python* suffix: {name}"
-        options.capi_version = version
-        options.python_version = options.capi_version
-    elif "_py" in name or "_Python" in name:
-        assert False, f"Invalid _py* suffix (should be _pythonX_Y): {name}"
-    options.target_python = TargetPython(
-        options.capi_version, infer_free_threaded_from_test_name(name)
+        strip_asserts="StripAssert" in name,
+        strict_traceback_checks=True,
+        target_python=infer_target_python_from_test_name(name),
     )
     if has_test_name_tag(name, "experimental"):
         options.experimental_features = True
     return options
 
 
-def infer_free_threaded_from_test_name(name: str) -> bool:
-    """Should a test case target a free-threaded build?
+def infer_target_python_from_test_name(name: str) -> TargetPython:
+    """Infer the target Python of a test case from magic substrings in its name.
 
-    A _nogil suffix targets a free-threaded build and _withgil targets a build
-    with the GIL. Otherwise, match the running interpreter.
+    A suffix like _python3_12 sets the version (default: lowest supported version).
+    A _nogil suffix targets a free-threaded build (default: build with the GIL),
+    and this defaults to Python 3.13, since free threading requires it.
+
+    The running interpreter doesn't matter, so test output is the same everywhere.
     """
-    if "_nogil" in name:
-        return True
-    if "_withgil" in name:
-        return False
-    return IS_FREE_THREADED
+    free_threaded = "_nogil" in name
+    m = re.search(r"_python([0-9]+)_([0-9]+)(_|\b)", name)
+    if m:
+        version = (int(m.group(1)), int(m.group(2)))
+    elif "_py" in name or "_Python" in name:
+        assert False, f"Invalid _py* suffix (should be _pythonX_Y): {name}"
+    else:
+        version = (3, 13) if free_threaded else PYTHON3_VERSION_MIN
+    return TargetPython(version, free_threaded)
 
 
 def has_test_name_tag(name: str, tag: str) -> bool:

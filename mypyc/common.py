@@ -144,16 +144,6 @@ RUNTIME_C_FILES: Final = [
     "function_wrapper.c",
 ]
 
-# Python 3.12 introduced immortal objects, specified via a special reference count
-# value. The reference counts of immortal objects are normally not modified, but it's
-# not strictly wrong to modify them. See PEP 683 for more information, but note that
-# some details in the PEP are out of date.
-HAVE_IMMORTAL: Final = sys.version_info >= (3, 12)
-
-# Are we running on a free-threaded build (GIL disabled)? This implies that
-# we are on Python 3.13 or later.
-IS_FREE_THREADED: Final = bool(sysconfig.get_config_var("Py_GIL_DISABLED"))
-
 # The file extension suffix for C extension modules on the current platform
 # (e.g. ".cpython-312-x86_64-linux-gnu.so" or ".pyd").
 _EXT_SUFFIXES: Final = importlib.machinery.EXTENSION_SUFFIXES

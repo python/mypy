@@ -5,7 +5,7 @@ import unittest
 from mypy.test.helpers import assert_string_arrays_equal
 from mypyc.codegen.emit import Emitter, EmitterContext
 from mypyc.codegen.emitfunc import FunctionEmitterVisitor, generate_native_function
-from mypyc.common import HAVE_IMMORTAL, PLATFORM_SIZE
+from mypyc.common import PLATFORM_SIZE
 from mypyc.ir.class_ir import ClassIR
 from mypyc.ir.func_ir import (
     FUNC_CLASSMETHOD,
@@ -1013,16 +1013,23 @@ else {
 
     def test_inc_ref_none(self) -> None:
         b = Box(self.none)
-        self.assert_emit([b, IncRef(b)], "" if HAVE_IMMORTAL else "CPy_INCREF(cpy_r_r0);")
+        self.assert_emit(
+            [b, IncRef(b)], "" if TargetPython.host().have_immortal else "CPy_INCREF(cpy_r_r0);"
+        )
 
     def test_inc_ref_bool(self) -> None:
         b = Box(self.b)
-        self.assert_emit([b, IncRef(b)], "" if HAVE_IMMORTAL else "CPy_INCREF(cpy_r_r0);")
+        self.assert_emit(
+            [b, IncRef(b)], "" if TargetPython.host().have_immortal else "CPy_INCREF(cpy_r_r0);"
+        )
 
     def test_inc_ref_int_literal(self) -> None:
         for x in -5, 0, 1, 5, 255, 256:
             b = LoadLiteral(x, object_rprimitive)
-            self.assert_emit([b, IncRef(b)], "" if HAVE_IMMORTAL else "CPy_INCREF(cpy_r_r0);")
+            self.assert_emit(
+                [b, IncRef(b)],
+                "" if TargetPython.host().have_immortal else "CPy_INCREF(cpy_r_r0);",
+            )
         for x in -1123355, -6, 257, 123235345:
             b = LoadLiteral(x, object_rprimitive)
             self.assert_emit([b, IncRef(b)], "CPy_INCREF(cpy_r_r0);")

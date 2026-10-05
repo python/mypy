@@ -289,11 +289,7 @@ def is_package_source(source: BuildSource) -> bool:
 
 
 def generate_c_extension_shim(
-    full_module_name: str,
-    module_name: str,
-    dir_name: str,
-    group_name: str,
-    target_python: TargetPython | None = None,
+    full_module_name: str, module_name: str, dir_name: str, group_name: str
 ) -> str:
     """Create a C extension shim with a passthrough PyInit function.
 
@@ -302,13 +298,11 @@ def generate_c_extension_shim(
         module_name: the final component of the module name
         dir_name: the directory to place source code
         group_name: the name of the group
-        target_python: the Python build to generate code for (default: running Python)
     """
-    target_python = target_python or TargetPython.host()
     cname = "%s.c" % full_module_name.replace(".", os.sep)
     cpath = os.path.join(dir_name, cname)
 
-    if target_python.free_threaded:
+    if TargetPython.host().free_threaded:
         # We use multi-phase init in free-threaded builds to enable free threading.
         shim_name = "module_shim_no_gil_multiphase.tmpl"
     else:
@@ -411,7 +405,6 @@ def build_using_shared_lib(
     build_dir: str,
     extra_compile_args: list[str],
     extra_include_dirs: list[str],
-    target_python: TargetPython | None = None,
 ) -> list[Extension]:
     """Produce the list of extension modules when a shared library is needed.
 
@@ -436,9 +429,7 @@ def build_using_shared_lib(
 
     for source in sources:
         module_name = source.module.split(".")[-1]
-        shim_file = generate_c_extension_shim(
-            source.module, module_name, build_dir, group_name, target_python
-        )
+        shim_file = generate_c_extension_shim(source.module, module_name, build_dir, group_name)
 
         # We include the __init__ in the "module name" we stick in the Extension,
         # since this seems to be needed for it to end up in the right place.
@@ -934,7 +925,6 @@ def mypycify(
     depends_on_librt_internal: bool = False,
     install_librt: bool = False,
     experimental_features: bool = False,
-    target_python: str | TargetPython | None = None,
 ) -> list[Extension]:
     """Main entry point to building using mypyc.
 
@@ -993,17 +983,8 @@ def mypycify(
         experimental_features: Enable experimental features (install_librt=True is
                                also needed if using experimental librt features). These
                                have no backward compatibility guarantees!
-        target_python: The Python build to generate code for, such as "3.13" or "3.14t"
-                       (a "t" suffix means free-threaded). Defaults to the running
-                       Python. The generated C must be compiled against the headers of
-                       the target Python.
     """
     ccompiler, sysconfig = import_distutils()
-    if isinstance(target_python, str):
-        try:
-            target_python = TargetPython.parse(target_python)
-        except ValueError as e:
-            fail(f"error: {e}")
 
     # Skip redundant inplace .so copies on every build_ext invocation.
     _patch_setuptools_copy_extensions_to_source()
@@ -1021,7 +1002,6 @@ def mypycify(
         log_trace=log_trace,
         depends_on_librt_internal=depends_on_librt_internal,
         experimental_features=experimental_features,
-        target_python=target_python,
     )
 
     # Generate all the actual important C code
@@ -1092,7 +1072,6 @@ def mypycify(
                     build_dir,
                     cflags,
                     extra_include_dirs,
-                    compiler_options.target_python,
                 )
             )
         else:
