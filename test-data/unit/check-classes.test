@@ -7322,6 +7322,18 @@ class E(C):
 
 [targets __main__, __main__, __main__.C.__init__, __main__.D.g, __main__.D.f, __main__.E.g, __main__.E.f]
 
+[case testAttributeDefOrderNestedClass]
+class E(D):
+    def e(self) -> None:
+        self.x = ''  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+
+class D:
+    def d(self) -> None: pass
+    class N:
+        def n(self) -> None: pass
+    def d2(self) -> None:
+        self.x = 0
+
 [case testNewReturnType1]
 class A:
     def __new__(cls) -> B:

@@ -26,6 +26,7 @@ will be incomplete.
 
 from __future__ import annotations
 
+from collections import Counter
 from collections.abc import Callable, Iterator
 from contextlib import nullcontext
 from itertools import groupby
@@ -222,10 +223,9 @@ def order_by_subclassing(targets: list[FullTargetInfo]) -> Iterator[FullTargetIn
     that are already almost correctly ordered.
     """
 
-    # First, group the targets by their TypeInfo (since targets are sorted by line,
-    # we know that each TypeInfo will appear as group key only once).
+    # A nested class can split its enclosing class's methods into multiple groups.
     grouped = [(k, list(g)) for k, g in groupby(targets, key=lambda x: x[3])]
-    remaining_infos = {info for info, _ in grouped if info is not None}
+    remaining_infos = Counter(info for info, _ in grouped if info is not None)
 
     next_group = 0
     while grouped:
@@ -245,7 +245,9 @@ def order_by_subclassing(targets: list[FullTargetInfo]) -> Iterator[FullTargetIn
             continue
         yield from group
         grouped.pop(next_group)
-        remaining_infos.discard(next_info)
+        remaining_infos[next_info] -= 1
+        if not remaining_infos[next_info]:
+            del remaining_infos[next_info]
         # Each time after processing a method group we should retry from start,
         # since there may be some groups that are not blocked on parents anymore.
         next_group = 0
