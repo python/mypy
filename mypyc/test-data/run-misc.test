@@ -1354,6 +1354,18 @@ bad: Any = 5
 def check_bad(x: Any) -> bool:
     return isinstance(x, (int, bad))
 
+def check_star(x: Any, classes: tuple[type, ...]) -> bool:
+    return isinstance(x, (int, *classes))
+def check_nested_star(x: Any, classes: tuple[type, ...]) -> bool:
+    return isinstance(x, (int, (bytes, *classes)))
+
+def check_walrus(x: Any) -> bool:
+    cls: type = int
+    return isinstance(x, (cls, (cls := str)))
+def check_nested_walrus(x: Any) -> bool:
+    cls: type = int
+    return isinstance(x, ((cls, float), get_class(cls := str)))
+
 def test_classes_evaluated_before_checks() -> None:
     for x, expected in ((1, True), (b"x", True), (None, False)):
         calls.clear()
@@ -1369,3 +1381,21 @@ def test_invalid_class() -> None:
     assert check_bad(1) is True
     with assertRaises(TypeError):
         check_bad("x")
+
+def test_star() -> None:
+    assert check_star(1, ()) is True
+    assert check_star("x", (str,)) is True
+    assert check_star("x", (bytes, float)) is False
+    assert check_nested_star(b"x", ()) is True
+    assert check_nested_star("x", (float, str)) is True
+    assert check_nested_star(1.5, ()) is False
+
+def test_walrus() -> None:
+    # The first item is the value of cls from before the walrus reassigns it
+    assert check_walrus(1) is True
+    assert check_walrus("x") is True
+    assert check_walrus(1.5) is False
+    assert check_nested_walrus(1) is True
+    assert check_nested_walrus(1.5) is True
+    assert check_nested_walrus("x") is True
+    assert check_nested_walrus(b"x") is False

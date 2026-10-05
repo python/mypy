@@ -31,6 +31,7 @@ from mypy.nodes import (
     NameExpr,
     RefExpr,
     SliceExpr,
+    StarExpr,
     StrExpr,
     SuperExpr,
     TupleExpr,
@@ -89,7 +90,7 @@ from mypyc.ir.rtypes import (
     string_writer_rprimitive,
     uint8_rprimitive,
 )
-from mypyc.irbuild.builder import IRBuilder, get_call_target_fullname
+from mypyc.irbuild.builder import IRBuilder, find_walrus_targets, get_call_target_fullname
 from mypyc.irbuild.constant_fold import constant_fold_expr
 from mypyc.irbuild.for_helpers import (
     comprehension_helper,
@@ -805,6 +806,13 @@ def translate_isinstance(builder: IRBuilder, expr: CallExpr, callee: RefExpr) ->
                 return builder.primitive_op(desc, [obj], expr.line)
 
     elif isinstance(type_expr, TupleExpr):
+        items = flatten_isinstance_classes(type_expr)
+        if any(isinstance(item, StarExpr) for item in items) or find_walrus_targets(type_expr):
+            # Fall back to building a tuple. A star item has an unknown number of classes,
+            # and a walrus could reassign a variable used as an earlier class before the
+            # check that uses it.
+            return None
+
         obj = builder.accept(obj_expr)
 
         # Generate checks for all the classes. Classes that need to be evaluated are
@@ -813,7 +821,7 @@ def translate_isinstance(builder: IRBuilder, expr: CallExpr, callee: RefExpr) ->
         # can be checked without evaluating them.
         checks: list[IsinstanceCheck] = []
         seen: set[str] = set()
-        for item in flatten_isinstance_classes(type_expr):
+        for item in items:
             if isinstance(item, RefExpr) and item.node is not None:
                 fullname = item.node.fullname
                 if fullname in seen:
