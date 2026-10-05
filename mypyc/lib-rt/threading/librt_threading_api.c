@@ -1,6 +1,8 @@
 #include "librt_threading_api.h"
 
+#ifndef MYPYC_STATIC_LINKING
 void *LibRTThreading_API[LIBRT_THREADING_API_LEN] = {0};
+#endif
 
 int
 import_librt_threading(void)
@@ -9,6 +11,11 @@ import_librt_threading(void)
     if (mod == NULL)
         return -1;
     Py_DECREF(mod);  // we import just for the side effect of making the below work.
+#ifdef MYPYC_STATIC_LINKING
+    // librt is statically linked, so the API is used directly. Importing the
+    // module above initializes it (e.g. its types).
+    return 0;
+#else
     void **capsule = (void **)PyCapsule_Import("librt.threading._C_API", 0);
     if (capsule == NULL)
         return -1;
@@ -40,4 +47,5 @@ import_librt_threading(void)
     // entries, so this copy is safe.
     memcpy(LibRTThreading_API, capsule, sizeof(LibRTThreading_API));
     return 0;
+#endif
 }

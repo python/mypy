@@ -2,7 +2,9 @@
 
 #include "librt_random_api.h"
 
+#ifndef MYPYC_STATIC_LINKING
 void *LibRTRandom_API[LIBRT_RANDOM_API_LEN] = {0};
+#endif
 
 int
 import_librt_random(void)
@@ -11,6 +13,11 @@ import_librt_random(void)
     if (mod == NULL)
         return -1;
     Py_DECREF(mod);  // we import just for the side effect of making the below work.
+#ifdef MYPYC_STATIC_LINKING
+    // librt is statically linked, so the API is used directly. Importing the
+    // module above initializes it (e.g. its types).
+    return 0;
+#else
     void **capsule = (void **)PyCapsule_Import("librt.random._C_API", 0);
     if (capsule == NULL)
         return -1;
@@ -42,4 +49,5 @@ import_librt_random(void)
     // entries, so this copy is safe.
     memcpy(LibRTRandom_API, capsule, sizeof(LibRTRandom_API));
     return 0;
+#endif
 }

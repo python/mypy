@@ -6,11 +6,18 @@
 #include <string.h>
 #include "CPy.h"
 #define LIBRT_INTERNAL_MODULE
+// With static linking, compiled code calls the API functions and refers to the
+// type objects directly, so they need external linkage
+#ifdef MYPYC_STATIC_LINKING
+#define LIBRT_API_LINKAGE
+#else
+#define LIBRT_API_LINKAGE static
+#endif
 #include "librt_internal.h"
 
 #define START_SIZE 512
 
-// See comment in read_int_internal() on motivation for these values.
+// See comment in NativeInternal_read_int_internal() on motivation for these values.
 #define MIN_ONE_BYTE_INT -10
 #define MAX_ONE_BYTE_INT 117  // 2 ** 7 - 1 - 10
 #define MIN_TWO_BYTES_INT -100
@@ -72,12 +79,12 @@ typedef struct {
     PyObject *source;  // The object that contains the buffer
 } ReadBufferObject;
 
-static PyTypeObject ReadBufferType;
+LIBRT_API_LINKAGE PyTypeObject NativeInternal_ReadBufferType;
 
 static PyObject*
 ReadBuffer_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
 {
-    if (type != &ReadBufferType) {
+    if (type != &NativeInternal_ReadBufferType) {
         PyErr_SetString(PyExc_TypeError, "ReadBuffer should not be subclassed");
         return NULL;
     }
@@ -103,9 +110,9 @@ ReadBuffer_init_internal(ReadBufferObject *self, PyObject *source) {
     return 0;
 }
 
-static PyObject*
-ReadBuffer_internal(PyObject *source) {
-    ReadBufferObject *self = (ReadBufferObject *)ReadBufferType.tp_alloc(&ReadBufferType, 0);
+LIBRT_API_LINKAGE PyObject*
+NativeInternal_ReadBuffer_internal(PyObject *source) {
+    ReadBufferObject *self = (ReadBufferObject *)NativeInternal_ReadBufferType.tp_alloc(&NativeInternal_ReadBufferType, 0);
     if (self == NULL)
         return NULL;
     self->ptr = NULL;
@@ -141,7 +148,7 @@ static PyMethodDef ReadBuffer_methods[] = {
     {NULL}  /* Sentinel */
 };
 
-static PyTypeObject ReadBufferType = {
+LIBRT_API_LINKAGE PyTypeObject NativeInternal_ReadBufferType = {
     .ob_base = PyVarObject_HEAD_INIT(NULL, 0)
     .tp_name = "ReadBuffer",
     .tp_doc = PyDoc_STR("Mypy cache buffer objects"),
@@ -165,12 +172,12 @@ typedef struct {
     char *end;  // End of the buffer
 } WriteBufferObject;
 
-static PyTypeObject WriteBufferType;
+LIBRT_API_LINKAGE PyTypeObject NativeInternal_WriteBufferType;
 
 static PyObject*
 WriteBuffer_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
 {
-    if (type != &WriteBufferType) {
+    if (type != &NativeInternal_WriteBufferType) {
         PyErr_SetString(PyExc_TypeError, "WriteBuffer cannot be subclassed");
         return NULL;
     }
@@ -197,9 +204,9 @@ WriteBuffer_init_internal(WriteBufferObject *self) {
     return 0;
 }
 
-static PyObject*
-WriteBuffer_internal(void) {
-    WriteBufferObject *self = (WriteBufferObject *)WriteBufferType.tp_alloc(&WriteBufferType, 0);
+LIBRT_API_LINKAGE PyObject*
+NativeInternal_WriteBuffer_internal(void) {
+    WriteBufferObject *self = (WriteBufferObject *)NativeInternal_WriteBufferType.tp_alloc(&NativeInternal_WriteBufferType, 0);
     if (self == NULL)
         return NULL;
     self->buf = NULL;
@@ -236,8 +243,8 @@ WriteBuffer_dealloc(WriteBufferObject *self)
     Py_TYPE(self)->tp_free((PyObject *)self);
 }
 
-static PyObject*
-WriteBuffer_getvalue_internal(PyObject *self)
+LIBRT_API_LINKAGE PyObject*
+NativeInternal_WriteBuffer_getvalue_internal(PyObject *self)
 {
     WriteBufferObject *obj = (WriteBufferObject *)self;
     return PyBytes_FromStringAndSize(obj->buf, obj->ptr - obj->buf);
@@ -256,7 +263,7 @@ static PyMethodDef WriteBuffer_methods[] = {
     {NULL}  /* Sentinel */
 };
 
-static PyTypeObject WriteBufferType = {
+LIBRT_API_LINKAGE PyTypeObject NativeInternal_WriteBufferType = {
     .ob_base = PyVarObject_HEAD_INIT(NULL, 0)
     .tp_name = "WriteBuffer",
     .tp_doc = PyDoc_STR("Mypy cache buffer objects"),
@@ -273,7 +280,7 @@ static PyTypeObject WriteBufferType = {
 
 static inline char
 _check_read_buffer(PyObject *data) {
-    if (unlikely(Py_TYPE(data) != &ReadBufferType)) {
+    if (unlikely(Py_TYPE(data) != &NativeInternal_ReadBufferType)) {
         PyErr_Format(
             PyExc_TypeError, "data must be a ReadBuffer object, got %s", Py_TYPE(data)->tp_name
         );
@@ -284,7 +291,7 @@ _check_read_buffer(PyObject *data) {
 
 static inline char
 _check_write_buffer(PyObject *data) {
-    if (unlikely(Py_TYPE(data) != &WriteBufferType)) {
+    if (unlikely(Py_TYPE(data) != &NativeInternal_WriteBufferType)) {
         PyErr_Format(
             PyExc_TypeError, "data must be a WriteBuffer object, got %s", Py_TYPE(data)->tp_name
         );
@@ -328,8 +335,8 @@ bool format: single byte
     \x01 - True
 */
 
-static char
-read_bool_internal(PyObject *data) {
+LIBRT_API_LINKAGE char
+NativeInternal_read_bool_internal(PyObject *data) {
     _CHECK_READ(data, 1, CPY_BOOL_ERROR)
     char res;
     _READ(&res, data, char);
@@ -349,7 +356,7 @@ read_bool(PyObject *self, PyObject *const *args, size_t nargs) {
     }
     PyObject *data = args[0];
     _CHECK_READ_BUFFER(data, NULL)
-    char res = read_bool_internal(data);
+    char res = NativeInternal_read_bool_internal(data);
     if (unlikely(res == CPY_BOOL_ERROR))
         return NULL;
     PyObject *retval = res ? Py_True : Py_False;
@@ -357,8 +364,8 @@ read_bool(PyObject *self, PyObject *const *args, size_t nargs) {
     return retval;
 }
 
-static char
-write_bool_internal(PyObject *data, char value) {
+LIBRT_API_LINKAGE char
+NativeInternal_write_bool_internal(PyObject *data, char value) {
     _CHECK_WRITE(data, 1)
     _WRITE(data, char, value);
     return CPY_NONE;
@@ -378,7 +385,7 @@ write_bool(PyObject *self, PyObject *const *args, size_t nargs) {
         PyErr_SetString(PyExc_TypeError, "value must be a bool");
         return NULL;
     }
-    if (unlikely(write_bool_internal(data, Py_IsTrue(value)) == CPY_NONE_ERROR)) {
+    if (unlikely(NativeInternal_write_bool_internal(data, Py_IsTrue(value)) == CPY_NONE_ERROR)) {
         return NULL;
     }
     Py_INCREF(Py_None);
@@ -414,8 +421,8 @@ _read_short_int(PyObject *data, uint8_t first) {
     return (higher + (Py_ssize_t)(first >> 3) + MIN_FOUR_BYTES_INT) << 1;
 }
 
-static PyObject*
-read_str_internal(PyObject *data) {
+LIBRT_API_LINKAGE PyObject*
+NativeInternal_read_str_internal(PyObject *data) {
     // Read string length.
     _CHECK_READ(data, 1, NULL)
     uint8_t first;
@@ -453,7 +460,7 @@ read_str(PyObject *self, PyObject *const *args, size_t nargs) {
     }
     PyObject *data = args[0];
     _CHECK_READ_BUFFER(data, NULL)
-    return read_str_internal(data);
+    return NativeInternal_read_str_internal(data);
 }
 
 // The caller *must* check that real_value is within allowed range (29 bits).
@@ -482,8 +489,8 @@ _write_short_int(PyObject *data, Py_ssize_t real_value) {
     return CPY_NONE;
 }
 
-static char
-write_str_internal(PyObject *data, PyObject *value) {
+LIBRT_API_LINKAGE char
+NativeInternal_write_str_internal(PyObject *data, PyObject *value) {
     Py_ssize_t size;
     const char *chunk = PyUnicode_AsUTF8AndSize(value, &size);
     if (unlikely(chunk == NULL))
@@ -519,7 +526,7 @@ write_str(PyObject *self, PyObject *const *args, size_t nargs) {
         PyErr_SetString(PyExc_TypeError, "value must be a str");
         return NULL;
     }
-    if (unlikely(write_str_internal(data, value) == CPY_NONE_ERROR)) {
+    if (unlikely(NativeInternal_write_str_internal(data, value) == CPY_NONE_ERROR)) {
         return NULL;
     }
     Py_INCREF(Py_None);
@@ -530,8 +537,8 @@ write_str(PyObject *self, PyObject *const *args, size_t nargs) {
 bytes format: size as int (see below) followed by bytes
 */
 
-static PyObject*
-read_bytes_internal(PyObject *data) {
+LIBRT_API_LINKAGE PyObject*
+NativeInternal_read_bytes_internal(PyObject *data) {
     // Read length.
     _CHECK_READ(data, 1, NULL)
     uint8_t first;
@@ -569,11 +576,11 @@ read_bytes(PyObject *self, PyObject *const *args, size_t nargs) {
     }
     PyObject *data = args[0];
     _CHECK_READ_BUFFER(data, NULL)
-    return read_bytes_internal(data);
+    return NativeInternal_read_bytes_internal(data);
 }
 
-static char
-write_bytes_internal(PyObject *data, PyObject *value) {
+LIBRT_API_LINKAGE char
+NativeInternal_write_bytes_internal(PyObject *data, PyObject *value) {
     const char *chunk = PyBytes_AsString(value);
     if (unlikely(chunk == NULL))
         return CPY_NONE_ERROR;
@@ -609,7 +616,7 @@ write_bytes(PyObject *self, PyObject *const *args, size_t nargs) {
         PyErr_SetString(PyExc_TypeError, "value must be a bytes object");
         return NULL;
     }
-    if (unlikely(write_bytes_internal(data, value) == CPY_NONE_ERROR)) {
+    if (unlikely(NativeInternal_write_bytes_internal(data, value) == CPY_NONE_ERROR)) {
         return NULL;
     }
     Py_INCREF(Py_None);
@@ -621,8 +628,8 @@ float format:
     stored using PyFloat helpers in little-endian format.
 */
 
-static double
-read_float_internal(PyObject *data) {
+LIBRT_API_LINKAGE double
+NativeInternal_read_float_internal(PyObject *data) {
     _CHECK_READ(data, 8, CPY_FLOAT_ERROR)
     char *ptr = ((ReadBufferObject *)data)->ptr;
     double res = PyFloat_Unpack8(ptr, 1);
@@ -641,15 +648,15 @@ read_float(PyObject *self, PyObject *const *args, size_t nargs) {
     }
     PyObject *data = args[0];
     _CHECK_READ_BUFFER(data, NULL)
-    double retval = read_float_internal(data);
+    double retval = NativeInternal_read_float_internal(data);
     if (unlikely(retval == CPY_FLOAT_ERROR && PyErr_Occurred())) {
         return NULL;
     }
     return PyFloat_FromDouble(retval);
 }
 
-static char
-write_float_internal(PyObject *data, double value) {
+LIBRT_API_LINKAGE char
+NativeInternal_write_float_internal(PyObject *data, double value) {
     _CHECK_WRITE(data, 8)
     char *ptr = ((WriteBufferObject *)data)->ptr;
     int res = PyFloat_Pack8(value, ptr, 1);
@@ -673,7 +680,7 @@ write_float(PyObject *self, PyObject *const *args, size_t nargs) {
         PyErr_SetString(PyExc_TypeError, "value must be a float");
         return NULL;
     }
-    if (unlikely(write_float_internal(data, PyFloat_AsDouble(value)) == CPY_NONE_ERROR)) {
+    if (unlikely(NativeInternal_write_float_internal(data, PyFloat_AsDouble(value)) == CPY_NONE_ERROR)) {
         return NULL;
     }
     Py_INCREF(Py_None);
@@ -691,8 +698,8 @@ Note: for fixed size formats we skew ranges towards more positive values,
 since negative integers are much more rare.
 */
 
-static CPyTagged
-read_int_internal(PyObject *data) {
+LIBRT_API_LINKAGE CPyTagged
+NativeInternal_read_int_internal(PyObject *data) {
     _CHECK_READ(data, 1, CPY_INT_TAG)
 
     uint8_t first;
@@ -743,7 +750,7 @@ read_int(PyObject *self, PyObject *const *args, size_t nargs) {
     }
     PyObject *data = args[0];
     _CHECK_READ_BUFFER(data, NULL)
-    CPyTagged retval = read_int_internal(data);
+    CPyTagged retval = NativeInternal_read_int_internal(data);
     if (unlikely(retval == CPY_INT_TAG)) {
         return NULL;
     }
@@ -806,13 +813,13 @@ _write_long_int(PyObject *data, CPyTagged value) {
     // Write absolute integer value as byte array in a variable-length little endian format.
     Py_ssize_t i;
     for (i = len; i > 1; i -= 2) {
-        if (write_tag_internal(
+        if (NativeInternal_write_tag_internal(
                 data, hex_to_int(str[i - 1]) | (hex_to_int(str[i - 2]) << 4)) == CPY_NONE_ERROR)
             goto error;
     }
     // The final byte may correspond to only one hex digit.
     if (i == 1) {
-        if (write_tag_internal(data, hex_to_int(str[i - 1])) == CPY_NONE_ERROR)
+        if (NativeInternal_write_tag_internal(data, hex_to_int(str[i - 1])) == CPY_NONE_ERROR)
             goto error;
     }
 
@@ -826,8 +833,8 @@ _write_long_int(PyObject *data, CPyTagged value) {
     return CPY_NONE_ERROR;
 }
 
-static char
-write_int_internal(PyObject *data, CPyTagged value) {
+LIBRT_API_LINKAGE char
+NativeInternal_write_int_internal(PyObject *data, CPyTagged value) {
     if (likely((value & CPY_INT_TAG) == 0)) {
         Py_ssize_t real_value = CPyTagged_ShortAsSsize_t(value);
         if (likely(real_value >= MIN_FOUR_BYTES_INT && real_value <= MAX_FOUR_BYTES_INT)) {
@@ -855,7 +862,7 @@ write_int(PyObject *self, PyObject *const *args, size_t nargs) {
         return NULL;
     }
     CPyTagged tagged_value = CPyTagged_BorrowFromObject(value);
-    if (unlikely(write_int_internal(data, tagged_value) == CPY_NONE_ERROR)) {
+    if (unlikely(NativeInternal_write_int_internal(data, tagged_value) == CPY_NONE_ERROR)) {
         return NULL;
     }
     Py_INCREF(Py_None);
@@ -867,8 +874,8 @@ integer tag format (0 <= t <= 255):
     stored as a uint8_t
 */
 
-static uint8_t
-read_tag_internal(PyObject *data) {
+LIBRT_API_LINKAGE uint8_t
+NativeInternal_read_tag_internal(PyObject *data) {
     _CHECK_READ(data, 1, CPY_LL_UINT_ERROR)
     uint8_t ret;
     _READ(&ret, data, uint8_t);
@@ -884,15 +891,15 @@ read_tag(PyObject *self, PyObject *const *args, size_t nargs) {
     }
     PyObject *data = args[0];
     _CHECK_READ_BUFFER(data, NULL)
-    uint8_t retval = read_tag_internal(data);
+    uint8_t retval = NativeInternal_read_tag_internal(data);
     if (unlikely(retval == CPY_LL_UINT_ERROR && PyErr_Occurred())) {
         return NULL;
     }
     return PyLong_FromLong(retval);
 }
 
-static char
-write_tag_internal(PyObject *data, uint8_t value) {
+LIBRT_API_LINKAGE char
+NativeInternal_write_tag_internal(PyObject *data, uint8_t value) {
     _CHECK_WRITE(data, 1)
     _WRITE(data, uint8_t, value);
     return CPY_NONE;
@@ -913,7 +920,7 @@ write_tag(PyObject *self, PyObject *const *args, size_t nargs) {
         CPy_TypeError("u8", value);
         return NULL;
     }
-    if (unlikely(write_tag_internal(data, unboxed) == CPY_NONE_ERROR)) {
+    if (unlikely(NativeInternal_write_tag_internal(data, unboxed) == CPY_NONE_ERROR)) {
         return NULL;
     }
     Py_INCREF(Py_None);
@@ -1040,7 +1047,7 @@ _skip_list_gen(PyObject *data) {
         return CPY_NONE_ERROR;
     Py_ssize_t i;
     for (i = 0; i < size; i++) {
-        uint8_t tag = read_tag_internal(data);
+        uint8_t tag = NativeInternal_read_tag_internal(data);
         if (unlikely(tag == CPY_LL_UINT_ERROR && PyErr_Occurred())) {
             return CPY_NONE_ERROR;
         }
@@ -1086,7 +1093,7 @@ _skip_dict_str_gen(PyObject *data) {
         // Bare key followed by tagged value.
         if (unlikely(_skip_str_bytes(data) == CPY_NONE_ERROR))
             return CPY_NONE_ERROR;
-        uint8_t tag = read_tag_internal(data);
+        uint8_t tag = NativeInternal_read_tag_internal(data);
         if (unlikely(tag == CPY_LL_UINT_ERROR && PyErr_Occurred())) {
             return CPY_NONE_ERROR;
         }
@@ -1101,7 +1108,7 @@ _skip_dict_str_gen(PyObject *data) {
 static inline char
 _skip_class(PyObject *data) {
     while (1) {
-        uint8_t tag = read_tag_internal(data);
+        uint8_t tag = NativeInternal_read_tag_internal(data);
         if (unlikely(tag == CPY_LL_UINT_ERROR && PyErr_Occurred())) {
             return CPY_NONE_ERROR;
         }
@@ -1117,7 +1124,7 @@ _skip_class(PyObject *data) {
 // Instance has special compact layout (as an important optimization).
 static inline char
 _skip_instance(PyObject *data) {
-    uint8_t second_tag = read_tag_internal(data);
+    uint8_t second_tag = NativeInternal_read_tag_internal(data);
     if (unlikely(second_tag == CPY_LL_UINT_ERROR && PyErr_Occurred())) {
         return CPY_NONE_ERROR;
     }
@@ -1171,8 +1178,8 @@ _skip_object(PyObject *data, uint8_t tag) {
     return CPY_NONE_ERROR;
 }
 
-static PyObject*
-extract_symbol_internal(PyObject *data) {
+LIBRT_API_LINKAGE PyObject*
+NativeInternal_extract_symbol_internal(PyObject *data) {
     char *ptr = ((ReadBufferObject *)data)->ptr;
     if (unlikely(_skip_class(data) == CPY_NONE_ERROR))
         return NULL;
@@ -1192,27 +1199,27 @@ extract_symbol(PyObject *self, PyObject *const *args, size_t nargs) {
     }
     PyObject *data = args[0];
     _CHECK_READ_BUFFER(data, NULL)
-    return extract_symbol_internal(data);
+    return NativeInternal_extract_symbol_internal(data);
 }
 
-static uint8_t
-cache_version_internal(void) {
+LIBRT_API_LINKAGE uint8_t
+NativeInternal_cache_version_internal(void) {
     return 0;
 }
 
 static PyObject*
 cache_version(PyObject *self, PyObject *Py_UNUSED(ignored)) {
-    return PyLong_FromLong(cache_version_internal());
+    return PyLong_FromLong(NativeInternal_cache_version_internal());
 }
 
-static PyTypeObject *
-ReadBuffer_type_internal(void) {
-    return &ReadBufferType;  // Return borrowed reference
+LIBRT_API_LINKAGE PyTypeObject *
+NativeInternal_ReadBuffer_type_internal(void) {
+    return &NativeInternal_ReadBufferType;  // Return borrowed reference
 }
 
-static PyTypeObject *
-WriteBuffer_type_internal(void) {
-    return &WriteBufferType;  // Return borrowed reference
+LIBRT_API_LINKAGE PyTypeObject *
+NativeInternal_WriteBuffer_type_internal(void) {
+    return &NativeInternal_WriteBufferType;  // Return borrowed reference
 };
 
 static PyMethodDef librt_internal_module_methods[] = {
@@ -1233,12 +1240,12 @@ static PyMethodDef librt_internal_module_methods[] = {
     {NULL, NULL, 0, NULL}
 };
 
-static int
+LIBRT_API_LINKAGE int
 NativeInternal_ABI_Version(void) {
     return LIBRT_INTERNAL_ABI_VERSION;
 }
 
-static int
+LIBRT_API_LINKAGE int
 NativeInternal_API_Version(void) {
     return LIBRT_INTERNAL_API_VERSION;
 }
@@ -1246,47 +1253,49 @@ NativeInternal_API_Version(void) {
 static int
 librt_internal_module_exec(PyObject *m)
 {
-    if (PyType_Ready(&ReadBufferType) < 0) {
+    if (PyType_Ready(&NativeInternal_ReadBufferType) < 0) {
         return -1;
     }
-    if (PyType_Ready(&WriteBufferType) < 0) {
+    if (PyType_Ready(&NativeInternal_WriteBufferType) < 0) {
         return -1;
     }
-    if (PyModule_AddObjectRef(m, "ReadBuffer", (PyObject *) &ReadBufferType) < 0) {
+    if (PyModule_AddObjectRef(m, "ReadBuffer", (PyObject *) &NativeInternal_ReadBufferType) < 0) {
         return -1;
     }
-    if (PyModule_AddObjectRef(m, "WriteBuffer", (PyObject *) &WriteBufferType) < 0) {
+    if (PyModule_AddObjectRef(m, "WriteBuffer", (PyObject *) &NativeInternal_WriteBufferType) < 0) {
         return -1;
     }
 
+#ifndef MYPYC_STATIC_LINKING
     // Export mypy internal C API, be careful with the order!
     static void *NativeInternal_API[LIBRT_INTERNAL_API_LEN] = {
-        (void *)ReadBuffer_internal,
-        (void *)WriteBuffer_internal,
-        (void *)WriteBuffer_getvalue_internal,
-        (void *)write_bool_internal,
-        (void *)read_bool_internal,
-        (void *)write_str_internal,
-        (void *)read_str_internal,
-        (void *)write_float_internal,
-        (void *)read_float_internal,
-        (void *)write_int_internal,
-        (void *)read_int_internal,
-        (void *)write_tag_internal,
-        (void *)read_tag_internal,
+        (void *)NativeInternal_ReadBuffer_internal,
+        (void *)NativeInternal_WriteBuffer_internal,
+        (void *)NativeInternal_WriteBuffer_getvalue_internal,
+        (void *)NativeInternal_write_bool_internal,
+        (void *)NativeInternal_read_bool_internal,
+        (void *)NativeInternal_write_str_internal,
+        (void *)NativeInternal_read_str_internal,
+        (void *)NativeInternal_write_float_internal,
+        (void *)NativeInternal_read_float_internal,
+        (void *)NativeInternal_write_int_internal,
+        (void *)NativeInternal_read_int_internal,
+        (void *)NativeInternal_write_tag_internal,
+        (void *)NativeInternal_read_tag_internal,
         (void *)NativeInternal_ABI_Version,
-        (void *)write_bytes_internal,
-        (void *)read_bytes_internal,
-        (void *)cache_version_internal,
-        (void *)ReadBuffer_type_internal,
-        (void *)WriteBuffer_type_internal,
+        (void *)NativeInternal_write_bytes_internal,
+        (void *)NativeInternal_read_bytes_internal,
+        (void *)NativeInternal_cache_version_internal,
+        (void *)NativeInternal_ReadBuffer_type_internal,
+        (void *)NativeInternal_WriteBuffer_type_internal,
         (void *)NativeInternal_API_Version,
-        (void *)extract_symbol_internal
+        (void *)NativeInternal_extract_symbol_internal
     };
     PyObject *c_api_object = PyCapsule_New((void *)NativeInternal_API, "librt.internal._C_API", NULL);
     if (PyModule_Add(m, "_C_API", c_api_object) < 0) {
         return -1;
     }
+#endif
     return 0;
 }
 

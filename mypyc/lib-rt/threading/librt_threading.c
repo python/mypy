@@ -2,6 +2,13 @@
 
 #define PY_SSIZE_T_CLEAN
 #include <Python.h>
+// With static linking, compiled code calls the API functions and refers to the
+// type objects directly, so they need external linkage
+#ifdef MYPYC_STATIC_LINKING
+#define LIBRT_API_LINKAGE
+#else
+#define LIBRT_API_LINKAGE static
+#endif
 #include "librt_threading.h"
 #include "mypyc_util.h"
 
@@ -448,12 +455,12 @@ Lock_is_locked(LockObject *self)
 
 // ---------- Python type methods (shared across platforms) ----------
 
-static PyTypeObject LockType;
+LIBRT_API_LINKAGE PyTypeObject LibRTThreading_LockType;
 
 static PyObject *
 Lock_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
 {
-    if (type != &LockType) {
+    if (type != &LibRTThreading_LockType) {
         PyErr_SetString(PyExc_TypeError, "Lock cannot be subclassed");
         return NULL;
     }
@@ -579,7 +586,7 @@ static PyMethodDef Lock_methods[] = {
     {NULL}
 };
 
-static PyTypeObject LockType = {
+LIBRT_API_LINKAGE PyTypeObject LibRTThreading_LockType = {
     .ob_base = PyVarObject_HEAD_INIT(NULL, 0)
     .tp_name = "Lock",
     .tp_doc = PyDoc_STR("A fast mutual exclusion lock"),
@@ -592,17 +599,17 @@ static PyTypeObject LockType = {
     .tp_methods = Lock_methods,
 };
 
-static PyTypeObject *
-Lock_type_internal(void) {
-    return &LockType;
+LIBRT_API_LINKAGE PyTypeObject *
+LibRTThreading_Lock_type_internal(void) {
+    return &LibRTThreading_LockType;
 }
 
 // Create a new Lock object (for use from compiled code)
-static PyObject *
-Lock_new_internal(void) {
-    LockObject *self = (LockObject *)LockType.tp_alloc(&LockType, 0);
+LIBRT_API_LINKAGE PyObject *
+LibRTThreading_Lock_new_internal(void) {
+    LockObject *self = (LockObject *)LibRTThreading_LockType.tp_alloc(&LibRTThreading_LockType, 0);
     if (self != NULL && Lock_init_internal(self) < 0) {
-        LockType.tp_free((PyObject *)self);
+        LibRTThreading_LockType.tp_free((PyObject *)self);
         return NULL;
     }
     return (PyObject *)self;
@@ -610,8 +617,8 @@ Lock_new_internal(void) {
 
 // Acquire the lock (blocking), for use from compiled code.
 // Returns true on success, sets error and returns 2 (ERR_MAGIC) on failure.
-static char
-Lock_acquire_internal(PyObject *self) {
+LIBRT_API_LINKAGE char
+LibRTThreading_Lock_acquire_internal(PyObject *self) {
     int result = Lock_acquire_impl((LockObject *)self, 1);
     if (result < 0) {
         return 2;
@@ -622,8 +629,8 @@ Lock_acquire_internal(PyObject *self) {
 // Acquire the lock with explicit blocking arg, for use from compiled code.
 // Returns true if acquired, false otherwise. Sets error and returns 2
 // (ERR_MAGIC) on failure.
-static char
-Lock_acquire_blocking_internal(PyObject *self, char blocking) {
+LIBRT_API_LINKAGE char
+LibRTThreading_Lock_acquire_blocking_internal(PyObject *self, char blocking) {
     int result = Lock_acquire_impl((LockObject *)self, blocking);
     if (result < 0) {
         return 2;
@@ -633,8 +640,8 @@ Lock_acquire_blocking_internal(PyObject *self, char blocking) {
 
 // Release the lock, for use from compiled code.
 // Returns 0 (None) on success, sets error and returns 2 (ERR_MAGIC) on failure.
-static char
-Lock_release_internal(PyObject *self) {
+LIBRT_API_LINKAGE char
+LibRTThreading_Lock_release_internal(PyObject *self) {
     if (Lock_release_impl((LockObject *)self) < 0) {
         PyErr_SetString(PyExc_RuntimeError, "cannot release an unlocked lock");
         return 2;
@@ -643,8 +650,8 @@ Lock_release_internal(PyObject *self) {
 }
 
 // Check if the lock is held, for use from compiled code.
-static char
-Lock_locked_internal(PyObject *self) {
+LIBRT_API_LINKAGE char
+LibRTThreading_Lock_locked_internal(PyObject *self) {
     return (char)Lock_is_locked((LockObject *)self);
 }
 
@@ -652,41 +659,43 @@ static PyMethodDef librt_threading_module_methods[] = {
     {NULL, NULL, 0, NULL}
 };
 
-static int
-threading_abi_version(void) {
+LIBRT_API_LINKAGE int
+LibRTThreading_ABIVersion(void) {
     return LIBRT_THREADING_ABI_VERSION;
 }
 
-static int
-threading_api_version(void) {
+LIBRT_API_LINKAGE int
+LibRTThreading_APIVersion(void) {
     return LIBRT_THREADING_API_VERSION;
 }
 
 static int
 librt_threading_module_exec(PyObject *m)
 {
-    if (PyType_Ready(&LockType) < 0) {
+    if (PyType_Ready(&LibRTThreading_LockType) < 0) {
         return -1;
     }
-    if (PyModule_AddObjectRef(m, "Lock", (PyObject *)&LockType) < 0) {
+    if (PyModule_AddObjectRef(m, "Lock", (PyObject *)&LibRTThreading_LockType) < 0) {
         return -1;
     }
 
+#ifndef MYPYC_STATIC_LINKING
     // Export mypyc internal C API via capsule
     static void *threading_api[LIBRT_THREADING_API_LEN] = {
-        (void *)threading_abi_version,
-        (void *)threading_api_version,
-        (void *)Lock_type_internal,
-        (void *)Lock_new_internal,
-        (void *)Lock_acquire_internal,
-        (void *)Lock_release_internal,
-        (void *)Lock_locked_internal,
-        (void *)Lock_acquire_blocking_internal,
+        (void *)LibRTThreading_ABIVersion,
+        (void *)LibRTThreading_APIVersion,
+        (void *)LibRTThreading_Lock_type_internal,
+        (void *)LibRTThreading_Lock_new_internal,
+        (void *)LibRTThreading_Lock_acquire_internal,
+        (void *)LibRTThreading_Lock_release_internal,
+        (void *)LibRTThreading_Lock_locked_internal,
+        (void *)LibRTThreading_Lock_acquire_blocking_internal,
     };
     PyObject *c_api_object = PyCapsule_New((void *)threading_api, "librt.threading._C_API", NULL);
     if (PyModule_Add(m, "_C_API", c_api_object) < 0) {
         return -1;
     }
+#endif
     return 0;
 }
 

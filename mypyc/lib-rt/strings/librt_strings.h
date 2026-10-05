@@ -128,4 +128,26 @@ static inline int32_t LibRTStrings_ToLower(int32_t c) {
     return LibRTStrings_ChangeCase_slow(c, "lower");
 }
 
+#ifdef MYPYC_STATIC_LINKING
+// With static linking, the API is used directly (see librt_strings_api.h)
+#include <stdbool.h>
+#include <stdint.h>
+extern PyTypeObject LibRTStrings_BytesWriterType;
+extern PyTypeObject LibRTStrings_StringWriterType;
+int LibRTStrings_ABIVersion(void);
+int LibRTStrings_APIVersion(void);
+PyObject *LibRTStrings_BytesWriter_internal(void);
+PyObject *LibRTStrings_BytesWriter_getvalue_internal(PyObject *self);
+char LibRTStrings_BytesWriter_append_internal(BytesWriterObject *self, uint8_t value);
+bool LibRTStrings_ByteWriter_grow_buffer_internal(BytesWriterObject *data, Py_ssize_t n);
+PyTypeObject *LibRTStrings_BytesWriter_type_internal(void);
+char LibRTStrings_BytesWriter_truncate_internal(PyObject *self, int64_t size);
+PyObject *LibRTStrings_StringWriter_internal(void);
+PyObject *LibRTStrings_StringWriter_getvalue_internal(PyObject *self);
+char LibRTStrings_string_append_slow_path(StringWriterObject *self, int32_t value);
+PyTypeObject *LibRTStrings_StringWriter_type_internal(void);
+char LibRTStrings_StringWriter_write_internal(PyObject *obj, PyObject *value);
+bool LibRTStrings_grow_string_buffer(StringWriterObject *data, Py_ssize_t n);
+#endif
+
 #endif  // LIBRT_STRINGS_H

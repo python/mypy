@@ -749,17 +749,4 @@ PyObject *VecNested_FromIterable(size_t item_type, size_t depth, PyObject *itera
     return VecNested_Box(v);
 }
 
-VecNestedAPI Vec_NestedAPI = {
-    &VecNestedType,
-    &VecNestedBufType,
-    VecNested_New,
-    VecNested_Box,
-    VecNested_Unbox,
-    VecNested_ConvertFromNested,
-    VecNested_Append,
-    VecNested_Pop,
-    VecNested_Remove,
-    VecNested_Slice,
-    VecNested_Extend,
-    VecNested_ExtendVec,
-};
+VecNestedAPI Vec_NestedAPI = VEC_NESTED_API_INIT;
