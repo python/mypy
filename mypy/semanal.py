@@ -2028,7 +2028,7 @@ class SemanticAnalyzer(
             self.defer(force_progress=tvar_defs != defn.type_vars)
 
         self.analyze_class_keywords(defn)
-        bases_result = self.analyze_base_classes(defn.name, bases)
+        bases_result = self.analyze_base_classes(defn, bases)
         if bases_result is None or self.found_incomplete_ref(tag):
             # Something was incomplete. Defer current target.
             self.mark_incomplete(defn.name, defn)
@@ -2621,7 +2621,7 @@ class SemanticAnalyzer(
         return None
 
     def analyze_base_classes(
-        self, cls_name: str, base_type_exprs: list[Expression]
+        self, defn: ClassDef, base_type_exprs: list[Expression]
     ) -> tuple[list[tuple[ProperType, Expression]], bool] | None:
         """Analyze base class types.
 
@@ -2634,6 +2634,16 @@ class SemanticAnalyzer(
         is_error = False
         bases = []
         for i, base_expr in enumerate(base_type_exprs):
+            if (
+                isinstance(base_expr, RefExpr)
+                and self.type is not None
+                and base_expr.node is self.type
+                and defn in self.type.defn.defs.body
+            ):
+                # The enclosing class isn't bound until its body has finished executing.
+                self.name_not_defined(self.type.name, base_expr)
+                is_error = True
+                continue
             if (
                 isinstance(base_expr, RefExpr)
                 and base_expr.fullname in TYPED_NAMEDTUPLE_NAMES + TPDICT_NAMES
@@ -2654,7 +2664,7 @@ class SemanticAnalyzer(
                     base_expr,
                     allow_placeholder=True,
                     allow_type_any=True,
-                    unique_name=inline_base(cls_name, i),
+                    unique_name=inline_base(defn.name, i),
                 )
             except TypeTranslationError:
                 name = self.get_name_repr_of_expr(base_expr)
