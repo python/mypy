@@ -322,11 +322,27 @@ def prepare_method_def(
             # Making the argument implicitly positional-only avoids unnecessary glue methods
             decl.sig.args[1].pos_only = True
             ir.method_decls[PROPSET_PREFIX + node.name] = decl
+        elif (
+            decl.kind == FUNC_NORMAL
+            and not node.func.is_property
+            and overrides_base_method(cdef, node.name)
+        ):
+            # Native calls to a decorated override are dispatched through the vtable
+            # to a glue method that calls the decorated attribute
+            ir.method_decls[node.name] = decl
 
         if node.func.is_property:
             assert node.func.type, f"Expected return type annotation for property '{node.name}'"
             decl.is_prop_getter = True
             ir.property_types[node.name] = decl.sig.ret_type
+
+
+def overrides_base_method(cdef: ClassDef, name: str) -> bool:
+    for base in cdef.info.mro[1:]:
+        sym = base.names.get(name)
+        if sym is not None:
+            return isinstance(sym.node, (FuncDef, Decorator, OverloadedFuncDef))
+    return False
 
 
 def prepare_fast_path(

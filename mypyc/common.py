@@ -27,6 +27,8 @@ GENERATOR_HELPER_NAME: Final = "__mypyc_generator_helper__"
 TEMP_ATTR_NAME: Final = "__mypyc_temp__"
 LAMBDA_NAME: Final = "__mypyc_lambda__"
 PROPSET_PREFIX: Final = "__mypyc_setter__"
+# Key in ClassIR.methods for the undecorated version of a decorated method override
+UNDECORATED_PREFIX: Final = "__mypyc_undecorated__"
 SELF_NAME: Final = "__mypyc_self__"
 MYPYC_DEFAULTS_SETUP: Final = "__mypyc_defaults_setup"
 GENERATOR_ATTRIBUTE_PREFIX: Final = "__mypyc_generator_attribute__"

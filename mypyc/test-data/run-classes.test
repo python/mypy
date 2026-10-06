@@ -2317,6 +2317,161 @@ import other_interpreted
 
 [out]
 
+[case testDecoratedMethodOverridesNativeMethod]
+import functools
+from typing import Any, Callable, TypeVar
+
+F = TypeVar("F", bound=Callable[..., Any])
+
+def add_ten(f: F) -> F:
+    @functools.wraps(f)
+    def wrapper(self: Any, x: int, y: int = 0) -> int:
+        return f(self, x, y) + 10
+    return wrapper  # type: ignore[return-value]
+
+class Base:
+    def method(self, x: int, y: int = 0) -> int:
+        return x + y
+
+    def call(self, x: int) -> int:
+        return self.method(x)
+
+class Derived(Base):
+    @add_ten
+    def method(self, x: int, y: int = 0) -> int:
+        return super().method(x, y) * 2
+
+def via_base(b: Base, x: int) -> int:
+    return b.method(x)
+
+def via_derived(d: Derived, x: int) -> int:
+    return d.method(x, 1)
+
+def test_decorated_override() -> None:
+    d = Derived()
+    assert d.method(1) == 12
+    assert via_base(d, 1) == 12
+    assert via_derived(d, 1) == 14
+    assert d.call(2) == 14
+    assert via_base(Base(), 1) == 1
+
+[typing fixtures/typing-full.pyi]
+[file driver.py]
+from native import Derived, test_decorated_override
+test_decorated_override()
+
+assert Derived().method(1) == 12
+assert Derived.method.__name__ == "method"
+
+[case testDecoratedMethodOverridesNativeMethodEdgeCases]
+from typing import Any, Callable, TypeVar
+from mypy_extensions import mypyc_attr, trait
+
+F = TypeVar("F", bound=Callable[..., Any])
+
+def add_ten(f: F) -> F:
+    def wrapper(self: Any, *args: Any) -> Any:
+        return f(self, *args) + 10
+    return wrapper  # type: ignore[return-value]
+
+class Base:
+    def method(self) -> object:
+        return 0
+
+class Derived(Base):
+    @add_ten
+    def method(self) -> int:
+        return 1
+
+class SubDerived(Derived):
+    def method(self) -> int:
+        return 2
+
+@trait
+class T:
+    def tmethod(self) -> int:
+        return 0
+
+class Impl(T):
+    @add_ten
+    def tmethod(self) -> int:
+        return 3
+
+@trait
+class PropTrait:
+    @property
+    def p(self) -> int:
+        raise NotImplementedError
+
+    @p.setter
+    def p(self, v: int) -> None:
+        raise NotImplementedError
+
+class PropImpl(PropTrait):
+    def __init__(self) -> None:
+        self._p = 0
+
+    @property
+    def p(self) -> int:
+        return self._p
+
+    @p.setter
+    def p(self, v: int) -> None:
+        self._p = v
+
+    @add_ten
+    def get(self) -> int:
+        return self._p
+
+@mypyc_attr(allow_interpreted_subclasses=True)
+class OpenBase:
+    def method(self) -> object:
+        return 0
+
+@mypyc_attr(allow_interpreted_subclasses=True)
+class Open(OpenBase):
+    @add_ten
+    def method(self) -> int:
+        return 4
+
+def via_base(b: Base) -> object:
+    return b.method()
+
+def via_derived(d: Derived) -> int:
+    return d.method()
+
+def via_trait(t: T) -> int:
+    return t.tmethod()
+
+def via_open_base(b: OpenBase) -> object:
+    return b.method()
+
+def test_edge_cases() -> None:
+    assert via_base(Derived()) == 11
+    assert via_derived(Derived()) == 11
+    assert via_base(SubDerived()) == 2
+    assert via_derived(SubDerived()) == 2
+    assert via_trait(Impl()) == 13
+    assert via_open_base(Open()) == 14
+    pt: PropTrait = PropImpl()
+    pt.p = 5
+    assert pt.p == 5
+
+[typing fixtures/typing-full.pyi]
+[file driver.py]
+from native import Open, via_open_base, test_edge_cases
+test_edge_cases()
+
+class Interpreted(Open):
+    def method(self) -> int:
+        return 5
+
+class Inherits(Open):
+    pass
+
+assert via_open_base(Interpreted()) == 5
+assert via_open_base(Inherits()) == 14
+
 [case testAttributeOverridesProperty]
 from typing import Any
 from mypy_extensions import trait

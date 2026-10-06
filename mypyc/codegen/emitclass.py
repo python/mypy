@@ -37,6 +37,7 @@ from mypyc.common import (
     PREFIX,
     REG_PREFIX,
     RUNNING_FIELD,
+    UNDECORATED_PREFIX,
     short_id_from_name,
 )
 from mypyc.ir.class_ir import ClassIR, VTableEntries
@@ -1113,7 +1114,7 @@ def generate_methods_table(
     for fn in cl.methods.values():
         if fn.decl.is_prop_setter or fn.decl.is_prop_getter or fn.internal:
             continue
-        emitter.emit_line(f'{{"{fn.name}",')
+        emitter.emit_line(f'{{"{fn.name.removeprefix(UNDECORATED_PREFIX)}",')
         emitter.emit_line(f" (PyCFunction){PREFIX}{fn.cname(emitter.names)},")
         flags = ["METH_FASTCALL", "METH_KEYWORDS"]
         if fn.decl.kind == FUNC_STATICMETHOD:
