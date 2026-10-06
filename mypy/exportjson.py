@@ -104,6 +104,7 @@ def convert_symbol_table(self: SymbolTable, cfg: Config) -> Json:
         if key == "__builtins__" or value.no_serialize:
             continue
         if not cfg.implicit_names and key in {
+            "__loader__",
             "__spec__",
             "__package__",
             "__file__",
