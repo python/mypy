@@ -410,9 +410,22 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
             raise RuntimeError(f"Invalid type replacement to expand: {repl}")
 
     def visit_parameters(self, t: Parameters) -> Type:
-        return t.copy_modified(arg_types=self.expand_types(t.arg_types))
+        # This mimics the logic in visit_callable_type().
+        var_arg = t.var_arg()
+        needs_normalization = False
+        if var_arg is not None and isinstance(var_arg.typ, UnpackType):
+            needs_normalization = True
+            arg_types = self.interpolate_args_for_unpack(t, var_arg.typ)
+        else:
+            arg_types = self.expand_types(t.arg_types)
+        expanded = t.copy_modified(arg_types=arg_types)
+        if needs_normalization:
+            expanded = expanded.with_normalized_var_args()
+        return expanded
 
-    def interpolate_args_for_unpack(self, t: CallableType, var_arg: UnpackType) -> list[Type]:
+    def interpolate_args_for_unpack(
+        self, t: CallableType | Parameters, var_arg: UnpackType
+    ) -> list[Type]:
         star_index = t.arg_kinds.index(ARG_STAR)
         prefix = self.expand_types(t.arg_types[:star_index])
         suffix = self.expand_types(t.arg_types[star_index + 1 :])
