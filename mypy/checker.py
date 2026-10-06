@@ -222,6 +222,7 @@ from mypy.sharedparse import BINARY_MAGIC_METHODS
 from mypy.state import state
 from mypy.subtypes import (
     find_member,
+    has_any_type,
     infer_class_variances,
     is_callable_compatible,
     is_equivalent,
@@ -2294,7 +2295,12 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
             result: list[tuple[FuncItem, CallableType]] = []
             for substitutions in itertools.product(*subst):
                 mapping = dict(substitutions)
-                result.append((expand_func(defn, mapping), expand_type(typ, mapping)))
+                result.append(
+                    (
+                        expand_func(defn, mapping),
+                        expand_type(typ, mapping, normalize_callables=False),
+                    )
+                )
             return result
         else:
             return [(defn, typ)]
@@ -6011,7 +6017,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
         if not self.options.disallow_any_decorated or self.is_stub or self.current_node_deferred:
             return
 
-        if mypy.checkexpr.has_any_type(typ):
+        if has_any_type(typ):
             self.msg.untyped_decorated_function(typ, func)
 
     def check_async_with_item(

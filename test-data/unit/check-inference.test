@@ -4347,3 +4347,49 @@ def func() -> None:
 [out]
 main:1: error: --local-partial-types must be enabled in parallel mode
 main:3: error: Need type annotation for "x" (hint: "x: list[<type>] = ...")
+
+[case testOptionalUnionInferencePrecise]
+from typing import Optional, TypeVar, Union
+
+T = TypeVar("T")
+
+def assert_not_none(x: Optional[T]) -> T: ...
+
+x: Union[int, str, None]
+reveal_type(assert_not_none(x))  # N: Revealed type is "builtins.int | builtins.str"
+y: Union[int, str]
+reveal_type(assert_not_none(y))  # N: Revealed type is "builtins.int | builtins.str"
+n: None
+reveal_type(assert_not_none(n))  # N: Revealed type is "Never"
+
+def filter_not_none(x: list[Optional[T]]) -> list[T]: ...
+
+lx: list[Union[int, str, None]]
+reveal_type(filter_not_none(lx))  # N: Revealed type is "builtins.list[builtins.int | builtins.str]"
+reveal_type(filter_not_none([1, "yes", None]))  # N: Revealed type is "builtins.list[builtins.str | builtins.int]"
+[builtins fixtures/list.pyi]
+
+[case testStrictlyWiderInvariantUnionContextNoBottom]
+from typing import TypeVar, Union
+
+T = TypeVar("T")
+def foo(x: list[T]) -> list[Union[int, str, T]]: ...
+
+y: list[Union[int, str]]
+y = foo(y)
+[builtins fixtures/list.pyi]
+
+[case testOptionalUnionInferencePreciseSubclass]
+from typing import Generic, Optional, TypeVar, Union
+
+T = TypeVar("T")
+T_co = TypeVar("T_co", covariant=True)
+
+class A(Generic[T_co]): ...
+class B(Generic[T_co]): ...
+class C(A[Union[int, str]], B[Union[int, str, None]]): ...
+
+def f(x: Union[A[T], B[Optional[T]]]) -> T: ...
+
+reveal_type(f(C()))  # N: Revealed type is "builtins.int | builtins.str"
+[builtins fixtures/list.pyi]

@@ -154,6 +154,7 @@ class FuncDecl:
         is_prop_getter: bool = False,
         is_generator: bool = False,
         is_coroutine: bool = False,
+        is_final: bool = False,
         implicit: bool = False,
         internal: bool = False,
     ) -> None:
@@ -166,6 +167,8 @@ class FuncDecl:
         self.is_prop_getter = is_prop_getter
         self.is_generator = is_generator
         self.is_coroutine = is_coroutine
+        # A declared @final method may be called without vtable dispatch.
+        self.is_final = is_final
         if class_name is None:
             self.bound_sig: FuncSignature | None = None
         else:
@@ -226,6 +229,7 @@ class FuncDecl:
             "is_prop_getter": self.is_prop_getter,
             "is_generator": self.is_generator,
             "is_coroutine": self.is_coroutine,
+            "is_final": self.is_final,
             "implicit": self.implicit,
             "internal": self.internal,
         }
@@ -251,6 +255,7 @@ class FuncDecl:
             is_prop_getter=data["is_prop_getter"],
             is_generator=data["is_generator"],
             is_coroutine=data["is_coroutine"],
+            is_final=data["is_final"],
             implicit=data["implicit"],
             internal=data["internal"],
         )

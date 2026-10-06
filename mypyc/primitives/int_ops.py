@@ -314,7 +314,7 @@ uint8_overflow = custom_op(
 
 # translate isinstance(obj, int)
 isinstance_int = function_op(
-    name="builtints.isinstance",
+    name="builtins.isinstance",
     arg_types=[object_rprimitive],
     return_type=bit_rprimitive,
     c_function_name="PyLong_Check",

@@ -32,12 +32,14 @@ def parse(
     parse contents from path `fnam` if `source` is `None`.
     """
     if options.native_parser:
-        import mypy.nativeparse
+        # Use import from as workaround for cpython#149728 - accessing mypy.nativeparse
+        # after importing it may fail when this function is called concurrently.
+        from mypy import nativeparse
 
         ignore_errors = options.ignore_errors or fnam in errors.ignored_files
         # If errors are ignored, we can drop many function bodies to speed up type checking.
         strip_function_bodies = ignore_errors and not options.preserve_asts
-        tree, _, _ = mypy.nativeparse.native_parse(
+        tree, _, _ = nativeparse.native_parse(
             fnam, options, source, skip_function_bodies=strip_function_bodies
         )
         # Set is_stub based on file extension
@@ -120,9 +122,11 @@ def report_parse_error(error: ParseError, errors: Errors) -> None:
 
 def parse_type_string(expr: StrExpr, options: Options) -> ProperType:
     if options.native_parser:
-        import mypy.nativeparse
+        # Use a import from as workaround for cpython#149728 - accessing mypy.nativeparse
+        # after importing it may fail when this function is called concurrently.
+        from mypy import nativeparse
 
-        return mypy.nativeparse.native_parse_type_string(
+        return nativeparse.native_parse_type_string(
             expr.value,
             expr.line,
             expr.column,

@@ -145,7 +145,14 @@ from mypyc.primitives.librt_strings_ops import (
 )
 from mypyc.primitives.librt_vecs_ops import isinstance_vec
 from mypyc.primitives.list_ops import isinstance_list, new_list_set_item_op
-from mypyc.primitives.misc_ops import isinstance_bool
+from mypyc.primitives.misc_ops import (
+    isinstance_bool,
+    isinstance_complex,
+    isinstance_memoryview,
+    isinstance_range,
+    isinstance_slice,
+    isinstance_type,
+)
 from mypyc.primitives.set_ops import isinstance_frozenset, isinstance_set
 from mypyc.primitives.str_ops import (
     bytes_decode_ascii_strict,
@@ -740,14 +747,19 @@ isinstance_primitives: Final = {
     "builtins.bool": isinstance_bool,
     "builtins.bytearray": isinstance_bytearray,
     "builtins.bytes": isinstance_bytes,
+    "builtins.complex": isinstance_complex,
     "builtins.dict": isinstance_dict,
     "builtins.float": isinstance_float,
     "builtins.frozenset": isinstance_frozenset,
     "builtins.int": isinstance_int,
     "builtins.list": isinstance_list,
+    "builtins.memoryview": isinstance_memoryview,
+    "builtins.range": isinstance_range,
     "builtins.set": isinstance_set,
+    "builtins.slice": isinstance_slice,
     "builtins.str": isinstance_str,
     "builtins.tuple": isinstance_tuple,
+    "builtins.type": isinstance_type,
     "librt.vecs.vec": isinstance_vec,
 }
 
