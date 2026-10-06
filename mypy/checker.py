@@ -105,7 +105,7 @@ from mypy.errors import (
     IterationErrorWatcher,
     report_internal_error,
 )
-from mypy.expandtype import expand_type
+from mypy.expandtype import expand_type, expand_type_by_instance
 from mypy.literals import Key, extract_var_from_literal_hash, literal, literal_hash
 from mypy.maptype import map_instance_to_supertype
 from mypy.meet import is_overlapping_types, meet_types
@@ -1778,6 +1778,9 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
             return True
 
         arg_type = func.arg_types[0]
+        p_arg = get_proper_type(arg_type)
+        if isinstance(ref_type, TupleType) and isinstance(p_arg, TupleType):
+            ref_type = expand_type_by_instance(ref_type, p_arg.partial_fallback)
         if defn.is_class or defn.name == "__new__":
             ref_type = mypy.types.TypeType.make_normalized(ref_type)
         if is_same_type(arg_type, ref_type):
