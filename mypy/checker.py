@@ -1779,6 +1779,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
 
         arg_type = func.arg_types[0]
         p_arg = get_proper_type(arg_type)
+        ref_type = get_proper_type(ref_type)
         if isinstance(ref_type, TupleType) and isinstance(p_arg, TupleType):
             ref_type = expand_type_by_instance(ref_type, p_arg.partial_fallback)
         if defn.is_class or defn.name == "__new__":
