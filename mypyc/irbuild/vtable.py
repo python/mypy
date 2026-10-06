@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import itertools
-
 from mypyc.ir.class_ir import ClassIR, VTableEntries, VTableMethod
 from mypyc.sametype import is_same_method_signature
 
@@ -38,14 +36,14 @@ def compute_vtable(cls: ClassIR) -> None:
     all_traits = [t for t in cls.mro if t.is_trait]
 
     for t in [cls] + [t for t in all_traits if t is not cls]:
-        for fn in itertools.chain(t.methods.values()):
+        for name, fn in t.methods.items():
             # TODO: don't generate a new entry when we overload without changing the type
-            if fn == cls.get_method(fn.name, prefer_method=True):
-                cls.vtable[fn.name] = len(entries)
+            if fn == cls.get_method(name, prefer_method=True):
+                cls.vtable[name] = len(entries)
                 # If the class contains a glue method referring to itself, that is a
                 # shadow glue method to support interpreted subclasses.
-                shadow = cls.glue_methods.get((cls, fn.name))
-                entries.append(VTableMethod(t, fn.name, fn, shadow))
+                shadow = cls.glue_methods.get((cls, name))
+                entries.append(VTableMethod(t, name, fn, shadow))
 
     # Compute vtables for all of the traits that the class implements
     if not cls.is_trait:
