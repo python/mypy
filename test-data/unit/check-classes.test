@@ -6151,15 +6151,15 @@ class A2: pass
 
 [case testClassDecoratorIncorrect]
 def not_a_class_decorator(x: int) -> int: ...
-@not_a_class_decorator(7)
-class A3: pass  # E: "int" not callable
+@not_a_class_decorator(7)  # E: "int" not callable
+class A3: pass
 
 not_a_function = 17
 @not_a_function()  # E: "int" not callable
 class B: pass
 
-@not_a_function
-class B2: pass    # E: "int" not callable
+@not_a_function  # E: "int" not callable
+class B2: pass
 
 b = object()
 @b.nothing         # E: "object" has no attribute "nothing"

@@ -38,6 +38,21 @@ thinks is undefined:
    # definition.
    from foolib import foo  # type: ignore[attr-defined]
 
+If you are using multiple type checkers, you can optionally prefix
+mypy-specific error codes with ``mypy:``. By default, mypy ignores unknown
+error codes (as they may be intended for other type checkers). However, error
+codes prefixed with ``mypy:`` will be validated:
+
+.. code-block:: python
+
+   # mypy: warn-unused-ignores
+
+   # Error: Unrecognized error code "attr-undefined"
+   x = 1  # type: ignore[mypy:attr-undefined]
+
+   # OK: error code may be used by other type checker.
+   y = 2  # type: ignore[something-else]
+
 Enabling/disabling specific error codes globally
 ------------------------------------------------
 

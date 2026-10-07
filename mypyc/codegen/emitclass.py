@@ -97,6 +97,7 @@ AS_NUMBER_SLOT_DEFS: SlotTable = {
     "__bool__": ("nb_bool", generate_bool_wrapper),
     "__int__": ("nb_int", generate_dunder_wrapper),
     "__float__": ("nb_float", generate_dunder_wrapper),
+    "__index__": ("nb_index", generate_dunder_wrapper),
     "__neg__": ("nb_negative", generate_dunder_wrapper),
     "__pos__": ("nb_positive", generate_dunder_wrapper),
     "__abs__": ("nb_absolute", generate_dunder_wrapper),

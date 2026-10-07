@@ -1731,6 +1731,74 @@ assert e.__getstate__() == {'y': 20, '__dict__': {'x': 10}}
 e2 = pickle.loads(pickle.dumps(e))
 assert e is not e2 and e.x == e2.x and e.y == e2.y
 
+[case testPickleFrozenDataclass]
+import copy
+import pickle
+from dataclasses import dataclass
+from typing import Any, Dict, List
+
+from mypy_extensions import mypyc_attr
+
+@dataclass(frozen=True)
+class Config:
+    py_version: str = "3"
+
+@dataclass(frozen=True)
+class Frozen:
+    x: int
+    y: str
+
+@dataclass(frozen=True)
+class FrozenSub(Frozen):
+    z: List[int]
+
+@dataclass(frozen=True, slots=True)
+class FrozenSlots:
+    a: int
+    b: Dict[int, int]
+
+setattr_calls: List[str] = []
+
+@mypyc_attr(serializable=True)
+class WithSetattr:
+    def __init__(self, x: int) -> None:
+        self.x = x
+
+    def __setattr__(self, name: str, value: object) -> None:
+        setattr_calls.append(name)
+        super().__setattr__(name, value)
+
+def round_trips(obj: Any) -> List[Any]:
+    # Protocols 0 and 1 can't rebuild any native class
+    out = [pickle.loads(pickle.dumps(obj, protocol))
+           for protocol in range(2, pickle.HIGHEST_PROTOCOL + 1)]
+    return out + [copy.copy(obj), copy.deepcopy(obj)]
+
+def test_frozen_dataclass() -> None:
+    for obj in Config(), Frozen(1, 'a'), FrozenSub(2, 'b', [3]), FrozenSlots(4, {5: 6}):
+        for copied in round_trips(obj):
+            assert copied == obj
+            assert copied is not obj
+            assert type(copied) is type(obj)
+
+def test_copy_is_still_frozen() -> None:
+    f: Any = copy.copy(Frozen(1, 'a'))
+    try:
+        f.x = 2
+    except AttributeError as e:
+        assert type(e).__name__ == 'FrozenInstanceError'
+    else:
+        assert False
+    assert f.x == 1
+
+def test_setattr_not_called() -> None:
+    # Python restores the state without calling __setattr__ too, by updating __dict__
+    obj = WithSetattr(1)
+    calls = len(setattr_calls)
+    for copied in round_trips(obj):
+        assert copied.x == 1
+    assert len(setattr_calls) == calls
+
 
 [case testInterpretedParentInit]
 from interp import C
@@ -2424,6 +2492,76 @@ class Inherits(Open):
     pass
 
 assert via_open_base(Inherits()) == 13
+
+[case testPropertySetterWiderThanGetter]
+from typing import Union
+from mypy_extensions import trait
+
+class Wrapped:
+    def __init__(self, s: str) -> None:
+        self.s = s
+
+@trait
+class T:
+    @property
+    def value(self) -> Wrapped:
+        raise NotImplementedError
+
+    @value.setter
+    def value(self, v: Union[Wrapped, str]) -> None:
+        raise NotImplementedError
+
+class C(T):
+    def __init__(self) -> None:
+        self._value = Wrapped("init")
+        self._n = 0
+
+    @property
+    def value(self) -> Wrapped:
+        return self._value
+
+    @value.setter
+    def value(self, v: Union[Wrapped, str]) -> None:
+        self._value = Wrapped(v) if isinstance(v, str) else v
+
+    @property
+    def n(self) -> int:
+        return self._n
+
+    @n.setter
+    def n(self, v: Union[int, str]) -> None:
+        self._n = int(v)
+
+def set_via_class(c: C, v: Union[Wrapped, str]) -> str:
+    c.value = v
+    return c.value.s
+
+def set_via_trait(t: T, v: Union[Wrapped, str]) -> str:
+    t.value = v
+    return t.value.s
+
+def set_unboxed(c: C, v: Union[int, str]) -> int:
+    c.n = v
+    return c.n
+
+def test_setter_wider_than_getter() -> None:
+    c = C()
+    assert set_via_class(c, "a") == "a"
+    assert set_via_class(c, Wrapped("b")) == "b"
+    assert set_via_trait(c, "c") == "c"
+    assert set_via_trait(c, Wrapped("d")) == "d"
+    assert set_unboxed(c, "5") == 5
+    assert set_unboxed(c, 6) == 6
+
+[file driver.py]
+from native import C, test_setter_wider_than_getter
+test_setter_wider_than_getter()
+
+c = C()
+c.value = "py"
+assert c.value.s == "py"
+c.n = "7"
+assert c.n == 7
 
 [case testAttributeOverridesProperty]
 from typing import Any
