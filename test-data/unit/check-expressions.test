@@ -1232,6 +1232,15 @@ a[o:]
 a[:o]
 [builtins fixtures/slice.pyi]
 
+[case testSliceBoundErrorReportsBoundType]
+a: list[int]
+s: str
+
+a[s:]   # E: Slice index has type "str"; expected "SupportsIndex | None"
+a[:s]   # E: Slice index has type "str"; expected "SupportsIndex | None"
+a[::s]  # E: Slice index has type "str"; expected "SupportsIndex | None"
+[builtins fixtures/slice.pyi]
+
 [case testSliceSupportsIndex]
 import typing_extensions
 class Index:
