@@ -1442,6 +1442,111 @@ import native
 [out2]
 5
 
+[case testIncrementalCompilationAddingNonClassDecorator]
+# Mypy ignores class decorators, but adding one that replaces the class must
+# recompile native.py, since C then no longer refers to the class itself.
+from typing import Any, cast
+from other import C
+
+def same_instance() -> bool:
+    cls = cast(Any, C)
+    return cls() is cls()
+
+[file other.py]
+from functools import cache
+from mypy_extensions import mypyc_attr
+
+@mypyc_attr(native_class=False)
+class C:
+    pass
+
+[file other.py.2]
+from functools import cache
+from mypy_extensions import mypyc_attr
+
+@cache
+@mypyc_attr(native_class=False)
+class C:
+    pass
+
+[file other.py.3]
+from functools import cache
+from mypy_extensions import mypyc_attr
+
+@mypyc_attr(native_class=False)
+class C:
+    pass
+
+[file driver.py]
+from native import same_instance
+from other import C
+
+print(same_instance(), C() is C())
+[out]
+False False
+[out2]
+True True
+[out3]
+False False
+
+[rechecked native, other]
+[rechecked2 native, other]
+
+[case testIncrementalCompilationAddingNonClassDecoratorToNativeClass]
+# The decorator also makes C a non-native class, which changes how native.py
+# constructs it. In step 3 other.py is unchanged, so it must stay fresh.
+from other import C
+
+def get() -> int:
+    return C(3).get()
+
+def same_instance() -> bool:
+    return C(1) is C(1)
+
+[file native.py.3]
+from other import C
+
+def get() -> int:
+    return C(4).get()
+
+def same_instance() -> bool:
+    return C(1) is C(1)
+
+[file other.py]
+from functools import cache
+
+class C:
+    def __init__(self, x: int) -> None:
+        self.x = x
+
+    def get(self) -> int:
+        return self.x
+
+[file other.py.2]
+from functools import cache
+
+@cache
+class C:
+    def __init__(self, x: int) -> None:
+        self.x = x
+
+    def get(self) -> int:
+        return self.x
+
+[file driver.py]
+from native import get, same_instance
+
+print(get(), same_instance())
+[out]
+3 False
+[out2]
+3 True
+[out3]
+4 True
+
+[rechecked native, other]
+[rechecked2 native]
+
 [case testIncrementalCompilationWithNonClassTypeDef]
 import other_a
 [file other_a.py]
