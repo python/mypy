@@ -1381,7 +1381,15 @@ class IRBuilder:
         return sym.node
 
     def emit_load_final(
-        self, final_var: Var, fullname: str, name: str, native: bool, typ: Type, line: int
+        self,
+        final_var: Var,
+        fullname: str,
+        name: str,
+        typ: Type,
+        line: int,
+        *,
+        is_native: bool,
+        is_local: bool,
     ) -> Value | None:
         """Emit code for loading value of a final name (if possible).
 
@@ -1389,13 +1397,17 @@ class IRBuilder:
             final_var: Var corresponding to the final name
             fullname: its qualified name
             name: shorter name to show in errors
-            native: whether the name was defined in a compiled module
             typ: its type
             line: line number where loading occurs
+            is_native: whether the name was defined in a compiled module
+            is_local: whether the name is a local variable
         """
         if final_var.final_value is not None:  # this is safe even for non-native names
             return self.load_literal_value(final_var.final_value, line)
-        elif native and module_prefix(self.graph, fullname):
+        elif is_native and not is_local and module_prefix(self.graph, fullname):
+            # A local final variable isn't stored in a static (its fullname is just the
+            # bare name, which could also be the name of a module), but a literal value
+            # was already handled above
             return self.load_final_static(fullname, self.mapper.type_to_rtype(typ), line, name)
         else:
             return None
