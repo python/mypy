@@ -251,6 +251,7 @@ class IRBuilder:
         self.final_names: list[tuple[str, RType]] = []
         self.type_var_names: list[str] = []
         self.callable_class_names: set[str] = set()
+        self.env_class_names: set[str] = set()
         self.options = options
 
         # Keep track of the number of lambdas instantiated so we avoid name conflicts.

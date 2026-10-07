@@ -943,6 +943,36 @@ async def async_def_contains_decorated_async_def(n: int) -> int:
 async def test_async_def_contains_decorated_async_def() -> None:
     assert await async_def_contains_decorated_async_def(7) == 10
 
+async def conditional_nested_async(flag: int) -> str:
+    if flag < 0:
+        async def inner() -> str:
+            return "first"
+    elif flag > 0:
+        async def inner() -> str:
+            return "second"
+    else:
+        async def inner() -> str:
+            return "third"
+    return await inner()
+
+async def test_conditional_nested_async_defs_with_same_name() -> None:
+    assert await conditional_nested_async(-1) == "first"
+    assert await conditional_nested_async(1) == "second"
+    assert await conditional_nested_async(0) == "third"
+
+def conditional_nested_generator(flag: bool) -> list[int]:
+    if flag:
+        def gen() -> Iterator[int]:
+            yield 1
+    else:
+        def gen() -> Iterator[int]:
+            yield 2
+    return list(gen())
+
+def test_conditional_nested_generators_with_same_name() -> None:
+    assert conditional_nested_generator(True) == [1]
+    assert conditional_nested_generator(False) == [2]
+
 [file asyncio/__init__.pyi]
 def run(x: object) -> object: ...
 
