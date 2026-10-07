@@ -467,6 +467,49 @@ with assertRaises(ValueError, "not enough values to unpack"):
 
 [out]
 
+[case testUnpackIterableEvaluationOrder]
+from typing import Any, Iterator
+
+from testutil import assertRaises
+
+log: list[str] = []
+
+def gen(n: int) -> Iterator[int]:
+    for i in range(n):
+        log.append(f"next {i}")
+        yield i
+    log.append("end")
+
+class C:
+    def __setattr__(self, name: str, value: object) -> None:
+        log.append(f"set {name}={value}")
+
+def test_unpack_iterator_order() -> None:
+    log.clear()
+    c: Any = C()
+    c.x, c.y = gen(2)
+    assert log == ["next 0", "next 1", "end", "set x=0", "set y=1"], log
+
+def test_unpack_iterator_star_order() -> None:
+    log.clear()
+    c: Any = C()
+    c.x, *c.y, c.z, c.w = gen(5)
+    assert log == [
+        "next 0", "next 1", "next 2", "next 3", "next 4", "end",
+        "set x=0", "set y=[1, 2]", "set z=3", "set w=4",
+    ], log
+
+def test_unpack_iterator_errors() -> None:
+    log.clear()
+    c: Any = C()
+    with assertRaises(ValueError, "too many values to unpack"):
+        c.x, c.y = gen(3)
+    with assertRaises(ValueError, "not enough values to unpack"):
+        c.x, c.y = gen(1)
+    with assertRaises(ValueError, "not enough values to unpack"):
+        c.x, *c.y, c.z = gen(1)
+    assert not any(s.startswith("set") for s in log), log
+
 [case testModuleTopLevel]
 x = 1
 print(x)
