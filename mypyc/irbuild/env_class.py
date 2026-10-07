@@ -293,7 +293,7 @@ def add_vars_to_env(builder: IRBuilder, prefix: str = "") -> None:
     env_for_func: FuncInfo | ImplicitClass = fn_info
     if fn_info.is_generator:
         env_for_func = fn_info.generator_class
-    elif (fn_info.is_nested or fn_info.in_non_ext) and not fn_info.is_comprehension_scope:
+    elif fn_info.is_nested and not fn_info.is_comprehension_scope:
         env_for_func = fn_info.callable_class
 
     if fn_info.fitem in builder.free_variables:
