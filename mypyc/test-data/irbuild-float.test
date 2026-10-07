@@ -512,12 +512,13 @@ def narrowed_parts(x: Any) -> tuple[float, float]:
     return 0.0, 0.0
 [out]
 def float_parts(x):
-    x, r0 :: float
-    r1 :: tuple[float, float]
+    x, r0, r1 :: float
+    r2 :: tuple[float, float]
 L0:
     r0 = x
-    r1 = (r0, 0.0)
-    return r1
+    r1 = r0
+    r2 = (r1, 0.0)
+    return r2
 def complex_parts(z):
     z :: object
     r0, r1 :: float

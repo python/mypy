@@ -251,12 +251,13 @@ def bool_parts(b: bool) -> tuple[int, int]:
     return b.real, b.imag
 [out]
 def int_parts(x):
-    x, r0 :: int
-    r1 :: tuple[int, int]
+    x, r0, r1 :: int
+    r2 :: tuple[int, int]
 L0:
-    r0 = x
-    r1 = (r0, 0)
-    return r1
+    r0 = CPyTagged_Real(x)
+    r1 = CPyTagged_Imag(x)
+    r2 = (r0, r1)
+    return r2
 def bool_parts(b):
     b, r0 :: bool
     r1 :: int

@@ -195,6 +195,7 @@ CPyTagged CPyTagged_BitwiseLongOp_(CPyTagged a, CPyTagged b, char op);
 CPyTagged CPyTagged_Rshift_(CPyTagged left, CPyTagged right);
 CPyTagged CPyTagged_Lshift_(CPyTagged left, CPyTagged right);
 CPyTagged CPyTagged_BitLength(CPyTagged self);
+CPyTagged CPyTagged_GetPartSlow(PyObject *o, PyObject *name);
 PyObject *CPyTagged_ToBytes(CPyTagged self, Py_ssize_t length, PyObject *byteorder, int signed_flag);
 PyObject *CPyTagged_ToBigEndianBytes(CPyTagged self, Py_ssize_t length, int signed_flag);
 PyObject *CPyTagged_ToLittleEndianBytes(CPyTagged self, Py_ssize_t length, int signed_flag);
@@ -623,6 +624,33 @@ static inline CPyTagged CPyTagged_Lshift(CPyTagged left, CPyTagged right) {
     return CPyTagged_Lshift_(left, right);
 }
 
+// x.real, where x is an int. An int too large for a short int is stored as an object,
+// which could be an instance of an int subclass that overrides the property, so
+// subclass instances use getattr.
+static inline CPyTagged CPyTagged_Real(CPyTagged x) {
+    if (likely(CPyTagged_CheckShort(x))) {
+        return x;
+    }
+    PyObject *o = CPyTagged_LongAsObject(x);
+    if (likely(PyLong_CheckExact(o))) {
+        Py_INCREF(o);
+        return x;
+    }
+    return CPyTagged_GetPartSlow(o, mypyc_interned_str.real);
+}
+
+// x.imag, where x is an int (see CPyTagged_Real)
+static inline CPyTagged CPyTagged_Imag(CPyTagged x) {
+    if (likely(CPyTagged_CheckShort(x))) {
+        return 0;
+    }
+    PyObject *o = CPyTagged_LongAsObject(x);
+    if (likely(PyLong_CheckExact(o))) {
+        return 0;
+    }
+    return CPyTagged_GetPartSlow(o, mypyc_interned_str.imag);
+}
+
 
 // Float operations
 
@@ -641,7 +669,7 @@ double CPyFloat_FromTagged(CPyTagged x);
 bool CPyFloat_IsInf(double x);
 bool CPyFloat_IsNaN(double x);
 double CPyComplex_GetPartSlow(PyObject *o, PyObject *name);
-double CPyComplex_LongAsDouble(PyObject *o);
+double CPyLong_AsDouble(PyObject *o);
 
 // o.real, where the static type of o is float or complex. Other types,
 // including subclasses that might override the property, use getattr.
@@ -651,8 +679,9 @@ static inline double CPyComplex_Real(PyObject *o) {
     } else if (PyFloat_CheckExact(o)) {
         return PyFloat_AS_DOUBLE(o);
     } else if (PyLong_CheckExact(o)) {
-        // An int can be used where a float or complex is expected
-        return CPyComplex_LongAsDouble(o);
+        // An int can be used where a float or complex is expected. It's converted
+        // to a float, as when unboxing an int to a float.
+        return CPyLong_AsDouble(o);
     }
     return CPyComplex_GetPartSlow(o, mypyc_interned_str.real);
 }

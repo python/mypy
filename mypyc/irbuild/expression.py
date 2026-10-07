@@ -158,6 +158,7 @@ from mypyc.primitives.float_ops import (
     number_real_op,
 )
 from mypyc.primitives.generic_ops import iter_op, name_op
+from mypyc.primitives.int_ops import int_imag_op, int_real_op
 from mypyc.primitives.list_ops import list_append_op, list_extend_op, list_slice_op
 from mypyc.primitives.misc_ops import ellipsis_op, get_module_dict_op, new_slice_op, type_op
 from mypyc.primitives.set_ops import set_add_op, set_in_op, set_update_op
@@ -367,12 +368,24 @@ def transform_real_imag(
     builder: IRBuilder, obj: Value, is_real: bool, rtype: RType, line: int
 ) -> Value:
     """Get obj.real or obj.imag, where obj is an int, a float or a complex."""
-    if is_tagged(obj.type) or is_bool_or_bit_rprimitive(obj.type):
-        # Unboxed ints are always exact ints, and the real part of a bool is an int
+    if is_tagged(obj.type):
+        # A large int could be an instance of an int subclass that overrides these
+        op = int_real_op if is_real else int_imag_op
+        return builder.primitive_op(op, [obj], line)
+    if is_bool_or_bit_rprimitive(obj.type):
+        # bool can't be subclassed, and b.real is an int
         return builder.coerce(obj, int_rprimitive, line) if is_real else builder.load_int(0, line)
     if is_float_rprimitive(obj.type):
         # Unboxed floats are always exact floats, so these can't be overridden
-        return obj if is_real else Float(0.0, line)
+        if not is_real:
+            return Float(0.0, line)
+        if isinstance(obj, Register):
+            # Copy the variable, since it could be reassigned later in the same
+            # expression, as in "x.real + (x := 2.0)"
+            copy = Register(obj.type)
+            builder.assign(copy, obj, line)
+            return copy
+        return obj
     if is_float_rprimitive(rtype):
         op = complex_real_op if is_real else complex_imag_op
         return builder.primitive_op(op, [obj], line)

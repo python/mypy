@@ -560,7 +560,10 @@ def test_float_error_value_across_yield() -> None:
 [case testRealImag]
 from typing import Any, cast
 from testutil import assertRaises, float_vals, FLOAT_MAGIC
-from realimag import OverrideReal, OverrideImag, OverrideIntReal, PlainComplex, BadReal
+from realimag import (
+    OverrideReal, OverrideImag, OverrideIntReal, OverrideIntImag, PlainComplex, PlainInt,
+    BadReal, BadIntReal,
+)
 
 def float_parts(x: float) -> tuple[float, float]:
     return x.real, x.imag
@@ -596,6 +599,13 @@ class Point:
 
 def point_parts(p: Point) -> tuple[float, float]:
     return p.z.real, p.z.imag
+
+def float_real_walrus(x: float) -> float:
+    return x.real + (x := 2.0)
+
+def int_real_walrus(n: int) -> int:
+    x = n * 3
+    return x.real - (x := 2)
 
 def same(a: object, b: object) -> bool:
     # Unlike ==, this distinguishes -0.0 from 0.0, 1 from 1.0 and True from 1,
@@ -646,6 +656,12 @@ def test_bool() -> None:
         assert same(narrowed_number_parts(b), (int(b), 0))
         assert same(complex_parts(b), (float(b), 0.0))
 
+def test_walrus() -> None:
+    # x.real is evaluated before x is reassigned
+    assert float_real_walrus(1.5) == 3.5
+    assert int_real_walrus(5) == 13
+    assert int_real_walrus(2**100) == 3 * 2**100 - 2
+
 def test_subclasses() -> None:
     # Subclasses could override the properties, so they use a generic lookup
     for parts in (complex_parts, union_parts, narrowed_parts, number_parts, narrowed_number_parts):
@@ -655,6 +671,11 @@ def test_subclasses() -> None:
     assert same(complex_parts(OverrideIntReal(5)), (42.0, 0.0))
     assert same(number_parts(OverrideIntReal(5)), (42, 0))
     assert same(narrowed_number_parts(OverrideIntReal(5)), (42, 0))
+    # An int too large for a short int keeps its class, so it can override these too
+    big = 2**100
+    assert same(int_parts(OverrideIntReal(big)), (42, 0))
+    assert same(int_parts(OverrideIntImag(big)), (big, 7))
+    assert type(int_parts(PlainInt(big))[0]) is int
 
 def test_errors() -> None:
     for parts in (complex_parts, number_parts):
@@ -666,8 +687,12 @@ def test_errors() -> None:
         number_parts(cast(Any, BadReal()))
     with assertRaises(TypeError, "float object expected; got int"):
         complex_parts(10**400)
+    with assertRaises(TypeError, "int object expected; got str"):
+        int_parts(BadIntReal(2**100))
 
 [file realimag.py]
+from typing import Any
+
 class OverrideReal(complex):
     @property
     def real(self) -> float:
@@ -683,8 +708,21 @@ class OverrideIntReal(int):
     def real(self) -> int:
         return 42
 
+class OverrideIntImag(int):
+    @property
+    def imag(self) -> int:
+        return 7
+
 class PlainComplex(complex):
+    pass
+
+class PlainInt(int):
     pass
 
 class BadReal:
     real = "x"
+
+class BadIntReal(int):
+    @property
+    def real(self) -> Any:
+        return "x"
