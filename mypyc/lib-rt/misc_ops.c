@@ -475,8 +475,15 @@ fail:
 PyObject *
 CPyPickle_SetState(PyObject *obj, PyObject *state)
 {
-    if (_CPy_UpdateObjFromDict(obj, state) != 0) {
-        return NULL;
+    // Set the attributes like object.__setattr__ does, without calling any __setattr__ of the
+    // class, since pickle and copy restore the state of a Python object by updating its
+    // __dict__ directly. The __setattr__ of a frozen dataclass always raises, for example.
+    Py_ssize_t pos = 0;
+    PyObject *key, *value;
+    while (PyDict_Next(state, &pos, &key, &value)) {
+        if (PyObject_GenericSetAttr(obj, key, value) != 0) {
+            return NULL;
+        }
     }
     Py_RETURN_NONE;
 }
