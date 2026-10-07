@@ -589,6 +589,9 @@ def loop(start: Any, end: Any) -> list[int]:
 def loop_down(start: Any) -> list[int]:
     return [i for i in range(start, 0, -1)]
 
+def loop_down_to(start: Any, end: Any) -> list[int]:
+    return [i for i in range(start, end, -1)]
+
 def loop_bool(b: bool) -> list[int]:
     return [i for i in range(b)]
 
@@ -597,6 +600,17 @@ def test_index_args() -> None:
     assert loop_end(Index(3)) == [0, 1, 2]
     assert loop(Index(1), Index(3)) == [1, 2]
     assert loop_down(Index(2)) == [2, 1]
+
+def test_big_index_args() -> None:
+    from index_types import Index
+    # Ints >= 2**62 or < -2**62 don't fit in a short int, so these loops cross
+    # between short and heap-allocated values
+    n = 2**62
+    assert loop(Index(n - 1), Index(n + 2)) == [n - 1, n, n + 1]
+    assert loop(Index(-n - 2), Index(-n + 1)) == [-n - 2, -n - 1, -n]
+    assert loop_down_to(Index(n + 1), Index(n - 2)) == [n + 1, n, n - 1]
+    assert loop_down_to(Index(-n + 1), Index(-n - 2)) == [-n + 1, -n, -n - 1]
+    assert loop_end(Index(-n - 1)) == []
 
 def test_int_args() -> None:
     assert loop_end(3) == [0, 1, 2]
