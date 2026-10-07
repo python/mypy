@@ -3030,6 +3030,102 @@ reveal_type(d[StringMixinEnum.foo])  # N: Revealed type is "builtins.int"
 [builtins fixtures/enum.pyi]
 [typing fixtures/typing-typeddict.pyi]
 
+[case testTypedDictStringEnumKeyValue]
+# flags: --python-version 3.11
+from enum import Enum, StrEnum
+from typing import Literal, TypedDict
+
+class StringEnum(StrEnum):
+    name = "value"
+    unknown = "missing"
+
+class StringMixinEnum(str, Enum):
+    name = "value"
+
+class NestedEnum(StrEnum):
+    name = StringEnum.name
+
+class TD(TypedDict):
+    name: int
+    value: str
+
+d: TD
+reveal_type(d[StringEnum.name])  # N: Revealed type is "builtins.str"
+reveal_type(d[StringMixinEnum.name])  # N: Revealed type is "builtins.str"
+reveal_type(d[NestedEnum.name])  # N: Revealed type is "builtins.str"
+d[StringEnum.name] = 1  # E: Argument 2 to "__setitem__" has incompatible type "int"; expected "str"
+d[StringEnum.unknown]  # E: TypedDict "TD" has no key "missing"
+key: Literal[StringEnum.name, StringMixinEnum.name]
+reveal_type(d[key])  # N: Revealed type is "builtins.str"
+[builtins fixtures/enum.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictStringEnumKeyValueProperty]
+# flags: --python-version 3.11
+from enum import StrEnum
+from typing import Literal, TypedDict
+
+class Key(StrEnum):
+    name = "value"
+
+    # The enum stub models value as a writable attribute.
+    @property
+    def value(self) -> Literal["name"]:  # type: ignore[override, misc]
+        return "name"
+
+class TD(TypedDict):
+    name: int
+    value: str
+
+d: TD
+reveal_type(d[Key.name])  # N: Revealed type is "builtins.str"
+reveal_type(d[Key.name.value])  # N: Revealed type is "builtins.int"
+[builtins fixtures/property.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictStringEnumKeyCustomConstructor]
+from enum import Enum
+from typing import TypedDict
+
+class StringKey(str, Enum):
+    name = "name"
+    def __new__(cls, value: str) -> "StringKey": pass
+
+class CustomString(str):
+    def __new__(cls, value: str) -> "CustomString": pass
+
+class CustomKey(CustomString, Enum):
+    name = "name"
+
+class TD(TypedDict):
+    name: int
+
+d: TD
+d[StringKey.name]  # E: TypedDict key must be a string literal; expected one of ("name")
+d[CustomKey.name]  # E: TypedDict key must be a string literal; expected one of ("name")
+[builtins fixtures/enum.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictStringEnumKeyRecursiveValue]
+# flags: --python-version 3.11
+from enum_values import Key
+from typing import TypedDict
+
+class TD(TypedDict):
+    ITEM: int
+
+d: TD
+d[Key.ITEM]  # E: TypedDict key must be a string literal; expected one of ("ITEM")
+[builtins fixtures/enum.pyi]
+[typing fixtures/typing-typeddict.pyi]
+[file enum_values.pyi]
+from enum import StrEnum
+from typing import Literal
+
+class Key(StrEnum):
+    _value_: Literal[Key.ITEM]
+    ITEM = ...
+
 [case testTypedDictUppercaseKey]
 from typing import TypedDict
 

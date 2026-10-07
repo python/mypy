@@ -4810,14 +4810,48 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                 key_types = [typ]
 
             key_names = []
+            str_type = self.named_type("builtins.str")
             for key_type in get_proper_types(key_types):
-                if isinstance(key_type, Instance) and key_type.last_known_value is not None:
-                    key_type = key_type.last_known_value
+                seen_enum_keys: set[LiteralType] = set()
+                while True:
+                    if isinstance(key_type, Instance) and key_type.last_known_value is not None:
+                        key_type = key_type.last_known_value
+                    if (
+                        not isinstance(key_type, LiteralType)
+                        or not key_type.is_enum_literal()
+                        or not is_subtype(key_type.fallback, str_type)
+                    ):
+                        break
+                    enum_type = key_type.fallback.copy_modified(last_known_value=key_type)
+                    new_type = enum_type.type.get_containing_type_info("__new__")
+                    if key_type in seen_enum_keys or (
+                        new_type is not None
+                        and not new_type.is_enum
+                        and new_type.fullname != "builtins.str"
+                    ):
+                        self.msg.typeddict_key_must_be_string_literal(td_type, index)
+                        return AnyType(TypeOfAny.from_error), set()
+                    seen_enum_keys.add(key_type)
+                    # Enum literals store member names. Use the declared value,
+                    # without following a user-defined value property.
+                    key_type = get_proper_type(
+                        analyze_member_access(
+                            "value",
+                            enum_type,
+                            index,
+                            is_lvalue=False,
+                            is_super=False,
+                            is_operator=False,
+                            original_type=enum_type,
+                            override_info=self.chk.lookup_typeinfo("enum.Enum"),
+                            chk=self.chk,
+                        )
+                    )
 
                 if (
                     isinstance(key_type, LiteralType)
                     and isinstance(key_type.value, str)
-                    and is_subtype(key_type.fallback, self.named_type("builtins.str"))
+                    and is_subtype(key_type.fallback, str_type)
                 ):
                     key_names.append(key_type.value)
                 else:
