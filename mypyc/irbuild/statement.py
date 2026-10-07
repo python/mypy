@@ -121,6 +121,7 @@ from mypyc.primitives.exc_ops import (
     keep_propagating_op,
     no_err_occurred_op,
     propagate_if_error_op,
+    raise_exception_from_op,
     raise_exception_op,
     reraise_exception_op,
     restore_exc_info_op,
@@ -679,7 +680,11 @@ def transform_raise_stmt(builder: IRBuilder, s: RaiseStmt) -> None:
         return
 
     exc = builder.accept(s.expr)
-    builder.call_c(raise_exception_op, [exc], s.line)
+    if s.from_expr is not None:
+        cause = builder.accept(s.from_expr)
+        builder.call_c(raise_exception_from_op, [exc, cause], s.line)
+    else:
+        builder.call_c(raise_exception_op, [exc], s.line)
     builder.add(Unreachable())
 
 

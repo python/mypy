@@ -979,6 +979,7 @@ static inline bool CPy_KeepPropagating(void) {
 #define CPy_ExcState() PyThreadState_GET()->exc_info
 
 void CPy_Raise(PyObject *exc);
+void CPy_RaiseFrom(PyObject *exc, PyObject *cause);
 void CPy_Reraise(void);
 void CPyErr_SetObjectAndTraceback(PyObject *type, PyObject *value, PyObject *traceback);
 tuple_T3OOO CPy_CatchError(void);

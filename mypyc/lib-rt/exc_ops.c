@@ -19,6 +19,53 @@ void CPy_Raise(PyObject *exc) {
     }
 }
 
+void CPy_RaiseFrom(PyObject *exc, PyObject *cause) {
+    PyObject *value;
+    if (PyExceptionClass_Check(exc)) {
+        value = PyObject_CallNoArgs(exc);
+        if (!value)
+            return;
+        if (!PyExceptionInstance_Check(value)) {
+            PyErr_Format(PyExc_TypeError,
+                         "calling %R should have returned an instance of "
+                         "BaseException, not %R", exc, Py_TYPE(value));
+            Py_DECREF(value);
+            return;
+        }
+    } else if (PyExceptionInstance_Check(exc)) {
+        value = Py_NewRef(exc);
+    } else {
+        PyErr_SetString(PyExc_TypeError, "exceptions must derive from BaseException");
+        return;
+    }
+
+    PyObject *fixed_cause;
+    if (PyExceptionClass_Check(cause)) {
+        fixed_cause = PyObject_CallNoArgs(cause);
+        if (!fixed_cause)
+            goto fail;
+        if (!PyExceptionInstance_Check(fixed_cause)) {
+            PyErr_Format(PyExc_TypeError,
+                         "calling %R should have returned an instance of "
+                         "BaseException, not %R", cause, Py_TYPE(fixed_cause));
+            Py_DECREF(fixed_cause);
+            goto fail;
+        }
+    } else if (PyExceptionInstance_Check(cause)) {
+        fixed_cause = Py_NewRef(cause);
+    } else if (Py_IsNone(cause)) {
+        fixed_cause = NULL;
+    } else {
+        PyErr_SetString(PyExc_TypeError, "exception causes must derive from BaseException");
+        goto fail;
+    }
+    // This steals the reference to the cause and sets __suppress_context__
+    PyException_SetCause(value, fixed_cause);
+    PyErr_SetObject((PyObject *)Py_TYPE(value), value);
+fail:
+    Py_DECREF(value);
+}
+
 void CPy_Reraise(void) {
     PyObject *p_type, *p_value, *p_traceback;
     PyErr_GetExcInfo(&p_type, &p_value, &p_traceback);
