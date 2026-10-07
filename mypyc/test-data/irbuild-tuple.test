@@ -231,11 +231,11 @@ L0:
     r0 = z()
     r1 = x()
     r2 = y()
-    r3 = int_ne r0, r1
-    if r3 goto L1 else goto L3 :: bool
+    r3 = int_eq r0, r1
+    if r3 goto L3 else goto L1 :: bool
 L1:
-    r4 = int_ne r0, r2
-    if r4 goto L2 else goto L3 :: bool
+    r4 = int_eq r0, r2
+    if r4 goto L3 else goto L2 :: bool
 L2:
     r5 = 1
     goto L4
