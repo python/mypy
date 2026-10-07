@@ -259,19 +259,35 @@ void CPyList_SetItemUnsafe(PyObject *list, Py_ssize_t index, PyObject *value) {
 }
 
 #ifdef Py_GIL_DISABLED
-// The original optimized list.pop implementation doesn't work on free-threaded
-// builds, so provide an alternative that is a bit slower but works.
+// The original optimized list.pop implementation may reallocate the item array,
+// which doesn't work on free-threaded builds, so provide an alternative that
+// never reallocates it (like del a[i] in CPython, the array never shrinks).
 //
-// Note that this implementation isn't intended to be atomic.
+// The list is locked so that the item is removed atomically. A negative index
+// is relative to the end of the list.
 static inline PyObject *list_pop_index(PyObject *list, Py_ssize_t index) {
-    PyObject *item = PyList_GetItemRef(list, index);
-    if (item == NULL) {
-        return NULL;
+    PyObject *item = NULL;
+    Py_BEGIN_CRITICAL_SECTION(list);
+    Py_ssize_t size = PyList_GET_SIZE(list);
+    if (index < 0) {
+        index += size;
     }
-    if (PySequence_DelItem(list, index) < 0) {
-        Py_DECREF(item);
-        return NULL;
+    if (size == 0) {
+        PyErr_SetString(PyExc_IndexError, "pop from empty list");
+    } else if (index < 0 || index >= size) {
+        PyErr_SetString(PyExc_IndexError, "pop index out of range");
+    } else {
+        // Same steps as del a[i] in CPython (list_ass_item_lock_held), except that
+        // the list's reference to the item is passed to the caller. Never resize
+        // the item array here: on free-threaded builds it must be freed using QSBR.
+        PyObject **items = ((PyListObject *)list)->ob_item;
+        item = items[index];
+        for (Py_ssize_t i = index; i < size - 1; i++) {
+            _Py_atomic_store_ptr_release(&items[i], items[i + 1]);
+        }
+        Py_SET_SIZE(list, size - 1);
     }
+    Py_END_CRITICAL_SECTION();
     return item;
 }
 #endif
@@ -280,8 +296,7 @@ PyObject *CPyList_PopLast(PyObject *list)
 {
 #ifdef Py_GIL_DISABLED
     // The other implementation causes segfaults on a free-threaded Python 3.14b4 build.
-    Py_ssize_t index = PyList_GET_SIZE(list) - 1;
-    return list_pop_index(list, index);
+    return list_pop_index(list, -1);
 #else
     // I tried a specialized version of pop_impl for just removing the
     // last element and it wasn't any faster in microbenchmarks than
@@ -296,9 +311,6 @@ PyObject *CPyList_Pop(PyObject *obj, CPyTagged index)
         Py_ssize_t n = CPyTagged_ShortAsSsize_t(index);
 #ifdef Py_GIL_DISABLED
         // We must use a slower implementation on free-threaded builds.
-        if (n < 0) {
-            n += PyList_GET_SIZE(obj);
-        }
         return list_pop_index(obj, n);
 #else
         return list_pop_impl((PyListObject *)obj, n);
