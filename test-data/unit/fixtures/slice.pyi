@@ -16,7 +16,8 @@ class type: pass
 class tuple(Generic[T]): pass
 class function: pass
 
-class int: pass
+class int:
+    def __index__(self) -> int: ...
 class str: pass
 
 class slice(Generic[_StartTco, _StopTco, _StepTco]): pass
