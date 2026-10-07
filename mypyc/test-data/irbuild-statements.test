@@ -111,6 +111,40 @@ L3:
 L4:
     return 1
 
+[case testForInRangeNativeIndexArg]
+class C:
+    def __index__(self) -> int:
+        return 2
+
+def f(c: C) -> None:
+    for i in range(c):  # type: ignore[arg-type]
+        pass
+[out]
+def C.__index__(self):
+    self :: __main__.C
+L0:
+    return 4
+def f(c):
+    c :: __main__.C
+    r0, r1, i :: int
+    r2 :: bit
+    r3 :: int
+L0:
+    r0 = c.__index__()
+    r1 = 0
+    i = r1
+L1:
+    r2 = int_lt r1, r0
+    if r2 goto L2 else goto L4 :: bool
+L2:
+    i = r1
+L3:
+    r3 = CPyTagged_Add(r1, 2)
+    r1 = r3
+    goto L1
+L4:
+    return 1
+
 [case testBreak]
 def f() -> None:
   n = 0

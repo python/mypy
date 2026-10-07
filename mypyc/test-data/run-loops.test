@@ -595,6 +595,21 @@ def loop_down_to(start: Any, end: Any) -> list[int]:
 def loop_bool(b: bool) -> list[int]:
     return [i for i in range(b)]
 
+class NativeIndex:
+    def __init__(self, n: int) -> None:
+        self.n = n
+
+    def __index__(self) -> int:
+        return self.n
+
+class NativeIndexSub(NativeIndex):
+    def __index__(self) -> int:
+        return self.n + 1
+
+def loop_native(start: NativeIndex, end: NativeIndex) -> list[int]:
+    # The test fixtures only accept int arguments for range()
+    return [i for i in range(start, end)]  # type: ignore[arg-type]
+
 def test_index_args() -> None:
     from index_types import Index
     assert loop_end(Index(3)) == [0, 1, 2]
@@ -611,6 +626,12 @@ def test_big_index_args() -> None:
     assert loop_down_to(Index(n + 1), Index(n - 2)) == [n + 1, n, n - 1]
     assert loop_down_to(Index(-n + 1), Index(-n - 2)) == [-n + 1, -n, -n - 1]
     assert loop_end(Index(-n - 1)) == []
+
+def test_native_index_args() -> None:
+    assert loop_native(NativeIndex(1), NativeIndex(3)) == [1, 2]
+    assert loop_native(NativeIndexSub(1), NativeIndex(4)) == [2, 3]
+    n = 2**62
+    assert loop_native(NativeIndex(n - 1), NativeIndex(n + 1)) == [n - 1, n]
 
 def test_int_args() -> None:
     assert loop_end(3) == [0, 1, 2]

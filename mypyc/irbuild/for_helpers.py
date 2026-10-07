@@ -1151,7 +1151,15 @@ class ForRange(ForGenerator):
             or is_bool_or_bit_rprimitive(value.type)
         ):
             return value
-        index = self.builder.call_c(index_op, [value], self.line)
+        if (
+            isinstance(value.type, RInstance)
+            and value.type.class_ir.is_ext_class
+            and value.type.class_ir.has_method("__index__")
+        ):
+            # Directly call the __index__ method on native classes that have it.
+            index = self.builder.gen_method_call(value, "__index__", [], int_rprimitive, self.line)
+        else:
+            index = self.builder.call_c(index_op, [value], self.line)
         return self.builder.coerce(index, int_rprimitive, self.line)
 
     def gen_condition(self) -> None:
