@@ -3255,3 +3255,21 @@ class K(Base):
 class Base: ...
 reveal_type(K.q)  # N: Revealed type is "builtins.list[tuple[builtins.bool, builtins.int, builtins.str]]"
 [builtins fixtures/tuple.pyi]
+
+[case testTypeVarTupleApplyResultsFromUnionWithAnyNoCrash]
+from typing import Any, Generic, Union
+from typing_extensions import TypeVarTuple, Unpack
+
+Ts = TypeVarTuple("Ts")
+class C(Generic[Unpack[Ts]]): ...
+
+def foo(t: tuple[Unpack[Ts]]) -> C[Unpack[Ts]]: ...
+def bar(c: C[Unpack[Ts]]) -> tuple[Unpack[Ts]]: ...
+
+x: Union[Any, C[Unpack[tuple[int, ...]]]]
+x = foo((1, 2))
+reveal_type(x)  # N: Revealed type is "__main__.C[builtins.int, builtins.int]"
+
+y: Union[Any, C[Unpack[tuple[int, ...]]]]
+reveal_type(bar(y))  # N: Revealed type is "builtins.tuple[Any, ...]"
+[builtins fixtures/tuple.pyi]
