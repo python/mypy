@@ -76,6 +76,7 @@ from mypyc.primitives.generic_ops import (
 from mypyc.primitives.misc_ops import (
     dataclass_sleight_of_hand,
     import_op,
+    isinstance_type,
     not_implemented_op,
     py_calc_meta_op,
     py_init_subclass_op,
@@ -287,23 +288,30 @@ class NonExtClassBuilder(ClassBuilder):
     def finalize(self, ir: ClassIR) -> None:
         # Dynamically create the class via the type constructor
         non_ext_class = load_non_ext_class(self.builder, ir, self.non_ext, self.cdef.line)
-        non_ext_class = load_decorated_class(self.builder, self.cdef, non_ext_class)
+        decorated_class = load_decorated_class(self.builder, self.cdef, non_ext_class)
+        type_obj = decorated_class
+        if ir.is_decorated:
+            type_obj = load_decorated_class_type(
+                self.builder, non_ext_class, decorated_class, self.cdef.line
+            )
 
         # Try to avoid contention when using free threading.
-        self.builder.set_immortal_if_free_threaded(non_ext_class, self.cdef.line)
+        self.builder.set_immortal_if_free_threaded(type_obj, self.cdef.line)
+        if type_obj is not decorated_class:
+            self.builder.set_immortal_if_free_threaded(decorated_class, self.cdef.line)
 
-        # Save the decorated class
+        # Save the class object
         self.builder.add(
-            InitStatic(non_ext_class, self.cdef.name, self.builder.module_name, NAMESPACE_TYPE)
+            InitStatic(type_obj, self.cdef.name, self.builder.module_name, NAMESPACE_TYPE)
         )
 
-        # Add the non-extension class to the dict
+        # Add the decorated class to the dict
         self.builder.call_c(
             exact_dict_set_item_op,
             [
                 self.builder.load_globals_dict(),
                 self.builder.load_str(self.cdef.name),
-                non_ext_class,
+                decorated_class,
             ],
             self.cdef.line,
         )
@@ -931,6 +939,27 @@ def load_decorated_class(builder: IRBuilder, cdef: ClassDef, type_obj: Value) ->
         assert isinstance(decorator, Value), decorator
         dec_class = builder.py_call(decorator, [dec_class], dec_class.line)
     return dec_class
+
+
+def load_decorated_class_type(
+    builder: IRBuilder, undecorated: Value, decorated: Value, line: int
+) -> Value:
+    """Find the class object to use in type checks of a decorated non-extension class.
+
+    A class decorator can replace the class with an object that isn't a class, such as
+    a functools.cache wrapper. Instances still have the undecorated class as their type
+    then, so use it. If the decorator returned a class (perhaps a new one, as
+    six.add_metaclass does), use that.
+    """
+    result = Register(object_rprimitive)
+    builder.assign(result, decorated, line)
+    is_class = builder.primitive_op(isinstance_type, [decorated], line)
+    not_class, done = BasicBlock(), BasicBlock()
+    builder.add(Branch(is_class, done, not_class, Branch.BOOL))
+    builder.activate_block(not_class)
+    builder.assign(result, undecorated, line)
+    builder.goto_and_activate(done)
+    return result
 
 
 def cache_class_attrs(

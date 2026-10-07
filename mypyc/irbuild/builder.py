@@ -1250,6 +1250,14 @@ class IRBuilder:
         """Is a type something other than just a class we've created?"""
         return typ.is_named_tuple or typ.is_newtype or typ.typeddict_type is not None
 
+    def is_decorated_class(self, typ: TypeInfo) -> bool:
+        """Might a class decorator have replaced the class with another object?
+
+        The name of the class then refers to the decorated object, not to the class.
+        """
+        ir = self.mapper.type_to_ir.get(typ)
+        return ir is not None and ir.is_decorated
+
     def get_final_ref(self, expr: MemberExpr) -> tuple[str, Var, bool] | None:
         """Check if `expr` is a final class, module or instance attribute.
 
@@ -1755,6 +1763,7 @@ class IRBuilder:
             self.is_native_module_ref_expr(expr)
             and isinstance(expr.node, TypeInfo)
             and not self.is_synthetic_type(expr.node)
+            and not self.is_decorated_class(expr.node)
         ):
             assert expr.fullname
             return self.load_native_type_object(expr.fullname)
