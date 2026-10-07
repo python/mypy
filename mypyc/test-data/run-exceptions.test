@@ -665,3 +665,32 @@ from typing import Any
 class OtherException(Exception):
     def __new__(cls) -> Any:
         return ValueError("other")
+
+[case testExceptionVariableCapturedByNestedFunction]
+from typing import Callable, Iterator
+
+def call(f: Callable[[], str]) -> str:
+    return f()
+
+def test_lambda() -> None:
+    try:
+        raise RuntimeError("x")
+    except RuntimeError as exc:
+        assert call(lambda: str(exc)) == "x"
+
+def test_nested_function() -> None:
+    try:
+        raise ValueError("y")
+    except Exception as exc:
+        def f() -> str:
+            return type(exc).__name__ + str(exc)
+        assert call(f) == "ValueErrory"
+
+def gen() -> Iterator[str]:
+    try:
+        raise KeyError("z")
+    except KeyError as exc:
+        yield call(lambda: repr(exc))
+
+def test_generator() -> None:
+    assert list(gen()) == ["KeyError('z')"]
