@@ -1236,9 +1236,9 @@ a[:o]
 a: list[int]
 s: str
 
-a[s:]   # E: Slice index has type "str"; expected "SupportsIndex | None"
-a[:s]   # E: Slice index has type "str"; expected "SupportsIndex | None"
-a[::s]  # E: Slice index has type "str"; expected "SupportsIndex | None"
+a[s:]   # E: Invalid index type "slice[str, None, None]" for "list[int]"; expected type "slice[SupportsIndex | None]"
+a[:s]   # E: Invalid index type "slice[str, None, None]" for "list[int]"; expected type "slice[SupportsIndex | None]"
+a[::s]  # E: Invalid index type "slice[str, None, None]" for "list[int]"; expected type "slice[SupportsIndex | None]"
 [builtins fixtures/slice.pyi]
 
 [case testSliceSupportsIndex]
