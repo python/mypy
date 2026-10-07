@@ -1718,6 +1718,32 @@ class NonNativeClassContradiction():  # E: Class is marked as native_class=True 
 class BadUse():  # E: native_class must be used with True or False only
     pass
 
+[case testNativeClassUnknownBase]
+from mypy_extensions import mypyc_attr
+from typing import Any
+from missing_module import Base  # type: ignore
+
+class C(Base):  # E: Native classes cannot inherit from a class with type Any \
+                # N: Use @mypy_extensions.mypyc_attr(native_class=False)
+    pass
+
+class D(C):  # E: Native classes cannot inherit from a class with type Any \
+             # N: Use @mypy_extensions.mypyc_attr(native_class=False)
+    pass
+
+@mypyc_attr(native_class=False)
+class NonNative(Base):
+    pass
+
+class NativeChild(NonNative):  # E: Native classes cannot inherit from a class with type Any \
+                             # N: Use @mypy_extensions.mypyc_attr(native_class=False)
+    pass
+
+ExplicitAny: Any = str
+class S(ExplicitAny):  # E: Native classes cannot inherit from a class with type Any \
+                      # N: Use @mypy_extensions.mypyc_attr(native_class=False)
+    pass
+
 [case testMypycAttrNativeClassMetaError]
 from mypy_extensions import mypyc_attr
 

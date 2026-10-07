@@ -1543,6 +1543,82 @@ def test_raise_non_native_exception_subclass_2() -> None:
         assert False
     assert x
 
+[case testSubclassUnknownPythonBase]
+# The base class is unknown during compilation, so it has type Any
+from mypy_extensions import mypyc_attr
+from unchecked import Base, MetaBase, StrBase  # type: ignore
+
+@mypyc_attr(native_class=False)
+class C(Base):
+    def __init__(self, x: int) -> None:
+        super().__init__()
+        self.x = x
+
+@mypyc_attr(native_class=False)
+class InheritedInit(Base):
+    pass
+
+@mypyc_attr(native_class=False)
+class D(InheritedInit):
+    pass
+
+@mypyc_attr(native_class=False)
+class S(StrBase):
+    pass
+
+@mypyc_attr(native_class=False)
+class WithMeta(MetaBase):
+    pass
+
+def test_unknown_base() -> None:
+    c = C(1)
+    assert c.x == 1
+    assert c.y == 2
+    c.z = 3
+    assert c.z == 3
+    assert c.__dict__ == {"x": 1, "y": 2, "z": 3}
+    assert isinstance(c, Base)
+
+def test_inherited_init() -> None:
+    assert InheritedInit().y == 2
+    assert InheritedInit(7).y == 7
+    assert InheritedInit(x=11).y == 11
+    assert D(13).y == 13
+    assert D(x=17).y == 17
+    try:
+        InheritedInit(-1)
+    except ValueError as e:
+        assert str(e) == "negative"
+    else:
+        assert False
+
+def test_unknown_extension_base() -> None:
+    assert S.__basicsize__ >= StrBase.__basicsize__
+    c = S("abc")
+    assert isinstance(c, str)
+    assert c == "abc"
+    assert len(c) == 3
+    assert c.upper() == "ABC"
+
+def test_unknown_base_metaclass() -> None:
+    assert isinstance(WithMeta, type(MetaBase))
+    assert isinstance(WithMeta(), MetaBase)
+
+[file unchecked.py]
+StrBase = str
+
+class Meta(type):
+    pass
+
+class MetaBase(metaclass=Meta):
+    pass
+
+class Base:
+    def __init__(self, x=2):
+        if x < 0:
+            raise ValueError("negative")
+        self.y = x
+
 [case testSubclassPy]
 from b import B, V
 class A(B):
@@ -2065,27 +2141,6 @@ import native
 native.test()
 [out]
 ok
-
-[case testNoMetaclass]
-from foo import Base
-
-class Nothing(Base):  # type: ignore
-    pass
-
-[file foo.py]
-from typing import Any
-class Meta(type):
-    pass
-
-class _Base(metaclass=Meta):
-    pass
-Base = _Base  # type: Any
-
-[file driver.py]
-try:
-    import native
-except TypeError as e:
-    assert(str(e) == "mypyc classes can't have a metaclass")
 
 [case testMetaclass]
 from meta import Meta

@@ -556,6 +556,10 @@ def prepare_class_def(
     ir = mapper.type_to_ir[cdef.info]
     info = cdef.info
 
+    if info.fallback_to_any:
+        errors.error("Native classes cannot inherit from a class with type Any", path, cdef.line)
+        errors.note("Use @mypy_extensions.mypyc_attr(native_class=False)", path, cdef.line)
+
     attrs, attrs_lines = get_mypyc_attrs(cdef, path, errors)
     if attrs.get("allow_interpreted_subclasses") is True:
         ir.allow_interpreted_subclasses = True

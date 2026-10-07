@@ -599,14 +599,16 @@ def uses_non_ext_base_exprs(cdef: ClassDef) -> bool:
     """Should the base classes of a non-extension class be evaluated as written?
 
     Resolved base types erase Generic[...] bases and type arguments, but they are
-    needed at runtime, e.g. to make the class generic.
+    needed at runtime, e.g. to make the class generic. Any bases are missing from
+    resolved base types, so Python must determine the bases and instance layout.
     """
     info = cdef.info
     if info.is_named_tuple or info.typeddict_type is not None:
         # These have synthesized base classes that need special casing.
         return False
     return bool(
-        cdef.type_args
+        info.fallback_to_any
+        or cdef.type_args
         or cdef.removed_base_type_exprs
         or any(isinstance(expr, IndexExpr) for expr in cdef.base_type_exprs)
     )
