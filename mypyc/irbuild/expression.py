@@ -630,6 +630,10 @@ def translate_super_method_call(builder: IRBuilder, expr: CallExpr, callee: Supe
     if decl.is_prop_getter:
         # super().prop(...) calls the property's value, so get it through super()
         return translate_call(builder, expr, callee)
+    if decl.internal:
+        # A decorated override, which must be called through the Python API so that
+        # the lookup starts from the right class
+        return translate_call(builder, expr, callee)
 
     arg_values = [builder.accept(arg) for arg in expr.args]
     arg_kinds, arg_names = expr.arg_kinds.copy(), expr.arg_names.copy()

@@ -549,9 +549,7 @@ def handle_ext_method(builder: IRBuilder, cdef: ClassDef, fdef: FuncDef) -> None
         glue = gen_glue_method(builder, func_ir.sig, func_ir, class_ir, class_ir, fdef.line, True)
         # Native calls are compiled against the method's declaration, so the glue method
         # takes it over from the undecorated method, which is renamed
-        decl = class_ir.method_decls[name]
-        decl.internal = True
-        glue = FuncIR(decl, glue.arg_regs, glue.blocks, fdef.line)
+        glue = FuncIR(class_ir.method_decls[name], glue.arg_regs, glue.blocks, fdef.line)
         builder.functions.append(glue)
         class_ir.methods[name] = glue
 
@@ -597,6 +595,7 @@ def handle_ext_method(builder: IRBuilder, cdef: ClassDef, fdef: FuncDef) -> None
     # Rename the undecorated method only after all glue methods calling it by name exist
     if decorated_override:
         func_ir.decl.name = UNDECORATED_PREFIX + name
+        func_ir.decl.internal = False
         class_ir.methods[func_ir.decl.name] = func_ir
 
     if fdef.name == "__getattr__":
