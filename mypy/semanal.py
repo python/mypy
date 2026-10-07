@@ -110,6 +110,7 @@ from mypy.nodes import (
     ContinueStmt,
     DataclassTransformSpec,
     Decorator,
+    DeferredBaseClass,
     DelStmt,
     DictExpr,
     DictionaryComprehension,
@@ -2625,7 +2626,7 @@ class SemanticAnalyzer(
     def analyze_base_classes(
         self, cls_name: str, base_type_exprs: list[Expression]
     ) -> (
-        tuple[list[tuple[ProperType, Expression]], bool, list[tuple[Var, Expression, bool]]] | None
+        tuple[list[tuple[ProperType, Expression]], bool, list[DeferredBaseClass]] | None
     ):
         """Analyze base class types.
 
@@ -2634,15 +2635,15 @@ class SemanticAnalyzer(
 
          * List of (analyzed type, original expression) tuples
          * Boolean indicating whether one of the bases had a semantic analysis error
-         * List of (variable, original expression, defining_literal) tuples for
-           bases whose validity could not be checked yet, because the
-           variable's type has not been inferred (inference happens in the
-           type checker). These are provisionally treated as having an Any
-           base; the type checker validates them once the type is known.
+         * List of DeferredBaseClass for bases whose validity could not be
+           checked yet, because the variable's type has not been inferred
+           (inference happens in the type checker). These are provisionally
+           treated as having an Any base; the type checker validates them once
+           the type is known.
         """
         is_error = False
         bases = []
-        deferred: list[tuple[Var, Expression, bool]] = []
+        deferred: list[DeferredBaseClass] = []
         for i, base_expr in enumerate(base_type_exprs):
             if (
                 isinstance(base_expr, RefExpr)
@@ -2671,7 +2672,7 @@ class SemanticAnalyzer(
                 # type checking (e.g. `x = args[1]` where `args[1]` is `Any`).
                 # Provisionally treat it as Any; the type checker verifies the
                 # inferred type (see TypeChecker.check_deferred_base_classes).
-                deferred.append((e.var, base_expr, e.defining_literal))
+                deferred.append(DeferredBaseClass(e.var, base_expr, e.defining_literal))
                 base = AnyType(TypeOfAny.special_form)
             except TypeTranslationError:
                 name = self.get_name_repr_of_expr(base_expr)
@@ -2716,7 +2717,7 @@ class SemanticAnalyzer(
                     # the type checker reports this error once the actual
                     # inferred type is known, if it is Any.
                     is_deferred = any(
-                        expr is base_expr for _, expr, _ in defn.info.deferred_base_classes
+                        d.expr is base_expr for d in defn.info.deferred_base_classes
                     )
                     if not is_deferred:
                         if isinstance(base_expr, (NameExpr, MemberExpr)):

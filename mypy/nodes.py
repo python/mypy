@@ -7,6 +7,7 @@ from abc import abstractmethod
 from collections import defaultdict
 from collections.abc import Callable, Iterator, Sequence
 from contextlib import contextmanager
+from dataclasses import dataclass
 from enum import Enum, unique
 from typing import (
     TYPE_CHECKING,
@@ -3627,6 +3628,18 @@ EXCLUDED_PROTOCOL_ATTRIBUTES: Final = frozenset(
 EXCLUDED_ENUM_ATTRIBUTES: Final = frozenset({"_ignore_", "_order_", "__order__"})
 
 
+@dataclass
+class DeferredBaseClass:
+    """A base class that is a variable whose type was not yet inferred.
+
+    The type checker validates these once the variable's type is known.
+    """
+
+    var: Var
+    expr: Expression
+    defining_literal: bool
+
+
 class TypeInfo(SymbolNode):
     """The type structure of a single class.
 
@@ -3922,11 +3935,10 @@ class TypeInfo(SymbolNode):
         self.is_type_check_only = False
         self.deprecated = None
         # Base classes that are variables whose types had not been inferred yet
-        # during semantic analysis. Each entry is a (variable, expression) tuple.
-        # The type checker validates them once the types are known (see
-        # TypeChecker.check_deferred_base_classes). This is not serialized; it
-        # is only meaningful within a single build.
-        self.deferred_base_classes: list[tuple[Var, Expression, bool]] = []
+        # during semantic analysis. The type checker validates them once the
+        # types are known (see TypeChecker.check_deferred_base_classes).
+        # This is not serialized; it is only meaningful within a single build.
+        self.deferred_base_classes: list[DeferredBaseClass] = []
         self.type_object_type = None
         self.default_depends = {}
         self.typeddict_data = None

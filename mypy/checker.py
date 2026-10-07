@@ -216,6 +216,7 @@ from mypy.patterns import AsPattern, StarredPattern
 from mypy.plugin import Plugin
 from mypy.plugins import dataclasses as dataclasses_plugin
 from mypy.scope import Scope
+from mypy.stats import get_original_any
 from mypy.semanal import is_trivial_body, refers_to_fullname, set_callable_name
 from mypy.semanal_enum import ENUM_BASES, ENUM_SPECIAL_PROPS
 from mypy.semanal_shared import SemanticAnalyzerCoreInterface
@@ -2815,13 +2816,13 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
         an explicitly written ``Any`` means the user opted into dynamic typing,
         so it is treated like an explicitly ``Any``-typed variable.
         """
-        while (
-            isinstance(typ, AnyType)
-            and typ.type_of_any == TypeOfAny.from_another_any
-            and typ.source_any is not None
-        ):
-            typ = typ.source_any
-        return isinstance(typ, AnyType) and typ.type_of_any != TypeOfAny.unannotated
+        if not isinstance(typ, AnyType):
+            return False
+        # Unwrap Any types that come from another Any to get the original.
+        typ = get_original_any(typ)
+        # Only accept explicitly written Any, not Any from unannotated code
+        # or other sources.
+        return typ.type_of_any == TypeOfAny.explicit
 
     def check_deferred_base_classes(self, defn: ClassDef) -> None:
         """Validate base classes deferred from semantic analysis.
@@ -2838,7 +2839,10 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
             # Semantic analysis silently drops these errors in unchecked
             # functions; do the same here to avoid new reports.
             return
-        for var, base_expr, defining_literal in defn.info.deferred_base_classes:
+        for deferred in defn.info.deferred_base_classes:
+            var = deferred.var
+            base_expr = deferred.expr
+            defining_literal = deferred.defining_literal
             if defining_literal:
                 # Semantic analysis does not report "not valid as a type" for
                 # variables inside Literal[...]; do the same here.
