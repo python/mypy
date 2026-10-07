@@ -5914,12 +5914,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
             # check_call does not apply signature hooks; do that here, as for other calls.
             if fullname:
                 dec = self.expr_checker.transform_callee_type(
-                    fullname,
-                    dec,
-                    [temp],
-                    [nodes.ARG_POS],
-                    e,
-                    object_type=object_type,
+                    fullname, dec, [temp], [nodes.ARG_POS], e, object_type=object_type
                 )
             sig, t2 = self.expr_checker.check_call(
                 dec, [temp], [nodes.ARG_POS], e, callable_name=fullname, object_type=object_type
