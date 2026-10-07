@@ -166,7 +166,7 @@ x # type: ignore[name-defined, attr-defined] # E: Unused "type: ignore[attr-defi
 
 [case testErrorCodeWarnUnusedIgnores3]
 # flags: --warn-unused-ignores
-"x".foobar(y) # type: ignore[name-defined, attr-defined, xyz] # E: Unused "type: ignore[xyz]" comment  [unused-ignore]
+"x".foobar(y) # type: ignore[name-defined, attr-defined, xyz]
 
 [case testErrorCodeWarnUnusedIgnores4]
 # flags: --warn-unused-ignores
@@ -174,7 +174,7 @@ x # type: ignore[name-defined, attr-defined] # E: Unused "type: ignore[attr-defi
 
 [case testErrorCodeWarnUnusedIgnores5]
 # flags: --warn-unused-ignores
-"x".foobar(y) # type: ignore[name-defined, attr-defined, valid-type, xyz] # E: Unused "type: ignore[valid-type, xyz]" comment  [unused-ignore]
+"x".foobar(y) # type: ignore[name-defined, attr-defined, valid-type, xyz] # E: Unused "type: ignore[valid-type]" comment  [unused-ignore]
 
 [case testErrorCodeWarnUnusedIgnores6_NoDetailWhenSingleErrorCode]
 # flags: --warn-unused-ignores
