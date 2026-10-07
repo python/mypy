@@ -125,6 +125,24 @@ print(C.__annotations__["spam"] is JSONDecoder)
 [out]
 True
 
+[case testNonExtClassAnnotationOfClassNotCreatedYet]
+from __future__ import annotations
+
+from mypy_extensions import mypyc_attr
+
+@mypyc_attr(native_class=False)
+class Node:
+    parent: Node
+    later: Later
+
+class Later:
+    pass
+
+[file driver.py]
+from native import Node
+
+assert Node.__annotations__ == {"parent": "native.Node", "later": "native.Later"}
+
 [case testClassWithDeletableAttributes]
 from typing import Any, cast
 from testutil import assertRaises

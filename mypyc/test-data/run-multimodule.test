@@ -1042,6 +1042,55 @@ except TypeError:
 else:
     assert False
 
+[case testMultiModuleAnnotationOfClassNotCreatedYet]
+from __future__ import annotations
+
+from dataclasses import dataclass
+from typing import TYPE_CHECKING
+
+from mypy_extensions import mypyc_attr
+
+from other_a import A
+
+if TYPE_CHECKING:
+    from other_b import B
+
+@dataclass(frozen=True)
+class Data:
+    a: A
+    b: B
+    quoted: "B"
+
+@mypyc_attr(native_class=False)
+class NonNative:
+    a: A
+    b: B
+
+[file other_a.py]
+class A:
+    pass
+
+[file other_b.py]
+class B:
+    pass
+
+[file driver.py]
+from dataclasses import fields
+
+# Importing native doesn't import other_b, so class B doesn't exist yet when the
+# classes in native are created
+import native
+from other_a import A
+
+assert native.Data.__annotations__ == {"a": A, "b": "other_b.B", "quoted": "other_b.B"}
+assert [f.type for f in fields(native.Data)] == [A, "other_b.B", "other_b.B"]
+assert native.NonNative.__annotations__ == {"a": A, "b": "other_b.B"}
+
+from other_b import B
+
+d = native.Data(A(), B(), B())
+assert isinstance(d.b, B)
+
 [case testMultiModuleRelative]
 from package.a import f
 [file package/__init__.py]

@@ -685,7 +685,7 @@ def add_non_ext_class_attr_ann(
             if builder.current_module == type_info.module_name and stmt.line < type_info.line:
                 typ = builder.load_str(type_info.fullname)
             else:
-                typ = load_type(builder, type_info, stmt.unanalyzed_type, stmt.line)
+                typ = load_type_for_annotation(builder, type_info, stmt)
 
     if typ is None:
         # FIXME: if get_type_info is not provided, don't fall back to stmt.type?
@@ -701,12 +701,39 @@ def add_non_ext_class_attr_ann(
             # actually a forward reference due to the __annotations__ future?
             typ = builder.load_str(stmt.unanalyzed_type.original_str_expr)
         elif isinstance(ann_type, Instance):
-            typ = load_type(builder, ann_type.type, stmt.unanalyzed_type, stmt.line)
+            typ = load_type_for_annotation(builder, ann_type.type, stmt)
         else:
             typ = builder.add(LoadAddress(type_object_op.type, type_object_op.src, stmt.line))
 
     key = builder.load_str(lvalue.name)
     builder.call_c(exact_dict_set_item_op, [non_ext.anns, key, typ], stmt.line)
+
+
+def load_type_for_annotation(
+    builder: IRBuilder, type_info: TypeInfo, stmt: AssignmentStmt
+) -> Value:
+    """Load the class object of a class named in an annotation in a class body.
+
+    A native class doesn't exist until its class statement has run, which may not have
+    happened yet: its module may not have been imported (for example if it's only imported
+    under TYPE_CHECKING), or it may be defined later in this module, or be the non-extension
+    class being defined. Python doesn't evaluate annotations like these with
+    "from __future__ import annotations", so use the name of the class instead in that case.
+    """
+    typ = load_type(builder, type_info, stmt.unanalyzed_type, stmt.line)
+    if type_info not in builder.mapper.type_to_ir:
+        return typ
+    # The class object is NULL if the class doesn't exist yet
+    result = Register(object_rprimitive)
+    missing, present, done = BasicBlock(), BasicBlock(), BasicBlock()
+    builder.add(Branch(typ, missing, present, Branch.IS_ERROR))
+    builder.activate_block(present)
+    builder.assign(result, typ, stmt.line)
+    builder.goto(done)
+    builder.activate_block(missing)
+    builder.assign(result, builder.load_str(type_info.fullname), stmt.line)
+    builder.goto_and_activate(done)
+    return result
 
 
 def add_non_ext_class_attr(
