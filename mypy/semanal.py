@@ -2625,9 +2625,7 @@ class SemanticAnalyzer(
 
     def analyze_base_classes(
         self, cls_name: str, base_type_exprs: list[Expression]
-    ) -> (
-        tuple[list[tuple[ProperType, Expression]], bool, list[DeferredBaseClass]] | None
-    ):
+    ) -> tuple[list[tuple[ProperType, Expression]], bool, list[DeferredBaseClass]] | None:
         """Analyze base class types.
 
         Return None if some definition was incomplete. Otherwise, return a tuple
@@ -2716,9 +2714,7 @@ class SemanticAnalyzer(
                     # A deferred base class is provisionally treated as Any;
                     # the type checker reports this error once the actual
                     # inferred type is known, if it is Any.
-                    is_deferred = any(
-                        d.expr is base_expr for d in defn.info.deferred_base_classes
-                    )
+                    is_deferred = any(d.expr is base_expr for d in defn.info.deferred_base_classes)
                     if not is_deferred:
                         if isinstance(base_expr, (NameExpr, MemberExpr)):
                             msg = f'Class cannot subclass "{base_expr.name}" (has type "Any")'
