@@ -621,7 +621,7 @@ class FunctionEmitterVisitor(OpVisitor[None]):
                     rtype.setter_index(op.attr),
                     src,
                     rtype.struct_name(self.names),
-                    self.ctype(rtype.attr_type(op.attr)),
+                    self.ctype(op.propset.sig.args[1].type),
                     c_ret_type,
                     op.attr,
                 )

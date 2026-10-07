@@ -2317,6 +2317,76 @@ import other_interpreted
 
 [out]
 
+[case testPropertySetterWiderThanGetter]
+from typing import Union
+from mypy_extensions import trait
+
+class Wrapped:
+    def __init__(self, s: str) -> None:
+        self.s = s
+
+@trait
+class T:
+    @property
+    def value(self) -> Wrapped:
+        raise NotImplementedError
+
+    @value.setter
+    def value(self, v: Union[Wrapped, str]) -> None:
+        raise NotImplementedError
+
+class C(T):
+    def __init__(self) -> None:
+        self._value = Wrapped("init")
+        self._n = 0
+
+    @property
+    def value(self) -> Wrapped:
+        return self._value
+
+    @value.setter
+    def value(self, v: Union[Wrapped, str]) -> None:
+        self._value = Wrapped(v) if isinstance(v, str) else v
+
+    @property
+    def n(self) -> int:
+        return self._n
+
+    @n.setter
+    def n(self, v: Union[int, str]) -> None:
+        self._n = int(v)
+
+def set_via_class(c: C, v: Union[Wrapped, str]) -> str:
+    c.value = v
+    return c.value.s
+
+def set_via_trait(t: T, v: Union[Wrapped, str]) -> str:
+    t.value = v
+    return t.value.s
+
+def set_unboxed(c: C, v: Union[int, str]) -> int:
+    c.n = v
+    return c.n
+
+def test_setter_wider_than_getter() -> None:
+    c = C()
+    assert set_via_class(c, "a") == "a"
+    assert set_via_class(c, Wrapped("b")) == "b"
+    assert set_via_trait(c, "c") == "c"
+    assert set_via_trait(c, Wrapped("d")) == "d"
+    assert set_unboxed(c, "5") == 5
+    assert set_unboxed(c, 6) == 6
+
+[file driver.py]
+from native import C, test_setter_wider_than_getter
+test_setter_wider_than_getter()
+
+c = C()
+c.value = "py"
+assert c.value.s == "py"
+c.n = "7"
+assert c.n == 7
+
 [case testAttributeOverridesProperty]
 from typing import Any
 from mypy_extensions import trait
