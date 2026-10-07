@@ -2833,7 +2833,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             self.msg.concrete_only_call(callee_type, context)
         elif (
             isinstance(context, SliceExpr)
-            and (name := callable_name(callee)) is not None
+            and callable_name(callee) is not None
             and self.check_slice_index_bounds(context, callee_type)
         ):
             return
