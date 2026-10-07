@@ -3512,14 +3512,12 @@ L5:
 def range_in_loop():
     sum :: int
     r0 :: short_int
-    i :: int
     r1 :: bit
-    r2 :: int
+    i, r2 :: int
     r3 :: short_int
 L0:
     sum = 0
     r0 = 8
-    i = r0
 L1:
     r1 = int_lt r0, 24
     if r1 goto L2 else goto L4 :: bool

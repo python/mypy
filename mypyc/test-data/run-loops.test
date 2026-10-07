@@ -302,6 +302,148 @@ assert m == 8, f"expected 8, got {m}"
 from native import *
 [out]
 
+[case testRangeLoopVariableEmptyRange]
+from typing import Iterator
+from mypy_extensions import i64
+from testutil import assertRaises
+
+def last_range(start: int, end: int) -> int:
+    i = -1
+    for i in range(start, end):
+        pass
+    return i
+
+def unbound_range(n: int) -> int:
+    for i in range(n):
+        pass
+    return i
+
+def last_range_negative_step() -> int:
+    i = -1
+    for i in range(0, 5, -1):
+        pass
+    return i
+
+def unbound_range_negative_step() -> int:
+    for i in range(0, 5, -1):
+        pass
+    return i
+
+def last_range_i64(n: i64) -> i64:
+    i: i64 = -1
+    for i in range(n):
+        pass
+    return i
+
+def unbound_range_i64(n: i64) -> i64:
+    for i in range(n):
+        pass
+    return i
+
+def test_empty_range_keeps_old_value() -> None:
+    assert last_range(5, 0) == -1
+    assert last_range(0, 3) == 2
+    assert last_range_negative_step() == -1
+    assert last_range_i64(0) == -1
+    assert last_range_i64(3) == 2
+
+def test_empty_range_leaves_variable_unbound() -> None:
+    assert unbound_range(3) == 2
+    with assertRaises(UnboundLocalError):
+        unbound_range(0)
+    with assertRaises(UnboundLocalError):
+        unbound_range_negative_step()
+    assert unbound_range_i64(3) == 2
+    with assertRaises(UnboundLocalError):
+        unbound_range_i64(0)
+
+def test_empty_range_in_enumerate_and_zip() -> None:
+    i = x = -1
+    for i, x in enumerate(range(0)):
+        pass
+    assert (i, x) == (-1, -1)
+    a = b = -1
+    for a, b in zip(range(3), range(0)):
+        pass
+    assert (a, b) == (-1, -1)
+
+def gen_range(n: int) -> Iterator[int]:
+    i = -1
+    for i in range(n):
+        yield i
+    yield i
+
+def test_empty_range_in_generator() -> None:
+    assert list(gen_range(0)) == [-1]
+    assert list(gen_range(2)) == [0, 1, 1]
+
+for module_var in range(0):
+    pass
+
+def test_empty_range_at_module_level() -> None:
+    assert "module_var" not in globals()
+
+class A:
+    def __init__(self, n: int) -> None:
+        for self.x in range(n):
+            pass
+
+def test_empty_range_with_attribute_target() -> None:
+    assert A(2).x == 1
+    with assertRaises(AttributeError):
+        A(0).x
+
+[case testForLoopTargetEvaluatedEachIteration]
+class C:
+    def __init__(self) -> None:
+        self.assigned: list[int] = []
+
+    @property
+    def x(self) -> int:
+        return -1
+
+    @x.setter
+    def x(self, value: int) -> None:
+        self.assigned.append(value)
+
+def test_attribute_target() -> None:
+    c = C()
+    for c.x in range(0):
+        pass
+    assert c.assigned == []
+    for c.x in range(3):
+        pass
+    assert c.assigned == [0, 1, 2]
+
+def index(log: list[int]) -> int:
+    log.append(0)
+    return 0
+
+def test_index_target_in_range_loop() -> None:
+    a = [-1]
+    log: list[int] = []
+    for a[index(log)] in range(0):
+        pass
+    assert a == [-1]
+    assert log == []
+    for a[index(log)] in range(3):
+        pass
+    assert a == [2]
+    assert len(log) == 3
+
+def test_index_target_in_enumerate_loop() -> None:
+    a = [-1]
+    log: list[int] = []
+    empty: list[str] = []
+    for a[index(log)], s in enumerate(empty):
+        pass
+    assert a == [-1]
+    assert log == []
+    for a[index(log)], s in enumerate("abc"):
+        pass
+    assert a == [2]
+    assert len(log) == 3
+
 [case testForIterable]
 from typing import Iterable, Dict, Any, Tuple, TypeVar
 
