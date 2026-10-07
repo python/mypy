@@ -1771,25 +1771,22 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         # If the callable is generic, we need to replace its type variables with unique
         # meta variables. We however do this at most once per callable, so that expression
         # cache stays efficient in absence of outer type context.
-        original_callee = callee
-        if (context, callee) in self.freshen_cache:
-            callee = self.freshen_cache[(context, callee)]
-        else:
-            should_cache = False
-            ret_type = get_proper_type(callee.ret_type)
-            if isinstance(ret_type, CallableType) and ret_type.variables:
-                # This is tricky: return type may contain its own type variables, like in
-                # def [S] (S) -> def [T] (T) -> tuple[S, T], so we need to update their ids
-                # to avoid possible id clashes if this call itself appears in a generic
-                # function body.
-                fresh_ret_type = freshen_all_functions_type_vars(callee.ret_type)
-                freeze_all_type_vars(fresh_ret_type)
-                callee = callee.copy_modified(ret_type=fresh_ret_type)
-                should_cache = True
-            if callee.is_generic():
-                callee = freshen_function_type_vars(callee)
-                should_cache = True
-            if should_cache:
+        ret_type = get_proper_type(callee.ret_type)
+        if callee.is_generic() or isinstance(ret_type, CallableType) and ret_type.is_generic():
+            if (context, callee) in self.freshen_cache:
+                callee = self.freshen_cache[(context, callee)]
+            else:
+                original_callee = callee
+                if isinstance(ret_type, CallableType) and ret_type.is_generic():
+                    # This is tricky: return type may contain its own type variables, like in
+                    # def [S] (S) -> def [T] (T) -> tuple[S, T], so we need to update their ids
+                    # to avoid possible id clashes if this call itself appears in a generic
+                    # function body.
+                    fresh_ret_type = freshen_all_functions_type_vars(callee.ret_type)
+                    freeze_all_type_vars(fresh_ret_type)
+                    callee = callee.copy_modified(ret_type=fresh_ret_type)
+                if callee.is_generic():
+                    callee = freshen_function_type_vars(callee)
                 self.freshen_cache[(context, original_callee)] = callee
 
         if callee.is_generic():
@@ -6266,7 +6263,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             # context, and use enclosing one, see infer_lambda_type_using_context().
             # TODO: consider using cache for more expression kinds.
             elif (
-                isinstance(node, (CallExpr, ListExpr, TupleExpr, DictExpr, OpExpr))
+                isinstance(node, (CallExpr, ListExpr, TupleExpr, DictExpr, OpExpr, MemberExpr))
                 and not (self.in_lambda_expr or self.chk.current_node_deferred)
                 and not self.chk.options.disable_expression_cache
             ):
