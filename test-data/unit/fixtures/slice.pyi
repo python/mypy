@@ -22,4 +22,4 @@ class str: pass
 class slice(Generic[_StartTco, _StopTco, _StepTco]): pass
 class dict: pass
 class list(Generic[T]):
-    def __getitem__(self, x: slice[SupportsIndex | None]) -> list[T]: pass
+    def __getitem__(self, x: slice[SupportsIndex | None, SupportsIndex | None, SupportsIndex | None,]) -> list[T]: pass
