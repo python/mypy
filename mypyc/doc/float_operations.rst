@@ -32,7 +32,7 @@ Attributes
 * ``f.real``
 * ``f.imag``
 
-These are also fast for ``complex`` values and for unions such as
+These are fast both for ``complex`` values and for unions such as
 ``int | float | complex``.
 
 Functions
