@@ -500,7 +500,7 @@ def test_error() -> None:
     try:
         a ** 'x'
     except TypeError as e:
-        assert str(e) == "unsupported operand type(s) for **: 'C' and 'str'"
+        assert str(e) == "unsupported operand type(s) for ** or pow(): 'C' and 'str'"
     else:
         assert False
 
@@ -721,6 +721,94 @@ def test_unannotated_add_and_radd_2() -> None:
         1 + h
 
 # TODO: Inheritance
+
+[case testDundersBinaryForwardOnlyNotImplemented]
+from typing import Any
+from testutil import assertRaises
+from interp import CountRadd
+
+class C:
+    def __add__(self, x: int) -> int:
+        return x + 1
+
+    def __pow__(self, x: int) -> int:
+        return x + 2
+
+class Sub(C):
+    pass
+
+class D:
+    def __add__(self, x: int) -> int:
+        return x + 3
+
+    def __radd__(self, x: int) -> int:
+        return x + 4
+
+class E:
+    def __xor__(self, x: E) -> Any:
+        return NotImplemented
+
+def test_forward_only() -> None:
+    c: Any = C()
+    assert c + 1 == 2
+    assert c ** 1 == 3
+    with assertRaises(TypeError, "unsupported operand type(s) for +: 'C' and 'C'"):
+        c + c
+    with assertRaises(TypeError, "unsupported operand type(s) for +: 'int' and 'C'"):
+        1 + c
+    with assertRaises(TypeError, 'can only concatenate str (not "C") to str'):
+        'x' + c
+    with assertRaises(TypeError, "unsupported operand type(s) for ** or pow(): 'C' and 'C'"):
+        c ** c
+    with assertRaises(TypeError, "unsupported operand type(s) for ** or pow(): 'int' and 'C'"):
+        2 ** c
+    with assertRaises(TypeError, "unsupported operand type(s) for ** or pow(): 'float' and 'C'"):
+        2.5 ** c
+    with assertRaises(TypeError, "unsupported operand type(s) for ** or pow(): 'NoneType' and 'C'"):
+        None ** c
+    x: Any = 2
+    with assertRaises(TypeError, "unsupported operand type(s) for **=: 'int' and 'C'"):
+        x **= c
+
+def test_forward_returns_not_implemented() -> None:
+    e = E()
+    with assertRaises(TypeError, "unsupported operand type(s) for ^: 'E' and 'E'"):
+        e ^ e
+
+def test_inherited_slot() -> None:
+    s: Any = Sub()
+    assert s + 1 == 2
+    with assertRaises(TypeError, "unsupported operand type(s) for +: 'Sub' and 'Sub'"):
+        s + s
+    with assertRaises(TypeError, "unsupported operand type(s) for +: 'int' and 'Sub'"):
+        1 + s
+    with assertRaises(TypeError, "unsupported operand type(s) for +: 'C' and 'Sub'"):
+        C() + s
+
+def test_other_native_class() -> None:
+    c: Any = C()
+    d: Any = D()
+    with assertRaises(TypeError, "unsupported operand type(s) for +: 'C' and 'D'"):
+        c + d
+    with assertRaises(TypeError, "unsupported operand type(s) for +: 'D' and 'C'"):
+        d + c
+
+def test_reverse_method_called_once() -> None:
+    objs: list[Any] = [C(), D()]
+    for o in objs:
+        r = CountRadd()
+        with assertRaises(TypeError):
+            o + r
+        assert r.calls == 1
+
+[file interp.py]
+class CountRadd:
+    def __init__(self) -> None:
+        self.calls = 0
+
+    def __radd__(self, x: object) -> object:
+        self.calls += 1
+        return NotImplemented
 
 [case testDifferentReverseDunders]
 from typing import Any
@@ -1001,7 +1089,7 @@ def test_errors() -> None:
     f = Forward()
     with assertRaises(TypeError, f"unsupported operand type(s) for {op}: 'Forward', 'int', 'str'"):
         pow(f, 3, "x")  # type: ignore
-    with assertRaises(TypeError, "unsupported operand type(s) for **: 'Forward' and 'str'"):
+    with assertRaises(TypeError, "unsupported operand type(s) for ** or pow(): 'Forward' and 'str'"):
         f**"x"  # type: ignore
     r = Reverse()
     with assertRaises(TypeError, "unsupported operand type(s) for ** or pow(): 'str' and 'Reverse'"):
