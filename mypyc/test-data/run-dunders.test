@@ -353,6 +353,62 @@ def test_unary_dunders_native() -> None:
     assert +c == 15
     assert abs(c) == 16
 
+[case testDundersIndex]
+import operator
+from typing import Any
+
+from mypy_extensions import mypyc_attr
+from testutil import assertRaises
+
+@mypyc_attr(allow_interpreted_subclasses=True)
+class C:
+    def __init__(self, x: int) -> None:
+        self.x = x
+
+    def __index__(self) -> int:
+        return self.x
+
+class Inherit(C):
+    pass
+
+class Override(C):
+    def __index__(self) -> int:
+        return self.x + 1
+
+class Raises:
+    def __index__(self) -> int:
+        raise ValueError("bad index")
+
+def check_index(a: Any) -> None:
+    # Each of these uses the __index__ slot
+    assert operator.index(a) == 2
+    assert list(range(a)) == [0, 1]
+    assert [10, 20, 30][a] == 30
+    assert "abc"[a] == "c"
+    assert [10, 20, 30][:a] == [10, 20]
+    assert [0] * a == [0, 0]
+    assert int(a) == 2
+
+def test_index() -> None:
+    check_index(C(2))
+    check_index(Inherit(2))
+    check_index(Override(1))
+
+def test_index_interpreted_subclass() -> None:
+    from interp import InterpOverride
+    check_index(InterpOverride(5))
+
+def test_index_error() -> None:
+    with assertRaises(ValueError, "bad index"):
+        operator.index(Raises())
+
+[file interp.py]
+from native import C
+
+class InterpOverride(C):
+    def __index__(self) -> int:
+        return 2
+
 [case testDundersBinarySimple]
 from typing import Any
 
