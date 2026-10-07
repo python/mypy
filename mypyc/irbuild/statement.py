@@ -98,7 +98,7 @@ from mypyc.irbuild.builder import (
     find_walrus_targets,
     int_borrow_friendly_op,
 )
-from mypyc.irbuild.for_helpers import for_loop_helper
+from mypyc.irbuild.for_helpers import find_loop_assignments, for_loop_helper
 from mypyc.irbuild.generator import add_raise_exception_blocks_to_generator_class
 from mypyc.irbuild.nonlocalcontrol import (
     ExceptNonlocalControl,
@@ -660,7 +660,14 @@ def transform_for_stmt(builder: IRBuilder, s: ForStmt) -> None:
         builder.accept(s.else_body)
 
     for_loop_helper(
-        builder, s.index, s.expr, body, else_block if s.else_body else None, s.is_async, s.line
+        builder,
+        s.index,
+        s.expr,
+        body,
+        else_block if s.else_body else None,
+        s.is_async,
+        s.line,
+        reassigned=find_loop_assignments(s),
     )
 
 

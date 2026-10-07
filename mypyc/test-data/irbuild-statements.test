@@ -1112,6 +1112,37 @@ L6:
 L7:
     return 1
 
+[case testForLoopReassignIterable]
+def f(a: tuple[int, ...], b: tuple[int, ...]) -> None:
+    for x in a:
+        a = b
+[out]
+def f(a, b):
+    a, b, r0 :: tuple
+    r1, r2 :: native_int
+    r3 :: bit
+    r4 :: object
+    r5, x :: int
+    r6 :: native_int
+L0:
+    r0 = a
+    r1 = var_object_size r0
+    r2 = 0
+L1:
+    r3 = r2 < r1 :: signed
+    if r3 goto L2 else goto L4 :: bool
+L2:
+    r4 = CPySequenceTuple_GetItemUnsafe(r0, r2)
+    r5 = unbox(int, r4)
+    x = r5
+    a = b
+L3:
+    r6 = r2 + 1
+    r2 = r6
+    goto L1
+L4:
+    return 1
+
 [case testConditionalFunctionDefinition]
 if int():
     def foo() -> int:

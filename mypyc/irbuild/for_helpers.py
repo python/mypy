@@ -7,26 +7,36 @@ such special case.
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Set as AbstractSet
 from typing import ClassVar, cast
 
 from mypy.nodes import (
     ARG_POS,
+    AssignmentExpr,
+    AssignmentStmt,
     CallExpr,
+    DelStmt,
     DictionaryComprehension,
     Expression,
+    ForStmt,
     GeneratorExpr,
     ListExpr,
     Lvalue,
     MemberExpr,
     NameExpr,
+    OperatorAssignmentStmt,
     RefExpr,
     SetExpr,
     StarExpr,
+    SymbolNode,
+    TryStmt,
     TupleExpr,
     TypeAlias,
     Var,
+    WithStmt,
 )
+from mypy.patterns import AsPattern, MappingPattern, StarredPattern
+from mypy.traverser import TraverserVisitor
 from mypy.types import LiteralType, TupleType, get_proper_type, get_proper_types
 from mypyc.common import GENERATOR_HELPER_NAME, IS_FREE_THREADED
 from mypyc.ir.ops import (
@@ -68,7 +78,7 @@ from mypyc.ir.rtypes import (
 )
 from mypyc.irbuild.builder import IRBuilder
 from mypyc.irbuild.constant_fold import constant_fold_expr
-from mypyc.irbuild.targets import AssignmentTarget, AssignmentTargetTuple
+from mypyc.irbuild.targets import AssignmentTarget, AssignmentTargetRegister, AssignmentTargetTuple
 from mypyc.irbuild.vec import vec_append, vec_create, vec_get_item_unsafe, vec_init_item_unsafe
 from mypyc.primitives.dict_ops import (
     dict_check_size_op,
@@ -104,6 +114,7 @@ def for_loop_helper(
     else_insts: GenFunc | None,
     is_async: bool,
     line: int,
+    reassigned: AbstractSet[SymbolNode] = frozenset(),
 ) -> None:
     """Generate IR for a loop.
 
@@ -112,6 +123,8 @@ def for_loop_helper(
         expr: the expression to iterate over
         body_insts: a function that generates the body of the loop
         else_insts: a function that generates the else block instructions
+        reassigned: local variables that the loop index or body may assign to
+            (see find_loop_assignments)
     """
     # Body of the loop
     body_block = BasicBlock()
@@ -126,7 +139,14 @@ def for_loop_helper(
     normal_loop_exit = else_block if else_insts is not None else exit_block
 
     for_gen = make_for_loop_generator(
-        builder, index, expr, body_block, normal_loop_exit, line, is_async=is_async
+        builder,
+        index,
+        expr,
+        body_block,
+        normal_loop_exit,
+        line,
+        is_async=is_async,
+        reassigned=reassigned,
     )
 
     builder.push_loop_stack(step_block, exit_block)
@@ -477,6 +497,95 @@ def is_range_ref(expr: RefExpr) -> bool:
     )
 
 
+def find_loop_assignments(s: ForStmt) -> set[SymbolNode]:
+    """Return the variables that the index or the body of a for loop may assign to."""
+    collector = AssignmentCollector()
+    collector.add_lvalue(s.index)
+    s.body.accept(collector)
+    return collector.symbols
+
+
+class AssignmentCollector(TraverserVisitor):
+    """Collect the symbols of the variables assigned to (or deleted) in a subtree."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.symbols: set[SymbolNode] = set()
+
+    def add_lvalue(self, lvalue: Expression | None) -> None:
+        if isinstance(lvalue, NameExpr):
+            if lvalue.node is not None:
+                self.symbols.add(lvalue.node)
+        elif isinstance(lvalue, (TupleExpr, ListExpr)):
+            for item in lvalue.items:
+                self.add_lvalue(item)
+        elif isinstance(lvalue, StarExpr):
+            self.add_lvalue(lvalue.expr)
+
+    def visit_assignment_stmt(self, o: AssignmentStmt) -> None:
+        for lvalue in o.lvalues:
+            self.add_lvalue(lvalue)
+        super().visit_assignment_stmt(o)
+
+    def visit_operator_assignment_stmt(self, o: OperatorAssignmentStmt) -> None:
+        self.add_lvalue(o.lvalue)
+        super().visit_operator_assignment_stmt(o)
+
+    def visit_assignment_expr(self, o: AssignmentExpr) -> None:
+        self.add_lvalue(o.target)
+        super().visit_assignment_expr(o)
+
+    def visit_for_stmt(self, o: ForStmt) -> None:
+        self.add_lvalue(o.index)
+        super().visit_for_stmt(o)
+
+    def visit_with_stmt(self, o: WithStmt) -> None:
+        for target in o.target:
+            self.add_lvalue(target)
+        super().visit_with_stmt(o)
+
+    def visit_try_stmt(self, o: TryStmt) -> None:
+        for var in o.vars:
+            self.add_lvalue(var)
+        super().visit_try_stmt(o)
+
+    def visit_del_stmt(self, o: DelStmt) -> None:
+        self.add_lvalue(o.expr)
+        super().visit_del_stmt(o)
+
+    def visit_as_pattern(self, o: AsPattern) -> None:
+        self.add_lvalue(o.name)
+        super().visit_as_pattern(o)
+
+    def visit_starred_pattern(self, o: StarredPattern) -> None:
+        self.add_lvalue(o.capture)
+        super().visit_starred_pattern(o)
+
+    def visit_mapping_pattern(self, o: MappingPattern) -> None:
+        self.add_lvalue(o.rest)
+        super().visit_mapping_pattern(o)
+
+
+def accept_loop_state(
+    builder: IRBuilder, expr: Expression, reassigned: AbstractSet[SymbolNode]
+) -> Value:
+    """Evaluate the object to iterate over, or the end of a range.
+
+    Specialized loops read this value again on every iteration. If it's the register
+    of a local variable that the loop may assign to, copy it to a new register, since
+    the assignment must not affect the iteration (as in "for x in a: a = []").
+    """
+    value = builder.accept(expr)
+    if isinstance(value, Register):
+        for symbol in reassigned:
+            target = builder.symtables[-1].get(symbol)
+            if isinstance(target, AssignmentTargetRegister) and target.register is value:
+                copy = Register(value.type)
+                builder.assign(copy, value, expr.line)
+                return copy
+    return value
+
+
 def make_for_loop_generator(
     builder: IRBuilder,
     index: Lvalue,
@@ -486,10 +595,14 @@ def make_for_loop_generator(
     line: int,
     is_async: bool = False,
     nested: bool = False,
+    reassigned: AbstractSet[SymbolNode] = frozenset(),
 ) -> ForGenerator:
     """Return helper object for generating a for loop over an iterable.
 
     If "nested" is True, this is a nested iterator such as "e" in "enumerate(e)".
+
+    "reassigned" contains the local variables that the loop may assign to
+    (see accept_loop_state).
     """
 
     # Do an async loop if needed. async is always generic
@@ -504,7 +617,7 @@ def make_for_loop_generator(
     rtyp = builder.node_type(expr)
     if is_sequence_rprimitive(rtyp) or isinstance(rtyp, RVec):
         # Special case "for x in <seq>" for concrete sequence types.
-        expr_reg = builder.accept(expr)
+        expr_reg = accept_loop_state(builder, expr, reassigned)
         target_type = builder.get_sequence_type(expr)
 
         for_list = ForSequence(builder, index, body_block, loop_exit, line, nested)
@@ -513,7 +626,7 @@ def make_for_loop_generator(
 
     if is_dict_rprimitive(rtyp):
         # Special case "for k in <dict>".
-        expr_reg = builder.accept(expr)
+        expr_reg = accept_loop_state(builder, expr, reassigned)
         target_type = builder.get_dict_key_type(expr)
 
         for_dict = ForDictionaryKeys(builder, index, body_block, loop_exit, line, nested)
@@ -535,10 +648,10 @@ def make_for_loop_generator(
             # direction of comparison to do.
             if len(expr.args) == 1:
                 start_reg: Value = Integer(0)
-                end_reg = builder.accept(expr.args[0])
+                end_reg = accept_loop_state(builder, expr.args[0], reassigned)
             else:
                 start_reg = builder.accept(expr.args[0])
-                end_reg = builder.accept(expr.args[1])
+                end_reg = accept_loop_state(builder, expr.args[1], reassigned)
             if len(expr.args) == 3:
                 step = builder.extract_int(expr.args[2])
                 assert step is not None
@@ -562,7 +675,7 @@ def make_for_loop_generator(
             lvalue1 = index.items[0]
             lvalue2 = index.items[1]
             for_enumerate = ForEnumerate(builder, index, body_block, loop_exit, line, nested)
-            for_enumerate.init(lvalue1, lvalue2, expr.args[0])
+            for_enumerate.init(lvalue1, lvalue2, expr.args[0], reassigned)
             return for_enumerate
 
         elif (
@@ -574,7 +687,7 @@ def make_for_loop_generator(
         ):
             # Special case "for x, y in zip(a, b)".
             for_zip = ForZip(builder, index, body_block, loop_exit, line, nested)
-            for_zip.init(index.items, expr.args)
+            for_zip.init(index.items, expr.args, reassigned)
             return for_zip
 
         if (
@@ -584,7 +697,7 @@ def make_for_loop_generator(
             and is_sequence_rprimitive(builder.node_type(expr.args[0]))
         ):
             # Special case "for x in reversed(<list>)".
-            expr_reg = builder.accept(expr.args[0])
+            expr_reg = accept_loop_state(builder, expr.args[0], reassigned)
             target_type = builder.get_sequence_type(expr)
 
             for_list = ForSequence(builder, index, body_block, loop_exit, line, nested)
@@ -594,7 +707,7 @@ def make_for_loop_generator(
         # Special cases for dictionary iterator methods, like dict.items().
         rtype = builder.node_type(expr.callee.expr)
         if is_dict_rprimitive(rtype) and expr.callee.name in ("keys", "values", "items"):
-            expr_reg = builder.accept(expr.callee.expr)
+            expr_reg = accept_loop_state(builder, expr.callee.expr, reassigned)
             for_dict_type: type[ForGenerator] | None = None
             if expr.callee.name == "keys":
                 target_type = builder.get_dict_key_type(expr.callee.expr)
@@ -1216,7 +1329,13 @@ class ForEnumerate(ForGenerator):
         # redundant cleanup block, but that's okay.
         return True
 
-    def init(self, index1: Lvalue, index2: Lvalue, expr: Expression) -> None:
+    def init(
+        self,
+        index1: Lvalue,
+        index2: Lvalue,
+        expr: Expression,
+        reassigned: AbstractSet[SymbolNode] = frozenset(),
+    ) -> None:
         # Count from 0 to infinity (for the index lvalue).
         self.index_gen = ForInfiniteCounter(
             self.builder, index1, self.body_block, self.loop_exit, self.line, nested=True
@@ -1224,7 +1343,14 @@ class ForEnumerate(ForGenerator):
         self.index_gen.init()
         # Iterate over the actual iterable.
         self.main_gen = make_for_loop_generator(
-            self.builder, index2, expr, self.body_block, self.loop_exit, self.line, nested=True
+            self.builder,
+            index2,
+            expr,
+            self.body_block,
+            self.loop_exit,
+            self.line,
+            nested=True,
+            reassigned=reassigned,
         )
 
     def gen_condition(self) -> None:
@@ -1252,7 +1378,12 @@ class ForZip(ForGenerator):
         # redundant cleanup block, but that's okay.
         return True
 
-    def init(self, indexes: list[Lvalue], exprs: list[Expression]) -> None:
+    def init(
+        self,
+        indexes: list[Lvalue],
+        exprs: list[Expression],
+        reassigned: AbstractSet[SymbolNode] = frozenset(),
+    ) -> None:
         assert len(indexes) == len(exprs)
         # Condition check will require multiple basic blocks, since there will be
         # multiple conditions to check.
@@ -1260,7 +1391,14 @@ class ForZip(ForGenerator):
         self.gens: list[ForGenerator] = []
         for index, expr, next_block in zip(indexes, exprs, self.cond_blocks):
             gen = make_for_loop_generator(
-                self.builder, index, expr, next_block, self.loop_exit, self.line, nested=True
+                self.builder,
+                index,
+                expr,
+                next_block,
+                self.loop_exit,
+                self.line,
+                nested=True,
+                reassigned=reassigned,
             )
             self.gens.append(gen)
 
