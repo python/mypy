@@ -1236,9 +1236,14 @@ a[:o]
 a: list[int]
 s: str
 
-a[s:]   # E: Invalid index type "slice[str, None, None]" for "list[int]"; expected type "slice[SupportsIndex | None, SupportsIndex | None, SupportsIndex | None]"
-a[:s]   # E: Invalid index type "slice[None, str, None]" for "list[int]"; expected type "slice[SupportsIndex | None, SupportsIndex | None, SupportsIndex | None]"
-a[::s]  # E: Invalid index type "slice[None, None, str]" for "list[int]"; expected type "slice[SupportsIndex | None, SupportsIndex | None, SupportsIndex | None]"
+a[1:]  # Valid integer bounds should remain accepted.
+a[:2]
+a[::3]
+
+# Invalid start, stop, and step bounds must each be reported at the bound.
+a[s:]   # E: Slice index must be an integer, SupportsIndex or None; got: "str"
+a[:s]   # E: Slice index must be an integer, SupportsIndex or None; got: "str"
+a[::s]  # E: Slice index must be an integer, SupportsIndex or None; got: "str"
 [builtins fixtures/slice.pyi]
 
 [case testSliceSupportsIndex]
