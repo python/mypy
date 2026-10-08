@@ -78,6 +78,73 @@ L3:
 L4:
     return 1
 
+[case testForInRangeAnyArgs]
+from typing import Any
+
+def f(a: Any, b: Any) -> None:
+    for i in range(a, b):
+        pass
+[out]
+def f(a, b):
+    a, b, r0 :: object
+    r1 :: int
+    r2 :: object
+    r3, r4, i :: int
+    r5 :: bit
+    r6 :: int
+L0:
+    r0 = PyNumber_Index(a)
+    r1 = unbox(int, r0)
+    r2 = PyNumber_Index(b)
+    r3 = unbox(int, r2)
+    r4 = r1
+    i = r4
+L1:
+    r5 = int_lt r4, r3
+    if r5 goto L2 else goto L4 :: bool
+L2:
+    i = r4
+L3:
+    r6 = CPyTagged_Add(r4, 2)
+    r4 = r6
+    goto L1
+L4:
+    return 1
+
+[case testForInRangeNativeIndexArg]
+class C:
+    def __index__(self) -> int:
+        return 2
+
+def f(c: C) -> None:
+    for i in range(c):  # type: ignore[arg-type]
+        pass
+[out]
+def C.__index__(self):
+    self :: __main__.C
+L0:
+    return 4
+def f(c):
+    c :: __main__.C
+    r0, r1, i :: int
+    r2 :: bit
+    r3 :: int
+L0:
+    r0 = c.__index__()
+    r1 = 0
+    i = r1
+L1:
+    r2 = int_lt r1, r0
+    if r2 goto L2 else goto L4 :: bool
+L2:
+    i = r1
+L3:
+    r3 = CPyTagged_Add(r1, 2)
+    r1 = r3
+    goto L1
+L4:
+    return 1
+
 [case testBreak]
 def f() -> None:
   n = 0
