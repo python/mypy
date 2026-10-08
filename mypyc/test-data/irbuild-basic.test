@@ -1883,6 +1883,43 @@ L0:
     r5 = a.f(12, 6, r4)
     return 1
 
+[case testWalrusInCallArguments]
+from typing import Callable
+
+def f(a: int, b: int, c: int) -> int:
+    return a
+
+def g(x: int, y: int) -> int:
+    return f(x, y, (x := 1))
+
+def h(func: Callable[[object], object], other: Callable[[object], object]) -> object:
+    return func((func := other))
+[out]
+def f(a, b, c):
+    a, b, c :: int
+L0:
+    return a
+def g(x, y):
+    x, y, r0, r1 :: int
+L0:
+    r0 = x
+    x = 2
+    r1 = f(r0, y, 2)
+    return r1
+def h(func, other):
+    func, other, r0 :: object
+    r1 :: object[1]
+    r2 :: object_ptr
+    r3 :: object
+L0:
+    r0 = func
+    func = other
+    r1 = [other]
+    r2 = load_address r1
+    r3 = PyObject_Vectorcall(r0, r2, 1, 0)
+    keep_alive other
+    return r3
+
 [case testListComprehension_withgil]
 from typing import List
 

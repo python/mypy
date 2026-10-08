@@ -235,7 +235,15 @@ def transform_name_expr(builder: IRBuilder, expr: NameExpr) -> Value:
             )
             return obj
         else:
-            return builder.read(builder.get_assignment_target(expr, for_read=True), expr.line)
+            reg = builder.read(builder.get_assignment_target(expr, for_read=True), expr.line)
+            if isinstance(reg, Register) and expr.node in builder.reassigned_in_expr:
+                # The variable is reassigned via a walrus within the same expression.
+                # Copy the current value, since otherwise the reassignment could happen
+                # before the value is used (e.g. 'f(x, (x := 1))' would pass 1 twice).
+                temp = Register(reg.type)
+                builder.assign(temp, reg, expr.line)
+                return temp
+            return reg
 
     # If we're evaluating a class body and this name is a ClassVar defined earlier
     # in the same class, load it from the class being built (type object for ext classes,
@@ -463,8 +471,10 @@ def transform_call_expr(builder: IRBuilder, expr: CallExpr) -> Value:
 
 
 def translate_call(builder: IRBuilder, expr: CallExpr, callee: Expression) -> Value:
-    # The common case of calls is refexprs
-    if isinstance(callee, RefExpr):
+    # The common case of calls is refexprs. A callee reassigned via a walrus within
+    # the same expression (e.g. 'f(1, (f := g))') is handled below instead, since
+    # it must be evaluated before the arguments.
+    if isinstance(callee, RefExpr) and callee.node not in builder.reassigned_in_expr:
         return apply_function_specialization(builder, expr, callee) or translate_refexpr_call(
             builder, expr, callee
         )
