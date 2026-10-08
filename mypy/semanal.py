@@ -7002,6 +7002,11 @@ class SemanticAnalyzer(
             node_type = get_proper_type(getattr_defn.node.type)
             if isinstance(node_type, CallableType):
                 typ = node_type.ret_type
+                if isinstance(typ, UnboundType):
+                    # During an import cycle, __getattr__ may not have been
+                    # analyzed yet, leaving an unanalyzed return type that
+                    # must not leak to importers (GH#22115).
+                    typ = AnyType(TypeOfAny.from_error)
             else:
                 typ = AnyType(TypeOfAny.from_error)
             v = Var(name, type=typ)
