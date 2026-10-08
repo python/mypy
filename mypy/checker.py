@@ -8331,7 +8331,18 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
         yes_type: Type | None = initial_types[0]
         no_type: Type | None = initial_types[1]
 
-        if not isinstance(get_proper_type(yes_type), UninhabitedType) or type_ranges is None:
+        if type_ranges is None:
+            return yes_type, no_type
+
+        if not isinstance(get_proper_type(yes_type), UninhabitedType):
+            if yes_type is not None and len(type_ranges) > 1:
+                # Some items of a tuple of types (e.g. isinstance(x, (B, C))) may not
+                # overlap with expr_type at all, but a common subclass of expr_type
+                # and such an item could still match at runtime. Add ad-hoc
+                # intersections for those items, so that they are not dropped.
+                yes_type = self.add_intersections_for_disjoint_ranges(
+                    expr_type, yes_type, type_ranges, consider_runtime_isinstance
+                )
             return yes_type, no_type
 
         # If conditional_types was unable to successfully narrow the expr_type
@@ -8373,6 +8384,51 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
             return UninhabitedType(), expr_type
         new_yes_type = make_simplified_union(out)
         return new_yes_type, expr_type
+
+    def add_intersections_for_disjoint_ranges(
+        self,
+        expr_type: Type,
+        yes_type: Type,
+        type_ranges: list[TypeRange],
+        consider_runtime_isinstance: bool,
+    ) -> Type:
+        """Extend yes_type with intersections for type ranges disjoint from expr_type.
+
+        This is used when narrowing to a tuple of types where some, but not all,
+        of the types overlap with expr_type.
+        """
+        proper_type = get_proper_type(expr_type)
+        if isinstance(proper_type, UnionType):
+            possible_expr_types = get_proper_types(proper_type.relevant_items())
+        else:
+            possible_expr_types = [proper_type]
+        if not all(isinstance(v, Instance) for v in possible_expr_types):
+            return yes_type
+
+        items: list[Type] = []
+        found_disjoint = False
+        for tr in type_ranges:
+            single_yes, _ = conditional_types(
+                expr_type,
+                [tr],
+                default=expr_type,
+                consider_runtime_isinstance=consider_runtime_isinstance,
+            )
+            target = get_proper_type(tr.item)
+            if not isinstance(get_proper_type(single_yes), UninhabitedType) or not isinstance(
+                target, Instance
+            ):
+                items.append(single_yes)
+                continue
+            found_disjoint = True
+            for v in possible_expr_types:
+                assert isinstance(v, Instance)
+                intersection = self.intersect_instances((v, target), [])
+                if intersection is not None:
+                    items.append(intersection)
+        if not found_disjoint:
+            return yes_type
+        return make_simplified_union(items)
 
     def is_writable_attribute(self, node: Node) -> bool:
         """Check if an attribute is writable"""
