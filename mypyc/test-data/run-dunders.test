@@ -353,6 +353,101 @@ def test_unary_dunders_native() -> None:
     assert +c == 15
     assert abs(c) == 16
 
+[case testDundersGet]
+from typing import Any
+
+from mypy_extensions import i64, mypyc_attr
+from testutil import assertRaises
+
+class IntDescr:
+    def __get__(self, instance: object, owner: object) -> int:
+        if instance is None:
+            return -1
+        return 42
+
+class BoolDescr:
+    def __init__(self, value: bool) -> None:
+        self.value = value
+
+    def __get__(self, instance: object, owner: object) -> bool:
+        return self.value
+
+class FloatDescr:
+    def __get__(self, instance: object, owner: object) -> float:
+        return 1.5
+
+class I64Descr:
+    def __get__(self, instance: object, owner: object) -> i64:
+        # The error value of i64
+        return -113
+
+class TupleDescr:
+    def __get__(self, instance: object, owner: object) -> tuple[int, str]:
+        return (1, "a")
+
+class OwnerDescr:
+    def __get__(self, instance: object, owner: object) -> object:
+        return owner
+
+class Raises:
+    def __get__(self, instance: object, owner: object) -> int:
+        raise ValueError("bad get")
+
+@mypyc_attr(native_class=False)
+class Host:
+    i = IntDescr()
+    t = BoolDescr(True)
+    f = BoolDescr(False)
+    fl = FloatDescr()
+    n = I64Descr()
+    tup = TupleDescr()
+    o = OwnerDescr()
+    r = Raises()
+
+def test_unboxed_return_types() -> None:
+    h = Host()
+    assert h.i == 42
+    assert Host.i == -1
+    assert h.t is True
+    assert h.f is False
+    assert h.fl == 1.5
+    assert h.n == -113
+    assert h.tup == (1, "a")
+
+def test_generic() -> None:
+    a: Any = Host()
+    assert a.i == 42
+    assert a.f is False
+    d: Any = IntDescr()
+    assert d.__get__(a, Host) == 42
+    assert d.__get__(None, Host) == -1
+
+def test_owner() -> None:
+    assert Host().o is Host
+    assert Host.o is Host
+    d: Any = OwnerDescr()
+    assert d.__get__(1, None) is None
+
+def test_error() -> None:
+    with assertRaises(ValueError, "bad get"):
+        Host().r
+
+def test_interpreted_host() -> None:
+    from interp import InterpHost
+
+    assert InterpHost().i == 42
+    assert InterpHost.i == -1
+    assert InterpHost().f is False
+    assert InterpHost().o is InterpHost
+
+[file interp.py]
+from native import BoolDescr, IntDescr, OwnerDescr
+
+class InterpHost:
+    i = IntDescr()
+    f = BoolDescr(False)
+    o = OwnerDescr()
+
 [case testDundersIndex]
 import operator
 from typing import Any
