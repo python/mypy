@@ -1,5 +1,11 @@
 #include <Python.h>
 
+#ifdef MYPYC_STATIC_LINKING
+// With static linking, functions in the shared library are linked directly instead
+// of looked up via capsules.
+extern PyObject *CPyInit_{full_modname}(void);
+#endif
+
 PyMODINIT_FUNC
 PyInit_{modname}(void)
 {{
@@ -16,6 +22,12 @@ PyInit_{modname}(void)
     }}
     tmp = PyImport_ImportModuleLevel("{libname}", NULL, NULL, fromlist, 0);
     if (!tmp) return NULL;
+#ifdef MYPYC_STATIC_LINKING
+    // Importing the shared library initializes it, and the module init populates the
+    // cross-group export tables.
+    Py_DECREF(tmp);
+    return CPyInit_{full_modname}();
+#else
     // Populate cross-group export tables lazily, just before we instantiate
     // the per-module real init. Deferring this out of the shared lib's own
     // PyInit keeps separate-mode compiled modules from recursively triggering
@@ -49,8 +61,11 @@ PyInit_{modname}(void)
         return NULL;
     }}
     return ((PyObject *(*)(void))init_func)();
+#endif
 }}
 
+#ifndef MYPYC_STATIC_LINKING
 // distutils sometimes spuriously tells cl to export CPyInit___init__,
-// so provide that so it chills out
+// so provide that so it chills out (with static linking this would be a duplicate symbol)
 PyMODINIT_FUNC PyInit___init__(void) {{ return PyInit_{modname}(); }}
+#endif

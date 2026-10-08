@@ -850,20 +850,4 @@ VecT VecT_FromIterable(size_t item_type, PyObject *iterable, int64_t cap) {
     return v;
 }
 
-VecTAPI Vec_TAPI = {
-    &VecTType,
-    &VecTBufType,
-    VecT_New,
-    VecT_Box,
-    VecT_Unbox,
-    VecT_ConvertFromNested,
-    VecT_Append,
-    VecT_Pop,
-    VecT_Remove,
-    VecT_Slice,
-    VecT_FromIterable,
-    VecT_Extend,
-    VecT_ExtendVec,
-    VecT_ToList,
-    VecT_ToTuple,
-};
+VecTAPI Vec_TAPI = VEC_API_INIT(VecT);

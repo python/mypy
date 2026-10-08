@@ -394,10 +394,16 @@ class FunctionEmitterVisitor(OpVisitor[None]):
     def visit_load_literal(self, op: LoadLiteral) -> None:
         index = self.literals.literal_index(op.value)
         if not is_int_rprimitive(op.type):
-            self.emit_line("%s = CPyStatics[%d];" % (self.reg(op), index), ann=op.value)
+            self.emit_line(
+                "%s = CPyStatics%s[%d];"
+                % (self.reg(op), self.emitter.context.group_suffix, index),
+                ann=op.value,
+            )
         else:
             self.emit_line(
-                "%s = (CPyTagged)CPyStatics[%d] | 1;" % (self.reg(op), index), ann=op.value
+                "%s = (CPyTagged)CPyStatics%s[%d] | 1;"
+                % (self.reg(op), self.emitter.context.group_suffix, index),
+                ann=op.value,
             )
 
     def get_attr_expr(self, obj: str, op: GetAttr | SetAttr, decl_cl: ClassIR) -> str:

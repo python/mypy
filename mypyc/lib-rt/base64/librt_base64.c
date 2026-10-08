@@ -4,6 +4,13 @@
 
 #define BASE64_EXPORTS
 
+// With static linking, compiled code calls the API functions and refers to the
+// type objects directly, so they need external linkage
+#ifdef MYPYC_STATIC_LINKING
+#define LIBRT_API_LINKAGE
+#else
+#define LIBRT_API_LINKAGE static
+#endif
 #include "librt_base64.h"
 #include "libbase64.h"
 #include "pythoncapi_compat.h"
@@ -44,8 +51,8 @@ convert_urlsafe_to_encoded(const char *src, size_t len, char *buf) {
     }
 }
 
-static PyObject *
-b64encode_internal(PyObject *obj, bool urlsafe) {
+LIBRT_API_LINKAGE PyObject *
+LibRTBase64_b64encode_internal(PyObject *obj, bool urlsafe) {
     unsigned char *ascii_data;
     char *bin_data;
     int leftbits = 0;
@@ -99,7 +106,7 @@ b64encode(PyObject *self, PyObject *const *args, size_t nargs) {
         PyErr_SetString(PyExc_TypeError, "b64encode() takes exactly one argument");
         return 0;
     }
-    return b64encode_internal(args[0], false);
+    return LibRTBase64_b64encode_internal(args[0], false);
 }
 
 static PyObject*
@@ -108,7 +115,7 @@ urlsafe_b64encode(PyObject *self, PyObject *const *args, size_t nargs) {
         PyErr_SetString(PyExc_TypeError, "urlsafe_b64encode() takes exactly one argument");
         return 0;
     }
-    return b64encode_internal(args[0], true);
+    return LibRTBase64_b64encode_internal(args[0], true);
 }
 
 static inline int
@@ -117,8 +124,8 @@ is_valid_base64_char(char c, bool allow_padding) {
             (c >= '0' && c <= '9') || (c == '+') || (c == '/') || (allow_padding && c == '='));
 }
 
-static PyObject *
-b64decode_internal(PyObject *arg, bool urlsafe) {
+LIBRT_API_LINKAGE PyObject *
+LibRTBase64_b64decode_internal(PyObject *arg, bool urlsafe) {
     const char *src;
     Py_ssize_t srclen_ssz;
 
@@ -307,7 +314,7 @@ b64decode(PyObject *self, PyObject *const *args, size_t nargs) {
         PyErr_SetString(PyExc_TypeError, "b64decode() takes exactly one argument");
         return 0;
     }
-    return b64decode_internal(args[0], false);
+    return LibRTBase64_b64decode_internal(args[0], false);
 }
 
 static PyObject*
@@ -316,7 +323,7 @@ urlsafe_b64decode(PyObject *self, PyObject *const *args, size_t nargs) {
         PyErr_SetString(PyExc_TypeError, "urlsafe_b64decode() takes exactly one argument");
         return 0;
     }
-    return b64decode_internal(args[0], true);
+    return LibRTBase64_b64decode_internal(args[0], true);
 }
 
 static PyMethodDef librt_base64_module_methods[] = {
@@ -327,30 +334,32 @@ static PyMethodDef librt_base64_module_methods[] = {
     {NULL, NULL, 0, NULL}
 };
 
-static int
-base64_abi_version(void) {
+LIBRT_API_LINKAGE int
+LibRTBase64_ABIVersion(void) {
     return LIBRT_BASE64_ABI_VERSION;
 }
 
-static int
-base64_api_version(void) {
+LIBRT_API_LINKAGE int
+LibRTBase64_APIVersion(void) {
     return LIBRT_BASE64_API_VERSION;
 }
 
 static int
 librt_base64_module_exec(PyObject *m)
 {
+#ifndef MYPYC_STATIC_LINKING
     // Export mypy internal C API, be careful with the order!
     static void *base64_api[LIBRT_BASE64_API_LEN] = {
-        (void *)base64_abi_version,
-        (void *)base64_api_version,
-        (void *)b64encode_internal,
-        (void *)b64decode_internal,
+        (void *)LibRTBase64_ABIVersion,
+        (void *)LibRTBase64_APIVersion,
+        (void *)LibRTBase64_b64encode_internal,
+        (void *)LibRTBase64_b64decode_internal,
     };
     PyObject *c_api_object = PyCapsule_New((void *)base64_api, "librt.base64._C_API", NULL);
     if (PyModule_Add(m, "_C_API", c_api_object) < 0) {
         return -1;
     }
+#endif
     return 0;
 }
 

@@ -1,6 +1,8 @@
 #include "librt_strings_api.h"
 
+#ifndef MYPYC_STATIC_LINKING
 void *LibRTStrings_API[LIBRT_STRINGS_API_LEN] = {0};
+#endif
 
 int
 import_librt_strings(void)
@@ -9,6 +11,11 @@ import_librt_strings(void)
     if (mod == NULL)
         return -1;
     Py_DECREF(mod);  // we import just for the side effect of making the below work.
+#ifdef MYPYC_STATIC_LINKING
+    // librt is statically linked, so the API is used directly. Importing the
+    // module above initializes it (e.g. its types).
+    return 0;
+#else
     void **capsule = (void **)PyCapsule_Import("librt.strings._C_API", 0);
     if (capsule == NULL)
         return -1;
@@ -40,4 +47,5 @@ import_librt_strings(void)
     // entries, so this copy is safe.
     memcpy(LibRTStrings_API, capsule, sizeof(LibRTStrings_API));
     return 0;
+#endif
 }

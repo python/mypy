@@ -20,30 +20,60 @@
 
 #ifdef LIBRT_INTERNAL_MODULE
 
-static PyObject *ReadBuffer_internal(PyObject *source);
-static PyObject *WriteBuffer_internal(void);
-static PyObject *WriteBuffer_getvalue_internal(PyObject *self);
-static PyObject *ReadBuffer_internal(PyObject *source);
+LIBRT_API_LINKAGE PyObject *NativeInternal_ReadBuffer_internal(PyObject *source);
+LIBRT_API_LINKAGE PyObject *NativeInternal_WriteBuffer_internal(void);
+LIBRT_API_LINKAGE PyObject *NativeInternal_WriteBuffer_getvalue_internal(PyObject *self);
+LIBRT_API_LINKAGE PyObject *NativeInternal_ReadBuffer_internal(PyObject *source);
 static PyObject *ReadBuffer_internal_empty(void);
-static char write_bool_internal(PyObject *data, char value);
-static char read_bool_internal(PyObject *data);
-static char write_str_internal(PyObject *data, PyObject *value);
-static PyObject *read_str_internal(PyObject *data);
-static char write_float_internal(PyObject *data, double value);
-static double read_float_internal(PyObject *data);
-static char write_int_internal(PyObject *data, CPyTagged value);
-static CPyTagged read_int_internal(PyObject *data);
-static char write_tag_internal(PyObject *data, uint8_t value);
-static uint8_t read_tag_internal(PyObject *data);
-static int NativeInternal_ABI_Version(void);
-static char write_bytes_internal(PyObject *data, PyObject *value);
-static PyObject *read_bytes_internal(PyObject *data);
-static uint8_t cache_version_internal(void);
-static PyTypeObject *ReadBuffer_type_internal(void);
-static PyTypeObject *WriteBuffer_type_internal(void);
-static int NativeInternal_API_Version(void);
-static PyObject *extract_symbol_internal(PyObject *data);
+LIBRT_API_LINKAGE char NativeInternal_write_bool_internal(PyObject *data, char value);
+LIBRT_API_LINKAGE char NativeInternal_read_bool_internal(PyObject *data);
+LIBRT_API_LINKAGE char NativeInternal_write_str_internal(PyObject *data, PyObject *value);
+LIBRT_API_LINKAGE PyObject *NativeInternal_read_str_internal(PyObject *data);
+LIBRT_API_LINKAGE char NativeInternal_write_float_internal(PyObject *data, double value);
+LIBRT_API_LINKAGE double NativeInternal_read_float_internal(PyObject *data);
+LIBRT_API_LINKAGE char NativeInternal_write_int_internal(PyObject *data, CPyTagged value);
+LIBRT_API_LINKAGE CPyTagged NativeInternal_read_int_internal(PyObject *data);
+LIBRT_API_LINKAGE char NativeInternal_write_tag_internal(PyObject *data, uint8_t value);
+LIBRT_API_LINKAGE uint8_t NativeInternal_read_tag_internal(PyObject *data);
+LIBRT_API_LINKAGE int NativeInternal_ABI_Version(void);
+LIBRT_API_LINKAGE char NativeInternal_write_bytes_internal(PyObject *data, PyObject *value);
+LIBRT_API_LINKAGE PyObject *NativeInternal_read_bytes_internal(PyObject *data);
+LIBRT_API_LINKAGE uint8_t NativeInternal_cache_version_internal(void);
+LIBRT_API_LINKAGE PyTypeObject *NativeInternal_ReadBuffer_type_internal(void);
+LIBRT_API_LINKAGE PyTypeObject *NativeInternal_WriteBuffer_type_internal(void);
+LIBRT_API_LINKAGE int NativeInternal_API_Version(void);
+LIBRT_API_LINKAGE PyObject *NativeInternal_extract_symbol_internal(PyObject *data);
 
+#endif
+
+#ifdef MYPYC_STATIC_LINKING
+// With static linking, the API is used directly (see librt_internal_api.h)
+#include <stdbool.h>
+#include <stdint.h>
+#include "CPy.h"
+extern PyTypeObject NativeInternal_ReadBufferType;
+extern PyTypeObject NativeInternal_WriteBufferType;
+PyObject *NativeInternal_ReadBuffer_internal(PyObject *source);
+PyObject *NativeInternal_WriteBuffer_internal(void);
+PyObject *NativeInternal_WriteBuffer_getvalue_internal(PyObject *self);
+char NativeInternal_write_bool_internal(PyObject *data, char value);
+char NativeInternal_read_bool_internal(PyObject *data);
+char NativeInternal_write_str_internal(PyObject *data, PyObject *value);
+PyObject *NativeInternal_read_str_internal(PyObject *data);
+char NativeInternal_write_float_internal(PyObject *data, double value);
+double NativeInternal_read_float_internal(PyObject *data);
+char NativeInternal_write_int_internal(PyObject *data, CPyTagged value);
+CPyTagged NativeInternal_read_int_internal(PyObject *data);
+char NativeInternal_write_tag_internal(PyObject *data, uint8_t value);
+uint8_t NativeInternal_read_tag_internal(PyObject *data);
+int NativeInternal_ABI_Version(void);
+char NativeInternal_write_bytes_internal(PyObject *data, PyObject *value);
+PyObject *NativeInternal_read_bytes_internal(PyObject *data);
+uint8_t NativeInternal_cache_version_internal(void);
+PyTypeObject *NativeInternal_ReadBuffer_type_internal(void);
+PyTypeObject *NativeInternal_WriteBuffer_type_internal(void);
+int NativeInternal_API_Version(void);
+PyObject *NativeInternal_extract_symbol_internal(PyObject *data);
 #endif
 
 #endif  // LIBRT_INTERNAL_H

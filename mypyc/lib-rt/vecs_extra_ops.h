@@ -5,7 +5,11 @@
 
 // Check if obj is an instance of vec (any vec type)
 static inline int CPyVec_Check(PyObject *obj) {
+#ifdef MYPYC_STATIC_LINKING
+    return PyObject_TypeCheck(obj, &VecType);
+#else
     return PyObject_TypeCheck(obj, VecApi->get_vec_type());
+#endif
 }
 
 static inline PyObject *CPyVecU8_ToBytes(VecU8 v) {

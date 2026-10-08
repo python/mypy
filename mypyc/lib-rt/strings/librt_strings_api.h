@@ -8,6 +8,13 @@ import_librt_strings(void);
 #include <stdbool.h>
 #include "librt_strings.h"
 
+#ifdef MYPYC_STATIC_LINKING
+// librt is statically linked, so the API functions (declared in librt_strings.h) are
+// called directly, and type objects are referred to directly
+#define LibRTStrings_BytesWriter_type_internal() (&LibRTStrings_BytesWriterType)
+#define LibRTStrings_StringWriter_type_internal() (&LibRTStrings_StringWriterType)
+#define LibRTStrings_BytesWriter_append_internal(a0, a1) LibRTStrings_BytesWriter_append_internal((BytesWriterObject *)(a0), (a1))
+#else
 extern void *LibRTStrings_API[LIBRT_STRINGS_API_LEN];
 
 #define LibRTStrings_ABIVersion (*(int (*)(void)) LibRTStrings_API[0])
@@ -24,6 +31,7 @@ extern void *LibRTStrings_API[LIBRT_STRINGS_API_LEN];
 #define LibRTStrings_StringWriter_type_internal (*(PyTypeObject* (*)(void)) LibRTStrings_API[11])
 #define LibRTStrings_StringWriter_write_internal (*(char (*)(PyObject *source, PyObject *value)) LibRTStrings_API[12])
 #define LibRTStrings_grow_string_buffer (*(bool (*)(StringWriterObject *obj, Py_ssize_t n)) LibRTStrings_API[13])
+#endif
 
 
 static inline bool CPyBytesWriter_Check(PyObject *obj) {

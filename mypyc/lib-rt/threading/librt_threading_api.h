@@ -8,6 +8,11 @@
 int
 import_librt_threading(void);
 
+#ifdef MYPYC_STATIC_LINKING
+// librt is statically linked, so the API functions (declared in librt_threading.h) are
+// called directly, and type objects are referred to directly
+#define LibRTThreading_Lock_type_internal() (&LibRTThreading_LockType)
+#else
 extern void *LibRTThreading_API[LIBRT_THREADING_API_LEN];
 
 #define LibRTThreading_ABIVersion (*(int (*)(void)) LibRTThreading_API[0])
@@ -18,6 +23,7 @@ extern void *LibRTThreading_API[LIBRT_THREADING_API_LEN];
 #define LibRTThreading_Lock_release_internal (*(char (*)(PyObject *self)) LibRTThreading_API[5])
 #define LibRTThreading_Lock_locked_internal (*(char (*)(PyObject *self)) LibRTThreading_API[6])
 #define LibRTThreading_Lock_acquire_blocking_internal (*(char (*)(PyObject *self, char blocking)) LibRTThreading_API[7])
+#endif
 
 static inline bool CPyLock_Check(PyObject *obj) {
     return Py_TYPE(obj) == LibRTThreading_Lock_type_internal();

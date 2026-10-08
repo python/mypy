@@ -1,5 +1,6 @@
 #include "librt_vecs_api.h"
 
+#ifndef MYPYC_STATIC_LINKING
 VecCapsule *VecApi = NULL;
 VecI64API VecI64Api = {0};
 VecI32API VecI32Api = {0};
@@ -9,6 +10,7 @@ VecFloatAPI VecFloatApi = {0};
 VecBoolAPI VecBoolApi = {0};
 VecTAPI VecTApi = {0};
 VecNestedAPI VecNestedApi = {0};
+#endif
 
 int
 import_librt_vecs(void)
@@ -17,6 +19,11 @@ import_librt_vecs(void)
     if (mod == NULL)
         return -1;
     Py_DECREF(mod);  // we import just for the side effect of making the below work.
+#ifdef MYPYC_STATIC_LINKING
+    // librt is statically linked, so the API is called directly. Importing the
+    // module above initializes it (e.g. its types).
+    return 0;
+#else
     VecCapsule *capsule = PyCapsule_Import("librt.vecs._C_API", 0);
     if (!capsule)
         return -1;
@@ -48,4 +55,5 @@ import_librt_vecs(void)
     VecTApi = *VecApi->t;
     VecNestedApi = *VecApi->nested;
     return 0;
+#endif
 }

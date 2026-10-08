@@ -688,6 +688,13 @@ class GroupGenerator:
     def group_suffix(self) -> str:
         return "_" + exported_name(self.group_name) if self.group_name else ""
 
+    def group_global(self, name: str) -> str:
+        """Make the name of a C global local to the group unique across groups.
+
+        This allows groups to be linked together statically.
+        """
+        return name + self.group_suffix
+
     @property
     def short_group_suffix(self) -> str:
         return "_" + exported_name(self.group_name.split(".")[-1]) if self.group_name else ""
@@ -798,7 +805,23 @@ class GroupGenerator:
 
         declarations.emit_line(f'#include "__native{self.short_group_suffix}.h"')
         declarations.emit_line()
-        declarations.emit_line("int CPyGlobalsInit(void);")
+        # lib-rt and librt must be compiled for the same kind of linking as generated code
+        if self.compiler_options.static_linking:
+            declarations.emit_lines(
+                "#ifndef MYPYC_STATIC_LINKING",
+                '#error "Generated for static linking, but MYPYC_STATIC_LINKING is not defined"',
+                "#endif",
+            )
+        else:
+            declarations.emit_lines(
+                "#ifdef MYPYC_STATIC_LINKING",
+                '#error "MYPYC_STATIC_LINKING is defined, but not generated for static linking"',
+                "#endif",
+            )
+        declarations.emit_line()
+        declarations.emit_line(f"int {self.group_global('CPyGlobalsInit')}(void);")
+        if self.group_name and self.compiler_options.separate:
+            declarations.emit_line(f"int {self.group_global('ensure_deps')}(void);")
         declarations.emit_line()
 
         for module_name, module in self.modules.items():
@@ -814,9 +837,12 @@ class GroupGenerator:
         for lib in sorted(self.context.group_deps):
             elib = exported_name(lib)
             short_lib = exported_name(lib.split(".")[-1])
+            # With static linking, the export table of the other group is linked directly.
+            # Otherwise we have a copy, which is populated using a capsule.
+            storage = "extern " if self.compiler_options.static_linking else ""
             declarations.emit_lines(
                 "#include <{}>".format(os.path.join(group_dir(lib), f"__native_{short_lib}.h")),
-                f"struct export_table_{elib} exports_{elib};",
+                f"{storage}struct export_table_{elib} exports_{elib};",
             )
 
         sorted_decls = self.toposort_declarations()
@@ -873,28 +899,44 @@ class GroupGenerator:
         """
         literals = self.context.literals
         # During module initialization we store all the constructed objects here
-        self.declare_global("PyObject *[%d]" % literals.num_literals(), "CPyStatics")
+        self.declare_global(
+            "PyObject *[%d]" % literals.num_literals(), self.group_global("CPyStatics")
+        )
         # Descriptions of str literals
         init_str = c_string_array_initializer(literals.encoded_str_values())
-        self.declare_global("const char * const []", "CPyLit_Str", initializer=init_str)
+        self.declare_global(
+            "const char * const []", self.group_global("CPyLit_Str"), initializer=init_str
+        )
         # Descriptions of bytes literals
         init_bytes = c_string_array_initializer(literals.encoded_bytes_values())
-        self.declare_global("const char * const []", "CPyLit_Bytes", initializer=init_bytes)
+        self.declare_global(
+            "const char * const []", self.group_global("CPyLit_Bytes"), initializer=init_bytes
+        )
         # Descriptions of int literals
         init_int = c_string_array_initializer(literals.encoded_int_values())
-        self.declare_global("const char * const []", "CPyLit_Int", initializer=init_int)
+        self.declare_global(
+            "const char * const []", self.group_global("CPyLit_Int"), initializer=init_int
+        )
         # Descriptions of float literals
         init_floats = c_array_initializer(literals.encoded_float_values())
-        self.declare_global("const double []", "CPyLit_Float", initializer=init_floats)
+        self.declare_global(
+            "const double []", self.group_global("CPyLit_Float"), initializer=init_floats
+        )
         # Descriptions of complex literals
         init_complex = c_array_initializer(literals.encoded_complex_values())
-        self.declare_global("const double []", "CPyLit_Complex", initializer=init_complex)
+        self.declare_global(
+            "const double []", self.group_global("CPyLit_Complex"), initializer=init_complex
+        )
         # Descriptions of tuple literals
         init_tuple = c_array_initializer(literals.encoded_tuple_values())
-        self.declare_global("const int []", "CPyLit_Tuple", initializer=init_tuple)
+        self.declare_global(
+            "const int []", self.group_global("CPyLit_Tuple"), initializer=init_tuple
+        )
         # Descriptions of frozenset literals
         init_frozenset = c_array_initializer(literals.encoded_frozenset_values())
-        self.declare_global("const int []", "CPyLit_FrozenSet", initializer=init_frozenset)
+        self.declare_global(
+            "const int []", self.group_global("CPyLit_FrozenSet"), initializer=init_frozenset
+        )
 
     def generate_export_table(self, decl_emitter: Emitter, code_emitter: Emitter) -> None:
         """Generate the declaration and definition of the group's export struct.
@@ -938,6 +980,9 @@ class GroupGenerator:
             };
         To call `b.foo`, then, a function in another group would do
         `exports_b.CPyDef_bar(...)`.
+
+        With static linking, there are no capsules. Instead, the table is a global
+        named exports_b, and other groups refer to it directly.
         """
 
         decls = decl_emitter.context.declarations
@@ -949,7 +994,11 @@ class GroupGenerator:
 
         decl_emitter.emit_line("};")
 
-        code_emitter.emit_lines("", f"static struct export_table{self.group_suffix} exports = {{")
+        if self.compiler_options.static_linking:
+            table = f"struct export_table{self.group_suffix} exports{self.group_suffix}"
+        else:
+            table = f"static struct export_table{self.group_suffix} exports"
+        code_emitter.emit_lines("", f"{table} = {{")
         for name, decl in decls.items():
             if decl.needs_export:
                 code_emitter.emit_line(f"&{name},")
@@ -969,21 +1018,21 @@ class GroupGenerator:
         values from all the modules.
 
         These capsules are stored in attributes of the shared library.
+
+        With static linking, no capsules are created, since the shims, and other
+        groups, refer to the functions and the export table directly.
         """
         assert self.group_name is not None
 
         emitter.emit_line()
 
         short_name = shared_lib_name(self.group_name).split(".")[-1]
+        static_linking = self.compiler_options.static_linking
+        ensure_deps = self.group_global("ensure_deps")
 
-        emitter.emit_lines(
-            f"static int exec_{short_name}(PyObject *module)",
-            "{",
-            "int res;",
-            "PyObject *capsule;",
-            "PyObject *tmp;",
-            "",
-        )
+        emitter.emit_lines(f"static int exec_{short_name}(PyObject *module)", "{")
+        if not static_linking:
+            emitter.emit_lines("int res;", "PyObject *capsule;", "")
 
         lock_api = module_lock_api_name(self.group_name)
         emitter.emit_lines(
@@ -992,11 +1041,11 @@ class GroupGenerator:
             f"if ({lock_api} == NULL) goto fail;",
             "}",
             "if (intern_strings() < 0) goto fail;",
-            "if (CPyGlobalsInit() < 0) goto fail;",
+            f"if ({self.group_global('CPyGlobalsInit')}() < 0) goto fail;",
             "",
         )
 
-        if self.compiler_options.separate:
+        if self.compiler_options.separate and not static_linking:
             emitter.emit_lines(
                 'capsule = PyCapsule_New(&exports, "{}.exports", NULL);'.format(
                     shared_lib_name(self.group_name)
@@ -1010,11 +1059,10 @@ class GroupGenerator:
                 "goto fail;",
                 "}",
                 "",
-                # Expose ensure_deps_<short> as a capsule so the shim can call
-                # it before invoking the per-module init.
-                f"extern int ensure_deps_{short_name}(void);",
-                'capsule = PyCapsule_New((void *)ensure_deps_{sh}, "{lib}.ensure_deps", NULL);'.format(
-                    sh=short_name, lib=shared_lib_name(self.group_name)
+                # Expose ensure_deps as a capsule so the shim can call it before
+                # invoking the per-module init.
+                'capsule = PyCapsule_New((void *){f}, "{lib}.ensure_deps", NULL);'.format(
+                    f=ensure_deps, lib=shared_lib_name(self.group_name)
                 ),
                 "if (!capsule) {",
                 "goto fail;",
@@ -1027,50 +1075,54 @@ class GroupGenerator:
                 "",
             )
 
-        for mod in self.modules:
-            name = exported_name(mod)
-            if self.multi_phase_init:
-                capsule_func_name = module_exec_name(mod)
-                capsule_name_prefix = "exec_"
-                emitter.emit_line(f"extern int {capsule_func_name}(PyObject *);")
-            else:
-                capsule_func_name = module_init_name(mod)
-                capsule_name_prefix = "init_"
-                emitter.emit_line(f"extern PyObject *{capsule_func_name}(void);")
-            emitter.emit_lines(
-                'capsule = PyCapsule_New((void *){}, "{}.{}{}", NULL);'.format(
-                    capsule_func_name, shared_lib_name(self.group_name), capsule_name_prefix, name
-                ),
-                "if (!capsule) {",
-                "goto fail;",
-                "}",
-                f'res = PyObject_SetAttrString(module, "{capsule_name_prefix}{name}", capsule);',
-                "Py_DECREF(capsule);",
-                "if (res < 0) {",
-                "goto fail;",
-                "}",
-                "",
-            )
+        # Expose the module init (or exec) functions to the shims. With static linking,
+        # shims call them directly instead.
+        if not static_linking:
+            for mod in self.modules:
+                name = exported_name(mod)
+                if self.multi_phase_init:
+                    capsule_func_name = module_exec_name(mod)
+                    capsule_name_prefix = "exec_"
+                    emitter.emit_line(f"extern int {capsule_func_name}(PyObject *);")
+                else:
+                    capsule_func_name = module_init_name(mod)
+                    capsule_name_prefix = "init_"
+                    emitter.emit_line(f"extern PyObject *{capsule_func_name}(void);")
+                emitter.emit_lines(
+                    'capsule = PyCapsule_New((void *){}, "{}.{}{}", NULL);'.format(
+                        capsule_func_name,
+                        shared_lib_name(self.group_name),
+                        capsule_name_prefix,
+                        name,
+                    ),
+                    "if (!capsule) {",
+                    "goto fail;",
+                    "}",
+                    f'res = PyObject_SetAttrString(module, "{capsule_name_prefix}{name}", capsule);',
+                    "Py_DECREF(capsule);",
+                    "if (res < 0) {",
+                    "goto fail;",
+                    "}",
+                    "",
+                )
 
         # End of exec_<short_name>: only sets up capsules/module attributes.
         # Cross-group imports (populating `exports_<dep>` tables) are split
-        # out into ensure_deps_<short_name>() below and run later, from the
-        # shim's PyInit. See generate_shared_lib_init for details.
+        # out into ensure_deps() below and run later, from the shim's PyInit
+        # (or from the module exec function with static linking).
         emitter.emit_lines("return 0;", "fail:", "return -1;", "}")
 
         if self.compiler_options.separate:
-            # ensure_deps_<short>(): populates cross-group exports tables. Run
+            # ensure_deps(): populates cross-group exports tables. Run
             # once, lazily, from the shim's PyInit just before invoking the
             # per-module init capsule. This defers cross-group imports out of
             # the shared-lib PyInit so they can't transitively trigger a
             # sibling package's __init__.py while another package __init__.py
-            # is still mid-flight.
+            # is still mid-flight. With static linking, the export tables are
+            # linked directly, but the other groups must still be imported to
+            # initialize them.
             emitter.emit_lines(
-                "",
-                f"int ensure_deps_{short_name}(void)",
-                "{",
-                "static int done = 0;",
-                "if (done) return 0;",
+                "", f"int {ensure_deps}(void)", "{", "static int done = 0;", "if (done) return 0;"
             )
             if self.context.group_deps:
                 emitter.emit_lines(
@@ -1080,8 +1132,9 @@ class GroupGenerator:
                     "if (!_mypyc_fromlist) return -1;",
                     "}",
                     "PyObject *tmp;",
-                    "PyObject *caps;",
                 )
+                if not static_linking:
+                    emitter.emit_line("PyObject *caps;")
             for group in sorted(self.context.group_deps):
                 egroup = exported_name(group)
                 # ImportModuleLevel with fromlist returns the leaf via
@@ -1093,6 +1146,11 @@ class GroupGenerator:
                         shared_lib_name(group)
                     ),
                     "if (!tmp) return -1;",
+                )
+                if static_linking:
+                    emitter.emit_line("Py_DECREF(tmp);")
+                    continue
+                emitter.emit_lines(
                     'caps = PyObject_GetAttrString(tmp, "exports");',
                     "Py_DECREF(tmp);",
                     "if (!caps) return -1;",
@@ -1159,7 +1217,7 @@ class GroupGenerator:
     def generate_globals_init(self, emitter: Emitter) -> None:
         emitter.emit_lines(
             "",
-            "int CPyGlobalsInit(void)",
+            f"int {self.group_global('CPyGlobalsInit')}(void)",
             "{",
             "static int is_initialized = 0;",
             "if (is_initialized) return 0;",
@@ -1170,9 +1228,11 @@ class GroupGenerator:
         for symbol, fixup in self.simple_inits:
             emitter.emit_line(f"{symbol} = {fixup};")
 
-        values = "CPyLit_Str, CPyLit_Bytes, CPyLit_Int, CPyLit_Float, CPyLit_Complex, CPyLit_Tuple, CPyLit_FrozenSet"
+        tables = ["Str", "Bytes", "Int", "Float", "Complex", "Tuple", "FrozenSet"]
+        values = ", ".join(self.group_global(f"CPyLit_{t}") for t in tables)
+        statics = self.group_global("CPyStatics")
         emitter.emit_lines(
-            f"if (CPyStatics_Initialize(CPyStatics, {values}) < 0) {{", "return -1;", "}"
+            f"if (CPyStatics_Initialize({statics}, {values}) < 0) {{", "return -1;", "}"
         )
 
         emitter.emit_lines("is_initialized = 1;", "return 0;", "}")
@@ -1315,6 +1375,15 @@ class GroupGenerator:
         state = module_import_state_name(module_name)
         module_cache = emitter.static_name(module_name, None, prefix=MODULE_PREFIX)
         emitter.emit_lines(f"static int {impl_name}(PyObject *module)", "{")
+        if (
+            self.compiler_options.static_linking
+            and self.group_name
+            and self.compiler_options.separate
+        ):
+            # Without static linking, the shim calls ensure_deps (via a capsule) before
+            # the module init. Static shims call the module init directly, so do it here.
+            ensure_deps = self.group_global("ensure_deps")
+            emitter.emit_lines(f"if ({ensure_deps}() < 0)", "    return -1;")
         if not self.use_shared_lib:
             emitter.emit_lines("if (intern_strings() < 0)", "    return -1;")
         if self.compiler_options.depends_on_librt_internal:
@@ -1385,7 +1454,9 @@ class GroupGenerator:
         if not self.use_shared_lib:
             # With shared lib we initialize globals in its init function in case
             # modules are executed concurrently.
-            emitter.emit_lines("if (CPyGlobalsInit() < 0)", "    goto fail;")
+            emitter.emit_lines(
+                f"if ({self.group_global('CPyGlobalsInit')}() < 0)", "    goto fail;"
+            )
 
         self.generate_top_level_call(module, emitter)
 

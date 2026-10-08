@@ -1613,32 +1613,32 @@ def foo():
     r15, t :: int
     r16, u, r17, v :: u8
 L0:
-    r0 = WriteBuffer_internal()
+    r0 = NativeInternal_WriteBuffer_internal()
     b = r0
     r1 = 'foo'
-    r2 = write_str_internal(b, r1)
+    r2 = NativeInternal_write_str_internal(b, r1)
     r3 = b'bar'
-    r4 = write_bytes_internal(b, r3)
-    r5 = write_bool_internal(b, 1)
-    r6 = write_float_internal(b, 0.1)
-    r7 = write_int_internal(b, 2)
-    r8 = write_tag_internal(b, 1)
-    r9 = WriteBuffer_getvalue_internal(b)
-    r10 = ReadBuffer_internal(r9)
+    r4 = NativeInternal_write_bytes_internal(b, r3)
+    r5 = NativeInternal_write_bool_internal(b, 1)
+    r6 = NativeInternal_write_float_internal(b, 0.1)
+    r7 = NativeInternal_write_int_internal(b, 2)
+    r8 = NativeInternal_write_tag_internal(b, 1)
+    r9 = NativeInternal_WriteBuffer_getvalue_internal(b)
+    r10 = NativeInternal_ReadBuffer_internal(r9)
     rb = r10
-    r11 = read_str_internal(rb)
+    r11 = NativeInternal_read_str_internal(rb)
     x = r11
-    r12 = read_bytes_internal(rb)
+    r12 = NativeInternal_read_bytes_internal(rb)
     xb = r12
-    r13 = read_bool_internal(rb)
+    r13 = NativeInternal_read_bool_internal(rb)
     y = r13
-    r14 = read_float_internal(rb)
+    r14 = NativeInternal_read_float_internal(rb)
     z = r14
-    r15 = read_int_internal(rb)
+    r15 = NativeInternal_read_int_internal(rb)
     t = r15
-    r16 = read_tag_internal(rb)
+    r16 = NativeInternal_read_tag_internal(rb)
     u = r16
-    r17 = cache_version_internal()
+    r17 = NativeInternal_cache_version_internal()
     v = r17
     return 1
 
