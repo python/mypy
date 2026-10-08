@@ -432,7 +432,7 @@ Platform configuration
 
     Specifies the Python version used to parse and check the target
     program.  The string should be in the format ``MAJOR.MINOR`` --
-    for example ``3.9``.  The default is the version of the Python
+    for example ``3.10``.  The default is the version of the Python
     interpreter used to run mypy.
 
     This option may only be set in the global section (``[mypy]``).
@@ -713,16 +713,16 @@ section of the command line docs.
     Causes mypy to suppress errors caused by not being able to fully
     infer the types of global and class variables.
 
-.. confval:: allow_redefinition_new
+.. confval:: allow_redefinition
 
     :type: boolean
     :default: False
 
     By default, mypy won't allow a variable to be redefined with an
     unrelated type. This flag enables the redefinition of unannotated
-    variables with an arbitrary type. You will also need to enable
-    :confval:`local_partial_types`.
-    Example:
+    variables with an arbitrary type. This also requires
+    :confval:`local_partial_types`, which is enabled by default starting
+    from mypy 2.0. Example:
 
     .. code-block:: python
 
@@ -761,7 +761,14 @@ section of the command line docs.
             reveal_type(values)  # Revealed type is list[float]
 
     Note: We are planning to turn this flag on by default in a future mypy
-    release, along with :confval:`local_partial_types`.
+    release.
+
+.. confval:: allow_redefinition_new
+
+    :type: boolean
+    :default: False
+
+    Deprecated alias for :confval:`allow_redefinition`.
 
 .. confval:: allow_redefinition_old
 
@@ -789,22 +796,14 @@ section of the command line docs.
            items = "100"  # valid, items now has type str
            items = int(items)  # valid, items now has type int
 
-.. confval:: allow_redefinition
-
-    :type: boolean
-    :default: False
-
-    An alias to :confval:`allow_redefinition_old`, in mypy v2.0 this will point to
-    :confval:`allow_redefinition_new`, and will eventually became the default.
-
 .. confval:: local_partial_types
 
     :type: boolean
-    :default: False
+    :default: True
 
-    Disallows inferring variable type for ``None`` from two assignments in different scopes.
-    This is always implicitly enabled when using the :ref:`mypy daemon <mypy_daemon>`.
-    This will be enabled by default in mypy v2.0 release.
+    This prevents inferring a variable type from an empty container (such as a list or
+    a dictionary) created at module top level or class body and updated in
+    a function. This must be enabled when using the :ref:`mypy daemon <mypy_daemon>`.
 
 .. confval:: disable_error_code
 
@@ -867,17 +866,17 @@ section of the command line docs.
 .. confval:: strict_bytes
 
    :type: boolean
-   :default: False
+   :default: True
 
-   Disable treating ``bytearray`` and ``memoryview`` as subtypes of ``bytes``.
-   This will be enabled by default in *mypy 2.0*.
+   If disabled, mypy treats ``bytearray`` and ``memoryview`` as subtypes of ``bytes``.
+   This has been enabled by default since mypy 2.0.
 
 .. confval:: strict
 
    :type: boolean
    :default: False
 
-   Enable all optional error checking flags.  You can see the list of
+   Enable several optional error checking flags.  You can see the list of
    flags enabled by strict mode in the full :option:`mypy --help`
    output.
 
@@ -1007,6 +1006,23 @@ These options may only be set in the global section (``[mypy]``).
     Skip cache internal consistency checks based on mtime.
 
 
+Parallel type-checking configuration
+************************************
+
+These options may only be set in the global section (``[mypy]``).
+
+.. confval:: num_workers
+
+    :type: integer or string
+    :default: 0
+
+    Use a specific number of parallel worker processes for type-checking or
+    the value ``auto`` to select the number based on the CPUs available to mypy.
+    See :ref:`parallel type-checking <parallel>` for more details.
+    The ``MYPY_NUM_WORKERS`` environment variable accepts the same values and
+    overrides this setting.
+
+
 Advanced options
 ****************
 
@@ -1067,6 +1083,16 @@ These options may only be set in the global section (``[mypy]``).
 
     Warns about missing type annotations in typeshed.  This is only relevant
     in combination with :confval:`disallow_untyped_defs` or :confval:`disallow_incomplete_defs`.
+
+.. confval:: native_parser
+
+    :type: boolean
+    :default: True
+
+    Use the fast Rust-based native parser that parses directly to mypy AST.
+    Set this to ``False`` to use the legacy parser based on the stdlib
+    :py:mod:`ast` module instead. See :option:`--no-native-parser <mypy --no-native-parser>`
+    for more details.
 
 
 Report generation
@@ -1188,7 +1214,6 @@ These options may only be set in the global section (``[mypy]``).
 
     Warns about per-module sections in the config file that do not
     match any files processed when invoking mypy.
-    (This requires turning off incremental mode using :confval:`incremental = False <incremental>`.)
 
 .. confval:: verbosity
 
@@ -1255,7 +1280,7 @@ of your repo (or append it to the end of an existing ``pyproject.toml`` file) an
     # mypy global options:
 
     [tool.mypy]
-    python_version = "3.9"
+    python_version = "3.10"
     warn_return_any = true
     warn_unused_configs = true
     exclude = [

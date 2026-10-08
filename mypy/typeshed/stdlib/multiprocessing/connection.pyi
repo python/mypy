@@ -3,13 +3,14 @@ import sys
 from _typeshed import Incomplete, ReadableBuffer
 from collections.abc import Iterable
 from types import TracebackType
-from typing import Any, Generic, SupportsIndex, TypeVar
-from typing_extensions import Self, TypeAlias
+from typing import Any, Generic, SupportsIndex, TypeAlias, TypeVar
+from typing_extensions import Self
 
 __all__ = ["Client", "Listener", "Pipe", "wait"]
 
 # https://docs.python.org/3/library/multiprocessing.html#address-formats
-_Address: TypeAlias = str | tuple[str, int]
+# bytes: Linux abstract AF_UNIX socket name (starts with a null byte)
+_Address: TypeAlias = str | bytes | tuple[str, int]
 
 # Defaulting to Any to avoid forcing generics on a lot of pre-existing code
 _SendT_contra = TypeVar("_SendT_contra", contravariant=True, default=Any)
@@ -46,12 +47,18 @@ class Listener:
     def __init__(
         self, address: _Address | None = None, family: str | None = None, backlog: int = 1, authkey: bytes | None = None
     ) -> None: ...
-    def accept(self) -> Connection[Incomplete, Incomplete]: ...
+    if sys.platform != "win32":
+        def accept(self) -> Connection[Incomplete, Incomplete]: ...
+    else:
+        def accept(self) -> Connection[Incomplete, Incomplete] | PipeConnection[Incomplete, Incomplete]: ...
+
     def close(self) -> None: ...
+    # Any: the concrete type depends on the address family and platform
+    # (e.g. str or bytes for AF_UNIX), cf. _socket._RetAddress
     @property
-    def address(self) -> _Address: ...
+    def address(self) -> Any: ...
     @property
-    def last_accepted(self) -> _Address | None: ...
+    def last_accepted(self) -> Any | None: ...
     def __enter__(self) -> Self: ...
     def __exit__(
         self, exc_type: type[BaseException] | None, exc_value: BaseException | None, exc_tb: TracebackType | None
@@ -59,16 +66,23 @@ class Listener:
 
 # Any: send and recv methods unused
 if sys.version_info >= (3, 12):
-    def deliver_challenge(connection: Connection[Any, Any], authkey: bytes, digest_name: str = "sha256") -> None: ...
+    def deliver_challenge(connection: _ConnectionBase[Any, Any], authkey: bytes, digest_name: str = "sha256") -> None: ...
 
 else:
-    def deliver_challenge(connection: Connection[Any, Any], authkey: bytes) -> None: ...
+    def deliver_challenge(connection: _ConnectionBase[Any, Any], authkey: bytes) -> None: ...
 
-def answer_challenge(connection: Connection[Any, Any], authkey: bytes) -> None: ...
+def answer_challenge(connection: _ConnectionBase[Any, Any], authkey: bytes) -> None: ...
 def wait(
-    object_list: Iterable[Connection[_SendT_contra, _RecvT_co] | socket.socket | int], timeout: float | None = None
-) -> list[Connection[_SendT_contra, _RecvT_co] | socket.socket | int]: ...
-def Client(address: _Address, family: str | None = None, authkey: bytes | None = None) -> Connection[Any, Any]: ...
+    object_list: Iterable[_ConnectionBase[_SendT_contra, _RecvT_co] | socket.socket | int], timeout: float | None = None
+) -> list[_ConnectionBase[_SendT_contra, _RecvT_co] | socket.socket | int]: ...
+
+if sys.platform != "win32":
+    def Client(address: _Address, family: str | None = None, authkey: bytes | None = None) -> Connection[Any, Any]: ...
+
+else:
+    def Client(
+        address: _Address, family: str | None = None, authkey: bytes | None = None
+    ) -> Connection[Any, Any] | PipeConnection[Any, Any]: ...
 
 # N.B. Keep this in sync with multiprocessing.context.BaseContext.Pipe.
 # _ConnectionBase is the common base class of Connection and PipeConnection

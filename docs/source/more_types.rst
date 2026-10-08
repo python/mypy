@@ -303,8 +303,8 @@ Here is the same example using the legacy syntax (Python 3.11 and earlier):
 .. note::
 
    If you just need to constrain a type variable to certain types or
-   subtypes, you can use a :ref:`value restriction
-   <type-variable-value-restriction>`.
+   subtypes, you can use a :ref:`value-constrained type variable
+   <value-constrained-type-variables>`.
 
 The default values of a function's arguments don't affect its signature -- only
 the absence or presence of a default value does. So in order to reduce
@@ -573,7 +573,7 @@ implementation, then the body is not type checked. If you want to
 force mypy to check the body anyways, use the :option:`--check-untyped-defs <mypy --check-untyped-defs>`
 flag (:ref:`more details here <untyped-definitions-and-calls>`).
 
-The variants must also also be compatible with the implementation
+The variants must also be compatible with the implementation
 type hints. In the ``MyList`` example, mypy will check that the
 parameter type ``int`` and the return type ``T`` are compatible with
 ``int | slice`` and ``T | Sequence`` for the

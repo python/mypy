@@ -587,6 +587,17 @@ class Plugin(CommonPluginApi):
         """
         return []
 
+    def get_additional_indirect_deps(self, file: MypyFile) -> set[str]:
+        """Customize indirect dependencies for a module.
+
+        This hook is called after the module has been type checked, so
+        analyzed information (such as class MROs) is available. The
+        returned module names are recorded as indirect dependencies:
+        a change to their interfaces will invalidate this module's
+        cache, but they are not treated as imports.
+        """
+        return set()
+
     def get_type_analyze_hook(self, fullname: str) -> Callable[[AnalyzeTypeContext], Type] | None:
         """Customize behaviour of the type analyzer for given full names.
 
@@ -844,6 +855,12 @@ class ChainedPlugin(Plugin):
         deps = []
         for plugin in self._plugins:
             deps.extend(plugin.get_additional_deps(file))
+        return deps
+
+    def get_additional_indirect_deps(self, file: MypyFile) -> set[str]:
+        deps: set[str] = set()
+        for plugin in self._plugins:
+            deps |= plugin.get_additional_indirect_deps(file)
         return deps
 
     def get_type_analyze_hook(self, fullname: str) -> Callable[[AnalyzeTypeContext], Type] | None:

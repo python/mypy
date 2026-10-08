@@ -19,6 +19,7 @@ from typing_extensions import Never
 
 from mypy import defaults
 from mypy.options import PER_MODULE_OPTIONS, Options
+from mypy.util import get_available_threads
 
 _CONFIG_VALUE_TYPES: TypeAlias = (
     str | bool | int | float | dict[str, str] | list[str] | tuple[int, int]
@@ -56,6 +57,19 @@ def parse_version(v: str | float) -> tuple[int, int]:
             f"Python major version '{major}' out of range (must be 3)"
         )
     return major, minor
+
+
+def parse_num_workers(v: str | int) -> int:
+    value = v.strip() if isinstance(v, str) else v
+    if value == "auto":
+        return min(defaults.MAX_AUTO_WORKERS, get_available_threads())
+
+    try:
+        return int(value)
+    except (TypeError, ValueError) as err:
+        raise argparse.ArgumentTypeError(
+            f"Invalid number of workers '{v}' (expected an integer or 'auto')"
+        ) from err
 
 
 def try_split(v: str | Sequence[str] | object, split_regex: str = ",") -> list[str]:
@@ -207,6 +221,7 @@ ini_config_types: Final[dict[str, _INI_PARSER_CALLABLE]] = {
     "exclude": lambda s: [s.strip()],
     "packages": try_split,
     "modules": try_split,
+    "num_workers": parse_num_workers,
 }
 
 # Reuse the ini_config_types and overwrite the diff
@@ -507,9 +522,9 @@ def parse_section(
         # Here we use `key` for original config section key, and `options_key` for
         # the corresponding Options attribute.
         options_key = key
-        # Match aliasing for command line flag.
-        if key.endswith("allow_redefinition"):
-            options_key += "_old"
+        # Match aliasing for deprecated config option name.
+        if options_key == "allow_redefinition_new":
+            options_key = "allow_redefinition"
         if key in config_types:
             ct = config_types[key]
         elif key in invalid_options:

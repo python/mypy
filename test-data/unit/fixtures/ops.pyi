@@ -1,3 +1,4 @@
+import types
 from typing import overload, Any, Generic, Sequence, Tuple, TypeVar, Optional
 
 Tco = TypeVar('Tco', covariant=True)
@@ -71,6 +72,5 @@ class BaseException: pass
 def __print(a1: object = None, a2: object = None, a3: object = None,
             a4: object = None) -> None: pass
 
-class ellipsis: pass
 
 class dict: pass

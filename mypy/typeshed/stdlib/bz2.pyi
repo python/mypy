@@ -3,8 +3,8 @@ from _bz2 import BZ2Compressor as BZ2Compressor, BZ2Decompressor as BZ2Decompres
 from _typeshed import ReadableBuffer, StrOrBytesPath, WriteableBuffer
 from collections.abc import Iterable
 from io import TextIOWrapper
-from typing import IO, Literal, Protocol, SupportsIndex, overload, type_check_only
-from typing_extensions import Self, TypeAlias
+from typing import IO, Literal, Protocol, SupportsIndex, TypeAlias, overload, type_check_only
+from typing_extensions import Self
 
 if sys.version_info >= (3, 14):
     from compression._common._streams import BaseStream, _Reader
@@ -100,6 +100,7 @@ def open(
 
 class BZ2File(BaseStream, IO[bytes]):
     def __enter__(self) -> Self: ...
+
     @overload
     def __init__(self, filename: _WritableFileobj, mode: _WriteBinaryMode, *, compresslevel: int = 9) -> None: ...
     @overload
@@ -108,6 +109,7 @@ class BZ2File(BaseStream, IO[bytes]):
     def __init__(
         self, filename: StrOrBytesPath, mode: _ReadBinaryMode | _WriteBinaryMode = "r", *, compresslevel: int = 9
     ) -> None: ...
+
     def read(self, size: int | None = -1) -> bytes: ...
     def read1(self, size: int = -1) -> bytes: ...
     def readline(self, size: SupportsIndex = -1) -> bytes: ...  # type: ignore[override]

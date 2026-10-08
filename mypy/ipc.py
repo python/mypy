@@ -13,7 +13,7 @@ import struct
 import sys
 import tempfile
 from abc import abstractmethod
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from select import select
 from types import TracebackType
 from typing import Final
@@ -38,7 +38,11 @@ else:
     _IPCHandle = socket.socket
 
 # Size of the message packed as !L, i.e. 4 bytes in network order (big-endian).
-HEADER_SIZE = 4
+HEADER_SIZE: Final = 4
+
+# This is Linux default socket buffer size (for 64 bit), so we will not
+# introduce an additional obstacle when exchanging a large IPC message.
+MAX_READ: Final = 212992
 
 
 # TODO: we should make sure consistent exceptions are raised on different platforms.
@@ -62,6 +66,8 @@ class IPCBase:
     def __init__(self, name: str, timeout: float | None) -> None:
         self.name = name
         self.timeout = timeout
+        # Windows-specific I/O timeout overrides should be applied here.
+        self.win_io_timeout = timeout
         self.message_size: int | None = None
         self.buffer = bytearray()
 
@@ -80,10 +86,10 @@ class IPCBase:
         self.message_size = None
         return bytes(bdata)
 
-    def read(self, size: int = 100000) -> str:
+    def read(self, size: int = MAX_READ) -> str:
         return self.read_bytes(size).decode("utf-8")
 
-    def read_bytes(self, size: int = 100000) -> bytes:
+    def read_bytes(self, size: int = MAX_READ) -> bytes:
         """Read bytes from an IPC connection until we have a full frame."""
         if sys.platform == "win32":
             while True:
@@ -97,7 +103,11 @@ class IPCBase:
                 ov, err = _winapi.ReadFile(self.connection, size, overlapped=True)
                 try:
                     if err == _winapi.ERROR_IO_PENDING:
-                        timeout = int(self.timeout * 1000) if self.timeout else _winapi.INFINITE
+                        timeout = (
+                            int(self.win_io_timeout * 1000)
+                            if self.win_io_timeout
+                            else _winapi.INFINITE
+                        )
                         res = _winapi.WaitForSingleObject(ov.event, timeout)
                         if res != _winapi.WAIT_OBJECT_0:
                             raise IPCException(f"Bad result from I/O wait: {res}")
@@ -154,7 +164,11 @@ class IPCBase:
                 ov, err = _winapi.WriteFile(self.connection, encoded_data, overlapped=True)
                 try:
                     if err == _winapi.ERROR_IO_PENDING:
-                        timeout = int(self.timeout * 1000) if self.timeout else _winapi.INFINITE
+                        timeout = (
+                            int(self.win_io_timeout * 1000)
+                            if self.win_io_timeout
+                            else _winapi.INFINITE
+                        )
                         res = _winapi.WaitForSingleObject(ov.event, timeout)
                         if res != _winapi.WAIT_OBJECT_0:
                             raise IPCException(f"Bad result from I/O wait: {res}")
@@ -215,6 +229,10 @@ class IPCClient(IPCBase):
             )
         else:
             self.connection = socket.socket(socket.AF_UNIX)
+            # This is already default on Linux, we set same buffer size
+            # for macOS vs Linux consistency to simplify reasoning.
+            self.connection.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, MAX_READ)
+            self.connection.setsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF, MAX_READ)
             self.connection.settimeout(timeout)
             self.connection.connect(name)
 
@@ -240,6 +258,11 @@ class IPCServer(IPCBase):
             name = f"{name}.sock"
         super().__init__(name, timeout)
         if sys.platform == "win32":
+            # Unlike the client, a server applies its timeout only to accepting a
+            # connection, never to the traffic that follows: see __enter__() below.
+            # On POSIX this happens naturally after the sock.accept() call. On
+            # Windows we need to set this manually to ensure equivalent behavior.
+            self.win_io_timeout = None
             self.connection = _winapi.CreateNamedPipe(
                 self.name,
                 _winapi.PIPE_ACCESS_DUPLEX
@@ -291,6 +314,10 @@ class IPCServer(IPCBase):
         else:
             try:
                 self.connection, _ = self.sock.accept()
+                # This is already default on Linux, we set same buffer size
+                # for macOS vs Linux consistency to simplify reasoning.
+                self.connection.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, MAX_READ)
+                self.connection.setsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF, MAX_READ)
             except TimeoutError as e:
                 raise IPCException("The socket timed out") from e
         return self
@@ -361,11 +388,15 @@ def read_status(status_file: str) -> dict[str, object]:
     return data
 
 
-def ready_to_read(conns: list[IPCClient], timeout: float | None = None) -> list[int]:
+def ready_to_read(conns: Sequence[IPCBase], timeout: float | None = None) -> list[int]:
     """Wait until some connections are readable.
 
     Return index of each readable connection in the original list.
     """
+    unread_messages = [i for i, conn in enumerate(conns) if conn.buffer]
+    if unread_messages:
+        # If we already have unread messages in the buffer, return those first.
+        return unread_messages
     if sys.platform == "win32":
         # Windows doesn't support select() on named pipes. Instead, start an overlapped
         # ReadFile on each pipe (which internally creates an event via CreateEventW),
@@ -405,16 +436,36 @@ def ready_to_read(conns: list[IPCClient], timeout: float | None = None) -> list[
                     ov.cancel()
                 raise IPCException(f"Failed to wait for connections: {_winapi.GetLastError()}")
 
-        # Check which pending operations completed, cancel the rest
+        # Cancel all pending operations. CancelIoEx is asynchronous, so an
+        # operation may have completed before the cancel took effect. We then
+        # wait for all operations to finalize and check each result: completed
+        # reads get their data saved and are marked ready; cancelled ones are
+        # simply skipped. This avoids a race between checking if an operation
+        # is signaled and cancelling it.
+        for _, ov in pending:
+            ov.cancel()
         for i, ov in pending:
-            if _winapi.WaitForSingleObject(ov.event, 0) == _winapi.WAIT_OBJECT_0:
+            try:
                 _, err = ov.GetOverlappedResult(True)
+            except OSError as e:
+                err = e.winerror
+                # Cancellation is expected here; broken/disconnected pipes should be
+                # surfaced as readable so the follow-up receive observes EOF/closure.
+                if err not in (
+                    _winapi.ERROR_OPERATION_ABORTED,
+                    _winapi.ERROR_BROKEN_PIPE,
+                    _winapi.ERROR_NETNAME_DELETED,
+                ):
+                    # Anything else is a real IPC failure, not part of the probe race.
+                    raise
+            if err == _winapi.ERROR_OPERATION_ABORTED:
+                # Operation was successfully cancelled -- no data consumed.
+                continue
+            if err in (0, _winapi.ERROR_MORE_DATA):
                 data = ov.getbuffer()
                 if data:
                     conns[i].buffer.extend(data)
-                ready.append(i)
-            else:
-                ov.cancel()
+            ready.append(i)
 
         return ready
 

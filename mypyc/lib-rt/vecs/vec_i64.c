@@ -1,4 +1,3 @@
-#ifdef MYPYC_EXPERIMENTAL
 #define VEC VecI64
 #define VEC_TYPE VecI64Type
 #define VEC_OBJECT VecI64Object
@@ -14,7 +13,7 @@
 #define BOX_ITEM VecI64_BoxItem
 #define UNBOX_ITEM VecI64_UnboxItem
 #define IS_UNBOX_ERROR VecI64_IsUnboxError
+#define BUFFER_FORMAT_CHAR_OK(c) ((c) == 'q' || ((c) == 'l' && sizeof(long) == 8))
+#define BUFFER_FORMAT "q"
 
 #include "vec_template.c"
-
-#endif  // MYPYC_EXPERIMENTAL

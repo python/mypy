@@ -213,8 +213,7 @@ def test5(t: tuple[A | B, ...]) -> None:
 
 def test6(t: tuple[B, Unpack[tuple[A | B, ...]], B]) -> None:
     if is_tuple_of_B(t):
-        # Should this be tuple[B, *tuple[B, ...], B]
-        reveal_type(t)  # N: Revealed type is "tuple[__main__.B, Never, __main__.B]"
+        reveal_type(t)  # N: Revealed type is "tuple[__main__.B, Unpack[builtins.tuple[__main__.B, ...]], __main__.B]"
     else:
         reveal_type(t)  # N: Revealed type is "tuple[__main__.B, Unpack[builtins.tuple[__main__.A | __main__.B, ...]], __main__.B]"
 [builtins fixtures/tuple.pyi]

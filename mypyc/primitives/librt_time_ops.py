@@ -9,6 +9,5 @@ function_op(
     return_type=float_rprimitive,
     c_function_name="LibRTTime_time",
     error_kind=ERR_MAGIC_OVERLAPPING,
-    experimental=True,
     dependencies=[LIBRT_TIME],
 )

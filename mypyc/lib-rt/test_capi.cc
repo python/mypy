@@ -1,8 +1,8 @@
 // Test cases
 
-#include <gtest/gtest.h>
 #include <Python.h>
 #include "CPy.h"
+#include <gtest/gtest.h>
 
 static PyObject *moduleDict;
 

@@ -1,4 +1,4 @@
-[case testLibrtVecsI64Interpreted_librt_experimental]
+[case testLibrtVecsI64Interpreted_librt]
 # Test cases for vec[i64], using generic operations (simulates use from interpreted code).
 #
 # These also act as test cases for specialized vec types in general (e.g. vec[float]),
@@ -20,6 +20,7 @@ vec: Any = librt.vecs.vec
 append: Any = librt.vecs.append
 remove: Any = librt.vecs.remove
 pop: Any = librt.vecs.pop
+extend: Any = librt.vecs.extend
 getsizeof: Any = getattr(sys, "getsizeof")
 i64: Any = mypy_extensions.i64
 
@@ -42,6 +43,40 @@ def test_construct_from_initializer() -> None:
         vec[i64](['1'])
     with assertRaises(TypeError):
         vec[i64]([None])
+
+def test_construct_from_tuple() -> None:
+    v = vec[i64](())
+    assert len(v) == 0
+    v = vec[i64]((1, 2, 3))
+    assert len(v) == 3
+    assert v[0] == 1
+    assert v[1] == 2
+    assert v[2] == 3
+    v = vec[i64]((2**63 - 1, -2**63))
+    assert len(v) == 2
+    assert v[0] == 2**63 - 1
+    assert v[1] == -2**63
+    with assertRaises(TypeError):
+        vec[i64](('x',))
+    with assertRaises(TypeError):
+        vec[i64]((None,))
+    with assertRaises(TypeError):
+        vec[i64]((1, 'x', 2))
+
+def test_construct_from_tuple_with_capacity() -> None:
+    v = vec[i64]((1, 2), capacity=5)
+    assert len(v) == 2
+    assert v[0] == 1
+    assert v[1] == 2
+    old = v
+    v = append(v, 3)
+    v = append(v, 4)
+    v = append(v, 5)
+    old[0] = 99
+    assert v[0] == 99
+    v = vec[i64]((1, 2, 3), capacity=1)
+    assert len(v) == 3
+    assert v[2] == 3
 
 def test_append() -> None:
     v = vec[i64]()
@@ -231,6 +266,45 @@ def test_iteration_nested() -> None:
                  (5, 2), (5, 5), (5, 7),
                  (7, 2), (7, 5), (7, 7)]
 
+def test_iterator_protocol() -> None:
+    # Test iter() and next() functions explicitly
+    v = vec[i64]([1, 2, 3])
+    it = iter(v)
+    assert next(it) == 1
+    assert next(it) == 2
+    assert next(it) == 3
+    with assertRaises(StopIteration):
+        next(it)
+
+    # Test multiple iterators on same vec
+    v = vec[i64]([10, 20])
+    it1 = iter(v)
+    it2 = iter(v)
+    assert next(it1) == 10
+    assert next(it2) == 10
+    assert next(it1) == 20
+    assert next(it2) == 20
+
+    # Test empty vec iterator
+    it = iter(vec[i64]())
+    with assertRaises(StopIteration):
+        next(it)
+
+def test_iterator_length_hint() -> None:
+    v = vec[i64]([1, 2, 3, 4, 5])
+    it = iter(v)
+    op: Any = getattr(sys, "modules")["operator"]
+    length_hint = op.length_hint
+    assert length_hint(it) == 5
+    next(it)
+    assert length_hint(it) == 4
+    next(it)
+    next(it)
+    assert length_hint(it) == 2
+    next(it)
+    next(it)
+    assert length_hint(it) == 0
+
 def test_slicing() -> None:
     v = vec[i64](range(5))
     assert v[1:4] == vec[i64]([1, 2, 3])
@@ -272,6 +346,41 @@ def test_contains() -> None:
     assert -1233453452 not in v
     vv = vec[i64]()
     assert 3 not in vv
+
+def test_contains_boundary_values() -> None:
+    v = vec[i64]([0, 2**63 - 1, -2**63])
+    assert 0 in v
+    assert 2**63 - 1 in v
+    assert -2**63 in v
+    assert 1 not in v
+    assert -1 not in v
+
+def test_contains_wrong_type() -> None:
+    # Wrong type should return False, not raise
+    v: Any = vec[i64]([1, 2, 3])
+    assert 'x' not in v
+    assert None not in v
+    assert [] not in v
+    # Overflow should also return False
+    assert 2**63 not in v
+    assert -2**63 - 1 not in v
+
+def test_contains_float() -> None:
+    # float == int equality should work via boxed fallback
+    v: Any = vec[i64]([1, 2, 3])
+    assert 2.0 in v
+    assert 3.0 in v
+    assert 1.5 not in v
+    assert 0.0 not in v
+
+def test_contains_bool() -> None:
+    # bool is a subclass of int, so True/False should work
+    v: Any = vec[i64]([0, 1, 5])
+    assert True in v
+    assert False in v
+    v2: Any = vec[i64]([2, 3])
+    assert True not in v2
+    assert False not in v2
 
 def test_remove() -> None:
     a = [4, 7, 9]
@@ -343,3 +452,84 @@ def test_pop_index() -> None:
     v, n = pop(v, 0)
     assert n == 15
     assert v == vec[i64]()
+
+def test_cap_basic() -> None:
+    v = vec[i64](capacity=3)
+    assert len(v) == 0
+    assert v == vec[i64]()
+    v = vec[i64](capacity=0)
+    assert len(v) == 0
+    v = vec[i64]([10, 20], capacity=3)
+    assert v == vec[i64]([10, 20])
+    v = vec[i64]([5], capacity=0)
+    assert v == vec[i64]([5])
+    v = vec[i64]([10, 20, 30], capacity=1)
+    assert len(v) == 3
+    assert v[0] == 10
+
+def test_cap_negative() -> None:
+    with assertRaises(ValueError):
+        vec[i64](capacity=-1)
+    with assertRaises(ValueError):
+        vec[i64]([1], capacity=-1)
+
+def test_cap_buffer_reuse() -> None:
+    v = vec[i64](capacity=3)
+    old = v
+    v = append(v, 1)
+    v = append(v, 2)
+    v = append(v, 3)
+    assert len(v) == 3
+    old = append(old, 99)
+    assert v[0] == 99
+
+    v = vec[i64]([10, 20], capacity=3)
+    old = v
+    v = append(v, 30)
+    v[0] = 99
+    assert old[0] == 99
+
+def test_cap_reallocation() -> None:
+    v = vec[i64]([10, 20], capacity=2)
+    old = v
+    v = append(v, 30)
+    old = append(old, 99)
+    assert v[0] == 10
+
+    v = vec[i64]([10, 20, 30], capacity=3)
+    old = v
+    v = append(v, 40)
+    v[0] = 99
+    assert old[0] == 10
+    assert old[2] == 30
+
+def test_extend_from_list() -> None:
+    v = vec[i64]([1, 2])
+    v = extend(v, [3, 4, 5])
+    assert v == vec[i64]([1, 2, 3, 4, 5])
+
+def test_extend_empty_vec() -> None:
+    v = vec[i64]()
+    v = extend(v, [10, 20])
+    assert v == vec[i64]([10, 20])
+
+def test_extend_with_empty_iterable() -> None:
+    v = vec[i64]([1, 2])
+    v = extend(v, [])
+    assert v == vec[i64]([1, 2])
+
+def test_extend_from_generator() -> None:
+    v = vec[i64]()
+    v = extend(v, (x * 2 for x in range(4)))
+    assert v == vec[i64]([0, 2, 4, 6])
+
+def test_extend_from_vec() -> None:
+    v = vec[i64]([1])
+    v = extend(v, vec[i64]([2, 3]))
+    assert v == vec[i64]([1, 2, 3])
+
+def test_extend_type_error() -> None:
+    v = vec[i64]([1])
+    s: Any = 'x'
+    with assertRaises(TypeError):
+        extend(v, [s])

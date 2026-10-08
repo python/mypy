@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections import defaultdict
 from collections.abc import Iterator
 from contextlib import contextmanager
-from typing import Literal, NamedTuple, TypeAlias as _TypeAlias
+from typing import Final, Literal, TypeAlias as _TypeAlias
 
 from mypy.erasetype import remove_instance_last_known_values
 from mypy.literals import Key, extract_var_from_literal_hash, literal, literal_hash, subkeys
@@ -21,6 +21,7 @@ from mypy.options import Options
 from mypy.subtypes import is_same_type, is_subtype
 from mypy.typeops import make_simplified_union
 from mypy.types import (
+    IMPRECISE_ANYS,
     AnyType,
     Instance,
     NoneType,
@@ -42,9 +43,10 @@ from mypy.typevars import fill_typevars_with_any
 BindableExpression: _TypeAlias = IndexExpr | MemberExpr | NameExpr
 
 
-class CurrentType(NamedTuple):
-    type: Type
-    from_assignment: bool
+class CurrentType:
+    def __init__(self, type: Type, from_assignment: bool) -> None:
+        self.type: Final = type
+        self.from_assignment: Final = from_assignment
 
 
 class Frame:
@@ -56,7 +58,7 @@ class Frame:
     operations. It also records whether it is possible to reach that
     point at all.
 
-    We add a new frame wherenever there is a new scope or control flow
+    We add a new frame whenever there is a new scope or control flow
     branching.
 
     This information is not copied into a new Frame when it is pushed
@@ -199,8 +201,8 @@ class ConditionalTypeBinder:
 
         # If True, initial assignment to a simple variable (e.g. "x", but not "x.y")
         # is added to the binder. This allows more precise narrowing and more
-        # flexible inference of variable types (--allow-redefinition-new).
-        self.bind_all = options.allow_redefinition_new
+        # flexible inference of variable types (--allow-redefinition).
+        self.bind_all = options.allow_redefinition
 
         # This tracks any externally visible changes in binder to invalidate
         # expression caches when needed.
@@ -339,7 +341,7 @@ class ConditionalTypeBinder:
                 continue
 
             # Remove exact duplicates to save pointless work later, this is
-            # a micro-optimization for --allow-redefinition-new.
+            # a micro-optimization for --allow-redefinition.
             seen_types = set()
             resulting_types = []
             for rv in resulting_values:
@@ -498,8 +500,7 @@ class ConditionalTypeBinder:
             return
 
         p_declared = get_proper_type(declared_type)
-        p_type = get_proper_type(type)
-        if isinstance(p_type, AnyType):
+        if is_imprecise_any(type):
             # Any type requires some special casing, for both historical reasons,
             # and to optimise user experience without sacrificing correctness too much.
             if isinstance(expr, RefExpr) and isinstance(expr.node, Var) and expr.node.is_inferred:
@@ -642,7 +643,7 @@ def get_declaration(expr: BindableExpression) -> Type | None:
     if isinstance(expr, RefExpr):
         if isinstance(expr.node, Var):
             type = expr.node.type
-            if not isinstance(get_proper_type(type), PartialType):
+            if not isinstance(type, PartialType):
                 return type
         elif isinstance(expr.node, TypeInfo):
             return TypeType(fill_typevars_with_any(expr.node))
@@ -707,3 +708,14 @@ def collapse_variadic_union(typ: UnionType) -> Type:
     else:
         simplified = TupleType(prefix + [unpack] + suffix, fallback=last.partial_fallback)
     return UnionType.make_union([simplified] + other_items)
+
+
+def is_imprecise_any(tp: Type) -> bool:
+    """Is this an imprecise Any type?"""
+    tp = get_proper_type(tp)
+    if not isinstance(tp, AnyType):
+        return False
+    if tp.type_of_any == TypeOfAny.from_another_any:
+        assert tp.source_any is not None
+        tp = tp.source_any
+    return tp.type_of_any in IMPRECISE_ANYS

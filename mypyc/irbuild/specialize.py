@@ -30,6 +30,7 @@ from mypy.nodes import (
     MemberExpr,
     NameExpr,
     RefExpr,
+    SliceExpr,
     StrExpr,
     SuperExpr,
     TupleExpr,
@@ -41,6 +42,7 @@ from mypyc.ir.ops import (
     Call,
     Extend,
     Integer,
+    LoadErrorValue,
     PrimitiveDescription,
     RaiseStandardError,
     Register,
@@ -64,7 +66,9 @@ from mypyc.ir.rtypes import (
     int32_rprimitive,
     int64_rprimitive,
     int_rprimitive,
+    is_any_int,
     is_bool_rprimitive,
+    is_bytes_rprimitive,
     is_dict_rprimitive,
     is_fixed_width_rtype,
     is_float_rprimitive,
@@ -84,7 +88,7 @@ from mypyc.ir.rtypes import (
     string_writer_rprimitive,
     uint8_rprimitive,
 )
-from mypyc.irbuild.builder import IRBuilder
+from mypyc.irbuild.builder import IRBuilder, get_call_target_fullname
 from mypyc.irbuild.constant_fold import constant_fold_expr
 from mypyc.irbuild.for_helpers import (
     comprehension_helper,
@@ -99,8 +103,16 @@ from mypyc.irbuild.format_str_tokenizer import (
     join_formatted_strings,
     tokenizer_format_call,
 )
-from mypyc.irbuild.vec import vec_append, vec_pop, vec_remove
-from mypyc.primitives.bytearray_ops import isinstance_bytearray
+from mypyc.irbuild.vec import (
+    supports_vec_to_sequence,
+    vec_append,
+    vec_extend,
+    vec_pop,
+    vec_remove,
+    vec_to_list,
+    vec_to_tuple,
+)
+from mypyc.primitives.bytearray_ops import bytearray_from_bytes_slice_op, isinstance_bytearray
 from mypyc.primitives.bytes_ops import (
     bytes_adjust_index_op,
     bytes_get_item_unsafe_op,
@@ -133,7 +145,14 @@ from mypyc.primitives.librt_strings_ops import (
 )
 from mypyc.primitives.librt_vecs_ops import isinstance_vec
 from mypyc.primitives.list_ops import isinstance_list, new_list_set_item_op
-from mypyc.primitives.misc_ops import isinstance_bool
+from mypyc.primitives.misc_ops import (
+    isinstance_bool,
+    isinstance_complex,
+    isinstance_memoryview,
+    isinstance_range,
+    isinstance_slice,
+    isinstance_type,
+)
 from mypyc.primitives.set_ops import isinstance_frozenset, isinstance_set
 from mypyc.primitives.str_ops import (
     bytes_decode_ascii_strict,
@@ -198,7 +217,7 @@ def apply_function_specialization(
     builder: IRBuilder, expr: CallExpr, callee: RefExpr
 ) -> Value | None:
     """Invoke the Specializer callback for a function if one has been registered"""
-    return _apply_specialization(builder, expr, callee, callee.fullname)
+    return _apply_specialization(builder, expr, callee, get_call_target_fullname(callee))
 
 
 def apply_method_specialization(
@@ -331,6 +350,48 @@ def translate_len(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value 
 
 
 @specialize_function("builtins.list")
+def translate_vec_to_list(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value | None:
+    if len(expr.args) == 1 and expr.arg_kinds == [ARG_POS]:
+        arg_type = builder.node_type(expr.args[0])
+        if isinstance(arg_type, RVec) and supports_vec_to_sequence(arg_type):
+            vec = builder.accept(expr.args[0])
+            return vec_to_list(builder.builder, vec, expr.line)
+    return None
+
+
+@specialize_function("builtins.bytearray")
+def translate_bytearray_from_bytes_slice(
+    builder: IRBuilder, expr: CallExpr, callee: RefExpr
+) -> Value | None:
+    """Construct a bytearray from a bytes slice without an intermediate copy."""
+    if len(expr.args) != 1 or expr.arg_kinds != [ARG_POS]:
+        return None
+    arg = expr.args[0]
+    if not isinstance(arg, IndexExpr) or not is_bytes_rprimitive(builder.node_type(arg.base)):
+        return None
+    index = arg.index
+    if (
+        not isinstance(index, SliceExpr)
+        or index.stride is not None
+        or (index.begin_index is not None and not is_any_int(builder.node_type(index.begin_index)))
+        or (index.end_index is not None and not is_any_int(builder.node_type(index.end_index)))
+    ):
+        return None
+
+    obj = builder.accept(arg.base)
+    # Use the default-argument sentinel so subclass slicing still receives None.
+    if index.begin_index is None:
+        start = builder.add(LoadErrorValue(int_rprimitive, is_borrowed=True))
+    else:
+        start = builder.accept(index.begin_index)
+    if index.end_index is None:
+        end = builder.add(LoadErrorValue(int_rprimitive, is_borrowed=True))
+    else:
+        end = builder.accept(index.end_index)
+    return builder.primitive_op(bytearray_from_bytes_slice_op, [obj, start, end], expr.line)
+
+
+@specialize_function("builtins.list")
 def dict_methods_fast_path(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value | None:
     """Specialize a common case when list() is called on a dictionary
     view method call.
@@ -387,6 +448,16 @@ def translate_list_from_generator_call(
             empty_op_llbuilder=builder.builder.new_list_op_with_length,
             set_item_op=set_item,
         )
+    return None
+
+
+@specialize_function("builtins.tuple")
+def translate_vec_to_tuple(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value | None:
+    if len(expr.args) == 1 and expr.arg_kinds == [ARG_POS]:
+        arg_type = builder.node_type(expr.args[0])
+        if isinstance(arg_type, RVec) and supports_vec_to_sequence(arg_type):
+            vec = builder.accept(expr.args[0])
+            return vec_to_tuple(builder.builder, vec, expr.line)
     return None
 
 
@@ -676,14 +747,19 @@ isinstance_primitives: Final = {
     "builtins.bool": isinstance_bool,
     "builtins.bytearray": isinstance_bytearray,
     "builtins.bytes": isinstance_bytes,
+    "builtins.complex": isinstance_complex,
     "builtins.dict": isinstance_dict,
     "builtins.float": isinstance_float,
     "builtins.frozenset": isinstance_frozenset,
     "builtins.int": isinstance_int,
     "builtins.list": isinstance_list,
+    "builtins.memoryview": isinstance_memoryview,
+    "builtins.range": isinstance_range,
     "builtins.set": isinstance_set,
+    "builtins.slice": isinstance_slice,
     "builtins.str": isinstance_str,
     "builtins.tuple": isinstance_tuple,
+    "builtins.type": isinstance_type,
     "librt.vecs.vec": isinstance_vec,
 }
 
@@ -1517,6 +1593,19 @@ def translate_vec_append(builder: IRBuilder, expr: CallExpr, callee: RefExpr) ->
             vec_value = builder.accept(vec_arg)
             arg_value = builder.accept(item_arg)
             return vec_append(builder.builder, vec_value, arg_value, item_arg.line)
+    return None
+
+
+@specialize_function("librt.vecs.extend")
+def translate_vec_extend(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value | None:
+    if len(expr.args) == 2 and expr.arg_kinds == [ARG_POS, ARG_POS]:
+        vec_arg = expr.args[0]
+        iter_arg = expr.args[1]
+        vec_type = builder.node_type(vec_arg)
+        if isinstance(vec_type, RVec):
+            vec_value = builder.accept(vec_arg)
+            iter_value = builder.accept(iter_arg)
+            return vec_extend(builder.builder, vec_value, iter_value, iter_arg.line)
     return None
 
 

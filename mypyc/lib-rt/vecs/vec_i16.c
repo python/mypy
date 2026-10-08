@@ -1,4 +1,3 @@
-#ifdef MYPYC_EXPERIMENTAL
 #define VEC VecI16
 #define VEC_TYPE VecI16Type
 #define VEC_OBJECT VecI16Object
@@ -14,7 +13,7 @@
 #define BOX_ITEM VecI16_BoxItem
 #define UNBOX_ITEM VecI16_UnboxItem
 #define IS_UNBOX_ERROR VecI16_IsUnboxError
+#define BUFFER_FORMAT_CHAR_OK(c) ((c) == 'h')
+#define BUFFER_FORMAT "h"
 
 #include "vec_template.c"
-
-#endif  // MYPYC_EXPERIMENTAL

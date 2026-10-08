@@ -12,11 +12,19 @@ from mypyc.codegen.emit import (
     TracebackAndGotoHandler,
     c_array_initializer,
 )
-from mypyc.common import GENERATOR_ATTRIBUTE_PREFIX, HAVE_IMMORTAL, NATIVE_PREFIX, REG_PREFIX
+from mypyc.common import (
+    HAVE_IMMORTAL,
+    IS_FREE_THREADED,
+    NATIVE_PREFIX,
+    REG_PREFIX,
+    RUNNING_FIELD,
+    source_name_from_generator_attribute,
+)
 from mypyc.ir.class_ir import ClassIR
 from mypyc.ir.func_ir import FUNC_CLASSMETHOD, FUNC_STATICMETHOD, FuncDecl, FuncIR, all_values
 from mypyc.ir.ops import (
     ERR_FALSE,
+    NAMESPACE_MODULE,
     NAMESPACE_TYPE,
     Assign,
     AssignMulti,
@@ -83,13 +91,30 @@ from mypyc.ir.rtypes import (
     is_int_rprimitive,
     is_none_rprimitive,
     is_pointer_rprimitive,
+    is_simple_refcounted_pointer,
     is_tagged,
 )
 
+VEC_ITEMS_C_TYPE: Final = {
+    "VecI64": "int64_t *",
+    "VecI32": "int32_t *",
+    "VecI16": "int16_t *",
+    "VecU8": "uint8_t *",
+    "VecFloat": "double *",
+    "VecBool": "char *",
+    "VecT": "PyObject **",
+    "VecNested": "VecNestedBufItem *",
+    "VecNestedBufItem": "void *",
+}
+
 
 def native_function_type(fn: FuncIR, emitter: Emitter) -> str:
-    args = ", ".join(emitter.ctype(arg.type) for arg in fn.args) or "void"
-    ret = emitter.ctype(fn.ret_type)
+    return native_function_type_from_decl(fn.decl, emitter)
+
+
+def native_function_type_from_decl(decl: FuncDecl, emitter: Emitter) -> str:
+    args = ", ".join(emitter.ctype(arg.type) for arg in decl.sig.args) or "void"
+    ret = emitter.ctype(decl.sig.ret_type)
     return f"{ret} (*)({args})"
 
 
@@ -106,12 +131,18 @@ def native_function_header(fn: FuncDecl, emitter: Emitter) -> str:
 
 
 def generate_native_function(
-    fn: FuncIR, emitter: Emitter, source_path: str, module_name: str
+    fn: FuncIR,
+    emitter: Emitter,
+    source_path: str,
+    module_name: str,
+    running_flag_class: ClassIR | None = None,
 ) -> None:
     declarations = Emitter(emitter.context)
     names = generate_names_for_ir(fn.arg_regs, fn.blocks)
     body = Emitter(emitter.context, names)
-    visitor = FunctionEmitterVisitor(body, declarations, source_path, module_name)
+    visitor = FunctionEmitterVisitor(
+        body, declarations, source_path, module_name, running_flag_class
+    )
 
     declarations.emit_line(f"{native_function_header(fn.decl, emitter)} {{")
     body.indent()
@@ -160,6 +191,10 @@ def generate_native_function(
             if not is_next_block or is_problematic_op:
                 fn.blocks[target.label].referenced = True
 
+    if running_flag_class is not None:
+        # Place this before all labels so it runs on resume, but not on internal jumps.
+        visitor.emit_claim_running_flag(fn)
+
     common = frequently_executed_blocks(fn.blocks[0])
 
     for i in range(len(blocks)):
@@ -186,13 +221,21 @@ def generate_native_function(
 
 class FunctionEmitterVisitor(OpVisitor[None]):
     def __init__(
-        self, emitter: Emitter, declarations: Emitter, source_path: str, module_name: str
+        self,
+        emitter: Emitter,
+        declarations: Emitter,
+        source_path: str,
+        module_name: str,
+        running_flag_class: ClassIR | None = None,
     ) -> None:
         self.emitter = emitter
         self.names = emitter.names
         self.declarations = declarations
         self.source_path = source_path
         self.module_name = module_name
+        # Set while emitting a generator helper protected by its running flag.
+        self.running_flag_class = running_flag_class
+        self.running_flag_ptr: str | None = None
         self.literals = emitter.context.literals
         self.rare = False
         # Next basic block to be processed after the current one (if any), set by caller
@@ -268,8 +311,28 @@ class FunctionEmitterVisitor(OpVisitor[None]):
 
             self.emit_lines("} else", "    goto %s;" % self.label(false))
 
+    def emit_claim_running_flag(self, fn: FuncIR) -> None:
+        """Claim the generator's running flag or raise ValueError."""
+        cl = self.running_flag_class
+        assert cl is not None
+        struct = cl.struct_name(self.names)
+        self_str = self.reg(fn.arg_regs[0])
+        self.running_flag_ptr = f"&(({struct} *){self_str})->{RUNNING_FIELD}"
+        flag = self.running_flag_ptr
+        is_coroutine = 1 if cl.has_method("__await__") else 0
+        self.emit_line(f"if (unlikely(!CPyGen_TryEnter({flag}))) {{")
+        self.emit_line(f"return CPyGen_AlreadyExecutingError({is_coroutine});")
+        self.emit_line("}")
+
+    def emit_release_running_flag(self) -> None:
+        """Release the flag; every helper exit is represented by Return."""
+        assert self.running_flag_ptr is not None
+        self.emit_line(f"CPyGen_Exit({self.running_flag_ptr});")
+
     def visit_return(self, op: Return) -> None:
         value_str = self.reg(op.value)
+        if self.running_flag_class is not None:
+            self.emit_release_running_flag()
         self.emit_line("return %s;" % value_str)
 
     def visit_tuple_set(self, op: TupleSet) -> None:
@@ -344,6 +407,11 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         classes, and *(obj + attr_offset) for attributes defined by traits. We also
         insert all necessary C casts here.
         """
+        # The struct cast below needs the defining group's __native.h
+        # included by the consuming .c file. Record both the receiver
+        # and declaring classes as cross-group deps.
+        self.emitter.register_group_dep(op.class_type.class_ir)
+        self.emitter.register_group_dep(decl_cl)
         cast = f"({op.class_type.struct_name(self.emitter.names)} *)"
         if decl_cl.is_trait and op.class_type.class_ir.is_trait:
             # For pure trait access find the offset first, offsets
@@ -373,6 +441,46 @@ class FunctionEmitterVisitor(OpVisitor[None]):
                 cast = f"({decl_cl.struct_name(self.emitter.names)} *)"
             return f"({cast}{obj})->{self.emitter.attr(op.attr)}"
 
+    def emit_load_attr_take_ref(
+        self, dest: str, obj: str, op: GetAttr, cl: ClassIR, attr_rtype: RType, attr_expr: str
+    ) -> bool:
+        """Emit the load of a native attribute into 'dest', taking a new reference.
+
+        On free-threaded builds, reading a single reference-counted 'PyObject *' field
+        and taking a new reference must be synchronized to avoid a use-after-free race
+        with a concurrent setter. CPy_GetAttrRef uses an optimistic validated incref
+        with a locked fallback and returns a new reference (or NULL if undefined, which
+        on a free-threaded build includes an attribute deleted by another thread while
+        the read was in flight), so callers must NOT emit a separate inc_ref. Return
+        True in that case so the caller can skip it.
+
+        Final attributes are never rebound (no setter), so there is no concurrent writer
+        and no use-after-free window; an owned read uses the cheaper CPy_GetAttrRefFinal
+        (a plain load + incref). Borrowed reads keep the plain load: they are only emitted
+        when safe on free-threaded builds, either for Final and vec attributes in
+        transform_member_expr in irbuild or for private generator-frame attributes proven
+        safe by borrow_generator_attrs. The default (GIL) build always takes the plain-load
+        path and increfs separately.
+
+        Thread-confined attributes also use plain loads; see
+        ClassIR.attrs_are_thread_confined.
+        """
+        use_get_attr_ref = (
+            IS_FREE_THREADED
+            and is_simple_refcounted_pointer(attr_rtype)
+            and not op.is_borrowed
+            and not cl.attrs_are_thread_confined()
+        )
+        if use_get_attr_ref and cl.is_final_attr(op.attr):
+            self.emitter.emit_line(f"{dest} = CPy_GetAttrRefFinal((PyObject **)&{attr_expr});")
+        elif use_get_attr_ref:
+            self.emitter.emit_line(
+                f"{dest} = CPy_GetAttrRef((PyObject *){obj}, (PyObject **)&{attr_expr});"
+            )
+        else:
+            self.emitter.emit_line(f"{dest} = {attr_expr};")
+        return use_get_attr_ref
+
     def visit_get_attr(self, op: GetAttr) -> None:
         if op.allow_error_value:
             self.get_attr_with_allow_error_value(op)
@@ -382,10 +490,12 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         rtype = op.class_type
         cl = rtype.class_ir
         attr_rtype, decl_cl = cl.attr_details(op.attr)
+        source_attr_name = source_name_from_generator_attribute(op.attr, decl_cl.fullname)
         prefer_method = cl.is_trait and attr_rtype.error_overlap
         if cl.get_method(op.attr, prefer_method=prefer_method):
-            # Properties are essentially methods, so use vtable access for them.
-            if cl.is_method_final(op.attr):
+            # Properties are essentially methods, so use vtable access for them
+            # (except for non-ext classes, which have no vtable — see emit_method_call).
+            if not cl.is_ext_class or cl.is_method_final(op.attr):
                 self.emit_method_call(f"{dest} = ", op.obj, op.attr, [])
             else:
                 version = "_TRAIT" if cl.is_trait else ""
@@ -405,7 +515,9 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         else:
             # Otherwise, use direct or offset struct access.
             attr_expr = self.get_attr_expr(obj, op, decl_cl)
-            self.emitter.emit_line(f"{dest} = {attr_expr};")
+            use_get_attr_ref = self.emit_load_attr_take_ref(
+                dest, obj, op, cl, attr_rtype, attr_expr
+            )
             always_defined = cl.is_always_defined(op.attr)
             merged_branch = None
             if not always_defined:
@@ -422,7 +534,7 @@ class FunctionEmitterVisitor(OpVisitor[None]):
                     ):
                         # Generate code for the following branch here to avoid
                         # redundant branches in the generated code.
-                        self.emit_attribute_error(branch, cl.name, op.attr)
+                        self.emit_attribute_error(branch, cl.name, source_attr_name)
                         self.emit_line("goto %s;" % self.label(branch.true))
                         merged_branch = branch
                         self.emitter.emit_line("}")
@@ -430,13 +542,11 @@ class FunctionEmitterVisitor(OpVisitor[None]):
                     exc_class = "PyExc_AttributeError"
                     self.emitter.emit_line(
                         'PyErr_SetString({}, "attribute {} of {} undefined");'.format(
-                            exc_class,
-                            repr(op.attr.removeprefix(GENERATOR_ATTRIBUTE_PREFIX)),
-                            repr(cl.name),
+                            exc_class, repr(source_attr_name), repr(cl.name)
                         )
                     )
 
-            if attr_rtype.is_refcounted and not op.is_borrowed:
+            if attr_rtype.is_refcounted and not op.is_borrowed and not use_get_attr_ref:
                 if not merged_branch and not always_defined:
                     self.emitter.emit_line("} else {")
                 self.emitter.emit_inc_ref(dest, attr_rtype)
@@ -458,16 +568,20 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         cl = rtype.class_ir
         attr_rtype, decl_cl = cl.attr_details(op.attr)
 
-        # Direct struct access without NULL check
         attr_expr = self.get_attr_expr(obj, op, decl_cl)
-        self.emitter.emit_line(f"{dest} = {attr_expr};")
-
-        # Only emit inc_ref if not NULL
-        if attr_rtype.is_refcounted and not op.is_borrowed:
-            check = self.error_value_check(op, "!=")
-            self.emitter.emit_line(f"if ({check}) {{")
-            self.emitter.emit_inc_ref(dest, attr_rtype)
-            self.emitter.emit_line("}")
+        # On free-threaded builds this takes a new reference atomically (see
+        # emit_load_attr_take_ref). CPy_GetAttrRef returns NULL when the field is
+        # undefined, which is precisely the error value here, so the "NULL without
+        # AttributeError" behavior is preserved (this op has error_kind ERR_NEVER).
+        # is_simple_refcounted_pointer excludes tuples/vecs, so error_value_check's
+        # special cases only matter on the plain-load path (where no ref was taken).
+        if not self.emit_load_attr_take_ref(dest, obj, op, cl, attr_rtype, attr_expr):
+            # Only emit inc_ref if not NULL
+            if attr_rtype.is_refcounted and not op.is_borrowed:
+                check = self.error_value_check(op, "!=")
+                self.emitter.emit_line(f"if ({check}) {{")
+                self.emitter.emit_inc_ref(dest, attr_rtype)
+                self.emitter.emit_line("}")
 
     def next_branch(self) -> Branch | None:
         if self.op_index + 1 < len(self.ops):
@@ -484,7 +598,7 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         rtype = op.class_type
         cl = rtype.class_ir
         attr_rtype, decl_cl = cl.attr_details(op.attr)
-        if op.is_propset:
+        if op.propset is not None:
             # Again, use vtable access for properties...
             assert not op.is_init and op.error_kind == ERR_FALSE, "%s %d %d %s" % (
                 op.attr,
@@ -493,20 +607,43 @@ class FunctionEmitterVisitor(OpVisitor[None]):
                 rtype,
             )
             version = "_TRAIT" if cl.is_trait else ""
+            ret_type = op.propset.sig.ret_type
+            c_ret_type = self.emitter.ctype(ret_type)
+            tmp = self.temp_name()
             self.emit_line(
-                "%s = CPY_SET_ATTR%s(%s, %s, %d, %s, %s, %s); /* %s */"
+                "%s %s = CPY_SET_ATTR%s(%s, %s, %d, %s, %s, %s, %s); /* %s */"
                 % (
-                    dest,
+                    c_ret_type,
+                    tmp,
                     version,
                     obj,
                     self.emitter.type_struct_name(rtype.class_ir),
                     rtype.setter_index(op.attr),
                     src,
                     rtype.struct_name(self.names),
-                    self.ctype(rtype.attr_type(op.attr)),
+                    self.ctype(op.propset.sig.args[1].type),
+                    c_ret_type,
                     op.attr,
                 )
             )
+            self.emit_line(f"{dest} = 1;")
+            self.emitter.emit_error_check(tmp, ret_type, f"{dest} = 0;")
+        elif (
+            IS_FREE_THREADED
+            and is_simple_refcounted_pointer(attr_rtype)
+            and not cl.attrs_are_thread_confined()
+        ):
+            # These helpers implement free-threaded attribute stores and steal src.
+            attr_expr = self.get_attr_expr(obj, op, decl_cl)
+            if op.is_init:
+                # Initialization happens before self can escape.
+                self.emitter.emit_line(f"CPy_InitAttrRef((PyObject **)&{attr_expr}, {src});")
+            else:
+                self.emitter.emit_line(
+                    f"CPy_SetAttrRef((PyObject *){obj}, (PyObject **)&{attr_expr}, {src});"
+                )
+            if op.error_kind == ERR_FALSE:
+                self.emitter.emit_line(f"{dest} = 1;")
         else:
             # ...and struct access for normal attributes.
             attr_expr = self.get_attr_expr(obj, op, decl_cl)
@@ -537,6 +674,8 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         name = self.emitter.static_name(op.identifier, op.module_name, prefix)
         if op.namespace == NAMESPACE_TYPE:
             name = "(PyObject *)%s" % name
+        elif op.namespace == NAMESPACE_MODULE:
+            name = f"CPyImport_GetModuleCache(&{name})"
         self.emit_line(f"{dest} = {name};", ann=op.ann)
 
     def visit_init_static(self, op: InitStatic) -> None:
@@ -552,7 +691,7 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         dest = self.reg(op)
         src = self.reg(op.src)
         self.emit_line(f"{dest} = {src}.f{op.index};")
-        if not op.is_borrowed:
+        if not op.is_borrowed and op.type.is_refcounted:
             self.emit_inc_ref(dest, op.type)
 
     def get_dest_assign(self, dest: Value) -> str:
@@ -579,26 +718,30 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         rtype = op_obj.type
         assert isinstance(rtype, RInstance), rtype
         class_ir = rtype.class_ir
-        method = rtype.class_ir.get_method(name)
-        assert method is not None
+        # Use method_decl (not get_method) because under separate compilation the
+        # FuncIR body may live in a different group — only its declaration is
+        # visible here, and a decl is all we need to emit a direct C call
+        # (the symbol resolves through that group's exports table).
+        method_decl = rtype.class_ir.method_decl(name)
 
-        # Can we call the method directly, bypassing vtable?
-        is_direct = class_ir.is_method_final(name)
+        # Can we call the method directly, bypassing vtable? Non-extension classes
+        # don't have a vtable (compute_vtable is skipped for them), so the only
+        # way to dispatch is a direct C call.
+        is_direct = not class_ir.is_ext_class or class_ir.is_method_final(name)
 
         # The first argument gets omitted for static methods and
         # turned into the class for class methods
         obj_args = (
             []
-            if method.decl.kind == FUNC_STATICMETHOD
-            else [f"(PyObject *)Py_TYPE({obj})"] if method.decl.kind == FUNC_CLASSMETHOD else [obj]
+            if method_decl.kind == FUNC_STATICMETHOD
+            else [f"(PyObject *)Py_TYPE({obj})"] if method_decl.kind == FUNC_CLASSMETHOD else [obj]
         )
         args = ", ".join(obj_args + [self.reg(arg) for arg in op_args])
-        mtype = native_function_type(method, self.emitter)
+        mtype = native_function_type_from_decl(method_decl, self.emitter)
         version = "_TRAIT" if rtype.class_ir.is_trait else ""
         if is_direct:
             # Directly call method, without going through the vtable.
-            lib = self.emitter.get_group_prefix(method.decl)
-            self.emit_line(f"{dest}{lib}{NATIVE_PREFIX}{method.cname(self.names)}({args});")
+            self.emit_line(f"{dest}{self.emitter.native_function_call(method_decl)}({args});")
         else:
             # Call using vtable.
             method_idx = rtype.method_index(name)
@@ -785,7 +928,7 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         # TODO: we shouldn't dereference to type that are pointer type so far
         type = self.ctype(op.type)
         self.emit_line(f"{dest} = *({type} *){src};")
-        if not op.is_borrowed:
+        if not op.is_borrowed and op.type.is_refcounted:
             self.emit_inc_ref(dest, op.type)
 
     def visit_set_mem(self, op: SetMem) -> None:
@@ -820,8 +963,8 @@ class FunctionEmitterVisitor(OpVisitor[None]):
 
     def visit_set_element(self, op: SetElement) -> None:
         dest = self.reg(op)
-        item = self.reg(op.item)
         field = op.field
+        item = self.set_element_item(op.src.type, field, self.reg(op.item))
         if isinstance(op.src, Undef):
             # First assignment to an undefined struct is trivial.
             self.emit_line(f"{dest}.{field} = {item};")
@@ -834,7 +977,7 @@ class FunctionEmitterVisitor(OpVisitor[None]):
             # TODO: Support tuples (or use RStruct for tuples)?
             src = self.reg(op.src)
             src_type = op.src.type
-            assert isinstance(src_type, RStruct), src_type
+            assert isinstance(src_type, (RStruct, RVec)), src_type
             init_items = []
             for n in src_type.names:
                 if n != field:
@@ -842,6 +985,11 @@ class FunctionEmitterVisitor(OpVisitor[None]):
                 else:
                     init_items.append(item)
             self.emit_line(f"{dest} = ({self.ctype(src_type)}) {{ {', '.join(init_items)} }};")
+
+    def set_element_item(self, src_type: RType, field: str, item: str) -> str:
+        if field == "items" and src_type._ctype in VEC_ITEMS_C_TYPE:
+            return f"({VEC_ITEMS_C_TYPE[src_type._ctype]}){item}"
+        return item
 
     def visit_load_address(self, op: LoadAddress) -> None:
         typ = op.type
@@ -930,7 +1078,7 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         if op.traceback_entry is not None:
             self.emitter.emit_traceback(self.source_path, self.module_name, op.traceback_entry)
 
-    def emit_attribute_error(self, op: Branch, class_name: str, attr: str) -> None:
+    def emit_attribute_error(self, op: Branch, class_name: str, source_attr_name: str) -> None:
         assert op.traceback_entry is not None
         if self.emitter.context.strict_traceback_checks:
             assert (
@@ -943,7 +1091,7 @@ class FunctionEmitterVisitor(OpVisitor[None]):
                 self.source_path.replace("\\", "\\\\"),
                 op.traceback_entry[0],
                 class_name,
-                attr.removeprefix(GENERATOR_ATTRIBUTE_PREFIX),
+                source_attr_name,
                 op.traceback_entry[1],
                 globals_static,
             )

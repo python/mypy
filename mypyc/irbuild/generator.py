@@ -13,7 +13,12 @@ from __future__ import annotations
 from collections.abc import Callable
 
 from mypy.nodes import ARG_OPT, FuncDef, Var
-from mypyc.common import ENV_ATTR_NAME, GENERATOR_ATTRIBUTE_PREFIX, NEXT_LABEL_ATTR_NAME
+from mypyc.common import (
+    ENV_ATTR_NAME,
+    GENERATOR_ATTRIBUTE_PREFIX,
+    GENERATOR_HELPER_NAME,
+    NEXT_LABEL_ATTR_NAME,
+)
 from mypyc.ir.class_ir import ClassIR
 from mypyc.ir.func_ir import FuncDecl, FuncIR
 from mypyc.ir.ops import (
@@ -21,8 +26,10 @@ from mypyc.ir.ops import (
     BasicBlock,
     Branch,
     Call,
+    GetAttr,
     Goto,
     Integer,
+    LoadErrorValue,
     MethodCall,
     RaiseStandardError,
     Register,
@@ -41,16 +48,15 @@ from mypyc.ir.rtypes import (
 from mypyc.irbuild.builder import IRBuilder, calculate_arg_defaults, gen_arg_defaults
 from mypyc.irbuild.context import FuncInfo
 from mypyc.irbuild.env_class import (
-    add_args_to_env,
+    add_generator_args,
     add_vars_to_env,
     finalize_env_class,
     load_env_registers,
-    load_outer_env,
     load_outer_envs,
     setup_func_for_recursive_call,
 )
-from mypyc.irbuild.nonlocalcontrol import ExceptNonlocalControl
-from mypyc.irbuild.prepare import GENERATOR_HELPER_NAME
+from mypyc.irbuild.nonlocalcontrol import ExceptNonlocalControl, gen_generator_func_cleanup
+from mypyc.irbuild.targets import AssignmentTargetAttr
 from mypyc.primitives.exc_ops import (
     error_catch_op,
     exc_matches_op,
@@ -73,10 +79,11 @@ def gen_generator_func(
     if builder.fn_info.can_merge_generator_and_env_classes():
         gen = instantiate_generator_class(builder)
         builder.fn_info._curr_env_reg = gen
-        finalize_env_class(builder, prefix=GENERATOR_ATTRIBUTE_PREFIX)
+        env_reg = finalize_env_class(builder, add_args=False)
     else:
-        finalize_env_class(builder, prefix=GENERATOR_ATTRIBUTE_PREFIX)
+        env_reg = finalize_env_class(builder, add_args=False)
         gen = instantiate_generator_class(builder)
+    add_generator_args(builder, gen, env_reg, reassign=True)
     builder.add(Return(gen))
 
     args, _, blocks, ret_type, fn_info = builder.leave()
@@ -107,6 +114,8 @@ def gen_generator_func_body(builder: IRBuilder, fn_info: FuncInfo, func_reg: Val
         setup_func_for_recursive_call(
             builder, fitem, builder.fn_info.generator_class, prefix=GENERATOR_ATTRIBUTE_PREFIX
         )
+    cleanup_on_error = BasicBlock()
+    builder.builder.push_error_handler(cleanup_on_error)
     create_switch_for_generator_class(builder)
     add_raise_exception_blocks_to_generator_class(builder, fitem.line)
 
@@ -114,6 +123,11 @@ def gen_generator_func_body(builder: IRBuilder, fn_info: FuncInfo, func_reg: Val
 
     builder.accept(fitem.body)
     builder.maybe_add_implicit_return()
+    builder.builder.pop_error_handler()
+
+    builder.activate_block(cleanup_on_error)
+    gen_generator_func_cleanup(builder, fitem.line)
+    builder.add(Return(builder.add(LoadErrorValue(object_rprimitive))))
 
     populate_switch_for_generator_class(builder)
 
@@ -134,11 +148,7 @@ def instantiate_generator_class(builder: IRBuilder) -> Value:
     fitem = builder.fn_info.fitem
     generator_reg = builder.add(Call(builder.fn_info.generator_class.ir.ctor, [], fitem.line))
 
-    if builder.fn_info.can_merge_generator_and_env_classes():
-        # Set the generator instance to the initial state (zero).
-        zero = Integer(0)
-        builder.add(SetAttr(generator_reg, NEXT_LABEL_ATTR_NAME, zero, fitem.line))
-    else:
+    if not builder.fn_info.can_merge_generator_and_env_classes():
         # Get the current environment register. If the current function is nested, then the
         # generator class gets instantiated from the callable class' '__call__' method, and hence
         # we use the callable class' environment register. Otherwise, we use the original
@@ -152,9 +162,10 @@ def instantiate_generator_class(builder: IRBuilder) -> Value:
         # defined in the current scope.
         builder.add(SetAttr(generator_reg, ENV_ATTR_NAME, curr_env_reg, fitem.line))
 
-        # Set the generator instance's environment to the initial state (zero).
-        zero = Integer(0)
-        builder.add(SetAttr(curr_env_reg, NEXT_LABEL_ATTR_NAME, zero, fitem.line))
+    # The continuation label is private generator state even when captured source variables
+    # require a separate environment.
+    zero = Integer(0)
+    builder.add(SetAttr(generator_reg, NEXT_LABEL_ATTR_NAME, zero, fitem.line))
     return generator_reg
 
 
@@ -162,10 +173,18 @@ def setup_generator_class(builder: IRBuilder) -> ClassIR:
     mapper = builder.mapper
     assert isinstance(builder.fn_info.fitem, FuncDef), builder.fn_info.fitem
     generator_class_ir = mapper.fdef_to_generator[builder.fn_info.fitem]
+    generator_class_ir.has_running_flag = True
+    generator_class_ir.has_private_generator_frame = True
     if builder.fn_info.can_merge_generator_and_env_classes():
         builder.fn_info.env_class = generator_class_ir
     else:
         generator_class_ir.attributes[ENV_ATTR_NAME] = RInstance(builder.fn_info.env_class)
+        if not builder.fn_info.fitem.is_coroutine:
+            # The helper loads generator.__mypyc_env__ before terminal dispatch, so an exhausted
+            # generator still needs the link on subsequent __next__() calls.
+            # Coroutines can't be resumed after completion, so keeping the environment alive
+            # there would just extend local lifetimes unnecessarily.
+            generator_class_ir.attrs_to_keep_alive_on_completion.add(ENV_ATTR_NAME)
 
     builder.classes.append(generator_class_ir)
     return generator_class_ir
@@ -243,7 +262,9 @@ def add_helper_to_generator_class(
     )
     fn_info.generator_class.ir.methods[GENERATOR_HELPER_NAME] = helper_fn_ir
     builder.functions.append(helper_fn_ir)
-    fn_info.env_class.env_user_function = helper_fn_ir
+    # Compiler-generated values live on the private generator frame even if source-level
+    # captured variables require a separate environment.
+    fn_info.generator_class.ir.env_user_function = helper_fn_ir
 
     return helper_fn_decl
 
@@ -416,23 +437,22 @@ def setup_env_for_generator_class(builder: IRBuilder) -> None:
     cls.stop_iter_value_reg = stop_iter_value_arg
 
     cls.self_reg = builder.read(self_target, fitem.line)
+
+    # The continuation label identifies where execution resumes when the generator is next
+    # advanced. Only the serialized generator helper accesses it, so keep it on the private
+    # generator frame instead of a potentially shared closure environment.
+    cls.ir.attributes[NEXT_LABEL_ATTR_NAME] = int32_rprimitive
+    cls.ir.attrs_with_defaults.add(NEXT_LABEL_ATTR_NAME)
+    next_label_target = AssignmentTargetAttr(cls.self_reg, NEXT_LABEL_ATTR_NAME)
+    cls.next_label_target = builder.add_target(Var(NEXT_LABEL_ATTR_NAME), next_label_target)
+
     if builder.fn_info.can_merge_generator_and_env_classes():
         cls.curr_env_reg = cls.self_reg
     else:
-        cls.curr_env_reg = load_outer_env(builder, cls.self_reg, builder.symtables[-1])
+        cls.curr_env_reg = builder.add(GetAttr(cls.self_reg, ENV_ATTR_NAME, fitem.line))
 
-    # Define a variable representing the label to go to the next time
-    # the '__next__' function of the generator is called, and add it
-    # as an attribute to the environment class.
-    cls.next_label_target = builder.add_var_to_env_class(
-        Var(NEXT_LABEL_ATTR_NAME), int32_rprimitive, cls, reassign=False, always_defined=True
-    )
-
-    # Add arguments from the original generator function to the
-    # environment of the generator class.
-    add_args_to_env(
-        builder, local=False, base=cls, reassign=False, prefix=GENERATOR_ATTRIBUTE_PREFIX
-    )
+    # Add arguments from the original generator function to their selected storage objects.
+    add_generator_args(builder, cls.self_reg, cls.curr_env_reg, reassign=False)
 
     # Set the next label register for the generator class.
     cls.next_label_reg = builder.read(cls.next_label_target, fitem.line)

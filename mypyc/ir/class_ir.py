@@ -7,7 +7,7 @@ from typing import NamedTuple
 from mypyc.common import PROPSET_PREFIX, JsonDict
 from mypyc.ir.func_ir import FuncDecl, FuncIR, FuncSignature, RuntimeArg
 from mypyc.ir.ops import DeserMaps, Value
-from mypyc.ir.rtypes import RInstance, RType, deserialize_type, object_rprimitive
+from mypyc.ir.rtypes import RInstance, RType, c_int_rprimitive, deserialize_type, object_rprimitive
 from mypyc.namegen import NameGenerator, exported_name
 
 # Some notes on the vtable layout: Each concrete class has a vtable
@@ -105,6 +105,10 @@ class ClassIR:
         # An augmented class has additional methods separate from what mypyc generates.
         # Right now the only one is dataclasses.
         self.is_augmented = False
+        # Does this (non-extension) class have class decorators other than the ones native
+        # classes support? These can replace the class with an arbitrary object, such as a
+        # functools.cache wrapper, so the name of the class may not refer to the class.
+        self.is_decorated = False
         # Does this inherit from a Python class?
         self.inherits_python = False
         # Do instances of this class have __dict__?
@@ -143,8 +147,30 @@ class ClassIR:
             module_name,
             FuncSignature([RuntimeArg("type", object_rprimitive)], RInstance(self)),
         )
+        self.clear = FuncDecl(
+            name + "_clear",
+            None,
+            module_name,
+            FuncSignature([RuntimeArg("self", RInstance(self))], c_int_rprimitive),
+            internal=True,
+        )
+        self.clear_on_completion = FuncDecl(
+            name + "_clear_on_completion",
+            None,
+            module_name,
+            FuncSignature([RuntimeArg("self", RInstance(self))], c_int_rprimitive),
+            internal=True,
+        )
         # Attributes defined in the class (not inherited)
         self.attributes: dict[str, RType] = {}
+        # Attributes that must survive generator/coroutine completion because
+        # escaped nested functions may still read them as closure variables.
+        self.attrs_to_keep_alive_on_completion: set[str] = set()
+        # Final attributes initialized in the __init__ method (not inherited)
+        self.final_attributes: set[str] = set()
+        # Final attributes defined in class body as "X: Final = <value>" (not inherited).
+        # They get no slot in the instance struct. The value lives in a module-level static.
+        self.class_final_attributes: dict[str, RType] = {}
         # Deletable attributes
         self.deletable: list[str] = []
         # We populate method_types with the signatures of every method before
@@ -211,7 +237,8 @@ class ClassIR:
         # value of an attribute is the same as the error value.
         self.bitmap_attrs: list[str] = []
 
-        # If this is a generator environment class, what is the actual method for it
+        # If this class owns a generator helper's compiler-generated spill slots, what is the
+        # actual helper method for it.
         self.env_user_function: FuncIR | None = None
 
         # If True, keep one freed, cleared instance available for immediate reuse to
@@ -230,6 +257,14 @@ class ClassIR:
 
         # Name of the function if this a callable class representing a coroutine.
         self.coroutine_name: str | None = None
+
+        # Does this generator or coroutine helper serialize execution using an instance flag?
+        self.has_running_flag = False
+
+        # Are this generator object's implementation attributes only accessed while its
+        # running flag is held (or before publication/during destruction)? This also applies
+        # when captured source variables live in a separate environment object.
+        self.has_private_generator_frame = False
 
     def __repr__(self) -> str:
         return (
@@ -267,6 +302,60 @@ class ClassIR:
     def attr_type(self, name: str) -> RType:
         return self.attr_details(name)[0]
 
+    def is_final_attr(self, name: str) -> bool:
+        """Is the (possibly inherited) attribute Final, i.e. never rebound?
+
+        A Final attribute is read-only at runtime (it has no setter) and is assigned
+        exactly once during construction, so it can never be reassigned afterwards.
+        This makes it safe to borrow on free-threaded builds (no concurrent store can
+        invalidate a borrowed reference) and lets reads skip the concurrent-writer
+        guard. Returns False for properties and for attributes this class doesn't have.
+        """
+        for ir in self.mro:
+            if name in ir.attributes:
+                return name in ir.final_attributes
+            if name in ir.property_types:
+                return False
+        return False
+
+    @property
+    def needs_getseters_table(self) -> bool:
+        """Do we generate a tp_getset table exposing the attributes to Python?"""
+        return self.needs_getseters or not self.is_generated or self.has_dict
+
+    def attrs_are_thread_confined(self) -> bool:
+        """Can these attributes safely use plain access in free-threaded builds?
+
+        This requires the attributes to belong to a private generator frame, execution to
+        be serialized by its running flag, and no Python getseters exposing the attributes.
+        Captured locals in a separate environment don't qualify, since nested functions may
+        access them independently.
+        """
+        return (
+            self.has_private_generator_frame
+            and self.has_running_flag
+            and not self.needs_getseters_table
+        )
+
+    def class_final_attr_details(self, name: str) -> tuple[RType, ClassIR] | None:
+        """Look up a (possibly inherited) class-body Final attribute.
+
+        Returns the attribute type and the class that defines it, or None if this
+        class has no such attribute. The defining class is what identifies the
+        static holding the value, so callers need it to build the static's name.
+
+        Deliberately kept out of attr_details()/has_attr(): these attributes have no
+        instance slot, so callers that want to read or write one must not treat them
+        as ordinary attributes.
+        """
+        for ir in self.mro:
+            if name in ir.class_final_attributes:
+                return ir.class_final_attributes[name], ir
+            if name in ir.attributes or name in ir.property_types:
+                # Shadowed by a real attribute or property closer in the MRO.
+                return None
+        return None
+
     def method_decl(self, name: str) -> FuncDecl:
         for ir in self.mro:
             if name in ir.method_decls:
@@ -284,12 +373,21 @@ class ClassIR:
         return True
 
     def is_method_final(self, name: str) -> bool:
+        method_decl: FuncDecl | None = None
+        try:
+            method_decl = self.method_decl(name)
+        except KeyError:
+            pass
+        # A declared @final method cannot be overridden in checked code. Trust
+        # this even when interpreted subclasses cannot be enumerated.
+        if method_decl is not None and method_decl.is_final:
+            return True
+
         subs = self.subclasses()
         if subs is None:
             return self.is_final_class
 
-        if self.has_method(name):
-            method_decl = self.method_decl(name)
+        if method_decl is not None:
             for subc in subs:
                 if subc.method_decl(name) != method_decl:
                     return False
@@ -386,6 +484,7 @@ class ClassIR:
             "is_abstract": self.is_abstract,
             "is_generated": self.is_generated,
             "is_augmented": self.is_augmented,
+            "is_decorated": self.is_decorated,
             "is_final_class": self.is_final_class,
             "inherits_python": self.inherits_python,
             "has_dict": self.has_dict,
@@ -394,8 +493,15 @@ class ClassIR:
             "_serializable": self._serializable,
             "builtin_base": self.builtin_base,
             "ctor": self.ctor.serialize(),
+            "clear": self.clear.serialize(),
+            "clear_on_completion": self.clear_on_completion.serialize(),
             # We serialize dicts as lists to ensure order is preserved
             "attributes": [(k, t.serialize()) for k, t in self.attributes.items()],
+            "attrs_to_keep_alive_on_completion": sorted(self.attrs_to_keep_alive_on_completion),
+            "final_attributes": sorted(self.final_attributes),
+            "class_final_attributes": [
+                (k, t.serialize()) for k, t in self.class_final_attributes.items()
+            ],
             # We try to serialize a name reference, but if the decl isn't in methods
             # then we can't be sure that will work so we serialize the whole decl.
             "method_decls": [
@@ -431,6 +537,8 @@ class ClassIR:
             "init_self_leak": self.init_self_leak,
             "env_user_function": self.env_user_function.id if self.env_user_function else None,
             "reuse_freed_instance": self.reuse_freed_instance,
+            "has_running_flag": self.has_running_flag,
+            "has_private_generator_frame": self.has_private_generator_frame,
             "is_acyclic": self.is_acyclic,
             "is_enum": self.is_enum,
             "is_coroutine": self.coroutine_name,
@@ -447,6 +555,7 @@ class ClassIR:
         ir.is_abstract = data["is_abstract"]
         ir.is_ext_class = data["is_ext_class"]
         ir.is_augmented = data["is_augmented"]
+        ir.is_decorated = data["is_decorated"]
         ir.is_final_class = data["is_final_class"]
         ir.inherits_python = data["inherits_python"]
         ir.has_dict = data["has_dict"]
@@ -455,7 +564,14 @@ class ClassIR:
         ir._serializable = data["_serializable"]
         ir.builtin_base = data["builtin_base"]
         ir.ctor = FuncDecl.deserialize(data["ctor"], ctx)
+        ir.clear = FuncDecl.deserialize(data["clear"], ctx)
+        ir.clear_on_completion = FuncDecl.deserialize(data["clear_on_completion"], ctx)
         ir.attributes = {k: deserialize_type(t, ctx) for k, t in data["attributes"]}
+        ir.attrs_to_keep_alive_on_completion = set(data["attrs_to_keep_alive_on_completion"])
+        ir.final_attributes = set(data["final_attributes"])
+        ir.class_final_attributes = {
+            k: deserialize_type(t, ctx) for k, t in data["class_final_attributes"]
+        }
         ir.method_decls = {
             k: ctx.functions[v].decl if isinstance(v, str) else FuncDecl.deserialize(v, ctx)
             for k, v in data["method_decls"]
@@ -490,6 +606,8 @@ class ClassIR:
             ctx.functions[data["env_user_function"]] if data["env_user_function"] else None
         )
         ir.reuse_freed_instance = data["reuse_freed_instance"]
+        ir.has_running_flag = data["has_running_flag"]
+        ir.has_private_generator_frame = data["has_private_generator_frame"]
         ir.is_acyclic = data.get("is_acyclic", False)
         ir.is_enum = data["is_enum"]
         ir.coroutine_name = data["is_coroutine"]

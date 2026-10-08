@@ -2,6 +2,7 @@
 # test cases.
 
 import _typeshed
+import types
 from typing import (
     Self, TypeVar, Generic, List, Iterator, Iterable, Dict, Optional, Tuple, Any, Set,
     overload, Mapping, Union, Callable, Sequence, FrozenSet, Protocol
@@ -40,6 +41,7 @@ __SupportsSomeKindOfPow = Union[
 
 class object:
     __class__: type
+    __dict__: dict[str, Any]
     def __new__(cls) -> Self: pass
     def __init__(self) -> None: pass
     def __init_subclass__(cls, **kwargs: object) -> None: pass
@@ -55,8 +57,6 @@ class type:
     def __new__(cls, *args: object) -> Any: ...
     __name__ : str
     __annotations__: Dict[str, Any]
-
-class ellipsis: pass
 
 # Primitive types are special in generated code.
 
@@ -204,8 +204,13 @@ class bytearray:
     @overload
     def __getitem__(self, i: slice) -> bytearray: ...
     def decode(self, x: str = ..., y: str = ...) -> str: ...
+    def join(self, x: Iterable[object]) -> bytes: ...
     def startswith(self, t: bytes) -> bool: ...
     def endswith(self, t: bytes) -> bool: ...
+    def __iter__(self) -> Iterator[int]: ...
+
+class memoryview:
+    def __init__(self, x: object) -> None: pass
 
 class bool(int):
     def __init__(self, o: object = ...) -> None: ...
@@ -369,6 +374,9 @@ class NotImplementedError(RuntimeError): pass
 class ReferenceError(Exception): pass
 
 class StopIteration(Exception):
+    value: Any
+
+class StopAsyncIteration(Exception):
     value: Any
 
 class ArithmeticError(Exception): pass

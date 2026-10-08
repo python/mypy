@@ -28,6 +28,7 @@ from mypy.nodes import (
     Var,
 )
 from mypy.types import LiteralType, TupleType, get_proper_type, get_proper_types
+from mypyc.common import GENERATOR_HELPER_NAME, IS_FREE_THREADED
 from mypyc.ir.ops import (
     ERR_NEVER,
     BasicBlock,
@@ -36,8 +37,8 @@ from mypyc.ir.ops import (
     IntOp,
     LoadAddress,
     LoadErrorValue,
+    LoadGlobal,
     LoadLiteral,
-    LoadMem,
     MethodCall,
     RaiseStandardError,
     Register,
@@ -53,6 +54,7 @@ from mypyc.ir.rtypes import (
     bool_rprimitive,
     c_pyssize_t_rprimitive,
     int_rprimitive,
+    is_bool_or_bit_rprimitive,
     is_dict_rprimitive,
     is_fixed_width_rtype,
     is_immutable_rprimitive,
@@ -60,15 +62,14 @@ from mypyc.ir.rtypes import (
     is_sequence_rprimitive,
     is_short_int_rprimitive,
     is_str_rprimitive,
+    is_tagged,
     is_tuple_rprimitive,
     object_pointer_rprimitive,
     object_rprimitive,
-    pointer_rprimitive,
     short_int_rprimitive,
 )
 from mypyc.irbuild.builder import IRBuilder
 from mypyc.irbuild.constant_fold import constant_fold_expr
-from mypyc.irbuild.prepare import GENERATOR_HELPER_NAME
 from mypyc.irbuild.targets import AssignmentTarget, AssignmentTargetTuple
 from mypyc.irbuild.vec import vec_append, vec_create, vec_get_item_unsafe, vec_init_item_unsafe
 from mypyc.primitives.dict_ops import (
@@ -81,8 +82,13 @@ from mypyc.primitives.dict_ops import (
     dict_value_iter_op,
 )
 from mypyc.primitives.exc_ops import no_err_occurred_op, propagate_if_error_op
-from mypyc.primitives.generic_ops import aiter_op, anext_op, iter_op, next_op
-from mypyc.primitives.list_ops import list_append_op, list_get_item_unsafe_op, new_list_set_item_op
+from mypyc.primitives.generic_ops import aiter_op, anext_op, index_op, iter_op, next_op
+from mypyc.primitives.list_ops import (
+    list_append_op,
+    list_get_item_int64_op,
+    list_get_item_unsafe_op,
+    new_list_set_item_op,
+)
 from mypyc.primitives.misc_ops import stop_async_iteration_op
 from mypyc.primitives.registry import CFunctionDescription
 from mypyc.primitives.set_ops import set_add_op
@@ -288,7 +294,8 @@ def sequence_from_generator_preallocate_helper(
         target_op = empty_op_llbuilder(length, line)
 
         def set_item(item_index: Value) -> None:
-            e = builder.accept(gen.left_expr)
+            with builder.enter_borrow_scope(line):
+                e = builder.accept(gen.left_expr)
             set_item_op(target_op, item_index, e, line)
 
         for_loop_helper_with_index(
@@ -316,7 +323,7 @@ def translate_list_comprehension(builder: IRBuilder, gen: GeneratorExpr) -> Valu
     if val is not None:
         return val
 
-    list_ops = builder.maybe_spill(builder.new_list_op([], gen.line))
+    list_ops = builder.new_list_op([], gen.line)
 
     loop_params = list(zip(gen.indices, gen.sequences, gen.condlists, gen.is_async))
 
@@ -352,7 +359,7 @@ def translate_set_comprehension(builder: IRBuilder, gen: GeneratorExpr) -> Value
     if raise_error_if_contains_unreachable_names(builder, gen):
         return builder.none()
 
-    set_ops = builder.maybe_spill(builder.new_set_op([], gen.line))
+    set_ops = builder.new_set_op([], gen.line)
     loop_params = list(zip(gen.indices, gen.sequences, gen.condlists, gen.is_async))
 
     def gen_inner_stmts() -> None:
@@ -363,7 +370,9 @@ def translate_set_comprehension(builder: IRBuilder, gen: GeneratorExpr) -> Value
     return builder.read(set_ops, gen.line)
 
 
-def translate_vec_comprehension(builder: IRBuilder, vec_type: RVec, gen: GeneratorExpr) -> Value:
+def translate_vec_comprehension(
+    builder: IRBuilder, vec_type: RVec, gen: GeneratorExpr, *, capacity: Value | None = None
+) -> Value:
     def set_item(x: Value, y: Value, z: Value, line: int) -> None:
         vec_init_item_unsafe(builder.builder, x, y, z, line)
 
@@ -372,7 +381,7 @@ def translate_vec_comprehension(builder: IRBuilder, vec_type: RVec, gen: Generat
         builder,
         gen,
         empty_op_llbuilder=lambda length, line: vec_create(
-            builder.builder, vec_type, length, line
+            builder.builder, vec_type, length, line, capacity=capacity
         ),
         set_item_op=set_item,
     )
@@ -380,7 +389,9 @@ def translate_vec_comprehension(builder: IRBuilder, vec_type: RVec, gen: Generat
         return val
 
     vec = Register(vec_type)
-    builder.assign(vec, vec_create(builder.builder, vec_type, 0, gen.line), gen.line)
+    builder.assign(
+        vec, vec_create(builder.builder, vec_type, 0, gen.line, capacity=capacity), gen.line
+    )
     loop_params = list(zip(gen.indices, gen.sequences, gen.condlists, gen.is_async))
 
     def gen_inner_stmts() -> None:
@@ -437,9 +448,10 @@ def comprehension_helper(
             remaining_loop_params: the parameters for any further nested loops; if it's empty
                 we'll instead evaluate the "gen_inner_stmts" function
         """
-        # Check conditions, in order, short circuiting them.
+        # Check conditions, in order, short-circuiting them.
         for cond in conds:
-            cond_val = builder.accept(cond)
+            with builder.enter_borrow_scope(line):
+                cond_val = builder.accept(cond)
             cont_block, rest_block = BasicBlock(), BasicBlock()
             # If the condition is true we'll skip the continue.
             builder.add_bool_branch(cond_val, rest_block, cont_block)
@@ -453,7 +465,8 @@ def comprehension_helper(
         else:
             # We finally reached the actual body of the generator.
             # Generate the IR for the inner loop body.
-            gen_inner_stmts()
+            with builder.enter_borrow_scope(line):
+                gen_inner_stmts()
 
     handle_loop(loop_params)
 
@@ -676,7 +689,7 @@ class ForGenerator:
     def gen_cleanup(self) -> None:
         """Generate post-loop cleanup (if needed)."""
 
-    def load_len(self, expr: Value | AssignmentTarget) -> Value:
+    def load_len(self, expr: Value) -> Value:
         """A helper to get collection length, used by several subclasses."""
         return self.builder.builder.builtin_len(
             self.builder.read(expr, self.line), self.line, use_pyssize_t=True
@@ -691,13 +704,11 @@ class ForIterable(ForGenerator):
         return True
 
     def init(self, expr_reg: Value, target_type: RType) -> None:
-        # Define targets to contain the expression, along with the iterator that will be used
-        # for the for-loop. If we are inside of a generator function, spill these into the
-        # environment class.
+        # Define a target containing the iterator used by the for-loop. The generator spill
+        # transform will promote it to the private generator frame if needed.
         builder = self.builder
         iter_reg = builder.primitive_op(iter_op, [expr_reg], self.line)
-        builder.maybe_spill(expr_reg)
-        self.iter_target = builder.maybe_spill(iter_reg)
+        self.iter_target = iter_reg
         self.target_type = target_type
 
     def gen_condition(self) -> None:
@@ -740,10 +751,9 @@ class ForNativeGenerator(ForGenerator):
         return True
 
     def init(self, expr_reg: Value, target_type: RType) -> None:
-        # Define target to contains the generator expression. It's also the iterator.
-        # If we are inside a generator function, spill these into the environment class.
-        builder = self.builder
-        self.iter_target = builder.maybe_spill(expr_reg)
+        # The generator expression is also the iterator. The generator spill transform will
+        # promote it to the private generator frame if needed.
+        self.iter_target = expr_reg
         self.target_type = target_type
 
     def gen_condition(self) -> None:
@@ -796,14 +806,11 @@ class ForAsyncIterable(ForGenerator):
     """Generate IR for an async for loop."""
 
     def init(self, expr_reg: Value, target_type: RType) -> None:
-        # Define targets to contain the expression, along with the
-        # iterator that will be used for the for-loop. We are inside
-        # of a generator function, so we will spill these into
-        # environment class.
+        # Define a target containing the iterator used by the for-loop. The generator spill
+        # transform will promote it to the private generator frame if needed.
         builder = self.builder
         iter_reg = builder.call_c(aiter_op, [expr_reg], self.line)
-        builder.maybe_spill(expr_reg)
-        self.iter_target = builder.maybe_spill(iter_reg)
+        self.iter_target = iter_reg
         self.target_type = target_type
         self.stop_reg = Register(bool_rprimitive)
 
@@ -824,8 +831,9 @@ class ForAsyncIterable(ForGenerator):
         line = self.line
 
         def except_match() -> Value:
-            addr = builder.add(LoadAddress(pointer_rprimitive, stop_async_iteration_op.src, line))
-            return builder.add(LoadMem(stop_async_iteration_op.type, addr, borrow=True))
+            return builder.add(
+                LoadGlobal(stop_async_iteration_op.type, stop_async_iteration_op.src, line)
+            )
 
         def try_body() -> None:
             awaitable = builder.call_c(anext_op, [builder.read(self.iter_target, line)], line)
@@ -862,7 +870,10 @@ def unsafe_index(builder: IRBuilder, target: Value, index: Value, line: int) -> 
     # since we want to use __getitem__ if we don't have an unsafe version,
     # so we just check manually.
     if is_list_rprimitive(target.type):
-        return builder.primitive_op(list_get_item_unsafe_op, [target, index], line)
+        if not IS_FREE_THREADED:
+            return builder.primitive_op(list_get_item_unsafe_op, [target, index], line)
+        else:
+            return builder.primitive_op(list_get_item_int64_op, [target, index], line)
     elif is_tuple_rprimitive(target.type):
         return builder.call_c(tuple_get_item_unsafe_op, [target, index], line)
     elif is_str_rprimitive(target.type):
@@ -879,7 +890,7 @@ class ForSequence(ForGenerator):
     Supports iterating in both forward and reverse.
     """
 
-    length_reg: Value | AssignmentTarget | None
+    length_reg: Value | None
 
     def init(
         self, expr_reg: Value, target_type: RType, reverse: bool, length: Value | None = None
@@ -892,13 +903,12 @@ class ForSequence(ForGenerator):
         # Record a Value indicating the length of the sequence, if known at compile time.
         self.length = length
         self.reverse = reverse
-        # Define target to contain the expression, along with the index that will be used
-        # for the for-loop. If we are inside of a generator function, spill these into the
-        # environment class.
-        self.expr_target = builder.maybe_spill(expr_reg)
+        # The generator spill transform will promote loop state to the private generator frame
+        # if needed.
+        self.expr_target = expr_reg
         if is_immutable_rprimitive(expr_reg.type):
             # If the expression is an immutable type, we can load the length just once.
-            self.length_reg = builder.maybe_spill(self.length or self.load_len(self.expr_target))
+            self.length_reg = self.length or self.load_len(self.expr_target)
         else:
             # Otherwise, even if the length is known, we must recalculate the length
             # at every iteration for compatibility with python semantics.
@@ -911,7 +921,7 @@ class ForSequence(ForGenerator):
             else:
                 len_val = self.load_len(self.expr_target)
             index_reg = builder.builder.int_sub(len_val, 1)
-        self.index_target = builder.maybe_spill_assignable(index_reg)
+        self.index_target = builder.ensure_register(index_reg)
         self.target_type = target_type
 
     def gen_condition(self) -> None:
@@ -995,15 +1005,15 @@ class ForDictionaryCommon(ForGenerator):
         builder = self.builder
         self.target_type = target_type
 
-        # We add some variables to environment class, so they can be read across yield.
-        self.expr_target = builder.maybe_spill(expr_reg)
+        # The generator spill transform will promote loop state that crosses a yield.
+        self.expr_target = expr_reg
         offset = Integer(0)
-        self.offset_target = builder.maybe_spill_assignable(offset)
-        self.size = builder.maybe_spill(self.load_len(self.expr_target))
+        self.offset_target = builder.ensure_register(offset)
+        self.size = self.load_len(self.expr_target)
 
         # For dict class (not a subclass) this is the dictionary itself.
         iter_reg = builder.call_c(self.dict_iter_op, [expr_reg], self.line)
-        self.iter_target = builder.maybe_spill(iter_reg)
+        self.iter_target = iter_reg
 
     def gen_condition(self) -> None:
         """Get next key/value pair, set new offset, and check if we should continue."""
@@ -1114,10 +1124,12 @@ class ForRange(ForGenerator):
 
     def init(self, start_reg: Value, end_reg: Value, step: int) -> None:
         builder = self.builder
+        start_reg = self.convert_arg(start_reg)
+        end_reg = self.convert_arg(end_reg)
         self.start_reg = start_reg
         self.end_reg = end_reg
         self.step = step
-        self.end_target = builder.maybe_spill(end_reg)
+        self.end_target = end_reg
         if is_short_int_rprimitive(start_reg.type) and is_short_int_rprimitive(end_reg.type):
             index_type: RType = short_int_rprimitive
         elif is_fixed_width_rtype(end_reg.type):
@@ -1126,10 +1138,29 @@ class ForRange(ForGenerator):
             index_type = int_rprimitive
         index_reg = Register(index_type, line=self.line)
         builder.assign(index_reg, start_reg, self.line)
-        self.index_reg = builder.maybe_spill_assignable(index_reg)
+        self.index_reg = index_reg
         # Initialize loop index to 0. Assert that the index target is assignable.
         self.index_target: Register | AssignmentTarget = builder.get_assignment_target(self.index)
         builder.assign(self.index_target, builder.read(self.index_reg, self.line), self.line)
+
+    def convert_arg(self, value: Value) -> Value:
+        """Convert a range() argument to an int using __index__, like range() does."""
+        if (
+            is_tagged(value.type)
+            or is_fixed_width_rtype(value.type)
+            or is_bool_or_bit_rprimitive(value.type)
+        ):
+            return value
+        if (
+            isinstance(value.type, RInstance)
+            and value.type.class_ir.is_ext_class
+            and value.type.class_ir.has_method("__index__")
+        ):
+            # Directly call the __index__ method on native classes that have it.
+            index = self.builder.gen_method_call(value, "__index__", [], int_rprimitive, self.line)
+        else:
+            index = self.builder.call_c(index_op, [value], self.line)
+        return self.builder.coerce(index, int_rprimitive, self.line)
 
     def gen_condition(self) -> None:
         builder = self.builder
@@ -1180,7 +1211,7 @@ class ForInfiniteCounter(ForGenerator):
         # Create a register to store the state of the loop index and
         # initialize this register along with the loop index to 0.
         zero = Integer(0)
-        self.index_reg = builder.maybe_spill_assignable(zero)
+        self.index_reg = builder.ensure_register(zero)
         self.index_target: Register | AssignmentTarget = builder.get_assignment_target(self.index)
 
     def gen_step(self) -> None:

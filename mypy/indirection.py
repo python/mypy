@@ -134,6 +134,12 @@ class TypeIndirectionVisitor(TypeVisitor[None]):
     def visit_callable_type(self, t: types.CallableType) -> None:
         self._visit_type_list(t.arg_types)
         self._visit(t.ret_type)
+        if t.type_guard is not None:
+            self._visit(t.type_guard)
+        if t.type_is is not None:
+            self._visit(t.type_is)
+        if t.instance_type is not None:
+            self._visit(t.instance_type)
         self._visit_type_tuple(t.variables)
 
     def visit_overloaded(self, t: types.Overloaded) -> None:

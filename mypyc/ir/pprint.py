@@ -231,10 +231,15 @@ class IRPrettyPrintVisitor(OpVisitor[str]):
 
     def visit_primitive_op(self, op: PrimitiveOp) -> str:
         args_str = ", ".join(self.format("%r", arg) for arg in op.args)
-        if op.is_void:
-            return self.format("%s %s", op.desc.name, args_str)
+        if op.type_args:
+            joined = ", ".join(str(arg) for arg in op.type_args)
+            type_args = f"[{joined}]"
         else:
-            return self.format("%r = %s %s", op, op.desc.name, args_str)
+            type_args = ""
+        if op.is_void:
+            return self.format("%s%s %s", op.desc.name, type_args, args_str)
+        else:
+            return self.format("%r = %s%s %s", op, op.desc.name, type_args, args_str)
 
     def visit_truncate(self, op: Truncate) -> str:
         return self.format("%r = truncate %r: %t to %t", op, op.src, op.src_type, op.type)
@@ -427,7 +432,7 @@ def format_blocks(
             and not source_to_error.get(ops[-1], [])
         ):
             # Hide the last goto if it just goes to the next basic block,
-            # and there are no assocatiated errors with the op.
+            # and there are no associated errors with the op.
             ops = ops[:-1]
         for op in ops:
             line = "    " + op.accept(visitor)

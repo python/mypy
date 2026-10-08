@@ -197,12 +197,6 @@ union type. For example, ``int`` is a subtype of ``int | str``:
        else:
            return user_id
 
-.. note::
-
-    If using Python 3.9 or earlier, use ``typing.Union[int, str]`` instead of
-    ``int | str``, or use ``from __future__ import annotations`` at the top of
-    the file (see :ref:`runtime_troubles`).
-
 The :py:mod:`typing` module contains many other useful types.
 
 For a quick overview, look through the :ref:`mypy cheatsheet <cheat-sheet-py3>`.

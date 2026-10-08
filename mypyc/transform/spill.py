@@ -1,6 +1,11 @@
-"""Insert spills for values that are live across yields."""
+"""Spill operation results that are live across generator suspension points.
+
+Registers are spilled in an earlier pass.
+"""
 
 from __future__ import annotations
+
+from collections.abc import Collection
 
 from mypyc.analysis.dataflow import AnalysisResult, analyze_live_regs, get_cfg
 from mypyc.common import TEMP_ATTR_NAME
@@ -13,48 +18,65 @@ from mypyc.ir.ops import (
     GetAttr,
     IncRef,
     LoadErrorValue,
+    Op,
     Register,
     SetAttr,
     Value,
 )
+from mypyc.namegen import exported_name
 
 
-def insert_spills(ir: FuncIR, env: ClassIR) -> None:
+def insert_spills(ir: FuncIR, frame: ClassIR) -> None:
     cfg = get_cfg(ir.blocks, use_yields=True)
     live = analyze_live_regs(ir.blocks, cfg)
-    entry_live = live.before[ir.blocks[0], 0]
+    # Registers needing frame storage were handled earlier by promote_generator_registers().
+    # Argument, address-taken, and RArray registers stay as C locals.
 
-    entry_live = {op for op in entry_live if not (isinstance(op, Register) and op.is_arg)}
-    # TODO: Actually for now, no Registers at all -- we keep the manual spills
-    entry_live = {op for op in entry_live if not isinstance(op, Register)}
+    # Each generator helper invocation starts at the resume dispatch, so an operation result
+    # live at entry must have survived a previous suspension.
+    to_spill = {value for value in live.before[ir.blocks[0], 0] if isinstance(value, Op)}
 
-    ir.blocks = spill_regs(ir.blocks, env, entry_live, live, ir.arg_regs[0])
+    ir.blocks = spill_regs(ir.blocks, frame, to_spill, live, ir.arg_regs[0])
+
+
+def sort_values(values: Collection[Op], blocks: list[BasicBlock]) -> list[Op]:
+    if len(values) > 1:
+        order = {}
+        i = 0
+        for block in blocks:
+            for op in block.ops:
+                order[op] = i
+                i += 1
+        return sorted(values, key=lambda v: order[v])
+    else:
+        return list(values)
 
 
 def spill_regs(
     blocks: list[BasicBlock],
-    env: ClassIR,
-    to_spill: set[Value],
+    frame: ClassIR,
+    to_spill: set[Op],
     live: AnalysisResult[Value],
-    self_reg: Register,
+    frame_reg: Register,
 ) -> list[BasicBlock]:
-    env_reg: Value
-    for op in blocks[0].ops:
-        if isinstance(op, GetAttr) and op.attr == "__mypyc_env__":
-            env_reg = op
-            break
-    else:
-        # Environment has been merged into generator object
-        env_reg = self_reg
-
     spill_locs = {}
-    for i, val in enumerate(to_spill):
-        name = f"{TEMP_ATTR_NAME}2_{i}"
-        env.attributes[name] = val.type
+    # Sort values to make the order deterministic.
+    for i, val in enumerate(sort_values(to_spill, blocks)):
+        # Borrowed literals can be spilled because their backing static reference
+        # remains alive. Attribute reads instead borrow from the frame and must not
+        # outlive this helper invocation.
+        assert not (
+            isinstance(val, GetAttr) and val.is_borrowed
+        ), f"cannot spill borrowed attribute read {val}"
+        # Generator classes for overriding methods can inherit from one another. Include the
+        # module-qualified owning class name so unrelated helper spills don't alias an inherited
+        # struct field.
+        name = f"{TEMP_ATTR_NAME}2_{exported_name(frame.fullname)}_{i}"
+        frame.attributes[name] = val.type
         if val.type.error_overlap:
             # We can safely treat as always initialized, since the type has no pointers.
             # This way we also don't need to manage the defined attribute bitfield.
-            env._always_initialized_attrs.add(name)
+            frame._always_initialized_attrs.add(name)
         spill_locs[val] = name
 
     for block in blocks:
@@ -72,13 +94,13 @@ def spill_regs(
                 # value is not live *when we include yields in the
                 # CFG*. (The original decrefs are computed without that.)
                 #
-                # We also skip a decref is the env register is not
+                # We also skip a decref if the frame register is not
                 # live. That should only happen when an exception is
                 # being raised, so everything should be handled there.
-                if op.src not in live.after[block, i] and env_reg in live.after[block, i]:
+                if op.src not in live.after[block, i] and frame_reg in live.after[block, i]:
                     # Skip the DecRef but null out the spilled location
                     null = LoadErrorValue(op.src.type)
-                    block.ops.extend([null, SetAttr(env_reg, spill_locs[op.src], null, op.line)])
+                    block.ops.extend([null, SetAttr(frame_reg, spill_locs[op.src], null, op.line)])
                 continue
 
             if (
@@ -91,7 +113,7 @@ def spill_regs(
                 stolen = op.stolen()
                 for src in op.sources():
                     if src in spill_locs:
-                        read = GetAttr(env_reg, spill_locs[src], op.line)
+                        read = GetAttr(frame_reg, spill_locs[src], op.line)
                         block.ops.append(read)
                         new_sources.append(read)
                         if src.type.is_refcounted and src not in stolen:
@@ -108,6 +130,10 @@ def spill_regs(
 
             if op in spill_locs:
                 # XXX: could we set uninit?
-                block.ops.append(SetAttr(env_reg, spill_locs[op], op, op.line))
+                # Reference count insertion has already run, so explicitly give the
+                # stealing attribute store an owned reference to a borrowed result.
+                if op.is_borrowed and op.type.is_refcounted:
+                    block.ops.append(IncRef(op))
+                block.ops.append(SetAttr(frame_reg, spill_locs[op], op, op.line))
 
     return blocks

@@ -63,6 +63,7 @@ from mypy.types import (
     LiteralType,
     NoneType,
     ProperType,
+    SentinelValue,
     TupleType,
     Type,
     TypeOfAny,
@@ -249,7 +250,6 @@ class DataclassTransformer:
             "slots": self._get_bool_arg("slots", False),
             "match_args": self._get_bool_arg("match_args", True),
         }
-        py_version = self._api.options.python_version
 
         # If there are no attributes, it may be that the semantic analyzer has not
         # processed them yet. In order to work around this, we can simply skip generating
@@ -368,16 +368,12 @@ class DataclassTransformer:
             self._propertize_callables(attributes)
 
         if decorator_arguments["slots"]:
-            self.add_slots(info, attributes, correct_version=py_version >= (3, 10))
+            self.add_slots(info, attributes)
 
         self.reset_init_only_vars(info, attributes)
 
-        if (
-            decorator_arguments["match_args"]
-            and (
-                "__match_args__" not in info.names or info.names["__match_args__"].plugin_generated
-            )
-            and py_version >= (3, 10)
+        if decorator_arguments["match_args"] and (
+            "__match_args__" not in info.names or info.names["__match_args__"].plugin_generated
         ):
             str_type = self._api.named_type("builtins.str")
             literals: list[Type] = [
@@ -445,18 +441,7 @@ class DataclassTransformer:
             return_type=NoneType(),
         )
 
-    def add_slots(
-        self, info: TypeInfo, attributes: list[DataclassAttribute], *, correct_version: bool
-    ) -> None:
-        if not correct_version:
-            # This means that version is lower than `3.10`,
-            # it is just a non-existent argument for `dataclass` function.
-            self._api.fail(
-                'Keyword argument "slots" for "dataclass" is only valid in Python 3.10 and higher',
-                self._reason,
-            )
-            return
-
+    def add_slots(self, info: TypeInfo, attributes: list[DataclassAttribute]) -> None:
         existing_slots = info.names.get("__slots__")
         slots_defined_by_plugin = existing_slots is not None and existing_slots.plugin_generated
         if existing_slots is not None and not slots_defined_by_plugin:
@@ -615,7 +600,19 @@ class DataclassTransformer:
                 # We will issue an error later.
                 continue
 
+            if isinstance(node, TypeInfo):
+                # A special form declaration (like a TypedDict or NamedTuple)
+                # with an (erroneous) annotation.
+                continue
+
             assert isinstance(node, Var), node
+
+            if node is not lhs.node:
+                # We create new Vars in _propertize_callables(), so it is OK.
+                if not isinstance(get_proper_type(node.type), CallableType):
+                    # There is an invalid redefinition. Avoid temptation to guess,
+                    # and skip both, see testDataclassVariableBadRedefine.
+                    continue
 
             # x: ClassVar[int] is ignored by dataclasses.
             if node.is_classvar:
@@ -675,6 +672,14 @@ class DataclassTransformer:
                     is_kw_only = value
                 else:
                     self._api.fail('"kw_only" argument must be a boolean literal', stmt.rvalue)
+
+            # Allow bare x: Final[int] in class body, since it will be set in the generated
+            # __init__() method (unless it is an InitVar), to match regular class semantics.
+            if node.is_final and node.final_unset_in_class:
+                if is_init_var:
+                    self._api.fail("InitVar cannot be final", stmt.rvalue)
+                else:
+                    node.final_set_in_init = True
 
             if sym.type is None and node.is_final and node.is_inferred:
                 # This is a special case, assignment like x: Final = 42 is classified
@@ -807,6 +812,9 @@ class DataclassTransformer:
         if node is None:
             return False
         node_type = get_proper_type(node)
+        if isinstance(node_type, LiteralType) and isinstance(node_type.value, SentinelValue):
+            # PEP 661 sentinel: `KW_ONLY = sentinel("KW_ONLY")` (Python 3.15+).
+            return node_type.value.fullname == "dataclasses.KW_ONLY"
         if not isinstance(node_type, Instance):
             return False
         return node_type.type.fullname == "dataclasses.KW_ONLY"
@@ -922,7 +930,7 @@ class DataclassTransformer:
 
         # Perform a simple-minded inference from the signature of __set__, if present.
         # We can't use mypy.checkmember here, since this plugin runs before type checking.
-        # We only support some basic scanerios here, which is hopefully sufficient for
+        # We only support some basic scenarios here, which is hopefully sufficient for
         # the vast majority of use cases.
         if not isinstance(t, Instance):
             return default

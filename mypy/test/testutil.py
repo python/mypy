@@ -1,9 +1,12 @@
 from __future__ import annotations
 
 import os
+import tempfile
 from unittest import TestCase, mock
 
 from mypy.inspections import parse_location
+from mypy.main import maybe_write_junit_xml
+from mypy.options import Options
 from mypy.util import _generate_junit_contents, get_terminal_width
 
 
@@ -109,3 +112,15 @@ Error line 2</failure>
             platform="test-plat",
         )
         assert result == expected
+
+    def test_junit_time_is_zero_in_bazel_mode(self) -> None:
+        # Output must be reproducible under Bazel, so elapsed time is not included.
+        with tempfile.TemporaryDirectory() as tmpdir:
+            options = Options()
+            options.bazel = True
+            options.junit_xml = os.path.join(tmpdir, "junit.xml")
+            maybe_write_junit_xml(1.23, False, [], {}, options)
+            with open(options.junit_xml) as f:
+                result = f.read()
+        assert 'time="0.000"' in result
+        assert "1.230" not in result

@@ -1,4 +1,8 @@
+import sys
 from tkinter import Event, Frame, Misc, Toplevel
+
+if sys.version_info >= (3, 15):
+    __all__ = ["SimpleDialog", "Dialog", "askinteger", "askfloat", "askstring"]
 
 class Dialog(Toplevel):
     def __init__(self, parent: Misc | None, title: str | None = None) -> None: ...

@@ -1,5 +1,5 @@
 from collections.abc import Mapping, Sequence
-from typing_extensions import TypeAlias
+from typing import TypeAlias
 
 _Cap: TypeAlias = dict[str, str | int]
 

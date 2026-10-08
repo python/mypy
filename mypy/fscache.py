@@ -98,7 +98,7 @@ class FileSystemCache:
         necessary for mypy to properly distinguish packages from other
         directories.
 
-        See https://docs.bazel.build/versions/master/be/python.html,
+        See https://bazel.build/reference/be/python,
         where this behavior is described under legacy_create_init.
         """
         if not self.package_root:
@@ -253,9 +253,14 @@ class FileSystemCache:
             return False
         return stat.S_ISDIR(st.st_mode)
 
-    def exists(self, path: str) -> bool:
+    def exists(self, path: str, real_only: bool = False) -> bool:
         st = self.stat_or_none(path)
-        return st is not None
+        if st is None:
+            return False
+        if real_only:
+            dirname = os.path.dirname(path)
+            return dirname not in self.fake_package_cache
+        return True
 
     def read(self, path: str) -> bytes:
         if path in self.read_cache:

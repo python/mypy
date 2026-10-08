@@ -5,9 +5,16 @@ import unittest
 from mypy.test.helpers import assert_string_arrays_equal
 from mypyc.codegen.emit import Emitter, EmitterContext
 from mypyc.codegen.emitfunc import FunctionEmitterVisitor, generate_native_function
-from mypyc.common import HAVE_IMMORTAL, PLATFORM_SIZE
+from mypyc.common import HAVE_IMMORTAL, IS_FREE_THREADED, PLATFORM_SIZE
 from mypyc.ir.class_ir import ClassIR
-from mypyc.ir.func_ir import FuncDecl, FuncIR, FuncSignature, RuntimeArg
+from mypyc.ir.func_ir import (
+    FUNC_CLASSMETHOD,
+    FUNC_STATICMETHOD,
+    FuncDecl,
+    FuncIR,
+    FuncSignature,
+    RuntimeArg,
+)
 from mypyc.ir.ops import (
     ERR_NEVER,
     Assign,
@@ -21,6 +28,7 @@ from mypyc.ir.ops import (
     ComparisonOp,
     CString,
     DecRef,
+    DeserMaps,
     Extend,
     GetAttr,
     GetElementPtr,
@@ -31,6 +39,7 @@ from mypyc.ir.ops import (
     LoadAddress,
     LoadLiteral,
     LoadMem,
+    MethodCall,
     Op,
     Register,
     Return,
@@ -121,6 +130,7 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
         ir.attributes = {
             "x": bool_rprimitive,
             "y": int_rprimitive,
+            "o": object_rprimitive,
             "i1": int64_rprimitive,
             "i2": int32_rprimitive,
             "t": RTuple([object_rprimitive, object_rprimitive]),
@@ -297,6 +307,48 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
         )
         self.assert_emit(
             Call(decl, [self.m, self.k], 55), "cpy_r_r0 = CPyDef_myfn(cpy_r_m, cpy_r_k);"
+        )
+
+    def test_final_method_calls_bypass_vtable(self) -> None:
+        assert isinstance(self.r.type, RInstance)
+        cl = self.r.type.class_ir
+        cl.allow_interpreted_subclasses = True
+        sig = FuncSignature(
+            [RuntimeArg("self", self.r.type), RuntimeArg("n", int_rprimitive)], int_rprimitive
+        )
+        final_decl = FuncDecl("final_method", "A", "mod", sig, is_final=True)
+        cl.method_decls["final_method"] = final_decl
+        assert FuncDecl.deserialize(final_decl.serialize(), DeserMaps({"mod.A": cl}, {})).is_final
+        assert cl.is_method_final("final_method")
+        self.assert_emit(
+            MethodCall(self.r, "final_method", [self.n]),
+            "cpy_r_r0 = CPyDef_A___final_method(cpy_r_r, cpy_r_n);",
+        )
+
+        cl.method_decls["final_class_method"] = FuncDecl(
+            "final_class_method", "A", "mod", sig, FUNC_CLASSMETHOD, is_final=True
+        )
+        self.assert_emit(
+            MethodCall(self.r, "final_class_method", [self.n]),
+            "cpy_r_r0 = CPyDef_A___final_class_method((PyObject *)Py_TYPE(cpy_r_r), cpy_r_n);",
+        )
+
+        static_sig = FuncSignature([RuntimeArg("n", int_rprimitive)], int_rprimitive)
+        cl.method_decls["final_static_method"] = FuncDecl(
+            "final_static_method", "A", "mod", static_sig, FUNC_STATICMETHOD, is_final=True
+        )
+        self.assert_emit(
+            MethodCall(self.r, "final_static_method", [self.n]),
+            "cpy_r_r0 = CPyDef_A___final_static_method(cpy_r_n);",
+        )
+
+        cl.method_decls["virtual_method"] = FuncDecl("virtual_method", "A", "mod", sig)
+        cl.vtable = {"virtual_method": 0}
+        assert not cl.is_method_final("virtual_method")
+        self.assert_emit(
+            MethodCall(self.r, "virtual_method", [self.n]),
+            "cpy_r_r0 = CPY_GET_METHOD(cpy_r_r, CPyType_A, 0, mod___AObject, "
+            "CPyTagged (*)(PyObject *, CPyTagged))(cpy_r_r, cpy_r_n); /* virtual_method */",
         )
 
     def test_inc_ref(self) -> None:
@@ -487,6 +539,20 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
             """,
         )
 
+    # Note: We can't monkey patch IS_FREE_THREADED to test this on a build with the
+    # GIL enabled, since monkey patching doesn't work if mypyc is compiled.
+    @unittest.skipUnless(IS_FREE_THREADED, "requires a free threaded build")
+    def test_get_attr_ref_free_threaded(self) -> None:
+        self.assert_emit(
+            GetAttr(self.r, "o", 1),
+            """\
+            cpy_r_r0 = CPy_GetAttrRef((PyObject *)cpy_r_r, (PyObject **)&((mod___AObject *)cpy_r_r)->_o);
+            if (unlikely(cpy_r_r0 == NULL)) {
+                PyErr_SetString(PyExc_AttributeError, "attribute 'o' of 'A' undefined");
+            }
+            """,
+        )
+
     def test_get_attr_merged(self) -> None:
         op = GetAttr(self.r, "y", 1)
         branch = Branch(op, BasicBlock(8), BasicBlock(9), Branch.IS_ERROR)
@@ -535,6 +601,16 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
                }
                ((mod___AObject *)cpy_r_r)->_y = cpy_r_m;
                cpy_r_r0 = 1;
+            """,
+        )
+
+    @unittest.skipUnless(IS_FREE_THREADED, "requires a free threaded build")
+    def test_set_attr_ref_free_threaded(self) -> None:
+        self.assert_emit(
+            SetAttr(self.r, "o", self.o, 1),
+            """\
+            CPy_SetAttrRef((PyObject *)cpy_r_r, (PyObject **)&((mod___AObject *)cpy_r_r)->_o, cpy_r_o);
+            cpy_r_r0 = 1;
             """,
         )
 

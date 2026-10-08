@@ -667,7 +667,7 @@ def fun4(x: U, y: P[U, U]) -> U:
     pass
 reveal_type(fun4('a', C())) # N: Revealed type is "builtins.object"
 
-[case testUnrealtedGenericProtocolsEquivalent]
+[case testUnrelatedGenericProtocolsEquivalent]
 from typing import TypeVar, Protocol
 T = TypeVar('T')
 
@@ -954,7 +954,7 @@ if int():
 [builtins fixtures/list.pyi]
 [typing fixtures/typing-medium.pyi]
 
-[case testMutuallyRecursiveProtocolsTypesWithSubteMismatch]
+[case testMutuallyRecursiveProtocolsTypesWithSubtleMismatch]
 from typing import Protocol, Sequence, List
 
 class P1(Protocol):
@@ -2920,7 +2920,6 @@ hs(None)
 
 
 [case testPartialTypeProtocol]
-# flags: --no-local-partial-types
 from typing import Protocol
 
 class Flapper(Protocol):
@@ -2941,25 +2940,7 @@ class Gleemer:
 
 
 [case testPartialTypeProtocolHashable]
-# flags: --no-strict-optional --no-local-partial-types
-from typing import Protocol
-
-class Hashable(Protocol):
-    def __hash__(self) -> int: ...
-
-class ObjectHashable:
-    def __hash__(self) -> int: ...
-
-class DataArray(ObjectHashable):
-    __hash__ = None
-
-    def f(self, x: Hashable) -> None:
-        reveal_type([self, x])  # N: Revealed type is "builtins.list[builtins.object]"
-[builtins fixtures/tuple.pyi]
-
-
-[case testPartialTypeProtocolHashableLocalPartialTypes]
-# flags: --no-strict-optional --local-partial-types
+# flags: --no-strict-optional
 from typing import Protocol
 
 class Hashable(Protocol):
@@ -2977,7 +2958,7 @@ class DataArray(ObjectHashable):
 
 
 [case testPartialAttributeNoneType]
-# flags: --no-strict-optional --no-local-partial-types
+# flags: --no-strict-optional
 from typing import Optional, Protocol, runtime_checkable
 
 @runtime_checkable
@@ -2995,7 +2976,6 @@ class MyClass:
 
 
 [case testPartialAttributeNoneTypeStrictOptional]
-# flags: --no-local-partial-types
 from typing import Optional, Protocol, runtime_checkable
 
 @runtime_checkable
@@ -4558,7 +4538,30 @@ def bad() -> Proto:
                    # N:     Expected: \
                    # N:         def f(self) -> int \
                    # N:     Got: \
-                   # N:         def f() -> str \
+                   # N:         def f(self) -> str \
+
+class Impl:
+    @defer
+    def f(self) -> int: ...
+
+[case testProtocolCheckDefersNode2]
+from typing import Any, Callable, Protocol, TypeVar
+
+class Proto(Protocol):
+    def f(self) -> int:
+        ...
+
+T = TypeVar("T")
+def defer(f: Callable[[T], int]) -> Callable[[T], list[int]]:
+    ...
+
+def bad() -> Proto:
+    return Impl()  # E: Incompatible return value type (got "Impl", expected "Proto") \
+                   # N: Following member(s) of "Impl" have conflicts: \
+                   # N:     Expected: \
+                   # N:         def f(self) -> int \
+                   # N:     Got: \
+                   # N:         def f(self) -> list[int] \
 
 class Impl:
     @defer
@@ -4755,4 +4758,48 @@ from typing_extensions import disjoint_base
 class A(Protocol):
     pass
 
+[builtins fixtures/tuple.pyi]
+
+[case testTupleTypeSelfTypeProto]
+from typing import Protocol, TypeVar
+
+R = TypeVar("R", covariant=True)
+
+class P(Protocol[R]):
+    def rep(self) -> R: ...
+
+T = TypeVar("T")
+def rep(x: P[T]) -> T: ...
+
+class C(tuple[int, str]):
+    def rep(self: T) -> T: ...
+
+t: C
+reveal_type(t)  # N: Revealed type is "tuple[builtins.int, builtins.str, fallback=__main__.C]"
+reveal_type(rep(t))  # N: Revealed type is "tuple[builtins.int, builtins.str, fallback=__main__.C]"
+
+def ok_rep(x: P[tuple[int, str]]) -> None: ...
+ok_rep(t)
+
+def bad_rep(x: P[tuple[str, int]]) -> None: ...
+bad_rep(t)  # E: Argument 1 to "bad_rep" has incompatible type "C"; expected "P[tuple[str, int]]" \
+            # N: Following member(s) of "C" have conflicts: \
+            # N:     Expected: \
+            # N:         def rep(self) -> tuple[str, int] \
+            # N:     Got: \
+            # N:         def rep(self) -> C
+[builtins fixtures/tuple.pyi]
+
+[case testDivergingProtocol]
+from typing import Protocol, TypeVar, List
+
+T = TypeVar("T")
+class P(Protocol[T]):
+    def meth(self) -> P[List[T]]: ...
+
+class C:
+    def meth(self) -> C: ...
+
+# This should not cause infinite recursion.
+x: P[int] = C()
 [builtins fixtures/tuple.pyi]

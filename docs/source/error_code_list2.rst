@@ -195,8 +195,8 @@ Check that function does not return Any value [no-any-return]
 -------------------------------------------------------------
 
 If you use :option:`--warn-return-any <mypy --warn-return-any>`, mypy generates an error if you return a
-value with an ``Any`` type in a function that is annotated to return a
-non-``Any`` value.
+value with a plain ``Any`` type in a function that is annotated to return a
+non-``Any`` value. You can use this to enforce better boundaries around unsafe/dynamic code
 
 Example:
 
@@ -207,9 +207,15 @@ Example:
     def fields(s):
          return s.split(',')
 
-    def first_field(x: str) -> str:
-        # Error: Returning Any from function declared to return "str"  [no-any-return]
-        return fields(x)[0]
+    def reversed_fields_bad(x: str) -> list[str]:
+        # Error: Returning Any from function declared to return "list[str]"  [no-any-return]
+        return fields(x)[::-1]
+
+    def reversed_fields_ok(x: str) -> list[str]:
+        x_fields = fields(x)
+        assert isinstance(x_fields, list)
+        # OK, we can at least guarantee return is list[Any]
+        return x_fields[::-1]
 
 .. _code-no-any-unimported:
 
@@ -550,7 +556,7 @@ Example:
 Check that overrides of mutable attributes are safe [mutable-override]
 ----------------------------------------------------------------------
 
-`mutable-override` will enable the check for unsafe overrides of mutable attributes.
+``mutable-override`` will enable the check for unsafe overrides of mutable attributes.
 For historical reasons, and because this is a relatively common pattern in Python,
 this check is not enabled by default. The example below is unsafe, and will be
 flagged when this error code is enabled:

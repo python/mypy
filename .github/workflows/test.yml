@@ -59,6 +59,12 @@ jobs:
           toxenv: py
           tox_extra_args: "-n 4"
           test_mypyc: true
+        - name: Test suite with py315-ubuntu, mypyc-compiled
+          python: '3.15'
+          os: ubuntu-24.04-arm
+          toxenv: py
+          tox_extra_args: "-n 4"
+          test_mypyc: true
         - name: Test suite with py314t-ubuntu, mypyc-compiled
           python: '3.14t'
           os: ubuntu-24.04-arm
@@ -139,6 +145,7 @@ jobs:
     timeout-minutes: 60
     env:
       TOX_SKIP_MISSING_INTERPRETERS: False
+      VIRTUALENV_SYSTEM_SITE_PACKAGES: ${{ matrix.test_mypyc && 1 || 0 }}
       # Rich (pip) -- Disable color for windows + pytest
       FORCE_COLOR: ${{ !(startsWith(matrix.os, 'windows-') && startsWith(matrix.toxenv, 'py')) && 1 || 0 }}
       # Tox
@@ -153,7 +160,7 @@ jobs:
       PYTEST_ADDOPTS: --color=yes
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       with:
         persist-credentials: false
 
@@ -191,10 +198,11 @@ jobs:
           sudo ln -s /opt/pythondev/bin/python3 /opt/pythondev/bin/python
           sudo ln -s /opt/pythondev/bin/pip3 /opt/pythondev/bin/pip
           echo "/opt/pythondev/bin" >> $GITHUB_PATH
-    - uses: actions/setup-python@v5
+    - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
       if: ${{ !(matrix.debug_build || endsWith(matrix.python, '-dev')) }}
       with:
         python-version: ${{ matrix.python }}
+        allow-prereleases: true
 
     - name: Install tox
       run: |
@@ -205,12 +213,14 @@ jobs:
         echo debug build; python -c 'import sysconfig; print(bool(sysconfig.get_config_var("Py_DEBUG")))'
         echo os.cpu_count; python -c 'import os; print(os.cpu_count())'
         echo os.sched_getaffinity; python -c 'import os; print(len(getattr(os, "sched_getaffinity", lambda *args: [])(0)))'
-        pip install tox==4.26.0
+        pip install tox==4.53.1
 
     - name: Compiled with mypyc
       if: ${{ matrix.test_mypyc }}
+      # Use local version of librt during self-compilation in tests.
       run: |
         pip install -r test-requirements.txt
+        pip install -U mypyc/lib-rt
         CC=clang MYPYC_OPT_LEVEL=0 MYPY_USE_MYPYC=1 pip install -e .
 
     - name: Setup tox environment
@@ -243,7 +253,7 @@ jobs:
       CXX: i686-linux-gnu-g++
       CC: i686-linux-gnu-gcc
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           persist-credentials: false
       - name: Install 32-bit build dependencies
@@ -263,12 +273,12 @@ jobs:
             liblzma-dev:i386 \
             uuid-dev:i386
       - name: Compile, install, and activate 32-bit Python
-        uses: gabrielfalcao/pyenv-action@v13
+        uses: gabrielfalcao/pyenv-action@5668dcb49bd9d228bba29dd5e1fbb6e0aae55a71 # v13
         with:
           default: 3.11.1
           command: python -c "import platform; print(f'{platform.architecture()=} {platform.machine()=}');"
       - name: Install tox
-        run: pip install tox==4.26.0
+        run: pip install tox==4.53.1
       - name: Setup tox environment
         run: tox run -e py --notest
       - name: Test

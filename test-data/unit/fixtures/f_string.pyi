@@ -1,6 +1,7 @@
 # Builtins stub used for format-string-related test cases.
 # We need str and list, and str needs join and format methods.
 
+import types
 from typing import TypeVar, Generic, Iterable, Iterator, List, overload
 
 T = TypeVar('T')
@@ -11,7 +12,6 @@ class object:
 class type:
     def __init__(self, x) -> None: pass
 
-class ellipsis: pass
 
 class list(Iterable[T], Generic[T]):
     @overload

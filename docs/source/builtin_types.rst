@@ -40,8 +40,7 @@ See :ref:`dynamic-typing` for more details.
 Generic types
 .............
 
-In Python 3.9 and later, built-in collection type objects support
-indexing:
+Built-in collection type objects support indexing:
 
 ====================== ===============================
 Type                   Description
@@ -65,13 +64,11 @@ strings and ``dict[Any, Any]`` is a dictionary of dynamically typed
 Python protocols. For example, a ``str`` object or a ``list[str]`` object is
 valid when ``Iterable[str]`` or ``Sequence[str]`` is expected.
 You can import them from :py:mod:`collections.abc` instead of importing from
-:py:mod:`typing` in Python 3.9.
+:py:mod:`typing`.
 
-See :ref:`generic-builtins` for more details, including how you can
-use these in annotations also in Python 3.7 and 3.8.
+See :ref:`generic-builtins` for more details.
 
-These legacy types defined in :py:mod:`typing` are needed if you need to support
-Python 3.8 and earlier:
+These legacy types defined in :py:mod:`typing` are also supported:
 
 ====================== ===============================
 Type                   Description
@@ -80,17 +77,5 @@ Type                   Description
 ``Tuple[int, int]``    tuple of two ``int`` objects (``Tuple[()]`` is the empty tuple)
 ``Tuple[int, ...]``    tuple of an arbitrary number of ``int`` objects
 ``Dict[str, int]``     dictionary from ``str`` keys to ``int`` values
-``Iterable[int]``      iterable object containing ints
-``Sequence[bool]``     sequence of booleans (read-only)
-``Mapping[str, int]``  mapping from ``str`` keys to ``int`` values (read-only)
 ``Type[C]``            type object of ``C`` (``C`` is a class/type variable/union of types)
 ====================== ===============================
-
-``List`` is an alias for the built-in type ``list`` that supports
-indexing (and similarly for ``dict``/``Dict`` and
-``tuple``/``Tuple``).
-
-Note that even though ``Iterable``, ``Sequence`` and ``Mapping`` look
-similar to abstract base classes defined in :py:mod:`collections.abc`
-(formerly ``collections``), they are not identical, since the latter
-don't support indexing prior to Python 3.9.

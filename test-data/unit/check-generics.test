@@ -2921,8 +2921,8 @@ def mix(fs: List[Callable[[S], T]]) -> Callable[[S], List[T]]:
 def id(__x: U) -> U:
     ...
 fs = [id, id, id]
-reveal_type(mix(fs))  # N: Revealed type is "def [S] (S`2) -> builtins.list[S`2]"
-reveal_type(mix([id, id, id]))  # N: Revealed type is "def [S] (S`4) -> builtins.list[S`4]"
+reveal_type(mix(fs))  # N: Revealed type is "def [S] (S`1) -> builtins.list[S`1]"
+reveal_type(mix([id, id, id]))  # N: Revealed type is "def [S] (S`3) -> builtins.list[S`3]"
 [builtins fixtures/list.pyi]
 
 [case testInferenceAgainstGenericCurry]
@@ -3098,14 +3098,14 @@ I = TypeVar("I", bound=int)
 def dec4_bound(f: Callable[[I], List[T]]) -> Callable[[I], T]:
     ...
 
-reveal_type(dec1(lambda x: x))  # N: Revealed type is "def [T] (T`3) -> builtins.list[T`3]"
-reveal_type(dec2(lambda x: x))  # N: Revealed type is "def [S] (S`5) -> builtins.list[S`5]"
-reveal_type(dec3(lambda x: x[0]))  # N: Revealed type is "def [S] (S`8) -> S`8"
-reveal_type(dec4(lambda x: [x]))  # N: Revealed type is "def [S] (S`11) -> S`11"
+reveal_type(dec1(lambda x: x))  # N: Revealed type is "def [T] (T`1) -> builtins.list[T`1]"
+reveal_type(dec2(lambda x: x))  # N: Revealed type is "def [S] (S`3) -> builtins.list[S`3]"
+reveal_type(dec3(lambda x: x[0]))  # N: Revealed type is "def [S] (S`6) -> S`6"
+reveal_type(dec4(lambda x: [x]))  # N: Revealed type is "def [S] (S`9) -> S`9"
 reveal_type(dec1(lambda x: 1))  # N: Revealed type is "def (builtins.int) -> builtins.list[builtins.int]"
 reveal_type(dec5(lambda x: x))  # N: Revealed type is "def (builtins.int) -> builtins.list[builtins.int]"
-reveal_type(dec3(lambda x: x))  # N: Revealed type is "def [S] (S`19) -> builtins.list[S`19]"
-reveal_type(dec4(lambda x: x))  # N: Revealed type is "def [T] (builtins.list[T`23]) -> T`23"
+reveal_type(dec3(lambda x: x))  # N: Revealed type is "def [S] (S`17) -> builtins.list[S`17]"
+reveal_type(dec4(lambda x: x))  # N: Revealed type is "def [T] (builtins.list[T`21]) -> T`21"
 dec4_bound(lambda x: x)  # E: Value of type variable "I" of "dec4_bound" cannot be "list[T]"
 [builtins fixtures/list.pyi]
 
@@ -3542,7 +3542,7 @@ reveal_type(C.foo)  # N: Revealed type is "def [T] (self: __main__.B[T`1]) -> T`
 reveal_type(C[int].foo)  # N: Revealed type is "def (self: __main__.B[builtins.int]) -> builtins.int"
 reveal_type(D.foo)  # N: Revealed type is "def (self: __main__.B[builtins.int]) -> builtins.int"
 
-[case testDeterminismFromJoinOrderingInSolver]
+[case testDeterminismFromJoinOrderingInSolver1]
 # Used to fail non-deterministically
 # https://github.com/python/mypy/issues/19121
 from __future__ import annotations
@@ -3594,6 +3594,46 @@ def draw_none(
         takes_int_str_none(c2)
         takes_int_str_none(c3)
 [builtins fixtures/tuple.pyi]
+
+[case testDeterminismFromJoinOrderingInSolver2]
+# Used to fail non-deterministically
+# https://github.com/python/mypy/issues/21445
+from typing import Generic, Iterable, TypeVar, overload
+
+class A: ...
+
+@overload
+def f0(a: A, b: object, /) -> object: ...
+@overload
+def f0(a: object, b: int, /) -> object: ...
+def f0(a, b, /): ...
+
+@overload
+def f1(a: int, b: object, /) -> object: ...
+@overload
+def f1(a: object, b: A, /) -> object: ...
+def f1(a, b, /): ...
+
+def g(a, b, /): ...
+
+T = TypeVar("T")
+K = TypeVar("K")
+V = TypeVar("V")
+
+class ziplike(Generic[T]):
+    def __new__(cls, x: str, y: tuple[V, ...], /) -> ziplike[tuple[str, V]]:
+        raise
+    def __iter__(self) -> ziplike[T]:
+        return self
+    def __next__(self) -> T:
+        raise
+
+class dictlike(Generic[K, V]):
+    def __init__(self, arg: Iterable[tuple[K, V]]) -> None: pass
+
+x = dictlike(ziplike("012", (f0, f1, g)))
+reveal_type(x)  # N: Revealed type is "__main__.dictlike[builtins.str, Overload(def (Any, Any) -> Any, def (Any, Any) -> Any, def (Any, Any) -> Any, def (Any, Any) -> Any)]"
+[builtins fixtures/dict.pyi]
 
 [case testPropertyWithGenericSetter]
 from typing import TypeVar
@@ -3687,4 +3727,65 @@ reveal_type(ok3)  # N: Revealed type is "tuple[()]"
 
 bad1: list[()] = []  # E: "list" expects 1 type argument, but none given \
                      # E: Missing type arguments for generic type "list"
+[builtins fixtures/tuple.pyi]
+
+[case testGenericClassAsArgumentToType]
+from typing import TypeVar, Generic
+
+T = TypeVar("T")
+def test(tp: type[T]) -> T: ...
+
+class C(Generic[T]): ...
+reveal_type(test(C))  # N: Revealed type is "__main__.C[Any]"
+
+[case testExpressionCacheWorksInNestedCallWithoutOuterTypeContextFunction]
+from typing import overload, TypeVar
+
+T = TypeVar("T")
+S = TypeVar("S")
+
+@overload
+def f(x: None) -> None: ...
+@overload
+def f(x: tuple[T, S]) -> tuple[S, T]: ...
+@overload
+def f(x: T) -> T: ...
+def f(x):
+    pass
+
+x = f(f(f(f(f(f(f(f(f(f(f(f(f(f(f(1)))))))))))))))
+reveal_type(x)  # N: Revealed type is "builtins.int"
+
+class C:
+    def meth(self, x: S) -> S: ...
+
+# The type variable id below must be small (few dozens at most).
+reveal_type(C().meth)  # N: Revealed type is "def [S] (x: S`46) -> S`46"
+[builtins fixtures/tuple.pyi]
+
+[case testExpressionCacheWorksInNestedCallWithoutOuterTypeContextMethod]
+from typing import overload, TypeVar
+
+T = TypeVar("T")
+S = TypeVar("S")
+
+class A:
+    @overload
+    def f(self, x: None) -> None: ...
+    @overload
+    def f(self, x: tuple[T, S]) -> tuple[S, T]: ...
+    @overload
+    def f(self, x: T) -> T: ...
+    def f(self, x):
+        pass
+
+a: A
+x = a.f(a.f(a.f(a.f(a.f(a.f(a.f(a.f(a.f(a.f(a.f(a.f(a.f(a.f(a.f(1)))))))))))))))
+reveal_type(x)  # N: Revealed type is "builtins.int"
+
+class C:
+    def meth(self, x: S) -> S: ...
+
+# The type variable id below must be small (say under a hundred).
+reveal_type(C().meth)  # N: Revealed type is "def [S] (x: S`91) -> S`91"
 [builtins fixtures/tuple.pyi]

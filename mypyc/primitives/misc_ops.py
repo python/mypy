@@ -31,6 +31,7 @@ from mypyc.primitives.registry import (
     custom_primitive_op,
     function_op,
     load_address_op,
+    load_global_op,
     method_op,
 )
 
@@ -39,6 +40,15 @@ load_address_op(name="builtins.bool", type=object_rprimitive, src="PyBool_Type")
 
 # Get the 'range' type object.
 load_address_op(name="builtins.range", type=object_rprimitive, src="PyRange_Type")
+
+# Get the 'complex' type object.
+load_address_op(name="builtins.complex", type=object_rprimitive, src="PyComplex_Type")
+
+# Get the 'slice' type object.
+load_address_op(name="builtins.slice", type=object_rprimitive, src="PySlice_Type")
+
+# Get the 'memoryview' type object.
+load_address_op(name="builtins.memoryview", type=object_rprimitive, src="PyMemoryView_Type")
 
 # Get the boxed Python 'None' object
 none_object_op = load_address_op(name="Py_None", type=object_rprimitive, src="_Py_NoneStruct")
@@ -52,7 +62,7 @@ not_implemented_op = load_address_op(
 )
 
 # Get the boxed StopAsyncIteration object
-stop_async_iteration_op = load_address_op(
+stop_async_iteration_op = load_global_op(
     name="builtins.StopAsyncIteration", type=object_rprimitive, src="PyExc_StopAsyncIteration"
 )
 
@@ -73,13 +83,15 @@ coro_op = custom_op(
     error_kind=ERR_MAGIC,
 )
 
-# Do obj.send(value), or a next(obj) if second arg is None.
-# (This behavior is to match the PEP 380 spec for yield from.)
-# Like next_raw_op, don't swallow StopIteration,
-# but also don't propagate an error.
-# Can return NULL: see next_op.
+# Do obj.send(value), or a next(obj) if second arg is None, using the
+# PyIter_Send C API. (This behavior is to match the PEP 380 spec for yield from.)
+#
+# Returns the yielded value, or NULL if the iterator completed or raised. On
+# normal completion the return value is stored via the third (PyObject **)
+# argument instead of raising StopIteration. The caller must initialize the
+# pointed-to value to NULL, since it's only assigned on normal completion.
 send_op = custom_op(
-    arg_types=[object_rprimitive, object_rprimitive],
+    arg_types=[object_rprimitive, object_rprimitive, object_pointer_rprimitive],
     return_type=object_rprimitive,
     c_function_name="CPyIter_Send",
     error_kind=ERR_NEVER,
@@ -139,13 +151,17 @@ import_op = custom_op(
 
 # Import a native same-group module directly via C-level init/exec functions.
 native_import_op = custom_op(
-    # (module name, init-only function, exec function, module static,
-    #  shared lib __file__, ext suffix, is_package)
+    # (module name, init-only function, exec function, internal module static,
+    #  import cache, import state, compilation-unit lock, shared lib __file__,
+    #  ext suffix, is_package)
     arg_types=[
         str_rprimitive,
         c_pointer_rprimitive,
         c_pointer_rprimitive,
         object_pointer_rprimitive,
+        c_pointer_rprimitive,
+        c_pointer_rprimitive,
+        c_pointer_rprimitive,
         object_rprimitive,
         str_rprimitive,
         c_pyssize_t_rprimitive,
@@ -153,6 +169,28 @@ native_import_op = custom_op(
     return_type=object_rprimitive,
     c_function_name="CPyImport_ImportNative",
     error_kind=ERR_MAGIC,
+)
+
+native_import_is_initialized_op = custom_op(
+    arg_types=[c_pointer_rprimitive],
+    return_type=bit_rprimitive,
+    c_function_name="CPyImport_IsInitialized",
+    error_kind=ERR_NEVER,
+)
+
+import_cache_get_for_import_op = custom_op(
+    arg_types=[c_pointer_rprimitive, str_rprimitive],
+    return_type=object_rprimitive,
+    c_function_name="CPyImport_GetModuleCacheForImport",
+    error_kind=ERR_MAGIC,
+    is_borrowed=True,
+)
+
+import_cache_replace_for_import_op = custom_op(
+    arg_types=[c_pointer_rprimitive, object_rprimitive],
+    return_type=void_rtype,
+    c_function_name="CPyImport_ReplaceModuleCacheForImport",
+    error_kind=ERR_NEVER,
 )
 
 # Table-driven import op.
@@ -178,7 +216,7 @@ import_from_many_op = custom_op(
     error_kind=ERR_MAGIC,
 )
 
-# Get attributes from an already-imported native module and store them in globals.
+# Get attributes from an already-imported native module object and store them in globals.
 get_native_attrs_op = custom_op(
     arg_types=[object_rprimitive, object_rprimitive, object_rprimitive, object_rprimitive],
     return_type=object_rprimitive,
@@ -232,6 +270,51 @@ isinstance_bool = function_op(
     arg_types=[object_rprimitive],
     return_type=bit_rprimitive,
     c_function_name="PyBool_Check",
+    error_kind=ERR_NEVER,
+)
+
+# isinstance(obj, complex)
+isinstance_complex = custom_primitive_op(
+    name="builtins.isinstance",
+    arg_types=[object_rprimitive],
+    return_type=bit_rprimitive,
+    c_function_name="PyComplex_Check",
+    error_kind=ERR_NEVER,
+)
+
+# isinstance(obj, type)
+isinstance_type = custom_primitive_op(
+    name="builtins.isinstance",
+    arg_types=[object_rprimitive],
+    return_type=bit_rprimitive,
+    c_function_name="PyType_Check",
+    error_kind=ERR_NEVER,
+)
+
+# isinstance(obj, range)
+isinstance_range = custom_primitive_op(
+    name="builtins.isinstance",
+    arg_types=[object_rprimitive],
+    return_type=bit_rprimitive,
+    c_function_name="PyRange_Check",
+    error_kind=ERR_NEVER,
+)
+
+# isinstance(obj, slice)
+isinstance_slice = custom_primitive_op(
+    name="builtins.isinstance",
+    arg_types=[object_rprimitive],
+    return_type=bit_rprimitive,
+    c_function_name="PySlice_Check",
+    error_kind=ERR_NEVER,
+)
+
+# isinstance(obj, memoryview)
+isinstance_memoryview = custom_primitive_op(
+    name="builtins.isinstance",
+    arg_types=[object_rprimitive],
+    return_type=bit_rprimitive,
+    c_function_name="PyMemoryView_Check",
     error_kind=ERR_NEVER,
 )
 
@@ -501,6 +584,14 @@ function_op(
     return_type=uint8_rprimitive,
     c_function_name="cache_version_internal",
     error_kind=ERR_NEVER,
+)
+
+function_op(
+    name="librt.internal.extract_symbol",
+    arg_types=[object_rprimitive],
+    return_type=bytes_rprimitive,
+    c_function_name="extract_symbol_internal",
+    error_kind=ERR_MAGIC,
 )
 
 function_op(

@@ -1,7 +1,7 @@
 # Test cases for generators and yield (compile and run)
 
 [case testYield]
-from typing import Generator, Iterable, Union, Tuple, Dict
+from typing import Callable, Dict, Generator, Iterable, Iterator, Tuple, Union
 
 def yield_three_times() -> Iterable[int]:
     yield 1
@@ -87,6 +87,19 @@ def return_tuple() -> Generator[int, None, Tuple[int, int]]:
     yield 0
     return 1, 2
 
+def call_lambda(fn: Callable[[], None]) -> None:
+    fn()
+
+def get_iterator() -> Iterator[str]:
+    call_lambda(lambda: None)
+    yield ""
+
+def yield_twice_via_generator_reuse() -> Iterator[str]:
+    identified_imports = get_iterator()
+    yield from identified_imports
+    for identified_import in identified_imports:
+        yield identified_import
+
 [file driver.py]
 from native import (
     yield_three_times,
@@ -99,6 +112,7 @@ from native import (
     A,
     return_tuple,
     yield_dict_methods,
+    yield_twice_via_generator_reuse,
 )
 from testutil import run_generator
 from collections import defaultdict
@@ -114,6 +128,7 @@ assert run_generator(A(0).generator()) == ((0,), None)
 assert run_generator(return_tuple()) == ((0,), (1, 2))
 assert run_generator(yield_dict_methods({}, {}, {})) == ((), None)
 assert run_generator(yield_dict_methods({1: 2}, {3: 4}, {5: 6})) == ((1, 3, 4, 6), None)
+assert run_generator(yield_twice_via_generator_reuse()) == (("",), None)
 dd = defaultdict(int, {0: 1})
 assert run_generator(yield_dict_methods(dd, dd, dd)) == ((0, 0, 1, 1), None)
 
@@ -642,6 +657,22 @@ def test_near_yield() -> None:
         pass
     assert c.foo.flag == False
 
+class Box:
+    def __init__(self, value: str) -> None:
+        self.value = value
+
+def select(first: Box, second: Box) -> str:
+    return first.value + second.value
+
+def walrus_gen(value: Box, replacement: Box) -> Iterator[str]:
+    # The first argument is read before the walrus rebinds the same frame field,
+    # but it is consumed by select() only after the rebind.
+    yield select(value, (value := replacement))
+
+def test_generator_attribute_borrow_killed_by_walrus() -> None:
+    it = walrus_gen(Box("old"), Box("new"))
+    assert next(it) == "oldnew"
+
 [case testGeneratorEarlyReturnWithBorrows]
 from typing import Iterator
 class Bar:
@@ -733,6 +764,7 @@ def test_basic() -> None:
     assert context.x == 0
 
 [case testYieldSpill]
+import sys
 from typing import Generator
 from testutil import run_generator
 
@@ -742,11 +774,174 @@ def f() -> int:
 def yield_spill() -> Generator[str, int, int]:
     return f() + (yield "foo")
 
+def consume(first: object, second: object) -> None:
+    pass
+
+# Bytes literals are mortal on GIL-enabled CPython builds, so a missing reference
+# to the spilled value is observable through sys.getrefcount().
+def get_spilled_literal() -> bytes:
+    return b"mypyc borrowed generator spill regression"
+
+def yield_with_borrowed_literal() -> Generator[None, None, None]:
+    consume(b"mypyc borrowed generator spill regression", (yield))
+
 def test_basic() -> None:
     x = run_generator(yield_spill(), [2])
     yields, val = x
     assert yields == ('foo',)
     assert val == 3, val
+
+def test_borrowed_literal_spill() -> None:
+    literal = get_spilled_literal()
+    getrefcount = getattr(sys, "getrefcount")
+    refcount = getrefcount(literal)
+    assert run_generator(yield_with_borrowed_literal(), [None]) == ((None,), None)
+    assert getrefcount(literal) == refcount
+
+[case testNestedGeneratorPrivateSpill]
+from typing import Generator
+from testutil import run_generator
+
+def make() -> str:
+    return "left"
+
+def outer() -> Generator[str, str, str]:
+    def nested(captured: str, private: str) -> Generator[str, str, str]:
+        def callback() -> str:
+            return captured
+
+        private_local = private
+        for item in [private_local]:
+            # The loop iterator and the result of make() are compiler-generated
+            # temporaries live across the yield. Only 'captured' stays in the
+            # separate environment; the other source bindings are frame-private.
+            return callback() + make() + (yield item)
+        return "unreachable"
+
+    return nested("captured", "right")
+
+def test_nested_generator_private_spill() -> None:
+    yields, value = run_generator(outer(), ["sent"])
+    assert yields == ("right",)
+    assert value == "capturedleftsent"
+
+[case testGeneratorPrivateAndEscapedBindings]
+from typing import Any, Callable, Generator, Iterator
+
+callbacks: list[Callable[[], int]] = []
+
+def gen(shared: list[int], private: int) -> Generator[int, int, None]:
+    callback = lambda: shared[0]
+    callbacks.append(callback)
+    private_local = private
+    sent = yield private_local
+    shared = [shared[0] + sent]
+    yield callback()
+
+def make_recursive(prefix: str) -> Callable[[int], Generator[object, None, None]]:
+    def nested(private: int) -> Generator[object, None, None]:
+        def recurse(count: int) -> str:
+            if count:
+                return recurse(count - 1)
+            return prefix
+
+        yield private
+        yield recurse(2)
+    return nested
+
+def comprehension_lambdas() -> Iterator[list[int]]:
+    offset = 10
+    functions = [lambda: i + offset for i in range(3)]
+    yield [function() for function in functions]
+
+def test_private_and_escaped_bindings() -> None:
+    shared = [1]
+    g: Any = gen(shared, 7)
+    assert next(g) == 7
+    assert callbacks[-1]() == 1
+    shared[0] = 5
+    assert callbacks[-1]() == 5
+    assert g.send(4) == 9
+    assert list(g) == []
+    assert callbacks[-1]() == 9
+    assert list(make_recursive("outer")(7)) == [7, "outer"]
+    assert list(comprehension_lambdas()) == [[12, 12, 12]]
+
+[case testGeneratorOverridePrivateLocals]
+from typing import Generator
+
+def make_text() -> str:
+    return "base"
+
+def make_number() -> int:
+    return 42
+
+class Base:
+    def gen(self) -> Generator[None, None, object]:
+        # The source local is private and must not alias the differently typed
+        # local in the derived generator frame.
+        value = make_text()
+        yield None
+        return value
+
+class Derived(Base):
+    def gen(self) -> Generator[None, None, object]:
+        value = make_number()
+        yield None
+        return value
+
+def run(g: Generator[None, None, object]) -> object:
+    assert next(g) is None
+    try:
+        next(g)
+    except StopIteration as e:
+        return e.value
+    assert False
+
+def test_generator_override_private_locals() -> None:
+    assert run(Base().gen()) == "base"
+    assert run(Derived().gen()) == 42
+
+[case testGeneratorOverridePrivateSpillsAcrossModules]
+from typing import Generator
+import other_base
+
+def make_number() -> int:
+    return 42
+
+class Same(other_base.Same):
+    def gen(self) -> Generator[None, None, object]:
+        # The builder and transform spills have different native representations from the
+        # corresponding base class spills.
+        # Both generator frames have the same short name, but different full names.
+        for _ in range(1):
+            return (make_number(), (yield None))[0]
+        return None
+
+def run(g: Generator[None, None, object]) -> object:
+    assert next(g) is None
+    try:
+        next(g)
+    except StopIteration as e:
+        return e.value
+    assert False
+
+def test_generator_override_private_spills_across_modules() -> None:
+    assert run(other_base.Same().gen()) == "base"
+    assert run(Same().gen()) == 42
+
+[file other_base.py]
+from typing import Generator
+
+def make_text() -> str:
+    return "base"
+
+class Same:
+    def gen(self) -> Generator[None, None, object]:
+        # The loop state and call result are live across the yield.
+        for _ in [None]:
+            return (make_text(), (yield None))[0]
+        return None
 
 [case testGeneratorReuse]
 from typing import Iterator, Any
@@ -944,3 +1139,335 @@ from typing import Optional, Union
 def test_compiledGeneratorEmptyTuple() -> None:
     jobs: Generator[Optional[str], None, None] = (_ for _ in ())
     assert list(jobs) == []
+
+[case testBorrowedFinalAttrAcrossYield]
+from typing import Final, Generator
+
+class C:
+    def __init__(self, s: str) -> None:
+        self.s: Final = s
+
+def f(c: C) -> Generator[str, str, None]:
+    # c.s is a final attr; it must not be borrowed across the yield, which is
+    # a suspension point in the middle of the expression.
+    x = c.s + (yield "first")
+    yield x
+
+def test_borrow_across_yield() -> None:
+    for i in range(50):
+        c = C("value" + str(i))
+        g = f(c)
+        assert next(g) == "first"
+        assert g.send("world") == "value" + str(i) + "world"
+
+def yield_from_gen(c: C) -> Generator[str, str, str]:
+    r = yield "inner"
+    return c.s + r
+
+def g2(c: C) -> Generator[str, str, str]:
+    # Borrow a final attr across a yield from expression.
+    x = c.s + (yield from yield_from_gen(c))
+    return x
+
+def test_borrow_across_yield_from() -> None:
+    for i in range(50):
+        c = C("v" + str(i))
+        gen = g2(c)
+        assert next(gen) == "inner"
+        try:
+            gen.send("!")
+        except StopIteration as e:
+            assert e.value == "v" + str(i) + "v" + str(i) + "!", e.value
+        else:
+            assert False
+
+[typing fixtures/typing-full.pyi]
+
+[case testReentrantResume]
+from typing import Any, Iterator, Optional
+from testutil import assertRaises
+
+box: list[Optional[Iterator[int]]] = [None]
+
+def self_resuming() -> Iterator[int]:
+    g = box[0]
+    assert g is not None
+    yield next(g)
+
+def test_reentrant_next() -> None:
+    g = self_resuming()
+    box[0] = g
+    with assertRaises(ValueError, "generator already executing"):
+        next(g)
+    # The generator was left in a completed state by the propagating exception.
+    with assertRaises(StopIteration):
+        next(g)
+
+cbox: list[Any] = [None]
+
+async def self_sending() -> int:
+    cbox[0].send(None)
+    return 1
+
+def test_reentrant_send_to_coroutine() -> None:
+    c: Any = self_sending()
+    cbox[0] = c
+    with assertRaises(ValueError, "coroutine already executing"):
+        c.send(None)
+
+[case testReentrantResumeWithSeparateEnvironment]
+from typing import Any, Iterator, Optional
+from testutil import assertRaises
+
+def outer() -> int:
+    box: list[Any] = []
+
+    def nested() -> Iterator[int]:
+        # Captures 'box', so the environment is a separate class and the locals
+        # are not private to the generator object. The running flag still applies.
+        yield next(box[0])
+
+    g = nested()
+    box.append(g)
+    return next(g)
+
+def test_reentrant_next_in_nested_generator() -> None:
+    with assertRaises(ValueError, "generator already executing"):
+        outer()
+
+class Base:
+    def gen(self) -> Iterator[int]:
+        yield 1
+
+class Derived(Base):
+    def gen(self) -> Iterator[int]:
+        g = box[0]
+        assert g is not None
+        yield next(g)
+
+box: list[Optional[Iterator[int]]] = [None]
+
+def test_generator_method_override_still_works() -> None:
+    assert list(Base().gen()) == [1]
+    b: Base = Derived()
+    g = b.gen()
+    box[0] = g
+    with assertRaises(ValueError, "generator already executing"):
+        next(g)
+
+[case testExceptionSurvivesYieldInFinally]
+from typing import Iterator
+from testutil import assertRaises
+
+class Marker(Exception):
+    pass
+
+def gen() -> Iterator[int]:
+    try:
+        raise Marker
+    finally:
+        yield 1
+
+def test_exception_survives_yield_in_finally() -> None:
+    it = gen()
+    assert next(it) == 1
+    with assertRaises(Marker):
+        next(it)
+
+[case testCrossingLocalOnExceptionOnlyPath]
+from typing import Iterator
+
+class InnerError(Exception):
+    pass
+
+class AssignmentError(Exception):
+    pass
+
+def fail_assignment() -> str:
+    raise AssignmentError
+
+def through_handler() -> Iterator[str]:
+    value = "old handler value"
+    try:
+        try:
+            yield "first"
+            raise InnerError
+        except InnerError:
+            value = fail_assignment()
+    except AssignmentError:
+        yield value
+
+def through_finally() -> Iterator[str]:
+    value = "old finally value"
+    try:
+        try:
+            yield "first"
+            raise InnerError
+        finally:
+            value = fail_assignment()
+    except AssignmentError:
+        yield value
+
+def test_crossing_local_on_exception_only_path() -> None:
+    for it, expected in [
+        (through_handler(), "old handler value"),
+        (through_finally(), "old finally value"),
+    ]:
+        assert next(it) == "first"
+        assert next(it) == expected
+
+[case testDelLocalInGenerator]
+from typing import Iterator
+
+from testutil import assertRaises
+
+def crossing(delete: bool) -> Iterator[str]:
+    value = "crossing"
+    yield value
+    if delete:
+        del value
+    yield "pause"
+    yield value
+
+def non_crossing(delete: bool) -> Iterator[str]:
+    value = "local"
+    if delete:
+        del value
+    yield value
+
+def test_del_local_in_generator() -> None:
+    assert list(crossing(False)) == ["crossing", "pause", "crossing"]
+    assert list(non_crossing(False)) == ["local"]
+    it = crossing(True)
+    assert next(it) == "crossing"
+    assert next(it) == "pause"
+    with assertRaises(AttributeError, "attribute 'value' of 'crossing_gen' undefined"):
+        next(it)
+    with assertRaises(UnboundLocalError, 'local variable "value" referenced before assignment'):
+        list(non_crossing(True))
+
+[case testYieldFromNativeGeneratorInInterpretedCode]
+from typing import Generator
+
+def native(n: int) -> Generator[int, int, str]:
+    x = yield n
+    yield x + 1
+    return "done"
+
+def exhausted() -> Generator[int, None, int]:
+    yield 1
+    return 5
+
+def raises_stop_iteration() -> Generator[int, None, object]:
+    if int() == 1:
+        yield 1
+    raise StopIteration("seven")
+
+def native_yield_from_stop_iteration() -> Generator[int, None, object]:
+    x = yield from raises_stop_iteration()
+    return x
+
+[file driver.py]
+from native import (
+    native, exhausted, raises_stop_iteration, native_yield_from_stop_iteration
+)
+
+def outer(gen):
+    x = yield from gen
+    return x
+
+def run(gen, sends):
+    g = outer(gen)
+    yields = []
+    try:
+        value = g.send(None)
+        for s in sends:
+            yields.append(value)
+            value = g.send(s)
+        yields.append(value)
+    except StopIteration as e:
+        return yields, e.value
+    assert False, "generator did not stop"
+
+# Exercise a native generator through interpreted 'yield from', including yielding,
+# receiving a sent value, and returning.
+assert run(native(1), [10, None]) == ([1, 11], "done")
+
+# An already exhausted native generator completes with None, like a
+# CPython generator does.
+g = exhausted()
+assert next(g) == 1
+try:
+    next(g)
+except StopIteration as e:
+    assert e.value == 5
+assert run(g, []) == ([], None)
+
+# TODO: Apply the PEP 479 conversion to RuntimeError("generator raised StopIteration").
+#       Native generators currently treat StopIteration raised in the generator body as a
+#       return value, so 'yield from' receives the exception's value and a 'for' loop
+#       silently ends.
+assert run(raises_stop_iteration(), []) == ([], "seven")
+assert run(native_yield_from_stop_iteration(), []) == ([], "seven")
+assert list(raises_stop_iteration()) == []
+
+[case testAmSendSlotOnNativeGenerator]
+from typing import Generator, Iterable
+
+def gen() -> Generator[int, int, str]:
+    x = yield 1
+    return "ret" + str(x)
+
+def gen_no_yield() -> Generator[int, None, int]:
+    if int() == 1:
+        yield 1
+    return 5
+
+def gen_raises() -> Generator[int, None, int]:
+    if int() == 1:
+        yield 1
+    raise ValueError("boom")
+
+def gen_delegate(it: Iterable[int]) -> Generator[int, None, None]:
+    yield from it
+
+[file driver.py]
+from native import gen, gen_no_yield, gen_raises, gen_delegate
+from testutil import assertRaises, pyiter_send, PYGEN_NEXT, PYGEN_RETURN
+
+# Drive a native generator's am_send slot through PyIter_Send. The generic compiled
+# 'await' and 'yield from' path does the same; the native fast path calls the generator
+# helper directly.
+
+# Completion without yielding returns PYGEN_RETURN.
+assert pyiter_send(gen_no_yield(), None) == (PYGEN_RETURN, 5)
+
+# A yield returns PYGEN_NEXT; the next send completes with PYGEN_RETURN. Further sends
+# to the exhausted generator complete with None, like a CPython generator.
+g = gen()
+assert pyiter_send(g, None) == (PYGEN_NEXT, 1)
+assert pyiter_send(g, 3) == (PYGEN_RETURN, "ret3")
+assert pyiter_send(g, None) == (PYGEN_RETURN, None)
+
+# PYGEN_ERROR leaves the body exception pending, so ctypes propagates it.
+with assertRaises(ValueError, "boom"):
+    pyiter_send(gen_raises(), None)
+
+# A closed generator completes with None.
+g = gen()
+assert pyiter_send(g, None) == (PYGEN_NEXT, 1)
+g.close()
+assert pyiter_send(g, None) == (PYGEN_RETURN, None)
+
+# Resuming a generator that is currently executing is an error.
+box = []
+
+def reenter():
+    with assertRaises(ValueError, "generator already executing"):
+        pyiter_send(box[0], None)
+    yield 2
+
+g2 = gen_delegate(reenter())
+box.append(g2)
+assert pyiter_send(g2, None) == (PYGEN_NEXT, 2)
+assert pyiter_send(g2, None) == (PYGEN_RETURN, None)

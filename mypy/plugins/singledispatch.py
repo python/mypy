@@ -13,7 +13,6 @@ from mypy.subtypes import is_subtype
 from mypy.types import (
     AnyType,
     CallableType,
-    FunctionLike,
     Instance,
     NoneType,
     Overloaded,
@@ -126,7 +125,7 @@ def singledispatch_register_callback(ctx: MethodContext) -> Type:
 
         # is_subtype doesn't work when the right type is Overloaded, so we need the
         # actual type
-        register_type = first_arg_type.items[0].ret_type
+        register_type = first_arg_type.items[0].get_instance_type()
         type_args = RegisterCallableInfo(register_type, ctx.type)
         register_callable = make_fake_register_class_instance(ctx.api, type_args)
         return register_callable
@@ -203,7 +202,7 @@ def call_singledispatch_function_after_register_argument(ctx: MethodContext) -> 
     return ctx.default_return_type
 
 
-def call_singledispatch_function_callback(ctx: MethodSigContext) -> FunctionLike:
+def call_singledispatch_function_callback(ctx: MethodSigContext) -> CallableType:
     """Called for functools._SingleDispatchCallable.__call__"""
     if not isinstance(ctx.type, Instance):
         return ctx.default_signature

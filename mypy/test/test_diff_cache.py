@@ -11,6 +11,7 @@ import tempfile
 import time
 import unittest
 
+from mypy.defaults import SQLITE_NUM_SHARDS
 from mypy.test.config import PREFIX
 
 _MISC_DIR = os.path.join(PREFIX, "misc")
@@ -126,8 +127,8 @@ class DiffCacheIntegrationTests(unittest.TestCase):
             c_keys = {k for k in keys if "/c." in k or k.startswith("c.")}
             a_keys = {k for k in keys if "/a." in k or k.startswith("a.")}
             assert len(a_keys) == 0, f"Unexpected a.* entries in diff: {a_keys}"
-            assert len(b_keys) == 2, f"Expected 2 b.* entries in diff, got: {b_keys}"
-            assert len(c_keys) == 4, f"Expected 3 c.* entries in diff, got: {c_keys}"
+            assert len(b_keys) == 3, f"Expected 3 b.* entries in diff, got: {b_keys}"
+            assert len(c_keys) == 4, f"Expected 4 c.* entries in diff, got: {c_keys}"
 
             # The new access to a.x in b.py should create a fine-grained
             # dependency recorded in @root.deps.json.
@@ -150,10 +151,9 @@ class DiffCacheIntegrationTests(unittest.TestCase):
             from mypy.metastore import SqliteMetadataStore
 
             def read_all(cache_dir: str) -> dict[str, bytes]:
-                store = SqliteMetadataStore(cache_dir)
+                store = SqliteMetadataStore(cache_dir, num_shards=SQLITE_NUM_SHARDS)
                 result = {name: store.read(name) for name in store.list_all()}
-                assert store.db is not None
-                store.db.close()
+                store.close()
                 return result
 
             before = read_all(patched_ver)

@@ -65,7 +65,8 @@ class Literals:
         elif isinstance(value, frozenset):
             frozenset_literals = self.frozenset_literals
             if value not in frozenset_literals:
-                for item in value:
+                # Sort members so that we don't depend on frozenset iteration order.
+                for item in sorted(value, key=literal_sort_key):
                     assert _is_literal_value(item)
                     self.record_literal(item)
                 frozenset_literals[value] = len(frozenset_literals)
@@ -140,10 +141,14 @@ class Literals:
         return self._encode_collection_values(self.tuple_literals)
 
     def encoded_frozenset_values(self) -> list[str]:
-        return self._encode_collection_values(self.frozenset_literals)
+        # Ensure deterministic frozenset item order by sorting items.
+        return self._encode_collection_values(self.frozenset_literals, sort_items=True)
 
     def _encode_collection_values(
-        self, values: dict[tuple[object, ...], int] | dict[frozenset[object], int]
+        self,
+        values: dict[tuple[object, ...], int] | dict[frozenset[object], int],
+        *,
+        sort_items: bool = False,
     ) -> list[str]:
         """Encode tuple/frozenset values into a C array.
 
@@ -164,7 +169,8 @@ class Literals:
         for i in range(count):
             value = value_by_index[i]
             result.append(str(len(value)))
-            for item in value:
+            items = sorted(value, key=literal_sort_key) if sort_items else value
+            for item in items:
                 assert _is_literal_value(item)
                 index = self.literal_index(item)
                 result.append(str(index))
@@ -299,3 +305,13 @@ def _encode_complex_values(values: dict[complex, int]) -> list[str]:
         result.append(float_to_c(value.real))
         result.append(float_to_c(value.imag))
     return result
+
+
+def literal_sort_key(value: object) -> tuple[object, ...]:
+    """Return a sort key for a literal value."""
+    if isinstance(value, frozenset):
+        # Sort items to avoid depending on the unpredictable iteration order.
+        return ("frozenset", tuple(sorted(literal_sort_key(item) for item in value)))
+    elif isinstance(value, tuple):
+        return ("tuple", tuple(literal_sort_key(item) for item in value))
+    return (type(value).__name__, repr(value))

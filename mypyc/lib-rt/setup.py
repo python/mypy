@@ -151,5 +151,24 @@ else:
             Extension(
                 "librt.time", ["time/librt_time.c"], include_dirs=["."], extra_compile_args=cflags
             ),
+            Extension(
+                "librt.random",
+                [
+                    "random/librt_random.c",
+                    "init.c",
+                    "int_ops.c",
+                    "exc_ops.c",
+                    "pythonsupport.c",
+                    "getargsfast.c",
+                ],
+                include_dirs=["."],
+                extra_compile_args=cflags,
+            ),
+            Extension(
+                "librt.threading",
+                ["threading/librt_threading.c"],
+                include_dirs=[".", "threading"],
+                extra_compile_args=cflags,
+            ),
         ]
     )

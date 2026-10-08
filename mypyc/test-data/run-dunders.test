@@ -353,6 +353,62 @@ def test_unary_dunders_native() -> None:
     assert +c == 15
     assert abs(c) == 16
 
+[case testDundersIndex]
+import operator
+from typing import Any
+
+from mypy_extensions import mypyc_attr
+from testutil import assertRaises
+
+@mypyc_attr(allow_interpreted_subclasses=True)
+class C:
+    def __init__(self, x: int) -> None:
+        self.x = x
+
+    def __index__(self) -> int:
+        return self.x
+
+class Inherit(C):
+    pass
+
+class Override(C):
+    def __index__(self) -> int:
+        return self.x + 1
+
+class Raises:
+    def __index__(self) -> int:
+        raise ValueError("bad index")
+
+def check_index(a: Any) -> None:
+    # Each of these uses the __index__ slot
+    assert operator.index(a) == 2
+    assert list(range(a)) == [0, 1]
+    assert [10, 20, 30][a] == 30
+    assert "abc"[a] == "c"
+    assert [10, 20, 30][:a] == [10, 20]
+    assert [0] * a == [0, 0]
+    assert int(a) == 2
+
+def test_index() -> None:
+    check_index(C(2))
+    check_index(Inherit(2))
+    check_index(Override(1))
+
+def test_index_interpreted_subclass() -> None:
+    from interp import InterpOverride
+    check_index(InterpOverride(5))
+
+def test_index_error() -> None:
+    with assertRaises(ValueError, "bad index"):
+        operator.index(Raises())
+
+[file interp.py]
+from native import C
+
+class InterpOverride(C):
+    def __index__(self) -> int:
+        return 2
+
 [case testDundersBinarySimple]
 from typing import Any
 
@@ -444,7 +500,7 @@ def test_error() -> None:
     try:
         a ** 'x'
     except TypeError as e:
-        assert str(e) == "unsupported operand type(s) for **: 'C' and 'str'"
+        assert str(e) == "unsupported operand type(s) for ** or pow(): 'C' and 'str'"
     else:
         assert False
 
@@ -665,6 +721,94 @@ def test_unannotated_add_and_radd_2() -> None:
         1 + h
 
 # TODO: Inheritance
+
+[case testDundersBinaryForwardOnlyNotImplemented]
+from typing import Any
+from testutil import assertRaises
+from interp import CountRadd
+
+class C:
+    def __add__(self, x: int) -> int:
+        return x + 1
+
+    def __pow__(self, x: int) -> int:
+        return x + 2
+
+class Sub(C):
+    pass
+
+class D:
+    def __add__(self, x: int) -> int:
+        return x + 3
+
+    def __radd__(self, x: int) -> int:
+        return x + 4
+
+class E:
+    def __xor__(self, x: E) -> Any:
+        return NotImplemented
+
+def test_forward_only() -> None:
+    c: Any = C()
+    assert c + 1 == 2
+    assert c ** 1 == 3
+    with assertRaises(TypeError, "unsupported operand type(s) for +: 'C' and 'C'"):
+        c + c
+    with assertRaises(TypeError, "unsupported operand type(s) for +: 'int' and 'C'"):
+        1 + c
+    with assertRaises(TypeError, 'can only concatenate str (not "C") to str'):
+        'x' + c
+    with assertRaises(TypeError, "unsupported operand type(s) for ** or pow(): 'C' and 'C'"):
+        c ** c
+    with assertRaises(TypeError, "unsupported operand type(s) for ** or pow(): 'int' and 'C'"):
+        2 ** c
+    with assertRaises(TypeError, "unsupported operand type(s) for ** or pow(): 'float' and 'C'"):
+        2.5 ** c
+    with assertRaises(TypeError, "unsupported operand type(s) for ** or pow(): 'NoneType' and 'C'"):
+        None ** c
+    x: Any = 2
+    with assertRaises(TypeError, "unsupported operand type(s) for **=: 'int' and 'C'"):
+        x **= c
+
+def test_forward_returns_not_implemented() -> None:
+    e = E()
+    with assertRaises(TypeError, "unsupported operand type(s) for ^: 'E' and 'E'"):
+        e ^ e
+
+def test_inherited_slot() -> None:
+    s: Any = Sub()
+    assert s + 1 == 2
+    with assertRaises(TypeError, "unsupported operand type(s) for +: 'Sub' and 'Sub'"):
+        s + s
+    with assertRaises(TypeError, "unsupported operand type(s) for +: 'int' and 'Sub'"):
+        1 + s
+    with assertRaises(TypeError, "unsupported operand type(s) for +: 'C' and 'Sub'"):
+        C() + s
+
+def test_other_native_class() -> None:
+    c: Any = C()
+    d: Any = D()
+    with assertRaises(TypeError, "unsupported operand type(s) for +: 'C' and 'D'"):
+        c + d
+    with assertRaises(TypeError, "unsupported operand type(s) for +: 'D' and 'C'"):
+        d + c
+
+def test_reverse_method_called_once() -> None:
+    objs: list[Any] = [C(), D()]
+    for o in objs:
+        r = CountRadd()
+        with assertRaises(TypeError):
+            o + r
+        assert r.calls == 1
+
+[file interp.py]
+class CountRadd:
+    def __init__(self) -> None:
+        self.calls = 0
+
+    def __radd__(self, x: object) -> object:
+        self.calls += 1
+        return NotImplemented
 
 [case testDifferentReverseDunders]
 from typing import Any
@@ -945,7 +1089,7 @@ def test_errors() -> None:
     f = Forward()
     with assertRaises(TypeError, f"unsupported operand type(s) for {op}: 'Forward', 'int', 'str'"):
         pow(f, 3, "x")  # type: ignore
-    with assertRaises(TypeError, "unsupported operand type(s) for **: 'Forward' and 'str'"):
+    with assertRaises(TypeError, "unsupported operand type(s) for ** or pow(): 'Forward' and 'str'"):
         f**"x"  # type: ignore
     r = Reverse()
     with assertRaises(TypeError, "unsupported operand type(s) for ** or pow(): 'str' and 'Reverse'"):
@@ -1009,3 +1153,15 @@ def test_equality_with_implicit_ne() -> None:
     assert not eq(Eq(1), Eq(2))
     assert ne(Eq(1), Eq(2))
     assert not ne(Eq(1), Eq(1))
+
+[case testDundersImplicitNeWithNarrowRhs]
+class Accepted:
+    pass
+
+class Eq:
+    def __eq__(self, other: Accepted) -> bool:  # type: ignore[override]
+        return True
+
+def test_implicit_ne_with_narrow_rhs() -> None:
+    assert Eq() == Accepted()
+    assert not (Eq() != Accepted())

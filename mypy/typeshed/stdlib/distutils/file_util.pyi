@@ -27,6 +27,7 @@ def copy_file(
     verbose: bool | Literal[0, 1] = 1,
     dry_run: bool | Literal[0, 1] = 0,
 ) -> tuple[_BytesPathT | bytes, bool]: ...
+
 @overload
 def move_file(
     src: StrPath, dst: _StrPathT, verbose: bool | Literal[0, 1] = 1, dry_run: bool | Literal[0, 1] = 0
@@ -35,4 +36,5 @@ def move_file(
 def move_file(
     src: BytesPath, dst: _BytesPathT, verbose: bool | Literal[0, 1] = 1, dry_run: bool | Literal[0, 1] = 0
 ) -> _BytesPathT | bytes: ...
+
 def write_file(filename: StrOrBytesPath, contents: Iterable[str]) -> None: ...

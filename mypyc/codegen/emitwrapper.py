@@ -15,7 +15,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 
 from mypy.nodes import ARG_NAMED, ARG_NAMED_OPT, ARG_OPT, ARG_POS, ARG_STAR, ARG_STAR2, ArgKind
-from mypy.operators import op_methods_to_symbols, reverse_op_method_names, reverse_op_methods
+from mypy.operators import reverse_op_method_names, reverse_op_methods
 from mypyc.codegen.emit import AssignHandler, Emitter, ErrorHandler, GotoHandler, ReturnHandler
 from mypyc.common import (
     BITMAP_BITS,
@@ -364,11 +364,16 @@ def generate_bin_op_forward_only_wrapper(
 ) -> None:
     gen.emit_arg_processing(error=GotoHandler("typefail"), raise_exception=False)
     handle_third_pow_argument(fn, emitter, gen, if_unsupported=["goto typefail;"])
-    gen.emit_call(not_implemented_handler="goto typefail;")
+    gen.emit_call()
     gen.emit_error_handling()
     emitter.emit_label("typefail")
     # If some argument has an incompatible type, treat this the same as
-    # returning NotImplemented, and try to call the reverse operator method.
+    # returning NotImplemented, and let CPython try the reverse operator
+    # method of the right operand. Don't call the reverse method here:
+    # this class doesn't define one, so for an instance of this class
+    # (as in 'x + x' or '1 + x') the lookup would find the slot wrapper
+    # that CPython adds for this slot, which calls this wrapper again
+    # with the same arguments.
     #
     # Note that in normal Python you'd instead of an explicit
     # return of NotImplemented, but it doesn't generally work here
@@ -382,7 +387,7 @@ def generate_bin_op_forward_only_wrapper(
     #        if not isinstance(other, int):
     #            return NotImplemented
     #        ...
-    generate_bin_op_reverse_dunder_call(fn, emitter, reverse_op_methods[fn.name])
+    emitter.emit_line("Py_RETURN_NOTIMPLEMENTED;")
     gen.finish()
 
 
@@ -395,8 +400,7 @@ def generate_bin_op_reverse_only_wrapper(
     gen.emit_call()
     gen.emit_error_handling()
     emitter.emit_label("typefail")
-    emitter.emit_line("Py_INCREF(Py_NotImplemented);")
-    emitter.emit_line("return Py_NotImplemented;")
+    emitter.emit_line("Py_RETURN_NOTIMPLEMENTED;")
     gen.finish()
 
 
@@ -439,29 +443,12 @@ def generate_bin_op_both_wrappers(
     handle_third_pow_argument(fn_rev, emitter, gen, if_unsupported=["goto typefail2;"])
     gen.emit_call()
     gen.emit_error_handling()
-    emitter.emit_line("} else {")
-    generate_bin_op_reverse_dunder_call(fn, emitter, fn_rev.name)
     emitter.emit_line("}")
+    # If the right operand has a different type, CPython tries its reverse
+    # method after we return NotImplemented.
     emitter.emit_label("typefail2")
-    emitter.emit_line("Py_INCREF(Py_NotImplemented);")
-    emitter.emit_line("return Py_NotImplemented;")
+    emitter.emit_line("Py_RETURN_NOTIMPLEMENTED;")
     gen.finish()
-
-
-def generate_bin_op_reverse_dunder_call(fn: FuncIR, emitter: Emitter, rmethod: str) -> None:
-    if fn.name in ("__pow__", "__rpow__"):
-        # Ternary pow() will never call the reverse dunder.
-        emitter.emit_line("if (obj_mod == Py_None) {")
-    emitter.emit_line(
-        'return CPy_CallReverseOpMethod(obj_left, obj_right, "{}", mypyc_interned_str.{});'.format(
-            op_methods_to_symbols[fn.name], rmethod
-        )
-    )
-    if fn.name in ("__pow__", "__rpow__"):
-        emitter.emit_line("} else {")
-        emitter.emit_line("Py_INCREF(Py_NotImplemented);")
-        emitter.emit_line("return Py_NotImplemented;")
-        emitter.emit_line("}")
 
 
 def handle_third_pow_argument(
@@ -537,7 +524,7 @@ def generate_get_wrapper(cl: ClassIR, fn: FuncIR, emitter: Emitter) -> str:
         )
     )
     emitter.emit_line("instance = instance ? instance : Py_None;")
-    emitter.emit_line(f"return {NATIVE_PREFIX}{fn.cname(emitter.names)}(self, instance, owner);")
+    emitter.emit_line(f"return {emitter.native_function_call(fn.decl)}(self, instance, owner);")
     emitter.emit_line("}")
 
     return name
@@ -595,13 +582,53 @@ def generate_len_wrapper(cl: ClassIR, fn: FuncIR, emitter: Emitter) -> str:
     return name
 
 
+def generate_am_send_wrapper(cl: ClassIR, fn: FuncIR, emitter: Emitter) -> str:
+    """Generate an am_send slot for a generator or coroutine class.
+
+    This implements the C-level send protocol (used by PyIter_Send), which reports
+    normal completion without raising StopIteration.
+    """
+    name = f"{DUNDER_PREFIX}am_send{cl.name_prefix(emitter.names)}"
+    emitter.emit_line(
+        f"static PySendResult {name}(PyObject *self, PyObject *arg, PyObject **result) {{"
+    )
+    emitter.emit_line("PyObject *stop_iter_value = NULL;")
+    emitter.emit_line(
+        "PyObject *retval = {}{}{}(self, Py_None, Py_None, Py_None, arg, &stop_iter_value);".format(
+            emitter.get_group_prefix(fn.decl), NATIVE_PREFIX, fn.cname(emitter.names)
+        )
+    )
+    emitter.emit_line("if (retval != NULL) {")
+    emitter.emit_line("*result = retval;")
+    emitter.emit_line("return PYGEN_NEXT;")
+    emitter.emit_line("}")
+    emitter.emit_line("if (stop_iter_value == NULL) {")
+    # The helper raised an exception instead of using the out parameter. StopIteration
+    # signals normal completion when the generator or coroutine is already exhausted.
+    # TODO: Convert an explicit StopIteration raised in the body to RuntimeError instead
+    #       of treating it as normal completion.
+    emitter.emit_line("if (PyErr_ExceptionMatches(PyExc_StopIteration)) {")
+    emitter.emit_line("stop_iter_value = CPy_FetchStopIterationValue();")
+    emitter.emit_line("}")
+    emitter.emit_line("if (stop_iter_value == NULL) {")
+    emitter.emit_line("*result = NULL;")
+    emitter.emit_line("return PYGEN_ERROR;")
+    emitter.emit_line("}")
+    emitter.emit_line("}")
+    emitter.emit_line("*result = stop_iter_value;")
+    emitter.emit_line("return PYGEN_RETURN;")
+    emitter.emit_line("}")
+
+    return name
+
+
 def generate_bool_wrapper(cl: ClassIR, fn: FuncIR, emitter: Emitter) -> str:
     """Generates a wrapper for native __bool__ methods."""
     name = f"{DUNDER_PREFIX}{fn.name}{cl.name_prefix(emitter.names)}"
     emitter.emit_line(f"static int {name}(PyObject *self) {{")
     emitter.emit_line(
-        "{}val = {}{}(self);".format(
-            emitter.ctype_spaced(fn.ret_type), NATIVE_PREFIX, fn.cname(emitter.names)
+        "{}val = {}(self);".format(
+            emitter.ctype_spaced(fn.ret_type), emitter.native_function_call(fn.decl)
         )
     )
     emitter.emit_error_check("val", fn.ret_type, "return -1;")
@@ -659,7 +686,10 @@ def generate_set_del_item_wrapper(cl: ClassIR, fn: FuncIR, emitter: Emitter) -> 
         emitter.emit_line(f"return {del_name}(obj_{args[0].name}, obj_{args[1].name});")
     else:
         # Try to call superclass method instead
-        emitter.emit_line(f"PyObject *super = CPy_Super(CPyModule_builtins, obj_{args[0].name});")
+        emitter.emit_line(
+            "PyObject *super = "
+            f"CPy_Super(CPyImport_GetModuleCache(&CPyModule_builtins), obj_{args[0].name});"
+        )
         emitter.emit_line("if (super == NULL) return -1;")
         emitter.emit_line(
             'PyObject *result = PyObject_CallMethod(super, "__delitem__", "O", obj_{});'.format(
@@ -675,7 +705,10 @@ def generate_set_del_item_wrapper(cl: ClassIR, fn: FuncIR, emitter: Emitter) -> 
     if method_cls and method_cls[1] == cl:
         generate_set_del_item_wrapper_inner(fn, emitter, args)
     else:
-        emitter.emit_line(f"PyObject *super = CPy_Super(CPyModule_builtins, obj_{args[0].name});")
+        emitter.emit_line(
+            "PyObject *super = "
+            f"CPy_Super(CPyImport_GetModuleCache(&CPyModule_builtins), obj_{args[0].name});"
+        )
         emitter.emit_line("if (super == NULL) return -1;")
         emitter.emit_line("PyObject *result;")
 
@@ -704,8 +737,8 @@ def generate_set_del_item_wrapper_inner(
         generate_arg_check(arg.name, arg.type, emitter, GotoHandler("fail"))
     native_args = ", ".join(f"arg_{arg.name}" for arg in args)
     emitter.emit_line(
-        "{}val = {}{}({});".format(
-            emitter.ctype_spaced(fn.ret_type), NATIVE_PREFIX, fn.cname(emitter.names), native_args
+        "{}val = {}({});".format(
+            emitter.ctype_spaced(fn.ret_type), emitter.native_function_call(fn.decl), native_args
         )
     )
     emitter.emit_error_check("val", fn.ret_type, "goto fail;")
@@ -722,8 +755,8 @@ def generate_contains_wrapper(cl: ClassIR, fn: FuncIR, emitter: Emitter) -> str:
     emitter.emit_line(f"static int {name}(PyObject *self, PyObject *obj_item) {{")
     generate_arg_check("item", fn.args[1].type, emitter, ReturnHandler("-1"))
     emitter.emit_line(
-        "{}val = {}{}(self, arg_item);".format(
-            emitter.ctype_spaced(fn.ret_type), NATIVE_PREFIX, fn.cname(emitter.names)
+        "{}val = {}(self, arg_item);".format(
+            emitter.ctype_spaced(fn.ret_type), emitter.native_function_call(fn.decl)
         )
     )
     emitter.emit_error_check("val", fn.ret_type, "return -1;")
@@ -857,6 +890,9 @@ class WrapperGenerator:
         """
         self.target_name = fn.name
         self.target_cname = fn.cname(self.emitter.names)
+        # Cached native-call expression so cross-group targets go through the
+        # exports table; same as `NATIVE_PREFIX + cname` for in-group calls.
+        self.target_native_call = self.emitter.native_function_call(fn.decl)
         self.num_bitmap_args = fn.sig.num_bitmap_args
         if self.num_bitmap_args:
             self.args = fn.args[: -self.num_bitmap_args]
@@ -927,8 +963,8 @@ class WrapperGenerator:
             # TODO: The Py_RETURN macros return the correct PyObject * with reference count
             #       handling. Are they relevant?
             emitter.emit_line(
-                "{}retval = {}{}({});".format(
-                    emitter.ctype_spaced(ret_type), NATIVE_PREFIX, self.target_cname, native_args
+                "{}retval = {}({});".format(
+                    emitter.ctype_spaced(ret_type), self.target_native_call, native_args
                 )
             )
             emitter.emit_lines(*self.cleanups)
@@ -940,11 +976,7 @@ class WrapperGenerator:
         else:
             if not_implemented_handler and not isinstance(ret_type, RInstance):
                 # The return value type may overlap with NotImplemented.
-                emitter.emit_line(
-                    "PyObject *retbox = {}{}({});".format(
-                        NATIVE_PREFIX, self.target_cname, native_args
-                    )
-                )
+                emitter.emit_line(f"PyObject *retbox = {self.target_native_call}({native_args});")
                 emitter.emit_lines(
                     "if (retbox == Py_NotImplemented) {",
                     not_implemented_handler,
@@ -952,7 +984,7 @@ class WrapperGenerator:
                     "return retbox;",
                 )
             else:
-                emitter.emit_line(f"return {NATIVE_PREFIX}{self.target_cname}({native_args});")
+                emitter.emit_line(f"return {self.target_native_call}({native_args});")
             # TODO: Tracebacks?
 
     def error(self) -> ErrorHandler:

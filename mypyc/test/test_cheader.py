@@ -7,7 +7,7 @@ import os
 import re
 import unittest
 
-from mypyc.ir.deps import SourceDep
+from mypyc.ir.deps import HeaderDep, SourceDep
 from mypyc.ir.ops import PrimitiveDescription
 from mypyc.primitives import (
     bytearray_ops,
@@ -79,7 +79,7 @@ class TestHeaderInclusion(unittest.TestCase):
         for op in all_ops:
             if op.dependencies:
                 for dep in op.dependencies:
-                    if isinstance(dep, SourceDep):
+                    if isinstance(dep, (SourceDep, HeaderDep)):
                         header_fnam = os.path.join(base_dir, dep.get_header())
                         if os.path.isfile(header_fnam):
                             with open(os.path.join(base_dir, header_fnam)) as f:

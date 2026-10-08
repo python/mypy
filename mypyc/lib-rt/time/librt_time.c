@@ -12,8 +12,6 @@
 #include <sys/time.h>
 #endif
 
-#ifdef MYPYC_EXPERIMENTAL
-
 // Internal function that returns a C double for mypyc primitives
 // Returns high-precision time in seconds (like time.time())
 static double
@@ -74,17 +72,11 @@ time_time(PyObject *self, PyObject *const *args, size_t nargs) {
     return PyFloat_FromDouble(result);
 }
 
-#endif
-
 static PyMethodDef librt_time_module_methods[] = {
-#ifdef MYPYC_EXPERIMENTAL
     {"time", (PyCFunction)time_time, METH_FASTCALL,
      PyDoc_STR("Return the current time in seconds since the Unix epoch as a floating point number.")},
-#endif
     {NULL, NULL, 0, NULL}
 };
-
-#ifdef MYPYC_EXPERIMENTAL
 
 static int
 time_abi_version(void) {
@@ -96,12 +88,9 @@ time_api_version(void) {
     return LIBRT_TIME_API_VERSION;
 }
 
-#endif
-
 static int
 librt_time_module_exec(PyObject *m)
 {
-#ifdef MYPYC_EXPERIMENTAL
     // Export mypyc internal C API via capsule
     static void *time_api[LIBRT_TIME_API_LEN] = {
         (void *)time_abi_version,
@@ -112,7 +101,6 @@ librt_time_module_exec(PyObject *m)
     if (PyModule_Add(m, "_C_API", c_api_object) < 0) {
         return -1;
     }
-#endif
     return 0;
 }
 

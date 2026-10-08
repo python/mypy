@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from collections.abc import Callable
 
-from mypy.fastparse import parse_type_string
 from mypy.nodes import (
     MISSING_FALLBACK,
     BytesExpr,
@@ -30,6 +29,7 @@ from mypy.nodes import (
     get_member_expr_fullname,
 )
 from mypy.options import Options
+from mypy.parse import parse_type_string
 from mypy.types import (
     ANNOTATED_TYPE_NAMES,
     AnyType,
@@ -122,7 +122,7 @@ def expr_to_unanalyzed_type(
                 else:
                     base_fullname = expr.base.fullname
 
-                if base_fullname is not None and base_fullname in ANNOTATED_TYPE_NAMES:
+                if base_fullname is not None and base_fullname in ANNOTATED_TYPE_NAMES and args:
                     # TODO: this is not the optimal solution as we are basically getting rid
                     # of the Annotation definition and only returning the type information,
                     # losing all the annotations.
@@ -145,11 +145,7 @@ def expr_to_unanalyzed_type(
             return base
         else:
             raise TypeTranslationError()
-    elif (
-        isinstance(expr, OpExpr)
-        and expr.op == "|"
-        and ((options.python_version >= (3, 10)) or allow_new_syntax)
-    ):
+    elif isinstance(expr, OpExpr) and expr.op == "|":
         return UnionType(
             [
                 expr_to_unanalyzed_type(
@@ -225,9 +221,9 @@ def expr_to_unanalyzed_type(
             column=expr.column,
         )
     elif isinstance(expr, StrExpr):
-        return parse_type_string(expr.value, "builtins.str", expr.line, expr.column)
+        return parse_type_string(expr, options)
     elif isinstance(expr, BytesExpr):
-        return parse_type_string(expr.value, "builtins.bytes", expr.line, expr.column)
+        return RawExpressionType(expr.value, "builtins.bytes", expr.line, expr.column)
     elif isinstance(expr, UnaryExpr):
         typ = expr_to_unanalyzed_type(
             expr.expr, options, allow_new_syntax, lookup_qualified=lookup_qualified

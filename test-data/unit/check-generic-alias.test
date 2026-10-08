@@ -150,7 +150,7 @@ t23: collections.abc.ValuesView[str]
 [builtins fixtures/tuple.pyi]
 
 [case testGenericAliasIsinstanceUnreachable]
-# flags: --warn-unreachable --python-version 3.10
+# flags: --warn-unreachable
 from collections.abc import Iterable
 
 class A: ...
@@ -165,7 +165,7 @@ def test(dependencies: list[A] | None) -> None:
 [typing fixtures/typing-full.pyi]
 
 [case testGenericAliasRedundantExprCompoundIfExpr]
-# flags: --warn-unreachable --enable-error-code=redundant-expr --python-version 3.10
+# flags: --warn-unreachable --enable-error-code=redundant-expr
 
 from typing import Any, reveal_type
 from collections.abc import Iterable

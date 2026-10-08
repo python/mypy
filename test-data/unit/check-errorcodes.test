@@ -101,56 +101,60 @@ class A:
 [case testErrorCodeNoteHasNoCode]
 reveal_type(1) # N: Revealed type is "Literal[1]?"
 
-[case testErrorCodeSyntaxError_no_native_parse]
+[case testErrorCodeSyntaxError]
 1 ''
 [out]
-main:1: error: Invalid syntax  [syntax]
-[out version==3.10.0]
-main:1: error: Invalid syntax. Perhaps you forgot a comma?  [syntax]
+main:1: error: Simple statements must be separated by newlines or semicolons  [syntax]
 
-[case testErrorCodeSyntaxError2_no_native_parse]
+[case testErrorCodeSyntaxError2]
 def f(): # E: Type signature has too many parameters  [syntax]
     # type: (int) -> None
     1
 
-x = 0  # type: x y  # E: Syntax error in type comment "x y"  [syntax]
+x = 0  # type: x y  # E: Syntax error in type comment "x y"  [syntax] \
+                    # E: Invalid type comment or annotation  [valid-type]
 
-[case testErrorCodeSyntaxError3_no_native_parse]
+[case testErrorCodeSyntaxError3_old_parser]
 # This is a bit inconsistent -- syntax error would be more logical?
 x: 'a b'  # E: Invalid type comment or annotation  [valid-type]
 for v in x:  # type: int, int  # E: Syntax error in type annotation  [syntax] \
     # N: Suggestion: Use Tuple[T1, ..., Tn] instead of (T1, ..., Tn)
     pass
 
+[case testErrorCodeSyntaxError4]
+x = 1  # type: int, int  # E: Syntax error in type annotation  [syntax] \
+                         # N: Suggestion: Use Tuple[T1, ..., Tn] instead of (T1, ..., Tn)
+
 [case testErrorCodeSyntaxErrorIgnoreNote]
 # This is a bit inconsistent -- syntax error would be more logical?
 x: 'a b'  # type: ignore[valid-type]
-for v in x:  # type: int, int  # type: ignore[syntax]
-    pass
+y = 1  # type: int, int  # type: ignore[syntax]
 
 [case testErrorCodeIgnore1]
 'x'.foobar  # type: ignore[attr-defined]
 'x'.foobar  # type: ignore[xyz]  # E: "str" has no attribute "foobar"  [attr-defined] \
-    # N: Error code "attr-defined" not covered by "type: ignore" comment
+                                 # N: Error code "attr-defined" not covered by "type: ignore[xyz]" comment
 'x'.foobar  # type: ignore
 
 [case testErrorCodeIgnore2]
 a = 'x'.foobar  # type: int  # type: ignore[attr-defined]
 b = 'x'.foobar  # type: int  # type: ignore[xyz]  # E: "str" has no attribute "foobar"  [attr-defined] \
-    # N: Error code "attr-defined" not covered by "type: ignore" comment
+                                                  # N: Error code "attr-defined" not covered by "type: ignore[xyz]" comment
 c = 'x'.foobar  # type: int  # type: ignore
 
 [case testErrorCodeIgnoreMultiple1]
 a = 'x'.foobar(b)  # type: ignore[name-defined, attr-defined]
 a = 'x'.foobar(b)  # type: ignore[name-defined, xyz]  # E: "str" has no attribute "foobar"  [attr-defined] \
-    # N: Error code "attr-defined" not covered by "type: ignore" comment
+                                                      # N: Error code "attr-defined" not covered by "type: ignore[name-defined, xyz]" comment
 a = 'x'.foobar(b)  # type: ignore[xyz, w, attr-defined]  # E: Name "b" is not defined  [name-defined] \
-    # N: Error code "name-defined" not covered by "type: ignore" comment
+                                                         # N: Error code "name-defined" not covered by "type: ignore[xyz, w, attr-defined]" comment
+a = 'x'.foobar(b)  # type: ignore[ w,  xyz,    attr-defined]  # E: Name "b" is not defined  [name-defined] \
+                                                              # N: Error code "name-defined" not covered by "type: ignore[w, xyz, attr-defined]" comment
 
 [case testErrorCodeIgnoreMultiple2]
 a = 'x'.foobar(c) # type: int # type: ignore[name-defined, attr-defined]
 b = 'x'.foobar(c) # type: int # type: ignore[name-defined, xyz]  # E: "str" has no attribute "foobar"  [attr-defined] \
-    # N: Error code "attr-defined" not covered by "type: ignore" comment
+                                                                 # N: Error code "attr-defined" not covered by "type: ignore[name-defined, xyz]" comment
 
 [case testErrorCodeWarnUnusedIgnores1]
 # flags: --warn-unused-ignores
@@ -162,7 +166,7 @@ x # type: ignore[name-defined, attr-defined] # E: Unused "type: ignore[attr-defi
 
 [case testErrorCodeWarnUnusedIgnores3]
 # flags: --warn-unused-ignores
-"x".foobar(y) # type: ignore[name-defined, attr-defined, xyz] # E: Unused "type: ignore[xyz]" comment  [unused-ignore]
+"x".foobar(y) # type: ignore[name-defined, attr-defined, xyz]
 
 [case testErrorCodeWarnUnusedIgnores4]
 # flags: --warn-unused-ignores
@@ -170,7 +174,7 @@ x # type: ignore[name-defined, attr-defined] # E: Unused "type: ignore[attr-defi
 
 [case testErrorCodeWarnUnusedIgnores5]
 # flags: --warn-unused-ignores
-"x".foobar(y) # type: ignore[name-defined, attr-defined, valid-type, xyz] # E: Unused "type: ignore[valid-type, xyz]" comment  [unused-ignore]
+"x".foobar(y) # type: ignore[name-defined, attr-defined, valid-type, xyz] # E: Unused "type: ignore[valid-type]" comment  [unused-ignore]
 
 [case testErrorCodeWarnUnusedIgnores6_NoDetailWhenSingleErrorCode]
 # flags: --warn-unused-ignores
@@ -216,7 +220,7 @@ z # type: ignore[name-defined]
 "y" # type: ignore[ignore-without-code] # E: Unused "type: ignore" comment  [unused-ignore]
 z # type: ignore[ignore-without-code] # E: Unused "type: ignore" comment  [unused-ignore] \
                                       # E: Name "z" is not defined  [name-defined] \
-                                      # N: Error code "name-defined" not covered by "type: ignore" comment
+                                      # N: Error code "name-defined" not covered by "type: ignore[ignore-without-code]" comment
 
 [case testErrorCodeMissingWholeFileIgnores]
 # flags: --enable-error-code ignore-without-code
@@ -242,21 +246,21 @@ x2 # type: ignore   [ name-defined ]
 x3 # type: ignore   [ xyz , name-defined ]
 x4 # type: ignore[xyz,name-defined]
 y  # type: ignore   [xyz]  # E: Name "y" is not defined  [name-defined] \
-    # N: Error code "name-defined" not covered by "type: ignore" comment
+                           # N: Error code "name-defined" not covered by "type: ignore[xyz]" comment
 y  # type: ignore[  xyz  ]  # E: Name "y" is not defined  [name-defined] \
-    # N: Error code "name-defined" not covered by "type: ignore" comment
+                            # N: Error code "name-defined" not covered by "type: ignore[xyz]" comment
 y  # type: ignore[ xyz , foo  ]  # E: Name "y" is not defined  [name-defined] \
-    # N: Error code "name-defined" not covered by "type: ignore" comment
+                                 # N: Error code "name-defined" not covered by "type: ignore[xyz, foo]" comment
 
 a = z  # type: int  # type: ignore  [name-defined]
 b = z2  # type: int  # type: ignore  [ name-defined ]
 c = z2  # type: int  # type: ignore  [ name-defined , xyz ]
 d = zz # type: int  # type: ignore  [xyz]  # E: Name "zz" is not defined  [name-defined] \
-    # N: Error code "name-defined" not covered by "type: ignore" comment
+                                           # N: Error code "name-defined" not covered by "type: ignore[xyz]" comment
 e = zz # type: int  # type: ignore  [ xyz ]  # E: Name "zz" is not defined  [name-defined] \
-    # N: Error code "name-defined" not covered by "type: ignore" comment
+                                             # N: Error code "name-defined" not covered by "type: ignore[xyz]" comment
 f = zz # type: int  # type: ignore  [ xyz,foo ]  # E: Name "zz" is not defined  [name-defined] \
-    # N: Error code "name-defined" not covered by "type: ignore" comment
+                                                 # N: Error code "name-defined" not covered by "type: ignore[xyz, foo]" comment
 
 [case testErrorCodeIgnoreAfterArgComment]
 def f(x  # type: xyz  # type: ignore[name-defined]  # Comment
@@ -270,7 +274,7 @@ def g(x  # type: xyz  # type: ignore  # Comment
     pass
 
 def h(x  # type: xyz  # type: ignore[foo]  # E: Name "xyz" is not defined  [name-defined] \
-      # N: Error code "name-defined" not covered by "type: ignore" comment
+                                           # N: Error code "name-defined" not covered by "type: ignore[foo]" comment
       ):
     # type () -> None
     pass
@@ -279,10 +283,10 @@ def h(x  # type: xyz  # type: ignore[foo]  # E: Name "xyz" is not defined  [name
 import nostub  # type: ignore[import]
 from defusedxml import xyz  # type: ignore[import]
 
-[case testErrorCodeBadIgnore_no_native_parse]
-import nostub # type: ignore xyz  # E: Invalid "type: ignore" comment  [syntax] \
-                                  # E: Cannot find implementation or library stub for module named "nostub"  [import-not-found] \
-                                  # N: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
+[case testErrorCodeBadIgnore]
+import nostub # type: ignore xyz  # E: Cannot find implementation or library stub for module named "nostub"  [import-not-found] \
+                                  # N: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports \
+                                  # E: Invalid "type: ignore" comment  [syntax]
 import nostub # type: ignore[  # E: Invalid "type: ignore" comment  [syntax]
 import nostub # type: ignore[foo  # E: Invalid "type: ignore" comment  [syntax]
 import nostub # type: ignore[foo,  # E: Invalid "type: ignore" comment  [syntax]
@@ -297,7 +301,7 @@ def f(x,  # type: int  # type: ignore[  # E: Invalid "type: ignore" comment  [sy
     # type: (...) -> None
     pass
 
-[case testErrorCodeBadIgnoreNoExtraComment_no_native_parse]
+[case testErrorCodeBadIgnoreNoExtraComment]
 # Omit the E: ... comments, as they affect parsing
 import nostub # type: ignore xyz
 import nostub # type: ignore[xyz
@@ -308,9 +312,9 @@ def f(x,  # type: int  # type: ignore[
     # type: (...) -> None
     pass
 [out]
-main:2: error: Invalid "type: ignore" comment  [syntax]
 main:2: error: Cannot find implementation or library stub for module named "nostub"  [import-not-found]
 main:2: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
+main:2: error: Invalid "type: ignore" comment  [syntax]
 main:3: error: Invalid "type: ignore" comment  [syntax]
 main:4: error: Invalid "type: ignore" comment  [syntax]
 main:5: error: Invalid "type: ignore" comment  [syntax]
@@ -328,6 +332,17 @@ g()  # E: Missing named argument "x" for "g"  [call-arg]
 def h(x: int, y: int, z: int) -> None: pass
 h(y=1, z=1)  # E: Missing positional argument "x" in call to "h"  [call-arg]
 h(y=1)  # E: Missing positional arguments "x", "z" in call to "h"  [call-arg]
+
+[case testTooManyPositionalArgumentsErrorCode]
+def f(a: int, *, b: int) -> None: pass
+f(1, 2)  # E: Too many positional arguments for "f"  [call-arg]
+f(1, 2)  # type: ignore[call-arg]
+f(1, 2)  # type: ignore[misc]
+
+[case testTooManyPositionalArgumentsCoveredByMiscUnused]
+# flags: --warn-unused-ignores
+def f(a: int, *, b: int) -> None: pass
+f(1, 2)  # type: ignore[misc]  # E: Unused "type: ignore" comment, use narrower [call-arg] instead of [misc] code  [unused-ignore]
 
 [case testErrorCodeArgType]
 def f(x: int) -> None: pass
@@ -491,7 +506,7 @@ def y() -> int: return 2
 def best() -> int: return 3
 @d  # type: ignore[misc]  # E: Unused "type: ignore" comment  [unused-ignore] \
                           # E: Untyped decorator makes function "z" untyped  [untyped-decorator] \
-                          # N: Error code "untyped-decorator" not covered by "type: ignore" comment
+                          # N: Error code "untyped-decorator" not covered by "type: ignore[misc]" comment
 def z() -> int: return 4
 
 [case testErrorCodeIndexing]
@@ -833,12 +848,12 @@ main:1: error: Name "y" is not defined  [name-defined]
 main:2: error: Name "ignored" is not defined  [name-defined]
 main:2: error: Name "y" is not defined  [name-defined]
 
-[case testErrorCodeTypeIgnoreMisspelled2_no_native_parse]
+[case testErrorCodeTypeIgnoreMisspelled2]
 x = y  # type: int  # type: ignored[foo]
 x = y  # type: int  # type: ignored [foo]
 [out]
-main:1: error: Syntax error in type comment "int"  [syntax]
-main:2: error: Syntax error in type comment "int"  [syntax]
+main:1: error: Multiple type comments on the same line  [syntax]
+main:2: error: Multiple type comments on the same line  [syntax]
 
 [case testErrorCode__exit__Return]
 class InvalidReturn:
@@ -966,7 +981,7 @@ Foo = TypedDict("Bar", {})  # E: First argument "Bar" to TypedDict() does not ma
 [typing fixtures/typing-typeddict.pyi]
 
 [case testTruthyBool]
-# flags: --enable-error-code truthy-bool --no-local-partial-types
+# flags: --enable-error-code truthy-bool
 from typing import List, Union, Any
 
 class Foo:
@@ -1085,7 +1100,7 @@ def f(arg: int) -> int:
 def f(arg: str) -> str:
     ...
 
-[case testSliceInDictBuiltin_no_native_parse]
+[case testSliceInDictBuiltin]
 # flags: --show-column-numbers
 b: dict[int, x:y]
 c: dict[x:y]
@@ -1093,12 +1108,10 @@ c: dict[x:y]
 [builtins fixtures/dict.pyi]
 [out]
 main:2:14: error: Invalid type comment or annotation  [valid-type]
-main:2:14: note: did you mean to use ',' instead of ':' ?
 main:3:4: error: "dict" expects 2 type arguments, but 1 given  [type-arg]
 main:3:9: error: Invalid type comment or annotation  [valid-type]
-main:3:9: note: did you mean to use ',' instead of ':' ?
 
-[case testSliceInDictTyping_no_native_parse]
+[case testSliceInDictTyping]
 # flags: --show-column-numbers
 from typing import Dict
 b: Dict[int, x:y]
@@ -1107,11 +1120,8 @@ c: Dict[x:y]
 [builtins fixtures/dict.pyi]
 [out]
 main:3:14: error: Invalid type comment or annotation  [valid-type]
-main:3:14: note: did you mean to use ',' instead of ':' ?
 main:4:4: error: "dict" expects 2 type arguments, but 1 given  [type-arg]
 main:4:9: error: Invalid type comment or annotation  [valid-type]
-main:4:9: note: did you mean to use ',' instead of ':' ?
-
 
 [case testSliceInCustomTensorType]
 # syntactically mimics torchtyping.TensorType
@@ -1127,12 +1137,12 @@ class D(TypedDict):
 
 def f(d: D, s: str) -> None:
     d[s]  # type: ignore[xyz] \
-    # E: TypedDict key must be a string literal; expected one of ("x")  [literal-required] \
-    # N: Error code "literal-required" not covered by "type: ignore" comment
+          # E: TypedDict key must be a string literal; expected one of ("x")  [literal-required] \
+          # N: Error code "literal-required" not covered by "type: ignore[xyz]" comment
     d[s] # E: TypedDict key must be a string literal; expected one of ("x")  [literal-required]
-    d[s]  # type: ignore[misc]  \
-    # E: TypedDict key must be a string literal; expected one of ("x")  [literal-required] \
-    # N: Error code changed to literal-required; "type: ignore" comment may be out of date
+    d[s]  # type: ignore[misc] \
+          # E: TypedDict key must be a string literal; expected one of ("x")  [literal-required] \
+          # N: Error code changed to literal-required; "type: ignore" comment may be out of date
     d[s]  # type: ignore[literal-required]
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]

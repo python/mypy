@@ -1,5 +1,6 @@
 # Builtins stub used in set-related test cases.
 
+import types
 from typing import TypeVar, Generic, Iterator, Iterable, Set
 
 T = TypeVar('T')
@@ -16,7 +17,6 @@ class int: pass
 class float: pass
 class str: pass
 class bool: pass
-class ellipsis: pass
 
 class set(Iterable[T], Generic[T]):
     def __init__(self, iterable: Iterable[T] = ...) -> None: ...

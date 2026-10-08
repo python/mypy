@@ -298,6 +298,8 @@ from typing_extensions import Final
     ],
     "suppressed": [],
     "options": {
+        "is_parallel": false,
+        "local_partial_types": true,
         "other_options": "<hash>",
         "platform": ...
     },

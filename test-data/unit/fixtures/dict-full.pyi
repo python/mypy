@@ -1,5 +1,6 @@
 # Builtins stub used in dictionary-related test cases (more complete).
 
+import types
 from _typeshed import SupportsKeysAndGetItem
 import _typeshed
 from typing import (
@@ -78,7 +79,6 @@ class float: pass
 class complex: pass
 class bool(int): pass
 
-class ellipsis: pass
 def isinstance(x: object, t: Union[type, Tuple[type, ...]]) -> bool: pass
 class BaseException: pass
 

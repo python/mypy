@@ -78,6 +78,73 @@ L3:
 L4:
     return 1
 
+[case testForInRangeAnyArgs]
+from typing import Any
+
+def f(a: Any, b: Any) -> None:
+    for i in range(a, b):
+        pass
+[out]
+def f(a, b):
+    a, b, r0 :: object
+    r1 :: int
+    r2 :: object
+    r3, r4, i :: int
+    r5 :: bit
+    r6 :: int
+L0:
+    r0 = PyNumber_Index(a)
+    r1 = unbox(int, r0)
+    r2 = PyNumber_Index(b)
+    r3 = unbox(int, r2)
+    r4 = r1
+    i = r4
+L1:
+    r5 = int_lt r4, r3
+    if r5 goto L2 else goto L4 :: bool
+L2:
+    i = r4
+L3:
+    r6 = CPyTagged_Add(r4, 2)
+    r4 = r6
+    goto L1
+L4:
+    return 1
+
+[case testForInRangeNativeIndexArg]
+class C:
+    def __index__(self) -> int:
+        return 2
+
+def f(c: C) -> None:
+    for i in range(c):  # type: ignore[arg-type]
+        pass
+[out]
+def C.__index__(self):
+    self :: __main__.C
+L0:
+    return 4
+def f(c):
+    c :: __main__.C
+    r0, r1, i :: int
+    r2 :: bit
+    r3 :: int
+L0:
+    r0 = c.__index__()
+    r1 = 0
+    i = r1
+L1:
+    r2 = int_lt r1, r0
+    if r2 goto L2 else goto L4 :: bool
+L2:
+    i = r1
+L3:
+    r3 = CPyTagged_Add(r1, 2)
+    r1 = r3
+    goto L1
+L4:
+    return 1
+
 [case testBreak]
 def f() -> None:
   n = 0
@@ -218,7 +285,7 @@ L5:
 L6:
     return 1
 
-[case testForList]
+[case testForList_withgil]
 from typing import List
 
 def f(ls: List[int]) -> int:
@@ -244,6 +311,43 @@ L1:
     if r2 goto L2 else goto L4 :: bool
 L2:
     r3 = list_get_item_unsafe ls, r0
+    r4 = unbox(int, r3)
+    x = r4
+    r5 = CPyTagged_Add(y, x)
+    y = r5
+L3:
+    r6 = r0 + 1
+    r0 = r6
+    goto L1
+L4:
+    return y
+
+[case testForList_nogil]
+from typing import List
+
+def f(ls: List[int]) -> int:
+    y = 0
+    for x in ls:
+        y = y + x
+    return y
+[out]
+def f(ls):
+    ls :: list
+    y :: int
+    r0, r1 :: native_int
+    r2 :: bit
+    r3 :: object
+    r4, x, r5 :: int
+    r6 :: native_int
+L0:
+    y = 0
+    r0 = 0
+L1:
+    r1 = var_object_size ls
+    r2 = r0 < r1 :: signed
+    if r2 goto L2 else goto L4 :: bool
+L2:
+    r3 = CPyList_GetItemInt64(ls, r0)
     r4 = unbox(int, r3)
     x = r4
     r5 = CPyTagged_Add(y, x)
@@ -381,15 +485,17 @@ def f3(x: int, y: int) -> Tuple[int, int]:
     return (x, y)
 [out]
 def f(x, y):
-    x, y, r0, r1 :: int
-    r2 :: tuple[int, int]
+    x, y, r0, r1, r2, r3 :: int
+    r4 :: tuple[int, int]
 L0:
     r0 = y
     r1 = x
     x = r0
     y = r1
-    r2 = (x, y)
-    return r2
+    r2 = x
+    r3 = y
+    r4 = (r2, r3)
+    return r4
 def f2(x, y, z):
     x :: int
     y :: str
@@ -399,8 +505,10 @@ def f2(x, y, z):
     r2 :: float
     a :: int
     b :: str
-    c :: float
-    r3 :: tuple[float, str, int]
+    c, r3 :: float
+    r4 :: str
+    r5 :: int
+    r6 :: tuple[float, str, int]
 L0:
     r0 = x
     r1 = y
@@ -408,18 +516,23 @@ L0:
     a = r0
     b = r1
     c = r2
-    r3 = (c, b, a)
-    return r3
+    r3 = c
+    r4 = b
+    r5 = a
+    r6 = (r3, r4, r5)
+    return r6
 def f3(x, y):
-    x, y, r0, r1 :: int
-    r2 :: tuple[int, int]
+    x, y, r0, r1, r2, r3 :: int
+    r4 :: tuple[int, int]
 L0:
     r0 = y
     r1 = x
     x = r0
     y = r1
-    r2 = (x, y)
-    return r2
+    r2 = x
+    r3 = y
+    r4 = (r2, r3)
+    return r4
 
 [case testMultipleAssignmentBasicUnpacking]
 from typing import Tuple, Any
@@ -566,7 +679,7 @@ L0:
     z = r6
     return 1
 
-[case testMultipleAssignmentUnpackFromSequence]
+[case testMultipleAssignmentUnpackFromSequence_withgil]
 from typing import List, Tuple
 
 def f(l: List[int], t: Tuple[int, ...]) -> None:
@@ -591,6 +704,43 @@ L0:
     r1 = r0 >= 0 :: signed
     r2 = list_get_item_unsafe l, 0
     r3 = list_get_item_unsafe l, 1
+    x = r2
+    r4 = unbox(int, r3)
+    y = r4
+    r5 = CPySequence_CheckUnpackCount(t, 2)
+    r6 = r5 >= 0 :: signed
+    r7 = CPySequenceTuple_GetItemUnsafe(t, 0)
+    r8 = CPySequenceTuple_GetItemUnsafe(t, 1)
+    x = r7
+    r9 = unbox(int, r8)
+    y = r9
+    return 1
+
+[case testMultipleAssignmentUnpackFromSequence_nogil]
+from typing import List, Tuple
+
+def f(l: List[int], t: Tuple[int, ...]) -> None:
+    x: object
+    y: int
+    x, y = l
+    x, y = t
+[out]
+def f(l, t):
+    l :: list
+    t :: tuple
+    r0 :: i32
+    r1 :: bit
+    r2, r3, x :: object
+    r4, y :: int
+    r5 :: i32
+    r6 :: bit
+    r7, r8 :: object
+    r9 :: int
+L0:
+    r0 = CPySequence_CheckUnpackCount(l, 2)
+    r1 = r0 >= 0 :: signed
+    r2 = CPyList_GetItemInt64(l, 0)
+    r3 = CPyList_GetItemInt64(l, 1)
     x = r2
     r4 = unbox(int, r3)
     y = r4
@@ -853,7 +1003,7 @@ L0:
     r6 = r5 >= 0 :: signed
     return 1
 
-[case testForEnumerate]
+[case testForEnumerate_withgil]
 from typing import List, Iterable
 
 def f(a: List[int]) -> None:
@@ -921,7 +1071,7 @@ L4:
 L5:
     return 1
 
-[case testForZip]
+[case testForZip_withgil]
 from typing import List, Iterable, Sequence
 
 def f(a: List[int], b: Sequence[bool]) -> None:

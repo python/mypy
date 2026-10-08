@@ -5,6 +5,35 @@
 
 #include "pythonsupport.h"
 
+#ifdef Py_GIL_DISABLED
+// Cold slow path of CPy_GetAttrRef (declared in pythonsupport.h). First try to
+// acquire a shared reference without locking, then validate that the field still
+// contains v. If validation fails, drop the provisional reference. If the shared
+// incref or validation fails, take the owner's critical section, reload the field,
+// and take a reference while the value cannot be replaced. _Py_XNewRefWithLock
+// also sets maybe-weakref lazily, so later cross-thread reads generally use the
+// lock-free shared-refcount path. Returns NULL if the field is NULL on reload.
+//
+// The reload can be relaxed: acquiring the owner's critical section synchronizes
+// with the writer ending its critical section. A value stored by CPy_InitAttrRef is
+// ordered by the later publication of the owner itself (see CPy_InitAttrRef).
+CPy_NOINLINE
+CPy_COLD
+PyObject *CPy_GetAttrRefSlow(PyObject *v, PyObject *owner, PyObject **field) {
+    if (_Py_TryIncRefShared(v)) {
+        if (v == (PyObject *)_Py_atomic_load_ptr(field)) {
+            return v;
+        }
+        Py_DECREF(v);
+    }
+    PyObject *result;
+    Py_BEGIN_CRITICAL_SECTION(owner);
+    result = _Py_XNewRefWithLock((PyObject *)_Py_atomic_load_ptr_relaxed(field));
+    Py_END_CRITICAL_SECTION();
+    return result;
+}
+#endif
+
 /////////////////////////////////////////
 // Adapted from bltinmodule.c in Python 3.7.0
 PyObject*

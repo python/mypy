@@ -1117,6 +1117,7 @@ class D:
 [builtins fixtures/dict.pyi]
 
 [case testUnpackInCallableType]
+# flags: --python-version 3.11
 from typing import Callable, TypedDict
 from typing_extensions import Unpack
 

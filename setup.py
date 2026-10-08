@@ -153,6 +153,7 @@ if USE_MYPYC:
     debug_level = os.getenv("MYPYC_DEBUG_LEVEL", "1")
     force_multifile = os.getenv("MYPYC_MULTI_FILE", "") == "1"
     log_trace = bool(int(os.getenv("MYPYC_LOG_TRACE", "0")))
+    separate = os.getenv("MYPYC_SEPARATE", "") == "1"
     ext_modules = mypycify(
         mypyc_targets + ["--config-file=mypy_bootstrap.ini"],
         opt_level=opt_level,
@@ -161,6 +162,7 @@ if USE_MYPYC:
         # our Appveyor builds run out of memory sometimes.
         multi_file=sys.platform == "win32" or force_multifile,
         log_trace=log_trace,
+        separate=separate,
         # Mypy itself is allowed to use native_internal extension.
         depends_on_librt_internal=True,
     )

@@ -3,13 +3,16 @@ from _typeshed import SupportsRichComparisonT
 from collections.abc import Callable, Hashable, Iterable, Sequence, Sized
 from decimal import Decimal
 from fractions import Fraction
-from typing import Literal, NamedTuple, Protocol, SupportsFloat, SupportsIndex, TypeVar
-from typing_extensions import Self, TypeAlias
+from typing import Literal, NamedTuple, Protocol, SupportsFloat, SupportsIndex, TypeAlias, TypeVar, type_check_only
+from typing_extensions import Self
 
 __all__ = [
     "StatisticsError",
+    "covariance",
+    "correlation",
     "fmean",
     "geometric_mean",
+    "linear_regression",
     "mean",
     "harmonic_mean",
     "pstdev",
@@ -26,8 +29,6 @@ __all__ = [
     "quantiles",
 ]
 
-if sys.version_info >= (3, 10):
-    __all__ += ["covariance", "correlation", "linear_regression"]
 if sys.version_info >= (3, 13):
     __all__ += ["kde", "kde_random"]
 
@@ -44,7 +45,9 @@ _Seed: TypeAlias = int | float | str | bytes | bytearray  # noqa: Y041
 # Used in linear_regression
 _T_co = TypeVar("_T_co", covariant=True)
 
+@type_check_only
 class _SizedIterable(Iterable[_T_co], Sized, Protocol[_T_co]): ...
+
 class StatisticsError(ValueError): ...
 
 if sys.version_info >= (3, 11):
@@ -55,13 +58,7 @@ else:
 
 def geometric_mean(data: Iterable[SupportsFloat]) -> float: ...
 def mean(data: Iterable[_NumberT]) -> _NumberT: ...
-
-if sys.version_info >= (3, 10):
-    def harmonic_mean(data: Iterable[_NumberT], weights: Iterable[_Number] | None = None) -> _NumberT: ...
-
-else:
-    def harmonic_mean(data: Iterable[_NumberT]) -> _NumberT: ...
-
+def harmonic_mean(data: Iterable[_NumberT], weights: Iterable[_Number] | None = None) -> _NumberT: ...
 def median(data: Iterable[_NumberT]) -> _NumberT: ...
 def median_low(data: Iterable[SupportsRichComparisonT]) -> SupportsRichComparisonT: ...
 def median_high(data: Iterable[SupportsRichComparisonT]) -> SupportsRichComparisonT: ...
@@ -121,22 +118,21 @@ if sys.version_info >= (3, 12):
         x: Sequence[_Number], y: Sequence[_Number], /, *, method: Literal["linear", "ranked"] = "linear"
     ) -> float: ...
 
-elif sys.version_info >= (3, 10):
+else:
     def correlation(x: Sequence[_Number], y: Sequence[_Number], /) -> float: ...
 
-if sys.version_info >= (3, 10):
-    def covariance(x: Sequence[_Number], y: Sequence[_Number], /) -> float: ...
+def covariance(x: Sequence[_Number], y: Sequence[_Number], /) -> float: ...
 
-    class LinearRegression(NamedTuple):
-        slope: float
-        intercept: float
+class LinearRegression(NamedTuple):
+    slope: float
+    intercept: float
 
 if sys.version_info >= (3, 11):
     def linear_regression(
         regressor: _SizedIterable[_Number], dependent_variable: _SizedIterable[_Number], /, *, proportional: bool = False
     ) -> LinearRegression: ...
 
-elif sys.version_info >= (3, 10):
+else:
     def linear_regression(
         regressor: _SizedIterable[_Number], dependent_variable: _SizedIterable[_Number], /
     ) -> LinearRegression: ...

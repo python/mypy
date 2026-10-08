@@ -32,13 +32,13 @@ from xyz_m import * # type: ignore
 x   # E: Name "x" is not defined
 1() # E: "int" not callable
 
-[case testIgnoreImportBadModule_no_native_parse]
+[case testIgnoreImportBadModule]
 import m # type: ignore
 from m import a # type: ignore
 [file m.py]
 +
 [out]
-tmp/m.py:1: error: Invalid syntax
+tmp/m.py:1: error: Expected an expression
 
 [case testIgnoreAppliesOnlyToMissing]
 import a # type: ignore
@@ -54,12 +54,12 @@ foo = 3
 [builtins fixtures/module_all.pyi]
 [out]
 
-[case testIgnoreImportStarFromBadModule_no_native_parse]
+[case testIgnoreImportStarFromBadModule]
 from m import * # type: ignore
 [file m.py]
 +
 [out]
-tmp/m.py:1: error: Invalid syntax
+tmp/m.py:1: error: Expected an expression
 
 [case testIgnoreAssignmentTypeError]
 x = 1
@@ -277,13 +277,13 @@ class CD(six.with_metaclass(M)):  # E: Multiple metaclass definitions
 
 [case testUnusedIgnoreCodeOrder]
 # flags: --warn-unused-ignores
-5 # type: ignore[import, steven] # E: Unused "type: ignore[import, steven]" comment
+5 # type: ignore[import, valid-type] # E: Unused "type: ignore[import, valid-type]" comment
 -- User ordering of codes is preserved
-5 # type: ignore[steven, import] # E: Unused "type: ignore[steven, import]" comment
+5 # type: ignore[valid-type, import] # E: Unused "type: ignore[valid-type, import]" comment
 -- Spacing is not preserved
-5 # type: ignore[  steven,      import ] # E: Unused "type: ignore[steven, import]" comment
+5 # type: ignore[  valid-type,      import ] # E: Unused "type: ignore[valid-type, import]" comment
 -- Make sure it works as intended in more complex situations
-1 + "ok" + "ok".foo # type: ignore[  operator,steven,attr-defined, import] # E: Unused "type: ignore[steven, import]" comment
+1 + "ok" + "ok".foo # type: ignore[  operator,valid-type,attr-defined, import] # E: Unused "type: ignore[valid-type, import]" comment
 
 [case testUnusedIgnoreTryExcept]
 # flags: --warn-unused-ignores
@@ -300,3 +300,12 @@ except Exception:
 [file foobar.py]
 [file barfoo.py]
 [builtins fixtures/exception.pyi]
+
+[case testNamespaceErrorCodes]
+x: str = 42  # type: ignore[mypy:assignment, other:foobar]
+y: str = 42  # type: ignore[mypy:arg-type, other:foobar]
+x = 1  # type: ignore[mypy:foobar]
+[out]
+main:2: error: Incompatible types in assignment (expression has type "int", variable has type "str")
+main:2: note: Error code "assignment" not covered by "type: ignore[arg-type, other:foobar]" comment
+main:3: error: Unrecognized error code "foobar"

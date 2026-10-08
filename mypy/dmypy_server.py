@@ -151,6 +151,8 @@ def process_start_options(flags: list[str], allow_sources: bool) -> Options:
         sys.exit("dmypy: start/restart should not disable incremental mode")
     if options.follow_imports not in ("skip", "error", "normal"):
         sys.exit("dmypy: follow-imports=silent not supported")
+    if not options.local_partial_types:
+        sys.exit("dmypy: disabling local-partial-types not supported")
     return options
 
 
@@ -190,13 +192,17 @@ class Server:
         options.show_traceback = True
         if options.use_fine_grained_cache:
             # Using fine_grained_cache implies generating and caring
-            # about the fine grained cache
+            # about the fine-grained cache.
             options.cache_fine_grained = True
         else:
             options.cache_dir = os.devnull
         # Fine-grained incremental doesn't support general partial types
         # (details in https://github.com/python/mypy/issues/4492)
         options.local_partial_types = True
+        # We don't support parallel checking in fine-grained mode yet.
+        # Ignore it for now, so that same config file can be used with
+        # mypy and with the daemon.
+        options.num_workers = 0
         self.status_file = status_file
 
         # Since the object is created in the parent process we can check

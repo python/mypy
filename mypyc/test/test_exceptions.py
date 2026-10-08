@@ -11,7 +11,7 @@ from mypy.errors import CompileError
 from mypy.test.config import test_temp_dir
 from mypy.test.data import DataDrivenTestCase
 from mypyc.analysis.blockfreq import frequently_executed_blocks
-from mypyc.common import TOP_LEVEL_NAME
+from mypyc.common import IS_FREE_THREADED, TOP_LEVEL_NAME
 from mypyc.ir.pprint import format_func
 from mypyc.test.testutil import (
     ICODE_GEN_BUILTINS,
@@ -34,6 +34,14 @@ class TestExceptionTransform(MypycDataSuite):
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
         """Perform a runtime checking transformation test case."""
+
+        if "_withgil" in testcase.name and IS_FREE_THREADED:
+            # Test case should only run on a non-free-threaded build.
+            return
+        if "_nogil" in testcase.name and not IS_FREE_THREADED:
+            # Test case should only run on a free-threaded build.
+            return
+
         with use_custom_builtins(os.path.join(self.data_prefix, ICODE_GEN_BUILTINS), testcase):
             expected_output = remove_comment_lines(testcase.output)
             try:

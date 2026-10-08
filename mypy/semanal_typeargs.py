@@ -108,7 +108,10 @@ class TypeArgumentAnalyzer(MixedTraverserVisitor):
             self.seen_aliases.discard(t)
 
     def visit_tuple_type(self, t: TupleType) -> None:
-        t.items = flatten_nested_tuples(t.items)
+        # Unfortunately, universal normalization of tuples is not possible in presence of
+        # recursive aliases, see testNoCrashOnNonNormalRecursiveTuple for an example.
+        # TODO: update the places where we handle tuples to always expect non-normal ones.
+        t.items = flatten_nested_tuples(t.items, handle_recursive=False)
         for i, it in enumerate(t.items):
             if self.check_non_paramspec(it, "tuple", t):
                 t.items[i] = AnyType(TypeOfAny.from_error)

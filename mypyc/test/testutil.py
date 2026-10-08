@@ -11,6 +11,7 @@ from collections.abc import Callable, Iterator
 
 from mypy import build
 from mypy.errors import CompileError
+from mypy.main import process_options
 from mypy.nodes import Expression, MypyFile
 from mypy.options import Options
 from mypy.test.config import test_temp_dir
@@ -102,15 +103,21 @@ def build_ir_for_single_file2(
 ) -> tuple[ModuleIR, MypyFile, dict[Expression, Type], Mapper]:
     program_text = "\n".join(input_lines)
 
-    # By default generate IR compatible with the earliest supported Python C API.
+    flags = re.search("# flags: (.*)$", program_text, flags=re.MULTILINE)
+
+    # By default, generate IR compatible with the earliest supported Python C API.
     # If a test needs more recent API features, this should be overridden.
-    compiler_options = compiler_options or CompilerOptions(capi_version=(3, 9))
-    options = Options()
+    compiler_options = compiler_options or CompilerOptions(capi_version=(3, 10))
+    if flags:
+        flag_list = flags.group(1).split()
+        _, options = process_options(flag_list, require_targets=False)
+    else:
+        options = Options()
     options.show_traceback = True
     options.hide_error_codes = True
     options.use_builtins_fixtures = True
     options.strict_optional = True
-    options.python_version = compiler_options.python_version or (3, 9)
+    options.python_version = compiler_options.python_version or (3, 10)
     options.export_types = True
     options.preserve_asts = True
     options.allow_empty_bodies = True
@@ -120,7 +127,7 @@ def build_ir_for_single_file2(
     options.per_module_options["__main__"] = {"mypyc": True}
 
     source = build.BuildSource("main", "__main__", program_text)
-    # Construct input as a single single.
+    # Construct input as a single source.
     # Parse and type check the input program.
     result = build.build(sources=[source], options=options, alt_lib_path=test_temp_dir)
     result.manager.metastore.close()
@@ -232,8 +239,14 @@ def show_c(cfiles: list[list[tuple[str, str]]]) -> None:
 
 
 def fudge_dir_mtimes(dir: str, delta: int) -> None:
+    # Skip linker outputs. Pushing them back combines with write_file's
+    # +1 sec bump on .c files to make .c always newer than .so, forcing
+    # an unconditional rebuild that would mask Extension.depends bugs.
+    # See setuptools/_distutils/command/build_ext.py:`build_extension`.
     for dirpath, _, filenames in os.walk(dir):
         for name in filenames:
+            if name.endswith((".so", ".pyd", ".o", ".obj")):
+                continue
             path = os.path.join(dirpath, name)
             new_mtime = os.stat(path).st_mtime + delta
             os.utime(path, times=(new_mtime, new_mtime))
@@ -266,8 +279,8 @@ def infer_ir_build_options_from_test_name(name: str) -> CompilerOptions | None:
           Run test case only on 64-bit platforms
       *_32bit*:
           Run test caseonly on 32-bit platforms
-      *_python3_8* (or for any Python version):
-          Use Python 3.8+ C API features (default: lowest supported version)
+      *_python3_10* (or for any Python version):
+          Use Python 3.10+ C API features (default: lowest supported version)
       *StripAssert*:
           Don't generate code for assert statements
     """
@@ -277,12 +290,14 @@ def infer_ir_build_options_from_test_name(name: str) -> CompilerOptions | None:
     if "_32bit" in name and not IS_32_BIT_PLATFORM:
         return None
     options = CompilerOptions(
-        strip_asserts="StripAssert" in name, capi_version=(3, 9), strict_traceback_checks=True
+        strip_asserts="StripAssert" in name, capi_version=(3, 10), strict_traceback_checks=True
     )
-    # A suffix like _python3_9 is used to set the target C API version.
-    m = re.search(r"_python([3-9]+)_([0-9]+)(_|\b)", name)
+    # A suffix like _python3_10 is used to set the target C API version.
+    m = re.search(r"_python([0-9]+)_([0-9]+)(_|\b)", name)
     if m:
-        options.capi_version = (int(m.group(1)), int(m.group(2)))
+        version = (int(m.group(1)), int(m.group(2)))
+        assert version >= (3, 10), f"Unsupported _python* suffix: {name}"
+        options.capi_version = version
         options.python_version = options.capi_version
     elif "_py" in name or "_Python" in name:
         assert False, f"Invalid _py* suffix (should be _pythonX_Y): {name}"

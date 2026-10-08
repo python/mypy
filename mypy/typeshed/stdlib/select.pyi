@@ -24,6 +24,7 @@ if sys.platform != "win32":
 
     # This is actually a function that returns an instance of a class.
     # The class is not accessible directly, and also calls itself select.poll.
+    @final
     class poll:
         # default value is select.POLLIN | select.POLLPRI | select.POLLOUT
         def register(self, fd: FileDescriptorLike, eventmask: int = 7, /) -> None: ...
@@ -31,9 +32,9 @@ if sys.platform != "win32":
         def unregister(self, fd: FileDescriptorLike, /) -> None: ...
         def poll(self, timeout: float | None = None, /) -> list[tuple[int, int]]: ...
 
-_R = TypeVar("_R", default=Never)
-_W = TypeVar("_W", default=Never)
-_X = TypeVar("_X", default=Never)
+_R = TypeVar("_R", default=Never, bound=FileDescriptorLike)
+_W = TypeVar("_W", default=Never, bound=FileDescriptorLike)
+_X = TypeVar("_X", default=Never, bound=FileDescriptorLike)
 
 def select(
     rlist: Iterable[_R], wlist: Iterable[_W], xlist: Iterable[_X], timeout: float | None = None, /
@@ -120,6 +121,7 @@ if sys.platform == "linux":
             "Use `os.set_inheritable()` to make the file descriptor inheritable."
         )
         def __new__(self, sizehint: int = -1, flags: int = 0) -> Self: ...
+
         def __enter__(self) -> Self: ...
         def __exit__(
             self,
@@ -158,6 +160,7 @@ if sys.platform == "linux":
 
 if sys.platform != "linux" and sys.platform != "darwin" and sys.platform != "win32":
     # Solaris only
+    @final
     class devpoll:
         def close(self) -> None: ...
         closed: bool
