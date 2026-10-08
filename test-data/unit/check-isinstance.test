@@ -2617,7 +2617,7 @@ def f(var: Union[int, str]) -> None:
     some_types = (str, tuple)
     another_type = list
     if isinstance(var, (*some_types, another_type)):
-        reveal_type(var)  # N: Revealed type is "builtins.str"
+        reveal_type(var)  # N: Revealed type is "__main__.<subclass of "builtins.int" and "tuple[Any, ...]"> | builtins.str"
 [builtins fixtures/isinstancelist.pyi]
 
 [case testIsInstanceWithWrongStarExpression]
@@ -2924,6 +2924,45 @@ if isinstance(v2, C):
 v3: Union[A, B]
 if isinstance(v3, (C, D)):
     reveal_type(v3)  # N: Revealed type is "__main__.<subclass of "__main__.A" and "__main__.C"> | __main__.<subclass of "__main__.A" and "__main__.D"> | __main__.<subclass of "__main__.B" and "__main__.C"> | __main__.<subclass of "__main__.B" and "__main__.D">"
+[builtins fixtures/isinstance.pyi]
+
+[case testIsInstanceAdHocIntersectionTuplePartialOverlap]
+# flags: --warn-unreachable
+from typing import Union
+class A: pass
+class B(A): pass
+class C: pass
+class D(A, C): pass
+
+def g(x: Union[B, C]) -> None: ...
+
+def f(x: A) -> None:
+    if isinstance(x, (B, C)):
+        reveal_type(x)  # N: Revealed type is "__main__.B | __main__.<subclass of "__main__.A" and "__main__.C">"
+        g(x)
+    else:
+        reveal_type(x)  # N: Revealed type is "__main__.A"
+    if isinstance(x, (C, B)):
+        reveal_type(x)  # N: Revealed type is "__main__.<subclass of "__main__.A" and "__main__.C"> | __main__.B"
+    if isinstance(x, (B, D)):
+        reveal_type(x)  # N: Revealed type is "__main__.B | __main__.D"
+
+def h(x: Union[A, int]) -> None:
+    if isinstance(x, (B, C)):
+        reveal_type(x)  # N: Revealed type is "__main__.B | __main__.<subclass of "__main__.A" and "__main__.C"> | __main__.<subclass of "builtins.int" and "__main__.C">"
+[builtins fixtures/isinstance.pyi]
+
+[case testIsInstanceAdHocIntersectionTuplePartialOverlapFinal]
+# flags: --warn-unreachable
+from typing import final
+class A: pass
+class B(A): pass
+@final
+class C: pass
+
+def f(x: A) -> None:
+    if isinstance(x, (B, C)):
+        reveal_type(x)  # N: Revealed type is "__main__.B"
 [builtins fixtures/isinstance.pyi]
 
 [case testIsInstanceAdHocIntersectionSameNames]
