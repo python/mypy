@@ -78,6 +78,7 @@ from mypyc.irbuild.util import (
     get_mypyc_attrs,
     is_class_body_final,
     is_dataclass,
+    is_decorated_class,
     is_extension_class,
     is_trait,
 )
@@ -110,6 +111,7 @@ def build_type_map(
             is_final_class=cdef.info.is_final,
         )
         class_ir.is_ext_class = is_extension_class(module.path, cdef, errors)
+        class_ir.is_decorated = is_decorated_class(cdef)
         if class_ir.is_ext_class:
             class_ir.deletable = cdef.info.deletable_attributes.copy()
         # If global optimizations are disabled, turn of tracking of class children

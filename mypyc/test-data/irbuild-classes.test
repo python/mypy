@@ -1498,6 +1498,51 @@ class M(type):  # E: Inheriting from most builtin types is unimplemented \
 class A(metaclass=M):  # E: Class is marked as native_class=True but it can't be a native class. Classes with a metaclass other than ABCMeta, TypingMeta or GenericMeta can't be native classes.
     pass
 
+[case testDecoratedNonExtClassReference]
+from typing import Any
+
+def decorator(cls: Any) -> Any:
+    return cls
+
+@decorator
+class C:
+    pass
+
+def f() -> C:
+    return C()
+
+def g(x: object) -> bool:
+    return isinstance(x, C)
+[out]
+def decorator(cls):
+    cls :: object
+L0:
+    return cls
+def f():
+    r0 :: dict
+    r1 :: str
+    r2, r3 :: object
+    r4 :: __main__.C
+L0:
+    r0 = __main__.globals :: static
+    r1 = 'C'
+    r2 = CPyDict_GetItem(r0, r1)
+    r3 = PyObject_Vectorcall(r2, 0, 0, 0)
+    r4 = cast(__main__.C, r3)
+    return r4
+def g(x):
+    x, r0 :: object
+    r1 :: ptr
+    r2 :: object
+    r3 :: bit
+L0:
+    r0 = __main__.C :: type
+    r1 = get_element_ptr x ob_type :: PyObject
+    r2 = borrow load_mem r1 :: builtins.object*
+    keep_alive x
+    r3 = r2 == r0
+    return r3
+
 [case testReservedName]
 from typing import Any, overload
 

@@ -332,6 +332,106 @@ assert o.get(20) == 20
 
 assert get_class_var() == 'xy'
 
+[case testNonExtClassDecoratorReturningNonClass]
+from functools import cache
+from typing import Any, Callable, TypeVar, cast
+
+from mypy_extensions import mypyc_attr
+
+T = TypeVar("T")
+
+@cache
+class Group:
+    size = 10
+
+    def __init__(self, d: int) -> None:
+        self.d = d
+
+    def order(self) -> int:
+        return self.d * 2
+
+    def same(self, other: Group) -> bool:
+        return self is other
+
+def make(d: int) -> Group:
+    return Group(d)
+
+def order(g: Group) -> int:
+    return g.order()
+
+@mypyc_attr(native_class=False)
+class Base:
+    def __init__(self, x: int) -> None:
+        self.x = x
+
+@cache
+class Derived(Base):
+    def __init__(self, x: int) -> None:
+        super().__init__(x)
+        self.y = x + 1
+
+def singleton(cls: Callable[[], T]) -> Callable[[], T]:
+    instances: list[T] = []
+
+    def get() -> T:
+        if not instances:
+            instances.append(cls())
+        return instances[0]
+
+    return get
+
+@singleton
+class Config:
+    def __init__(self) -> None:
+        self.value = 5
+
+    def get_value(self) -> int:
+        return self.value
+
+def replace_class(cls: Any) -> Any:
+    # Return a new class with the same namespace, like six.add_metaclass does
+    ns = {k: v for k, v in cls.__dict__.items() if k not in ("__dict__", "__weakref__")}
+    return type(cls)(cls.__name__, cls.__bases__, ns)
+
+@replace_class
+class Replaced:
+    def __init__(self, v: int) -> None:
+        self.v = v
+
+    def get(self) -> int:
+        return self.v
+
+def make_replaced(v: int) -> Replaced:
+    return Replaced(v)
+
+def test_cache() -> None:
+    g = make(3)
+    assert g.order() == 6
+    assert order(g) == 6
+    assert g is make(3)
+    assert g is Group(3)
+    assert g is not make(4)
+    assert g.same(Group(3))
+    assert Group.size == 10
+    assert type(Group).__name__ == "_lru_cache_wrapper"
+    assert cast(Any, Group).cache_info().currsize == 2
+
+def test_super() -> None:
+    d = Derived(4)
+    assert d.x == 4
+    assert d.y == 5
+    assert d is Derived(4)
+
+def test_singleton() -> None:
+    c = Config()
+    assert c.get_value() == 5
+    assert c is Config()
+
+def test_decorator_returning_class() -> None:
+    r = make_replaced(5)
+    assert r.get() == 5
+    assert type(r) is Replaced
+
 [case testEnum]
 from enum import Enum
 

@@ -105,6 +105,10 @@ class ClassIR:
         # An augmented class has additional methods separate from what mypyc generates.
         # Right now the only one is dataclasses.
         self.is_augmented = False
+        # Does this (non-extension) class have class decorators other than the ones native
+        # classes support? These can replace the class with an arbitrary object, such as a
+        # functools.cache wrapper, so the name of the class may not refer to the class.
+        self.is_decorated = False
         # Does this inherit from a Python class?
         self.inherits_python = False
         # Do instances of this class have __dict__?
@@ -480,6 +484,7 @@ class ClassIR:
             "is_abstract": self.is_abstract,
             "is_generated": self.is_generated,
             "is_augmented": self.is_augmented,
+            "is_decorated": self.is_decorated,
             "is_final_class": self.is_final_class,
             "inherits_python": self.inherits_python,
             "has_dict": self.has_dict,
@@ -550,6 +555,7 @@ class ClassIR:
         ir.is_abstract = data["is_abstract"]
         ir.is_ext_class = data["is_ext_class"]
         ir.is_augmented = data["is_augmented"]
+        ir.is_decorated = data["is_decorated"]
         ir.is_final_class = data["is_final_class"]
         ir.inherits_python = data["inherits_python"]
         ir.has_dict = data["has_dict"]
