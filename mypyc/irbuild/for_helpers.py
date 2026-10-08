@@ -654,6 +654,7 @@ class ForGenerator:
         self.index = index
         self.body_block = body_block
         self.line = line
+        self.nested = nested
         # Some for loops need a cleanup block that we execute at exit. We
         # create a cleanup block if needed. However, if we are generating a for
         # loop for a nested iterator, such as "e" in "enumerate(e)", the
@@ -946,19 +947,34 @@ class ForSequence(ForGenerator):
             # (unless input is immutable type).
             len_reg = builder.read(self.length_reg, line)
         comparison = builder.binary_op(builder.read(self.index_target, line), len_reg, "<", line)
-        builder.add_bool_branch(comparison, self.body_block, self.loop_exit)
+        if self.nested:
+            # In zip() or enumerate(), read the item right after the length check, as
+            # the sequence's iterator would. Other iterators may be advanced and other
+            # loop targets assigned before our begin_body(), and either could shrink
+            # the sequence.
+            read_block = BasicBlock()
+            builder.add_bool_branch(comparison, read_block, self.loop_exit)
+            builder.activate_block(read_block)
+            self.next_reg = self.read_item()
+            builder.goto(self.body_block)
+        else:
+            builder.add_bool_branch(comparison, self.body_block, self.loop_exit)
 
-    def begin_body(self) -> None:
+    def read_item(self) -> Value:
         builder = self.builder
         line = self.line
-        # Read the next list item.
-        value_box = unsafe_index(
+        return unsafe_index(
             builder,
             builder.read(self.expr_target, line),
             builder.read(self.index_target, line),
             line,
         )
-        assert value_box
+
+    def begin_body(self) -> None:
+        builder = self.builder
+        line = self.line
+        # Read the next list item, unless gen_condition() already did.
+        value_box = self.next_reg if self.nested else self.read_item()
         # We coerce to the type of list elements here so that
         # iterating with tuple unpacking generates a tuple based
         # unpack instead of an iterator based one.

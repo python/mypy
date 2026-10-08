@@ -444,6 +444,79 @@ def test_index_target_in_enumerate_loop() -> None:
     assert a == [2]
     assert len(log) == 3
 
+[case testForZipAndEnumerateListClearedBeforeBody]
+def index(items: list[int], calls: list[int]) -> int:
+    calls.append(1)
+    if len(calls) == 2:
+        items.clear()
+    return 0
+
+def test_enumerate_index_target() -> None:
+    items = [10, 20]
+    target = [-1]
+    calls: list[int] = []
+    result: list[int] = []
+    for target[index(items, calls)], value in enumerate(items):
+        result.append(value)
+    assert items == []
+    assert result == [10, 20]
+
+def test_zip_range_target() -> None:
+    items = [10, 20]
+    target = [-1]
+    calls: list[int] = []
+    result: list[int] = []
+    for target[index(items, calls)], value in zip(range(2), items):
+        result.append(value)
+    assert items == []
+    assert result == [10, 20]
+
+def test_zip_reversed() -> None:
+    items = [10, 20]
+    target = [-1]
+    calls: list[int] = []
+    result: list[int] = []
+    for target[index(items, calls)], value in zip([1, 2], reversed(items)):
+        result.append(value)
+    assert items == []
+    assert result == [20, 10]
+
+def test_zip_iterator_clears_list() -> None:
+    items = [10, 20]
+
+    def clear_items(n: int) -> int:
+        if n == 2:
+            items.clear()
+        return n
+
+    result: list[tuple[int, int]] = []
+    for value, n in zip(items, map(clear_items, [1, 2, 3])):
+        result.append((value, n))
+    assert items == []
+    assert result == [(10, 1), (20, 2)]
+
+class C:
+    def __init__(self, items: list[int]) -> None:
+        self.items = items
+
+    @property
+    def x(self) -> int:
+        return -1
+
+    @x.setter
+    def x(self, value: int) -> None:
+        if value == 1:
+            self.items.clear()
+
+def test_enumerate_index_setter_clears_list() -> None:
+    items = [10, 20]
+    c = C(items)
+    result: list[int] = []
+    for c.x, value in enumerate(items):
+        result.append(value)
+    assert items == []
+    assert result == [10, 20]
+
 [case testForIterable]
 from typing import Iterable, Dict, Any, Tuple, TypeVar
 
