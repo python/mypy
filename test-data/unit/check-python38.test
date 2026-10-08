@@ -831,3 +831,100 @@ def fn() -> tuple[int, int]:
                               # E: Unsupported operand types for + ("None" and "int") \
                               # N: Left operand is of type "int | None"
 [builtins fixtures/dict.pyi]
+
+[case testWalrusInLaterArgumentOfGenericCall]
+from typing import Optional, TypeVar
+
+T = TypeVar("T")
+
+class Node:
+    next: Optional[Node]
+
+def pair(a: T, b: object) -> T: ...
+
+def f(node: Optional[Node]) -> None:
+    while node is not None:
+        reveal_type(pair(node, (node := node.next)))  # N: Revealed type is "__main__.Node"
+        reveal_type(node)  # N: Revealed type is "__main__.Node | None"
+
+[case testWalrusInLaterArgumentOfOverloadedCall]
+from typing import Optional, Union, overload
+
+@overload
+def f(x: int, y: object) -> int: ...
+@overload
+def f(x: None, y: object) -> str: ...
+def f(x: Optional[int], y: object) -> Union[int, str]: ...
+
+def g(x: Optional[int]) -> None:
+    if x is not None:
+        reveal_type(f(x, (x := None)))  # N: Revealed type is "builtins.int"
+        reveal_type(x)  # N: Revealed type is "None"
+
+[case testWalrusInArgumentOfOverloadedCallNarrowsAfterCall]
+from typing import Any, Optional, Union, overload
+
+class C: ...
+
+@overload
+def f(x: int, y: object) -> int: ...
+@overload
+def f(x: str, y: object) -> str: ...
+def f(x: Union[int, str], y: object) -> Union[int, str]: ...
+
+def union_math(u: Union[int, str], y: Optional[int]) -> None:
+    reveal_type(f(u, (y := 1)))  # N: Revealed type is "builtins.int | builtins.str"
+    reveal_type(y)  # N: Revealed type is "builtins.int"
+
+def any_arg(a: Any, y: Optional[int]) -> None:
+    reveal_type(f(a, (y := 1)))  # N: Revealed type is "Any"
+    reveal_type(y)  # N: Revealed type is "builtins.int"
+
+def no_match(y: Optional[int]) -> None:
+    f(C(), (y := 1))  # E: No overload variant of "f" matches argument types "C", "int" \
+                      # N: Possible overload variants: \
+                      # N:     def f(x: int, y: object) -> int \
+                      # N:     def f(x: str, y: object) -> str
+    reveal_type(y)  # N: Revealed type is "builtins.int"
+
+[case testWalrusInLaterArgumentKeepsAttributeNarrowing]
+from typing import Optional, TypeVar
+
+T = TypeVar("T")
+
+class A:
+    x: Optional[int]
+
+def pair(a: T, b: object) -> T: ...
+
+def f(a: A, b: A) -> None:
+    if a.x is not None:
+        reveal_type(pair(a.x, (a := b)))  # N: Revealed type is "builtins.int"
+        reveal_type(a.x)  # N: Revealed type is "builtins.int | None"
+
+[case testWalrusInLaterArgumentOtherCalls]
+from typing import Callable, Optional, TypeVar, Union
+
+T = TypeVar("T")
+
+class Node:
+    next: Optional[Node]
+
+def star(a: T, *rest: object) -> T: ...
+
+def star_arg(node: Optional[Node]) -> None:
+    while node is not None:
+        reveal_type(star(node, *[(node := node.next)]))  # N: Revealed type is "__main__.Node"
+
+def partial_type(node: Optional[Node]) -> None:
+    out = []
+    while node is not None:
+        out.append(star(node, (node := node.next)))
+    reveal_type(out)  # N: Revealed type is "builtins.list[__main__.Node]"
+
+def union_callee(
+    c: Union[Callable[[Node, object], int], Callable[[Node, object], str]], node: Optional[Node]
+) -> None:
+    if node is not None:
+        reveal_type(c(node, (node := node.next)))  # N: Revealed type is "builtins.int | builtins.str"
+[builtins fixtures/list.pyi]

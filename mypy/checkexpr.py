@@ -577,7 +577,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                 e.arg_names,
                 e.callee.arg_kinds,
                 e.callee.arg_names,
-                lambda i: self.accept(e.args[i]),
+                lambda i: self.accept_and_discard_narrowing(e.args[i]),
             )
 
             arg_types = [
@@ -1214,7 +1214,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             and methodname in self.item_args[typename]
             and e.arg_kinds == [ARG_POS]
         ):
-            item_type = self.accept(e.args[0])
+            item_type = self.accept_and_discard_narrowing(e.args[0])
             if mypy.checker.is_valid_inferred_type(item_type, self.chk.options):
                 return self.chk.named_generic_type(typename, [item_type])
         elif (
@@ -1222,7 +1222,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             and methodname in self.container_args[typename]
             and e.arg_kinds == [ARG_POS]
         ):
-            arg_type = get_proper_type(self.accept(e.args[0]))
+            arg_type = get_proper_type(self.accept_and_discard_narrowing(e.args[0]))
             if isinstance(arg_type, Instance):
                 arg_typename = arg_type.type.fullname
                 if arg_typename in self.container_args[typename][methodname]:
@@ -1325,7 +1325,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                 arg_names,
                 callee.arg_kinds,
                 callee.arg_names,
-                lambda i: self.accept(args[i]),
+                lambda i: self.accept_and_discard_narrowing(args[i]),
             )
             formal_arg_exprs: list[list[Expression]] = [[] for _ in range(num_formals)]
             for formal, actuals in enumerate(formal_to_actual):
@@ -1782,7 +1782,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             arg_names,
             callee.arg_kinds,
             callee.arg_names,
-            lambda i: self.accept(args[i]),
+            lambda i: self.accept_and_discard_narrowing(args[i]),
         )
 
         if callee.special_sig == "tuple" and len(args) == 1:
@@ -1823,7 +1823,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                     arg_names,
                     callee.arg_kinds,
                     callee.arg_names,
-                    lambda i: self.accept(args[i]),
+                    lambda i: self.accept_and_discard_narrowing(args[i]),
                 )
 
         param_spec = callee.param_spec()
@@ -2028,6 +2028,25 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                 res.append(arg_type)
         return res
 
+    def accept_and_discard_narrowing(self, node: Expression) -> Type:
+        """Infer the type of an expression that will be inferred again later.
+
+        Narrowing done here (by assignment expressions) is discarded, as it would
+        otherwise affect expressions before the assignment in the later inference.
+        """
+        with self.chk.binder.frame_context(can_skip=False, discard=True):
+            return self.accept(node)
+
+    def apply_argument_narrowing(self, args: list[Expression]) -> None:
+        """Apply narrowing from assignment expressions in arguments.
+
+        This is needed after the arguments were only inferred in discarded binder
+        frames. Infer them once more for the side effects; the types and errors
+        from the inference that was used are already recorded.
+        """
+        with self.msg.filter_errors(filter_revealed_type=True), self.chk.local_type_map:
+            self.infer_arg_types_in_empty_context(args)
+
     def infer_more_unions_for_recursive_type(self, type_context: Type) -> bool:
         """Adjust type inference of unions if type context has a recursive type.
 
@@ -2187,8 +2206,13 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             # Disable type errors during type inference. There may be errors
             # due to partial available context information at this time, but
             # these errors can be safely ignored as the arguments will be
-            # inferred again later.
-            with self.msg.filter_errors():
+            # inferred again later. For the same reason, discard any narrowing
+            # done here (by assignment expressions), as it would otherwise affect
+            # arguments that come before the assignment when they are inferred again.
+            with (
+                self.msg.filter_errors(),
+                self.chk.binder.frame_context(can_skip=False, discard=True),
+            ):
                 arg_types = self.infer_arg_types_in_context(
                     callee_type, args, arg_kinds, formal_to_actual
                 )
@@ -2259,7 +2283,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                         arg_names,
                         callee_type.arg_kinds,
                         callee_type.arg_names,
-                        lambda a: self.accept(args[a]),
+                        lambda a: self.accept_and_discard_narrowing(args[a]),
                     )
                 # If the regular two-phase inference didn't work, try inferring type
                 # variables while allowing for polymorphic solutions, i.e. for solutions
@@ -2347,11 +2371,12 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                 arg_names,
                 callee_type.arg_kinds,
                 callee_type.arg_names,
-                lambda a: self.accept(args[a]),
+                lambda a: self.accept_and_discard_narrowing(args[a]),
             )
 
-        # Same as during first pass, disable type errors (we still have partial context).
-        with self.msg.filter_errors():
+        # Same as during first pass, disable type errors (we still have partial context)
+        # and discard narrowing.
+        with self.msg.filter_errors(), self.chk.binder.frame_context(can_skip=False, discard=True):
             arg_types = self.infer_arg_types_in_context(
                 callee_type, args, arg_kinds, formal_to_actual
             )
@@ -2851,7 +2876,13 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         """Checks a call to an overloaded function."""
         # Normalize unpacked kwargs before checking the call.
         callee = callee.with_unpacked_kwargs()
-        arg_types = self.infer_arg_types_in_empty_context(args)
+        # The arguments are inferred several times below, against different items.
+        # This is done in discarded binder frames, so that narrowing from assignment
+        # expressions in the arguments can't affect arguments before the assignment
+        # in the next inference. The narrowing is applied once the result is known.
+        assignment_expression_effect = self.chk.assignment_expression_effect
+        with self.chk.binder.frame_context(can_skip=False, discard=True):
+            arg_types = self.infer_arg_types_in_empty_context(args)
         # Step 1: Filter call targets to remove ones where the argument counts don't match
         plausible_targets = self.plausible_overload_call_targets(
             arg_types, arg_kinds, arg_names, callee
@@ -2924,6 +2955,9 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                 unioned_result = None
             else:
                 inferred_result = None
+        if unioned_result is not None or inferred_result is not None:
+            if assignment_expression_effect != self.chk.assignment_expression_effect:
+                self.apply_argument_narrowing(args)
         if unioned_result is not None:
             if inferred_types is not None:
                 for inferred_type in inferred_types:
@@ -3071,7 +3105,10 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
 
         for typ in plausible_targets:
             assert self.msg is self.chk.msg
-            with self.msg.filter_errors(filter_revealed_type=True) as w:
+            with (
+                self.msg.filter_errors(filter_revealed_type=True) as w,
+                self.chk.binder.frame_context(can_skip=False, discard=True),
+            ):
                 with self.chk.local_type_map as m:
                     ret_type, infer_type = self.check_call(
                         callee=typ,
@@ -3118,15 +3155,17 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                 self.chk.store_types(type_maps[0])
                 return erase_type(return_types[0]), erase_type(inferred_types[0])
             else:
-                return self.check_call(
-                    callee=AnyType(TypeOfAny.special_form),
-                    args=args,
-                    arg_kinds=arg_kinds,
-                    arg_names=arg_names,
-                    context=context,
-                    callable_name=callable_name,
-                    object_type=object_type,
-                )
+                # The caller applies the narrowing, as for other results.
+                with self.chk.binder.frame_context(can_skip=False, discard=True):
+                    return self.check_call(
+                        callee=AnyType(TypeOfAny.special_form),
+                        args=args,
+                        arg_kinds=arg_kinds,
+                        arg_names=arg_names,
+                        context=context,
+                        callable_name=callable_name,
+                        object_type=object_type,
+                    )
         else:
             # Success! No ambiguity; return the first match.
             self.chk.store_types(type_maps[0])
@@ -3434,11 +3473,20 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         arg_names: Sequence[str | None] | None,
         context: Context,
     ) -> tuple[Type, Type]:
+        items = callee.relevant_items()
+        results: list[tuple[Type, Type]] = []
         with self.msg.disable_type_names():
-            results = [
-                self.check_call(subtype, args, arg_kinds, context, arg_names)
-                for subtype in callee.relevant_items()
-            ]
+            for i, subtype in enumerate(items):
+                if i < len(items) - 1:
+                    # Check the arguments against each item from the same binder state:
+                    # discard narrowing from assignment expressions, except for the last
+                    # item.
+                    with self.chk.binder.frame_context(can_skip=False, discard=True):
+                        results.append(
+                            self.check_call(subtype, args, arg_kinds, context, arg_names)
+                        )
+                else:
+                    results.append(self.check_call(subtype, args, arg_kinds, context, arg_names))
 
         return (make_simplified_union([res[0] for res in results]), callee)
 
