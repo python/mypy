@@ -25,6 +25,7 @@ from librt.internal import (
     write_int as write_int_bare,
     write_str as write_str_bare,
 )
+from mypy_extensions import trait
 
 import mypy.nodes
 from mypy.bogus_type import Bogus
@@ -1892,10 +1893,15 @@ class InstanceCache:
 instance_cache: Final = InstanceCache()
 
 
+@trait
 class FunctionLike(ProperType):
-    """Abstract base class for function types."""
+    """Abstract base class for function types.
 
-    __slots__ = ("fallback",)
+    Note: we make this class a trait, since otherwise we would need to make ParametersBase
+    a trait, but it has more commonly used attributes, while here we have only `fallback`.
+    """
+
+    __slots__ = ()
 
     fallback: Instance
 
@@ -1949,75 +1955,19 @@ class FormalArgument:
         return hash((self.name, self.pos, self.typ, self.required))
 
 
-class Parameters(ProperType):
-    """Type that represents the parameters to a function.
+class ParametersBase(ProperType):
+    """A class that shares argument manipulation helpers between CallableType and Parameters."""
 
-    Used for ParamSpec analysis. Note that by convention we handle this
-    type as a Callable without return type, not as a "tuple with names",
-    so that it behaves contravariantly, in particular [x: int] <: [int].
-    """
+    arg_types: list[Type]
+    arg_kinds: list[ArgKind]
+    arg_names: list[str | None]
 
     __slots__ = (
-        "arg_types",
-        "arg_kinds",
-        "arg_names",
-        "min_args",
-        "is_ellipsis_args",
-        # TODO: variables don't really belong here, but they are used to allow hacky support
-        # for forall . Foo[[x: T], T] by capturing generic callable with ParamSpec, see #15909
-        "variables",
-        "imprecise_arg_kinds",
+        "arg_types",  # Types of function arguments
+        "arg_kinds",  # ARG_ constants
+        "arg_names",  # Argument names; None if not a keyword argument
     )
 
-    def __init__(
-        self,
-        arg_types: Sequence[Type],
-        arg_kinds: list[ArgKind],
-        arg_names: Sequence[str | None],
-        *,
-        variables: Sequence[TypeVarLikeType] | None = None,
-        is_ellipsis_args: bool = False,
-        imprecise_arg_kinds: bool = False,
-        line: int = -1,
-        column: int = -1,
-    ) -> None:
-        super().__init__(line, column)
-        self.arg_types = list(arg_types)
-        self.arg_kinds = arg_kinds
-        self.arg_names = list(arg_names)
-        assert len(arg_types) == len(arg_kinds) == len(arg_names)
-        assert not any(isinstance(t, Parameters) for t in arg_types)
-        self.min_args = arg_kinds.count(ARG_POS)
-        self.is_ellipsis_args = is_ellipsis_args
-        self.variables = variables or []
-        self.imprecise_arg_kinds = imprecise_arg_kinds
-
-    def copy_modified(
-        self,
-        arg_types: Bogus[Sequence[Type]] = _dummy,
-        arg_kinds: Bogus[list[ArgKind]] = _dummy,
-        arg_names: Bogus[Sequence[str | None]] = _dummy,
-        *,
-        variables: Bogus[Sequence[TypeVarLikeType]] = _dummy,
-        is_ellipsis_args: Bogus[bool] = _dummy,
-        imprecise_arg_kinds: Bogus[bool] = _dummy,
-    ) -> Parameters:
-        return Parameters(
-            arg_types=arg_types if arg_types is not _dummy else self.arg_types,
-            arg_kinds=arg_kinds if arg_kinds is not _dummy else self.arg_kinds,
-            arg_names=arg_names if arg_names is not _dummy else self.arg_names,
-            is_ellipsis_args=(
-                is_ellipsis_args if is_ellipsis_args is not _dummy else self.is_ellipsis_args
-            ),
-            variables=variables if variables is not _dummy else self.variables,
-            imprecise_arg_kinds=(
-                imprecise_arg_kinds
-                if imprecise_arg_kinds is not _dummy
-                else self.imprecise_arg_kinds
-            ),
-        )
-
-    # TODO: here is a lot of code duplication with Callable type, fix this.
     def var_arg(self) -> FormalArgument | None:
         """The formal argument for *args."""
         for position, (type, kind) in enumerate(zip(self.arg_types, self.arg_kinds)):
@@ -2033,7 +1983,7 @@ class Parameters(ProperType):
         return None
 
     def formal_arguments(self, include_star_args: bool = False) -> list[FormalArgument]:
-        """Yields the formal arguments corresponding to this callable, ignoring *arg and **kwargs.
+        """Return a list of the formal arguments of this callable, ignoring *arg and **kwargs.
 
         To handle *args and **kwargs, use the 'callable.var_args' and 'callable.kw_args' fields,
         if they are not None.
@@ -2100,6 +2050,146 @@ class Parameters(ProperType):
             return FormalArgument(None, position, var_arg.typ, False)
         else:
             return None
+
+    def with_normalized_var_args(self) -> Self:
+        var_arg = self.var_arg()
+        if not var_arg or not isinstance(var_arg.typ, UnpackType):
+            return self
+        unpacked = get_proper_type(var_arg.typ.type)
+        if not isinstance(unpacked, TupleType):
+            # Note that we don't normalize *args: *tuple[X, ...] -> *args: X,
+            # this should be done once in semanal_typeargs.py for user-defined types,
+            # and we ourselves rarely construct such type.
+            return self
+        unpack_index = find_unpack_in_list(unpacked.items)
+        if unpack_index == 0 and len(unpacked.items) > 1:
+            # Already normalized.
+            return self
+
+        # Boilerplate:
+        var_arg_index = self.arg_kinds.index(ARG_STAR)
+        types_prefix = self.arg_types[:var_arg_index]
+        kinds_prefix = self.arg_kinds[:var_arg_index]
+        names_prefix = self.arg_names[:var_arg_index]
+        types_suffix = self.arg_types[var_arg_index + 1 :]
+        kinds_suffix = self.arg_kinds[var_arg_index + 1 :]
+        names_suffix = self.arg_names[var_arg_index + 1 :]
+        no_name: str | None = None  # to silence mypy
+
+        # Now we have something non-trivial to do.
+        if unpack_index is None:
+            # Plain *Tuple[X, Y, Z] -> replace with ARG_POS completely
+            types_middle = unpacked.items
+            kinds_middle = [ARG_POS] * len(unpacked.items)
+            names_middle = [no_name] * len(unpacked.items)
+        else:
+            # *Tuple[X, *Ts, Y, Z] or *Tuple[X, *tuple[T, ...], X, Z], here
+            # we replace the prefix by ARG_POS (this is how some places expect
+            # Callables to be represented)
+            nested_unpack = unpacked.items[unpack_index]
+            assert isinstance(nested_unpack, UnpackType)
+            nested_unpacked = get_proper_type(nested_unpack.type)
+            if unpack_index == len(unpacked.items) - 1:
+                # Normalize also single item tuples like
+                #   *args: *Tuple[*tuple[X, ...]] -> *args: X
+                #   *args: *Tuple[*Ts] -> *args: *Ts
+                # This may be not strictly necessary, but these are very verbose.
+                if isinstance(nested_unpacked, Instance):
+                    assert nested_unpacked.type.fullname == "builtins.tuple"
+                    new_unpack = nested_unpacked.args[0]
+                else:
+                    if not isinstance(nested_unpacked, TypeVarTupleType):
+                        # We found a non-normalized tuple type, this means this method
+                        # is called during semantic analysis (e.g. from get_proper_type())
+                        # there is no point in normalizing callables at this stage.
+                        return self
+                    new_unpack = nested_unpack
+            else:
+                new_unpack = UnpackType(
+                    unpacked.copy_modified(items=unpacked.items[unpack_index:])
+                )
+            types_middle = unpacked.items[:unpack_index] + [new_unpack]
+            kinds_middle = [ARG_POS] * unpack_index + [ARG_STAR]
+            names_middle = [no_name] * unpack_index + [self.arg_names[var_arg_index]]
+        return self.copy_modified(
+            arg_types=types_prefix + types_middle + types_suffix,
+            arg_kinds=kinds_prefix + kinds_middle + kinds_suffix,
+            arg_names=names_prefix + names_middle + names_suffix,
+        )
+
+    def copy_modified(
+        self,
+        arg_types: Sequence[Type] | None = None,
+        arg_kinds: list[ArgKind] | None = None,
+        arg_names: Sequence[str | None] | None = None,
+    ) -> Self:
+        raise NotImplementedError
+
+
+class Parameters(ParametersBase):
+    """Type that represents the parameters to a function.
+
+    Used for ParamSpec analysis. Note that by convention we handle this
+    type as a Callable without return type, not as a "tuple with names",
+    so that it behaves contravariantly, in particular [x: int] <: [int].
+    """
+
+    __slots__ = (
+        "min_args",
+        "is_ellipsis_args",
+        # TODO: variables don't really belong here, but they are used to allow hacky support
+        # for forall . Foo[[x: T], T] by capturing generic callable with ParamSpec, see #15909
+        "variables",
+        "imprecise_arg_kinds",
+    )
+
+    def __init__(
+        self,
+        arg_types: Sequence[Type],
+        arg_kinds: list[ArgKind],
+        arg_names: Sequence[str | None],
+        *,
+        variables: Sequence[TypeVarLikeType] | None = None,
+        is_ellipsis_args: bool = False,
+        imprecise_arg_kinds: bool = False,
+        line: int = -1,
+        column: int = -1,
+    ) -> None:
+        super().__init__(line, column)
+        self.arg_types = list(arg_types)
+        self.arg_kinds = arg_kinds
+        self.arg_names = list(arg_names)
+        assert len(arg_types) == len(arg_kinds) == len(arg_names)
+        assert not any(isinstance(t, Parameters) for t in arg_types)
+        self.min_args = arg_kinds.count(ARG_POS)
+        self.is_ellipsis_args = is_ellipsis_args
+        self.variables = variables or []
+        self.imprecise_arg_kinds = imprecise_arg_kinds
+
+    def copy_modified(
+        self,
+        arg_types: Sequence[Type] | None = None,
+        arg_kinds: list[ArgKind] | None = None,
+        arg_names: Sequence[str | None] | None = None,
+        *,
+        variables: Bogus[Sequence[TypeVarLikeType]] = _dummy,
+        is_ellipsis_args: Bogus[bool] = _dummy,
+        imprecise_arg_kinds: Bogus[bool] = _dummy,
+    ) -> Parameters:
+        return Parameters(
+            arg_types=arg_types if arg_types is not None else self.arg_types,
+            arg_kinds=arg_kinds if arg_kinds is not None else self.arg_kinds,
+            arg_names=arg_names if arg_names is not None else self.arg_names,
+            is_ellipsis_args=(
+                is_ellipsis_args if is_ellipsis_args is not _dummy else self.is_ellipsis_args
+            ),
+            variables=variables if variables is not _dummy else self.variables,
+            imprecise_arg_kinds=(
+                imprecise_arg_kinds
+                if imprecise_arg_kinds is not _dummy
+                else self.imprecise_arg_kinds
+            ),
+        )
 
     def accept(self, visitor: TypeVisitor[T]) -> T:
         return visitor.visit_parameters(self)
@@ -2172,16 +2262,11 @@ class Parameters(ProperType):
             return NotImplemented
 
 
-CT = TypeVar("CT", bound="CallableType")
-
-
-class CallableType(FunctionLike):
+class CallableType(ParametersBase, FunctionLike):
     """Type of a non-overloaded callable object (such as function)."""
 
     __slots__ = (
-        "arg_types",  # Types of function arguments
-        "arg_kinds",  # ARG_ constants
-        "arg_names",  # Argument names; None if not a keyword argument
+        "fallback",
         "ret_type",  # Return value type
         "name",  # Name (may be None; for error messages and plugins)
         "definition",  # For error messages.  May be None.
@@ -2266,11 +2351,11 @@ class CallableType(FunctionLike):
         self.instance_type = instance_type
 
     def copy_modified(
-        self: CT,
-        arg_types: Bogus[Sequence[Type]] = _dummy,
-        arg_kinds: Bogus[list[ArgKind]] = _dummy,
-        arg_names: Bogus[Sequence[str | None]] = _dummy,
-        ret_type: Bogus[Type] = _dummy,
+        self,
+        arg_types: Sequence[Type] | None = None,
+        arg_kinds: list[ArgKind] | None = None,
+        arg_names: Sequence[str | None] | None = None,
+        ret_type: Type | None = None,
         fallback: Bogus[Instance] = _dummy,
         name: Bogus[str | None] = _dummy,
         definition: Bogus[SymbolNode | None] = _dummy,
@@ -2288,12 +2373,12 @@ class CallableType(FunctionLike):
         imprecise_arg_kinds: Bogus[bool] = _dummy,
         unpack_kwargs: Bogus[bool] = _dummy,
         instance_type: Bogus[ProperType | None] = _dummy,
-    ) -> CT:
+    ) -> Self:
         modified = CallableType(
-            arg_types=arg_types if arg_types is not _dummy else self.arg_types,
-            arg_kinds=arg_kinds if arg_kinds is not _dummy else self.arg_kinds,
-            arg_names=arg_names if arg_names is not _dummy else self.arg_names,
-            ret_type=ret_type if ret_type is not _dummy else self.ret_type,
+            arg_types=arg_types if arg_types is not None else self.arg_types,
+            arg_kinds=arg_kinds if arg_kinds is not None else self.arg_kinds,
+            arg_names=arg_names if arg_names is not None else self.arg_names,
+            ret_type=ret_type if ret_type is not None else self.ret_type,
             fallback=fallback if fallback is not _dummy else self.fallback,
             name=name if name is not _dummy else self.name,
             definition=definition if definition is not _dummy else self.definition,
@@ -2322,21 +2407,7 @@ class CallableType(FunctionLike):
         )
         # Optimization: Only NewTypes are supported as subtypes since
         # the class is effectively final, so we can use a cast safely.
-        return cast(CT, modified)
-
-    def var_arg(self) -> FormalArgument | None:
-        """The formal argument for *args."""
-        for position, (type, kind) in enumerate(zip(self.arg_types, self.arg_kinds)):
-            if kind == ARG_STAR:
-                return FormalArgument(None, position, type, False)
-        return None
-
-    def kw_arg(self) -> FormalArgument | None:
-        """The formal argument for **kwargs."""
-        for position, (type, kind) in enumerate(zip(self.arg_types, self.arg_kinds)):
-            if kind == ARG_STAR2:
-                return FormalArgument(None, position, type, False)
-        return None
+        return cast(Self, modified)
 
     @property
     def min_args(self) -> int:
@@ -2407,75 +2478,6 @@ class CallableType(FunctionLike):
             return sys.maxsize
         return sum(kind.is_positional() for kind in self.arg_kinds)
 
-    def formal_arguments(self, include_star_args: bool = False) -> list[FormalArgument]:
-        """Return a list of the formal arguments of this callable, ignoring *arg and **kwargs.
-
-        To handle *args and **kwargs, use the 'callable.var_args' and 'callable.kw_args' fields,
-        if they are not None.
-
-        If you really want to include star args in the yielded output, set the
-        'include_star_args' parameter to 'True'."""
-        args = []
-        done_with_positional = False
-        for i in range(len(self.arg_types)):
-            kind = self.arg_kinds[i]
-            if kind.is_named() or kind.is_star():
-                done_with_positional = True
-            if not include_star_args and kind.is_star():
-                continue
-
-            required = kind.is_required()
-            pos = None if done_with_positional else i
-            arg = FormalArgument(self.arg_names[i], pos, self.arg_types[i], required)
-            args.append(arg)
-        return args
-
-    def argument_by_name(self, name: str | None) -> FormalArgument | None:
-        if name is None:
-            return None
-        seen_star = False
-        for i, (arg_name, kind, typ) in enumerate(
-            zip(self.arg_names, self.arg_kinds, self.arg_types)
-        ):
-            # No more positional arguments after these.
-            if kind.is_named() or kind.is_star():
-                seen_star = True
-            if kind.is_star():
-                continue
-            if arg_name == name:
-                position = None if seen_star else i
-                return FormalArgument(name, position, typ, kind.is_required())
-        return self.try_synthesizing_arg_from_kwarg(name)
-
-    def argument_by_position(self, position: int | None) -> FormalArgument | None:
-        if position is None:
-            return None
-        if position >= len(self.arg_names):
-            return self.try_synthesizing_arg_from_vararg(position)
-        name, kind, typ = (
-            self.arg_names[position],
-            self.arg_kinds[position],
-            self.arg_types[position],
-        )
-        if kind.is_positional():
-            return FormalArgument(name, position, typ, kind == ARG_POS)
-        else:
-            return self.try_synthesizing_arg_from_vararg(position)
-
-    def try_synthesizing_arg_from_kwarg(self, name: str | None) -> FormalArgument | None:
-        kw_arg = self.kw_arg()
-        if kw_arg is not None:
-            return FormalArgument(name, None, kw_arg.typ, False)
-        else:
-            return None
-
-    def try_synthesizing_arg_from_vararg(self, position: int | None) -> FormalArgument | None:
-        var_arg = self.var_arg()
-        if var_arg is not None:
-            return FormalArgument(None, position, var_arg.typ, False)
-        else:
-            return None
-
     @property
     def items(self) -> list[CallableType]:
         return [self]
@@ -2538,72 +2540,6 @@ class CallableType(FunctionLike):
                 arg_types=new_arg_types,
                 unpack_kwargs=False,
             )
-        )
-
-    def with_normalized_var_args(self) -> Self:
-        var_arg = self.var_arg()
-        if not var_arg or not isinstance(var_arg.typ, UnpackType):
-            return self
-        unpacked = get_proper_type(var_arg.typ.type)
-        if not isinstance(unpacked, TupleType):
-            # Note that we don't normalize *args: *tuple[X, ...] -> *args: X,
-            # this should be done once in semanal_typeargs.py for user-defined types,
-            # and we ourselves rarely construct such type.
-            return self
-        unpack_index = find_unpack_in_list(unpacked.items)
-        if unpack_index == 0 and len(unpacked.items) > 1:
-            # Already normalized.
-            return self
-
-        # Boilerplate:
-        var_arg_index = self.arg_kinds.index(ARG_STAR)
-        types_prefix = self.arg_types[:var_arg_index]
-        kinds_prefix = self.arg_kinds[:var_arg_index]
-        names_prefix = self.arg_names[:var_arg_index]
-        types_suffix = self.arg_types[var_arg_index + 1 :]
-        kinds_suffix = self.arg_kinds[var_arg_index + 1 :]
-        names_suffix = self.arg_names[var_arg_index + 1 :]
-        no_name: str | None = None  # to silence mypy
-
-        # Now we have something non-trivial to do.
-        if unpack_index is None:
-            # Plain *Tuple[X, Y, Z] -> replace with ARG_POS completely
-            types_middle = unpacked.items
-            kinds_middle = [ARG_POS] * len(unpacked.items)
-            names_middle = [no_name] * len(unpacked.items)
-        else:
-            # *Tuple[X, *Ts, Y, Z] or *Tuple[X, *tuple[T, ...], X, Z], here
-            # we replace the prefix by ARG_POS (this is how some places expect
-            # Callables to be represented)
-            nested_unpack = unpacked.items[unpack_index]
-            assert isinstance(nested_unpack, UnpackType)
-            nested_unpacked = get_proper_type(nested_unpack.type)
-            if unpack_index == len(unpacked.items) - 1:
-                # Normalize also single item tuples like
-                #   *args: *Tuple[*tuple[X, ...]] -> *args: X
-                #   *args: *Tuple[*Ts] -> *args: *Ts
-                # This may be not strictly necessary, but these are very verbose.
-                if isinstance(nested_unpacked, Instance):
-                    assert nested_unpacked.type.fullname == "builtins.tuple"
-                    new_unpack = nested_unpacked.args[0]
-                else:
-                    if not isinstance(nested_unpacked, TypeVarTupleType):
-                        # We found a non-normalized tuple type, this means this method
-                        # is called during semantic analysis (e.g. from get_proper_type())
-                        # there is no point in normalizing callables at this stage.
-                        return self
-                    new_unpack = nested_unpack
-            else:
-                new_unpack = UnpackType(
-                    unpacked.copy_modified(items=unpacked.items[unpack_index:])
-                )
-            types_middle = unpacked.items[:unpack_index] + [new_unpack]
-            kinds_middle = [ARG_POS] * unpack_index + [ARG_STAR]
-            names_middle = [no_name] * unpack_index + [self.arg_names[var_arg_index]]
-        return self.copy_modified(
-            arg_types=types_prefix + types_middle + types_suffix,
-            arg_kinds=kinds_prefix + kinds_middle + kinds_suffix,
-            arg_names=names_prefix + names_middle + names_suffix,
         )
 
     def __hash__(self) -> int:
@@ -2766,7 +2702,7 @@ class Overloaded(FunctionLike):
     implementation.
     """
 
-    __slots__ = ("_items",)
+    __slots__ = ("fallback", "_items")
 
     _items: list[CallableType]  # Must not be empty
 
