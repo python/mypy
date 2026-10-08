@@ -10178,3 +10178,39 @@ for _ in range(100):
     assert owned_child(child) == (item, (item, number))
     assert borrowed_child(child) is item
 assert read_numbers(child, 100) == 300.0
+
+[case testAttributeNamesThatAreCKeywords]
+from typing import Any
+
+class C:
+    restrict: str = "eggs"
+
+    def __init__(self) -> None:
+        # With the "_" prefix of attribute names in C, these become C keywords or
+        # other names reserved by C compilers (e.g. "__restrict", "_Bool")
+        self._restrict: int = 0
+        self._inline = 1
+        self._asm = 2
+        self.Bool = 3
+        self._unix__ = 4
+        self._x = 5
+        self.m__x = 6
+        self.vectorcall = 7
+        self.unaligned = 8
+
+def test_attribute_names() -> None:
+    c = C()
+    assert c.restrict == "eggs"
+    assert c._restrict == 0
+    assert c._inline == 1
+    assert c._asm == 2
+    assert c.Bool == 3
+    assert c._unix__ == 4
+    assert c._x == 5
+    assert c.m__x == 6
+    assert c.vectorcall == 7
+    assert c.unaligned == 8
+    a: Any = c
+    a._restrict = 7
+    assert c._restrict == 7
+    assert a.m__x == 6
