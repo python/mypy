@@ -1388,6 +1388,62 @@ L0:
     r5 = unbox(int, r4)
     return r5
 
+[case testCallPropertyThroughClass]
+from typing import Callable, Type
+
+from mypy_extensions import mypyc_attr, trait
+
+class C:
+    _f: Callable[[int], int]
+
+    @property
+    def f(self) -> Callable[[int], int]:
+        return self._f
+
+    @property
+    def x(self) -> int:
+        return 0
+
+    @x.setter
+    def x(self, value: int) -> None:
+        pass
+
+    def m(self) -> int:
+        return 0
+
+    @classmethod
+    def g(cls, c):
+        cls.f(c)  # E: Cannot call property "f" through class object
+
+class D(C):
+    pass
+
+@trait
+class T:
+    @property
+    def p(self) -> int:
+        return 0
+
+@mypyc_attr(native_class=False)
+class N:
+    @property
+    def p(self) -> int:
+        return 0
+
+def f(c, d, t, n):
+    # mypy doesn't type check unannotated functions, so only mypyc can catch these
+    C.f(c)  # E: Cannot call property "f" through class object
+    C.x(c)  # E: Cannot call property "x" through class object
+    D.f(d)(1)  # E: Cannot call property "f" through class object
+    T.p(t)  # E: Cannot call property "p" through class object
+    N.p(n)  # E: Cannot call property "p" through class object
+
+def ok(c: C, tc: Type[C]) -> None:
+    C.f
+    C.m(c)
+    tc.m(c)
+    c.f(1)
+
 [case testBorrowResultOfCustomGetItemInIfStatement_withgil]
 from typing import List
 
