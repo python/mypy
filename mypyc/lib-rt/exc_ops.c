@@ -19,21 +19,29 @@ void CPy_Raise(PyObject *exc) {
     }
 }
 
+// Return a new exception instance, or NULL with an error set.
+static PyObject *instantiate_exception(PyObject *type) {
+    PyObject *value = PyObject_CallNoArgs(type);
+    if (!value)
+        return NULL;
+    if (!PyExceptionInstance_Check(value)) {
+        PyErr_Format(PyExc_TypeError,
+                     "calling %R should have returned an instance of "
+                     "BaseException, not %R", type, Py_TYPE(value));
+        Py_DECREF(value);
+        return NULL;
+    }
+    return value;
+}
+
 void CPy_RaiseFrom(PyObject *exc, PyObject *cause) {
     PyObject *type;
     PyObject *value;
     if (PyExceptionClass_Check(exc)) {
         type = exc;
-        value = PyObject_CallNoArgs(exc);
+        value = instantiate_exception(exc);
         if (!value)
             return;
-        if (!PyExceptionInstance_Check(value)) {
-            PyErr_Format(PyExc_TypeError,
-                         "calling %R should have returned an instance of "
-                         "BaseException, not %R", exc, Py_TYPE(value));
-            Py_DECREF(value);
-            return;
-        }
     } else if (PyExceptionInstance_Check(exc)) {
         type = (PyObject *)Py_TYPE(exc);
         value = Py_NewRef(exc);
@@ -44,16 +52,9 @@ void CPy_RaiseFrom(PyObject *exc, PyObject *cause) {
 
     PyObject *fixed_cause;
     if (PyExceptionClass_Check(cause)) {
-        fixed_cause = PyObject_CallNoArgs(cause);
+        fixed_cause = instantiate_exception(cause);
         if (!fixed_cause)
             goto fail;
-        if (!PyExceptionInstance_Check(fixed_cause)) {
-            PyErr_Format(PyExc_TypeError,
-                         "calling %R should have returned an instance of "
-                         "BaseException, not %R", cause, Py_TYPE(fixed_cause));
-            Py_DECREF(fixed_cause);
-            goto fail;
-        }
     } else if (PyExceptionInstance_Check(cause)) {
         fixed_cause = Py_NewRef(cause);
     } else if (Py_IsNone(cause)) {
