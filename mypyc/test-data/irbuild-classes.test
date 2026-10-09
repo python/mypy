@@ -1352,6 +1352,42 @@ L0:
     r2 = r1.x
     return r2
 
+[case testPropertyReturningCallable]
+from typing import Callable
+
+class C:
+    _f: Callable[[int], int]
+
+    @property
+    def f(self) -> Callable[[int], int]:
+        return self._f
+
+def g(c: C) -> int:
+    return c.f(1)
+[out]
+def C.f(self):
+    self :: __main__.C
+    r0 :: object
+L0:
+    r0 = self._f
+    return r0
+def g(c):
+    c :: __main__.C
+    r0, r1 :: object
+    r2 :: object[1]
+    r3 :: object_ptr
+    r4 :: object
+    r5 :: int
+L0:
+    r0 = c.f
+    r1 = object 1
+    r2 = [r1]
+    r3 = load_address r2
+    r4 = PyObject_Vectorcall(r0, r3, 1, 0)
+    keep_alive r1
+    r5 = unbox(int, r4)
+    return r5
+
 [case testBorrowResultOfCustomGetItemInIfStatement_withgil]
 from typing import List
 

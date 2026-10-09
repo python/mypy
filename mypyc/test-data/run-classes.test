@@ -2315,6 +2315,89 @@ Represents a sequence of values. Updates itself by next, which is a new value.
 3
 3
 
+[case testPropertyReturningCallable]
+from typing import Any, Callable
+from mypy_extensions import trait
+
+class Config:
+    def __init__(self) -> None:
+        self._sorting_function: Callable[..., list[str]] | None = None
+
+    @property
+    def sorting_function(self) -> Callable[..., list[str]]:
+        if self._sorting_function is not None:
+            return self._sorting_function
+        self._sorting_function = sorted
+        return self._sorting_function
+
+    def sort(self, items: list[str]) -> list[str]:
+        return self.sorting_function(items)
+
+class Item:
+    def __init__(self, n: int) -> None:
+        self.n = n
+
+class C:
+    @property
+    def no_args(self) -> Callable[[], str]:
+        return lambda: "called"
+
+    @property
+    def any_value(self) -> Any:
+        return lambda x: x * 2
+
+    @property
+    def item_type(self) -> type[Item]:
+        return Item
+
+class Base:
+    @property
+    def f(self) -> Callable[[int], int]:
+        return lambda x: x + 1
+
+class Derived(Base):
+    def call_super(self, x: int) -> int:
+        return super().f(x)
+
+class AttrOverride(Base):
+    # A builtin, so that it isn't bound as a method when interpreted
+    f: Callable[[int], int] = abs
+
+@trait
+class T:
+    @property
+    def f(self) -> Callable[[int], int]:
+        return lambda x: x - 1
+
+class UsesTrait(T):
+    pass
+
+def call_f(b: Base, x: int) -> int:
+    return b.f(x)
+
+def call_trait_f(t: T, x: int) -> int:
+    return t.f(x)
+
+def test_property_returning_callable() -> None:
+    config = Config()
+    assert config.sorting_function(["b2", "b10", "b1"]) == ["b1", "b10", "b2"]
+    assert config.sorting_function(["a", "b"], reverse=True) == ["b", "a"]
+    assert config.sort(["b", "a"]) == ["a", "b"]
+
+def test_property_returning_other_callables() -> None:
+    c = C()
+    assert c.no_args() == "called"
+    assert c.any_value(21) == 42
+    assert c.item_type(5).n == 5
+
+def test_property_returning_callable_inherited() -> None:
+    assert call_f(Base(), 1) == 2
+    assert call_f(Derived(), 1) == 2
+    assert Derived().call_super(2) == 3
+    assert call_f(AttrOverride(), -5) == 5
+    assert AttrOverride().f(-6) == 6
+    assert call_trait_f(UsesTrait(), 1) == 0
+
 [case testPropertySetters]
 
 from mypy_extensions import trait

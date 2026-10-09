@@ -1489,7 +1489,12 @@ class LowLevelIRBuilder:
             and not base.type.class_ir.builtin_base
         ):
             name = name if base.type.class_ir.is_ext_class else fast_name
-            if base.type.class_ir.has_method(name):
+            # Property getters are also stored as methods, but obj.prop(...) calls the
+            # property's value, so handle properties like attributes below.
+            if (
+                base.type.class_ir.has_method(name)
+                and not base.type.class_ir.method_decl(name).is_prop_getter
+            ):
                 decl = base.type.class_ir.method_decl(name)
                 if arg_kinds is None:
                     assert arg_names is None, "arg_kinds not present but arg_names is"
