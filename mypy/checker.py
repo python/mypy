@@ -96,7 +96,13 @@ from mypy.erasetype import (
     remove_instance_last_known_values,
     shallow_erase_type_for_equality,
 )
-from mypy.errorcodes import TYPE_VAR, UNUSED_ASYNCIO_TASK, UNUSED_AWAITABLE, UNUSED_COROUTINE, ErrorCode
+from mypy.errorcodes import (
+    TYPE_VAR,
+    UNUSED_ASYNCIO_TASK,
+    UNUSED_AWAITABLE,
+    UNUSED_COROUTINE,
+    ErrorCode,
+)
 from mypy.errors import (
     ErrorInfo,
     Errors,
