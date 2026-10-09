@@ -532,3 +532,136 @@ Traceback (most recent call last):
   File "native.py", line 6, in <module>
     f(y)
 TypeError: int object expected; got str
+
+[case testRaiseFrom]
+from typing import Any
+
+from exceptions_helper import OtherException
+from testutil import assertRaises
+
+class Inner(Exception):
+    pass
+
+class Outer(Exception):
+    pass
+
+def raise_from(exc: Any, cause: Any) -> None:
+    try:
+        raise Inner("inner")
+    except Inner:
+        raise exc from cause
+
+def test_raise_from_instance() -> None:
+    cause = ValueError("cause")
+    try:
+        raise_from(Outer("outer"), cause)
+    except Outer as e:
+        assert e.__cause__ is cause
+        assert e.__suppress_context__
+        assert isinstance(e.__context__, Inner)
+    else:
+        assert False
+
+def test_raise_from_class() -> None:
+    try:
+        raise_from(Outer, ValueError)
+    except Outer as e:
+        assert type(e.__cause__) is ValueError
+        assert e.__suppress_context__
+    else:
+        assert False
+
+def test_raise_from_none() -> None:
+    try:
+        raise_from(Outer("outer"), None)
+    except Outer as e:
+        assert e.__cause__ is None
+        assert e.__suppress_context__
+        assert isinstance(e.__context__, Inner)
+    else:
+        assert False
+
+def test_raise_from_invalid_cause() -> None:
+    with assertRaises(TypeError, "exception causes must derive from BaseException"):
+        raise_from(Outer("outer"), 1)
+
+def test_raise_from_invalid_exception() -> None:
+    with assertRaises(TypeError, "exceptions must derive from BaseException"):
+        raise_from(1, ValueError())
+
+def test_raise_from_in_except() -> None:
+    try:
+        try:
+            raise Inner("inner")
+        except Inner as exc:
+            raise Outer("outer") from exc
+    except Outer as e:
+        assert isinstance(e.__cause__, Inner)
+        assert e.__cause__ is e.__context__
+    else:
+        assert False
+
+def test_raise_from_reassigned_exception() -> None:
+    original = ValueError("original")
+    cause = TypeError("cause")
+    exc: Exception = original
+    try:
+        raise exc from (exc := cause)
+    except ValueError as e:
+        assert e is original
+        assert e.__cause__ is cause
+        assert exc is cause
+    else:
+        assert False
+
+def test_raise_from_class_returning_unrelated_exception() -> None:
+    # Normalization calls OtherException again with the ValueError as an argument.
+    with assertRaises(TypeError):
+        raise_from(OtherException, None)
+
+def raise_plain(exc: Any) -> None:
+    raise exc
+
+def test_raise_plain_preserves_cause() -> None:
+    cause = ValueError("cause")
+    exc = Outer("outer")
+    try:
+        raise_from(exc, cause)
+    except Outer:
+        pass
+    try:
+        raise_plain(exc)
+    except Outer as e:
+        assert e is exc
+        assert e.__cause__ is cause
+        assert e.__suppress_context__
+    else:
+        assert False
+
+def test_raise_plain_does_not_suppress_context() -> None:
+    try:
+        try:
+            raise Inner("inner")
+        except Inner:
+            raise_plain(Outer("outer"))
+    except Outer as e:
+        assert e.__cause__ is None
+        assert not e.__suppress_context__
+        assert isinstance(e.__context__, Inner)
+    else:
+        assert False
+
+def test_raise_plain_invalid_exception() -> None:
+    with assertRaises(TypeError, "exceptions must derive from BaseException"):
+        raise_plain(1)
+
+def test_raise_plain_class_returning_unrelated_exception() -> None:
+    with assertRaises(TypeError):
+        raise_plain(OtherException)
+
+[file exceptions_helper.py]
+from typing import Any
+
+class OtherException(Exception):
+    def __new__(cls) -> Any:
+        return ValueError("other")

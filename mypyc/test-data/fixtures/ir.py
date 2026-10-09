@@ -351,7 +351,10 @@ class property:
     def fset(self, value: Any) -> None: ...
     def fdel(self) -> None: ...
 
-class BaseException: pass
+class BaseException:
+    __cause__: Optional[BaseException]
+    __context__: Optional[BaseException]
+    __suppress_context__: bool
 
 class Exception(BaseException):
     def __init__(self, message: Optional[str] = None) -> None: pass
