@@ -6151,15 +6151,15 @@ class A2: pass
 
 [case testClassDecoratorIncorrect]
 def not_a_class_decorator(x: int) -> int: ...
-@not_a_class_decorator(7)
-class A3: pass  # E: "int" not callable
+@not_a_class_decorator(7)  # E: "int" not callable
+class A3: pass
 
 not_a_function = 17
 @not_a_function()  # E: "int" not callable
 class B: pass
 
-@not_a_function
-class B2: pass    # E: "int" not callable
+@not_a_function  # E: "int" not callable
+class B2: pass
 
 b = object()
 @b.nothing         # E: "object" has no attribute "nothing"
@@ -7321,6 +7321,41 @@ class E(C):
         reveal_type(self.x) # N: Revealed type is "builtins.int"
 
 [targets __main__, __main__, __main__.C.__init__, __main__.D.g, __main__.D.f, __main__.E.g, __main__.E.f]
+
+[case testAttributeDefOrderNestedClass]
+class E(D):
+    def e(self) -> None:
+        self.x = ''  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+
+class D:
+    def d(self) -> None: pass
+    class N:
+        def n(self) -> None: pass
+    def d2(self) -> None:
+        self.x = 0
+
+[case testOrderBySubclassingMultipleLevels]
+class E(D):
+    def e(self) -> None: ...
+
+class D(B):
+    def d(self) -> None: ...
+    class N:
+        def n(self) -> None: ...
+    def d2(self) -> None: ...
+
+def f() -> None: ...
+
+class C(A):
+    def c(self) -> None: ...
+
+class B(A):
+    def b(self) -> None: ...
+
+class A:
+    def a(self) -> None: ...
+
+[targets __main__, __main__, __main__, __main__, __main__.D.N.n, __main__.f, __main__.A.a, __main__.C.c, __main__.B.b, __main__.D.d, __main__.D.d2, __main__.E.e]
 
 [case testNewReturnType1]
 class A:

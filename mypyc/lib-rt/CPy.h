@@ -1078,8 +1078,6 @@ int CPyStatics_Initialize(PyObject **statics,
                           const int *tuples,
                           const int *frozensets);
 PyObject *CPy_Super(PyObject *builtins, PyObject *self);
-PyObject *CPy_CallReverseOpMethod(PyObject *left, PyObject *right, const char *op,
-                                  PyObject *method);
 
 bool CPyImport_ImportMany(PyObject *modules, CPyModuleCache *statics[], PyObject *globals,
                           PyObject *tb_path, PyObject *tb_function, Py_ssize_t *tb_lines);

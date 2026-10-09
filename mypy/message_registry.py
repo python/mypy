@@ -30,6 +30,7 @@ class ErrorMessage:
 INVALID_TYPE_RAW_ENUM_VALUE: Final = ErrorMessage(
     "Invalid type: try using Literal[{}.{}] instead?", codes.VALID_TYPE
 )
+CANNOT_DECLARE_TYPE_OF_SPECIAL_FORM: Final = "Cannot declare the type of a {} declaration"
 
 # Type checker error message constants
 NO_RETURN_VALUE_EXPECTED: Final = ErrorMessage("No return value expected", codes.RETURN_VALUE)

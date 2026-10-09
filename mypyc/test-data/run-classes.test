@@ -125,6 +125,24 @@ print(C.__annotations__["spam"] is JSONDecoder)
 [out]
 True
 
+[case testNonExtClassAnnotationOfClassNotCreatedYet]
+from __future__ import annotations
+
+from mypy_extensions import mypyc_attr
+
+@mypyc_attr(native_class=False)
+class Node:
+    parent: Node
+    later: Later
+
+class Later:
+    pass
+
+[file driver.py]
+from native import Node
+
+assert Node.__annotations__ == {"parent": "native.Node", "later": "native.Later"}
+
 [case testClassWithDeletableAttributes]
 from typing import Any, cast
 from testutil import assertRaises
@@ -313,6 +331,106 @@ assert get(o, "test") == "test"
 assert o.get(20) == 20
 
 assert get_class_var() == 'xy'
+
+[case testNonExtClassDecoratorReturningNonClass]
+from functools import cache
+from typing import Any, Callable, TypeVar, cast
+
+from mypy_extensions import mypyc_attr
+
+T = TypeVar("T")
+
+@cache
+class Group:
+    size = 10
+
+    def __init__(self, d: int) -> None:
+        self.d = d
+
+    def order(self) -> int:
+        return self.d * 2
+
+    def same(self, other: Group) -> bool:
+        return self is other
+
+def make(d: int) -> Group:
+    return Group(d)
+
+def order(g: Group) -> int:
+    return g.order()
+
+@mypyc_attr(native_class=False)
+class Base:
+    def __init__(self, x: int) -> None:
+        self.x = x
+
+@cache
+class Derived(Base):
+    def __init__(self, x: int) -> None:
+        super().__init__(x)
+        self.y = x + 1
+
+def singleton(cls: Callable[[], T]) -> Callable[[], T]:
+    instances: list[T] = []
+
+    def get() -> T:
+        if not instances:
+            instances.append(cls())
+        return instances[0]
+
+    return get
+
+@singleton
+class Config:
+    def __init__(self) -> None:
+        self.value = 5
+
+    def get_value(self) -> int:
+        return self.value
+
+def replace_class(cls: Any) -> Any:
+    # Return a new class with the same namespace, like six.add_metaclass does
+    ns = {k: v for k, v in cls.__dict__.items() if k not in ("__dict__", "__weakref__")}
+    return type(cls)(cls.__name__, cls.__bases__, ns)
+
+@replace_class
+class Replaced:
+    def __init__(self, v: int) -> None:
+        self.v = v
+
+    def get(self) -> int:
+        return self.v
+
+def make_replaced(v: int) -> Replaced:
+    return Replaced(v)
+
+def test_cache() -> None:
+    g = make(3)
+    assert g.order() == 6
+    assert order(g) == 6
+    assert g is make(3)
+    assert g is Group(3)
+    assert g is not make(4)
+    assert g.same(Group(3))
+    assert Group.size == 10
+    assert type(Group).__name__ == "_lru_cache_wrapper"
+    assert cast(Any, Group).cache_info().currsize == 2
+
+def test_super() -> None:
+    d = Derived(4)
+    assert d.x == 4
+    assert d.y == 5
+    assert d is Derived(4)
+
+def test_singleton() -> None:
+    c = Config()
+    assert c.get_value() == 5
+    assert c is Config()
+
+def test_decorator_returning_class() -> None:
+    r = make_replaced(5)
+    assert r.get() == 5
+    assert type(r) is Replaced
 
 [case testEnum]
 from enum import Enum
@@ -1731,6 +1849,74 @@ assert e.__getstate__() == {'y': 20, '__dict__': {'x': 10}}
 e2 = pickle.loads(pickle.dumps(e))
 assert e is not e2 and e.x == e2.x and e.y == e2.y
 
+[case testPickleFrozenDataclass]
+import copy
+import pickle
+from dataclasses import dataclass
+from typing import Any, Dict, List
+
+from mypy_extensions import mypyc_attr
+
+@dataclass(frozen=True)
+class Config:
+    py_version: str = "3"
+
+@dataclass(frozen=True)
+class Frozen:
+    x: int
+    y: str
+
+@dataclass(frozen=True)
+class FrozenSub(Frozen):
+    z: List[int]
+
+@dataclass(frozen=True, slots=True)
+class FrozenSlots:
+    a: int
+    b: Dict[int, int]
+
+setattr_calls: List[str] = []
+
+@mypyc_attr(serializable=True)
+class WithSetattr:
+    def __init__(self, x: int) -> None:
+        self.x = x
+
+    def __setattr__(self, name: str, value: object) -> None:
+        setattr_calls.append(name)
+        super().__setattr__(name, value)
+
+def round_trips(obj: Any) -> List[Any]:
+    # Protocols 0 and 1 can't rebuild any native class
+    out = [pickle.loads(pickle.dumps(obj, protocol))
+           for protocol in range(2, pickle.HIGHEST_PROTOCOL + 1)]
+    return out + [copy.copy(obj), copy.deepcopy(obj)]
+
+def test_frozen_dataclass() -> None:
+    for obj in Config(), Frozen(1, 'a'), FrozenSub(2, 'b', [3]), FrozenSlots(4, {5: 6}):
+        for copied in round_trips(obj):
+            assert copied == obj
+            assert copied is not obj
+            assert type(copied) is type(obj)
+
+def test_copy_is_still_frozen() -> None:
+    f: Any = copy.copy(Frozen(1, 'a'))
+    try:
+        f.x = 2
+    except AttributeError as e:
+        assert type(e).__name__ == 'FrozenInstanceError'
+    else:
+        assert False
+    assert f.x == 1
+
+def test_setattr_not_called() -> None:
+    # Python restores the state without calling __setattr__ too, by updating __dict__
+    obj = WithSetattr(1)
+    calls = len(setattr_calls)
+    for copied in round_trips(obj):
+        assert copied.x == 1
+    assert len(setattr_calls) == calls
+
 
 [case testInterpretedParentInit]
 from interp import C
@@ -2316,6 +2502,76 @@ import other
 import other_interpreted
 
 [out]
+
+[case testPropertySetterWiderThanGetter]
+from typing import Union
+from mypy_extensions import trait
+
+class Wrapped:
+    def __init__(self, s: str) -> None:
+        self.s = s
+
+@trait
+class T:
+    @property
+    def value(self) -> Wrapped:
+        raise NotImplementedError
+
+    @value.setter
+    def value(self, v: Union[Wrapped, str]) -> None:
+        raise NotImplementedError
+
+class C(T):
+    def __init__(self) -> None:
+        self._value = Wrapped("init")
+        self._n = 0
+
+    @property
+    def value(self) -> Wrapped:
+        return self._value
+
+    @value.setter
+    def value(self, v: Union[Wrapped, str]) -> None:
+        self._value = Wrapped(v) if isinstance(v, str) else v
+
+    @property
+    def n(self) -> int:
+        return self._n
+
+    @n.setter
+    def n(self, v: Union[int, str]) -> None:
+        self._n = int(v)
+
+def set_via_class(c: C, v: Union[Wrapped, str]) -> str:
+    c.value = v
+    return c.value.s
+
+def set_via_trait(t: T, v: Union[Wrapped, str]) -> str:
+    t.value = v
+    return t.value.s
+
+def set_unboxed(c: C, v: Union[int, str]) -> int:
+    c.n = v
+    return c.n
+
+def test_setter_wider_than_getter() -> None:
+    c = C()
+    assert set_via_class(c, "a") == "a"
+    assert set_via_class(c, Wrapped("b")) == "b"
+    assert set_via_trait(c, "c") == "c"
+    assert set_via_trait(c, Wrapped("d")) == "d"
+    assert set_unboxed(c, "5") == 5
+    assert set_unboxed(c, 6) == 6
+
+[file driver.py]
+from native import C, test_setter_wider_than_getter
+test_setter_wider_than_getter()
+
+c = C()
+c.value = "py"
+assert c.value.s == "py"
+c.n = "7"
+assert c.n == 7
 
 [case testAttributeOverridesProperty]
 from typing import Any

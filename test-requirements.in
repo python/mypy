@@ -1,4 +1,4 @@
-# If you change this file (or mypy-requirements.txt or build-requirements.txt), please run:
+# If you change this file (or {mypy,build,dev}-requirements.txt), please install pip-tools and run:
 # pip-compile --output-file=test-requirements.txt --strip-extras --allow-unsafe test-requirements.in
 
 -r mypy-requirements.txt
@@ -12,4 +12,3 @@ pytest-xdist>=1.34.0
 pytest-cov>=2.10.0
 setuptools>=77.0.3
 tomli>=1.1.0  # needed even on py311+ so the self check passes with --python-version 3.10
-pre_commit>=3.5.0

@@ -475,8 +475,15 @@ fail:
 PyObject *
 CPyPickle_SetState(PyObject *obj, PyObject *state)
 {
-    if (_CPy_UpdateObjFromDict(obj, state) != 0) {
-        return NULL;
+    // Set the attributes like object.__setattr__ does, without calling any __setattr__ of the
+    // class, since pickle and copy restore the state of a Python object by updating its
+    // __dict__ directly. The __setattr__ of a frozen dataclass always raises, for example.
+    Py_ssize_t pos = 0;
+    PyObject *key, *value;
+    while (PyDict_Next(state, &pos, &key, &value)) {
+        if (PyObject_GenericSetAttr(obj, key, value) != 0) {
+            return NULL;
+        }
     }
     Py_RETURN_NONE;
 }
@@ -924,38 +931,6 @@ PyObject *CPyImport_GetNativeAttrs(PyObject *mod, PyObject *names,
         }
     }
     return Py_NewRef(mod);
-}
-
-// From CPython
-static PyObject *
-CPy_BinopTypeError(PyObject *left, PyObject *right, const char *op) {
-    PyErr_Format(PyExc_TypeError,
-                 "unsupported operand type(s) for %.100s: "
-                 "'%.100s' and '%.100s'",
-                 op,
-                 Py_TYPE(left)->tp_name,
-                 Py_TYPE(right)->tp_name);
-    return NULL;
-}
-
-PyObject *
-CPy_CallReverseOpMethod(PyObject *left,
-                        PyObject *right,
-                        const char *op,
-                        PyObject *method) {
-    // Look up reverse method
-    PyObject *m = PyObject_GetAttr(right, method);
-    if (m == NULL) {
-        // If reverse method not defined, generate TypeError instead AttributeError
-        if (PyErr_ExceptionMatches(PyExc_AttributeError)) {
-            CPy_BinopTypeError(left, right, op);
-        }
-        return NULL;
-    }
-    // Call reverse method
-    PyObject *result = PyObject_CallOneArg(m, left);
-    Py_DECREF(m);
-    return result;
 }
 
 PyObject *CPySingledispatch_RegisterFunction(PyObject *singledispatch_func,

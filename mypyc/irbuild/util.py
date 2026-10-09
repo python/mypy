@@ -304,21 +304,30 @@ def get_explicit_native_class(path: str, cdef: ClassDef, errors: Errors) -> bool
     return None
 
 
+def is_decorated_class(cdef: ClassDef) -> bool:
+    """Does a class have decorators other than the ones native classes support?
+
+    Only non-extension classes can have them. Unlike the supported decorators, which
+    return a class, these can replace the class with an arbitrary object.
+    """
+    return any(
+        not is_trait_decorator(d)
+        and not is_dataclass_decorator(d)
+        and not get_mypyc_attr_call(d)
+        and not is_final_decorator(d)
+        for d in cdef.decorators
+    )
+
+
 def is_implicit_extension_class(cdef: ClassDef) -> tuple[bool, str]:
     """Check if class can be extension class and return a user-friendly reason it can't be one."""
 
-    for d in cdef.decorators:
-        if (
-            not is_trait_decorator(d)
-            and not is_dataclass_decorator(d)
-            and not get_mypyc_attr_call(d)
-            and not is_final_decorator(d)
-        ):
-            return (
-                False,
-                "Classes that have decorators other than supported decorators"
-                " can't be native classes.",
-            )
+    if is_decorated_class(cdef):
+        return (
+            False,
+            "Classes that have decorators other than supported decorators"
+            " can't be native classes.",
+        )
 
     if cdef.info.typeddict_type:
         return False, "TypedDict classes can't be native classes."

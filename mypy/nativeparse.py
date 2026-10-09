@@ -46,6 +46,7 @@ from mypy.cache import (
     read_str_opt,
     read_tag,
 )
+from mypy.errorcodes import error_codes
 from mypy.errors import CompileError
 from mypy.nodes import (
     ARG_KINDS,
@@ -240,6 +241,8 @@ def native_parse(
         source_hash,
         mypy_comments,
     ) = parse_to_binary_ast(filename, options, source, skip_function_bodies)
+    ignores, extra_errors = normalize_error_codes(ignores)
+    errors.extend(extra_errors)
     node = MypyFile([], [])
     node.path = filename
     node.raw_data = FileRawData(
@@ -253,6 +256,33 @@ def native_parse(
         mypy_comments,
     )
     return node, errors, ignores
+
+
+def normalize_error_codes(ignores: TypeIgnores) -> tuple[TypeIgnores, list[ParseError]]:
+    """Remove mypy: prefix from error codes (if present)."""
+    normalized = []
+    extra_errors: list[ParseError] = []
+    for line, codes in ignores:
+        new_codes = []
+        for c in codes:
+            if not c.startswith("mypy:"):
+                new_codes.append(c)
+                continue
+            c = c.removeprefix("mypy:")
+            if c in error_codes:
+                new_codes.append(c)
+                continue
+            extra_errors.append(
+                {
+                    "line": line,
+                    "column": -1,
+                    "message": f'Unrecognized error code "{c}"',
+                    "blocker": False,
+                    "code": "misc",
+                }
+            )
+        normalized.append((line, new_codes))
+    return normalized, extra_errors
 
 
 def native_parse_type_string(

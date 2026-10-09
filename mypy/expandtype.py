@@ -52,7 +52,9 @@ import mypy.type_visitor  # ruff: isort: skip
 
 
 @overload
-def expand_type(typ: CallableType, env: Mapping[TypeVarId, Type]) -> CallableType: ...
+def expand_type(
+    typ: CallableType, env: Mapping[TypeVarId, Type], normalize_callables: bool = True
+) -> CallableType: ...
 
 
 @overload
@@ -63,11 +65,13 @@ def expand_type(typ: ProperType, env: Mapping[TypeVarId, Type]) -> ProperType: .
 def expand_type(typ: Type, env: Mapping[TypeVarId, Type]) -> Type: ...
 
 
-def expand_type(typ: Type, env: Mapping[TypeVarId, Type]) -> Type:
+def expand_type(
+    typ: Type, env: Mapping[TypeVarId, Type], normalize_callables: bool = True
+) -> Type:
     """Substitute any type variable references in a type given by a type
     environment.
     """
-    return typ.accept(ExpandTypeVisitor(env))
+    return typ.accept(ExpandTypeVisitor(env, normalize_callables))
 
 
 @overload
@@ -182,9 +186,15 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
 
     variables: Mapping[TypeVarId, Type]  # TypeVar id -> TypeVar value
 
-    def __init__(self, variables: Mapping[TypeVarId, Type]) -> None:
+    def __init__(
+        self, variables: Mapping[TypeVarId, Type], normalize_callables: bool = True
+    ) -> None:
         super().__init__()
         self.variables = variables
+        # Usually we want normalized callables (therefore default is True), but there
+        # are some cases when we don't. For example, when expanding callable with
+        # type variables with values. We want to keep the shape matching argument structure.
+        self.normalize_callables = normalize_callables
 
     def visit_unbound_type(self, t: UnboundType) -> Type:
         return t
@@ -400,9 +410,22 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
             raise RuntimeError(f"Invalid type replacement to expand: {repl}")
 
     def visit_parameters(self, t: Parameters) -> Type:
-        return t.copy_modified(arg_types=self.expand_types(t.arg_types))
+        # This mimics the logic in visit_callable_type().
+        var_arg = t.var_arg()
+        needs_normalization = False
+        if var_arg is not None and isinstance(var_arg.typ, UnpackType):
+            needs_normalization = True
+            arg_types = self.interpolate_args_for_unpack(t, var_arg.typ)
+        else:
+            arg_types = self.expand_types(t.arg_types)
+        expanded = t.copy_modified(arg_types=arg_types)
+        if needs_normalization:
+            expanded = expanded.with_normalized_var_args()
+        return expanded
 
-    def interpolate_args_for_unpack(self, t: CallableType, var_arg: UnpackType) -> list[Type]:
+    def interpolate_args_for_unpack(
+        self, t: CallableType | Parameters, var_arg: UnpackType
+    ) -> list[Type]:
         star_index = t.arg_kinds.index(ARG_STAR)
         prefix = self.expand_types(t.arg_types[:star_index])
         suffix = self.expand_types(t.arg_types[star_index + 1 :])
@@ -497,7 +520,7 @@ class ExpandTypeVisitor(TrivialSyntheticTypeTranslator):
             type_is=t.type_is.accept(self) if t.type_is is not None else None,
             instance_type=instance_type,
         )
-        if needs_normalization:
+        if needs_normalization and self.normalize_callables:
             return expanded.with_normalized_var_args()
         return expanded
 

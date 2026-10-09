@@ -7,6 +7,7 @@ from __future__ import annotations
 
 from typing import Final
 
+from mypy.message_registry import CANNOT_DECLARE_TYPE_OF_SPECIAL_FORM
 from mypy.nodes import (
     ARG_NAMED,
     ARG_POS,
@@ -78,6 +79,8 @@ class EnumCallAnalyzer:
             return False
         # Yes, it's a valid Enum definition. Add it to the symbol table.
         self.api.add_symbol(name, enum_call, s)
+        if s.type:
+            self.fail(CANNOT_DECLARE_TYPE_OF_SPECIAL_FORM.format("Enum"), s)
         return True
 
     def check_enum_call(self, node: Expression, var_name: str) -> TypeInfo | None:

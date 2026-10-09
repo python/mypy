@@ -41,6 +41,15 @@ load_address_op(name="builtins.bool", type=object_rprimitive, src="PyBool_Type")
 # Get the 'range' type object.
 load_address_op(name="builtins.range", type=object_rprimitive, src="PyRange_Type")
 
+# Get the 'complex' type object.
+load_address_op(name="builtins.complex", type=object_rprimitive, src="PyComplex_Type")
+
+# Get the 'slice' type object.
+load_address_op(name="builtins.slice", type=object_rprimitive, src="PySlice_Type")
+
+# Get the 'memoryview' type object.
+load_address_op(name="builtins.memoryview", type=object_rprimitive, src="PyMemoryView_Type")
+
 # Get the boxed Python 'None' object
 none_object_op = load_address_op(name="Py_None", type=object_rprimitive, src="_Py_NoneStruct")
 
@@ -261,6 +270,51 @@ isinstance_bool = function_op(
     arg_types=[object_rprimitive],
     return_type=bit_rprimitive,
     c_function_name="PyBool_Check",
+    error_kind=ERR_NEVER,
+)
+
+# isinstance(obj, complex)
+isinstance_complex = custom_primitive_op(
+    name="builtins.isinstance",
+    arg_types=[object_rprimitive],
+    return_type=bit_rprimitive,
+    c_function_name="PyComplex_Check",
+    error_kind=ERR_NEVER,
+)
+
+# isinstance(obj, type)
+isinstance_type = custom_primitive_op(
+    name="builtins.isinstance",
+    arg_types=[object_rprimitive],
+    return_type=bit_rprimitive,
+    c_function_name="PyType_Check",
+    error_kind=ERR_NEVER,
+)
+
+# isinstance(obj, range)
+isinstance_range = custom_primitive_op(
+    name="builtins.isinstance",
+    arg_types=[object_rprimitive],
+    return_type=bit_rprimitive,
+    c_function_name="PyRange_Check",
+    error_kind=ERR_NEVER,
+)
+
+# isinstance(obj, slice)
+isinstance_slice = custom_primitive_op(
+    name="builtins.isinstance",
+    arg_types=[object_rprimitive],
+    return_type=bit_rprimitive,
+    c_function_name="PySlice_Check",
+    error_kind=ERR_NEVER,
+)
+
+# isinstance(obj, memoryview)
+isinstance_memoryview = custom_primitive_op(
+    name="builtins.isinstance",
+    arg_types=[object_rprimitive],
+    return_type=bit_rprimitive,
+    c_function_name="PyMemoryView_Check",
     error_kind=ERR_NEVER,
 )
 
