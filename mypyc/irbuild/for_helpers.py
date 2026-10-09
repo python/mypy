@@ -70,7 +70,7 @@ from mypyc.ir.rtypes import (
 )
 from mypyc.irbuild.builder import IRBuilder
 from mypyc.irbuild.constant_fold import constant_fold_expr
-from mypyc.irbuild.targets import AssignmentTarget, AssignmentTargetTuple
+from mypyc.irbuild.targets import AssignmentTargetTuple
 from mypyc.irbuild.vec import vec_append, vec_create, vec_get_item_unsafe, vec_init_item_unsafe
 from mypyc.primitives.dict_ops import (
     dict_check_size_op,
@@ -654,6 +654,7 @@ class ForGenerator:
         self.index = index
         self.body_block = body_block
         self.line = line
+        self.nested = nested
         # Some for loops need a cleanup block that we execute at exit. We
         # create a cleanup block if needed. However, if we are generating a for
         # loop for a nested iterator, such as "e" in "enumerate(e)", the
@@ -946,19 +947,34 @@ class ForSequence(ForGenerator):
             # (unless input is immutable type).
             len_reg = builder.read(self.length_reg, line)
         comparison = builder.binary_op(builder.read(self.index_target, line), len_reg, "<", line)
-        builder.add_bool_branch(comparison, self.body_block, self.loop_exit)
+        if self.nested:
+            # In zip() or enumerate(), read the item right after the length check, as
+            # the sequence's iterator would. Other iterators may be advanced and other
+            # loop targets assigned before our begin_body(), and either could shrink
+            # the sequence.
+            read_block = BasicBlock()
+            builder.add_bool_branch(comparison, read_block, self.loop_exit)
+            builder.activate_block(read_block)
+            self.next_reg = self.read_item()
+            builder.goto(self.body_block)
+        else:
+            builder.add_bool_branch(comparison, self.body_block, self.loop_exit)
 
-    def begin_body(self) -> None:
+    def read_item(self) -> Value:
         builder = self.builder
         line = self.line
-        # Read the next list item.
-        value_box = unsafe_index(
+        return unsafe_index(
             builder,
             builder.read(self.expr_target, line),
             builder.read(self.index_target, line),
             line,
         )
-        assert value_box
+
+    def begin_body(self) -> None:
+        builder = self.builder
+        line = self.line
+        # Read the next list item, unless gen_condition() already did.
+        value_box = self.next_reg if self.nested else self.read_item()
         # We coerce to the type of list elements here so that
         # iterating with tuple unpacking generates a tuple based
         # unpack instead of an iterator based one.
@@ -1139,9 +1155,6 @@ class ForRange(ForGenerator):
         index_reg = Register(index_type, line=self.line)
         builder.assign(index_reg, start_reg, self.line)
         self.index_reg = index_reg
-        # Initialize loop index to 0. Assert that the index target is assignable.
-        self.index_target: Register | AssignmentTarget = builder.get_assignment_target(self.index)
-        builder.assign(self.index_target, builder.read(self.index_reg, self.line), self.line)
 
     def convert_arg(self, value: Value) -> Value:
         """Convert a range() argument to an int using __index__, like range() does."""
@@ -1175,9 +1188,13 @@ class ForRange(ForGenerator):
     def begin_body(self) -> None:
         # Update the user-visible loop variable at the start of the body,
         # after the condition check passes. This ensures the variable isn't
-        # "overshot" when the loop exits (matching CPython semantics).
+        # assigned if the range is empty, and isn't "overshot" when the loop
+        # exits (matching CPython semantics).
         builder = self.builder
-        builder.assign(self.index_target, builder.read(self.index_reg, self.line), self.line)
+        line = self.line
+        builder.assign(
+            builder.get_assignment_target(self.index), builder.read(self.index_reg, line), line
+        )
 
     def gen_step(self) -> None:
         builder = self.builder
@@ -1209,10 +1226,9 @@ class ForInfiniteCounter(ForGenerator):
     def init(self) -> None:
         builder = self.builder
         # Create a register to store the state of the loop index and
-        # initialize this register along with the loop index to 0.
+        # initialize this register to 0.
         zero = Integer(0)
         self.index_reg = builder.ensure_register(zero)
-        self.index_target: Register | AssignmentTarget = builder.get_assignment_target(self.index)
 
     def gen_step(self) -> None:
         builder = self.builder
@@ -1226,8 +1242,10 @@ class ForInfiniteCounter(ForGenerator):
         builder.assign(self.index_reg, new_val, line)
 
     def begin_body(self) -> None:
-        self.builder.assign(
-            self.index_target, self.builder.read(self.index_reg, self.line), self.line
+        builder = self.builder
+        line = self.line
+        builder.assign(
+            builder.get_assignment_target(self.index), builder.read(self.index_reg, line), line
         )
 
 

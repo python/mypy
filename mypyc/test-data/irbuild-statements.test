@@ -7,14 +7,12 @@ def f() -> None:
 def f():
     x :: int
     r0 :: short_int
-    i :: int
     r1 :: bit
-    r2 :: int
+    i, r2 :: int
     r3 :: short_int
 L0:
     x = 0
     r0 = 0
-    i = r0
 L1:
     r1 = int_lt r0, 10
     if r1 goto L2 else goto L4 :: bool
@@ -35,12 +33,11 @@ def f(a: int) -> None:
         pass
 [out]
 def f(a):
-    a, r0, i :: int
+    a, r0 :: int
     r1 :: bit
-    r2 :: int
+    i, r2 :: int
 L0:
     r0 = 0
-    i = r0
 L1:
     r1 = int_lt r0, a
     if r1 goto L2 else goto L4 :: bool
@@ -60,12 +57,11 @@ def f() -> None:
 [out]
 def f():
     r0 :: short_int
-    i :: int
     r1 :: bit
+    i :: int
     r2 :: short_int
 L0:
     r0 = 20
-    i = r0
 L1:
     r1 = int_gt r0, 0
     if r1 goto L2 else goto L4 :: bool
@@ -89,16 +85,15 @@ def f(a, b):
     a, b, r0 :: object
     r1 :: int
     r2 :: object
-    r3, r4, i :: int
+    r3, r4 :: int
     r5 :: bit
-    r6 :: int
+    i, r6 :: int
 L0:
     r0 = PyNumber_Index(a)
     r1 = unbox(int, r0)
     r2 = PyNumber_Index(b)
     r3 = unbox(int, r2)
     r4 = r1
-    i = r4
 L1:
     r5 = int_lt r4, r3
     if r5 goto L2 else goto L4 :: bool
@@ -126,13 +121,12 @@ L0:
     return 4
 def f(c):
     c :: __main__.C
-    r0, r1, i :: int
+    r0, r1 :: int
     r2 :: bit
-    r3 :: int
+    i, r3 :: int
 L0:
     r0 = c.__index__()
     r1 = 0
-    i = r1
 L1:
     r2 = int_lt r1, r0
     if r2 goto L2 else goto L4 :: bool
@@ -170,12 +164,11 @@ def f() -> None:
 [out]
 def f():
     r0 :: short_int
-    n :: int
     r1 :: bit
+    n :: int
     r2 :: short_int
 L0:
     r0 = 0
-    n = r0
 L1:
     r1 = int_lt r0, 10
     if r1 goto L2 else goto L4 :: bool
@@ -240,12 +233,11 @@ def f() -> None:
 [out]
 def f():
     r0 :: short_int
-    n :: int
     r1 :: bit
+    n :: int
     r2 :: short_int
 L0:
     r0 = 0
-    n = r0
 L1:
     r1 = int_lt r0, 10
     if r1 goto L2 else goto L4 :: bool
@@ -1018,9 +1010,8 @@ def f(a):
     r0 :: short_int
     r1, r2 :: native_int
     r3 :: bit
-    i :: int
     r4 :: object
-    r5, x, r6 :: int
+    i, r5, x, r6 :: int
     r7 :: short_int
     r8 :: native_int
 L0:
@@ -1029,21 +1020,22 @@ L0:
 L1:
     r2 = var_object_size a
     r3 = r1 < r2 :: signed
-    if r3 goto L2 else goto L4 :: bool
+    if r3 goto L2 else goto L5 :: bool
 L2:
-    i = r0
     r4 = list_get_item_unsafe a, r1
+L3:
+    i = r0
     r5 = unbox(int, r4)
     x = r5
     r6 = CPyTagged_Add(i, x)
-L3:
+L4:
     r7 = r0 + 2
     r0 = r7
     r8 = r1 + 1
     r1 = r8
     goto L1
-L4:
 L5:
+L6:
     return 1
 def g(x):
     x :: object
@@ -1104,30 +1096,31 @@ L0:
 L1:
     r2 = var_object_size a
     r3 = r0 < r2 :: signed
-    if r3 goto L2 else goto L7 :: bool
+    if r3 goto L2 else goto L8 :: bool
 L2:
-    r4 = PyIter_Next(r1)
-    if is_error(r4) goto L7 else goto L3
+    r4 = list_get_item_unsafe a, r0
 L3:
-    r5 = list_get_item_unsafe a, r0
-    r6 = unbox(int, r5)
+    r5 = PyIter_Next(r1)
+    if is_error(r5) goto L8 else goto L4
+L4:
+    r6 = unbox(int, r4)
     x = r6
-    r7 = unbox(bool, r4)
+    r7 = unbox(bool, r5)
     y = r7
     r8 = PyObject_IsTrue(b)
     r9 = r8 >= 0 :: signed
     r10 = truncate r8: i32 to builtins.bool
-    if r10 goto L4 else goto L5 :: bool
-L4:
-    x = 2
+    if r10 goto L5 else goto L6 :: bool
 L5:
+    x = 2
 L6:
+L7:
     r11 = r0 + 1
     r0 = r11
     goto L1
-L7:
-    r12 = CPy_NoErrOccurred()
 L8:
+    r12 = CPy_NoErrOccurred()
+L9:
     return 1
 def g(a, b):
     a :: object
@@ -1135,13 +1128,13 @@ def g(a, b):
     r0 :: object
     r1 :: native_int
     r2 :: short_int
-    z :: int
     r3 :: object
     r4 :: native_int
-    r5, r6 :: bit
-    r7, x :: bool
-    r8 :: object
-    r9, y :: int
+    r5 :: bit
+    r6 :: object
+    r7 :: bit
+    r8, x :: bool
+    r9, y, z :: int
     r10 :: native_int
     r11 :: short_int
     r12 :: bit
@@ -1149,34 +1142,34 @@ L0:
     r0 = PyObject_GetIter(a)
     r1 = 0
     r2 = 0
-    z = r2
 L1:
     r3 = PyIter_Next(r0)
-    if is_error(r3) goto L6 else goto L2
+    if is_error(r3) goto L7 else goto L2
 L2:
     r4 = var_object_size b
     r5 = r1 < r4 :: signed
-    if r5 goto L3 else goto L6 :: bool
+    if r5 goto L3 else goto L7 :: bool
 L3:
-    r6 = int_lt r2, 10
-    if r6 goto L4 else goto L6 :: bool
+    r6 = list_get_item_unsafe b, r1
 L4:
-    r7 = unbox(bool, r3)
-    x = r7
-    r8 = list_get_item_unsafe b, r1
-    r9 = unbox(int, r8)
+    r7 = int_lt r2, 10
+    if r7 goto L5 else goto L7 :: bool
+L5:
+    r8 = unbox(bool, r3)
+    x = r8
+    r9 = unbox(int, r6)
     y = r9
     z = r2
     x = 0
-L5:
+L6:
     r10 = r1 + 1
     r1 = r10
     r11 = r2 + 2
     r2 = r11
     goto L1
-L6:
-    r12 = CPy_NoErrOccurred()
 L7:
+    r12 = CPy_NoErrOccurred()
+L8:
     return 1
 
 [case testConditionalFunctionDefinition]
