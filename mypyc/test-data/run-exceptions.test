@@ -536,6 +536,7 @@ TypeError: int object expected; got str
 [case testRaiseFrom]
 from typing import Any
 
+from exceptions_helper import OtherException
 from testutil import assertRaises
 
 class Inner(Exception):
@@ -612,3 +613,15 @@ def test_raise_from_reassigned_exception() -> None:
         assert exc is cause
     else:
         assert False
+
+def test_raise_from_class_returning_unrelated_exception() -> None:
+    # Normalization calls OtherException again with the ValueError as an argument.
+    with assertRaises(TypeError):
+        raise_from(OtherException, None)
+
+[file exceptions_helper.py]
+from typing import Any
+
+class OtherException(Exception):
+    def __new__(cls) -> Any:
+        return ValueError("other")

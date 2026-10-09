@@ -20,8 +20,10 @@ void CPy_Raise(PyObject *exc) {
 }
 
 void CPy_RaiseFrom(PyObject *exc, PyObject *cause) {
+    PyObject *type;
     PyObject *value;
     if (PyExceptionClass_Check(exc)) {
+        type = exc;
         value = PyObject_CallNoArgs(exc);
         if (!value)
             return;
@@ -33,6 +35,7 @@ void CPy_RaiseFrom(PyObject *exc, PyObject *cause) {
             return;
         }
     } else if (PyExceptionInstance_Check(exc)) {
+        type = (PyObject *)Py_TYPE(exc);
         value = Py_NewRef(exc);
     } else {
         PyErr_SetString(PyExc_TypeError, "exceptions must derive from BaseException");
@@ -61,7 +64,8 @@ void CPy_RaiseFrom(PyObject *exc, PyObject *cause) {
     }
     // This steals the reference to the cause and sets __suppress_context__
     PyException_SetCause(value, fixed_cause);
-    PyErr_SetObject((PyObject *)Py_TYPE(value), value);
+    // Normalize against the original class, even if __new__ returned an unrelated exception.
+    PyErr_SetObject(type, value);
 fail:
     Py_DECREF(value);
 }
