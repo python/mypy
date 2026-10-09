@@ -523,8 +523,18 @@ def generate_get_wrapper(cl: ClassIR, fn: FuncIR, emitter: Emitter) -> str:
             name=name
         )
     )
+    # CPython passes NULL for a missing instance (when the attribute is read from the
+    # class) or owner (as in d.__get__(obj, None)), but __get__ expects None.
     emitter.emit_line("instance = instance ? instance : Py_None;")
-    emitter.emit_line(f"return {emitter.native_function_call(fn.decl)}(self, instance, owner);")
+    emitter.emit_line("owner = owner ? owner : Py_None;")
+    call = f"{emitter.native_function_call(fn.decl)}(self, instance, owner)"
+    if fn.ret_type.is_unboxed:
+        emitter.emit_line(f"{emitter.ctype_spaced(fn.ret_type)}retval = {call};")
+        emitter.emit_error_check("retval", fn.ret_type, "return NULL;")
+        emitter.emit_box("retval", "retbox", fn.ret_type, declare_dest=True)
+        emitter.emit_line("return retbox;")
+    else:
+        emitter.emit_line(f"return {call};")
     emitter.emit_line("}")
 
     return name
