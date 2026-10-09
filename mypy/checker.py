@@ -1453,8 +1453,9 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
         self, defn: FuncItem, typ: CallableType, name: str | None, allow_empty: bool = False
     ) -> None:
         """Type check a function definition."""
+        if defn.type_args:
+            self.check_typevar_defaults(typ.variables, defn)
         # Expand type variables with value restrictions to ordinary types.
-        self.check_typevar_defaults(typ.variables)
         expanded = self.expand_typevars(defn, typ)
         original_typ = typ
         for item, typ in expanded:
@@ -1508,11 +1509,11 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                             not in {"__init__", "__new__", "__post_init__", "__replace__"}
                             and not is_private(defn.name)  # private methods are not inherited
                             and (i != 0 or not found_self)
+                            and not isinstance(defn, LambdaExpr)
                         ):
-                            ctx: Context = arg_type
-                            if ctx.line < 0:
-                                ctx = typ
-                            self.fail(message_registry.FUNCTION_PARAMETER_CANNOT_BE_COVARIANT, ctx)
+                            self.fail(
+                                message_registry.FUNCTION_PARAMETER_CANNOT_BE_COVARIANT, defn
+                            )
                     # Need to store arguments again for the expanded item.
                     store_argument_type(item, i, typ, self.named_generic_type)
 
@@ -1724,23 +1725,24 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                 self.check_setattr_method(typ, defn)
 
         # Refuse contravariant return type variable
-        if isinstance(typ.ret_type, TypeVarType):
-            if typ.ret_type.variance == CONTRAVARIANT:
-                self.fail(message_registry.RETURN_TYPE_CANNOT_BE_CONTRAVARIANT, typ.ret_type)
-            self.check_unbound_return_typevar(typ)
-        elif isinstance(original_typ.ret_type, TypeVarType) and original_typ.ret_type.values:
-            # Since type vars with values are expanded, the return type is changed
-            # to a raw value. This is a hack to get it back.
-            self.check_unbound_return_typevar(original_typ)
+        if not isinstance(item, LambdaExpr):
+            if isinstance(typ.ret_type, TypeVarType):
+                if typ.ret_type.variance == CONTRAVARIANT:
+                    self.fail(message_registry.RETURN_TYPE_CANNOT_BE_CONTRAVARIANT, defn)
+                self.check_unbound_return_typevar(typ, defn)
+            elif isinstance(original_typ.ret_type, TypeVarType) and original_typ.ret_type.values:
+                # Since type vars with values are expanded, the return type is changed
+                # to a raw value. This is a hack to get it back.
+                self.check_unbound_return_typevar(original_typ, defn)
 
         # Check that Generator functions have the appropriate return type.
         if defn.is_generator:
             if defn.is_async_generator:
                 if not self.is_async_generator_return_type(typ.ret_type):
-                    self.fail(message_registry.INVALID_RETURN_TYPE_FOR_ASYNC_GENERATOR, typ)
+                    self.fail(message_registry.INVALID_RETURN_TYPE_FOR_ASYNC_GENERATOR, defn)
             else:
                 if not self.is_generator_return_type(typ.ret_type, defn.is_coroutine):
-                    self.fail(message_registry.INVALID_RETURN_TYPE_FOR_GENERATOR, typ)
+                    self.fail(message_registry.INVALID_RETURN_TYPE_FOR_GENERATOR, defn)
 
     def require_correct_self_argument(self, func: Type, defn: FuncDef) -> bool:
         func = get_proper_type(func)
@@ -1825,7 +1827,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                     return True
         return False
 
-    def check_unbound_return_typevar(self, typ: CallableType) -> None:
+    def check_unbound_return_typevar(self, typ: CallableType, context: Context) -> None:
         """Fails when the return typevar is not defined in arguments."""
         if isinstance(typ.ret_type, TypeVarType) and typ.ret_type in typ.variables:
             arg_type_visitor = CollectArgTypeVarTypes()
@@ -1833,7 +1835,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                 argtype.accept(arg_type_visitor)
 
             if typ.ret_type not in arg_type_visitor.arg_types:
-                self.fail(message_registry.UNBOUND_TYPEVAR, typ.ret_type, code=TYPE_VAR)
+                self.fail(message_registry.UNBOUND_TYPEVAR, context, code=TYPE_VAR)
                 upper_bound = get_proper_type(typ.ret_type.upper_bound)
                 if not (
                     isinstance(upper_bound, Instance)
@@ -1842,7 +1844,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                     self.note(
                         "Consider using the upper bound "
                         f"{format_type(typ.ret_type.upper_bound, self.options)} instead",
-                        context=typ.ret_type,
+                        context=context,
                         code=TYPE_VAR,
                     )
 
@@ -2883,8 +2885,8 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                             context=defn,
                             code=codes.TYPE_VAR,
                         )
-        if typ.defn.type_vars:
-            self.check_typevar_defaults(typ.defn.type_vars)
+        if typ.defn.type_args:
+            self.check_typevar_defaults(typ.defn.type_vars, typ.defn)
 
         if typ.is_protocol and typ.defn.type_vars:
             self.check_protocol_variance(defn)
@@ -2948,14 +2950,14 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
             # all other bases have already been checked.
             break
 
-    def check_typevar_defaults(self, tvars: Sequence[TypeVarLikeType]) -> None:
+    def check_typevar_defaults(self, tvars: Sequence[TypeVarLikeType], context: Context) -> None:
         for tv in tvars:
             if not (isinstance(tv, TypeVarType) and tv.has_default()):
                 continue
             if not is_subtype(tv.default, tv.upper_bound):
-                self.fail("TypeVar default must be a subtype of the bound type", tv)
+                self.fail("TypeVar default must be a subtype of the bound type", context)
             if tv.values and not any(is_same_type(tv.default, value) for value in tv.values):
-                self.fail("TypeVar default must be one of the constraint types", tv)
+                self.fail("TypeVar default must be one of the constraint types", context)
 
     def check_enum(self, defn: ClassDef) -> None:
         assert defn.info.is_enum
@@ -6244,8 +6246,8 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                 del type_map[expr]
 
     def visit_type_alias_stmt(self, o: TypeAliasStmt) -> None:
-        if o.alias_node:
-            self.check_typevar_defaults(o.alias_node.alias_tvars)
+        if o.alias_node and o.type_args:
+            self.check_typevar_defaults(o.alias_node.alias_tvars, o)
 
         with self.msg.filter_errors():
             self.expr_checker.accept(o.value)

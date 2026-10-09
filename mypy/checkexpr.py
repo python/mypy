@@ -6450,14 +6450,8 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         elif self.chk.type_is_iterable(subexpr_type):
             if is_async_def(subexpr_type) and not has_coroutine_decorator(return_type):
                 self.chk.msg.yield_from_invalid_operand_type(subexpr_type, e)
-
-            any_type = AnyType(TypeOfAny.special_form)
-            generic_generator_type = self.chk.named_generic_type(
-                "typing.Generator", [any_type, any_type, any_type]
-            )
-            generic_generator_type.set_line(e)
             iter_type, _ = self.check_method_call_by_name(
-                "__iter__", subexpr_type, [], [], context=generic_generator_type
+                "__iter__", subexpr_type, [], [], context=e
             )
         else:
             if not (is_async_def(subexpr_type) and has_coroutine_decorator(return_type)):
