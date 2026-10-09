@@ -96,7 +96,7 @@ from mypy.erasetype import (
     remove_instance_last_known_values,
     shallow_erase_type_for_equality,
 )
-from mypy.errorcodes import TYPE_VAR, UNUSED_AWAITABLE, UNUSED_COROUTINE, ErrorCode
+from mypy.errorcodes import TYPE_VAR, UNUSED_ASYNCIO_TASK, UNUSED_AWAITABLE, UNUSED_COROUTINE, ErrorCode
 from mypy.errors import (
     ErrorInfo,
     Errors,
@@ -5241,6 +5241,16 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
         awaitables because in those particular cases we can guarantee
         it's safe.
         """
+        if isinstance(s.expr, CallExpr):
+            callee = s.expr.callee
+            if refers_to_fullname(callee, "asyncio.create_task") or refers_to_fullname(
+                callee, "asyncio.ensure_future"
+            ):
+                return (
+                    "The task may be garbage collected before it completes. "
+                    "Assign the result to a variable or add it to a task list.",
+                    UNUSED_ASYNCIO_TASK,
+                )
         proper_type = get_proper_type(typ)
         if isinstance(proper_type, Instance):
             # We use different error codes for generic awaitable vs coroutine.

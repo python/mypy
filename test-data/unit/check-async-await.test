@@ -896,6 +896,46 @@ class TaskGroup:
     async def __aenter__(self) -> "TaskGroup": pass
     async def __aexit__(self, x, y, z) -> None: pass
 
+[case testAsyncioCreateTaskWithoutReference]
+# flags: --enable-error-code unused-asyncio-task --show-error-codes
+import asyncio
+
+async def main() -> None:
+    asyncio.create_task(coro())  # E: Value of type "Any" must be used  [unused-asyncio-task] \
+                                 # N: The task may be garbage collected before it completes. Assign the result to a variable or add it to a task list.
+    asyncio.ensure_future(coro())  # E: Value of type "Any" must be used  [unused-asyncio-task] \
+                                   # N: The task may be garbage collected before it completes. Assign the result to a variable or add it to a task list.
+
+async def coro() -> None:
+    pass
+
+[file asyncio/__init__.pyi]
+from typing import Coroutine, Any
+def create_task(coro: Coroutine[Any, Any, Any]) -> Any: pass
+def ensure_future(coro: Coroutine[Any, Any, Any]) -> Any: pass
+[builtins fixtures/async_await.pyi]
+[typing fixtures/typing-async.pyi]
+
+[case testAsyncioCreateTaskWithReference]
+# flags: --enable-error-code unused-asyncio-task --show-error-codes
+import asyncio
+
+async def main() -> None:
+    task = asyncio.create_task(coro())
+    task2 = asyncio.ensure_future(coro())
+    await asyncio.create_task(coro())
+    await asyncio.ensure_future(coro())
+
+async def coro() -> None:
+    pass
+
+[file asyncio/__init__.pyi]
+from typing import Coroutine, Any
+def create_task(coro: Coroutine[Any, Any, Any]) -> Any: pass
+def ensure_future(coro: Coroutine[Any, Any, Any]) -> Any: pass
+[builtins fixtures/async_await.pyi]
+[typing fixtures/typing-async.pyi]
+
 [case testAsyncForOutsideCoroutine]
 async def g():
     yield 0
