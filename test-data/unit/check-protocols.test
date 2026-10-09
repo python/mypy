@@ -2730,6 +2730,46 @@ def test(func: A[T, S]) -> Tuple[T, S]: ...
 reveal_type(test(f))  # N: Revealed type is "tuple[builtins.str, builtins.int]"
 [builtins fixtures/tuple.pyi]
 
+[case testUnionOfCallbackProtocolsInference]
+from typing import Protocol, TypeVar
+
+T = TypeVar("T")
+PT = TypeVar("PT", contravariant=True)
+
+class OneArg(Protocol[PT]):
+    def __call__(self, x: PT, /) -> None: ...
+
+class TwoArgs(Protocol[PT]):
+    def __call__(self, x: PT, y: int, /) -> None: ...
+
+def first_arg(fn: OneArg[T] | TwoArgs[T]) -> T: ...
+
+def one(x: int) -> None: ...
+def two(x: str, y: int) -> None: ...
+
+reveal_type(first_arg(one))  # N: Revealed type is "builtins.int"
+reveal_type(first_arg(two))  # N: Revealed type is "builtins.str"
+
+[case testUnionOfCallbackProtocolsInferenceReversed]
+from typing import Protocol, TypeVar
+
+T = TypeVar("T")
+PT = TypeVar("PT", contravariant=True)
+
+class OneArg(Protocol[PT]):
+    def __call__(self, x: PT, /) -> None: ...
+
+class TwoArgs(Protocol[PT]):
+    def __call__(self, x: PT, y: int, /) -> None: ...
+
+def first_arg(fn: OneArg[T] | TwoArgs[T]) -> T: ...
+
+def one(x: int) -> None: ...
+def two(x: str, y: int) -> None: ...
+
+reveal_type(first_arg(two))  # N: Revealed type is "builtins.str"
+reveal_type(first_arg(one))  # N: Revealed type is "builtins.int"
+
 [case testProtocolsAlwaysABCs]
 from typing import Protocol
 

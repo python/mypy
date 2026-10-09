@@ -1390,7 +1390,9 @@ def is_protocol_implementation(
         subtype_context=SubtypeContext(ignore_pos_arg_names=ignore_names),
         proper_subtype=proper_subtype,
     )
-    type_state.record_subtype_cache_entry(subtype_kind, left, right)
+    # A partial protocol check does not prove full subtype compatibility.
+    if not skip:
+        type_state.record_subtype_cache_entry(subtype_kind, left, right)
     return True
 
 
