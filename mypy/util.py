@@ -1011,6 +1011,7 @@ def get_available_threads() -> int:
         affinity = os.sched_getaffinity(0)
     if PSUTIL_AVAILABLE and (psutil.LINUX or psutil.WINDOWS or psutil.FREEBSD):
         # Currently not supported on macOS and NetBSD.
+        assert sys.platform != "darwin"  # for self-check
         affinity = psutil.Process().cpu_affinity()
 
     assert cpu_count is not None
