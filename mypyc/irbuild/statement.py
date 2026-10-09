@@ -681,6 +681,11 @@ def transform_raise_stmt(builder: IRBuilder, s: RaiseStmt) -> None:
 
     exc = builder.accept(s.expr)
     if s.from_expr is not None:
+        if isinstance(exc, Register):
+            # Evaluating the cause may reassign the variable holding the exception.
+            temp = Register(exc.type)
+            builder.assign(temp, exc, s.line)
+            exc = temp
         cause = builder.accept(s.from_expr)
         builder.call_c(raise_exception_from_op, [exc, cause], s.line)
     else:

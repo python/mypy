@@ -599,3 +599,16 @@ def test_raise_from_in_except() -> None:
         assert e.__cause__ is e.__context__
     else:
         assert False
+
+def test_raise_from_reassigned_exception() -> None:
+    original = ValueError("original")
+    cause = TypeError("cause")
+    exc: Exception = original
+    try:
+        raise exc from (exc := cause)
+    except ValueError as e:
+        assert e is original
+        assert e.__cause__ is cause
+        assert exc is cause
+    else:
+        assert False
