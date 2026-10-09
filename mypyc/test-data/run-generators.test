@@ -522,6 +522,88 @@ with assertRaises(StopIteration):
 2
 42
 
+[case testNativeGeneratorInZip]
+from typing import Generator, Iterator
+
+from testutil import assertRaises
+
+def gen() -> Iterator[int]:
+    yield 1
+    yield 2
+    yield 3
+
+class C:
+    def items(self) -> Iterator[int]:
+        yield 1
+        yield 2
+        yield 3
+
+def test_other_iterator_ends_loop() -> None:
+    result = []
+    for i, x in zip(range(2), gen()):
+        result.append((i, x))
+    assert result == [(0, 1), (1, 2)]
+    result = []
+    for x, i in zip(gen(), range(2)):
+        result.append((x, i))
+    assert result == [(1, 0), (2, 1)]
+    empty: list[int] = []
+    assert [(i, x) for i, x in zip(empty, gen())] == []
+    assert [(i, x) for i, x in zip(range(2), C().items())] == [(0, 1), (1, 2)]
+    assert [(a, x, b) for a, x, b in zip(range(5), gen(), range(2))] == [(0, 1, 0), (1, 2, 1)]
+    assert [(i, x, j) for (i, x), j in zip(enumerate(gen()), range(2))] == [(0, 1, 0), (1, 2, 1)]
+
+def test_generator_ends_loop() -> None:
+    assert [(i, x) for i, x in zip(range(5), gen())] == [(0, 1), (1, 2), (2, 3)]
+    assert [(x, i) for x, i in zip(gen(), range(5))] == [(1, 0), (2, 1), (3, 2)]
+    assert [(i, x) for i, x in enumerate(gen())] == [(0, 1), (1, 2), (2, 3)]
+
+def test_for_else() -> None:
+    result = []
+    for i, x in zip(range(2), gen()):
+        result.append(x)
+    else:
+        result.append(-1)
+    assert result == [1, 2, -1]
+    result = []
+    for x in gen():
+        result.append(x)
+    else:
+        result.append(-1)
+    assert result == [1, 2, 3, -1]
+
+def gen_return() -> Generator[int, None, str]:
+    yield 1
+    return "done"
+
+def test_generator_with_return_value() -> None:
+    assert [x for x in gen_return()] == [1]
+    assert [(x, i) for x, i in zip(gen_return(), range(5))] == [(1, 0)]
+    assert [(i, x) for i, x in zip(range(1), gen_return())] == [(0, 1)]
+
+def gen_raise() -> Iterator[int]:
+    yield 1
+    raise ValueError("boom")
+
+def test_exception_from_generator() -> None:
+    result = []
+    with assertRaises(ValueError, "boom"):
+        for i, x in zip(range(5), gen_raise()):
+            result.append((i, x))
+    assert result == [(0, 1)]
+    with assertRaises(ValueError, "boom"):
+        for x in gen_raise():
+            pass
+    # zip() stops before resuming the generator, so it doesn't raise
+    assert [(i, x) for i, x in zip(range(1), gen_raise())] == [(0, 1)]
+
+def pairs() -> Iterator[tuple[int, int]]:
+    for i, x in zip(range(2), gen()):
+        yield i, x
+
+def test_loop_in_generator() -> None:
+    assert list(pairs()) == [(0, 1), (1, 2)]
+
 [case testGeneratorSuper]
 from typing import Iterator, Callable, Any
 

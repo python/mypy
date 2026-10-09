@@ -747,10 +747,6 @@ class ForIterable(ForGenerator):
 class ForNativeGenerator(ForGenerator):
     """Generate IR for a for loop over a native generator."""
 
-    def need_cleanup(self) -> bool:
-        # Create a new cleanup block for when the loop is finished.
-        return True
-
     def init(self, expr_reg: Value, target_type: RType) -> None:
         # The generator expression is also the iterator. The generator spill transform will
         # promote it to the private generator frame if needed.
@@ -781,7 +777,16 @@ class ForNativeGenerator(ForGenerator):
         helper_call.error_kind = ERR_NEVER
 
         self.next_reg = builder.add(helper_call)
-        builder.add(Branch(self.next_reg, self.loop_exit, self.body_block, Branch.IS_ERROR))
+        stop_block = BasicBlock()
+        builder.add(Branch(self.next_reg, stop_block, self.body_block, Branch.IS_ERROR))
+
+        # The generator has stopped. If it didn't set the return value, it raised an
+        # exception that we need to propagate. Check this here rather than when the loop
+        # exits, since in zip() another iterator can end the loop while the generator
+        # is suspended, and the return value is NULL then too.
+        builder.activate_block(stop_block)
+        builder.primitive_op(propagate_if_error_op, [self.return_value], line)
+        builder.goto(self.loop_exit)
 
     def begin_body(self) -> None:
         # Assign the value obtained from the generator helper method to the
@@ -796,11 +801,6 @@ class ForNativeGenerator(ForGenerator):
     def gen_step(self) -> None:
         # Nothing to do here, since we get the next item as part of gen_condition().
         pass
-
-    def gen_cleanup(self) -> None:
-        # If return value is NULL (it wasn't assigned to by the generator helper method),
-        # an exception was raised that we need to propagate.
-        self.builder.primitive_op(propagate_if_error_op, [self.return_value], self.line)
 
 
 class ForAsyncIterable(ForGenerator):
