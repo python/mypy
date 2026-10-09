@@ -336,6 +336,7 @@ def prepare_method_def(
             # to a glue method that calls the decorated attribute. It's internal since
             # the decorated attribute replaces it in the type dict.
             decl.internal = True
+            decl.is_decorated_override = True
             ir.method_decls[node.name] = decl
 
         if node.func.is_property:

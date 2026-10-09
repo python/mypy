@@ -547,9 +547,7 @@ def handle_ext_method(builder: IRBuilder, cdef: ClassDef, fdef: FuncDef) -> None
         and name in class_ir.method_decls
     )
     if decorated_override:
-        glue = gen_glue_method(
-            builder, func_ir.sig, func_ir, class_ir, class_ir, fdef.line, True, via_class=True
-        )
+        glue = gen_glue_method(builder, func_ir.sig, func_ir, class_ir, class_ir, fdef.line, True)
         # Native calls are compiled against the method's declaration, so the glue method
         # takes it over from the undecorated method, which is renamed
         glue = FuncIR(class_ir.method_decls[name], glue.arg_regs, glue.blocks, fdef.line)
@@ -578,7 +576,6 @@ def handle_ext_method(builder: IRBuilder, cdef: ClassDef, fdef: FuncDef) -> None
                 base,
                 fdef,
                 do_py_ops=decorated_override,
-                via_class=decorated_override,
             )
             class_ir.glue_methods[(base, name)] = f
             builder.functions.append(f)
@@ -700,7 +697,6 @@ def gen_glue(
     fdef: FuncItem,
     *,
     do_py_ops: bool = False,
-    via_class: bool = False,
 ) -> FuncIR:
     """Generate glue methods that mediate between different method types in subclasses.
 
@@ -710,17 +706,12 @@ def gen_glue(
     If do_py_ops is True, then the glue methods should use generic
     C API operations instead of direct calls, to enable generating
     "shadow" glue methods that work with interpreted subclasses.
-
-    If via_class is True, a method called using the C API is looked up
-    on cls instead of the instance (see gen_glue_method).
     """
     if fdef.is_property:
         return gen_glue_property(builder, base_sig, target, cls, base, fdef.line, do_py_ops)
     if do_py_ops and target.name.startswith(PROPSET_PREFIX):
         return gen_glue_property_setter(builder, base_sig, target, cls, base, fdef.line)
-    return gen_glue_method(
-        builder, base_sig, target, cls, base, fdef.line, do_py_ops, via_class=via_class
-    )
+    return gen_glue_method(builder, base_sig, target, cls, base, fdef.line, do_py_ops)
 
 
 class ArgInfo(NamedTuple):
@@ -752,8 +743,6 @@ def gen_glue_method(
     base: ClassIR,
     line: int,
     do_pycall: bool,
-    *,
-    via_class: bool = False,
 ) -> FuncIR:
     """Generate glue methods that mediate between different method types in subclasses.
 
@@ -778,9 +767,7 @@ def gen_glue_method(
     values.
 
     If do_pycall is True, then make the call using the C API
-    instead of a native call. If via_class is also True, the method
-    is looked up on cls instead of the instance, since the glue method
-    can be the target of non-virtual calls such as super().f() or C.f(self).
+    instead of a native call.
     """
     check_native_override(builder, base_sig, target.decl.sig, line)
 
@@ -826,22 +813,16 @@ def gen_glue_method(
                     )
                     args[i] = boxed
                     index += 1
-        if via_class:
-            func = builder.py_get_attr(
-                builder.load_native_type_object(cls.fullname), target.name, line
-            )
-            retval = builder.py_call(func, args, line, arg_kinds, arg_names)
+        if target.decl.kind == FUNC_STATICMETHOD:
+            # FIXME: this won't work if we can do interpreted subclasses
+            first = builder.builder.get_native_type(cls)
+            st = 0
         else:
-            if target.decl.kind == FUNC_STATICMETHOD:
-                # FIXME: this won't work if we can do interpreted subclasses
-                first = builder.builder.get_native_type(cls)
-                st = 0
-            else:
-                first = args[0]
-                st = 1
-            retval = builder.builder.py_method_call(
-                first, target.name, args[st:], line, arg_kinds[st:], arg_names[st:]
-            )
+            first = args[0]
+            st = 1
+        retval = builder.builder.py_method_call(
+            first, target.name, args[st:], line, arg_kinds[st:], arg_names[st:]
+        )
     else:
         retval = builder.builder.call(
             target.decl, args, arg_kinds, arg_names, line, bitmap_args=bitmap_args

@@ -555,6 +555,8 @@ def translate_method_call(builder: IRBuilder, expr: CallExpr, callee: MemberExpr
 
 def call_classmethod(builder: IRBuilder, ir: ClassIR, expr: CallExpr, callee: MemberExpr) -> Value:
     decl = ir.method_decl(callee.name)
+    if decl.is_decorated_override:
+        return translate_call(builder, expr, callee)
     args = []
     arg_kinds, arg_names = expr.arg_kinds.copy(), expr.arg_names.copy()
     # Add the class argument for class methods in extension classes
@@ -630,9 +632,7 @@ def translate_super_method_call(builder: IRBuilder, expr: CallExpr, callee: Supe
     if decl.is_prop_getter:
         # super().prop(...) calls the property's value, so get it through super()
         return translate_call(builder, expr, callee)
-    if decl.internal:
-        # A decorated override, which must be called through the Python API so that
-        # the lookup starts from the right class
+    if decl.is_decorated_override:
         return translate_call(builder, expr, callee)
 
     arg_values = [builder.accept(arg) for arg in expr.args]
