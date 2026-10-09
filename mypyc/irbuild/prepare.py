@@ -40,6 +40,7 @@ from mypy.nodes import (
 from mypy.semanal import refers_to_fullname
 from mypy.traverser import TraverserVisitor
 from mypy.types import Instance, Type, get_proper_type
+from mypy.util import is_dunder
 from mypyc.common import (
     FAST_PREFIX,
     GENERATOR_HELPER_NAME,
@@ -324,11 +325,39 @@ def prepare_method_def(
             # Making the argument implicitly positional-only avoids unnecessary glue methods
             decl.sig.args[1].pos_only = True
             ir.method_decls[PROPSET_PREFIX + node.name] = decl
+        elif (
+            decl.kind == FUNC_NORMAL
+            and not node.func.is_property
+            and not node.func.is_generator
+            and not node.func.is_coroutine
+            and overrides_native_method(cdef, node.name, mapper)
+        ):
+            # Native calls to a decorated override are dispatched through the vtable
+            # to a glue method that calls the decorated attribute. It's internal since
+            # the decorated attribute replaces it in the type dict.
+            decl.internal = True
+            ir.method_decls[node.name] = decl
 
         if node.func.is_property:
             assert node.func.type, f"Expected return type annotation for property '{node.name}'"
             decl.is_prop_getter = True
             ir.property_types[node.name] = decl.sig.ret_type
+
+
+def overrides_native_method(cdef: ClassDef, name: str, mapper: Mapper) -> bool:
+    # Dunders are excluded since they are called through type slots
+    if is_dunder(name):
+        return False
+    for base in cdef.info.mro[1:]:
+        sym = base.names.get(name)
+        if sym is not None:
+            base_ir = mapper.type_to_ir.get(base)
+            return (
+                base_ir is not None
+                and base_ir.is_ext_class
+                and isinstance(sym.node, (FuncDef, Decorator, OverloadedFuncDef))
+            )
+    return False
 
 
 def prepare_fast_path(

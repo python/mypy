@@ -29,7 +29,7 @@ from mypy.nodes import (
     Var,
 )
 from mypy.types import CallableType, Type, UnboundType, get_proper_type
-from mypyc.common import FAST_PREFIX, LAMBDA_NAME, PROPSET_PREFIX, SELF_NAME
+from mypyc.common import FAST_PREFIX, LAMBDA_NAME, PROPSET_PREFIX, SELF_NAME, UNDECORATED_PREFIX
 from mypyc.ir.class_ir import ClassIR, NonExtClassInfo
 from mypyc.ir.func_ir import (
     FUNC_CLASSMETHOD,
@@ -535,6 +535,24 @@ def handle_ext_method(builder: IRBuilder, cdef: ClassDef, fdef: FuncDef) -> None
 
     class_ir.methods[func_ir.decl.name] = func_ir
 
+    # A decorated method that overrides a native method isn't a native method itself,
+    # so native calls to it go through a glue method that calls the decorated attribute
+    # using the Python API. The undecorated method stays in the type dict, since the
+    # decorators are applied to it at runtime.
+    decorated_override = (
+        is_decorated(builder, fdef)
+        and not fdef.is_property
+        and fdef not in builder.prop_setters
+        and name in class_ir.method_decls
+    )
+    if decorated_override:
+        glue = gen_glue_method(builder, func_ir.sig, func_ir, class_ir, class_ir, fdef.line, True)
+        # Native calls are compiled against the method's declaration, so the glue method
+        # takes it over from the undecorated method, which is renamed
+        glue = FuncIR(class_ir.method_decls[name], glue.arg_regs, glue.blocks, fdef.line)
+        builder.functions.append(glue)
+        class_ir.methods[name] = glue
+
     # If this overrides a parent class method with a different type, we need
     # to generate a glue method to mediate between them.
     for base in class_ir.mro[1:]:
@@ -549,7 +567,15 @@ def handle_ext_method(builder: IRBuilder, cdef: ClassDef, fdef: FuncDef) -> None
             # property setters. Need to make a special glue method for handling this,
             # similar to gen_glue_property.
 
-            f = gen_glue(builder, base.method_decls[name].sig, func_ir, class_ir, base, fdef)
+            f = gen_glue(
+                builder,
+                base.method_decls[name].sig,
+                func_ir,
+                class_ir,
+                base,
+                fdef,
+                do_py_ops=decorated_override,
+            )
             class_ir.glue_methods[(base, name)] = f
             builder.functions.append(f)
 
@@ -565,6 +591,12 @@ def handle_ext_method(builder: IRBuilder, cdef: ClassDef, fdef: FuncDef) -> None
         # setter's glue to overwrite the getter's glue in the shadow vtable.
         class_ir.glue_methods[(class_ir, func_ir.decl.name)] = f
         builder.functions.append(f)
+
+    # Rename the undecorated method only after all glue methods calling it by name exist
+    if decorated_override:
+        func_ir.decl.name = UNDECORATED_PREFIX + name
+        func_ir.decl.internal = False
+        class_ir.methods[func_ir.decl.name] = func_ir
 
     if fdef.name == "__getattr__":
         generate_getattr_wrapper(builder, cdef, fdef)

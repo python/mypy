@@ -2503,6 +2503,114 @@ import other_interpreted
 
 [out]
 
+[case testDecoratedMethodOverridesNativeMethod]
+import functools
+from typing import Any, Callable, TypeVar
+from mypy_extensions import mypyc_attr, trait
+
+F = TypeVar("F", bound=Callable[..., Any])
+
+def add_ten(f: F) -> F:
+    @functools.wraps(f)
+    def wrapper(self: Any, *args: Any, **kwargs: Any) -> Any:
+        return f(self, *args, **kwargs) + 10
+    return wrapper  # type: ignore[return-value]
+
+def tag(f: F) -> F:
+    def wrapper(self: Any) -> str:
+        return "<" + f(self) + ">"
+    return wrapper  # type: ignore[return-value]
+
+class Base:
+    def method(self, x: int) -> int:
+        return x
+
+    def call(self, x: int) -> int:
+        return self.method(x)
+
+class Derived(Base):
+    @add_ten
+    def method(self, x: int) -> int:
+        return super().method(x) * 2
+
+class Sub(Derived):
+    def method(self, x: int) -> int:
+        return super().method(x) + 100
+
+class ObjBase:
+    def m(self) -> object:
+        return 0
+
+class NarrowerReturn(ObjBase):
+    @add_ten
+    def m(self) -> int:
+        return 1
+
+@trait
+class T:
+    def m(self) -> int:
+        return 0
+
+class TraitImpl(T):
+    @add_ten
+    def m(self) -> int:
+        return 2
+
+class Repr:
+    @tag
+    def __repr__(self) -> str:
+        return "Repr"
+
+@mypyc_attr(allow_interpreted_subclasses=True)
+class OpenBase:
+    def m(self) -> int:
+        return 0
+
+@mypyc_attr(allow_interpreted_subclasses=True)
+class Open(OpenBase):
+    @add_ten
+    def m(self) -> int:
+        return 3
+
+def via_base(b: Base, x: int) -> int:
+    return b.method(x)
+
+def via_derived(d: Derived, x: int) -> int:
+    return d.method(x)
+
+def via_obj_base(b: ObjBase) -> object:
+    return b.m()
+
+def via_trait(t: T) -> int:
+    return t.m()
+
+def via_open_base(b: OpenBase) -> int:
+    return b.m()
+
+def test_decorated_override() -> None:
+    d = Derived()
+    assert via_base(d, 1) == 12
+    assert via_derived(d, 1) == 12
+    assert d.call(1) == 12
+    assert via_base(Base(), 1) == 1
+    assert via_base(Sub(), 1) == 112
+    assert via_obj_base(NarrowerReturn()) == 11
+    assert via_trait(TraitImpl()) == 12
+    assert repr(Repr()) == "<Repr>"
+
+[typing fixtures/typing-full.pyi]
+[file driver.py]
+from native import Derived, Open, via_open_base, test_decorated_override
+test_decorated_override()
+
+assert Derived().method(1) == 12
+assert Derived.method.__name__ == "method"
+
+class Inherits(Open):
+    pass
+
+assert via_open_base(Inherits()) == 13
+
 [case testPropertySetterWiderThanGetter]
 from typing import Union
 from mypy_extensions import trait

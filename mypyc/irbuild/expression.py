@@ -627,6 +627,10 @@ def translate_super_method_call(builder: IRBuilder, expr: CallExpr, callee: Supe
         return translate_call(builder, expr, callee)
 
     decl = base.method_decl(callee.name)
+    if decl.internal:
+        # A decorated override, which must be called through the Python API so that
+        # the lookup starts from the right class
+        return translate_call(builder, expr, callee)
     arg_values = [builder.accept(arg) for arg in expr.args]
     arg_kinds, arg_names = expr.arg_kinds.copy(), expr.arg_names.copy()
 
