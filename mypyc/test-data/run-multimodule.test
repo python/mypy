@@ -1644,6 +1644,134 @@ import native
 NT(x=4)
 {'x': 5}
 
+[case testIncrementalCompilationTogglingNonExtClass]
+# Mypy ignores mypyc_attr, so making C a non-native class (or a native class
+# again) doesn't change the interface of other.py. native.py must still be
+# recompiled, since it constructs C and accesses its attributes differently.
+# In step 3 other.py is unchanged, so it must stay fresh.
+from other import C
+
+def make(x: int) -> C:
+    return C(x)
+
+def get(c: C) -> int:
+    return c.x
+
+[file other.py]
+from mypy_extensions import mypyc_attr
+
+class C:
+    def __init__(self, x: int) -> None:
+        self.x = x
+
+[file other.py.2]
+from mypy_extensions import mypyc_attr
+
+@mypyc_attr(native_class=False)
+class C:
+    def __init__(self, x: int) -> None:
+        self.x = x
+
+[file native.py.3]
+from other import C
+
+def make(x: int) -> C:
+    return C(x + 1)
+
+def get(c: C) -> int:
+    return c.x
+
+[file other.py.4]
+from mypy_extensions import mypyc_attr
+
+class C:
+    def __init__(self, x: int) -> None:
+        self.x = x
+
+[file driver.py]
+from native import get, make
+
+c = make(3)
+print(get(c), hasattr(c, "__dict__"))
+[out]
+3 False
+[out2]
+3 True
+[out3]
+4 True
+[out4]
+4 False
+
+[rechecked native, other]
+[rechecked2 native]
+[rechecked3 native, other]
+
+[case testIncrementalCompilationTogglingTrait]
+# Mypy also ignores @trait. Making T a trait changes how other.py calls m(),
+# so native.py must be recompiled to give D a vtable that matches.
+# In step 3 other.py is unchanged, so it must stay fresh.
+from other import T
+
+class D(T):
+    def m(self) -> int:
+        return 2
+
+[file other.py]
+from mypy_extensions import trait
+
+class T:
+    def m(self) -> int:
+        return 1
+
+def call(t: T) -> int:
+    return t.m()
+
+[file other.py.2]
+from mypy_extensions import trait
+
+@trait
+class T:
+    def m(self) -> int:
+        return 1
+
+def call(t: T) -> int:
+    return t.m()
+
+[file native.py.3]
+from other import T
+
+class D(T):
+    def m(self) -> int:
+        return 3
+
+[file other.py.4]
+from mypy_extensions import trait
+
+class T:
+    def m(self) -> int:
+        return 1
+
+def call(t: T) -> int:
+    return t.m()
+
+[file driver.py]
+from native import D
+from other import call
+
+print(call(D()))
+[out]
+2
+[out2]
+2
+[out3]
+3
+[out4]
+3
+
+[rechecked native, other]
+[rechecked2 native]
+[rechecked3 native, other]
+
 [case testExtraLibRtSourceFileDep]
 table_list = list(range(256))
 table_list[ord('A')] = ord('B')
