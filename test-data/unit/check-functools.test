@@ -726,3 +726,250 @@ def outer_c(arg: Tc) -> None:
     use_int_callable(partial(inner, b=""))  # E: Argument 1 to "use_int_callable" has incompatible type "partial[str]"; expected "Callable[[int], int]" \
                                             # N: "partial[str].__call__" has type "def __call__(__self, *args: Any, **kwargs: Any) -> str"
 [builtins fixtures/tuple.pyi]
+
+[case testLruCacheBasicValidation]
+from functools import lru_cache
+
+@lru_cache
+def f(v: str, at: int) -> str:
+    return v
+
+f()  # E: Missing positional arguments "v", "at" in call to "f"
+f("abc")  # E: Missing positional argument "at" in call to "f"
+f("abc", 123)  # OK
+f("abc", at=123)  # OK
+f("abc", at="wrong_type")  # E: Argument "at" to "f" has incompatible type "str"; expected "int"
+[builtins fixtures/dict.pyi]
+
+[case testLruCacheWithReturnType]
+from functools import lru_cache
+
+@lru_cache
+def multiply(x: int, y: int) -> int:
+    return 42
+
+reveal_type(multiply)  # N: Revealed type is "def (x: builtins.int, y: builtins.int) -> builtins.int"
+reveal_type(multiply(2, 3))  # N: Revealed type is "builtins.int"
+multiply("a", 3)  # E: Argument 1 to "multiply" has incompatible type "str"; expected "int"
+multiply(2, "b")  # E: Argument 2 to "multiply" has incompatible type "str"; expected "int"
+multiply(2)  # E: Missing positional argument "y" in call to "multiply"
+multiply(1, 2, 3)  # E: Too many arguments for "multiply"
+[builtins fixtures/dict.pyi]
+
+[case testLruCacheWithOptionalArgs]
+from functools import lru_cache
+
+@lru_cache
+def greet(name: str, greeting: str = "Hello") -> str:
+    return "result"
+
+greet("World")  # OK
+greet("World", "Hi")  # OK
+greet("World", greeting="Hi")  # OK
+greet()  # E: Missing positional argument "name" in call to "greet"
+greet(123)  # E: Argument 1 to "greet" has incompatible type "int"; expected "str"
+greet("World", 123)  # E: Argument 2 to "greet" has incompatible type "int"; expected "str"
+[builtins fixtures/dict.pyi]
+
+[case testLruCacheGenericFunction]
+from functools import lru_cache
+from typing import TypeVar
+
+T = TypeVar('T')
+
+@lru_cache
+def identity(x: T) -> T:
+    return x
+
+reveal_type(identity(42))  # N: Revealed type is "builtins.int"
+reveal_type(identity("hello"))  # N: Revealed type is "builtins.str"
+identity()  # E: Missing positional argument "x" in call to "identity"
+[builtins fixtures/dict.pyi]
+
+[case testLruCacheWithParentheses]
+from functools import lru_cache
+
+@lru_cache()
+def f(v: str, at: int) -> str:
+    return v
+
+f()  # E: Missing positional arguments "v", "at" in call to "f"
+f("abc")  # E: Missing positional argument "at" in call to "f"
+f("abc", 123)  # OK
+f("abc", at=123)  # OK
+f("abc", at="wrong_type")  # E: Argument "at" to "f" has incompatible type "str"; expected "int"
+[builtins fixtures/dict.pyi]
+
+[case testLruCacheWithMaxsize]
+from functools import lru_cache
+
+@lru_cache(maxsize=128)
+def g(v: str, at: int) -> str:
+    return v
+
+g()  # E: Missing positional arguments "v", "at" in call to "g"
+g("abc")  # E: Missing positional argument "at" in call to "g"
+g("abc", 123)  # OK
+g("abc", at=123)  # OK
+g("abc", at="wrong_type")  # E: Argument "at" to "g" has incompatible type "str"; expected "int"
+[builtins fixtures/dict.pyi]
+
+[case testLruCacheGenericWithParameters]
+from functools import lru_cache
+from typing import TypeVar
+
+T = TypeVar('T')
+
+@lru_cache()
+def identity_empty(x: T) -> T:
+    return x
+
+@lru_cache(maxsize=128)
+def identity_maxsize(x: T) -> T:
+    return x
+
+reveal_type(identity_empty(42))  # N: Revealed type is "builtins.int"
+reveal_type(identity_maxsize("hello"))  # N: Revealed type is "builtins.str"
+identity_empty()  # E: Missing positional argument "x" in call to "identity_empty"
+identity_maxsize()  # E: Missing positional argument "x" in call to "identity_maxsize"
+[builtins fixtures/dict.pyi]
+
+[case testLruCacheMaxsizeNone]
+from functools import lru_cache
+
+@lru_cache(maxsize=None)
+def unlimited_cache(x: int, y: str) -> str:
+    return y
+
+unlimited_cache(42, "test")  # OK
+unlimited_cache()  # E: Missing positional arguments "x", "y" in call to "unlimited_cache"
+unlimited_cache(42)  # E: Missing positional argument "y" in call to "unlimited_cache"
+unlimited_cache("wrong", "test")  # E: Argument 1 to "unlimited_cache" has incompatible type "str"; expected "int"
+[builtins fixtures/dict.pyi]
+
+[case testLruCacheMaxsizeZero]
+from functools import lru_cache
+
+@lru_cache(maxsize=0)
+def no_cache(value: str) -> str:
+    return value
+
+no_cache("hello")  # OK
+no_cache()  # E: Missing positional argument "value" in call to "no_cache"
+no_cache(123)  # E: Argument 1 to "no_cache" has incompatible type "int"; expected "str"
+[builtins fixtures/dict.pyi]
+
+[case testLruCacheOnInstanceMethod]
+from functools import lru_cache
+
+class MyClass:
+    @lru_cache
+    def method(self, x: int) -> str:
+        return ""
+
+obj = MyClass()
+obj.method(1)  # OK
+obj.method("bad")  # E: Argument 1 to "method" of "MyClass" has incompatible type "str"; expected "int"
+obj.method()  # E: Missing positional argument "x" in call to "method" of "MyClass"
+reveal_type(obj.method(42))  # N: Revealed type is "builtins.str"
+[builtins fixtures/dict.pyi]
+
+[case testLruCacheOnClassMethod]
+from functools import lru_cache
+
+class MyClass:
+    @classmethod
+    @lru_cache
+    def method(cls, x: int) -> str:
+        return ""
+
+MyClass.method(1)  # OK
+MyClass.method("bad")  # E: Argument 1 to "method" of "MyClass" has incompatible type "str"; expected "int"
+MyClass.method()  # E: Missing positional argument "x" in call to "method" of "MyClass"
+[builtins fixtures/classmethod.pyi]
+
+[case testLruCacheOnStaticMethod]
+from functools import lru_cache
+
+class MyClass:
+    @staticmethod
+    @lru_cache
+    def method(x: int) -> str:
+        return ""
+
+MyClass.method(1)  # OK
+MyClass.method("bad")  # E: Argument 1 to "method" of "MyClass" has incompatible type "str"; expected "int"
+obj = MyClass()
+obj.method(1)  # OK
+obj.method("bad")  # E: Argument 1 to "method" of "MyClass" has incompatible type "str"; expected "int"
+[builtins fixtures/staticmethod.pyi]
+
+[case testLruCacheOnInstanceMethodWithParameters]
+from functools import lru_cache
+
+class MyClass:
+    @lru_cache(maxsize=128)
+    def compute(self, x: int, y: str) -> str:
+        return ""
+
+obj = MyClass()
+obj.compute(2, "hi")  # OK
+obj.compute("wrong", "hi")  # E: Argument 1 to "compute" of "MyClass" has incompatible type "str"; expected "int"
+obj.compute(2, 3)  # E: Argument 2 to "compute" of "MyClass" has incompatible type "int"; expected "str"
+[builtins fixtures/dict.pyi]
+
+[case testLruCacheNestedFunction]
+from functools import lru_cache
+
+def outer(x: int) -> str:
+    @lru_cache
+    def inner(y: str) -> str:
+        return ""  # Simplified
+
+    result1 = inner("test")  # OK
+    result2 = inner(123)  # E: Argument 1 to "inner" has incompatible type "int"; expected "str"
+    return result1
+[builtins fixtures/dict.pyi]
+
+[case testLruCacheMultipleDecorators]
+from functools import lru_cache
+
+class MyClass:
+    @property
+    @lru_cache
+    def prop(self) -> int:
+        return 42
+
+obj = MyClass()
+reveal_type(obj.prop)  # N: Revealed type is "builtins.int"
+[builtins fixtures/property.pyi]
+
+
+[case testLruCacheOnInstanceMethodNoMaxSize]
+from functools import lru_cache
+
+class MyClass:
+    @lru_cache(maxsize=None)
+    def compute(self, x: int, y: str) -> str:
+        return ""
+
+obj = MyClass()
+obj.compute(2, "hi")  # OK
+obj.compute("wrong", "hi")  # E: Argument 1 to "compute" of "MyClass" has incompatible type "str"; expected "int"
+obj.compute(2, 3)  # E: Argument 2 to "compute" of "MyClass" has incompatible type "int"; expected "str"
+[builtins fixtures/dict.pyi]
+
+
+[case testLruCacheOnInstanceTyped]
+from functools import lru_cache
+
+class MyClass:
+    @lru_cache(typed=True)
+    def compute(self, x: int, y: str) -> str:
+        return ""
+
+obj = MyClass()
+obj.compute(2, "hi")  # OK
+obj.compute("wrong", "hi")  # E: Argument 1 to "compute" of "MyClass" has incompatible type "str"; expected "int"
+obj.compute(2, 3)  # E: Argument 2 to "compute" of "MyClass" has incompatible type "int"; expected "str"
+[builtins fixtures/dict.pyi]
