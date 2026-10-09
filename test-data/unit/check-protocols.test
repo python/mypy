@@ -4819,3 +4819,25 @@ class Bad(Generic[T]):
 bad: Bad[str] = Bad()
 fail: SupportsFoo = bad  # E: Incompatible types in assignment (expression has type "Bad[str]", variable has type "SupportsFoo")
 [builtins fixtures/tuple.pyi]
+
+[case testCallbackProtocolUnionInferenceOrderIndependent]
+from typing import Protocol, TypeVar
+
+T = TypeVar("T")
+PT = TypeVar("PT", contravariant=True)
+
+class OneArg(Protocol[PT]):
+    def __call__(self, x: PT, /) -> None: ...
+
+class TwoArgs(Protocol[PT]):
+    def __call__(self, x: PT, y: int, /) -> None: ...
+
+def first_arg(fn: OneArg[T] | TwoArgs[T]) -> T: ...
+
+def one(x: int) -> None: ...
+def two(x: str, y: int) -> None: ...
+
+reveal_type(first_arg(one))  # N: Revealed type is "builtins.int"
+reveal_type(first_arg(two))  # N: Revealed type is "builtins.str"
+reveal_type(first_arg(one))  # N: Revealed type is "builtins.int"
+[builtins fixtures/tuple.pyi]

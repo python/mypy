@@ -1381,6 +1381,9 @@ def is_protocol_implementation(
             if IS_CLASS_OR_STATIC in superflags and IS_CLASS_OR_STATIC not in subflags:
                 return False
 
+    if skip:
+        # The result is only valid for the partial check, don't pollute the subtype cache.
+        return True
     if not proper_subtype:
         # Nominal check currently ignores arg names, but __call__ is special for protocols
         ignore_names = right.type.protocol_members != ["__call__"]
