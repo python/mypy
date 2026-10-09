@@ -58,12 +58,7 @@ from mypy.types import (
     TypeType,
     get_proper_type,
 )
-from mypyc.common import (
-    IS_FREE_THREADED,
-    KEEP_ALIVE_SHORT_LIVED,
-    KEEP_ALIVE_WHOLE_EXPRESSION,
-    MAX_SHORT_INT,
-)
+from mypyc.common import KEEP_ALIVE_SHORT_LIVED, KEEP_ALIVE_WHOLE_EXPRESSION, MAX_SHORT_INT
 from mypyc.ir.class_ir import ClassIR
 from mypyc.ir.func_ir import FUNC_CLASSMETHOD, FUNC_STATICMETHOD
 from mypyc.ir.ops import (
@@ -295,14 +290,16 @@ def transform_member_expr(builder: IRBuilder, expr: MemberExpr) -> Value:
     #  - Native Final attributes are read-only at runtime, so they can never be reassigned.
     #  - Vec-typed attributes require manual synchronization, so we borrow them liberally.
     can_borrow = builder.is_native_attr_ref(expr) and (
-        not IS_FREE_THREADED or isinstance(rtype, RVec) or builder.is_final_native_attr_ref(expr)
+        not builder.options.target_python.free_threaded
+        or isinstance(rtype, RVec)
+        or builder.is_final_native_attr_ref(expr)
     )
     obj = builder.accept(expr.expr, can_borrow=can_borrow)
 
     if (
         is_object_rprimitive(obj.type)
         and expr.name == "__name__"
-        and builder.options.capi_version >= (3, 11)
+        and builder.options.target_python.version >= (3, 11)
     ):
         return builder.primitive_op(name_op, [obj], expr.line)
 
@@ -837,9 +834,9 @@ def transform_index_expr(builder: IRBuilder, expr: IndexExpr) -> Value:
     base_type = builder.node_type(expr.base)
     # We can borrow a list item safely only if GIL is enabled. The vec type is optimized for
     # performance, so we'll do unsafe borrowing.
-    can_borrow = (is_list_rprimitive(base_type) and not IS_FREE_THREADED) or isinstance(
-        base_type, RVec
-    )
+    can_borrow = (
+        is_list_rprimitive(base_type) and not builder.options.target_python.free_threaded
+    ) or isinstance(base_type, RVec)
     can_borrow_base = (
         is_list_rprimitive(base_type) or isinstance(base_type, RVec)
     ) and is_borrow_friendly_expr(builder, index)

@@ -69,9 +69,7 @@ from mypy.util import module_prefix, split_target
 from mypy.visitor import ExpressionVisitor, StatementVisitor
 from mypyc.common import (
     BITMAP_BITS,
-    EXT_SUFFIX,
     GENERATOR_ATTRIBUTE_PREFIX,
-    IS_FREE_THREADED,
     KEEP_ALIVE_SHORT_LIVED,
     KEEP_ALIVE_WHOLE_EXPRESSION,
     SELF_NAME,
@@ -589,7 +587,7 @@ class IRBuilder:
                 shared_lib_file = self.py_get_attr(shared_lib_obj, "__file__", line)
             else:
                 shared_lib_file = self.none_object(line)
-            ext_suffix = self.load_str(EXT_SUFFIX, line)
+            ext_suffix = self.load_str(self.options.target_python.ext_suffix, line)
             is_pkg = self.is_package_module(module)
             value = self.call_c(
                 native_import_op,
@@ -993,7 +991,7 @@ class IRBuilder:
             index: Value
             if is_list_rprimitive(rvalue.type):
                 index = Integer(i, c_pyssize_t_rprimitive)
-                if not IS_FREE_THREADED:
+                if not self.options.target_python.free_threaded:
                     item_value = self.primitive_op(list_get_item_unsafe_op, [rvalue, index], line)
                 else:
                     item_value = self.primitive_op(list_get_item_int64_op, [rvalue, index], line)

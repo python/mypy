@@ -40,12 +40,12 @@ from mypy.options import Options
 from mypy.util import write_junit_xml
 from mypyc.annotate import generate_annotated_html
 from mypyc.codegen import emitmodule
-from mypyc.common import IS_FREE_THREADED, RUNTIME_C_FILES, shared_lib_name
+from mypyc.common import RUNTIME_C_FILES, shared_lib_name
 from mypyc.errors import Errors
 from mypyc.ir.deps import SourceDep
 from mypyc.ir.pprint import format_modules
 from mypyc.namegen import exported_name
-from mypyc.options import CompilerOptions
+from mypyc.options import CompilerOptions, TargetPython
 
 
 class ModDesc(NamedTuple):
@@ -247,6 +247,9 @@ def get_mypy_config(
     fscache: FileSystemCache | None,
 ) -> tuple[list[BuildSource], list[BuildSource], Options]:
     """Construct mypy BuildSources and Options from file and options lists"""
+    for arg in mypy_options:
+        if arg == "--python-version" or arg.startswith("--python-version="):
+            fail("error: mypyc does not accept --python-version")
     all_sources, options = process_options(mypy_options, fscache=fscache, mypyc=True)
     if only_compile_paths is not None:
         paths_set = set(only_compile_paths)
@@ -261,8 +264,8 @@ def get_mypy_config(
         return mypyc_sources, all_sources, options
 
     # Override whatever python_version is inferred from the .ini file,
-    # and set the python_version to be the currently used version.
-    options.python_version = sys.version_info[:2]
+    # and set the python_version to be the target version.
+    options.python_version = compiler_options.target_python.version
 
     if options.python_version[0] == 2:
         fail("Python 2 not supported")
@@ -299,7 +302,7 @@ def generate_c_extension_shim(
     cname = "%s.c" % full_module_name.replace(".", os.sep)
     cpath = os.path.join(dir_name, cname)
 
-    if IS_FREE_THREADED:
+    if TargetPython.host().free_threaded:
         # We use multi-phase init in free-threaded builds to enable free threading.
         shim_name = "module_shim_no_gil_multiphase.tmpl"
     else:

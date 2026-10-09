@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import sys
 from collections.abc import Callable
 from typing import Final
 
@@ -12,7 +11,6 @@ from mypyc.common import (
     ATTR_PREFIX,
     BITMAP_BITS,
     FAST_ISINSTANCE_MAX_SUBCLASSES,
-    HAVE_IMMORTAL,
     MODULE_PREFIX,
     NATIVE_PREFIX,
     PREFIX,
@@ -73,6 +71,7 @@ from mypyc.ir.rtypes import (
     vec_item_type_tags,
 )
 from mypyc.namegen import NameGenerator, exported_name
+from mypyc.options import TargetPython
 from mypyc.primitives.registry import builtin_names
 from mypyc.sametype import is_same_type
 
@@ -141,6 +140,7 @@ class EmitterContext:
         strict_traceback_checks: bool,
         group_name: str | None = None,
         group_map: dict[str, str | None] | None = None,
+        target_python: TargetPython | None = None,
     ) -> None:
         """Setup shared emitter state.
 
@@ -148,6 +148,7 @@ class EmitterContext:
             names: The name generator to use
             group_map: Map from module names to group name
             group_name: Current group name
+            target_python: The Python build to generate code for (default: running Python)
         """
         self.temp_counter = 0
         self.names = names
@@ -168,6 +169,7 @@ class EmitterContext:
         self.literals = Literals()
         # See mypyc/options.py for context.
         self.strict_traceback_checks = strict_traceback_checks
+        self.target_python = target_python or TargetPython.host()
 
 
 class ErrorHandler:
@@ -211,16 +213,19 @@ class Emitter:
         self,
         context: EmitterContext,
         value_names: dict[Value, str] | None = None,
-        capi_version: tuple[int, int] | None = None,
         filepath: str | None = None,
     ) -> None:
         self.context = context
-        self.capi_version = capi_version or sys.version_info[:2]
+        self.target_python = context.target_python
         self.names = context.names
         self.value_names = value_names or {}
         self.fragments: list[str] = []
         self._indent = 0
         self.filepath = filepath
+
+    @property
+    def capi_version(self) -> tuple[int, int]:
+        return self.target_python.version
 
     # Low-level operations
 
@@ -598,10 +603,10 @@ class Emitter:
             self.emit_line(f"{prefix}_INCREF({dest});")
         elif not rtype.is_unboxed:
             # Always inline, since this is a simple but very hot op
-            if rtype.may_be_immortal or not HAVE_IMMORTAL:
-                self.emit_line("CPy_INCREF(%s);" % dest)
-            else:
+            if rtype.should_use_nonimmortal_variant(self.target_python):
                 self.emit_line("CPy_INCREF_NO_IMM(%s);" % dest)
+            else:
+                self.emit_line("CPy_INCREF(%s);" % dest)
         # Otherwise assume it's an unboxed, pointerless value and do nothing.
 
     def emit_dec_ref(
@@ -632,10 +637,10 @@ class Emitter:
                 self.emit_line(f"CPy_{x}DecRef({dest});")
             else:
                 # Inlined
-                if rtype.may_be_immortal or not HAVE_IMMORTAL:
-                    self.emit_line(f"CPy_{x}DECREF({dest});")
-                else:
+                if rtype.should_use_nonimmortal_variant(self.target_python):
                     self.emit_line(f"CPy_{x}DECREF_NO_IMM({dest});")
+                else:
+                    self.emit_line(f"CPy_{x}DECREF({dest});")
         elif rtype.is_refcounted:
             assert False, f"dec_ref not implemented for {rtype}"
         # Otherwise assume it's an unboxed, pointerless value and do nothing.
