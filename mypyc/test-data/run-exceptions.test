@@ -619,6 +619,46 @@ def test_raise_from_class_returning_unrelated_exception() -> None:
     with assertRaises(TypeError):
         raise_from(OtherException, None)
 
+def raise_plain(exc: Any) -> None:
+    raise exc
+
+def test_raise_plain_preserves_cause() -> None:
+    cause = ValueError("cause")
+    exc = Outer("outer")
+    try:
+        raise_from(exc, cause)
+    except Outer:
+        pass
+    try:
+        raise_plain(exc)
+    except Outer as e:
+        assert e is exc
+        assert e.__cause__ is cause
+        assert e.__suppress_context__
+    else:
+        assert False
+
+def test_raise_plain_does_not_suppress_context() -> None:
+    try:
+        try:
+            raise Inner("inner")
+        except Inner:
+            raise_plain(Outer("outer"))
+    except Outer as e:
+        assert e.__cause__ is None
+        assert not e.__suppress_context__
+        assert isinstance(e.__context__, Inner)
+    else:
+        assert False
+
+def test_raise_plain_invalid_exception() -> None:
+    with assertRaises(TypeError, "exceptions must derive from BaseException"):
+        raise_plain(1)
+
+def test_raise_plain_class_returning_unrelated_exception() -> None:
+    with assertRaises(TypeError):
+        raise_plain(OtherException)
+
 [file exceptions_helper.py]
 from typing import Any
 

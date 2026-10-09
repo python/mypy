@@ -7,18 +7,6 @@
 #include <Python.h>
 #include "CPy.h"
 
-void CPy_Raise(PyObject *exc) {
-    if (PyObject_IsInstance(exc, (PyObject *)&PyType_Type)) {
-        PyObject *obj = PyObject_CallNoArgs(exc);
-        if (!obj)
-            return;
-        PyErr_SetObject(exc, obj);
-        Py_DECREF(obj);
-    } else {
-        PyErr_SetObject((PyObject *)Py_TYPE(exc), exc);
-    }
-}
-
 // Return a new exception instance, or NULL with an error set.
 static PyObject *instantiate_exception(PyObject *type) {
     PyObject *value = PyObject_CallNoArgs(type);
@@ -34,7 +22,8 @@ static PyObject *instantiate_exception(PyObject *type) {
     return value;
 }
 
-void CPy_RaiseFrom(PyObject *exc, PyObject *cause) {
+// A NULL cause means no 'from' clause; Py_None means 'from None'.
+static void raise_exception(PyObject *exc, PyObject *cause) {
     PyObject *type;
     PyObject *value;
     if (PyExceptionClass_Check(exc)) {
@@ -50,25 +39,35 @@ void CPy_RaiseFrom(PyObject *exc, PyObject *cause) {
         return;
     }
 
-    PyObject *fixed_cause;
-    if (PyExceptionClass_Check(cause)) {
-        fixed_cause = instantiate_exception(cause);
-        if (!fixed_cause)
+    if (cause != NULL) {
+        PyObject *fixed_cause;
+        if (PyExceptionClass_Check(cause)) {
+            fixed_cause = instantiate_exception(cause);
+            if (!fixed_cause)
+                goto fail;
+        } else if (PyExceptionInstance_Check(cause)) {
+            fixed_cause = Py_NewRef(cause);
+        } else if (Py_IsNone(cause)) {
+            fixed_cause = NULL;
+        } else {
+            PyErr_SetString(PyExc_TypeError, "exception causes must derive from BaseException");
             goto fail;
-    } else if (PyExceptionInstance_Check(cause)) {
-        fixed_cause = Py_NewRef(cause);
-    } else if (Py_IsNone(cause)) {
-        fixed_cause = NULL;
-    } else {
-        PyErr_SetString(PyExc_TypeError, "exception causes must derive from BaseException");
-        goto fail;
+        }
+        // This steals the reference to the cause and sets __suppress_context__
+        PyException_SetCause(value, fixed_cause);
     }
-    // This steals the reference to the cause and sets __suppress_context__
-    PyException_SetCause(value, fixed_cause);
     // Normalize against the original class, even if __new__ returned an unrelated exception.
     PyErr_SetObject(type, value);
 fail:
     Py_DECREF(value);
+}
+
+void CPy_Raise(PyObject *exc) {
+    raise_exception(exc, NULL);
+}
+
+void CPy_RaiseFrom(PyObject *exc, PyObject *cause) {
+    raise_exception(exc, cause);
 }
 
 void CPy_Reraise(void) {
