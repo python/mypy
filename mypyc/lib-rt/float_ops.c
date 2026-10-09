@@ -237,3 +237,30 @@ double CPyFloat_Pow(double x, double y) {
     }
     return r;
 }
+
+// Look up o.real or o.imag and convert it to a C double (see CPyComplex_Real)
+double CPyComplex_GetPartSlow(PyObject *o, PyObject *name) {
+    PyObject *part = PyObject_GetAttr(o, name);
+    if (part == NULL) {
+        return CPY_FLOAT_ERROR;
+    }
+    double result = PyFloat_AsDouble(part);
+    if (result == -1.0 && PyErr_Occurred()) {
+        // Same error as unboxing the attribute value would produce
+        CPy_TypeError("float", part);
+        result = CPY_FLOAT_ERROR;
+    }
+    Py_DECREF(part);
+    return result;
+}
+
+// Convert an int object to a C double. If it's too large, raise the same TypeError
+// as unboxing it to a float would.
+double CPyLong_AsDouble(PyObject *o) {
+    double result = PyLong_AsDouble(o);
+    if (result == -1.0 && PyErr_Occurred()) {
+        CPy_TypeError("float", o);
+        return CPY_FLOAT_ERROR;
+    }
+    return result;
+}

@@ -496,3 +496,130 @@ L0:
     r4 = (r3, 2.5, -7.0)
     t = r4
     return 1
+
+[case testFloatAndComplexRealImag]
+from typing import Any
+
+def float_parts(x: float) -> tuple[float, float]:
+    return x.real, x.imag
+def complex_parts(z: complex) -> tuple[float, float]:
+    return z.real, z.imag
+def union_parts(x: float | complex) -> tuple[float, float]:
+    return x.real, x.imag
+def narrowed_parts(x: Any) -> tuple[float, float]:
+    if isinstance(x, float):
+        return x.real, x.imag
+    return 0.0, 0.0
+[out]
+def float_parts(x):
+    x, r0, r1 :: float
+    r2 :: tuple[float, float]
+L0:
+    r0 = x
+    r1 = r0
+    r2 = (r1, 0.0)
+    return r2
+def complex_parts(z):
+    z :: object
+    r0, r1 :: float
+    r2 :: tuple[float, float]
+L0:
+    r0 = CPyComplex_Real(z)
+    r1 = CPyComplex_Imag(z)
+    r2 = (r0, r1)
+    return r2
+def union_parts(x):
+    x :: union[float, object]
+    r0, r1 :: float
+    r2 :: tuple[float, float]
+L0:
+    r0 = CPyComplex_Real(x)
+    r1 = CPyComplex_Imag(x)
+    r2 = (r0, r1)
+    return r2
+def narrowed_parts(x):
+    x :: object
+    r0 :: bit
+    r1, r2 :: float
+    r3, r4 :: tuple[float, float]
+L0:
+    r0 = PyFloat_Check(x)
+    if r0 goto L1 else goto L2 :: bool
+L1:
+    r1 = unbox(float, x)
+    r2 = unbox(float, x)
+    r3 = (r1, 0.0)
+    return r3
+L2:
+    r4 = (0.0, 0.0)
+    return r4
+
+[case testRealImagNotSpecialized]
+from typing import Any
+from mypy_extensions import mypyc_attr
+
+@mypyc_attr(native_class=False)
+class MyComplex(complex):
+    pass
+
+def any_real(x: Any) -> float:
+    return x.real
+def subclass_real(z: MyComplex) -> float:
+    # A subclass could override the property
+    return z.real
+[out]
+def any_real(x):
+    x :: object
+    r0 :: str
+    r1 :: object
+    r2 :: float
+L0:
+    r0 = 'real'
+    r1 = CPyObject_GetAttr(x, r0)
+    r2 = unbox(float, r1)
+    return r2
+def subclass_real(z):
+    z :: __main__.MyComplex
+    r0 :: str
+    r1 :: object
+    r2 :: float
+L0:
+    r0 = 'real'
+    r1 = CPyObject_GetAttr(z, r0)
+    r2 = unbox(float, r1)
+    return r2
+
+[case testNumberUnionRealImag]
+def int_or_float_parts(x: int | float) -> tuple[int | float, int | float]:
+    return x.real, x.imag
+def number_parts(x: int | float | complex) -> tuple[int | float, int | float]:
+    return x.real, x.imag
+[out]
+def int_or_float_parts(x):
+    x :: union[int, float]
+    r0 :: object
+    r1 :: union[int, float]
+    r2 :: object
+    r3 :: union[int, float]
+    r4 :: tuple[union[int, float], union[int, float]]
+L0:
+    r0 = CPyNumber_Real(x)
+    r1 = cast(union[int, float], r0)
+    r2 = CPyNumber_Imag(x)
+    r3 = cast(union[int, float], r2)
+    r4 = (r1, r3)
+    return r4
+def number_parts(x):
+    x :: union[int, float, object]
+    r0 :: object
+    r1 :: union[int, float]
+    r2 :: object
+    r3 :: union[int, float]
+    r4 :: tuple[union[int, float], union[int, float]]
+L0:
+    r0 = CPyNumber_Real(x)
+    r1 = cast(union[int, float], r0)
+    r2 = CPyNumber_Imag(x)
+    r3 = cast(union[int, float], r2)
+    r4 = (r1, r3)
+    return r4

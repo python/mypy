@@ -54,8 +54,10 @@ from mypy.types import (
     Instance,
     ProperType,
     TupleType,
+    Type,
     TypeOfAny,
     TypeType,
+    UnionType,
     get_proper_type,
 )
 from mypyc.common import (
@@ -73,6 +75,7 @@ from mypyc.ir.ops import (
     CallC,
     Cast,
     ComparisonOp,
+    Float,
     GetAttr,
     Integer,
     LoadAddress,
@@ -88,14 +91,17 @@ from mypyc.ir.ops import (
 from mypyc.ir.rtypes import (
     RInstance,
     RTuple,
+    RType,
     RVec,
     bool_rprimitive,
     int64_rprimitive,
     int_rprimitive,
     is_any_int,
+    is_bool_or_bit_rprimitive,
     is_bytearray_rprimitive,
     is_bytes_rprimitive,
     is_fixed_width_rtype,
+    is_float_rprimitive,
     is_int64_rprimitive,
     is_int_rprimitive,
     is_list_rprimitive,
@@ -145,7 +151,14 @@ from mypyc.irbuild.vec import (
 )
 from mypyc.primitives.bytes_ops import bytes_slice_op
 from mypyc.primitives.dict_ops import dict_get_item_op, dict_new_op, exact_dict_set_item_op
+from mypyc.primitives.float_ops import (
+    complex_imag_op,
+    complex_real_op,
+    number_imag_op,
+    number_real_op,
+)
 from mypyc.primitives.generic_ops import iter_op, name_op
+from mypyc.primitives.int_ops import int_imag_op, int_real_op
 from mypyc.primitives.list_ops import list_append_op, list_extend_op, list_slice_op
 from mypyc.primitives.misc_ops import ellipsis_op, get_module_dict_op, new_slice_op, type_op
 from mypyc.primitives.set_ops import set_add_op, set_in_op, set_update_op
@@ -311,6 +324,9 @@ def transform_member_expr(builder: IRBuilder, expr: MemberExpr) -> Value:
         # only apply to RInstance types.
         return builder.primitive_op(type_op, [obj], expr.line)
 
+    if expr.name in ("real", "imag") and is_builtin_number_type(builder.types.get(expr.expr)):
+        return transform_real_imag(builder, obj, expr.name == "real", rtype, expr.line)
+
     # Special case: for named tuples transform attribute access to faster index access.
     typ = get_proper_type(builder.types.get(expr.expr))
     if isinstance(typ, TupleType) and typ.partial_fallback.type.is_named_tuple:
@@ -341,6 +357,49 @@ def transform_member_expr(builder: IRBuilder, expr: MemberExpr) -> Value:
     return builder.builder.get_attr(
         obj, expr.name, rtype, expr.line, borrow=borrow, borrow_scope=scope
     )
+
+
+def is_builtin_number_type(typ: Type | None) -> bool:
+    """Is typ int, bool, float, complex or a union of them (and not a subclass)?"""
+    typ = get_proper_type(typ)
+    if isinstance(typ, UnionType):
+        return all(is_builtin_number_type(item) for item in typ.items)
+    return isinstance(typ, Instance) and typ.type.fullname in (
+        "builtins.int",
+        "builtins.bool",
+        "builtins.float",
+        "builtins.complex",
+    )
+
+
+def transform_real_imag(
+    builder: IRBuilder, obj: Value, is_real: bool, rtype: RType, line: int
+) -> Value:
+    """Get obj.real or obj.imag, where obj is an int, a float or a complex."""
+    if is_tagged(obj.type):
+        # A large int could be an instance of an int subclass that overrides these
+        op = int_real_op if is_real else int_imag_op
+        return builder.primitive_op(op, [obj], line)
+    if is_bool_or_bit_rprimitive(obj.type):
+        # bool can't be subclassed, and b.real is an int
+        return builder.coerce(obj, int_rprimitive, line) if is_real else builder.load_int(0, line)
+    if is_float_rprimitive(obj.type):
+        # Unboxed floats are always exact floats, so these can't be overridden
+        if not is_real:
+            return Float(0.0, line)
+        if isinstance(obj, Register):
+            # Copy the variable, since it could be reassigned later in the same
+            # expression, as in "x.real + (x := 2.0)"
+            copy = Register(obj.type)
+            builder.assign(copy, obj, line)
+            return copy
+        return obj
+    if is_float_rprimitive(rtype):
+        op = complex_real_op if is_real else complex_imag_op
+        return builder.primitive_op(op, [obj], line)
+    # The result can be an int, for example with int | float | complex
+    op = number_real_op if is_real else number_imag_op
+    return builder.primitive_op(op, [obj], line, result_type=rtype)
 
 
 def value_borrow_scope(builder: IRBuilder, v: Value) -> int:
