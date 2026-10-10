@@ -325,7 +325,9 @@ def prepare_method_def(
             decl.sig.args[1].pos_only = True
             ir.method_decls[PROPSET_PREFIX + node.name] = decl
 
-        if node.func.is_property:
+        # A getter with other decorators isn't a native property. It's set up at runtime
+        # like other decorated methods, and accessed using generic attribute operations.
+        if node.func.is_property and not node.decorators:
             assert node.func.type, f"Expected return type annotation for property '{node.name}'"
             decl.is_prop_getter = True
             ir.property_types[node.name] = decl.sig.ret_type

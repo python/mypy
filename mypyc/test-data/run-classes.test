@@ -2398,6 +2398,182 @@ def test_property_returning_callable_inherited() -> None:
     assert AttrOverride().f(-6) == 6
     assert call_trait_f(UsesTrait(), 1) == 0
 
+[case testPropertyWithOtherDecorator]
+from functools import cache, cached_property
+from typing import Any, Callable
+
+from mypy_extensions import mypyc_attr, trait
+from testutil import assertRaises
+
+def double(f: Callable[[Any], int]) -> Callable[[Any], int]:
+    def wrapper(self: Any) -> int:
+        return f(self) * 2
+
+    return wrapper
+
+def to_str(f: Callable[[Any], int]) -> Callable[[Any], str]:
+    def wrapper(self: Any) -> str:
+        return f"<{f(self)}>"
+
+    return wrapper
+
+class C:
+    def __init__(self) -> None:
+        self.calls = 0
+
+    @property
+    @double
+    def p(self) -> int:
+        self.calls += 1
+        return 21
+
+    @property
+    @to_str
+    def s(self) -> int:
+        return 5
+
+    @property
+    @to_str
+    @double
+    def two(self) -> int:
+        return 3
+
+    @property
+    @cache
+    def cached(self) -> int:
+        self.calls += 1
+        return 7
+
+    @cached_property
+    @double
+    def cp(self) -> int:
+        return 4
+
+    def via_self(self) -> int:
+        return self.p + 1
+
+class Base:
+    @property
+    @double
+    def x(self) -> int:
+        return 1
+
+class NativeOverride(Base):
+    @property
+    def x(self) -> int:
+        return 5
+
+class DecoratedOverride(Base):
+    @property
+    @double
+    def x(self) -> int:
+        return 10
+
+class AttrOverride(Base):
+    x: int = 7
+
+@trait
+class T:
+    @property
+    @double
+    def t(self) -> int:
+        return 4
+
+class UsesTrait(T):
+    pass
+
+@mypyc_attr(allow_interpreted_subclasses=True)
+class Open:
+    @property
+    @double
+    def o(self) -> int:
+        return 8
+
+@mypyc_attr(native_class=False)
+class NonNative:
+    def __init__(self) -> None:
+        self.calls = 0
+
+    @property
+    @double
+    def p(self) -> int:
+        self.calls += 1
+        return 3
+
+    @property
+    @to_str
+    def s(self) -> int:
+        return 5
+
+    @property
+    @cache
+    def cached(self) -> int:
+        self.calls += 1
+        return 7
+
+def get_x(b: Base) -> int:
+    return b.x
+
+def get_t(t: T) -> int:
+    return t.t
+
+def get_o(o: Open) -> int:
+    return o.o
+
+def test_property_with_other_decorator() -> None:
+    c = C()
+    assert c.p == 42
+    assert c.p + 1 == 43
+    assert c.calls == 2
+    assert c.via_self() == 43
+    assert c.s == "<5>"
+    assert c.two == "<6>"
+    a: Any = c
+    assert a.p == 42
+    assert a.s == "<5>"
+    assert isinstance(getattr(C, "p"), property)
+    with assertRaises(AttributeError):
+        a.p = 1
+
+def test_property_with_caching_decorator() -> None:
+    c = C()
+    assert c.cached == 7
+    assert c.cached == 7
+    assert c.calls == 1
+    assert C().cached == 7
+    assert c.cp == 8
+
+def test_property_with_other_decorator_inherited() -> None:
+    assert get_x(Base()) == 2
+    assert get_x(NativeOverride()) == 5
+    assert NativeOverride().x == 5
+    assert get_x(DecoratedOverride()) == 20
+    assert DecoratedOverride().x == 20
+    assert get_x(AttrOverride()) == 7
+    assert AttrOverride().x == 7
+    assert get_t(UsesTrait()) == 8
+    assert UsesTrait().t == 8
+
+def test_property_with_other_decorator_interpreted_subclass() -> None:
+    assert get_o(Open()) == 16
+    make_type: Any = type
+    sub = make_type("Sub", (Open,), {"o": 3})
+    assert get_o(sub()) == 3
+
+def test_property_with_other_decorator_non_native() -> None:
+    n = NonNative()
+    assert n.p == 6
+    assert n.calls == 1
+    assert n.s == "<5>"
+    assert n.cached == 7
+    assert n.cached == 7
+    assert n.calls == 2
+    a: Any = n
+    assert a.p == 6
+    assert isinstance(getattr(NonNative, "p"), property)
+    with assertRaises(AttributeError):
+        a.p = 1
+
 [case testPropertySetters]
 
 from mypy_extensions import trait

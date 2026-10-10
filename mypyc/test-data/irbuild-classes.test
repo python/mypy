@@ -1352,6 +1352,60 @@ L0:
     r2 = r1.x
     return r2
 
+[case testPropertyWithOtherDecorator]
+from typing import TypeVar
+
+T = TypeVar("T")
+
+def dec(f: T) -> T:
+    return f
+
+class C:
+    @property
+    @dec
+    def p(self) -> int:
+        return 1
+
+def get(c: C) -> int:
+    return c.p
+[out]
+def dec(f):
+    f :: object
+L0:
+    return f
+def C.p(self):
+    self :: __main__.C
+L0:
+    return 2
+def get(c):
+    c :: __main__.C
+    r0 :: str
+    r1 :: object
+    r2 :: int
+L0:
+    r0 = 'p'
+    r1 = CPyObject_GetAttr(c, r0)
+    r2 = unbox(int, r1)
+    return r2
+
+[case testPropertySetterWithDecoratedGetter]
+from typing import TypeVar
+
+T = TypeVar("T")
+
+def dec(f: T) -> T:
+    return f
+
+class C:
+    @property
+    @dec
+    def p(self) -> int:
+        return 1
+
+    @p.setter
+    def p(self, value: int) -> None:  # E: Property setter not supported when the getter has other decorators
+        pass
+
 [case testPropertyReturningCallable]
 from typing import Callable
 
