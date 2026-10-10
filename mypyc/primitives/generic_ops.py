@@ -13,6 +13,7 @@ from __future__ import annotations
 
 from mypyc.ir.ops import ERR_MAGIC, ERR_NEVER
 from mypyc.ir.rtypes import (
+    bit_rprimitive,
     bool_rprimitive,
     c_int_rprimitive,
     c_pyssize_t_rprimitive,
@@ -424,6 +425,14 @@ generic_setattr = custom_op(
     return_type=c_int_rprimitive,
     c_function_name="CPyObject_GenericSetAttr",
     error_kind=ERR_NEG_INT,
+)
+
+# Does the type of the object override attribute assignment (by defining __setattr__)?
+has_custom_setattr = custom_op(
+    arg_types=[object_rprimitive],
+    return_type=bit_rprimitive,
+    c_function_name="CPyObject_HasCustomSetAttr",
+    error_kind=ERR_NEVER,
 )
 
 setup_object = custom_op(

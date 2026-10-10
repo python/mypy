@@ -2566,6 +2566,60 @@ class CompiledBase:
     def value(self) -> int:
         raise NotImplementedError
 
+[case testSetAttrInSubclassInAnotherModule]
+from other import Base, HasFinal, assign
+
+setattr_calls: list[str] = []
+
+class Derived(Base):
+    def __setattr__(self, name: str, value: object) -> None:
+        setattr_calls.append(f"{name}={value}")
+        super().__setattr__(name, value)
+
+class HasFinalSetAttr(HasFinal):
+    def __setattr__(self, name: str, value: object) -> None:
+        setattr_calls.append(f"{name}={value}")
+        super().__setattr__(name, value)
+
+def test_setattr_in_subclass_in_another_module() -> None:
+    setattr_calls.clear()
+    d = Derived()
+    d.set_x()
+    assign(d)
+    assert setattr_calls == ["x=0", "x=1", "x=2"]
+    assert d.x == 2
+
+    b = Base()
+    b.set_x()
+    assign(b)
+    assert b.x == 2
+    assert setattr_calls == ["x=0", "x=1", "x=2"]
+
+def test_final_attribute_in_base_class_in_another_module() -> None:
+    setattr_calls.clear()
+    obj = HasFinalSetAttr()
+    assert obj.final_attr == 1
+    assert obj.attr == 2
+    assert "attr=2" in setattr_calls
+
+[file other.py]
+from typing import Final
+
+class Base:
+    def __init__(self) -> None:
+        self.x = 0
+
+    def set_x(self) -> None:
+        self.x = 1
+
+class HasFinal:
+    def __init__(self) -> None:
+        self.final_attr: Final = 1
+        self.attr = 2
+
+def assign(b: Base) -> None:
+    b.x = 2
+
 [case testMultiModuleCallTypeObjectWithInheritedInit]
 from other import Base
 
