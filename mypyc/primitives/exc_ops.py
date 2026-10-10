@@ -3,8 +3,16 @@
 from __future__ import annotations
 
 from mypyc.ir.ops import ERR_ALWAYS, ERR_FALSE, ERR_NEVER
-from mypyc.ir.rtypes import bit_rprimitive, exc_rtuple, object_rprimitive, void_rtype
-from mypyc.primitives.registry import custom_op, custom_primitive_op
+from mypyc.ir.rtypes import (
+    bit_rprimitive,
+    c_int_rprimitive,
+    c_pyssize_t_rprimitive,
+    exc_rtuple,
+    object_rprimitive,
+    str_rprimitive,
+    void_rtype,
+)
+from mypyc.primitives.registry import ERR_NEG_INT, custom_op, custom_primitive_op
 
 # If the argument is a class, raise an instance of the class. Otherwise, assume
 # that the argument is an exception object, and raise it.
@@ -116,4 +124,14 @@ get_exc_value_op = custom_op(
 # Get exception info (exception type, exception instance, traceback object).
 get_exc_info_op = custom_op(
     arg_types=[], return_type=exc_rtuple, c_function_name="CPy_GetExcInfo", error_kind=ERR_NEVER
+)
+
+# Issue a warning, like warnings.warn(message, category, stacklevel). Arguments are
+# (category, message, stack level). Compiled functions have no frame, so stack level 1
+# refers to the closest interpreted caller.
+warn_op = custom_op(
+    arg_types=[object_rprimitive, str_rprimitive, c_pyssize_t_rprimitive],
+    return_type=c_int_rprimitive,
+    c_function_name="CPyErr_Warn",
+    error_kind=ERR_NEG_INT,
 )

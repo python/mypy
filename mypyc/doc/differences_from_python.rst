@@ -223,6 +223,25 @@ methods with mocks in tests.
     compiled code generally doesn't use this namespace, so any changes
     will only be visible to non-compiled code.
 
+Function attributes
+-------------------
+
+Compiled functions and methods don't support setting arbitrary
+attributes. This also affects decorators that set an attribute on the
+function they are given, instead of on a wrapper function that they
+return. (Nested functions do support attributes.)
+
+``@deprecated`` (from ``warnings`` or ``typing_extensions``) is such a
+decorator. Mypyc special cases it and doesn't call it at runtime.
+Instead, the compiled function issues the warning when it's called.
+The function won't have the ``__deprecated__`` attribute. This applies
+if the message is a string literal, ``category`` is omitted, ``None``
+or a class defined at module top level, and ``stacklevel`` is omitted
+or an integer literal. ``@deprecated`` must also be applied directly to
+the function, not to the result of another decorator (it can be
+below decorators such as ``@property`` and ``@classmethod``). In other
+cases the decorator is called at runtime as usual.
+
 Stack overflows
 ---------------
 

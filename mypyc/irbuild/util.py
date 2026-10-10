@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Final, Literal, TypedDict
+from typing import Any, Final, Literal, NamedTuple, TypedDict
 from typing_extensions import NotRequired
 
 from mypy.nodes import (
@@ -27,12 +27,13 @@ from mypy.nodes import (
     StrExpr,
     TempNode,
     TupleExpr,
+    TypeInfo,
     UnaryExpr,
     Var,
     is_class_var,
 )
 from mypy.semanal import refers_to_fullname
-from mypy.types import FINAL_DECORATOR_NAMES
+from mypy.types import DEPRECATED_TYPE_NAMES, FINAL_DECORATOR_NAMES
 from mypyc.errors import Errors
 from mypyc.ir.class_ir import ClassIR
 from mypyc.ir.rtypes import RType, is_none_rprimitive, is_object_rprimitive, is_optional_type
@@ -344,6 +345,84 @@ def is_implicit_extension_class(cdef: ClassDef) -> tuple[bool, str]:
             " GenericMeta can't be native classes.",
         )
     return True, ""
+
+
+class DeprecatedArgs(NamedTuple):
+    """Arguments of a @deprecated(...) decorator that is compiled into the function."""
+
+    message: str
+    # None means the default category (DeprecationWarning).
+    category: RefExpr | None
+    stacklevel: int
+    line: int
+
+
+def get_deprecated_args(d: Expression) -> DeprecatedArgs | None:
+    """Return the arguments of a @deprecated(...) decorator (PEP 702) that mypyc compiles.
+
+    The runtime decorator sets the "__deprecated__" attribute on the function that it
+    wraps, but compiled functions don't support setting attributes. A compiled function
+    emits the warning itself when it's called instead, and the decorator isn't applied
+    (see get_runtime_decorators).
+
+    This requires arguments that mean the same when they are evaluated on each call: a
+    string literal message, a module-level class or None as the category, and an int
+    literal stacklevel. Return None if the decorator is something else, and it will be
+    applied at runtime like other decorators.
+    """
+    if not (
+        isinstance(d, CallExpr)
+        and refers_to_fullname(d.callee, DEPRECATED_TYPE_NAMES)
+        and d.arg_kinds
+        and d.arg_kinds[0] == ARG_POS
+        and isinstance(d.args[0], StrExpr)
+    ):
+        return None
+    category: RefExpr | None = None
+    stacklevel = 1
+    for arg, kind, name in zip(d.args[1:], d.arg_kinds[1:], d.arg_names[1:]):
+        if kind != ARG_NAMED:
+            return None
+        if (
+            name == "category"
+            and isinstance(arg, RefExpr)
+            and arg.kind == GDEF
+            and (arg.fullname == "builtins.None" or isinstance(arg.node, TypeInfo))
+        ):
+            category = arg
+        elif name == "stacklevel" and isinstance(arg, IntExpr):
+            stacklevel = arg.value
+        else:
+            return None
+    return DeprecatedArgs(d.args[0].value, category, stacklevel, d.line)
+
+
+def get_runtime_decorators(dec: Decorator) -> list[Expression]:
+    """Return the decorators that are applied to a function at runtime.
+
+    Mypy has already removed the decorators that it special cases, such as @property.
+    Also leave out @deprecated decorators that are compiled into the function. This
+    only includes the innermost ones, since others don't receive a compiled function.
+    """
+    decorators = dec.decorators.copy()
+    while decorators and get_deprecated_args(decorators[-1]) is not None:
+        decorators.pop()
+    return decorators
+
+
+def get_compiled_deprecations(dec: Decorator) -> list[DeprecatedArgs]:
+    """Return the @deprecated decorators of a function that get_runtime_decorators omits.
+
+    The outermost decorator is first, since it emits its warning first. A decorator with
+    category=None emits no warning, so it has no item.
+    """
+    deprecations = []
+    for d in dec.decorators[len(get_runtime_decorators(dec)) :]:
+        args = get_deprecated_args(d)
+        assert args is not None
+        if args.category is None or args.category.fullname != "builtins.None":
+            deprecations.append(args)
+    return deprecations
 
 
 def get_func_def(op: FuncDef | Decorator | OverloadedFuncDef) -> FuncDef:
