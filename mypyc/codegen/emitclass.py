@@ -308,8 +308,8 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
     # values, we need to call it during initialization.
     defaults_fn = cl.get_method(MYPYC_DEFAULTS_SETUP)
 
-    # If there is a __init__ method, we'll use it in the native constructor.
-    init_fn = cl.get_method("__init__")
+    # If there is a native __init__ method, we'll use it in the native constructor.
+    init_fn = cl.get_native_init()
 
     # Fill out slots in the type object from dunder methods.
     fields.update(generate_slots(cl, SLOT_DEFS, emitter))
@@ -403,7 +403,7 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
         emitter.emit_line(native_function_header(cl.ctor, emitter) + ";")
 
         emit_line()
-        init_fn = cl.get_method("__init__")
+        init_fn = cl.get_native_init()
         generate_new_for_class(cl, new_name, vtable_name, setup_name, init_fn, emitter)
         emit_line()
 
@@ -844,7 +844,13 @@ def generate_init_for_class(cl: ClassIR, init_fn: FuncIR, emitter: Emitter) -> s
     emitter.emit_line("static int")
     emitter.emit_line(f"{func_name}(PyObject *self, PyObject *args, PyObject *kwds)")
     emitter.emit_line("{")
-    if cl.allow_interpreted_subclasses or cl.builtin_base or cl.has_method("__new__"):
+    if (
+        cl.allow_interpreted_subclasses
+        or cl.builtin_base
+        or cl.has_method("__new__")
+        # tp_new doesn't call a decorated __init__.
+        or cl.get_native_init() is None
+    ):
         emitter.emit_line(
             f"return {emitter.wrapper_function_call(init_fn.decl)}"
             "(self, args, kwds) != NULL ? 0 : -1;"

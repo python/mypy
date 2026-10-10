@@ -2952,6 +2952,396 @@ def test_invalid_init_args() -> None:
     with assertRaises(TypeError):
         cls(1)
 
+[case testDecoratedInit]
+from typing import Any, Callable, TypeVar
+
+from mypy_extensions import mypyc_attr
+from testutil import assertRaises
+
+from m import check_interpreted_subclasses
+
+F = TypeVar("F", bound=Callable[..., Any])
+
+log: list[str] = []
+
+def take() -> list[str]:
+    result = list(log)
+    log.clear()
+    return result
+
+def logged(f: F) -> F:
+    def wrapper(self: Any, *args: Any, **kwargs: Any) -> None:
+        log.append(f"before {args} {sorted(kwargs.items())}")
+        f(self, *args, **kwargs)
+        log.append("after")
+    return wrapper  # type: ignore[return-value]
+
+def same(f: F) -> F:
+    return f
+
+def skip(f: F) -> F:
+    def wrapper(self: Any) -> None:
+        log.append("skip")
+    return wrapper  # type: ignore[return-value]
+
+class Base:
+    def __init__(self, a: int) -> None:
+        log.append(f"Base {a}")
+        self.a = a
+
+    def get_a(self) -> int:
+        return self.a
+
+class Decorated(Base):
+    @logged
+    def __init__(self, a: int, b: str = "b", *, c: int = 3) -> None:
+        super().__init__(a)
+        log.append(f"Decorated {a} {b} {c}")
+        self.b = b
+        self.c = c
+
+class Inherits(Decorated):
+    pass
+
+class CallsSuper(Decorated):
+    def __init__(self, a: int) -> None:
+        super().__init__(a, "x", c=7)
+        log.append("CallsSuper")
+
+class CallsBase(Decorated):
+    def __init__(self, a: int) -> None:
+        Decorated.__init__(self, a, c=8)
+        log.append("CallsBase")
+
+class DecoratedAgain(Decorated):
+    @same
+    @logged
+    def __init__(self, a: int) -> None:
+        super().__init__(a, "y")
+        log.append("DecoratedAgain")
+
+class NoBase:
+    @logged
+    def __init__(self) -> None:
+        log.append("NoBase")
+
+class Same:
+    @same
+    def __init__(self, x: int = 5) -> None:
+        self.x = x
+
+class Skipped(Base):
+    y = 4
+
+    @skip
+    def __init__(self) -> None:
+        super().__init__(1)
+        self.z = 2
+
+class WithNew:
+    def __new__(cls, x: int) -> "WithNew":
+        log.append(f"new {x}")
+        return super().__new__(cls)
+
+    @logged
+    def __init__(self, x: int) -> None:
+        log.append(f"init {x}")
+        self.x = x
+
+class Raises:
+    @logged
+    def __init__(self, x: int) -> None:
+        raise ValueError(str(x))
+
+@mypyc_attr(allow_interpreted_subclasses=True)
+class Open:
+    @logged
+    def __init__(self, x: int) -> None:
+        log.append(f"Open {x}")
+        self.x = x
+
+def test_decorated_init() -> None:
+    log.clear()
+    d = Decorated(1)
+    assert take() == ["before (1,) []", "Base 1", "Decorated 1 b 3", "after"]
+    assert (d.a, d.b, d.c, d.get_a()) == (1, "b", 3, 1)
+    d = Decorated(2, "x", c=9)
+    assert take() == ["before (2, 'x') [('c', 9)]", "Base 2", "Decorated 2 x 9", "after"]
+    assert (d.a, d.b, d.c) == (2, "x", 9)
+    d = Decorated(a=3, b="k")
+    assert take() == ["before () [('a', 3), ('b', 'k')]", "Base 3", "Decorated 3 k 3", "after"]
+    assert (d.a, d.b, d.c) == (3, "k", 3)
+
+    NoBase()
+    assert take() == ["before () []", "NoBase", "after"]
+
+def test_decorated_init_non_native_call() -> None:
+    log.clear()
+    # Use Any to get non-native semantics
+    cls: Any = Decorated
+    d = cls(4, c=5)
+    assert take() == ["before (4,) [('c', 5)]", "Base 4", "Decorated 4 b 5", "after"]
+    assert (d.a, d.b, d.c) == (4, "b", 5)
+    with assertRaises(TypeError):
+        cls()
+    assert take() == ["before () []"]
+
+    cls = NoBase
+    cls()
+    assert take() == ["before () []", "NoBase", "after"]
+
+    # __new__ doesn't call a decorated __init__
+    d = Decorated.__new__(Decorated)
+    assert take() == []
+    with assertRaises(AttributeError):
+        d.a
+    Decorated.__init__(d, 6)
+    assert take() == ["before (6,) []", "Base 6", "Decorated 6 b 3", "after"]
+    assert (d.a, d.b, d.c) == (6, "b", 3)
+
+def test_inherit_decorated_init() -> None:
+    log.clear()
+    i = Inherits(1, c=2)
+    assert take() == ["before (1,) [('c', 2)]", "Base 1", "Decorated 1 b 2", "after"]
+    assert (i.a, i.b, i.c) == (1, "b", 2)
+    cls: Any = Inherits
+    i = cls(3, "z")
+    assert take() == ["before (3, 'z') []", "Base 3", "Decorated 3 z 3", "after"]
+    assert (i.a, i.b, i.c) == (3, "z", 3)
+
+def test_call_decorated_init_from_subclass() -> None:
+    log.clear()
+    o1 = CallsSuper(1)
+    assert take() == [
+        "before (1, 'x') [('c', 7)]", "Base 1", "Decorated 1 x 7", "after", "CallsSuper"
+    ]
+    assert (o1.a, o1.b, o1.c) == (1, "x", 7)
+    o2 = CallsBase(2)
+    assert take() == ["before (2,) [('c', 8)]", "Base 2", "Decorated 2 b 8", "after", "CallsBase"]
+    assert (o2.a, o2.b, o2.c) == (2, "b", 8)
+    o3 = DecoratedAgain(3)
+    assert take() == [
+        "before (3,) []",
+        "before (3, 'y') []",
+        "Base 3",
+        "Decorated 3 y 3",
+        "after",
+        "DecoratedAgain",
+        "after",
+    ]
+    assert (o3.a, o3.b, o3.c) == (3, "y", 3)
+    cls: Any = CallsSuper
+    assert cls(4).a == 4
+    assert take() == [
+        "before (4, 'x') [('c', 7)]", "Base 4", "Decorated 4 x 7", "after", "CallsSuper"
+    ]
+
+def test_decorator_returns_init() -> None:
+    assert Same().x == 5
+    assert Same(6).x == 6
+    cls: Any = Same
+    assert cls(x=7).x == 7
+
+def test_decorator_does_not_call_init() -> None:
+    log.clear()
+    s = Skipped()
+    assert take() == ["skip"]
+    assert s.y == 4
+    with assertRaises(AttributeError):
+        s.a
+    with assertRaises(AttributeError):
+        s.get_a()
+    with assertRaises(AttributeError):
+        s.z
+
+def test_decorated_init_with_dunder_new() -> None:
+    log.clear()
+    w = WithNew(1)
+    assert take() == ["new 1", "before (1,) []", "init 1", "after"]
+    assert w.x == 1
+    cls: Any = WithNew
+    assert cls(x=2).x == 2
+    assert take() == ["new 2", "before () [('x', 2)]", "init 2", "after"]
+
+def test_decorated_init_raises() -> None:
+    log.clear()
+    with assertRaises(ValueError):
+        Raises(1)
+    assert take() == ["before (1,) []"]
+    cls: Any = Raises
+    with assertRaises(ValueError):
+        cls(2)
+    assert take() == ["before (2,) []"]
+
+def test_decorated_init_with_interpreted_subclasses() -> None:
+    log.clear()
+    o = Open(1)
+    assert take() == ["before (1,) []", "Open 1", "after"]
+    assert o.x == 1
+    check_interpreted_subclasses(Open, log)
+
+[file m.py]
+def check_interpreted_subclasses(base, log):
+    class Inherits(base):  # type: ignore[misc, valid-type]
+        pass
+
+    o = Inherits(2)
+    assert log == ["before (2,) []", "Open 2", "after"]
+    assert o.x == 2
+    log.clear()
+
+    class CallsSuper(base):  # type: ignore[misc, valid-type]
+        def __init__(self):
+            super().__init__(3)
+            log.append("CallsSuper")
+
+    o = CallsSuper()
+    assert log == ["before (3,) []", "Open 3", "after", "CallsSuper"]
+    assert o.x == 3
+    log.clear()
+
+[case testInitWithFinalOverrideAndAbstractmethod]
+from abc import ABCMeta, abstractmethod
+from typing import Any, final
+
+from typing_extensions import override
+
+class Final:
+    @final
+    def __init__(self, x: int, y: int = 2) -> None:
+        self.x = x
+        self.y = y
+
+class FinalSub(Final):
+    pass
+
+class Abstract(metaclass=ABCMeta):
+    @abstractmethod
+    def __init__(self, x: int) -> None:
+        self.x = x
+
+class Concrete(Abstract):
+    def __init__(self, x: int) -> None:
+        super().__init__(x + 1)
+
+class Base:
+    def __init__(self, x: int) -> None:
+        self.x = x
+
+class Override(Base):
+    @override
+    def __init__(self, x: int, y: int = 3) -> None:
+        super().__init__(x)
+        self.y = y
+
+def test_final_init() -> None:
+    a = Final(1)
+    assert (a.x, a.y) == (1, 2)
+    a = Final(3, y=4)
+    assert (a.x, a.y) == (3, 4)
+    b = FinalSub(5, 6)
+    assert (b.x, b.y) == (5, 6)
+    # Use Any to get non-native semantics
+    cls: Any = FinalSub
+    b = cls(7)
+    assert (b.x, b.y) == (7, 2)
+
+def test_abstract_init() -> None:
+    assert Concrete(1).x == 2
+    cls: Any = Concrete
+    assert cls(x=2).x == 3
+
+def test_override_init() -> None:
+    a = Override(1)
+    assert (a.x, a.y) == (1, 3)
+    a = Override(2, 4)
+    assert (a.x, a.y) == (2, 4)
+    cls: Any = Override
+    a = cls(5, y=6)
+    assert (a.x, a.y) == (5, 6)
+
+[case testOverloadedInit]
+from typing import Any, overload
+
+class C:
+    @overload
+    def __init__(self, x: int) -> None: ...
+    @overload
+    def __init__(self, x: str, y: int) -> None: ...
+    def __init__(self, x: object, y: int = 0) -> None:
+        self.x = x
+        self.y = y
+
+class D(C):
+    pass
+
+class E(C):
+    def __init__(self) -> None:
+        super().__init__("e", 5)
+
+class StarArgs:
+    @overload
+    def __init__(self, **kw: str) -> None: ...
+    @overload
+    def __init__(self, arg: str, **kw: str) -> None: ...
+    def __init__(self, *args: str, **kw: str) -> None:
+        self.args = args
+        self.kw = kw
+
+def test_overloaded_init() -> None:
+    c = C(1)
+    assert (c.x, c.y) == (1, 0)
+    c = C("a", 2)
+    assert (c.x, c.y) == ("a", 2)
+    c = D("b", y=3)
+    assert (c.x, c.y) == ("b", 3)
+    c = E()
+    assert (c.x, c.y) == ("e", 5)
+    # Use Any to get non-native semantics
+    cls: Any = D
+    c = cls(4)
+    assert (c.x, c.y) == (4, 0)
+
+def test_overloaded_init_with_star_args() -> None:
+    s = StarArgs()
+    assert (s.args, s.kw) == ((), {})
+    s = StarArgs("a", b="c")
+    assert (s.args, s.kw) == (("a",), {"b": "c"})
+    cls: Any = StarArgs
+    s = cls(d="e")
+    assert (s.args, s.kw) == ((), {"d": "e"})
+
+[case testSuperCallToDecoratedMethod]
+from typing import Any, Callable, TypeVar
+
+from mypy_extensions import trait
+
+F = TypeVar("F", bound=Callable[..., Any])
+
+def add_ten(f: F) -> F:
+    def wrapper(self: Any) -> int:
+        return f(self) + 10
+    return wrapper  # type: ignore[return-value]
+
+@trait
+class T1:
+    @add_ten
+    def f(self) -> int:
+        return 1
+
+@trait
+class T2:
+    def f(self) -> int:
+        return 2
+
+class C(T1, T2):
+    def f(self) -> int:
+        return super().f() + 100
+
+def test_super_call_to_decorated_method() -> None:
+    # The call must not skip T1.f and call T2.f, which is the first native method.
+    assert C().f() == 111
+
 [case testTryDeletingAlwaysDefinedAttribute]
 from typing import Any
 from testutil import assertRaises

@@ -794,6 +794,168 @@ L0:
     r9 = PyObject_Vectorcall(r8, 0, 0, 0)
     return 1
 
+[case testDecoratedInit_64bit]
+from typing import Any, Callable, TypeVar
+
+F = TypeVar("F", bound=Callable[..., Any])
+
+def deco(f: F) -> F:
+    return f
+
+class A:
+    def __init__(self, x: int) -> None:
+        pass
+
+class B(A):
+    @deco
+    def __init__(self, x: int) -> None:
+        super().__init__(x)
+
+class C(B):
+    def __init__(self, x: int) -> None:
+        super().__init__(x)
+
+class D(B):
+    def __init__(self, x: int) -> None:
+        B.__init__(self, x)
+
+class E(B):
+    pass
+
+def f() -> None:
+    B(1)
+    E(2)
+[out]
+def deco(f):
+    f :: object
+L0:
+    return f
+def A.__init__(self, x):
+    self :: __main__.A
+    x :: int
+L0:
+    return 1
+def B.__init__(self, x):
+    self :: __main__.B
+    x :: int
+    r0 :: None
+L0:
+    r0 = A.__init__(self, x)
+    return 1
+def C.__init__(self, x):
+    self :: __main__.C
+    x :: int
+    r0 :: object
+    r1 :: str
+    r2, r3 :: object
+    r4 :: object[2]
+    r5 :: object_ptr
+    r6 :: object
+    r7 :: str
+    r8, r9 :: object
+    r10 :: object[1]
+    r11 :: object_ptr
+    r12 :: object
+L0:
+    r0 = builtins :: module
+    r1 = 'super'
+    r2 = CPyObject_GetAttr(r0, r1)
+    r3 = __main__.C :: type
+    r4 = [r3, self]
+    r5 = load_address r4
+    r6 = PyObject_Vectorcall(r2, r5, 2, 0)
+    keep_alive r3, self
+    r7 = '__init__'
+    r8 = CPyObject_GetAttr(r6, r7)
+    r9 = box(int, x)
+    r10 = [r9]
+    r11 = load_address r10
+    r12 = PyObject_Vectorcall(r8, r11, 1, 0)
+    keep_alive r9
+    return 1
+def D.__init__(self, x):
+    self :: __main__.D
+    x :: int
+    r0 :: object
+    r1 :: str
+    r2 :: object
+    r3 :: object[3]
+    r4 :: object_ptr
+    r5 :: object
+L0:
+    r0 = __main__.B :: type
+    r1 = '__init__'
+    r2 = box(int, x)
+    r3 = [r0, self, r2]
+    r4 = load_address r3
+    r5 = PyObject_VectorcallMethod(r1, r4, 9223372036854775811, 0)
+    keep_alive r0, self, r2
+    return 1
+def f():
+    r0 :: object
+    r1 :: tuple
+    r2 :: dict
+    r3 :: __main__.B
+    r4 :: object
+    r5 :: tuple
+    r6 :: dict
+    r7 :: __main__.E
+L0:
+    r0 = object 1
+    r1 = PyTuple_Pack(1, r0)
+    r2 = PyDict_New()
+    r3 = B(r1, r2)
+    r4 = object 2
+    r5 = PyTuple_Pack(1, r4)
+    r6 = PyDict_New()
+    r7 = E(r5, r6)
+    return 1
+
+[case testFinalAndOverloadedInit]
+from typing import final, overload
+
+class A:
+    @final
+    def __init__(self, x: int) -> None:
+        pass
+
+class B:
+    @overload
+    def __init__(self, x: int) -> None: ...
+    @overload
+    def __init__(self, x: str, y: int) -> None: ...
+    def __init__(self, x: object, y: int = 0) -> None:
+        pass
+
+def f() -> None:
+    A(1)
+    B("x", 2)
+[out]
+def A.__init__(self, x):
+    self :: __main__.A
+    x :: int
+L0:
+    return 1
+def B.__init__(self, x, y):
+    self :: __main__.B
+    x :: object
+    y :: int
+L0:
+    if is_error(y) goto L1 else goto L2
+L1:
+    y = 0
+L2:
+    return 1
+def f():
+    r0 :: __main__.A
+    r1 :: str
+    r2 :: __main__.B
+L0:
+    r0 = A(2)
+    r1 = 'x'
+    r2 = B(r1, 4)
+    return 1
+
 [case testClassVariable]
 from typing import ClassVar
 class A:

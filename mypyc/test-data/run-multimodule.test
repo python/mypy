@@ -896,6 +896,50 @@ assert a.x == 1
 b = make_2()
 assert b.y == 2
 
+[case testMultiModuleCycleWithInheritedInit]
+# The subclasses are in the module that is processed first.
+import other
+
+class Deriv1(other.Base1):
+    pass
+
+class Deriv2(other.Base2):
+    pass
+
+[file other.py]
+from typing import Any, Callable, TypeVar
+import native
+
+F = TypeVar("F", bound=Callable[..., Any])
+
+def double(f: F) -> F:
+    def wrapper(self: Any, x: int) -> None:
+        f(self, x * 2)
+    return wrapper  # type: ignore[return-value]
+
+class Base1:
+    def __init__(self, x: int) -> None:
+        self.x = x
+
+class Base2:
+    @double
+    def __init__(self, x: int) -> None:
+        self.x = x
+
+def make_1(x: int) -> native.Deriv1:
+    return native.Deriv1(x)
+
+def make_2(x: int) -> native.Deriv2:
+    return native.Deriv2(x)
+
+[file driver.py]
+from native import Deriv1, Deriv2
+from other import make_1, make_2
+assert Deriv1(1).x == 1
+assert make_1(2).x == 2
+assert Deriv2(3).x == 6
+assert make_2(4).x == 8
+
 [case testMultiModuleTraitInheritance]
 from other import Base1, Base2
 
@@ -2162,6 +2206,85 @@ class Base:
 from native import make_child
 assert make_child(7) == "child(7)"
 assert make_child(-1) == "child(-1)"
+
+[case testIncrementalCrossGroupDecoratedInit]
+# A class with a decorated __init__ is initialized through tp_init, and so is
+# a subclass that inherits the __init__. When only the module of the subclass
+# is recompiled, the base class is loaded from the incremental cache, which
+# doesn't have the decorators.
+from other_a import Child, ChildWithInit
+from other_b import Base, log
+
+def take() -> list[str]:
+    result = list(log)
+    log.clear()
+    return result
+
+def test() -> None:
+    log.clear()
+    b = Base(1)
+    assert take() == ["before (1,)", "Root 1", "Base 1", "after"]
+    assert b.x == 1
+    c = Child(2)
+    assert take() == ["before (2,)", "Root 2", "Base 2", "after"]
+    assert c.x == 2
+    d = ChildWithInit()
+    assert take() == ["before (3,)", "Root 3", "Base 3", "after", "ChildWithInit"]
+    assert d.x == 3
+
+[file other_a.py]
+from other_b import Base, log
+
+class Child(Base):
+    pass
+
+class ChildWithInit(Base):
+    def __init__(self) -> None:
+        super().__init__(3)
+        log.append("ChildWithInit")
+
+[file other_a.py.2]
+from other_b import Base, log
+
+class Child(Base):
+    pass
+
+class ChildWithInit(Base):
+    def __init__(self) -> None:
+        super().__init__(3)
+        log.append("ChildWithInit")
+
+def _force_recompile() -> int:
+    return 1
+
+[file other_b.py]
+from typing import Any, Callable, TypeVar
+
+F = TypeVar("F", bound=Callable[..., Any])
+
+log: list[str] = []
+
+def logged(f: F) -> F:
+    def wrapper(self: Any, *args: Any) -> None:
+        log.append(f"before {args}")
+        f(self, *args)
+        log.append("after")
+    return wrapper  # type: ignore[return-value]
+
+class Root:
+    def __init__(self, x: int) -> None:
+        log.append(f"Root {x}")
+        self.x = x
+
+class Base(Root):
+    @logged
+    def __init__(self, x: int) -> None:
+        super().__init__(x)
+        log.append(f"Base {x}")
+
+[file driver.py]
+from native import test
+test()
 
 [case testIncrementalBuiltinBaseClassConstruction]
 # Regression: builtin_base classes (Exception subclasses) were unconditionally
