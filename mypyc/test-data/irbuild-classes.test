@@ -2764,6 +2764,64 @@ L0:
     r2 = r1 >= 0 :: signed
     return 1
 
+[case testSetAttrDefinedAfterAssignment]
+def assign(i: "SetAttr") -> None:
+    i.regular_attr = 1
+
+class SetAttr:
+    def __init__(self) -> None:
+        self.regular_attr = 0
+
+    def __setattr__(self, key: str, val: object) -> None:
+        pass
+
+[out]
+def assign(i):
+    i :: __main__.SetAttr
+    r0 :: str
+    r1 :: object
+    r2 :: None
+L0:
+    r0 = 'regular_attr'
+    r1 = object 1
+    r2 = i.__setattr__(r0, r1)
+    return 1
+def SetAttr.__init__(self):
+    self :: __main__.SetAttr
+    r0 :: str
+    r1 :: object
+    r2 :: None
+L0:
+    r0 = 'regular_attr'
+    r1 = object 0
+    r2 = self.__setattr__(r0, r1)
+    return 1
+def SetAttr.__setattr__(self, key, val):
+    self :: __main__.SetAttr
+    key :: str
+    val :: object
+L0:
+    return 1
+def SetAttr.__setattr____wrapper(__mypyc_self__, attr, value):
+    __mypyc_self__ :: __main__.SetAttr
+    attr, value :: object
+    r0 :: bit
+    r1 :: i32
+    r2 :: bit
+    r3 :: str
+    r4 :: None
+L0:
+    r0 = value == 0
+    if r0 goto L1 else goto L2 :: bool
+L1:
+    r1 = CPyObject_GenericSetAttr(__mypyc_self__, attr, 0)
+    r2 = r1 >= 0 :: signed
+    return 0
+L2:
+    r3 = cast(str, attr)
+    r4 = __mypyc_self__.__setattr__(r3, value)
+    return 0
+
 [case testUntransformedSetAttr_64bit]
 from mypy_extensions import mypyc_attr
 
