@@ -79,7 +79,9 @@ SLOT_DEFS: SlotTable = {
     "__hash__": ("tp_hash", generate_hash_wrapper),
     "__get__": ("tp_descr_get", generate_get_wrapper),
     "__getattr__": ("tp_getattro", dunder_attr_slot),
-    "__setattr__": ("tp_setattro", dunder_attr_slot),
+    # The wrapper is also generated for a class that defines only __delattr__, so fill
+    # the slot based on the wrapper instead of __setattr__.
+    "__setattr____wrapper": ("tp_setattro", native_slot),
 }
 
 AS_MAPPING_SLOT_DEFS: SlotTable = {
