@@ -5911,6 +5911,11 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                 object_type = self.lookup_type(d.expr)
                 fullname = self.expr_checker.method_fullname(object_type, d.name)
             self.check_for_untyped_decorator(e.func, dec, d)
+            # check_call does not apply signature hooks; do that here, as for other calls.
+            if fullname:
+                dec = self.expr_checker.transform_callee_type(
+                    fullname, dec, [temp], [nodes.ARG_POS], e, object_type=object_type
+                )
             sig, t2 = self.expr_checker.check_call(
                 dec, [temp], [nodes.ARG_POS], d, callable_name=fullname, object_type=object_type
             )
