@@ -9776,3 +9776,16 @@ class C:
 
 reveal_type(C.x)  # N: Revealed type is "builtins.int | None"
 [builtins fixtures/classmethod.pyi]
+
+[case testTypeVarDefaultErrorLocation]
+from typing import Generic
+
+from lib import T
+
+# some spaces
+
+class C(Generic[T]): ...
+
+[file lib.py]
+from typing import TypeVar
+T = TypeVar("T", default=int, bound=str)  # E: TypeVar default must be a subtype of the bound type
