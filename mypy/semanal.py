@@ -3136,7 +3136,7 @@ class SemanticAnalyzer(
                     node.node,
                     module_public=module_public,
                     module_hidden=module_hidden,
-                    becomes_typeinfo=True,
+                    becomes_typeinfo=node.node.becomes_typeinfo,
                 )
         # NOTE: we take the original node even for final `Var`s. This is to support
         # a common pattern when constants are re-exported (same applies to import *).
@@ -3385,6 +3385,10 @@ class SemanticAnalyzer(
                 special_form = True
             elif self.analyze_enum_assign(s):
                 special_form = True
+        elif isinstance(s.rvalue, OpExpr):
+            # In rare cases we may need to "backtrack", and make something we thought is
+            # an alias into a regular variable, see testUnionNewSyntaxUndefinedAttrNoCrash.
+            s.rvalue.analyzed = None
 
         if special_form:
             self.record_special_form_lvalue(s)
@@ -3533,6 +3537,11 @@ class SemanticAnalyzer(
                     return True
         elif isinstance(rv, IndexExpr) and isinstance(rv.base, RefExpr):
             return self.should_wait_rhs(rv.base)
+        if isinstance(rv, OpExpr) and rv.op == "|":
+            if self.is_stub_file:
+                return False
+            if self.should_wait_rhs(rv.left) or self.should_wait_rhs(rv.right):
+                return True
         elif isinstance(rv, CallExpr) and isinstance(rv.callee, RefExpr):
             # This is only relevant for builtin SCC where things like 'TypeVar'
             # may be not ready.
@@ -3543,7 +3552,7 @@ class SemanticAnalyzer(
         """Is this a valid r.h.s. for an alias definition?
 
         Note: this function should be only called for expressions where self.should_wait_rhs()
-        returns False.
+        returns False, keep these two functions "in sync".
         """
         if isinstance(rv, RefExpr) and self.is_type_ref(rv, bare=True):
             return True
@@ -4251,6 +4260,10 @@ class SemanticAnalyzer(
             # annotations (see the second rule).
             return False
         if not pep_613 and not pep_695 and not self.can_be_type_alias(rvalue):
+            if isinstance(rvalue, OpExpr):
+                # Backtrack potential alias to a regular variable.
+                if existing and isinstance(existing.node, TypeAlias):
+                    del self.current_symbol_table()[lvalue.name]
             return False
 
         if existing and not isinstance(existing.node, (PlaceholderNode, TypeAlias)):
@@ -6862,6 +6875,10 @@ class SemanticAnalyzer(
                     nextsym = self.get_module_symbol(node, part)
                     namespace = node.fullname
                 elif isinstance(node, PlaceholderNode):
+                    # TODO: find a cleaner way to handle this.
+                    # We don't know if the resolved placeholder will have the attribute.
+                    # But if we try to be strict here, we will break some use cases like:
+                    #     Alias = Outer.NestedOne | Outer.NestedTwo
                     return sym
                 elif isinstance(node, TypeAlias) and node.no_args:
                     assert isinstance(node.target, ProperType)
