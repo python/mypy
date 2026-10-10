@@ -222,9 +222,17 @@ decorators can be used with native classes, however:
 * ``mypy_extensions.mypyc_attr`` (see :ref:`above <inheritance>`)
 * ``dataclasses.dataclass``
 * ``@attr.s(auto_attribs=True)``
+* ``warnings.deprecated`` and ``typing_extensions.deprecated``
 
 Dataclasses and attrs classes have partial native support, and they aren't as
 efficient as pure native classes.
+
+Mypyc doesn't call ``@deprecated`` at runtime. Instead, the native class
+has the ``__deprecated__`` attribute and issues the warning itself when
+an instance or a subclass of it is created. This applies if the message
+is a string literal, ``category`` is omitted, ``None`` or a class defined
+at module top level, and ``stacklevel`` is omitted or an integer literal.
+In other cases ``@deprecated`` is an unsupported class decorator.
 
 .. note::
 

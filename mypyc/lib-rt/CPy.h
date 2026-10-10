@@ -1135,6 +1135,7 @@ PyObject *CPyType_FromTemplateWrapper(PyObject *template_,
                                       PyObject *orig_bases,
                                       PyObject *modname);
 bool CPy_InitSubclass(PyObject *type);
+PyObject *CPy_SuperInitSubclass(PyObject *type, PyObject *cls, PyObject *args, PyObject *kwds);
 int CPyDataclass_SleightOfHand(PyObject *dataclass_dec, PyObject *tp,
                                PyObject *dict, PyObject *annotations,
                                PyObject *dataclass_type);

@@ -316,6 +316,7 @@ def is_decorated_class(cdef: ClassDef) -> bool:
         and not is_dataclass_decorator(d)
         and not get_mypyc_attr_call(d)
         and not is_final_decorator(d)
+        and get_deprecated_args(d) is None
         for d in cdef.decorators
     )
 
@@ -348,13 +349,18 @@ def is_implicit_extension_class(cdef: ClassDef) -> tuple[bool, str]:
 
 
 class DeprecatedArgs(NamedTuple):
-    """Arguments of a @deprecated(...) decorator that is compiled into the function."""
+    """Arguments of a @deprecated(...) decorator that is compiled into a function or class."""
 
     message: str
     # None means the default category (DeprecationWarning).
     category: RefExpr | None
     stacklevel: int
     line: int
+
+    @property
+    def emits_warning(self) -> bool:
+        """Does the decorator emit a warning? It only sets __deprecated__ if category=None."""
+        return self.category is None or self.category.fullname != "builtins.None"
 
 
 def get_deprecated_args(d: Expression) -> DeprecatedArgs | None:
@@ -420,7 +426,27 @@ def get_compiled_deprecations(dec: Decorator) -> list[DeprecatedArgs]:
     for d in dec.decorators[len(get_runtime_decorators(dec)) :]:
         args = get_deprecated_args(d)
         assert args is not None
-        if args.category is None or args.category.fullname != "builtins.None":
+        if args.emits_warning:
+            deprecations.append(args)
+    return deprecations
+
+
+def get_class_deprecations(cdef: ClassDef) -> list[DeprecatedArgs]:
+    """Return the @deprecated decorators of a class that are compiled into a native class.
+
+    The runtime decorator replaces __new__ and __init_subclass__ of the class, so that
+    creating an instance or a subclass emits the warning. Native classes don't support
+    this: instances are created without looking up __new__, and it can't be replaced
+    anyway. A native class emits the warnings itself instead, and the decorators aren't
+    applied (see ExtClassBuilder.add_deprecations in mypyc.irbuild.classdef).
+
+    The outermost decorator is first, since it emits its warning first. The decorators
+    of a non-extension class are all applied at runtime, including these.
+    """
+    deprecations = []
+    for d in cdef.decorators:
+        args = get_deprecated_args(d)
+        if args is not None:
             deprecations.append(args)
     return deprecations
 
