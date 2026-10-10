@@ -75,7 +75,7 @@ from b import bad # E: Module "b" has no attribute "bad"
 [file b.py]
 # TODO: Could we generate an error here as well?
 from a import bad
-[targets a, b, a, b, a, b, a, b, __main__]
+[targets a, b, a, b, a, b, __main__]
 
 [case testNewAnalyzerExportedValuesInImportAll]
 from m import *
@@ -3248,3 +3248,60 @@ def test() -> None:
 
     class Model:
         pass
+
+[case testUnionNewSyntaxUndefinedAttrNoCrash]
+class Test(Flag):  # E: Name "Flag" is not defined
+    A = auto()  # E: Name "auto" is not defined
+    B = auto()  # E: Name "auto" is not defined
+
+AB = Test.A | Test.B
+
+[case testUnionNewSyntaxUndefinedAttrRegular]
+class Test(Flag):  # E: Name "Flag" is not defined
+    A = 1
+    B = 2
+
+AB = Test.A | Test.B
+reveal_type(AB)  # N: Revealed type is "builtins.int"
+[builtins fixtures/ops.pyi]
+
+[case testUnionNewSyntaxNested]
+class Test(Flag):  # E: Name "Flag" is not defined
+    class A: ...
+    class B: ...
+
+AB = Test.A | Test.B
+ab: AB
+reveal_type(ab)  # N: Revealed type is "__main__.Test.A | __main__.Test.B"
+
+[case testUnionNewSyntaxImportCycleNoCrash]
+import m
+[file m.py]
+from lib import A
+
+AB = int | A
+
+[file lib.py]
+from m import whatever  # type: ignore
+
+A = whatever.A
+
+[case testAliasToNestedClassInsideClassDependingOnAlias]
+class D(list[A]):
+    class C: ...
+
+A = D.C
+x: A
+reveal_type(x)  # N: Revealed type is "__main__.D.C"
+
+[case testUnionNewSyntaxDeepDeferral]
+# flags: --disable-error-code=used-before-def
+
+A = str | B
+
+B = C
+C = D
+class D: ...
+
+x: A
+reveal_type(x)  # N: Revealed type is "builtins.str | __main__.D"
