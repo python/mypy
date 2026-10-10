@@ -6390,6 +6390,236 @@ Sub = type("Sub", (Base,), {})
 s = Sub()
 assert s.method() == "a1"
 
+[case testNativeMethodOverridesDecoratedMethod]
+from typing import Any, Callable, Iterator, TypeVar
+from mypy_extensions import mypyc_attr, trait
+
+F = TypeVar("F", bound=Callable[..., Any])
+
+def same(f: F) -> F:
+    return f
+
+def to_str(f: Callable[..., int]) -> Callable[..., str]:
+    def wrapper(*args: Any) -> str:
+        return "s" + str(f(*args))
+    return wrapper
+
+def drop_arg(f: Callable[[Any, int], int]) -> Callable[[Any], int]:
+    def wrapper(self: Any) -> int:
+        return f(self, 10)
+    return wrapper
+
+class Base:
+    @same
+    def o(self) -> object:
+        return "base"
+
+    @to_str
+    def s(self) -> int:
+        return 5
+
+    @drop_arg
+    def n(self, x: int) -> int:
+        return x + 1
+
+    @same
+    def gen(self) -> Iterator[int]:
+        yield 1
+
+    @same
+    async def co(self) -> int:
+        return 1
+
+    @classmethod
+    @to_str
+    def c(cls) -> int:
+        return 6
+
+    @staticmethod
+    @to_str
+    def st() -> int:
+        return 7
+
+class Native(Base):
+    def o(self) -> int:
+        return 3
+
+    def s(self) -> str:
+        return "native"
+
+    def n(self) -> int:
+        return 2
+
+    def gen(self) -> Iterator[int]:
+        yield 2
+
+    async def co(self) -> int:
+        return 2
+
+    @classmethod
+    def c(cls) -> str:
+        return "c"
+
+    @staticmethod
+    def st() -> str:
+        return "st"
+
+class Leaf(Native):
+    def s(self) -> str:
+        return "leaf"
+
+class Inherits(Native):
+    pass
+
+class Decorated(Base):
+    @same
+    def s(self) -> str:
+        return "decorated"
+
+@trait
+class Trait:
+    @to_str
+    def s(self) -> int:
+        return 8
+
+class Impl(Trait):
+    def s(self) -> str:
+        return "impl"
+
+class Uses(Trait):
+    pass
+
+@mypyc_attr(allow_interpreted_subclasses=True)
+class Open:
+    @to_str
+    def s(self) -> int:
+        return 9
+
+@mypyc_attr(allow_interpreted_subclasses=True)
+class OpenNative(Open):
+    def s(self) -> str:
+        return "open"
+
+def o_base(b: Base) -> object:
+    return b.o()
+
+def o_native(b: Native) -> int:
+    return b.o()
+
+def s_base(b: Base) -> str:
+    return b.s()
+
+def s_native(b: Native) -> str:
+    return b.s()
+
+def n_base(b: Base) -> int:
+    return b.n()
+
+def n_native(b: Native) -> int:
+    return b.n()
+
+def gen_base(b: Base) -> list[int]:
+    return list(b.gen())
+
+def gen_native(b: Native) -> list[int]:
+    return list(b.gen())
+
+async def co_base(b: Base) -> int:
+    return await b.co()
+
+async def co_native(b: Native) -> int:
+    return await b.co()
+
+def s_trait(t: Trait) -> str:
+    return t.s()
+
+def s_impl(i: Impl) -> str:
+    return i.s()
+
+def s_open(o: Open) -> str:
+    return o.s()
+
+def s_open_native(o: OpenNative) -> str:
+    return o.s()
+
+def test_native_method_overrides_decorated_method() -> None:
+    assert o_base(Base()) == "base"
+    assert o_base(Native()) == 3
+    assert o_native(Native()) == 3
+    assert o_native(Leaf()) == 3
+
+    assert s_base(Base()) == "s5"
+    assert s_base(Native()) == "native"
+    assert s_base(Leaf()) == "leaf"
+    assert s_base(Inherits()) == "native"
+    assert s_base(Decorated()) == "decorated"
+    assert s_native(Native()) == "native"
+    assert s_native(Leaf()) == "leaf"
+    assert s_native(Inherits()) == "native"
+
+    assert n_base(Base()) == 11
+    assert n_base(Native()) == 2
+    assert n_native(Native()) == 2
+
+    assert gen_base(Base()) == [1]
+    assert gen_base(Native()) == [2]
+    assert gen_native(Native()) == [2]
+
+    b: Base = Native()
+    assert Base.c() == "s6"
+    assert Native.c() == "c"
+    assert b.c() == "c"
+    assert Base.st() == "s7"
+    assert Native.st() == "st"
+    assert b.st() == "st"
+
+    assert s_trait(Impl()) == "impl"
+    assert s_trait(Uses()) == "s8"
+    assert s_impl(Impl()) == "impl"
+
+    assert s_open(Open()) == "s9"
+    assert s_open(OpenNative()) == "open"
+    assert s_open_native(OpenNative()) == "open"
+
+[typing fixtures/typing-full.pyi]
+[file driver.py]
+import asyncio
+from native import (
+    Base, Native, Leaf, Open, OpenNative, co_base, co_native, s_open, s_open_native,
+    test_native_method_overrides_decorated_method,
+)
+
+test_native_method_overrides_decorated_method()
+
+assert Base().o() == "base"
+assert Native().o() == 3
+assert Base().s() == "s5"
+assert Native().s() == "native"
+assert Leaf().s() == "leaf"
+assert Base().n() == 11
+assert Native().n() == 2
+
+assert asyncio.run(co_base(Base())) == 1
+assert asyncio.run(co_base(Native())) == 2
+assert asyncio.run(co_native(Native())) == 2
+
+class Interp(OpenNative):
+    def s(self) -> str:
+        return "interp"
+
+class InterpInherits(OpenNative):
+    pass
+
+class InterpOpen(Open):
+    def s(self) -> str:
+        return "interp open"
+
+assert s_open(Interp()) == "interp"
+assert s_open_native(Interp()) == "interp"
+assert s_open(InterpInherits()) == "open"
+assert s_open_native(InterpInherits()) == "open"
+assert s_open(InterpOpen()) == "interp open"
+
 [case testClassVarSelfReference]
 # ClassVar initializers that reference other ClassVars from the same class.
 # In CPython, the class body executes as a function where earlier assignments
