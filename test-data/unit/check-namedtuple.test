@@ -1296,6 +1296,22 @@ reveal_type(foo(x, nts))  # N: Revealed type is "builtins.tuple[builtins.int | b
 [builtins fixtures/tuple.pyi]
 [typing fixtures/typing-namedtuple.pyi]
 
+[case testGenericNamedTupleWithConstrainedTypeParams]
+# https://github.com/python/mypy/issues/21453
+
+from typing import Generic, NamedTuple, TypeVar
+
+S = TypeVar("S", str, bytes)
+
+class Result(NamedTuple, Generic[S]):
+    value: S
+
+    def get_value(self) -> S:
+        reveal_type(self) # N: Revealed type is "tuple[builtins.str, fallback=__main__.Result[builtins.str]]" \
+                          # N: Revealed type is "tuple[builtins.bytes, fallback=__main__.Result[builtins.bytes]]"
+        return self.value
+[builtins fixtures/tuple.pyi]
+
 [case testGenericNamedTupleCallSyntax]
 from typing import NamedTuple, TypeVar
 
