@@ -277,14 +277,18 @@ class DocStringParser:
                         self.reset()
                         return
                     self.keyword_only = len(self.args)
+                    # Add * as an argument
+                    self.args.append(ArgSig(name="*"))
                     self.accumulator = ""
                 else:
                     if self.accumulator.startswith("*"):
                         self.keyword_only = len(self.args) + 1
                     self.arg_name = self.accumulator
-                    if not (
-                        token.string == ")" and self.accumulator.strip() == ""
-                    ) and not _ARG_NAME_RE.match(self.arg_name):
+                    if (
+                        not (token.string == ")" and self.accumulator.strip() == "")
+                        and not _ARG_NAME_RE.match(self.arg_name)
+                        and self.arg_name not in ("/", "*")
+                    ):
                         # Invalid argument name.
                         self.reset()
                         return
@@ -293,7 +297,7 @@ class DocStringParser:
                 if (
                     self.state[-1] == STATE_ARGUMENT_LIST
                     and self.keyword_only is not None
-                    and self.keyword_only == len(self.args)
+                    and self.keyword_only == len(self.args) - 1
                     and not self.arg_name
                 ):
                     # Error condition: * must be followed by arguments
@@ -332,8 +336,8 @@ class DocStringParser:
                     self.reset()
                     return
                 self.pos_only = len(self.args)
-                self.state.append(STATE_ARGUMENT_TYPE)
-                self.accumulator = ""
+                # Set accumulator to / so it gets processed like a regular argument
+                self.accumulator = "/"
 
         elif token.type == tokenize.OP and token.string == "->" and self.state[-1] == STATE_INIT:
             self.accumulator = ""
@@ -359,6 +363,8 @@ class DocStringParser:
                 self.found = False
             self.args = []
             self.ret_type = "Any"
+            self.pos_only = None
+            self.keyword_only = None
             # Leave state as INIT.
         else:
             self.accumulator += token.string
@@ -368,6 +374,8 @@ class DocStringParser:
         self.args = []
         self.found = False
         self.accumulator = ""
+        self.pos_only = None
+        self.keyword_only = None
 
     def get_signatures(self) -> list[FunctionSig]:
         """Return sorted copy of the list of signatures found so far."""
