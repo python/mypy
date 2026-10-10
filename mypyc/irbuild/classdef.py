@@ -30,9 +30,14 @@ from mypy.nodes import (
     is_class_var,
 )
 from mypy.types import Instance, UnboundType, get_proper_type
-from mypyc.common import GENERATOR_HELPER_NAME, MYPYC_DEFAULTS_SETUP, PROPSET_PREFIX
+from mypyc.common import (
+    GENERATOR_HELPER_NAME,
+    MYPYC_DEFAULTS_SETUP,
+    MYPYC_WARN_DEPRECATED,
+    PROPSET_PREFIX,
+)
 from mypyc.ir.class_ir import ClassIR, NonExtClassInfo
-from mypyc.ir.func_ir import FuncDecl, FuncSignature
+from mypyc.ir.func_ir import FUNC_STATICMETHOD, FuncDecl, FuncIR, FuncSignature
 from mypyc.ir.ops import (
     NAMESPACE_TYPE,
     BasicBlock,
@@ -52,6 +57,7 @@ from mypyc.ir.ops import (
 from mypyc.ir.rtypes import RType, bool_rprimitive, dict_rprimitive, object_rprimitive
 from mypyc.irbuild.builder import IRBuilder, create_type_params
 from mypyc.irbuild.function import (
+    gen_deprecation_warning,
     gen_property_getter_ir,
     gen_property_setter_ir,
     handle_ext_method,
@@ -61,6 +67,7 @@ from mypyc.irbuild.function import (
 from mypyc.irbuild.util import (
     dataclass_type,
     default_attr_name,
+    get_class_deprecations,
     get_func_def,
     is_constant,
     is_dataclass_decorator,
@@ -325,11 +332,20 @@ class ExtClassBuilder(ClassBuilder):
         super().__init__(builder, cdef)
         # If the class is not decorated, generate an extension class for it.
         self.type_obj: Value = allocate_class(builder, cdef)
+        # The @deprecated decorators of the class that emit a warning. They aren't
+        # applied at runtime (see add_deprecations).
+        self.deprecation_warnings = [d for d in get_class_deprecations(cdef) if d.emits_warning]
 
     def class_body_obj(self) -> Value | None:
         return self.type_obj
 
     def add_method(self, fdef: FuncDef) -> None:
+        if fdef.name == "__init_subclass__" and self.deprecation_warnings:
+            # Creating a subclass of a deprecated class emits the warning. The runtime
+            # decorator wraps an __init_subclass__ that the class defines to do this.
+            self.builder.fdefs_to_deprecations[fdef] = (
+                self.deprecation_warnings + self.builder.fdefs_to_deprecations.get(fdef, [])
+            )
         handle_ext_method(self.builder, self.cdef, fdef)
 
     def add_attr(self, lvalue: NameExpr, stmt: AssignmentStmt) -> None:
@@ -364,6 +380,49 @@ class ExtClassBuilder(ClassBuilder):
             ir.attrs_with_defaults.update(attrs_with_defaults)
             generate_attr_defaults_init(self.builder, self.cdef, default_assignments)
         create_ne_from_eq(self.builder, self.cdef)
+        self.add_deprecations(ir)
+
+    def add_deprecations(self, ir: ClassIR) -> None:
+        """Deprecate the class if it's decorated with @deprecated (PEP 702).
+
+        These decorators aren't applied at runtime (see get_class_deprecations in
+        mypyc.irbuild.util). Set __deprecated__ like they do, and generate a function that
+        emits their warnings. The generated C code calls it when an instance of the class
+        itself (but not of a subclass) is created, and in __init_subclass__ if the class
+        doesn't define it (see mypyc.codegen.emitclass).
+        """
+        deprecations = get_class_deprecations(self.cdef)
+        if not deprecations:
+            return
+        builder = self.builder
+        # The outermost decorator would be applied last.
+        message, _, _, line = deprecations[0]
+        builder.primitive_op(
+            py_setattr_op,
+            [self.type_obj, builder.load_str("__deprecated__"), builder.load_str(message)],
+            line,
+        )
+        if not self.deprecation_warnings:
+            return
+        builder.enter(MYPYC_WARN_DEPRECATED, ret_type=bool_rprimitive)
+        for deprecation in self.deprecation_warnings:
+            gen_deprecation_warning(builder, deprecation)
+        builder.add(Return(builder.true()))
+        arg_regs, args, blocks, ret_type, _ = builder.leave()
+        decl = FuncDecl(
+            MYPYC_WARN_DEPRECATED,
+            ir.name,
+            builder.module_name,
+            FuncSignature(args, ret_type),
+            FUNC_STATICMETHOD,
+            internal=True,
+        )
+        # This isn't added to ir.methods, so that it doesn't get a vtable entry. The
+        # layout of the vtable would otherwise depend on a decorator argument (category)
+        # that doesn't affect the interface of the module as mypy sees it, and modules
+        # with subclasses wouldn't be recompiled in incremental mode when it changes.
+        ir.method_decls[MYPYC_WARN_DEPRECATED] = decl
+        builder.functions.append(FuncIR(decl, arg_regs, blocks, self.cdef.line))
 
 
 class DataClassBuilder(ExtClassBuilder):

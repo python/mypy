@@ -45,6 +45,7 @@ from mypyc.ir.ops import (
     ComparisonOp,
     GetAttr,
     Integer,
+    LoadGlobal,
     LoadLiteral,
     Register,
     Return,
@@ -57,6 +58,7 @@ from mypyc.ir.rtypes import (
     RInstance,
     bool_rprimitive,
     c_int_rprimitive,
+    c_pyssize_t_rprimitive,
     dict_rprimitive,
     int_rprimitive,
     object_rprimitive,
@@ -77,11 +79,13 @@ from mypyc.irbuild.env_class import (
 )
 from mypyc.irbuild.generator import gen_generator_func, gen_generator_func_body
 from mypyc.irbuild.targets import AssignmentTarget
+from mypyc.irbuild.util import DeprecatedArgs
 from mypyc.primitives.dict_ops import (
     dict_get_method_with_none,
     dict_new_op,
     exact_dict_set_item_op,
 )
+from mypyc.primitives.exc_ops import warn_op
 from mypyc.primitives.generic_ops import (
     generic_getattr,
     generic_setattr,
@@ -266,6 +270,8 @@ def gen_func_item(
     if is_nested or in_non_ext:
         setup_callable_class(builder)
 
+    gen_deprecation_warnings(builder, fitem)
+
     if is_generator:
         # First generate a function that just constructs and returns a generator object.
         func_ir, func_reg = gen_generator_func(
@@ -313,6 +319,35 @@ def gen_func_body(
     # calculate them *once* when the function definition is evaluated.
     calculate_arg_defaults(builder, fn_info, func_reg, symtable)
     return func_ir, func_reg
+
+
+def gen_deprecation_warnings(builder: IRBuilder, fitem: FuncItem) -> None:
+    """Generate the warnings that a function decorated with @deprecated emits when called.
+
+    These decorators aren't applied at runtime (see get_deprecated_args in
+    mypyc.irbuild.util). A generator or a coroutine warns when it's created, like the
+    wrapper of the runtime decorator does, and not when it starts to run.
+    """
+    if not isinstance(fitem, FuncDef):
+        return
+    for deprecation in builder.fdefs_to_deprecations.get(fitem, []):
+        gen_deprecation_warning(builder, deprecation)
+
+
+def gen_deprecation_warning(builder: IRBuilder, deprecation: DeprecatedArgs) -> None:
+    """Generate the warning of a @deprecated decorator that isn't applied at runtime."""
+    message, category, stacklevel, line = deprecation
+    if category is None:
+        category_reg: Value = builder.add(
+            LoadGlobal(object_rprimitive, "PyExc_DeprecationWarning", line)
+        )
+    else:
+        category_reg = builder.accept(category)
+    builder.call_c(
+        warn_op,
+        [category_reg, builder.load_str(message), Integer(stacklevel, c_pyssize_t_rprimitive)],
+        line,
+    )
 
 
 def has_nested_func_self_reference(builder: IRBuilder, fitem: FuncItem) -> bool:

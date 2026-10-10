@@ -76,6 +76,7 @@ from mypyc.irbuild.util import (
     default_attr_name,
     get_func_def,
     get_mypyc_attrs,
+    get_runtime_decorators,
     is_class_body_final,
     is_dataclass,
     is_decorated_class,
@@ -313,9 +314,10 @@ def prepare_method_def(
         # TODO: do something about abstract methods here. Currently, they are handled just like
         # normal methods.
         decl = prepare_func_def(module_name, cdef.name, node.func, mapper, options)
-        if not node.decorators:
+        decorators = get_runtime_decorators(node)
+        if not decorators:
             ir.method_decls[node.name] = decl
-        elif isinstance(node.decorators[0], MemberExpr) and node.decorators[0].name == "setter":
+        elif isinstance(decorators[0], MemberExpr) and decorators[0].name == "setter":
             # Make property setter name different than getter name so there are no
             # name clashes when generating C code, and property lookup at the IR level
             # works correctly.
@@ -373,9 +375,9 @@ def is_valid_multipart_property_def(prop: OverloadedFuncDef) -> bool:
         isinstance(getter, Decorator)
         and isinstance(setter, Decorator)
         and getter.func.is_property
-        and len(setter.decorators) == 1
-        and isinstance(setter.decorators[0], MemberExpr)
-        and setter.decorators[0].name == "setter"
+        and len(decorators := get_runtime_decorators(setter)) == 1
+        and isinstance(decorators[0], MemberExpr)
+        and decorators[0].name == "setter"
     )
 
 

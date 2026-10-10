@@ -364,6 +364,24 @@ bool CPy_InitSubclass(PyObject *type) {
     return true;
 }
 
+// Call super(type, cls).__init_subclass__(*args, **kwds). This is used by the
+// __init_subclass__ method of a native class that is decorated with @deprecated.
+PyObject *CPy_SuperInitSubclass(PyObject *type, PyObject *cls, PyObject *args, PyObject *kwds) {
+    PyObject *super_args[2] = {type, cls};
+    PyObject *super = PyObject_Vectorcall((PyObject *)&PySuper_Type, super_args, 2, NULL);
+    if (super == NULL) {
+        return NULL;
+    }
+    PyObject *func = PyObject_GetAttr(super, mypyc_interned_str.__init_subclass__);
+    Py_DECREF(super);
+    if (func == NULL) {
+        return NULL;
+    }
+    PyObject *result = PyObject_Call(func, args, kwds);
+    Py_DECREF(func);
+    return result;
+}
+
 static int _CPy_UpdateObjFromDict(PyObject *obj, PyObject *dict)
 {
     Py_ssize_t pos = 0;

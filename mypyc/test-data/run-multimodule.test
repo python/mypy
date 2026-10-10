@@ -1091,6 +1091,72 @@ from other_b import B
 d = native.Data(A(), B(), B())
 assert isinstance(d.b, B)
 
+[case testMultiModuleDeprecatedClass]
+from typing import Any
+from other import Base, BaseError
+
+class Child(Base):
+    def __init_subclass__(cls, **kwargs: Any) -> None:
+        super().__init_subclass__(**kwargs)
+
+    def get(self) -> int:
+        return super().get() + 10
+
+class GrandChild(Child):
+    pass
+
+class ChildError(BaseError):
+    pass
+
+def make_base() -> Base:
+    return Base(1)
+
+def make_child() -> Child:
+    return Child(2)
+
+def make_error() -> BaseError:
+    return BaseError("x")
+
+[file other.py]
+from typing_extensions import deprecated
+
+@deprecated("Base is deprecated")
+class Base:
+    def __init__(self, x: int) -> None:
+        self.x = x
+
+    def get(self) -> int:
+        return self.x
+
+@deprecated("BaseError is deprecated")
+class BaseError(Exception):
+    pass
+
+[file driver.py]
+import warnings
+from typing import Any, Callable
+
+def check(fn: Callable[[], Any], expected: Any, *messages: str) -> None:
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        result = fn()
+    assert result == expected, result
+    assert [str(w.message) for w in caught] == list(messages), caught
+
+def import_native() -> None:
+    import native
+
+# Creating Child, GrandChild and ChildError
+check(import_native, None, "Base is deprecated", "Base is deprecated", "BaseError is deprecated")
+
+from native import ChildError, GrandChild, make_base, make_child, make_error
+
+check(lambda: make_base().get(), 1, "Base is deprecated")
+check(lambda: make_child().get(), 12)
+check(lambda: GrandChild(3).get(), 13)
+check(lambda: repr(make_error()), "BaseError('x')", "BaseError is deprecated")
+check(lambda: repr(ChildError("y")), "ChildError('y')")
+
 [case testMultiModuleRelative]
 from package.a import f
 [file package/__init__.py]
@@ -1595,6 +1661,60 @@ print(get(), same_instance())
 
 [rechecked native, other]
 [rechecked2 native]
+
+[case testIncrementalCompilationDeprecatedClassWarning]
+# Mypy can't see whether a deprecated class emits a warning (category=None), so
+# native.py isn't recompiled when that changes.
+from other import C
+
+class D(C):
+    def g(self) -> int:
+        return self.f() + 1
+
+def make() -> C:
+    return C()
+
+def call(c: C) -> int:
+    return c.f() + c.h()
+
+[file other.py]
+from typing_extensions import deprecated
+
+@deprecated("C is deprecated", category=None)
+class C:
+    def f(self) -> int:
+        return 1
+
+    def h(self) -> int:
+        return 10
+
+[file other.py.2]
+from typing_extensions import deprecated
+
+@deprecated("C is deprecated")
+class C:
+    def f(self) -> int:
+        return 1
+
+    def h(self) -> int:
+        return 10
+
+[file driver.py]
+import warnings
+
+with warnings.catch_warnings(record=True) as caught:
+    warnings.simplefilter("always")
+    from native import D, call, make
+    print(call(make()), call(D()), D().g())
+print("warnings:", ", ".join(str(w.message) for w in caught))
+[out]
+11 11 2
+warnings:
+[out2]
+11 11 2
+warnings: C is deprecated, C is deprecated
+
+[rechecked other]
 
 [case testIncrementalCompilationWithNonClassTypeDef]
 import other_a
