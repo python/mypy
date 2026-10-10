@@ -315,6 +315,18 @@ match m:
         reveal_type(m)  # N: Revealed type is "tuple[Literal[1], Literal['str']]"
 [builtins fixtures/list.pyi]
 
+[case testMatchSequencePatternTupleUnionStopsAfterUnmatchedItem]
+# flags: --strict-equality --warn-unreachable
+from typing import Literal
+
+m: tuple[Literal["a"], None] | tuple[Literal["b"], int] = ("a", None)
+match m:
+    case "a", None:
+        pass
+    case _:
+        pass
+[builtins fixtures/tuple.pyi]
+
 [case testMatchSequencePatternTupleStarred]
 # flags: --strict-equality --warn-unreachable
 from typing import Tuple

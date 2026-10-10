@@ -337,6 +337,8 @@ class PatternChecker(PatternVisitor[PatternType]):
         for p, t in zip(o.patterns, contracted_inner_types):
             pattern_type = self.accept(p, t)
             typ, rest, type_map = pattern_type
+            if is_uninhabited(typ):
+                return self.early_non_match()
             contracted_new_inner_types.append(typ)
             contracted_rest_inner_types.append(rest)
             self.update_type_map(captures, type_map)
