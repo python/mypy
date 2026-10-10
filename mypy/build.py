@@ -3056,7 +3056,10 @@ class State:
         # same for suppressed dependencies, even if the first check is OK.
         return (
             self.meta is not None
-            and self.dependencies == self.meta.dependencies
+            # Loading and suppressing dependencies can change their iteration order.
+            and self.dependencies_set == set(self.meta.dependencies)
+            and len(self.dependencies_set) == len(self.dependencies)
+            and len(self.dependencies) == len(self.meta.dependencies)
             and (
                 self.options.fine_grained_incremental
                 or self.meta.suppressed_deps_opts == self.suppressed_deps_opts()
