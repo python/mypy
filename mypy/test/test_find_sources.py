@@ -220,6 +220,18 @@ class SourceFinderSuite(unittest.TestCase):
             ("f", "/pkg/a1/b"),
         ]
 
+    def test_find_sources_in_same_named_file_and_namespace_dir(self) -> None:
+        options = Options()
+        finder = SourceFinder(FakeFSCache({"/pkg/x.py", "/pkg/x/y.py"}), options)
+
+        assert find_sources_in_dir(finder, "/pkg") == [("x", "/pkg"), ("y", "/pkg/x")]
+
+    def test_find_sources_in_same_named_file_and_package_dir(self) -> None:
+        options = Options()
+        finder = SourceFinder(FakeFSCache({"/pkg/x.py", "/pkg/x/__init__.py"}), options)
+
+        assert find_sources_in_dir(finder, "/pkg") == [("x", "/pkg")]
+
     def test_find_sources_in_dir_namespace_explicit_base(self) -> None:
         options = Options()
         options.namespace_packages = True
