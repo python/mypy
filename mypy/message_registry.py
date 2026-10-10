@@ -133,6 +133,10 @@ PARAM_TYPE_EXPECTED: Final = ErrorMessage(
 KEYWORD_ARGUMENT_REQUIRES_STR_KEY_TYPE: Final = ErrorMessage(
     'Keyword argument only valid with "str" key type in call to "dict"'
 )
+TYPE_FORM_STRING_ARGUMENT_HINT: Final = (
+    "If this string was intended as a type expression, wrap it in TypeForm(...) "
+    "to get a more specific error."
+)
 ALL_MUST_BE_SEQ_STR: Final = ErrorMessage("Type of __all__ must be {}, not {}")
 INVALID_TYPEDDICT_ARGS: Final = ErrorMessage(
     "Expected keyword arguments, {...}, or dict(...) in TypedDict constructor"
