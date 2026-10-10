@@ -72,12 +72,15 @@ class Frame:
     types -- the concept predates literal types.
     """
 
-    def __init__(self, id: int, conditional_frame: bool = False) -> None:
+    def __init__(self, id: int, conditional_frame: bool = False, discard: bool = False) -> None:
         self.id = id
         self.types: dict[Key, CurrentType] = {}
         self.unreachable = False
         self.conditional_frame = conditional_frame
         self.suppress_unreachable_warnings = False
+        # For a frame that will be discarded: types removed from outer frames while
+        # this frame is on the stack, to be restored when it is popped.
+        self.removed_types: list[tuple[Frame, Key, CurrentType]] | None = [] if discard else None
 
     def __repr__(self) -> str:
         return f"Frame({self.id}, {self.types}, {self.unreachable}, {self.conditional_frame})"
@@ -123,7 +126,7 @@ class FrameContext:
         if self.try_frame:
             self.binder.try_frames.add(len(self.binder.frames) - 1)
 
-        new_frame = self.binder.push_frame(self.conditional_frame)
+        new_frame = self.binder.push_frame(self.conditional_frame, discard=self.discard)
         if self.try_frame:
             # An exception may occur immediately
             self.binder.allow_jump(-1)
@@ -208,6 +211,9 @@ class ConditionalTypeBinder:
         # expression caches when needed.
         self.version = 0
 
+        # Indices (in self.frames) of the frames that will be discarded when popped.
+        self.discard_frames: list[int] = []
+
     def _get_id(self) -> int:
         self.next_id += 1
         return self.next_id
@@ -220,9 +226,14 @@ class ConditionalTypeBinder:
         for elt in subkeys(key):
             self._add_dependencies(elt, value)
 
-    def push_frame(self, conditional_frame: bool = False) -> Frame:
-        """Push a new frame into the binder."""
-        f = Frame(self._get_id(), conditional_frame)
+    def push_frame(self, conditional_frame: bool = False, discard: bool = False) -> Frame:
+        """Push a new frame into the binder.
+
+        If discard is True, the frame must be popped with discard=True.
+        """
+        f = Frame(self._get_id(), conditional_frame, discard)
+        if discard:
+            self.discard_frames.append(len(self.frames))
         self.frames.append(f)
         self.options_on_return.append([])
         return f
@@ -295,8 +306,13 @@ class ConditionalTypeBinder:
 
     def _cleanse_key(self, key: Key) -> None:
         """Remove all references to a key from the binder."""
-        for frame in self.frames:
+        for i, frame in enumerate(self.frames):
             if key in frame.types:
+                if self.discard_frames and i < self.discard_frames[-1]:
+                    # Restore the type when the innermost discarded frame is popped.
+                    removed = self.frames[self.discard_frames[-1]].removed_types
+                    assert removed is not None
+                    removed.append((frame, key, frame.types[key]))
                 del frame.types[key]
 
     def update_from_options(self, frames: list[Frame]) -> bool:
@@ -438,8 +454,18 @@ class ConditionalTypeBinder:
         options = self.options_on_return.pop()
 
         if discard:
+            assert self.discard_frames and self.discard_frames[-1] == len(self.frames)
+            self.discard_frames.pop()
+            removed = result.removed_types
+            assert removed is not None
+            for frame, key, current in reversed(removed):
+                frame.types[key] = current
+            if result.types or removed or result.unreachable:
+                # Types visible through the frame stack are now different again.
+                self.version += 1
             self.last_pop_changed = False
             return result
+        assert result.removed_types is None, "Frame was pushed with discard=True"
 
         if can_skip:
             options.insert(0, self.frames[-1])
@@ -607,6 +633,8 @@ class ConditionalTypeBinder:
 
         If discard is True, then this is a temporary throw-away frame
         (used e.g. for isolation) and its effect will be discarded on pop.
+        This includes types removed from outer frames while it was pushed,
+        which are restored.
 
         After the context manager exits, self.last_pop_changed indicates
         whether any types changed in the newly-topmost frame as a result
