@@ -5759,6 +5759,257 @@ def test_no_setattr_nonnative() -> None:
 
 [typing fixtures/typing-full.pyi]
 
+[case testDunderSetAttrDefinedInSubclass]
+from typing import Final
+
+from mypy_extensions import i64, trait
+from testutil import assertRaises
+
+setattr_calls: list[str] = []
+
+class Base:
+    def __init__(self) -> None:
+        self.attr = 0
+        self.float_attr = 0.5
+        self.i64_attr: i64 = 5
+        self.tuple_attr: tuple[int, str] = (1, "x")
+        self._prop = 0
+
+    @property
+    def prop(self) -> int:
+        return self._prop
+
+    @prop.setter
+    def prop(self, value: int) -> None:
+        self._prop = value * 2
+
+    def assign_in_method(self) -> None:
+        self.attr = 1
+        self.attr += 1
+        self.float_attr, self.i64_attr = 1.5, 1 << 40
+        self.tuple_attr = (2, "y")
+        self.prop = 3
+
+    def assign_with_object_setattr(self) -> None:
+        object.__setattr__(self, "attr", 10)
+
+class NoSetAttr(Base):
+    pass
+
+class Intermediate(Base):
+    def assign_in_intermediate(self) -> None:
+        self.attr = 20
+
+class WithSetAttr(Intermediate):
+    def __setattr__(self, key: str, val: object) -> None:
+        setattr_calls.append(f"{key}={val!r}")
+        super().__setattr__(key, val)
+
+class InheritsSetAttr(WithSetAttr):
+    pass
+
+def assign_in_function(obj: Base) -> None:
+    obj.attr = 30
+
+def check_attrs(obj: Base) -> None:
+    assert obj.attr == 30
+    assert obj.float_attr == 1.5
+    assert obj.i64_attr == 1 << 40
+    assert obj.tuple_attr == (2, "y")
+    assert obj.prop == 6
+
+def test_setattr_defined_in_subclass() -> None:
+    for inherited in False, True:
+        setattr_calls.clear()
+        obj = InheritsSetAttr() if inherited else WithSetAttr()
+        assert setattr_calls == [
+            "attr=0", "float_attr=0.5", "i64_attr=5", "tuple_attr=(1, 'x')", "_prop=0"
+        ]
+
+        setattr_calls.clear()
+        obj.assign_in_method()
+        assert setattr_calls == [
+            "attr=1",
+            "attr=2",
+            "float_attr=1.5",
+            "i64_attr=1099511627776",
+            "tuple_attr=(2, 'y')",
+            "prop=3",
+            "_prop=6",
+        ]
+
+        setattr_calls.clear()
+        obj.assign_with_object_setattr()
+        assert setattr_calls == []
+        assert obj.attr == 10
+
+        obj.assign_in_intermediate()
+        assert setattr_calls == ["attr=20"]
+
+        assign_in_function(obj)
+        assert setattr_calls == ["attr=20", "attr=30"]
+        check_attrs(obj)
+
+def test_subclass_setattr_not_used_by_other_classes() -> None:
+    setattr_calls.clear()
+    base = Base()
+    base.assign_in_method()
+    base.assign_with_object_setattr()
+    assign_in_function(base)
+    check_attrs(base)
+
+    no_setattr = NoSetAttr()
+    no_setattr.assign_in_method()
+    assign_in_function(no_setattr)
+    check_attrs(no_setattr)
+
+    intermediate = Intermediate()
+    intermediate.assign_in_method()
+    intermediate.assign_in_intermediate()
+    assign_in_function(intermediate)
+    check_attrs(intermediate)
+    assert setattr_calls == []
+
+class Point:
+    def __init__(self, x: int, name: str) -> None:
+        self.x = x
+        self.name = name
+        self.ratio = 0.5
+        self.count: i64 = 0
+
+def read_x(p: Point) -> int:
+    return p.x
+
+def read_name(p: Point) -> str:
+    return p.name
+
+def read_ratio(p: Point) -> float:
+    return p.ratio
+
+def read_count(p: Point) -> i64:
+    return p.count
+
+class DiscardsValues(Point):
+    def __setattr__(self, key: str, val: object) -> None:
+        setattr_calls.append(key)
+
+class Frozen(Point):
+    def __setattr__(self, key: str, val: object) -> None:
+        raise AttributeError(f"can't set {key}")
+
+def test_setattr_that_does_not_set_attribute() -> None:
+    setattr_calls.clear()
+    p = DiscardsValues(1, "a")
+    assert setattr_calls == ["x", "name", "ratio", "count"]
+    with assertRaises(AttributeError):
+        read_x(p)
+    with assertRaises(AttributeError):
+        read_name(p)
+    with assertRaises(AttributeError):
+        read_ratio(p)
+    with assertRaises(AttributeError):
+        read_count(p)
+
+    with assertRaises(AttributeError, "can't set x"):
+        Frozen(1, "a")
+
+    p2 = Point(1, "a")
+    assert read_x(p2) == 1
+    assert read_name(p2) == "a"
+    assert read_ratio(p2) == 0.5
+    assert read_count(p2) == 0
+
+class HasFinal:
+    def __init__(self) -> None:
+        self.final_attr: Final = 1
+        self.attr = 2
+
+class HasFinalSetAttr(HasFinal):
+    def __setattr__(self, key: str, val: object) -> None:
+        setattr_calls.append(f"{key}={val!r}")
+        super().__setattr__(key, val)
+
+def test_final_attribute() -> None:
+    setattr_calls.clear()
+    obj = HasFinalSetAttr()
+    # The Final attribute is set without calling __setattr__, since it couldn't set it.
+    assert "attr=2" in setattr_calls
+    assert obj.final_attr == 1
+    assert obj.attr == 2
+
+class Item:
+    def __init__(self) -> None:
+        self.attr = 0
+
+class Holder:
+    def __init__(self, item: Item) -> None:
+        self.item = item
+
+holders: list[Holder] = []
+
+class ReplacesItself(Item):
+    def __setattr__(self, key: str, val: object) -> None:
+        if holders:
+            # The holder has the only reference to self.
+            holders[0].item = Item()
+            unused = [str(i) for i in range(1000)]
+        super().__setattr__(key, val)
+        setattr_calls.append(f"{key}={self.attr}")
+
+def assign_to_item(holder: Holder) -> None:
+    holder.item.attr = 1
+
+def test_setattr_that_releases_object() -> None:
+    setattr_calls.clear()
+    holder = Holder(ReplacesItself())
+    assert setattr_calls == ["attr=0"]
+    holders.append(holder)
+    assign_to_item(holder)
+    assert setattr_calls == ["attr=0", "attr=1"]
+    assert holder.item.attr == 0
+    assign_to_item(holder)
+    assert holder.item.attr == 1
+    assert setattr_calls == ["attr=0", "attr=1"]
+    holders.clear()
+
+@trait
+class Trait:
+    trait_attr: int
+
+    def assign_in_trait(self) -> None:
+        self.trait_attr = 1
+
+class TraitNoSetAttr(Trait):
+    def __init__(self) -> None:
+        self.trait_attr = 0
+
+class TraitSetAttr(Trait):
+    def __setattr__(self, key: str, val: object) -> None:
+        setattr_calls.append(f"{key}={val!r}")
+        super().__setattr__(key, val)
+
+    def __init__(self) -> None:
+        self.trait_attr = 0
+
+def assign_through_trait(obj: Trait) -> None:
+    obj.trait_attr = 2
+
+def test_setattr_in_class_with_trait() -> None:
+    setattr_calls.clear()
+    obj = TraitSetAttr()
+    obj.assign_in_trait()
+    assign_through_trait(obj)
+    assert setattr_calls == ["trait_attr=0", "trait_attr=1", "trait_attr=2"]
+    assert obj.trait_attr == 2
+
+    setattr_calls.clear()
+    no_setattr = TraitNoSetAttr()
+    no_setattr.assign_in_trait()
+    assert no_setattr.trait_attr == 1
+    assign_through_trait(no_setattr)
+    assert no_setattr.trait_attr == 2
+    assert setattr_calls == []
+
 [case testDunderSetAttrInterpreted]
 from mypy_extensions import mypyc_attr
 from typing import ClassVar
