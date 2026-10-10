@@ -2478,6 +2478,12 @@ class SemanticAnalyzer(
         assert not is_unpacked or not is_typealias_param, "Mutually exclusive conditions"
         sym = self.lookup_qualified(t.name, t)
         if sym and isinstance(sym.node, PlaceholderNode):
+            if self.final_iteration:
+                # The reference can never be resolved (e.g. a class using itself
+                # in its own bases: `class C(Generic[C])`). Don't defer here, as
+                # that would be an internal error. Fall through so the caller
+                # reports a proper error instead.
+                return None
             self.record_incomplete_ref()
         if not is_unpacked and sym and isinstance(sym.node, ParamSpecExpr):
             if sym.fullname and not self.tvar_scope.allow_binding(sym.fullname):
