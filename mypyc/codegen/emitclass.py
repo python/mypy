@@ -33,6 +33,7 @@ from mypyc.common import (
     GENERATOR_HELPER_NAME,
     IS_FREE_THREADED,
     MYPYC_DEFAULTS_SETUP,
+    MYPYC_WARN_DEPRECATED,
     NATIVE_PREFIX,
     PREFIX,
     REG_PREFIX,
@@ -272,8 +273,10 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
 
     generate_full = not cl.is_trait and not cl.builtin_base
     needs_getseters = cl.needs_getseters_table
+    is_deprecated = MYPYC_WARN_DEPRECATED in cl.method_decls
 
-    if not cl.builtin_base:
+    # A class with a built-in base class normally inherits tp_new.
+    if not cl.builtin_base or is_deprecated:
         fields["tp_new"] = new_name
 
     managed_dict = has_managed_dict(cl, emitter)
@@ -429,8 +432,19 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
 
     if cl.is_trait:
         generate_new_for_trait(cl, new_name, emitter)
+    elif cl.builtin_base and is_deprecated:
+        generate_new_for_deprecated_builtin_subclass(cl, new_name, emitter)
+        emit_line()
 
-    generate_methods_table(cl, methods_name, setup_name if generate_full else None, emitter)
+    init_subclass_name = None
+    if is_deprecated and "__init_subclass__" not in cl.methods:
+        init_subclass_name = f"{name_prefix}_init_subclass"
+        generate_init_subclass_for_deprecated_class(cl, init_subclass_name, emitter)
+        emit_line()
+
+    generate_methods_table(
+        cl, methods_name, setup_name if generate_full else None, init_subclass_name, emitter
+    )
     emit_line()
 
     flags = ["Py_TPFLAGS_DEFAULT", "Py_TPFLAGS_HEAPTYPE", "Py_TPFLAGS_BASETYPE"]
@@ -797,6 +811,8 @@ def generate_constructor_for_class(
     type_arg = "(PyObject *)" + emitter.type_struct_name(cl)
     new_args = ", ".join(fn_args)
 
+    emit_deprecation_warning(cl, emitter)
+
     use_wrapper = (
         cl.has_method("__new__")
         and len(fn.sig.args) == 2
@@ -876,6 +892,8 @@ def generate_new_for_class(
         emitter.emit_line("return NULL;")
         emitter.emit_line("}")
 
+    emit_deprecation_warning(cl, emitter, type_arg="type")
+
     type_arg = "(PyObject*)type"
     new_args = "args, kwds"
     emit_setup_or_dunder_new_call(cl, setup_name, type_arg, False, new_args, emitter)
@@ -898,6 +916,56 @@ def generate_new_for_class(
         emitter.emit_lines("if (ret == NULL) {", "    Py_DECREF(self);", "    return NULL;", "}")
         emitter.emit_line("Py_DECREF(ret);")
         emitter.emit_line("return self;")
+    emitter.emit_line("}")
+
+
+def emit_deprecation_warning(cl: ClassIR, emitter: Emitter, type_arg: str | None = None) -> None:
+    """Emit C code to issue the warnings of a class that is decorated with @deprecated.
+
+    This does nothing for other classes. If type_arg is given, it's the name of a C
+    variable with the type object of the instance that is being created. Only warn if
+    it's the class itself, like the runtime decorator. The code returns NULL on a raised
+    exception (if the warning is turned into an error).
+    """
+    warn_fn = cl.method_decls.get(MYPYC_WARN_DEPRECATED)
+    if warn_fn is None:
+        return
+    cond = f"{emitter.native_function_call(warn_fn)}() == 2"
+    if type_arg is not None:
+        cond = f"{type_arg} == {emitter.type_struct_name(cl)} && {cond}"
+    emitter.emit_line(f"if ({cond})")
+    emitter.emit_line("    return NULL;")
+
+
+def generate_new_for_deprecated_builtin_subclass(
+    cl: ClassIR, func_name: str, emitter: Emitter
+) -> None:
+    """Generate tp_new that issues the warnings of a class decorated with @deprecated.
+
+    This is for a class with a built-in base class. It would otherwise inherit tp_new.
+    """
+    emitter.emit_line("static PyObject *")
+    emitter.emit_line(f"{func_name}(PyTypeObject *type, PyObject *args, PyObject *kwds)")
+    emitter.emit_line("{")
+    emit_deprecation_warning(cl, emitter, type_arg="type")
+    emitter.emit_line(f"return {emitter.type_struct_name(cl)}->tp_base->tp_new(type, args, kwds);")
+    emitter.emit_line("}")
+
+
+def generate_init_subclass_for_deprecated_class(
+    cl: ClassIR, func_name: str, emitter: Emitter
+) -> None:
+    """Generate __init_subclass__ that issues the warnings of a class decorated with @deprecated.
+
+    The runtime decorator also defines this method if the class doesn't, so that
+    creating a subclass issues the warnings.
+    """
+    emitter.emit_line("static PyObject *")
+    emitter.emit_line(f"{func_name}(PyObject *cls, PyObject *args, PyObject *kwds)")
+    emitter.emit_line("{")
+    emit_deprecation_warning(cl, emitter)
+    type_arg = "(PyObject *)" + emitter.type_struct_name(cl)
+    emitter.emit_line(f"return CPy_SuperInitSubclass({type_arg}, cls, args, kwds);")
     emitter.emit_line("}")
 
 
@@ -1101,7 +1169,11 @@ def generate_finalize_for_class(
 
 
 def generate_methods_table(
-    cl: ClassIR, name: str, setup_name: str | None, emitter: Emitter
+    cl: ClassIR,
+    name: str,
+    setup_name: str | None,
+    init_subclass_name: str | None,
+    emitter: Emitter,
 ) -> None:
     emitter.emit_line(f"static PyMethodDef {name}[] = {{")
     if setup_name:
@@ -1124,6 +1196,12 @@ def generate_methods_table(
 
         doc = native_function_doc_initializer(fn)
         emitter.emit_line(" {}, PyDoc_STR({})}},".format(" | ".join(flags), doc))
+
+    if init_subclass_name:
+        emitter.emit_line(
+            f'{{"__init_subclass__", (PyCFunction){init_subclass_name},'
+            " METH_VARARGS | METH_KEYWORDS | METH_CLASS, NULL},"
+        )
 
     # Provide a default __getstate__ and __setstate__
     if not cl.has_method("__setstate__") and not cl.has_method("__getstate__"):

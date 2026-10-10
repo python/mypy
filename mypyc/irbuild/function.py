@@ -79,6 +79,7 @@ from mypyc.irbuild.env_class import (
 )
 from mypyc.irbuild.generator import gen_generator_func, gen_generator_func_body
 from mypyc.irbuild.targets import AssignmentTarget
+from mypyc.irbuild.util import DeprecatedArgs
 from mypyc.primitives.dict_ops import (
     dict_get_method_with_none,
     dict_new_op,
@@ -329,18 +330,24 @@ def gen_deprecation_warnings(builder: IRBuilder, fitem: FuncItem) -> None:
     """
     if not isinstance(fitem, FuncDef):
         return
-    for message, category, stacklevel, line in builder.fdefs_to_deprecations.get(fitem, []):
-        if category is None:
-            category_reg: Value = builder.add(
-                LoadGlobal(object_rprimitive, "PyExc_DeprecationWarning", line)
-            )
-        else:
-            category_reg = builder.accept(category)
-        builder.call_c(
-            warn_op,
-            [category_reg, builder.load_str(message), Integer(stacklevel, c_pyssize_t_rprimitive)],
-            line,
+    for deprecation in builder.fdefs_to_deprecations.get(fitem, []):
+        gen_deprecation_warning(builder, deprecation)
+
+
+def gen_deprecation_warning(builder: IRBuilder, deprecation: DeprecatedArgs) -> None:
+    """Generate the warning of a @deprecated decorator that isn't applied at runtime."""
+    message, category, stacklevel, line = deprecation
+    if category is None:
+        category_reg: Value = builder.add(
+            LoadGlobal(object_rprimitive, "PyExc_DeprecationWarning", line)
         )
+    else:
+        category_reg = builder.accept(category)
+    builder.call_c(
+        warn_op,
+        [category_reg, builder.load_str(message), Integer(stacklevel, c_pyssize_t_rprimitive)],
+        line,
+    )
 
 
 def has_nested_func_self_reference(builder: IRBuilder, fitem: FuncItem) -> bool:

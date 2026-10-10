@@ -1344,6 +1344,273 @@ assert GrandChild.required == 10, f"expected 10, got {GrandChild.required}"
 assert NoOverride.name == "base"
 assert NoOverride.required == 4, f"expected 4, got {NoOverride.required}"
 
+[case testDeprecatedClass]
+from dataclasses import dataclass
+from typing import Any, Dict, List
+from mypy_extensions import mypyc_attr, trait
+from typing_extensions import deprecated
+
+class CustomWarning(UserWarning):
+    pass
+
+# This would be a compile error if the decorator made the class non-native.
+@deprecated("Old is deprecated")
+@mypyc_attr(native_class=True)
+class Old:
+    def __init__(self, x: int) -> None:
+        self.x = x
+
+    def get(self) -> int:
+        return self.x
+
+class Child(Old):
+    pass
+
+@deprecated("NoInit is deprecated")
+class NoInit:
+    pass
+
+@deprecated("Custom is deprecated", category=CustomWarning, stacklevel=2)
+class Custom:
+    pass
+
+@deprecated("Silent is deprecated", category=None)
+class Silent:
+    pass
+
+class SilentChild(Silent):
+    pass
+
+@deprecated("first")
+@deprecated("second", category=CustomWarning)
+class Twice:
+    pass
+
+@deprecated("OldError is deprecated")
+class OldError(Exception):
+    pass
+
+class ChildError(OldError):
+    pass
+
+@deprecated("OldDict is deprecated")
+class OldDict(Dict[str, int]):
+    pass
+
+@deprecated("Open is deprecated")
+@mypyc_attr(allow_interpreted_subclasses=True)
+class Open:
+    def __init__(self) -> None:
+        self.y = 2
+
+events: List[str] = []
+
+@mypyc_attr(allow_interpreted_subclasses=True)
+@deprecated("Hook is deprecated")
+class Hook:
+    def __init_subclass__(cls, **kwargs: Any) -> None:
+        events.append(cls.__name__)
+        super().__init_subclass__(**kwargs)
+
+class HookChild(Hook):
+    pass
+
+@deprecated("Data is deprecated")
+@dataclass
+class Data:
+    x: int
+    y: str = "a"
+
+@deprecated("Tr is deprecated")
+@trait
+class Tr:
+    def t(self) -> int:
+        return 5
+
+class Impl(Tr):
+    pass
+
+@deprecated("New is deprecated")
+class New:
+    x: int
+
+    def __new__(cls, x: int) -> "New":
+        self = object.__new__(cls)
+        self.x = x + 100
+        return self
+
+@deprecated("WithDel is deprecated")
+class WithDel:
+    def __init__(self) -> None:
+        events.append("init")
+
+    def __del__(self) -> None:
+        events.append("del")
+
+def make_old() -> Old:
+    return Old(1)
+
+def make_child() -> Child:
+    return Child(2)
+
+def make_error() -> OldError:
+    return OldError("x")
+
+def make_data() -> Data:
+    return Data(1)
+
+def make_new() -> New:
+    return New(1)
+
+def get(o: Old) -> int:
+    return o.get() + o.x
+
+[file driver.py]
+import warnings
+from typing import Any, Callable
+
+D = DeprecationWarning
+
+# Creating a subclass of a deprecated class emits the warning.
+with warnings.catch_warnings(record=True) as caught:
+    warnings.simplefilter("always")
+    import native
+assert [str(w.message) for w in caught] == [
+    "Old is deprecated",
+    "OldError is deprecated",
+    "Hook is deprecated",
+    "Tr is deprecated",
+], caught
+
+from native import (
+    Child,
+    ChildError,
+    Custom,
+    CustomWarning,
+    Data,
+    Hook,
+    HookChild,
+    Impl,
+    New,
+    NoInit,
+    Old,
+    OldDict,
+    OldError,
+    Open,
+    Silent,
+    SilentChild,
+    Tr,
+    Twice,
+    WithDel,
+    events,
+    get,
+    make_child,
+    make_data,
+    make_error,
+    make_new,
+    make_old,
+)
+from testutil import assertRaises
+
+def check(fn: Callable[[], Any], expected: Any, *messages: str, category: Any = D) -> None:
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        result = fn()
+    assert result == expected, result
+    assert [str(w.message) for w in caught] == list(messages), caught
+    for w in caught:
+        assert w.category is category, w.category
+        # Compiled functions have no frames, so this is the closest interpreted caller.
+        assert w.filename == __file__, w.filename
+
+def subclass(base: Any, **kwargs: Any) -> Any:
+    class Sub(base, **kwargs):
+        pass
+    return Sub
+
+assert Old.__deprecated__ == "Old is deprecated"
+assert Child.__deprecated__ == "Old is deprecated"
+assert "__deprecated__" not in Child.__dict__
+assert Custom.__deprecated__ == "Custom is deprecated"
+assert Silent.__deprecated__ == "Silent is deprecated"
+assert Twice.__deprecated__ == "first"
+assert OldError.__deprecated__ == "OldError is deprecated"
+assert Data.__deprecated__ == "Data is deprecated"
+assert Tr.__deprecated__ == "Tr is deprecated"
+
+# Only creating an instance of the class itself emits the warning.
+check(lambda: Old(1).get(), 1, "Old is deprecated")
+check(lambda: Old(x=1).x, 1, "Old is deprecated")
+check(lambda: make_old().x, 1, "Old is deprecated")
+check(lambda: type(Old.__new__(Old, 1)), Old, "Old is deprecated")
+check(lambda: get(Child(2)), 4)
+check(lambda: make_child().x, 2)
+check(lambda: type(NoInit()), NoInit, "NoInit is deprecated")
+check(lambda: type(Custom()), Custom, "Custom is deprecated", category=CustomWarning)
+check(lambda: type(Silent()), Silent)
+check(lambda: type(SilentChild()), SilentChild)
+
+with warnings.catch_warnings(record=True) as caught:
+    warnings.simplefilter("always")
+    Twice()
+assert [(w.category, str(w.message)) for w in caught] == [
+    (D, "first"),
+    (CustomWarning, "second"),
+], caught
+
+check(lambda: repr(OldError("x")), "OldError('x')", "OldError is deprecated")
+check(lambda: repr(make_error()), "OldError('x')", "OldError is deprecated")
+check(lambda: repr(ChildError("y")), "ChildError('y')")
+check(lambda: OldDict(a=1), {"a": 1}, "OldDict is deprecated")
+check(lambda: Open().y, 2, "Open is deprecated")
+check(lambda: type(Hook()), Hook, "Hook is deprecated")
+check(lambda: type(HookChild()), HookChild)
+check(lambda: repr(Data(1)), "Data(x=1, y='a')", "Data is deprecated")
+check(lambda: make_data().x, 1, "Data is deprecated")
+check(lambda: Impl().t(), 5)
+check(lambda: New(1).x, 101, "New is deprecated")
+check(lambda: make_new().x, 101, "New is deprecated")
+
+# Subclasses that are created at runtime
+assert events == ["HookChild"]
+check(lambda: subclass(Open)().y, 2, "Open is deprecated")
+check(lambda: subclass(subclass(Open))().y, 2, "Open is deprecated", "Open is deprecated")
+check(lambda: type(subclass(Hook)()).__name__, "Sub", "Hook is deprecated")
+check(lambda: subclass(HookChild).__name__, "Sub", "Hook is deprecated")
+assert events == ["HookChild", "Sub", "Sub"]
+check(lambda: subclass(OldError)("z").args, ("z",), "OldError is deprecated")
+check(lambda: subclass(OldDict)(a=1), {"a": 1}, "OldDict is deprecated")
+check(lambda: subclass(Silent).__name__, "Sub")
+
+# Class keyword arguments are passed on to the next __init_subclass__.
+with warnings.catch_warnings():
+    warnings.simplefilter("ignore")
+    with assertRaises(TypeError, "takes no keyword arguments"):
+        subclass(Open, x=1)
+
+# The warning is raised like any other exception if warnings are errors.
+del events[:]
+with warnings.catch_warnings():
+    warnings.simplefilter("error")
+    with assertRaises(DeprecationWarning, "Old is deprecated"):
+        Old(1)
+    with assertRaises(DeprecationWarning, "Old is deprecated"):
+        make_old()
+    with assertRaises(CustomWarning, "Custom is deprecated"):
+        Custom()
+    with assertRaises(DeprecationWarning, "OldError is deprecated"):
+        OldError()
+    with assertRaises(DeprecationWarning, "New is deprecated"):
+        New(1)
+    with assertRaises(DeprecationWarning, "Open is deprecated"):
+        subclass(Open)
+    # The instance isn't created, so neither __init__ nor __del__ is called.
+    with assertRaises(DeprecationWarning, "WithDel is deprecated"):
+        WithDel()
+    assert events == [], events
+    assert Child(1).x == 1
+    Silent()
+
 [case testDefaultVars]
 from typing import Optional
 class A:
