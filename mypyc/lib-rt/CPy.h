@@ -1115,6 +1115,11 @@ static inline PyObject *CPyObject_GenericGetAttr(PyObject *self, PyObject *name)
 static inline int CPyObject_GenericSetAttr(PyObject *self, PyObject *name, PyObject *value) {
     return _PyObject_GenericSetAttrWithDict(self, name, value, NULL);
 }
+// Does the type of the object override attribute assignment? It does if a class in
+// its MRO defines __setattr__.
+static inline bool CPyObject_HasCustomSetAttr(PyObject *self) {
+    return Py_TYPE(self)->tp_setattro != PyObject_GenericSetAttr;
+}
 
 PyObject *CPy_SetupObject(PyObject *type);
 

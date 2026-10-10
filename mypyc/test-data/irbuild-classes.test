@@ -3079,6 +3079,128 @@ L0:
     keep_alive r2, self, key, val
     return 1
 
+[case testSetAttrDefinedInSubclass]
+from typing import Final
+
+class Base:
+    def __init__(self) -> None:
+        self.attr = 0
+        self.final_attr: Final = 1
+
+class SetAttr(Base):
+    def __setattr__(self, key: str, val: object) -> None:
+        pass
+
+class Holder:
+    def __init__(self, base: Base) -> None:
+        self.base = base
+
+def assign(b: Base) -> None:
+    b.attr = 2
+
+def assign_nested(h: Holder) -> None:
+    h.base.attr = 3
+
+[out]
+def Base.__init__(self):
+    self :: __main__.Base
+    r0 :: bit
+    r1 :: bool
+    r2 :: str
+    r3 :: object
+    r4 :: i32
+    r5 :: bit
+    r6 :: bool
+L0:
+    r0 = CPyObject_HasCustomSetAttr(self)
+    if r0 goto L2 else goto L1 :: bool
+L1:
+    self.attr = 0; r1 = is_error
+    goto L3
+L2:
+    r2 = 'attr'
+    r3 = object 0
+    r4 = PyObject_SetAttr(self, r2, r3)
+    r5 = r4 >= 0 :: signed
+L3:
+    self.final_attr = 2; r6 = is_error
+    return 1
+def SetAttr.__setattr__(self, key, val):
+    self :: __main__.SetAttr
+    key :: str
+    val :: object
+L0:
+    return 1
+def SetAttr.__setattr____wrapper(__mypyc_self__, attr, value):
+    __mypyc_self__ :: __main__.SetAttr
+    attr, value :: object
+    r0 :: bit
+    r1 :: i32
+    r2 :: bit
+    r3 :: str
+    r4 :: None
+L0:
+    r0 = value == 0
+    if r0 goto L1 else goto L2 :: bool
+L1:
+    r1 = CPyObject_GenericSetAttr(__mypyc_self__, attr, 0)
+    r2 = r1 >= 0 :: signed
+    return 0
+L2:
+    r3 = cast(str, attr)
+    r4 = __mypyc_self__.__setattr__(r3, value)
+    return 0
+def Holder.__init__(self, base):
+    self :: __main__.Holder
+    base :: __main__.Base
+L0:
+    self.base = base
+    return 1
+def assign(b):
+    b :: __main__.Base
+    r0 :: bit
+    r1 :: bool
+    r2 :: str
+    r3 :: object
+    r4 :: i32
+    r5 :: bit
+L0:
+    r0 = CPyObject_HasCustomSetAttr(b)
+    if r0 goto L2 else goto L1 :: bool
+L1:
+    b.attr = 4; r1 = is_error
+    goto L3
+L2:
+    r2 = 'attr'
+    r3 = object 2
+    r4 = PyObject_SetAttr(b, r2, r3)
+    r5 = r4 >= 0 :: signed
+L3:
+    return 1
+def assign_nested(h):
+    h :: __main__.Holder
+    r0 :: __main__.Base
+    r1 :: bit
+    r2 :: bool
+    r3 :: str
+    r4 :: object
+    r5 :: i32
+    r6 :: bit
+L0:
+    r0 = h.base
+    r1 = CPyObject_HasCustomSetAttr(r0)
+    if r1 goto L2 else goto L1 :: bool
+L1:
+    r0.attr = 6; r2 = is_error
+    goto L3
+L2:
+    r3 = 'attr'
+    r4 = object 3
+    r5 = PyObject_SetAttr(r0, r3, r4)
+    r6 = r5 >= 0 :: signed
+L3:
+    return 1
+
 [case testInvalidMypycAttr]
 from mypy_extensions import mypyc_attr
 

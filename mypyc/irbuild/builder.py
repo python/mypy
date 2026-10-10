@@ -160,7 +160,7 @@ from mypyc.irbuild.util import bytes_from_str, get_func_def, is_constant
 from mypyc.irbuild.vec import vec_set_item
 from mypyc.options import CompilerOptions
 from mypyc.primitives.dict_ops import dict_get_item_op, dict_set_item_op
-from mypyc.primitives.generic_ops import iter_op, next_op, py_setattr_op
+from mypyc.primitives.generic_ops import has_custom_setattr, iter_op, next_op, py_setattr_op
 from mypyc.primitives.list_ops import (
     list_get_item_int64_op,
     list_get_item_unsafe_op,
@@ -864,7 +864,12 @@ class IRBuilder:
         elif isinstance(lvalue, MemberExpr):
             # Attribute assignment x.y = e
             can_borrow = self.is_native_attr_ref(lvalue)
-            obj = self.accept(lvalue.expr, can_borrow=can_borrow)
+            # Don't borrow the object if the assignment may call "__setattr__" of a
+            # subclass, since the method could free an object that is only borrowed.
+            can_borrow_obj = can_borrow and not self.may_call_subclass_setattr(
+                self.node_type(lvalue.expr), lvalue.name
+            )
+            obj = self.accept(lvalue.expr, can_borrow=can_borrow_obj)
             return AssignmentTargetAttr(obj, lvalue.name, can_borrow=can_borrow)
         elif isinstance(lvalue, TupleExpr):
             # Multiple assignment a, ..., b = e
@@ -935,6 +940,8 @@ class IRBuilder:
                     boxed_reg = self.builder.box(rvalue_reg)
                     call = MethodCall(target.obj, setattr.name, [key, boxed_reg], line)
                     self.add(call)
+                elif self.may_call_subclass_setattr(target.obj_type, target.attr):
+                    self.assign_attr_with_setattr_check(target, rvalue_reg, line)
                 else:
                     rvalue_reg = self.coerce_rvalue(rvalue_reg, target.type, line)
                     self.add(SetAttr(target.obj, target.attr, rvalue_reg, line))
@@ -965,6 +972,51 @@ class IRBuilder:
                 self.process_iterator_tuple_assignment(target, rvalue_reg, line)
         else:
             assert False, "Unsupported assignment target"
+
+    def may_call_subclass_setattr(self, obj_type: RType, attr: str) -> bool:
+        """Can an assignment to a native attribute call "__setattr__" of a subclass?
+
+        This is the case if the class has no "__setattr__" but a subclass defines
+        one, since an instance of the subclass can be used as an instance of the
+        class.
+        """
+        if not isinstance(obj_type, RInstance):
+            return False
+        class_ir = obj_type.class_ir
+        if class_ir.has_method("__setattr__"):
+            return False
+        if class_ir.is_final_attr(attr):
+            # A Final attribute has no setter that "__setattr__" could use to set
+            # the value, so it's always assigned directly.
+            return False
+        subclasses = class_ir.subclasses()
+        # If we can't see all the subclasses, assume that none of them defines it.
+        return subclasses is not None and any(
+            subclass.has_method("__setattr__") for subclass in subclasses
+        )
+
+    def assign_attr_with_setattr_check(
+        self, target: AssignmentTargetAttr, rvalue_reg: Value, line: int
+    ) -> None:
+        """Assign to a native attribute of an object that may have "__setattr__".
+
+        The class of the target doesn't define "__setattr__" but a subclass does,
+        so only call it if the type of the object overrides attribute assignment.
+        """
+        direct_block, setattr_block, done_block = BasicBlock(), BasicBlock(), BasicBlock()
+        has_setattr = self.call_c(has_custom_setattr, [target.obj], line)
+        self.add_bool_branch(has_setattr, setattr_block, direct_block)
+
+        self.activate_block(direct_block)
+        coerced_reg = self.coerce_rvalue(rvalue_reg, target.type, line)
+        self.add(SetAttr(target.obj, target.attr, coerced_reg, line))
+        self.goto(done_block)
+
+        self.activate_block(setattr_block)
+        key = self.load_str(target.attr, line)
+        boxed_reg = self.builder.box(rvalue_reg)
+        self.primitive_op(py_setattr_op, [target.obj, key, boxed_reg], line)
+        self.goto_and_activate(done_block)
 
     def coerce_rvalue(self, rvalue: Value, rtype: RType, line: int) -> Value:
         if is_float_rprimitive(rtype) and is_tagged(rvalue.type):
