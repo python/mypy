@@ -79,9 +79,36 @@ def get_target_type(
             # not support type variables in upper bounds of user defined types.
             upper_bound = erase_typevars(upper_bound)
         if not mypy.subtypes.is_subtype(type, upper_bound):
-            if skip_unsatisfied:
-                return None
-            report_incompatible_typevar_value(callable, type, tvar.name, context)
+            # The upper bound may contain free type variables that are not among the
+            # type variables being applied (e.g. `T = TypeVar("T", bound=Callable[..., S])`
+            # where `S` is not used elsewhere in the signature). Try solving them from
+            # the inferred value before reporting an error.
+            bound_tvars = get_all_type_vars(upper_bound)
+            own_ids = {tv.id for tv in callable.variables}
+            seen: set[TypeVarId] = set()
+            free_tvars = []
+            for tv in bound_tvars:
+                if tv.id not in own_ids and tv.id not in seen:
+                    seen.add(tv.id)
+                    free_tvars.append(tv)
+            solved_bound = None
+            if free_tvars:
+                # Deferred import to avoid a cycle:
+                # subtypes -> applytype -> infer -> solve -> join -> subtypes.
+                from mypy.infer import infer_type_arguments
+
+                solutions = infer_type_arguments(
+                    free_tvars, upper_bound, type, skip_unsatisfied=True
+                )
+                if all(sol is not None for sol in solutions):
+                    id_to_solutions = {
+                        tv.id: sol for tv, sol in zip(free_tvars, solutions) if sol is not None
+                    }
+                    solved_bound = expand_type(upper_bound, id_to_solutions)
+            if solved_bound is None or not mypy.subtypes.is_subtype(type, solved_bound):
+                if skip_unsatisfied:
+                    return None
+                report_incompatible_typevar_value(callable, type, tvar.name, context)
     return type
 
 
