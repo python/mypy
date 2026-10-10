@@ -2868,6 +2868,124 @@ L2:
     CPyImport_ReplaceModuleCacheForImport(r10, r9)
     return 1
 
+[case testDeprecatedDecorator]
+from typing_extensions import deprecated
+
+@deprecated("use g()")
+def f(x: int) -> int:
+    return x + 1
+
+@deprecated("old", category=UserWarning, stacklevel=2)
+def g() -> None:
+    pass
+
+@deprecated("no runtime warning", category=None)
+def h() -> None:
+    pass
+
+class C:
+    @deprecated("use n()")
+    def m(self) -> int:
+        return 1
+
+    @property
+    @deprecated("p is deprecated")
+    def p(self) -> int:
+        return 2
+
+def call(c: C) -> int:
+    return c.m() + c.p
+[out]
+def f(x):
+    x :: int
+    r0 :: object
+    r1 :: str
+    r2 :: i32
+    r3 :: bit
+    r4 :: int
+L0:
+    r0 = load_global PyExc_DeprecationWarning :: static
+    r1 = 'use g()'
+    r2 = CPyErr_Warn(r0, r1, 1)
+    r3 = r2 >= 0 :: signed
+    r4 = CPyTagged_Add(x, 2)
+    return r4
+def g():
+    r0 :: object
+    r1 :: str
+    r2 :: object
+    r3 :: str
+    r4 :: i32
+    r5 :: bit
+L0:
+    r0 = builtins :: module
+    r1 = 'UserWarning'
+    r2 = CPyObject_GetAttr(r0, r1)
+    r3 = 'old'
+    r4 = CPyErr_Warn(r2, r3, 2)
+    r5 = r4 >= 0 :: signed
+    return 1
+def h():
+L0:
+    return 1
+def C.m(self):
+    self :: __main__.C
+    r0 :: object
+    r1 :: str
+    r2 :: i32
+    r3 :: bit
+L0:
+    r0 = load_global PyExc_DeprecationWarning :: static
+    r1 = 'use n()'
+    r2 = CPyErr_Warn(r0, r1, 1)
+    r3 = r2 >= 0 :: signed
+    return 2
+def C.p(self):
+    self :: __main__.C
+    r0 :: object
+    r1 :: str
+    r2 :: i32
+    r3 :: bit
+L0:
+    r0 = load_global PyExc_DeprecationWarning :: static
+    r1 = 'p is deprecated'
+    r2 = CPyErr_Warn(r0, r1, 1)
+    r3 = r2 >= 0 :: signed
+    return 4
+def call(c):
+    c :: __main__.C
+    r0, r1, r2 :: int
+L0:
+    r0 = c.m()
+    r1 = c.p
+    r2 = CPyTagged_Add(r0, r1)
+    return r2
+
+[case testDeprecatedDecoratorFromWarnings]
+from warnings import deprecated
+
+@deprecated("use g()")
+def f() -> None:
+    pass
+[file warnings.pyi]
+from typing import Callable, TypeVar
+
+_T = TypeVar("_T")
+
+def deprecated(__msg: str) -> Callable[[_T], _T]: ...
+[out]
+def f():
+    r0 :: object
+    r1 :: str
+    r2 :: i32
+    r3 :: bit
+L0:
+    r0 = load_global PyExc_DeprecationWarning :: static
+    r1 = 'use g()'
+    r2 = CPyErr_Warn(r0, r1, 1)
+    r3 = r2 >= 0 :: signed
+    return 1
+
 [case testAnyAllG]
 from typing import Iterable
 

@@ -26,6 +26,7 @@ from mypy.traverser import ExtendedTraverserVisitor, TraverserVisitor
 from mypy.types import Type
 from mypyc.errors import Errors
 from mypyc.irbuild.missingtypevisitor import MissingTypesVisitor
+from mypyc.irbuild.util import DeprecatedArgs, get_compiled_deprecations, get_runtime_decorators
 
 
 class _LambdaChecker(TraverserVisitor):
@@ -114,6 +115,10 @@ class PreBuildVisitor(ExtendedTraverserVisitor):
         # Map function to indices of decorators to remove
         self.decorators_to_remove: dict[FuncDef, list[int]] = decorators_to_remove
 
+        # Map function to its @deprecated decorators that aren't applied at runtime.
+        # The function emits their warnings when it's called instead.
+        self.funcs_to_deprecations: dict[FuncDef, list[DeprecatedArgs]] = {}
+
         # A mapping of import groups (a series of Import nodes with
         # nothing in between) where each group is keyed by its first
         # import node.
@@ -166,7 +171,10 @@ class PreBuildVisitor(ExtendedTraverserVisitor):
                 self.record_deleted_names(item)
 
     def visit_decorator(self, dec: Decorator) -> None:
-        if dec.decorators:
+        if deprecations := get_compiled_deprecations(dec):
+            self.funcs_to_deprecations[dec.func] = deprecations
+        decorators = get_runtime_decorators(dec)
+        if decorators:
             # Only add the function being decorated if there exist
             # (ordinary) decorators in the decorator list. Certain
             # decorators (such as @property, @abstractmethod) are
@@ -174,11 +182,11 @@ class PreBuildVisitor(ExtendedTraverserVisitor):
             # mypy. Functions decorated only by special decorators
             # (and property setters) are not treated as decorated
             # functions by the IR builder.
-            if isinstance(dec.decorators[0], MemberExpr) and dec.decorators[0].name == "setter":
+            if isinstance(decorators[0], MemberExpr) and decorators[0].name == "setter":
                 # Property setters are not treated as decorated methods.
                 self.prop_setters.add(dec.func)
             else:
-                decorators_to_store = dec.decorators.copy()
+                decorators_to_store = decorators
                 if dec.func in self.decorators_to_remove:
                     to_remove = self.decorators_to_remove[dec.func]
 
