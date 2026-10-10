@@ -147,7 +147,7 @@ def analyze_always_defined_attrs_in_class(cl: ClassIR, seen: set[ClassIR]) -> No
     for base in cl.mro[1:]:
         analyze_always_defined_attrs_in_class(base, seen)
 
-    m = cl.get_method("__init__")
+    m = cl.get_native_init()
     if m is None:
         cl._always_initialized_attrs = cl.attrs_with_defaults.copy()
         cl._sometimes_initialized_attrs = cl.attrs_with_defaults.copy()

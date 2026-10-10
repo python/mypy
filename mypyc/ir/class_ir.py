@@ -435,6 +435,18 @@ class ClassIR:
         res = self.get_method_and_class(name, prefer_method=prefer_method)
         return res[0] if res else None
 
+    def get_native_init(self) -> FuncIR | None:
+        """Return the __init__ method that is called natively to initialize instances, if any.
+
+        A decorated __init__ isn't one. Like any decorated method it has no method
+        declaration, since only the decorated callable in the type dict can be called.
+        Instances are then initialized through tp_init, as if __init__ wasn't native.
+        """
+        res = self.get_method_and_class("__init__")
+        if res is None or "__init__" not in res[1].method_decls:
+            return None
+        return res[0]
+
     def has_method_decl(self, name: str) -> bool:
         return any(name in ir.method_decls for ir in self.mro)
 

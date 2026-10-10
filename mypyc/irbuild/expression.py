@@ -507,6 +507,7 @@ def translate_method_call(builder: IRBuilder, expr: CallExpr, callee: MemberExpr
         and isinstance(callee.expr.node, TypeInfo)
         and callee.expr.node in builder.mapper.type_to_ir
         and builder.mapper.type_to_ir[callee.expr.node].has_method(callee.name)
+        and not is_non_native_method(builder, callee.expr.node.mro, callee.name)
         and all(kind in (ARG_POS, ARG_NAMED) for kind in expr.arg_kinds)
     ):
         # Call a method via the *class*
@@ -579,6 +580,20 @@ def call_classmethod(builder: IRBuilder, ir: ClassIR, expr: CallExpr, callee: Me
         )
 
 
+def is_non_native_method(builder: IRBuilder, mro: list[TypeInfo], name: str) -> bool:
+    """Does a method lookup in the MRO find a method of a compiled class that isn't native?
+
+    A decorated method is one. It has no method declaration, since only the decorated
+    callable in the type dict can be called. A search for a native method must not skip
+    it and use a method of a class that comes later in the MRO.
+    """
+    for info in mro:
+        if name in info.names:
+            ir = builder.mapper.type_to_ir.get(info)
+            return ir is not None and name not in ir.method_decls
+    return False
+
+
 def translate_super_method_call(builder: IRBuilder, expr: CallExpr, callee: SuperExpr) -> Value:
     if callee.info is None or (len(callee.call.args) != 0 and len(callee.call.args) != 2):
         return translate_call(builder, expr, callee)
@@ -601,6 +616,9 @@ def translate_super_method_call(builder: IRBuilder, expr: CallExpr, callee: Supe
             or callee.info is not typ_arg.node
         ):
             return translate_call(builder, expr, callee)
+
+    if is_non_native_method(builder, callee.info.mro[1:], callee.name):
+        return translate_call(builder, expr, callee)
 
     ir = builder.mapper.type_to_ir[callee.info]
     # Search for the method in the mro, skipping ourselves. We
