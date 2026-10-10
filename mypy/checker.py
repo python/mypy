@@ -1512,7 +1512,8 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                             and not isinstance(defn, LambdaExpr)
                         ):
                             self.fail(
-                                message_registry.FUNCTION_PARAMETER_CANNOT_BE_COVARIANT, defn
+                                message_registry.FUNCTION_PARAMETER_CANNOT_BE_COVARIANT,
+                                defn.arguments[i],
                             )
                     # Need to store arguments again for the expanded item.
                     store_argument_type(item, i, typ, self.named_generic_type)

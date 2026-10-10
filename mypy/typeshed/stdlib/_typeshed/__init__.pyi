@@ -174,8 +174,8 @@ class SupportsGet(Protocol[_KT_contra, _VT_co]):  # type: ignore[misc] # Covaria
     @overload
     def get(self, key: _KT_contra, /) -> _VT_co | None: ...
     @overload
-    def get(  # type: ignore[misc] # pyrefly: ignore[invalid-variance]
-        self, key: _KT_contra, default: _VT_co, /  # pyright: ignore[reportGeneralTypeIssues] # Covariant type as parameter
+    def get(  # pyrefly: ignore[invalid-variance]
+        self, key: _KT_contra, default: _VT_co, /  # type: ignore[misc] # pyright: ignore[reportGeneralTypeIssues] # Covariant type as parameter
     ) -> _VT_co: ...
     @overload
     def get(self, key: _KT_contra, default: _T, /) -> _VT_co | _T: ...
