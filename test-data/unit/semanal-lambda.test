@@ -1,0 +1,94 @@
+[case testLambdaInheritsCheckedContextFromFunc]
+def g():
+    return lambda x: UNDEFINED in x
+[out]
+MypyFile:1(
+  FuncDef:1(
+    g
+    Block:2(
+      ReturnStmt:2(
+        LambdaExpr:2(
+          Args(
+            Var(x))
+          Block:2(
+            ReturnStmt:2(
+              ComparisonExpr:2(
+                in
+                NameExpr(UNDEFINED)
+                NameExpr(x [l])))))))))
+
+[case testLambdaInheritsCheckedContextFromFuncForced]
+# flags: --check-untyped-defs
+def g():
+    return lambda x: UNDEFINED in x  # E: Name "UNDEFINED" is not defined
+
+[case testLambdaInheritsCheckedContextFromTypedFunc]
+def g() -> None:
+    return lambda x: UNDEFINED in x  # E: Name "UNDEFINED" is not defined
+
+[case testLambdaInheritsCheckedContextFromTypedFuncForced]
+# flags: --check-untyped-defs
+def g() -> None:
+    return lambda x: UNDEFINED in x  # E: Name "UNDEFINED" is not defined
+
+[case testLambdaInheritsCheckedContextFromModule]
+g = lambda x: UNDEFINED in x  # E: Name "UNDEFINED" is not defined
+
+[case testLambdaInheritsCheckedContextFromModuleForce]
+# flags: --check-untyped-defs
+g = lambda x: UNDEFINED in x  # E: Name "UNDEFINED" is not defined
+
+[case testLambdaInheritsCheckedContextFromModuleLambdaStack]
+g = lambda: lambda: lambda x: UNDEFINED in x  # E: Name "UNDEFINED" is not defined
+
+[case testLambdaInheritsCheckedContextFromModuleLambdaStackForce]
+# flags: --check-untyped-defs
+g = lambda: lambda: lambda x: UNDEFINED in x  # E: Name "UNDEFINED" is not defined
+
+[case testLambdaInheritsCheckedContextFromFuncLambdaStack]
+def g():
+    return lambda: lambda: lambda x: UNDEFINED in x
+[out]
+MypyFile:1(
+  FuncDef:1(
+    g
+    Block:2(
+      ReturnStmt:2(
+        LambdaExpr:2(
+          Block:2(
+            ReturnStmt:2(
+              LambdaExpr:2(
+                Block:2(
+                  ReturnStmt:2(
+                    LambdaExpr:2(
+                      Args(
+                        Var(x))
+                      Block:2(
+                        ReturnStmt:2(
+                          ComparisonExpr:2(
+                            in
+                            NameExpr(UNDEFINED)
+                            NameExpr(x [l])))))))))))))))
+
+[case testLambdaInheritsCheckedContextFromFuncLambdaStackForce]
+# flags: --check-untyped-defs
+def g():
+    return lambda: lambda: lambda x: UNDEFINED in x  # E: Name "UNDEFINED" is not defined
+
+[case testLambdaInheritsCheckedContextFromTypedFuncLambdaStack]
+def g() -> None:
+    return lambda: lambda: lambda x: UNDEFINED in x  # E: Name "UNDEFINED" is not defined
+
+[case testLambdaInheritsCheckedContextFromTypedFuncLambdaStackForce]
+# flags: --check-untyped-defs
+def g() -> None:
+    return lambda: lambda: lambda x: UNDEFINED in x  # E: Name "UNDEFINED" is not defined
+
+[case testLambdaInheritsCheckedContextFromClassLambdaStack]
+class A:
+    g = lambda: lambda: lambda x: UNDEFINED in x  # E: Name "UNDEFINED" is not defined
+
+[case testLambdaInheritsCheckedContextFromClassLambdaStackForce]
+# flags: --check-untyped-defs
+class A:
+    g = lambda: lambda: lambda x: UNDEFINED in x  # E: Name "UNDEFINED" is not defined

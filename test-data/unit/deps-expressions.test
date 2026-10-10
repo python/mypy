@@ -1,0 +1,436 @@
+-- Test cases for generating fine-grained dependencies for expressions.
+--
+-- The dependencies are used for fined-grained incremental checking.
+--
+-- See the comment at the top of deps.test for more documentation.
+
+[case testListExpr]
+def f() -> int: pass
+def g() -> None:
+    a = [f()]
+[builtins fixtures/list.pyi]
+[out]
+<m.f> -> m.g
+
+[case testDictExpr]
+def f1() -> int: pass
+def f2() -> int: pass
+def g() -> None:
+    a = {f1(): 1, 2: f2()}
+[builtins fixtures/dict.pyi]
+[out]
+<m.f1> -> m.g
+<m.f2> -> m.g
+
+[case testSetExpr]
+def f() -> int: pass
+def g() -> None:
+    a = {f()}
+[builtins fixtures/set.pyi]
+[out]
+<m.f> -> m.g
+
+[case testTupleExpr]
+def f1() -> int: pass
+def f2() -> int: pass
+def g() -> None:
+    a = (f1(), f2())
+[builtins fixtures/tuple.pyi]
+[out]
+<m.f1> -> m.g
+<m.f2> -> m.g
+
+[case testListComprehension]
+from typing import Iterator
+
+class A:
+    def __iter__(self) -> Iterator[int]: pass
+
+def f1() -> int: pass
+def f2() -> int: pass
+def g() -> None:
+    a = [f1() for x in A() if f2()]
+[builtins fixtures/list.pyi]
+[out]
+<m.A.__init__> -> m.g
+<m.A.__iter__> -> m.g
+<m.A.__new__> -> m.g
+<m.A> -> m.A, m.g
+<m.f1> -> m.g
+<m.f2> -> m.g
+
+[case testSetComprehension]
+from typing import Set
+def f1() -> int: pass
+def f2() -> Set[int]: pass
+def f3() -> int: pass
+def g() -> None:
+    a = {f1() for x in f2() if f3()}
+[builtins fixtures/set.pyi]
+[out]
+<m.f1> -> m.g
+<m.f2> -> m.g
+<m.f3> -> m.g
+
+[case testDictComprehension]
+from typing import Iterator
+
+class A:
+    def __iter__(self) -> Iterator[int]: pass
+
+def f1() -> int: pass
+def f2() -> int: pass
+def f3() -> int: pass
+def g() -> None:
+    a = {f1(): f2() for x in A() if f3()}
+[builtins fixtures/dict.pyi]
+[out]
+<m.A.__init__> -> m.g
+<m.A.__iter__> -> m.g
+<m.A.__new__> -> m.g
+<m.A> -> m.A, m.g
+<m.f1> -> m.g
+<m.f2> -> m.g
+<m.f3> -> m.g
+
+[case testGeneratorExpr]
+from typing import List
+def f1() -> int: pass
+def f2() -> List[int]: pass
+def f3() -> int: pass
+def g() -> None:
+    a = (f1() for x in f2() if f3())
+[builtins fixtures/list.pyi]
+[out]
+<m.f1> -> m.g
+<m.f2> -> m.g
+<m.f3> -> m.g
+
+[case testConditionalExpr]
+def f1() -> int: pass
+def f2() -> int: pass
+def f3() -> int: pass
+def g() -> None:
+    a = f1() if f2() else f3()
+[out]
+<m.f1> -> m.g
+<m.f2> -> m.g
+<m.f3> -> m.g
+
+[case testAwaitExpr]
+def f(): pass
+async def g() -> None:
+    x = await f()
+[builtins fixtures/async_await.pyi]
+[typing fixtures/typing-async.pyi]
+[out]
+<m.f> -> m.g
+
+[case testStarExpr]
+from typing import Iterator
+
+class A:
+    def __iter__(self) -> Iterator[int]: pass
+
+def g() -> None:
+    a = [*A()]
+[builtins fixtures/list.pyi]
+[out]
+<m.A.__init__> -> m.g
+<m.A.__iter__> -> <m.A>, m.g
+<m.A.__new__> -> m.g
+<m.A> -> m.A, m.g, typing.Iterable
+
+[case testCast]
+from typing import cast
+class A: pass
+def f() -> object: pass
+def g() -> None:
+    x = cast(A, f())
+[out]
+<m.A> -> m.A, m.g
+<m.f> -> m.g
+
+[case testTypeApplication]
+from typing import TypeVar, Generic
+
+T = TypeVar('T')
+S = TypeVar('S')
+
+class A(Generic[T, S]):
+    def __init__(self, x): pass
+class B: pass
+class C: pass
+
+def f() -> int: pass
+
+def g() -> None:
+    x = A[B, C](f())
+[out]
+<m.A.__init__> -> m.g
+<m.A.__new__> -> m.g
+<m.A> -> m.A, m.g
+<m.B> -> m.B, m.g
+<m.C> -> m.C, m.g
+<m.S> -> m.A
+<m.T> -> m.A
+<m.f> -> m.g
+
+[case testIndexExpr]
+class A:
+    def __getitem__(self, x: int) -> int: pass
+
+def f1() -> A: pass
+def f2() -> int: pass
+
+def g(a: A) -> int:
+    return f1()[f2()]
+[out]
+<m.A.__getitem__> -> m.g
+<m.A> -> <m.f1>, <m.g>, m.A, m.f1, m.g
+<m.f1> -> m.g
+<m.f2> -> m.g
+
+[case testIndexExpr2]
+class A:
+    def __getitem__(self, x: int) -> int: pass
+
+def f1() -> A: pass
+def f2() -> int: pass
+
+def g(a: A) -> int:
+    return f1()[f2()]
+[out]
+<m.A.__getitem__> -> m.g
+<m.A> -> <m.f1>, <m.g>, m.A, m.f1, m.g
+<m.f1> -> m.g
+<m.f2> -> m.g
+
+[case testIndexExprLvalue]
+class A:
+    def __setitem__(self, x: int, y: int) -> None: pass
+
+def f1() -> A: pass
+def f2() -> int: pass
+def f3() -> int: pass
+
+def g(a: A) -> None:
+    f1()[f2()] = f3()
+[out]
+-- __getitem__ dependency is redundant but harmless
+<m.A.__getitem__> -> m.g
+<m.A.__setitem__> -> m.g
+<m.A> -> <m.f1>, <m.g>, m.A, m.f1, m.g
+<m.f1> -> m.g
+<m.f2> -> m.g
+<m.f3> -> m.g
+
+[case testUnaryExpr]
+class A:
+    def __neg__(self) -> int: pass
+    def __pos__(self) -> int: pass
+    def __invert__(self) -> int: pass
+
+def f1() -> A: pass
+def f2() -> A: pass
+def f3() -> A: pass
+
+def g1() -> int:
+    return +f1()
+def g2() -> int:
+    return -f2()
+def g3() -> int:
+    return ~f3()
+[out]
+<m.A.__invert__> -> m.g3
+<m.A.__neg__> -> m.g2
+<m.A.__pos__> -> m.g1
+<m.A> -> <m.f1>, <m.f2>, <m.f3>, m.A, m.f1, m.f2, m.f3
+<m.f1> -> m.g1
+<m.f2> -> m.g2
+<m.f3> -> m.g3
+
+[case testOpExpr]
+class A:
+    def __add__(self, x: 'B') -> int: pass
+class B: pass
+
+def f() -> int:
+    a: A
+    b: B
+    return a + b
+[out]
+<m.A.__add__> -> m.f
+<m.A> -> m.A, m.f
+<m.B.__radd__> -> m.f
+<m.B> -> <m.A.__add__>, m.A.__add__, m.B, m.f
+
+[case testComparisonExpr]
+class A:
+    def __lt__(self, x: 'B') -> int: pass
+class B: pass
+
+def f() -> int:
+    return A() < B()
+[out]
+<m.A.__init__> -> m.f
+<m.A.__lt__> -> m.f
+<m.A.__new__> -> m.f
+<m.A> -> m.A, m.f
+<m.B.__gt__> -> m.f
+<m.B.__init__> -> m.f
+<m.B.__new__> -> m.f
+<m.B> -> <m.A.__lt__>, m.A.__lt__, m.B, m.f
+
+[case testIsOp]
+class A: pass
+class B: pass
+
+def f() -> bool:
+    return A() is B()
+[builtins fixtures/bool.pyi]
+[out]
+<m.A.__init__> -> m.f
+<m.A.__new__> -> m.f
+<m.A> -> m.A, m.f
+<m.B.__init__> -> m.f
+<m.B.__new__> -> m.f
+<m.B> -> m.B, m.f
+
+[case testInOp]
+class A:
+    def __contains__(self, x: B) -> int: pass
+class B: pass
+
+def f() -> bool:
+    return B() in A()
+[builtins fixtures/bool.pyi]
+[out]
+<m.A.__contains__> -> m.f
+<m.A.__init__> -> m.f
+<m.A.__new__> -> m.f
+<m.A> -> m.A, m.f
+<m.B.__init__> -> m.f
+<m.B.__new__> -> m.f
+<m.B> -> <m.A.__contains__>, m.A.__contains__, m.B, m.f
+
+[case testComparisonExprWithMultipleOperands]
+class A:
+    def __lt__(self, x: 'B') -> int: pass
+class B: pass
+class C:
+    def __ge__(self, x: 'B') -> int: pass
+
+def f() -> int:
+    return A() < B() <= C()
+[out]
+<m.A.__init__> -> m.f
+<m.A.__lt__> -> m.f
+<m.A.__new__> -> m.f
+<m.A> -> m.A, m.f
+<m.B.__gt__> -> m.f
+<m.B.__init__> -> m.f
+<m.B.__le__> -> m.f
+<m.B.__new__> -> m.f
+<m.B> -> <m.A.__lt__>, <m.C.__ge__>, m.A.__lt__, m.B, m.C.__ge__, m.f
+<m.C.__ge__> -> m.f
+<m.C.__init__> -> m.f
+<m.C.__new__> -> m.f
+<m.C> -> m.C, m.f
+
+[case testOperatorWithTupleOperand]
+from typing import Tuple
+
+class C(Tuple[int, str]):
+    def __and__(self, x: D) -> int: pass
+    def __neg__(self) -> int: pass
+class D: pass
+
+def f() -> None:
+    c: C
+    d: D
+    x = c & d
+    y = -c
+[builtins fixtures/tuple.pyi]
+[out]
+<m.C.__and__> -> m.f
+<m.C.__neg__> -> m.f
+<m.C> -> m.C, m.f
+<m.D.__rand__> -> m.f
+<m.D> -> <m.C.__and__>, m.C.__and__, m.D, m.f
+
+[case testUnionTypeOperation]
+from typing import Union
+
+class A:
+    def __add__(self, x: str) -> int: pass
+class B:
+    def __add__(self, x: str) -> int: pass
+
+def f(a: Union[A, B]) -> int:
+    return a + ''
+[out]
+<m.A.__add__> -> m.f
+<m.A> -> <m.f>, m.A, m.f
+<m.B.__add__> -> m.f
+<m.B> -> <m.f>, m.B, m.f
+
+[case testSliceExpr]
+class A:
+    def __getitem__(self, x) -> None: pass
+
+def f1() -> int: pass
+def f2() -> int: pass
+def f3() -> int: pass
+def f4() -> int: pass
+def f5() -> int: pass
+
+def f() -> None:
+    a: A
+    a[f1():f2():f3()]
+    a[f4():]
+    a[::f5()]
+[builtins fixtures/slice.pyi]
+[out]
+<m.A.__getitem__> -> m.f
+<m.A> -> m.A, m.f
+<m.f1> -> m.f
+<m.f2> -> m.f
+<m.f3> -> m.f
+<m.f4> -> m.f
+<m.f5> -> m.f
+
+[case testRevealTypeExpr]
+def f1() -> int: pass
+def f() -> None:
+    reveal_type(f1())  # type: ignore
+[out]
+<m.f1> -> m.f
+
+[case testLambdaExpr]
+from typing import Callable
+
+def f1(c: Callable[[int], str]) -> None: pass
+def f2() -> str: pass
+
+def g() -> None:
+    f1(lambda x: f2())
+[out]
+<m.f1> -> m.g
+<m.f2> -> m.g
+
+[case testLiteralDepsExpr]
+from typing import Literal
+
+Alias = Literal[1]
+
+a: Alias
+b = a
+def f(x: Alias) -> None: pass
+def g() -> Literal[1]:
+    return b
+[builtins fixtures/tuple.pyi]
+[out]
+<m.Alias> -> <m.f>, m, m.f
+<m.a> -> m
+<m.b> -> m, m.g

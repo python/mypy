@@ -1,0 +1,1589 @@
+[case testVarWithType]
+import typing
+class A: pass
+x = A() # type: A
+y = x
+[out]
+MypyFile:1(
+  Import:1(typing)
+  ClassDef:2(
+    A
+    PassStmt:2())
+  AssignmentStmt:3(
+    NameExpr(x [__main__.x])
+    CallExpr:3(
+      NameExpr(A [__main__.A])
+      Args())
+    __main__.A)
+  AssignmentStmt:4(
+    NameExpr(y* [__main__.y])
+    NameExpr(x [__main__.x])))
+
+[case testLocalVarWithType]
+class A: pass
+def f():
+  x = None # type: A
+  y = x
+[out]
+MypyFile:1(
+  ClassDef:1(
+    A
+    PassStmt:1())
+  FuncDef:2(
+    f
+    Block:3(
+      AssignmentStmt:3(
+        NameExpr(x [l])
+        NameExpr(None [builtins.None])
+        __main__.A)
+      AssignmentStmt:4(
+        NameExpr(y* [l])
+        NameExpr(x [l])))))
+
+[case testAnyType]
+from typing import Any
+x = None # type: Any
+y = x
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [Any])
+  AssignmentStmt:2(
+    NameExpr(x [__main__.x])
+    NameExpr(None [builtins.None])
+    Any)
+  AssignmentStmt:3(
+    NameExpr(y* [__main__.y])
+    NameExpr(x [__main__.x])))
+
+[case testMemberVarWithType]
+import typing
+class A:
+  def __init__(self):
+    self.x = None # type: int
+[out]
+MypyFile:1(
+  Import:1(typing)
+  ClassDef:2(
+    A
+    FuncDef:3(
+      __init__
+      Args(
+        Var(self))
+      Block:4(
+        AssignmentStmt:4(
+          MemberExpr:4(
+            NameExpr(self [l])
+            x)
+          NameExpr(None [builtins.None])
+          builtins.int)))))
+
+[case testClassVarWithType]
+import typing
+class A:
+  x = None # type: int
+  x = 1
+[out]
+MypyFile:1(
+  Import:1(typing)
+  ClassDef:2(
+    A
+    AssignmentStmt:3(
+      NameExpr(x [m])
+      NameExpr(None [builtins.None])
+      builtins.int)
+    AssignmentStmt:4(
+      NameExpr(x [__main__.A.x])
+      IntExpr(1))))
+
+[case testFunctionSig]
+from typing import Any
+class A: pass
+def f(x: A) -> A: pass
+def g(x: Any, y: A) -> None:
+  z = x, y
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [Any])
+  ClassDef:2(
+    A
+    PassStmt:2())
+  FuncDef:3(
+    f
+    Args(
+      Var(x))
+    def (x: __main__.A) -> __main__.A
+    Block:3(
+      PassStmt:3()))
+  FuncDef:4(
+    g
+    Args(
+      Var(x)
+      Var(y))
+    def (x: Any, y: __main__.A)
+    Block:5(
+      AssignmentStmt:5(
+        NameExpr(z* [l])
+        TupleExpr:5(
+          NameExpr(x [l])
+          NameExpr(y [l]))))))
+
+[case testBaseclass]
+class A: pass
+class B(A): pass
+[out]
+MypyFile:1(
+  ClassDef:1(
+    A
+    PassStmt:1())
+  ClassDef:2(
+    B
+    BaseType(
+      __main__.A)
+    PassStmt:2()))
+
+[case testMultipleVarDef]
+
+class A: pass
+class B: pass
+a, b = None, None # type: (A, B)
+x = a, b
+[builtins fixtures/tuple.pyi]
+[out]
+MypyFile:1(
+  ClassDef:2(
+    A
+    PassStmt:2())
+  ClassDef:3(
+    B
+    PassStmt:3())
+  AssignmentStmt:4(
+    TupleExpr:4(
+      NameExpr(a [__main__.a])
+      NameExpr(b [__main__.b]))
+    TupleExpr:4(
+      NameExpr(None [builtins.None])
+      NameExpr(None [builtins.None]))
+    tuple[__main__.A, __main__.B])
+  AssignmentStmt:5(
+    NameExpr(x* [__main__.x])
+    TupleExpr:5(
+      NameExpr(a [__main__.a])
+      NameExpr(b [__main__.b]))))
+
+[case testGenericType]
+from typing import TypeVar, Generic, Any
+
+t = TypeVar('t')
+
+class A(Generic[t]): pass
+class B: pass
+x = None # type: A[B]
+y = None # type: A[Any]
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [TypeVar, Generic, Any])
+  AssignmentStmt:3(
+    NameExpr(t* [__main__.t])
+    TypeVarExpr:3())
+  ClassDef:5(
+    A
+    TypeVars(
+      t`1)
+    PassStmt:5())
+  ClassDef:6(
+    B
+    PassStmt:6())
+  AssignmentStmt:7(
+    NameExpr(x [__main__.x])
+    NameExpr(None [builtins.None])
+    __main__.A[__main__.B])
+  AssignmentStmt:8(
+    NameExpr(y [__main__.y])
+    NameExpr(None [builtins.None])
+    __main__.A[Any]))
+
+[case testGenericType2]
+from typing import TypeVar, Generic, Any
+t = TypeVar('t')
+s = TypeVar('s')
+class A(Generic[t, s]): pass
+class B: pass
+x = None # type: A[B, Any]
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [TypeVar, Generic, Any])
+  AssignmentStmt:2(
+    NameExpr(t* [__main__.t])
+    TypeVarExpr:2())
+  AssignmentStmt:3(
+    NameExpr(s* [__main__.s])
+    TypeVarExpr:3())
+  ClassDef:4(
+    A
+    TypeVars(
+      t`1
+      s`2)
+    PassStmt:4())
+  ClassDef:5(
+    B
+    PassStmt:5())
+  AssignmentStmt:6(
+    NameExpr(x [__main__.x])
+    NameExpr(None [builtins.None])
+    __main__.A[__main__.B, Any]))
+
+[case testAssignmentAfterDef]
+
+
+class A: pass
+a = None # type: A
+a = 1
+def f():
+  b = None # type: A
+  b = 1
+[out]
+MypyFile:1(
+  ClassDef:3(
+    A
+    PassStmt:3())
+  AssignmentStmt:4(
+    NameExpr(a [__main__.a])
+    NameExpr(None [builtins.None])
+    __main__.A)
+  AssignmentStmt:5(
+    NameExpr(a [__main__.a])
+    IntExpr(1))
+  FuncDef:6(
+    f
+    Block:7(
+      AssignmentStmt:7(
+        NameExpr(b [l])
+        NameExpr(None [builtins.None])
+        __main__.A)
+      AssignmentStmt:8(
+        NameExpr(b [l])
+        IntExpr(1)))))
+
+[case testCast]
+from typing import TypeVar, Generic, Any, cast
+t = TypeVar('t')
+class c: pass
+class d(Generic[t]): pass
+cast(Any, 1)
+cast(c, 1)
+cast(d[c], c)
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [TypeVar, Generic, Any, cast])
+  AssignmentStmt:2(
+    NameExpr(t* [__main__.t])
+    TypeVarExpr:2())
+  ClassDef:3(
+    c
+    PassStmt:3())
+  ClassDef:4(
+    d
+    TypeVars(
+      t`1)
+    PassStmt:4())
+  ExpressionStmt:5(
+    CastExpr:5(
+      IntExpr(1)
+      Any))
+  ExpressionStmt:6(
+    CastExpr:6(
+      IntExpr(1)
+      __main__.c))
+  ExpressionStmt:7(
+    CastExpr:7(
+      NameExpr(c [__main__.c])
+      __main__.d[__main__.c])))
+
+[case testCastToQualifiedTypeAndCast]
+import typing
+import _m
+typing.cast(_m.C, object)
+[fixture _m.py]
+class C: pass
+[out]
+MypyFile:1(
+  Import:1(typing)
+  Import:2(_m)
+  ExpressionStmt:3(
+    CastExpr:3(
+      NameExpr(object [builtins.object])
+      _m.C)))
+
+[case testLongQualifiedCast]
+import typing
+import _m._n
+typing.cast(_m._n.C, object)
+[fixture _m/__init__.py]
+[fixture _m/_n.py]
+class C: pass
+[out]
+MypyFile:1(
+  Import:1(typing)
+  Import:2(_m._n)
+  ExpressionStmt:3(
+    CastExpr:3(
+      NameExpr(object [builtins.object])
+      _m._n.C)))
+
+[case testCastTargetWithTwoTypeArgs]
+from typing import TypeVar, Generic, cast
+t = TypeVar('t')
+s = TypeVar('s')
+class C(Generic[t, s]): pass
+cast(C[str, int], C)
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [TypeVar, Generic, cast])
+  AssignmentStmt:2(
+    NameExpr(t* [__main__.t])
+    TypeVarExpr:2())
+  AssignmentStmt:3(
+    NameExpr(s* [__main__.s])
+    TypeVarExpr:3())
+  ClassDef:4(
+    C
+    TypeVars(
+      t`1
+      s`2)
+    PassStmt:4())
+  ExpressionStmt:5(
+    CastExpr:5(
+      NameExpr(C [__main__.C])
+      __main__.C[builtins.str, builtins.int])))
+
+[case testCastToTupleType]
+from typing import Tuple, cast
+cast(Tuple[int, str], None)
+[builtins fixtures/tuple.pyi]
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [Tuple, cast])
+  ExpressionStmt:2(
+    CastExpr:2(
+      NameExpr(None [builtins.None])
+      tuple[builtins.int, builtins.str])))
+
+[case testCastToFunctionType]
+from typing import Callable, cast
+cast(Callable[[int], str], None)
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [Callable, cast])
+  ExpressionStmt:2(
+    CastExpr:2(
+      NameExpr(None [builtins.None])
+      def (builtins.int) -> builtins.str)))
+
+[case testCastToStringLiteralType]
+from typing import cast
+cast('int', 1)
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [cast])
+  ExpressionStmt:2(
+    CastExpr:2(
+      IntExpr(1)
+      builtins.int)))
+
+[case testAssertType]
+from typing import assert_type
+assert_type(1, int)
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [assert_type])
+  ExpressionStmt:2(
+    AssertTypeExpr:2(
+      IntExpr(1)
+      builtins.int)))
+
+[case testFunctionTypeVariable]
+from typing import TypeVar
+t = TypeVar('t')
+def f(x: t) -> None:
+  y = None # type: t
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [TypeVar])
+  AssignmentStmt:2(
+    NameExpr(t* [__main__.t])
+    TypeVarExpr:2())
+  FuncDef:3(
+    f
+    Args(
+      Var(x))
+    def [t] (x: t`-1)
+    Block:4(
+      AssignmentStmt:4(
+        NameExpr(y [l])
+        NameExpr(None [builtins.None])
+        t`-1))))
+
+[case testTwoFunctionTypeVariables]
+from typing import TypeVar
+t = TypeVar('t')
+u = TypeVar('u')
+def f(x: t, y: u, z: t) -> None: pass
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [TypeVar])
+  AssignmentStmt:2(
+    NameExpr(t* [__main__.t])
+    TypeVarExpr:2())
+  AssignmentStmt:3(
+    NameExpr(u* [__main__.u])
+    TypeVarExpr:3())
+  FuncDef:4(
+    f
+    Args(
+      Var(x)
+      Var(y)
+      Var(z))
+    def [t, u] (x: t`-1, y: u`-2, z: t`-1)
+    Block:4(
+      PassStmt:4())))
+
+[case testNestedGenericFunctionTypeVariable]
+from typing import TypeVar, Generic
+t = TypeVar('t')
+class A(Generic[t]): pass
+def f(x: A[t], y) -> None: pass
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [TypeVar, Generic])
+  AssignmentStmt:2(
+    NameExpr(t* [__main__.t])
+    TypeVarExpr:2())
+  ClassDef:3(
+    A
+    TypeVars(
+      t`1)
+    PassStmt:3())
+  FuncDef:4(
+    f
+    Args(
+      Var(x)
+      Var(y))
+    def [t] (x: __main__.A[t`-1], y: Any)
+    Block:4(
+      PassStmt:4())))
+
+[case testNestedGenericFunctionTypeVariable2]
+from typing import TypeVar, Tuple, Generic
+t = TypeVar('t')
+class A(Generic[t]): pass
+def f(x: Tuple[int, t]) -> None: pass
+[builtins fixtures/tuple.pyi]
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [TypeVar, Tuple, Generic])
+  AssignmentStmt:2(
+    NameExpr(t* [__main__.t])
+    TypeVarExpr:2())
+  ClassDef:3(
+    A
+    TypeVars(
+      t`1)
+    PassStmt:3())
+  FuncDef:4(
+    f
+    Args(
+      Var(x))
+    def [t] (x: tuple[builtins.int, t`-1])
+    Block:4(
+      PassStmt:4())))
+
+[case testNestedGenericFunctionTypeVariable3]
+from typing import TypeVar, Callable, Generic
+t = TypeVar('t')
+class A(Generic[t]): pass
+def f(x: Callable[[int, t], int]) -> None: pass
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [TypeVar, Callable, Generic])
+  AssignmentStmt:2(
+    NameExpr(t* [__main__.t])
+    TypeVarExpr:2())
+  ClassDef:3(
+    A
+    TypeVars(
+      t`1)
+    PassStmt:3())
+  FuncDef:4(
+    f
+    Args(
+      Var(x))
+    def [t] (x: def (builtins.int, t`-1) -> builtins.int)
+    Block:4(
+      PassStmt:4())))
+
+[case testNestedGenericFunctionTypeVariable4]
+from typing import TypeVar, Callable, Generic
+t = TypeVar('t')
+class A(Generic[t]): pass
+def f(x: Callable[[], t]) -> None: pass
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [TypeVar, Callable, Generic])
+  AssignmentStmt:2(
+    NameExpr(t* [__main__.t])
+    TypeVarExpr:2())
+  ClassDef:3(
+    A
+    TypeVars(
+      t`1)
+    PassStmt:3())
+  FuncDef:4(
+    f
+    Args(
+      Var(x))
+    def [t] (x: def () -> t`-1)
+    Block:4(
+      PassStmt:4())))
+
+[case testGenericFunctionTypeVariableInReturnType]
+from typing import TypeVar
+t = TypeVar('t')
+def f() -> t: pass
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [TypeVar])
+  AssignmentStmt:2(
+    NameExpr(t* [__main__.t])
+    TypeVarExpr:2())
+  FuncDef:3(
+    f
+    def [t] () -> t`-1
+    Block:3(
+      PassStmt:3())))
+
+[case testSelfType]
+class A:
+  def f(self, o: object) -> None: pass
+[out]
+MypyFile:1(
+  ClassDef:1(
+    A
+    FuncDef:2(
+      f
+      Args(
+        Var(self)
+        Var(o))
+      def (self: __main__.A, o: builtins.object)
+      Block:2(
+        PassStmt:2()))))
+
+[case testNestedGenericFunction]
+from typing import TypeVar
+t = TypeVar('t')
+def f() -> None:
+    def g() -> t: pass
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [TypeVar])
+  AssignmentStmt:2(
+    NameExpr(t* [__main__.t])
+    TypeVarExpr:2())
+  FuncDef:3(
+    f
+    def ()
+    Block:4(
+      FuncDef:4(
+        g
+        def [t] () -> t`-1
+        Block:4(
+          PassStmt:4())))))
+
+[case testClassTvar]
+from typing import TypeVar, Generic
+
+t = TypeVar('t')
+
+class c(Generic[t]):
+  def f(self) -> t: pass
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [TypeVar, Generic])
+  AssignmentStmt:3(
+    NameExpr(t* [__main__.t])
+    TypeVarExpr:3())
+  ClassDef:5(
+    c
+    TypeVars(
+      t`1)
+    FuncDef:6(
+      f
+      Args(
+        Var(self))
+      def (self: __main__.c[t`1]) -> t`1
+      Block:6(
+        PassStmt:6()))))
+
+[case testClassTvar2]
+from typing import TypeVar, Generic
+
+t = TypeVar('t')
+s = TypeVar('s')
+
+class c(Generic[t, s]):
+  def f(self, x: s) -> t: pass
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [TypeVar, Generic])
+  AssignmentStmt:3(
+    NameExpr(t* [__main__.t])
+    TypeVarExpr:3())
+  AssignmentStmt:4(
+    NameExpr(s* [__main__.s])
+    TypeVarExpr:4())
+  ClassDef:6(
+    c
+    TypeVars(
+      t`1
+      s`2)
+    FuncDef:7(
+      f
+      Args(
+        Var(self)
+        Var(x))
+      def (self: __main__.c[t`1, s`2], x: s`2) -> t`1
+      Block:7(
+        PassStmt:7()))))
+
+[case testGenericBaseClass]
+from typing import TypeVar, Generic
+t = TypeVar('t')
+class d(Generic[t]): pass
+class c(d[t], Generic[t]): pass
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [TypeVar, Generic])
+  AssignmentStmt:2(
+    NameExpr(t* [__main__.t])
+    TypeVarExpr:2())
+  ClassDef:3(
+    d
+    TypeVars(
+      t`1)
+    PassStmt:3())
+  ClassDef:4(
+    c
+    TypeVars(
+      t`1)
+    BaseType(
+      __main__.d[t`1])
+    PassStmt:4()))
+
+[case testTupleType]
+from typing import Tuple
+t = None # type: tuple
+t1 = None # type: Tuple[object]
+t2 = None # type: Tuple[int, object]
+[builtins fixtures/tuple.pyi]
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [Tuple])
+  AssignmentStmt:2(
+    NameExpr(t [__main__.t])
+    NameExpr(None [builtins.None])
+    builtins.tuple[Any, ...])
+  AssignmentStmt:3(
+    NameExpr(t1 [__main__.t1])
+    NameExpr(None [builtins.None])
+    tuple[builtins.object])
+  AssignmentStmt:4(
+    NameExpr(t2 [__main__.t2])
+    NameExpr(None [builtins.None])
+    tuple[builtins.int, builtins.object]))
+
+[case testVariableLengthTuple]
+from typing import Tuple
+t = None # type: Tuple[int, ...]
+[builtins fixtures/tuple.pyi]
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [Tuple])
+  AssignmentStmt:2(
+    NameExpr(t [__main__.t])
+    NameExpr(None [builtins.None])
+    builtins.tuple[builtins.int, ...]))
+
+[case testInvalidTupleType]
+from typing import Tuple
+t = None # type: Tuple[int, str, ...] # E: Unexpected "..."
+[builtins fixtures/tuple.pyi]
+[out]
+
+[case testFunctionTypes]
+from typing import Callable
+f = None # type: Callable[[object, int], str]
+g = None # type: Callable[[], None]
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [Callable])
+  AssignmentStmt:2(
+    NameExpr(f [__main__.f])
+    NameExpr(None [builtins.None])
+    def (builtins.object, builtins.int) -> builtins.str)
+  AssignmentStmt:3(
+    NameExpr(g [__main__.g])
+    NameExpr(None [builtins.None])
+    def ()))
+
+[case testOverloadedFunction]
+from typing import overload, Any
+@overload
+def f(a: object) -> int: a
+@overload
+def f(a: str) -> object: a
+
+def f(a: Any) -> Any: return a
+
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [overload, Any])
+  OverloadedFuncDef:2(
+    FuncDef:7(
+      f
+      Args(
+        Var(a))
+      def (a: Any) -> Any
+      Block:7(
+        ReturnStmt:7(
+          NameExpr(a [l]))))
+    Overload(def (a: builtins.object) -> builtins.int, \
+             def (a: builtins.str) -> builtins.object)
+    Decorator:2(
+      Var(f)
+      NameExpr(overload [typing.overload])
+      FuncDef:3(
+        f
+        Args(
+          Var(a))
+        def (a: builtins.object) -> builtins.int
+        Block:3(
+          ExpressionStmt:3(
+            NameExpr(a [l])))))
+    Decorator:4(
+      Var(f)
+      NameExpr(overload [typing.overload])
+      FuncDef:5(
+        f
+        Args(
+          Var(a))
+        def (a: builtins.str) -> builtins.object
+        Block:5(
+          ExpressionStmt:5(
+            NameExpr(a [l])))))))
+
+[case testReferenceToOverloadedFunction]
+from typing import overload
+@overload
+def f() -> None: pass
+@overload
+def f(x: int) -> None: pass
+
+def f(*args) -> None: pass
+
+x = f
+[builtins fixtures/tuple.pyi]
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [overload])
+  OverloadedFuncDef:2(
+    FuncDef:7(
+      f
+      def (*args: Any)
+      VarArg(
+        Var(args))
+      Block:7(
+        PassStmt:7()))
+    Overload(def (), def (x: builtins.int))
+    Decorator:2(
+      Var(f)
+      NameExpr(overload [typing.overload])
+      FuncDef:3(
+        f
+        def ()
+        Block:3(
+          PassStmt:3())))
+    Decorator:4(
+      Var(f)
+      NameExpr(overload [typing.overload])
+      FuncDef:5(
+        f
+        Args(
+          Var(x))
+        def (x: builtins.int)
+        Block:5(
+          PassStmt:5()))))
+  AssignmentStmt:9(
+    NameExpr(x* [__main__.x])
+    NameExpr(f [__main__.f])))
+
+[case testNestedOverloadedFunction]
+from typing import overload
+def f():
+    @overload
+    def g(): pass
+    @overload
+    def g(x): pass
+
+    def g(*args): pass
+
+    y = g
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [overload])
+  FuncDef:2(
+    f
+    Block:3(
+      OverloadedFuncDef:3(
+        FuncDef:8(
+          g
+          VarArg(
+            Var(args))
+          Block:8(
+            PassStmt:8()))
+        Overload(def () -> Any, def (x: Any) -> Any)
+        Decorator:3(
+          Var(g)
+          NameExpr(overload [typing.overload])
+          FuncDef:4(
+            g
+            Block:4(
+              PassStmt:4())))
+        Decorator:5(
+          Var(g)
+          NameExpr(overload [typing.overload])
+          FuncDef:6(
+            g
+            Args(
+              Var(x))
+            Block:6(
+              PassStmt:6()))))
+      AssignmentStmt:10(
+        NameExpr(y* [l])
+        NameExpr(g [l])))))
+
+[case testImplicitGenericTypeArgs]
+from typing import TypeVar, Generic
+t = TypeVar('t')
+s = TypeVar('s')
+class A(Generic[t, s]): pass
+x = None # type: A
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [TypeVar, Generic])
+  AssignmentStmt:2(
+    NameExpr(t* [__main__.t])
+    TypeVarExpr:2())
+  AssignmentStmt:3(
+    NameExpr(s* [__main__.s])
+    TypeVarExpr:3())
+  ClassDef:4(
+    A
+    TypeVars(
+      t`1
+      s`2)
+    PassStmt:4())
+  AssignmentStmt:5(
+    NameExpr(x [__main__.x])
+    NameExpr(None [builtins.None])
+    __main__.A[Any, Any]))
+
+[case testImplicitTypeArgsAndGenericBaseClass]
+from typing import TypeVar, Generic
+t = TypeVar('t')
+s = TypeVar('s')
+class B(Generic[s]): pass
+class A(B, Generic[t]): pass
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [TypeVar, Generic])
+  AssignmentStmt:2(
+    NameExpr(t* [__main__.t])
+    TypeVarExpr:2())
+  AssignmentStmt:3(
+    NameExpr(s* [__main__.s])
+    TypeVarExpr:3())
+  ClassDef:4(
+    B
+    TypeVars(
+      s`1)
+    PassStmt:4())
+  ClassDef:5(
+    A
+    TypeVars(
+      t`1)
+    BaseType(
+      __main__.B[Any])
+    PassStmt:5()))
+
+[case testTypeApplication]
+from typing import TypeVar, Generic
+t = TypeVar('t')
+class A(Generic[t]): pass
+x = A[int]()
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [TypeVar, Generic])
+  AssignmentStmt:2(
+    NameExpr(t* [__main__.t])
+    TypeVarExpr:2())
+  ClassDef:3(
+    A
+    TypeVars(
+      t`1)
+    PassStmt:3())
+  AssignmentStmt:4(
+    NameExpr(x* [__main__.x])
+    CallExpr:4(
+      TypeApplication:4(
+        NameExpr(A [__main__.A])
+        Types(
+          builtins.int))
+      Args())))
+
+[case testTypeApplicationWithTwoTypeArgs]
+from typing import TypeVar, Generic, Any
+t = TypeVar('t')
+s = TypeVar('s')
+class A(Generic[t, s]): pass
+x = A[int, Any]()
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [TypeVar, Generic, Any])
+  AssignmentStmt:2(
+    NameExpr(t* [__main__.t])
+    TypeVarExpr:2())
+  AssignmentStmt:3(
+    NameExpr(s* [__main__.s])
+    TypeVarExpr:3())
+  ClassDef:4(
+    A
+    TypeVars(
+      t`1
+      s`2)
+    PassStmt:4())
+  AssignmentStmt:5(
+    NameExpr(x* [__main__.x])
+    CallExpr:5(
+      TypeApplication:5(
+        NameExpr(A [__main__.A])
+        Types(
+          builtins.int
+          Any))
+      Args())))
+
+[case testFunctionTypeApplication]
+from typing import TypeVar
+t = TypeVar('t')
+def f(x: t) -> None: pass
+f[int](1)
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [TypeVar])
+  AssignmentStmt:2(
+    NameExpr(t* [__main__.t])
+    TypeVarExpr:2())
+  FuncDef:3(
+    f
+    Args(
+      Var(x))
+    def [t] (x: t`-1)
+    Block:3(
+      PassStmt:3()))
+  ExpressionStmt:4(
+    CallExpr:4(
+      TypeApplication:4(
+        NameExpr(f [__main__.f])
+        Types(
+          builtins.int))
+      Args(
+        IntExpr(1)))))
+
+[case testTypeApplicationWithStringLiteralType]
+from typing import TypeVar, Generic
+t = TypeVar('t')
+class A(Generic[t]): pass
+A['int']()
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [TypeVar, Generic])
+  AssignmentStmt:2(
+    NameExpr(t* [__main__.t])
+    TypeVarExpr:2())
+  ClassDef:3(
+    A
+    TypeVars(
+      t`1)
+    PassStmt:3())
+  ExpressionStmt:4(
+    CallExpr:4(
+      TypeApplication:4(
+        NameExpr(A [__main__.A])
+        Types(
+          builtins.int))
+      Args())))
+
+[case testVarArgsAndKeywordArgs]
+def g(*x: int, y: str = ''): pass
+[builtins fixtures/tuple.pyi]
+[out]
+MypyFile:1(
+  FuncDef:1(
+    g
+    MaxPos(0)
+    Args(
+      default(
+        Var(y)
+        StrExpr()))
+    def (*x: builtins.int, y: builtins.str =) -> Any
+    VarArg(
+      Var(x))
+    Block:1(
+      PassStmt:1())))
+
+[case testQualifiedGeneric]
+from typing import TypeVar
+import typing
+T = TypeVar('T')
+class A(typing.Generic[T]): pass
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [TypeVar])
+  Import:2(typing)
+  AssignmentStmt:3(
+    NameExpr(T* [__main__.T])
+    TypeVarExpr:3())
+  ClassDef:4(
+    A
+    TypeVars(
+      T`1)
+    PassStmt:4()))
+
+[case testQualifiedTypevar]
+import typing
+T = typing.TypeVar('T')
+def f(x: T) -> T: pass
+[out]
+MypyFile:1(
+  Import:1(typing)
+  AssignmentStmt:2(
+    NameExpr(T* [__main__.T])
+    TypeVarExpr:2())
+  FuncDef:3(
+    f
+    Args(
+      Var(x))
+    def [T] (x: T`-1) -> T`-1
+    Block:3(
+      PassStmt:3())))
+
+[case testAliasedTypevar]
+from typing import TypeVar as tv
+T = tv('T')
+def f(x: T) -> T: pass
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [TypeVar : tv])
+  AssignmentStmt:2(
+    NameExpr(T* [__main__.T])
+    TypeVarExpr:2())
+  FuncDef:3(
+    f
+    Args(
+      Var(x))
+    def [T] (x: T`-1) -> T`-1
+    Block:3(
+      PassStmt:3())))
+
+[case testLocalTypevar]
+from typing import TypeVar
+def f():
+    T = TypeVar('T')
+    def g(x: T) -> T: pass
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [TypeVar])
+  FuncDef:2(
+    f
+    Block:3(
+      AssignmentStmt:3(
+        NameExpr(T* [l])
+        TypeVarExpr:3())
+      FuncDef:4(
+        g
+        Args(
+          Var(x))
+        def [T] (x: T`-1) -> T`-1
+        Block:4(
+          PassStmt:4())))))
+
+[case testClassLevelTypevar]
+from typing import TypeVar
+class A:
+    T = TypeVar('T')
+    def g(self, x: T) -> T: pass
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [TypeVar])
+  ClassDef:2(
+    A
+    AssignmentStmt:3(
+      NameExpr(T* [m])
+      TypeVarExpr:3())
+    FuncDef:4(
+      g
+      Args(
+        Var(self)
+        Var(x))
+      def [T] (self: __main__.A, x: T`-1) -> T`-1
+      Block:4(
+        PassStmt:4()))))
+
+[case testImportTypevar]
+from typing import Generic
+from _m import T
+class A(Generic[T]):
+    y = None # type: T
+[fixture _m.py]
+from typing import TypeVar
+T = TypeVar('T')
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [Generic])
+  ImportFrom:2(_m, [T])
+  ClassDef:3(
+    A
+    TypeVars(
+      T`1)
+    AssignmentStmt:4(
+      NameExpr(y [m])
+      NameExpr(None [builtins.None])
+      T`1)))
+
+[case testQualifiedReferenceToTypevarInClass]
+from typing import Generic
+import _m
+class A(Generic[_m.T]):
+    a = None # type: _m.T
+    def f(self, x: _m.T):
+        b = None # type: _m.T
+[fixture _m.py]
+from typing import TypeVar
+T = TypeVar('T')
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [Generic])
+  Import:2(_m)
+  ClassDef:3(
+    A
+    TypeVars(
+      _m.T`1)
+    AssignmentStmt:4(
+      NameExpr(a [m])
+      NameExpr(None [builtins.None])
+      _m.T`1)
+    FuncDef:5(
+      f
+      Args(
+        Var(self)
+        Var(x))
+      def (self: __main__.A[_m.T`1], x: _m.T`1) -> Any
+      Block:6(
+        AssignmentStmt:6(
+          NameExpr(b [l])
+          NameExpr(None [builtins.None])
+          _m.T`1)))))
+
+[case testQualifiedReferenceToTypevarInFunctionSignature]
+import _m
+def f(x: _m.T) -> None:
+    a = None # type: _m.T
+[fixture _m.py]
+from typing import TypeVar
+T = TypeVar('T')
+[out]
+MypyFile:1(
+  Import:1(_m)
+  FuncDef:2(
+    f
+    Args(
+      Var(x))
+    def [_m.T] (x: _m.T`-1)
+    Block:3(
+      AssignmentStmt:3(
+        NameExpr(a [l])
+        NameExpr(None [builtins.None])
+        _m.T`-1))))
+
+[case testFunctionCommentAnnotation]
+from typing import Any
+def f(x): # type: (int) -> Any
+  x = 1
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [Any])
+  FuncDef:2(
+    f
+    Args(
+      Var(x))
+    def (x: builtins.int) -> Any
+    Block:3(
+      AssignmentStmt:3(
+        NameExpr(x [l])
+        IntExpr(1)))))
+
+[case testMethodCommentAnnotation]
+import typing
+class A:
+  def f(self, x): # type: (int) -> str
+    x = 1
+[out]
+MypyFile:1(
+  Import:1(typing)
+  ClassDef:2(
+    A
+    FuncDef:3(
+      f
+      Args(
+        Var(self)
+        Var(x))
+      def (self: __main__.A, x: builtins.int) -> builtins.str
+      Block:4(
+        AssignmentStmt:4(
+          NameExpr(x [l])
+          IntExpr(1))))))
+
+[case testTypevarWithValues]
+from typing import TypeVar, Any
+T = TypeVar('T', int, str)
+S = TypeVar('S', Any, int, str)
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [TypeVar, Any])
+  AssignmentStmt:2(
+    NameExpr(T* [__main__.T])
+    TypeVarExpr:2(
+      Values(
+        builtins.int
+        builtins.str)))
+  AssignmentStmt:3(
+    NameExpr(S* [__main__.S])
+    TypeVarExpr:3(
+      Values(
+        Any
+        builtins.int
+        builtins.str))))
+
+[case testTypevarWithValuesAndVariance]
+from typing import TypeVar
+T = TypeVar('T', int, str, covariant=True)
+[builtins fixtures/bool.pyi]
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [TypeVar])
+  AssignmentStmt:2(
+    NameExpr(T* [__main__.T])
+    TypeVarExpr:2(
+      Variance(COVARIANT)
+      Values(
+        builtins.int
+        builtins.str))))
+
+[case testTypevarWithFalseVariance]
+from typing import TypeVar
+T1 = TypeVar('T1', covariant=False)
+T2 = TypeVar('T2', covariant=False, contravariant=False)
+T3 = TypeVar('T3', contravariant=False)
+T4 = TypeVar('T4', covariant=True, contravariant=False)
+T5 = TypeVar('T5', covariant=False, contravariant=True)
+[builtins fixtures/bool.pyi]
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [TypeVar])
+  AssignmentStmt:2(
+    NameExpr(T1* [__main__.T1])
+    TypeVarExpr:2())
+  AssignmentStmt:3(
+    NameExpr(T2* [__main__.T2])
+    TypeVarExpr:3())
+  AssignmentStmt:4(
+    NameExpr(T3* [__main__.T3])
+    TypeVarExpr:4())
+  AssignmentStmt:5(
+    NameExpr(T4* [__main__.T4])
+    TypeVarExpr:5(
+      Variance(COVARIANT)))
+  AssignmentStmt:6(
+    NameExpr(T5* [__main__.T5])
+    TypeVarExpr:6(
+      Variance(CONTRAVARIANT))))
+
+[case testTypevarWithBound]
+from typing import TypeVar
+T = TypeVar('T', bound=int)
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [TypeVar])
+  AssignmentStmt:2(
+    NameExpr(T* [__main__.T])
+    TypeVarExpr:2(
+      UpperBound(builtins.int))))
+
+[case testGenericFunctionWithValueSet]
+from typing import TypeVar
+T = TypeVar('T', int, str)
+def f(x: T) -> T: pass
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [TypeVar])
+  AssignmentStmt:2(
+    NameExpr(T* [__main__.T])
+    TypeVarExpr:2(
+      Values(
+        builtins.int
+        builtins.str)))
+  FuncDef:3(
+    f
+    Args(
+      Var(x))
+    def [T in (builtins.int, builtins.str)] (x: T`-1) -> T`-1
+    Block:3(
+      PassStmt:3())))
+
+[case testGenericClassWithValueSet]
+from typing import TypeVar, Generic
+T = TypeVar('T', int, str)
+class C(Generic[T]): pass
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [TypeVar, Generic])
+  AssignmentStmt:2(
+    NameExpr(T* [__main__.T])
+    TypeVarExpr:2(
+      Values(
+        builtins.int
+        builtins.str)))
+  ClassDef:3(
+    C
+    TypeVars(
+      T`1)
+    PassStmt:3()))
+
+[case testGenericFunctionWithBound]
+from typing import TypeVar
+T = TypeVar('T', bound=int)
+def f(x: T) -> T: pass
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [TypeVar])
+  AssignmentStmt:2(
+    NameExpr(T* [__main__.T])
+    TypeVarExpr:2(
+      UpperBound(builtins.int)))
+  FuncDef:3(
+    f
+    Args(
+      Var(x))
+    def [T <: builtins.int] (x: T`-1) -> T`-1
+    Block:3(
+      PassStmt:3())))
+
+[case testGenericClassWithBound]
+from typing import TypeVar, Generic
+T = TypeVar('T', bound=int)
+class C(Generic[T]): pass
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [TypeVar, Generic])
+  AssignmentStmt:2(
+    NameExpr(T* [__main__.T])
+    TypeVarExpr:2(
+      UpperBound(builtins.int)))
+  ClassDef:3(
+    C
+    TypeVars(
+      T`1)
+    PassStmt:3()))
+
+[case testSimpleDucktypeDecorator]
+from typing import _promote
+@_promote(str)
+class S: pass
+[typing fixtures/typing-medium.pyi]
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [_promote])
+  ClassDef:3(
+    S
+    Promote([builtins.str])
+    Decorators(
+      PromoteExpr:2(builtins.str))
+    PassStmt:3()))
+
+[case testUnionType]
+from typing import Union
+def f(x: Union[int, str]) -> None: pass
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [Union])
+  FuncDef:2(
+    f
+    Args(
+      Var(x))
+    def (x: builtins.int | builtins.str)
+    Block:2(
+      PassStmt:2())))
+
+[case testUnionTypeWithNoneItem]
+from typing import Union
+def f(x: Union[int, None]) -> None: pass
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [Union])
+  FuncDef:2(
+    f
+    Args(
+      Var(x))
+    def (x: builtins.int | None)
+    Block:2(
+      PassStmt:2())))
+
+[case testUnionTypeWithNoneItemAndTwoItems]
+from typing import Union
+def f(x: Union[int, None, str]) -> None: pass
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [Union])
+  FuncDef:2(
+    f
+    Args(
+      Var(x))
+    def (x: builtins.int | None | builtins.str)
+    Block:2(
+      PassStmt:2())))
+
+[case testUnionTypeWithSingleItem]
+from typing import Union
+def f(x: Union[int]) -> None: pass
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [Union])
+  FuncDef:2(
+    f
+    Args(
+      Var(x))
+    def (x: builtins.int)
+    Block:2(
+      PassStmt:2())))
+
+[case testOptionalTypes]
+from typing import Optional
+x = 1  # type: Optional[int]
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [Optional])
+  AssignmentStmt:2(
+    NameExpr(x [__main__.x])
+    IntExpr(1)
+    builtins.int | None))
+
+[case testInvalidOptionalType]
+from typing import Optional
+x = 1  # type: Optional[int, str]  # E: Optional[...] must have exactly one type argument
+y = 1  # type: Optional  # E: Optional[...] must have exactly one type argument
+[out]
+
+[case testCoAndContravariantTypeVar]
+from typing import TypeVar
+T = TypeVar('T', covariant=True)
+S = TypeVar('S', contravariant=True)
+[builtins fixtures/bool.pyi]
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [TypeVar])
+  AssignmentStmt:2(
+    NameExpr(T* [__main__.T])
+    TypeVarExpr:2(
+      Variance(COVARIANT)))
+  AssignmentStmt:3(
+    NameExpr(S* [__main__.S])
+    TypeVarExpr:3(
+      Variance(CONTRAVARIANT))))
+
+[case testTupleExpressionAsType]
+def f(x: (int, int)) -> None: pass
+[out]
+main:1: error: Syntax error in type annotation
+main:1: note: Suggestion: Use Tuple[T1, ..., Tn] instead of (T1, ..., Tn)
+
+[case testQualifiedTypeNameBasedOnAny]
+from typing import Any
+x = 0 # type: Any
+z = 0 # type: x.y
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [Any])
+  AssignmentStmt:2(
+    NameExpr(x [__main__.x])
+    IntExpr(0)
+    Any)
+  AssignmentStmt:3(
+    NameExpr(z [__main__.z])
+    IntExpr(0)
+    Any))
+
+
+[case testParamSpec]
+from typing import ParamSpec
+P = ParamSpec("P")
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [ParamSpec])
+  AssignmentStmt:2(
+    NameExpr(P* [__main__.P])
+    ParamSpecExpr:2()))
+
+[case testTypeVarTuple]
+from typing_extensions import TypeVarTuple
+TV = TypeVarTuple("TV")
+[out]
+MypyFile:1(
+  ImportFrom:1(typing_extensions, [TypeVarTuple])
+  AssignmentStmt:2(
+    NameExpr(TV* [__main__.TV])
+    TypeVarTupleExpr:2(
+      UpperBound(builtins.tuple[builtins.object, ...]))))
+[builtins fixtures/tuple.pyi]
+
+[case testTypeVarTupleCallable]
+from typing_extensions import TypeVarTuple, Unpack
+from typing import Callable
+Ts = TypeVarTuple("Ts")
+
+def foo(x: Callable[[Unpack[Ts]], None]) -> None:
+    pass
+[out]
+MypyFile:1(
+  ImportFrom:1(typing_extensions, [TypeVarTuple, Unpack])
+  ImportFrom:2(typing, [Callable])
+  AssignmentStmt:3(
+    NameExpr(Ts* [__main__.Ts])
+    TypeVarTupleExpr:3(
+      UpperBound(builtins.tuple[builtins.object, ...])))
+  FuncDef:5(
+    foo
+    Args(
+      Var(x))
+    def [Ts] (x: def (*Unpack[Ts`-1]))
+    Block:6(
+      PassStmt:6())))
+
+[builtins fixtures/tuple.pyi]

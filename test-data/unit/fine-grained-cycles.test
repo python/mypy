@@ -1,0 +1,221 @@
+-- Test cases for fine-grained incremental checking and import cycles
+--
+-- The comment at the top of fine-grained.test explains how these tests
+-- work.
+
+[case testFunctionSelfReferenceThroughImportCycle]
+import a
+[file a.py]
+from b import f
+[file b.py]
+import a
+
+def f() -> None:
+    a.f()
+[file b.py.2]
+import a
+
+def f(x: int) -> None:
+    a.f()
+[out]
+==
+b.py:4: error: Missing positional argument "x" in call to "f"
+
+[case testClassSelfReferenceThroughImportCycle]
+import a
+[file a.py]
+from b import A
+[file b.py]
+import a
+
+class A:
+    def g(self) -> None: pass
+
+def f() -> None:
+    a.A().g()
+[file b.py.2]
+import a
+
+class A:
+    def g(self, x: int) -> None: pass
+
+def f() -> None:
+    a.A().g()
+[out]
+==
+b.py:7: error: Missing positional argument "x" in call to "g" of "A"
+
+[case testAnnotationSelfReferenceThroughImportCycle]
+import a
+[file a.py]
+from b import A
+[file b.py]
+import a
+
+x: a.A
+
+class A:
+    def g(self) -> None: pass
+
+def f() -> None:
+    x.g()
+[file b.py.2]
+import a
+
+x: a.A
+
+class A:
+    def g(self, x: int) -> None: pass
+
+def f() -> None:
+    x.g()
+[out]
+==
+b.py:9: error: Missing positional argument "x" in call to "g" of "A"
+
+[case testModuleSelfReferenceThroughImportCycle]
+import a
+[file a.py]
+import b
+[file b.py]
+import a
+
+def f() -> None:
+    a.b.f()
+[file b.py.2]
+import a
+
+def f(x: int) -> None:
+    a.b.f()
+[out]
+==
+b.py:4: error: Missing positional argument "x" in call to "f"
+
+[case testVariableSelfReferenceThroughImportCycle]
+import a
+[file a.py]
+from b import x
+[file b.py]
+import a
+
+x: int
+
+def f() -> None:
+    a.x = 1
+[file b.py.2]
+import a
+
+x: str
+
+def f() -> None:
+    a.x = 1
+[out]
+==
+b.py:6: error: Incompatible types in assignment (expression has type "int", variable has type "str")
+
+[case testReferenceToTypeThroughCycle]
+import a
+
+[file a.py]
+from b import C
+
+def f() -> C: pass
+
+[file b.py]
+import a
+
+class C:
+    def g(self) -> None: pass
+
+def h() -> None:
+    c = a.f()
+    c.g()
+
+[file b.py.2]
+import a
+
+class C:
+    def g(self, x: int) -> None: pass
+
+def h() -> None:
+    c = a.f()
+    c.g()
+
+[out]
+==
+b.py:8: error: Missing positional argument "x" in call to "g" of "C"
+
+[case testReferenceToTypeThroughCycleAndDeleteType]
+import a
+
+[file a.py]
+from b import C
+
+def f() -> C: pass
+
+[file b.py]
+import a
+
+class C:
+    def g(self) -> None: pass
+
+def h() -> None:
+    c = a.f()
+    c.g()
+
+[file b.py.2]
+import a
+
+def h() -> None:
+    c = a.f()
+    c.g()
+
+[out]
+==
+a.py:1: error: Module "b" has no attribute "C"
+
+[case testReferenceToTypeThroughCycleAndReplaceWithFunction]
+
+import a
+
+[file a.py]
+from b import C
+
+def f() -> C: pass
+
+[file b.py]
+import a
+
+class C:
+    def g(self) -> None: pass
+
+def h() -> None:
+    c = a.f()
+    c.g()
+
+[file b.py.2]
+import a
+
+def C() -> int: pass
+
+def h() -> None:
+    c = a.f()
+    c.g()
+
+[out]
+==
+a.py:3: error: Function "b.C" is not valid as a type
+a.py:3: note: Perhaps you need "Callable[...]" or a callback protocol?
+b.py:7: error: C? has no attribute "g"
+
+-- TODO: More import cycle:
+--
+-- * "from x import y" through cycle
+-- * "from x import *" through cycle
+-- * "Cls.module" though cycle
+-- * TypeVar
+-- * type alias
+-- * all kinds of reference deleted
+-- * all kinds of reference rebound to different kind
+--
+-- etc.

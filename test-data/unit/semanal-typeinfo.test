@@ -1,0 +1,91 @@
+[case testEmptyFile]
+[out]
+TypeInfoMap()
+
+[case testEmptyClass]
+class c: pass
+[out]
+TypeInfoMap(
+  __main__.c : TypeInfo(
+    Name(__main__.c)
+    Bases(builtins.object)
+    Mro(__main__.c, builtins.object)
+    Names()))
+
+[case testClassWithMethod]
+class c:
+  def f(self): pass
+[out]
+TypeInfoMap(
+  __main__.c : TypeInfo(
+    Name(__main__.c)
+    Bases(builtins.object)
+    Mro(__main__.c, builtins.object)
+    Names(
+      f)))
+
+[case testClassWithAttributes]
+class c:
+  def __init__(self, x):
+    self.y = x
+    self.z = 1
+[out]
+TypeInfoMap(
+  __main__.c : TypeInfo(
+    Name(__main__.c)
+    Bases(builtins.object)
+    Mro(__main__.c, builtins.object)
+    Names(
+      __init__
+      y
+      z)))
+
+[case testBaseClass]
+class base: pass
+class c(base): pass
+[out]
+TypeInfoMap(
+  __main__.base : TypeInfo(
+    Name(__main__.base)
+    Bases(builtins.object)
+    Mro(__main__.base, builtins.object)
+    Names())
+  __main__.c : TypeInfo(
+    Name(__main__.c)
+    Bases(__main__.base)
+    Mro(__main__.c, __main__.base, builtins.object)
+    Names()))
+
+[case testClassAndAbstractClass]
+from abc import abstractmethod, ABCMeta
+import typing
+
+class i(metaclass=ABCMeta): pass
+class c(i): pass
+[out]
+TypeInfoMap(
+  __main__.c : TypeInfo(
+    Name(__main__.c)
+    Bases(__main__.i)
+    Mro(__main__.c, __main__.i, builtins.object)
+    Names()
+    MetaclassType(abc.ABCMeta))
+  __main__.i : TypeInfo(
+    Name(__main__.i)
+    Bases(builtins.object)
+    Mro(__main__.i, builtins.object)
+    Names()
+    DeclaredMetaclass(abc.ABCMeta)
+    MetaclassType(abc.ABCMeta)))
+
+[case testAttributeWithoutType]
+class A:
+    a = A
+[out]
+TypeInfoMap(
+  __main__.A : TypeInfo(
+    Name(__main__.A)
+    Bases(builtins.object)
+    Mro(__main__.A, builtins.object)
+    Names(
+      a)))

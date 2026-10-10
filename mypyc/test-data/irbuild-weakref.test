@@ -1,0 +1,103 @@
+[case testWeakrefRef]
+import weakref
+from typing import Any, Callable
+def f(x: object) -> object:
+    return weakref.ref(x)
+
+[out]
+def f(x):
+    x, r0 :: object
+L0:
+    r0 = PyWeakref_NewRef(x, 0)
+    return r0
+
+[case testWeakrefRefCallback]
+import weakref
+from typing import Any, Callable
+def f(x: object, cb: Callable[[object], Any]) -> object:
+    return weakref.ref(x, cb)
+
+[out]
+def f(x, cb):
+    x, cb, r0 :: object
+L0:
+    r0 = PyWeakref_NewRef(x, cb)
+    return r0
+
+[case testFromWeakrefRef]
+from typing import Any, Callable
+from weakref import ref
+def f(x: object) -> object:
+    return ref(x)
+
+[out]
+def f(x):
+    x, r0 :: object
+L0:
+    r0 = PyWeakref_NewRef(x, 0)
+    return r0
+
+[case testFromWeakrefRefCallback]
+from typing import Any, Callable
+from weakref import ref
+def f(x: object, cb: Callable[[object], Any]) -> object:
+    return ref(x, cb)
+
+[out]
+def f(x, cb):
+    x, cb, r0 :: object
+L0:
+    r0 = PyWeakref_NewRef(x, cb)
+    return r0
+
+[case testWeakrefProxy]
+import weakref
+from typing import Any, Callable
+def f(x: object) -> object:
+    return weakref.proxy(x)
+
+[out]
+def f(x):
+    x, r0 :: object
+L0:
+    r0 = PyWeakref_NewProxy(x, 0)
+    return r0
+
+[case testWeakrefProxyCallback]
+import weakref
+from typing import Any, Callable
+def f(x: object, cb: Callable[[object], Any]) -> object:
+    return weakref.proxy(x, cb)
+
+[out]
+def f(x, cb):
+    x, cb, r0 :: object
+L0:
+    r0 = PyWeakref_NewProxy(x, cb)
+    return r0
+
+[case testFromWeakrefProxy]
+from typing import Any, Callable
+from weakref import proxy
+def f(x: object) -> object:
+    return proxy(x)
+
+[out]
+def f(x):
+    x, r0 :: object
+L0:
+    r0 = PyWeakref_NewProxy(x, 0)
+    return r0
+
+[case testFromWeakrefProxyCallback]
+from typing import Any, Callable
+from weakref import proxy
+def f(x: object, cb: Callable[[object], Any]) -> object:
+    return proxy(x, cb)
+
+[out]
+def f(x, cb):
+    x, cb, r0 :: object
+L0:
+    r0 = PyWeakref_NewProxy(x, cb)
+    return r0

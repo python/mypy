@@ -1,0 +1,105 @@
+-- Nested list assignment
+-- -----------------------------
+
+[case testNestedListAssignment]
+from typing import List
+a1: A
+a2: A
+b1: B
+b2: B
+c1: C
+c2: C
+
+if int():
+    a1, [b1, c1] = a2, [b2, c2]
+if int():
+    a1, [a1, [b1, c1]] = a2, [a2, [b2, c2]]
+if int():
+    a1, [a1, [a1, b1]] = a1, [a1, [a1, c1]]  # E: Incompatible types in assignment (expression has type "C", variable has type "B")
+
+class A: pass
+class B: pass
+class C: pass
+[builtins fixtures/list.pyi]
+[out]
+
+[case testNestedListAssignmentToTuple]
+from typing import List
+a: A
+b: B
+c: C
+
+a, b = [a, b]
+a, b = [a]  # E: Need more than 1 value to unpack (2 expected)
+a, b = [a, b, c]  # E: Too many values to unpack (2 expected, 3 provided)
+
+class A: pass
+class B: pass
+class C: pass
+[builtins fixtures/list.pyi]
+[out]
+
+[case testListAssignmentFromTuple]
+from typing import List
+a: A
+b: B
+c: C
+t = a, b
+
+if int():
+    [a, b], c = t, c
+if int():
+    [a, c], c = t, c  # E: Incompatible types in assignment (expression has type "B", variable has type "C")
+if int():
+    [a, a, a], c = t, c  # E: Need more than 2 values to unpack (3 expected)
+if int():
+    [a], c = t, c  # E: Too many values to unpack (1 expected, 2 provided)
+
+class A: pass
+class B: pass
+class C: pass
+[builtins fixtures/list.pyi]
+[out]
+
+[case testListAssignmentUnequalAmountToUnpack]
+from typing import List
+a: A
+b: B
+c: C
+
+def f() -> None: # needed because test parser tries to parse [a, b] as section header
+    [a, b] = [a, b]
+    [a, b] = [a]  # E: Need more than 1 value to unpack (2 expected)
+    [a, b] = [a, b, c]  # E: Too many values to unpack (2 expected, 3 provided)
+
+class A: pass
+class B: pass
+class C: pass
+[builtins fixtures/list.pyi]
+[out]
+
+[case testListWithStarExpr]
+(x, *a) = [1, 2, 3]
+a = [1, *[2, 3]]
+reveal_type(a)  # N: Revealed type is "builtins.list[builtins.int]"
+b = [0, *a]
+reveal_type(b)  # N: Revealed type is "builtins.list[builtins.int]"
+c = [*a, 0]
+reveal_type(c)  # N: Revealed type is "builtins.list[builtins.int]"
+[builtins fixtures/list.pyi]
+
+[case testComprehensionShadowBinder]
+def foo(x: object) -> None:
+    if isinstance(x, str):
+        [reveal_type(x) for x in [1, 2, 3]]  # N: Revealed type is "builtins.int"
+
+[builtins fixtures/isinstancelist.pyi]
+
+[case testUnpackAssignmentWithStarExpr]
+a: A
+b: list[B]
+if int():
+    (a,) = [*b]  # E: Incompatible types in assignment (expression has type "B", variable has type "A")
+
+class A: pass
+class B: pass

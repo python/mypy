@@ -1,0 +1,48 @@
+-- Create Type
+
+-- TODO: Implement support for this syntax.
+--[case testCanCreateTypedDictTypeWithDictCall]
+--from typing import TypedDict
+--Point = TypedDict('Point', dict(x=int, y=int))
+--[builtins fixtures/dict.pyi]
+--[typing fixtures/typing-typeddict.pyi]
+--[out]
+--MypyFile:1(
+--  ImportFrom:1(typing, [TypedDict])
+--  AssignmentStmt:2(
+--    NameExpr(Point* [__main__.Point])
+--    TypedDictExpr:2(Point)))
+
+[case testCanCreateTypedDictTypeWithDictLiteral]
+from typing import TypedDict
+Point = TypedDict('Point', {'x': int, 'y': int})
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [TypedDict])
+  AssignmentStmt:2(
+    NameExpr(Point* [__main__.Point])
+    TypedDictExpr:2(Point)))
+
+[case testTypedDictWithDocString]
+from typing import TypedDict
+class A(TypedDict):
+    """foo"""
+    x: str
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [TypedDict])
+  ClassDef:2(
+    A
+    BaseType(
+      typing._TypedDict)
+    ExpressionStmt:3(
+      StrExpr(foo))
+    AssignmentStmt:4(
+      NameExpr(x)
+      TempNode:4(
+        Any)
+      builtins.str)))

@@ -1,0 +1,446 @@
+[case testListTypeAlias]
+from typing import List
+def f() -> List[int]: pass
+[builtins fixtures/list.pyi]
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [List])
+  FuncDef:2(
+    f
+    def () -> builtins.list[builtins.int]
+    Block:2(
+      PassStmt:2())))
+
+[case testDictTypeAlias]
+from typing import Dict
+def f() -> Dict[int, str]: pass
+[builtins fixtures/dict.pyi]
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [Dict])
+  FuncDef:2(
+    f
+    def () -> builtins.dict[builtins.int, builtins.str]
+    Block:2(
+      PassStmt:2())))
+
+[case testQualifiedTypeAlias]
+import typing
+def f() -> typing.List[int]: pass
+[builtins fixtures/list.pyi]
+[out]
+MypyFile:1(
+  Import:1(typing)
+  FuncDef:2(
+    f
+    def () -> builtins.list[builtins.int]
+    Block:2(
+      PassStmt:2())))
+
+[case testTypeApplicationWithTypeAlias]
+from typing import List
+List[List[int]]
+[builtins fixtures/list.pyi]
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [List])
+  ExpressionStmt:2(
+    TypeApplication:2(
+      NameExpr(List [typing.List])
+      Types(
+        builtins.list[builtins.int]))))
+
+[case testTypeApplicationWithQualifiedTypeAlias]
+import typing
+typing.List[typing.List[int]]
+[builtins fixtures/list.pyi]
+[out]
+MypyFile:1(
+  Import:1(typing)
+  ExpressionStmt:2(
+    TypeApplication:2(
+      MemberExpr:2(
+        NameExpr(typing)
+        List [typing.List])
+      Types(
+        builtins.list[builtins.int]))))
+
+[case testSimpleTypeAlias]
+import typing
+class A: pass
+A2 = A
+def f(x: A2) -> A: pass
+[out]
+MypyFile:1(
+  Import:1(typing)
+  ClassDef:2(
+    A
+    PassStmt:2())
+  AssignmentStmt:3(
+    NameExpr(A2* [__main__.A2])
+    NameExpr(A [__main__.A]))
+  FuncDef:4(
+    f
+    Args(
+      Var(x))
+    def (x: __main__.A) -> __main__.A
+    Block:4(
+      PassStmt:4())))
+
+[case testQualifiedSimpleTypeAlias]
+import typing
+import _m
+A2 = _m.A
+x = 1 # type: A2
+[fixture _m.py]
+import typing
+class A: pass
+[out]
+MypyFile:1(
+  Import:1(typing)
+  Import:2(_m)
+  AssignmentStmt:3(
+    NameExpr(A2* [__main__.A2])
+    MemberExpr:3(
+      NameExpr(_m)
+      A [_m.A]))
+  AssignmentStmt:4(
+    NameExpr(x [__main__.x])
+    IntExpr(1)
+    _m.A))
+
+[case testUnionTypeAlias]
+from typing import Union
+U = Union[int, str]
+def f(x: U) -> None: pass
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [Union])
+  AssignmentStmt:2(
+    NameExpr(U* [__main__.U])
+    TypeAliasExpr(builtins.int | builtins.str))
+  FuncDef:3(
+    f
+    Args(
+      Var(x))
+    def (x: builtins.int | builtins.str)
+    Block:3(
+      PassStmt:3())))
+
+[case testUnionTypeAlias2]
+from typing import Union
+class A: pass
+U = Union[int, A]
+def f(x: U) -> None: pass
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [Union])
+  ClassDef:2(
+    A
+    PassStmt:2())
+  AssignmentStmt:3(
+    NameExpr(U* [__main__.U])
+    TypeAliasExpr(builtins.int | __main__.A))
+  FuncDef:4(
+    f
+    Args(
+      Var(x))
+    def (x: builtins.int | __main__.A)
+    Block:4(
+      PassStmt:4())))
+
+[case testUnionTypeAliasWithQualifiedUnion]
+import typing
+U = typing.Union[int, str]
+def f(x: U) -> None: pass
+[out]
+MypyFile:1(
+  Import:1(typing)
+  AssignmentStmt:2(
+    NameExpr(U* [__main__.U])
+    TypeAliasExpr(builtins.int | builtins.str))
+  FuncDef:3(
+    f
+    Args(
+      Var(x))
+    def (x: builtins.int | builtins.str)
+    Block:3(
+      PassStmt:3())))
+
+[case testTupleTypeAlias]
+from typing import Tuple
+T = Tuple[int, str]
+def f(x: T) -> None: pass
+[builtins fixtures/tuple.pyi]
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [Tuple])
+  AssignmentStmt:2(
+    NameExpr(T* [__main__.T])
+    TypeAliasExpr(tuple[builtins.int, builtins.str]))
+  FuncDef:3(
+    f
+    Args(
+      Var(x))
+    def (x: tuple[builtins.int, builtins.str])
+    Block:3(
+      PassStmt:3())))
+
+[case testCallableTypeAlias]
+from typing import Callable
+C = Callable[[int], None]
+def f(x: C) -> None: pass
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [Callable])
+  AssignmentStmt:2(
+    NameExpr(C* [__main__.C])
+    TypeAliasExpr(def (builtins.int)))
+  FuncDef:3(
+    f
+    Args(
+      Var(x))
+    def (x: def (builtins.int))
+    Block:3(
+      PassStmt:3())))
+
+[case testGenericTypeAlias]
+from typing import Generic, TypeVar
+T = TypeVar('T')
+class G(Generic[T]): pass
+A = G[int]
+def f(x: A) -> None: pass
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [Generic, TypeVar])
+  AssignmentStmt:2(
+    NameExpr(T* [__main__.T])
+    TypeVarExpr:2())
+  ClassDef:3(
+    G
+    TypeVars(
+      T`1)
+    PassStmt:3())
+  AssignmentStmt:4(
+    NameExpr(A* [__main__.A])
+    TypeAliasExpr(__main__.G[builtins.int]))
+  FuncDef:5(
+    f
+    Args(
+      Var(x))
+    def (x: __main__.G[builtins.int])
+    Block:5(
+      PassStmt:5())))
+
+[case testGenericTypeAlias2]
+from typing import List
+A = List[int]
+def f(x: A) -> None: pass
+[builtins fixtures/list.pyi]
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [List])
+  AssignmentStmt:2(
+    NameExpr(A* [__main__.A])
+    TypeAliasExpr(builtins.list[builtins.int]))
+  FuncDef:3(
+    f
+    Args(
+      Var(x))
+    def (x: builtins.list[builtins.int])
+    Block:3(
+      PassStmt:3())))
+
+[case testImportUnionTypeAlias]
+import typing
+from _m import U
+def f(x: U) -> None: pass
+[fixture _m.py]
+from typing import Union
+class A: pass
+U = Union[int, A]
+[out]
+MypyFile:1(
+  Import:1(typing)
+  ImportFrom:2(_m, [U])
+  FuncDef:3(
+    f
+    Args(
+      Var(x))
+    def (x: builtins.int | _m.A)
+    Block:3(
+      PassStmt:3())))
+
+[case testImportUnionTypeAlias2]
+import typing
+import _m
+def f(x: _m.U) -> None: pass
+[fixture _m.py]
+from typing import Union
+class A: pass
+U = Union[int, A]
+[out]
+MypyFile:1(
+  Import:1(typing)
+  Import:2(_m)
+  FuncDef:3(
+    f
+    Args(
+      Var(x))
+    def (x: builtins.int | _m.A)
+    Block:3(
+      PassStmt:3())))
+
+[case testImportSimpleTypeAlias]
+import typing
+from _m import A
+def f(x: A) -> None: pass
+[fixture _m.py]
+import typing
+A = int
+[out]
+MypyFile:1(
+  Import:1(typing)
+  ImportFrom:2(_m, [A])
+  FuncDef:3(
+    f
+    Args(
+      Var(x))
+    def (x: builtins.int)
+    Block:3(
+      PassStmt:3())))
+
+[case testImportSimpleTypeAlias2]
+import typing
+import _m
+def f(x: _m.A) -> None: pass
+[fixture _m.py]
+import typing
+A = int
+[out]
+MypyFile:1(
+  Import:1(typing)
+  Import:2(_m)
+  FuncDef:3(
+    f
+    Args(
+      Var(x))
+    def (x: builtins.int)
+    Block:3(
+      PassStmt:3())))
+
+[case testAnyTypeAlias]
+from typing import Any
+A = Any
+a = 1 # type: A
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [Any])
+  AssignmentStmt:2(
+    NameExpr(A* [__main__.A])
+    NameExpr(Any [typing.Any]))
+  AssignmentStmt:3(
+    NameExpr(a [__main__.a])
+    IntExpr(1)
+    Any))
+
+[case testAnyTypeAlias2]
+import typing
+A = typing.Any
+a = 1 # type: A
+[out]
+MypyFile:1(
+  Import:1(typing)
+  AssignmentStmt:2(
+    NameExpr(A* [__main__.A])
+    MemberExpr:2(
+      NameExpr(typing)
+      Any [typing.Any]))
+  AssignmentStmt:3(
+    NameExpr(a [__main__.a])
+    IntExpr(1)
+    Any))
+
+[case testTypeAliasAlias]
+from typing import Union
+U = Union[int, str]
+U2 = U
+x = 1 # type: U2
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [Union])
+  AssignmentStmt:2(
+    NameExpr(U* [__main__.U])
+    TypeAliasExpr(builtins.int | builtins.str))
+  AssignmentStmt:3(
+    NameExpr(U2* [__main__.U2])
+    NameExpr(U [__main__.U]))
+  AssignmentStmt:4(
+    NameExpr(x [__main__.x])
+    IntExpr(1)
+    builtins.int | builtins.str))
+
+[case testTypeAliasOfImportedAlias]
+from typing import Union
+from _m import U
+U2 = U
+x = 1 # type: U2
+[fixture _m.py]
+from typing import Union
+U = Union[int, str]
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [Union])
+  ImportFrom:2(_m, [U])
+  AssignmentStmt:3(
+    NameExpr(U2* [__main__.U2])
+    NameExpr(U [_m.U]))
+  AssignmentStmt:4(
+    NameExpr(x [__main__.x])
+    IntExpr(1)
+    builtins.int | builtins.str))
+
+[case testListTypeDoesNotGenerateAlias]
+
+import typing
+A = [int, str]
+a = 1 # type: A  # E: Variable "__main__.A" is not valid as a type \
+                 # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
+
+[case testCantUseStringLiteralAsTypeAlias]
+
+from typing import Union
+A = 'Union[int, str]'
+a = 1 # type: A  # E: Variable "__main__.A" is not valid as a type \
+                 # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
+
+[case testStringLiteralTypeAsAliasComponent]
+from typing import Union
+A = Union['int', str]
+a = 1 # type: A
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [Union])
+  AssignmentStmt:2(
+    NameExpr(A* [__main__.A])
+    TypeAliasExpr(builtins.int | builtins.str))
+  AssignmentStmt:3(
+    NameExpr(a [__main__.a])
+    IntExpr(1)
+    builtins.int | builtins.str))
+
+[case testComplexTypeAlias]
+from typing import Union, Tuple, Any
+A = Union['int', Tuple[int, Any]]
+a = 1 # type: A
+[builtins fixtures/tuple.pyi]
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [Union, Tuple, Any])
+  AssignmentStmt:2(
+    NameExpr(A* [__main__.A])
+    TypeAliasExpr(builtins.int | tuple[builtins.int, Any]))
+  AssignmentStmt:3(
+    NameExpr(a [__main__.a])
+    IntExpr(1)
+    builtins.int | tuple[builtins.int, Any]))

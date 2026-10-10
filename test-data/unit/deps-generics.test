@@ -1,0 +1,204 @@
+-- Test cases for generating fine-grained dependencies involving generics.
+--
+-- The dependencies are used for fined-grained incremental checking.
+--
+-- See the comment at the top of deps.test for more documentation.
+
+[case testGenericFunction]
+from typing import TypeVar
+
+T = TypeVar('T')
+
+class A: pass
+
+def f(x: T) -> T:
+    y: T
+    z: A
+    return x
+[out]
+<m.A> -> m.A, m.f
+<m.T> -> <m.f>, m.f
+
+[case testGenericClass]
+from typing import TypeVar, Generic
+
+T = TypeVar('T')
+
+class A(Generic[T]): pass
+class B: pass
+
+def f() -> None:
+    a: A[B]
+[out]
+<m.A> -> m.A, m.f
+<m.B> -> m.B, m.f
+<m.T> -> m.A
+
+[case testGenericClassWithMembers]
+from typing import TypeVar, Generic
+
+T = TypeVar('T')
+
+class A(Generic[T]):
+    def g(self, a: T) -> None:
+        self.x = a
+    def f(self) -> T:
+        return self.x
+[out]
+<m.A.x> -> m.A.f, m.A.g
+<m.A> -> m.A
+<m.T> -> <m.A.f>, <m.A.g>, <m.A.x>, m.A, m.A.f, m.A.g
+
+[case testGenericClassInit]
+from typing import TypeVar, Generic
+
+T = TypeVar('T')
+
+class A(Generic[T]):
+    def __init__(self, a: T) -> None:
+        self.x = a
+
+class B: pass
+
+def f() -> None:
+    a = A(B())
+[out]
+<m.A.__init__> -> m.f
+<m.A.__new__> -> m.f
+<m.A.x> -> m.A.__init__
+<m.A> -> m.A, m.f
+<m.B.__init__> -> m.f
+<m.B.__new__> -> m.f
+<m.B> -> m.B, m.f
+<m.T> -> <m.A.__init__>, <m.A.x>, m.A, m.A.__init__
+
+[case testGenericMethod]
+from typing import TypeVar
+
+T = TypeVar('T')
+
+class A:
+    def f(self, x: T) -> T:
+        return x
+[out]
+<m.A> -> m.A
+<m.T> -> <m.A.f>, m.A.f
+
+[case testGenericBaseClass]
+from typing import TypeVar, Generic
+
+T = TypeVar('T')
+
+class A(Generic[T]): pass
+class B(A[C]): pass
+class C: pass
+[out]
+<m.A.(abstract)> -> <m.B.__init__>, m
+<m.A.__init__> -> <m.B.__init__>
+<m.A.__new__> -> <m.B.__new__>
+<m.A> -> m, m.A, m.B
+<m.B> -> m.B
+<m.C> -> m, m.B, m.C
+<m.T> -> m.A
+
+[case testGenericBaseClass2]
+from typing import TypeVar, Generic
+
+T = TypeVar('T')
+
+class A(Generic[T]): pass
+class B(A[T]): pass
+[out]
+<m.A.(abstract)> -> <m.B.__init__>, m
+<m.A.__init__> -> <m.B.__init__>
+<m.A.__new__> -> <m.B.__new__>
+<m.A> -> m, m.A, m.B
+<m.B> -> m.B
+<m.T> -> m, m.A, m.B
+
+[case testTypeVarBound]
+from typing import TypeVar, Tuple
+
+class A: pass
+class B: pass
+
+T = TypeVar('T', bound=Tuple[A, B])
+
+def f(x: T) -> T:
+    return x
+[builtins fixtures/tuple.pyi]
+[out]
+<m.A> -> <m.T>, <m.f>, m, m.A, m.f
+<m.B> -> <m.T>, <m.f>, m, m.B, m.f
+<m.T> -> <m.f>, m.f
+
+[case testTypeVarBoundOperations]
+from typing import TypeVar, Tuple
+
+class A:
+    def f(self) -> None: pass
+    def __add__(self, other: int) -> int: pass
+
+T = TypeVar('T', bound=A)
+
+def f(x: T) -> None:
+    x.f()
+    x + 1
+[out]
+<m.A.__add__> -> m.f
+<m.A.f> -> m.f
+<m.A> -> <m.T>, <m.f>, m, m.A, m.f
+<m.T> -> <m.f>, m.f
+
+[case testTypeVarValues]
+from typing import TypeVar
+class A: pass
+class B: pass
+class C: pass
+class D: pass
+T = TypeVar('T', A, B)
+S = TypeVar('S', C, D)
+
+def f(x: T, y: S) -> S:
+    pass
+[out]
+<m.A> -> <m.T>, <m.f>, m, m.A, m.f
+<m.B> -> <m.T>, <m.f>, m, m.B, m.f
+<m.C> -> <m.S>, <m.f>, m, m.C, m.f
+<m.D> -> <m.S>, <m.f>, m, m.D, m.f
+<m.S> -> <m.f>, m.f
+<m.T> -> <m.f>, m.f
+
+[case testTypeVarValuesMethod]
+from typing import TypeVar, Generic
+class C: pass
+class D: pass
+S = TypeVar('S', C, D)
+
+class G(Generic[S]):
+    def f(self) -> S:
+        pass
+[out]
+<m.C> -> <m.G.f>, <m.S>, m, m.C, m.G.f
+<m.D> -> <m.G.f>, <m.S>, m, m.D, m.G.f
+<m.G> -> m.G
+<m.S> -> <m.G.f>, m.G, m.G.f
+
+[case testTypeVarValuesMethodAttr]
+from typing import TypeVar, Generic
+class A:
+    x: int
+class B:
+    x: int
+T = TypeVar('T', A, B)
+
+class G(Generic[T]):
+    def f(self, x: T) -> None:
+        x.x
+[out]
+<m.A.x> -> m.G.f
+<m.A> -> <m.G.f>, <m.T>, m, m.A, m.G.f
+<m.B.x> -> m.G.f
+<m.B> -> <m.G.f>, <m.T>, m, m.B, m.G.f
+<m.G> -> m.G
+<m.T> -> <m.G.f>, m.G, m.G.f

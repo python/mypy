@@ -1,0 +1,434 @@
+-- Test cases for type checker related to super().
+
+
+-- Supertype member reference
+-- --------------------------
+
+
+[case testAccessingSupertypeMethod]
+
+class B:
+  def f(self) -> 'B': pass
+class A(B):
+  def f(self) -> 'A':
+    a: A
+    b: B
+    if int():
+        a = super().f() # E: Incompatible types in assignment (expression has type "B", variable has type "A")
+        a = super().g() # E: "g" undefined in superclass
+        b = super().f()
+    return a
+[builtins fixtures/tuple.pyi]
+[out]
+
+[case testAccessingSuperTypeMethodWithArgs]
+from typing import Any
+class B:
+  def f(self, y: 'A') -> None: pass
+class A(B):
+  def f(self, y: Any) -> None:
+    a: A
+    b: B
+    super().f(b) # E: Argument 1 to "f" of "B" has incompatible type "B"; expected "A"
+    super().f(a)
+    self.f(b)
+    self.f(a)
+[builtins fixtures/tuple.pyi]
+[out]
+
+[case testAccessingSuperInit]
+# flags: --no-strict-optional
+import typing
+class B:
+    def __init__(self, x: A) -> None: pass
+class A(B):
+  def __init__(self) -> None:
+    super().__init__(B(None)) # E: Argument 1 to "__init__" of "B" has incompatible type "B"; expected "A"
+    super().__init__()       # E: Missing positional argument "x" in call to "__init__" of "B"
+    super().__init__(A())
+[out]
+
+[case testAccessingSuperMemberWithDeepHierarchy]
+import typing
+class C:
+  def f(self) -> None: pass
+class B(C): pass
+class A(B):
+  def f(self) -> None:
+    super().g() # E: "g" undefined in superclass
+    super().f()
+[out]
+
+[case testAssignToBaseClassMethod]
+import typing
+class A:
+    def f(self) -> None: pass
+class B(A):
+    def g(self) -> None:
+        super().f = None
+[out]
+main:6: error: Invalid assignment target
+
+[case testSuperWithMultipleInheritance]
+import typing
+class A:
+  def f(self) -> None: pass
+class B:
+  def g(self, x: int) -> None: pass
+class C(A, B):
+    def f(self) -> None:
+        super().f()
+        super().g(1)
+        super().f(1) # E: Too many arguments for "f" of "A"
+        super().g() # E: Missing positional argument "x" in call to "g" of "B"
+        super().not_there() # E: "not_there" undefined in superclass
+[out]
+
+[case testSuperWithNew]
+class A:
+    def __new__(cls, x: int) -> 'A':
+        return object.__new__(cls)
+
+class B(A):
+    def __new__(cls, x: int, y: str = '') -> 'B':
+        super().__new__(cls, 1)
+        super().__new__(cls, 1, '')  # E: Too many arguments for "__new__" of "A"
+        return cls(1)
+B('')  # E: Argument 1 to "B" has incompatible type "str"; expected "int"
+B(1)
+B(1, 'x')
+[builtins fixtures/__new__.pyi]
+
+reveal_type(C.a)  # N: Revealed type is "Any"
+[out]
+
+[case testSuperWithUnknownBase]
+from typing import Any
+B = None  # type: Any
+class C(B):
+    def __init__(self, arg=0):
+        super(C, self).__init__(arg, arg=arg)
+[out]
+
+[case testSuperSilentInDynamicFunction]
+class A:
+    pass
+
+class B(A):
+    def foo(self):
+        super(B, self).foo() # Not an error
+[out]
+
+[case testSuperWithAny]
+class B:
+    def f(self) -> None: pass
+class C(B):
+    def h(self, x) -> None:
+        reveal_type(super(x, x).f) # N: Revealed type is "def ()"
+        reveal_type(super(C, x).f) # N: Revealed type is "def ()"
+        reveal_type(super(C, type(x)).f) # N: Revealed type is "def (self: __main__.B)"
+
+[case testSuperInUnannotatedMethod]
+class C:
+    def h(self):
+        super(C, self).xyz
+
+[case testSuperWithTypeObjects]
+from typing import Type
+
+class A:
+    def f(self) -> object: pass
+
+class B(A):
+    def f(self) -> int: pass
+
+    @classmethod
+    def g(cls, x) -> None:
+        reveal_type(super(cls, x).f) # N: Revealed type is "def () -> builtins.object"
+
+    def h(self, t: Type[B]) -> None:
+        reveal_type(super(t, self).f) # N: Revealed type is "def () -> builtins.object"
+[builtins fixtures/classmethod.pyi]
+
+[case testSuperWithTypeTypeAsSecondArgument]
+class B:
+    def f(self) -> None: pass
+
+class C(B):
+    def __new__(cls) -> 'C':
+        super(C, cls).f
+        return C()
+
+[case testSuperWithGenericSelf]
+from typing import TypeVar
+
+T = TypeVar('T', bound='C')
+
+class B:
+    def f(self) -> float: pass
+
+class C(B):
+    def f(self) -> int: pass
+
+    def g(self: T) -> T:
+        reveal_type(super(C, self).f) # N: Revealed type is "def () -> builtins.float"
+        return self
+
+[case testSuperWithTypeVarValues1]
+from typing import TypeVar
+
+T = TypeVar('T', 'C', 'D')
+S = TypeVar('S', 'B', 'C')
+
+class B:
+    def f(self) -> None: pass
+
+class C(B):
+    def f(self) -> None: pass
+
+    def g(self, x: T, y: S) -> None:
+        super(C, x).f
+        super(C, y).f # E: Argument 2 for "super" not an instance of argument 1
+
+class D(C): pass
+
+[case testSuperWithTypeVarValues2]
+from typing import TypeVar, Generic
+
+T = TypeVar('T', 'C', 'D')
+S = TypeVar('S', 'B', 'C')
+
+class B:
+    def f(self) -> None: pass
+
+class C(B, Generic[T, S]):
+    def f(self) -> None: pass
+
+    def g(self, x: T, y: S) -> None:
+        super(C, x).f
+        super(C, y).f # E: Argument 2 for "super" not an instance of argument 1
+
+class D(C): pass
+
+[case testSuperInClassMethod]
+from typing import Union
+
+class A:
+    def f(self, i: int) -> None: pass
+
+class B(A):
+    def f(self, i: Union[int, str]) -> None: pass
+
+    @classmethod
+    def g(cls, i: int) -> None:
+        super().f(B(), i)
+        super(B, cls).f(cls(), i)
+        super(B, B()).f(i)
+
+        super().f(B(), '') # E: Argument 2 to "f" of "A" has incompatible type "str"; expected "int"
+        super(B, cls).f(cls(), '') # E: Argument 2 to "f" of "A" has incompatible type "str"; expected "int"
+        super(B, B()).f('') # E: Argument 1 to "f" of "A" has incompatible type "str"; expected "int"
+[builtins fixtures/classmethod.pyi]
+
+[case testSuperWithUnrelatedTypes]
+from typing import Union
+
+class A:
+    def f(self, s: str) -> None: pass
+
+class B(A):
+    def f(self, i: Union[int, str]) -> None: pass
+
+class C:
+    def g(self, b: B) -> None:
+        super(B, b).f('42')
+        super(B, b).f(42) # E: Argument 1 to "f" of "A" has incompatible type "int"; expected "str"
+
+[case testSuperOutsideClass]
+from typing import Union
+
+class A:
+    def f(self, s: str) -> None: pass
+
+class B(A):
+    def f(self, i: Union[int, str]) -> None: pass
+
+def g(b: B) -> None:
+    super(B, b).f('42')
+    super(B, b).f(42) # E: Argument 1 to "f" of "A" has incompatible type "int"; expected "str"
+
+[case testSuperInInitSubclass]
+class A:
+    def __init_subclass__(cls) -> None:
+        super().__init_subclass__()
+[builtins fixtures/__init_subclass__.pyi]
+
+[case testSuperClassGetItem]
+from typing import TypeVar, Type, Any
+
+T = TypeVar("T", bound="B")
+
+class A:
+    def __class_getitem__(cls, item) -> None: pass
+
+class B(A):
+    def __class_getitem__(cls: Type[T], item: Any) -> None:
+        super(B, cls).__class_getitem__(item)
+
+-- Invalid uses of super()
+-- -----------------------
+
+
+[case testSuperOutsideMethodNoCrash]
+class A:
+    x = 1
+class B(A): pass
+class C(B):
+    b = super(B, B).x
+    a = super().whatever  # E: "super()" outside of a method is not supported
+
+[case testSuperWithObjectClassAsFirstArgument]
+class A:
+    def f(self) -> None:
+        super(object, self).f()  # E: Target class has no base class
+
+[case testSuperWithTypeVarAsFirstArgument]
+from typing import TypeVar
+
+T = TypeVar('T')
+
+def f(obj: T) -> None:
+    super(obj.__class__, obj).f()  # E: Target class has no base class
+[builtins fixtures/__new__.pyi]
+
+[case testSuperWithSingleArgument]
+class B:
+    def f(self) -> None: pass
+class C(B):
+    def __init__(self) -> None:
+        super(C).f() # E: "super" with a single argument not supported
+
+[case testSuperWithThreeArguments]
+class B:
+    def f(self) -> None: pass
+class C(B):
+    def h(self) -> None:
+        super(C, self, 1).f() # E: Too many arguments for "super"
+
+[case testSuperWithNonPositionalArguments]
+class B:
+    def f(self) -> None: pass
+class C(B):
+    def h(self) -> None:
+        super(C, x=self).f() # E: "super" only accepts positional arguments
+        super(**{}).f() # E: "super" only accepts positional arguments
+
+[case testSuperWithVarArgs]
+class B:
+    def f(self) -> None: pass
+class C(B):
+    def h(self) -> None:
+        super(*(C, self)).f() # E: Varargs not supported with "super"
+
+[case testInvalidSuperArg]
+class B:
+    def f(self) -> None: pass
+class C(B):
+    def h(self) -> None:
+        super(x, y).f # E: Name "x" is not defined # E: Name "y" is not defined
+
+[case testTypeErrorInSuperArg]
+class B:
+    def f(self) -> None: pass
+class C(B):
+    def h(self) -> None:
+        super(1(), self).f # E: "int" not callable
+        super(C, ''()).f  # E: "str" not callable
+
+[case testFlippedSuperArgs]
+class B:
+    def f(self) -> None: pass
+class C(B):
+    def h(self) -> None:
+        super(self, C).f # E: Argument 1 for "super" must be a type object; got a non-type instance
+
+[case testInvalidFirstSuperArg]
+class B:
+    def f(self) -> None: pass
+class C(B):
+    def h(self) -> None:
+        super(None, C).f # E: Argument 1 for "super" must be a type object; got "None"
+
+[case testInvalidSecondArgumentToSuper]
+class B:
+    def f(self) -> None: pass
+class C(B):
+    def h(self) -> None:
+        super(C, 1).f # E: Argument 2 for "super" not an instance of argument 1
+        super(C, None).f # E: Unsupported argument 2 for "super"
+
+[case testSuperInMethodWithNoArguments]
+class A:
+    def f(self) -> None: pass
+    @staticmethod
+    def st() -> int:
+        return 1
+
+class B(A):
+    def g() -> None: # E: Method must have at least one argument. Did you forget the "self" argument?
+        super().f() # E: "super()" requires one or two positional arguments in enclosing function
+    def h(self) -> None:
+        def a() -> None:
+            super().f() # E: "super()" requires one or two positional arguments in enclosing function
+    @staticmethod
+    def st() -> int:
+        reveal_type(super(B, B).st())  # N: Revealed type is "builtins.int"
+        super().st() # E: "super()" requires one or two positional arguments in enclosing function
+        return 2
+[builtins fixtures/staticmethod.pyi]
+
+[case testSuperWithUnsupportedTypeObject]
+from typing import Type
+
+class A:
+    def f(self) -> int: pass
+
+class B(A):
+    def h(self, t: Type[None]) -> None:
+        super(t, self).f # E: Unsupported argument 1 for "super"
+
+[case testSuperSelfTypeInstanceMethod]
+from typing import TypeVar, Type
+
+T = TypeVar("T", bound="A")
+
+class A:
+    def foo(self: T) -> T: ...
+
+class B(A):
+    def foo(self: T) -> T:
+        reveal_type(super().foo())  # N: Revealed type is "T`-1"
+        return super().foo()
+
+[case testSuperSelfTypeClassMethod]
+from typing import TypeVar, Type
+
+T = TypeVar("T", bound="A")
+
+class A:
+    @classmethod
+    def foo(cls: Type[T]) -> T: ...
+
+class B(A):
+    @classmethod
+    def foo(cls: Type[T]) -> T:
+        reveal_type(super().foo())  # N: Revealed type is "T`-1"
+        return super().foo()
+[builtins fixtures/classmethod.pyi]
+
+[case testWrongSuperOutsideMethodNoCrash]
+class B:
+    x: int
+class C1(B): ...
+class C2(B): ...
+super(C1, C2).x  # E: Argument 2 for "super" not an instance of argument 1

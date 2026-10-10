@@ -1,0 +1,12 @@
+# Adopt black and isort
+97c5ee99bc98dc475512e549b252b23a6e7e0997
+# Use builtin generics and PEP 604 for type annotations wherever possible (#13427)
+23ee1e7aff357e656e3102435ad0fe3b5074571e
+# Use variable annotations (#10723)
+f98f78216ba9d6ab68c8e69c19e9f3c7926c5efe
+# run pyupgrade (#12711)
+fc335cb16315964b923eb1927e3aad1516891c28
+# update black to 23.3.0 (#15059)
+4276308be01ea498d946a79554b4a10b1cf13ccb
+# Update black to 24.1.1 (#16847)
+8107e53158d83d30bb04d290ac10d8d3ccd344f8

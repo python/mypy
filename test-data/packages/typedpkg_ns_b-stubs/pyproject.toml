@@ -1,0 +1,11 @@
+[project]
+name = 'typedpkg_ns-stubs'
+version = '0.1'
+description = 'test'
+
+[tool.hatch.build]
+include = ["**/*.pyi"]
+
+[build-system]
+requires = ["hatchling==1.18"]
+build-backend = "hatchling.build"

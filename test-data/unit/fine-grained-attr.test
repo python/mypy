@@ -1,0 +1,82 @@
+[case updateMagicField]
+from attrs import Attribute
+import m
+
+def g() -> Attribute[int]:
+    return m.A.__attrs_attrs__[0]
+
+[file m.py]
+from attrs import define
+
+@define
+class A:
+    a: int
+[file m.py.2]
+from attrs import define
+
+@define
+class A:
+    a: float
+[builtins fixtures/plugin_attrs.pyi]
+[out]
+==
+main:5: error: Incompatible return value type (got "Attribute[float]", expected "Attribute[int]")
+
+[case magicAttributeConsistency]
+import m
+
+[file c.py]
+from attrs import define
+
+@define
+class A:
+    a: float
+    b: int
+[builtins fixtures/plugin_attrs.pyi]
+
+[file m.py]
+from c import A
+
+A.__attrs_attrs__.a
+
+[file m.py.2]
+from c import A
+
+A.__attrs_attrs__.b
+
+[out]
+==
+
+[case magicAttributeConsistency2-only_when_cache]
+[file c.py]
+import attrs
+
+@attrs.define
+class Entry:
+    var: int
+[builtins fixtures/plugin_attrs.pyi]
+
+[file m.py]
+from typing import Any, ClassVar, Protocol
+from c import Entry
+
+class AttrsInstance(Protocol):
+    __attrs_attrs__: ClassVar[Any]
+
+def func(e: AttrsInstance) -> None: ...
+func(Entry(2))
+
+[file m.py.2]
+from typing import Any, ClassVar, Protocol
+from c import Entry
+
+class AttrsInstance(Protocol):
+    __attrs_attrs__: ClassVar[Any]
+
+def func(e: AttrsInstance) -> int:
+    return 2  # Change return type to force reanalysis
+
+func(Entry(2))
+
+[out]
+==

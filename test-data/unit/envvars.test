@@ -1,0 +1,10 @@
+# Test cases related to environment variables
+[case testEnvvar_MYPY_CONFIG_FILE_DIR]
+# cmd: mypy --config-file=subdir/mypy.ini
+[file bogus.py]
+FOO = 'x'  # type: int
+[file subdir/good.py]
+BAR = 0  # type: int
+[file subdir/mypy.ini]
+\[mypy]
+files=$MYPY_CONFIG_FILE_DIR/good.py

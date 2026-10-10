@@ -1,0 +1,214 @@
+-- Test cases for Python 3.8 features
+
+[case testWalrus1]
+from typing import Optional
+
+def foo(x: int) -> Optional[int]:
+    if x < 0:
+        return None
+    return x
+
+def test(x: int) -> str:
+    if (n := foo(x)) is not None:
+        return str(x)
+    else:
+        return "<fail>"
+
+[file driver.py]
+from native import test
+
+assert test(10) == "10"
+assert test(-1) == "<fail>"
+
+
+[case testWalrus2]
+from typing import Optional, Tuple, List
+
+class Node:
+    def __init__(self, val: int, next: Optional['Node']) -> None:
+        self.val = val
+        self.next = next
+
+def pairs(nobe: Optional[Node]) -> List[Tuple[int, int]]:
+    if nobe is None:
+        return []
+    l = []
+    while next := nobe.next:
+        l.append((nobe.val, next.val))
+        nobe = next
+    return l
+
+def make(l: List[int]) -> Optional[Node]:
+    cur: Optional[Node] = None
+    for x in reversed(l):
+        cur = Node(x, cur)
+    return cur
+
+[file driver.py]
+from native import Node, make, pairs
+
+assert pairs(make([1,2,3])) == [(1,2), (2,3)]
+assert pairs(make([1])) == []
+assert pairs(make([])) == []
+
+[case testWalrusEvaluationOrder]
+from typing import Any, Callable, Dict, Iterator, Tuple
+
+from mypy_extensions import i64
+
+from testutil import assertRaises
+
+def pair(a: object, b: object) -> Tuple[object, object]:
+    return a, b
+
+def pair_int(a: int, b: int = 5) -> Tuple[int, int]:
+    return a, b
+
+def collect(*args: object, **kwargs: object) -> Tuple[Tuple[object, ...], Dict[str, object]]:
+    return args, kwargs
+
+class C:
+    def __init__(self, x: int, y: int = 0) -> None:
+        self.x = x
+        self.y = y
+
+    def method(self, a: int, b: int) -> Tuple[int, int, int]:
+        return self.x, a, b
+
+def test_call_arguments() -> None:
+    i = 0
+    assert pair(i, (i := 1)) == (0, 1)
+    assert pair_int(i, (i := 2)) == (1, 2)
+    assert pair_int(b=i, a=(i := 3)) == (3, 2)
+    assert collect(i, (i := i + 1), i, (i := i + 1), i) == ((3, 4, 4, 5, 5), {})
+    s = "old"
+    assert pair(s, (s := "new")) == ("old", "new")
+    x = 1.5
+    assert pair(x, (x := 2.5)) == (1.5, 2.5)
+    n: i64 = 1
+    assert pair(n, (n := 2)) == (1, 2)
+    a = 1
+    b = 2
+    assert pair((a := b), (b := 3)) == (2, 3)
+
+def reassign_args(i: int, s: str) -> Tuple[object, object]:
+    return pair(i, (i := 1)), pair(s, (s := "new"))
+
+def test_function_arguments() -> None:
+    assert reassign_args(0, "old") == ((0, 1), ("old", "new"))
+
+def test_python_call_arguments() -> None:
+    f: Any = pair
+    i = 0
+    assert f(i, (i := 1)) == (0, 1)
+    assert divmod(i, (i := 3)) == (0, 1)
+    assert max(i, (i := 0)) == 3
+
+def test_star_arguments() -> None:
+    t: Tuple[int, ...] = (1, 2)
+    assert collect(*t, (t := (3,))) == ((1, 2, (3,)), {})
+    d: Dict[str, object] = {"a": 1}
+    assert collect(**d, b=(d := {"c": 2})) == ((), {"a": 1, "b": {"c": 2}})
+
+def test_method_calls() -> None:
+    i = 0
+    c = C(i, (i := 1))
+    assert (c.x, c.y) == (0, 1)
+    assert c.method(i, (i := 2)) == (0, 1, 2)
+    assert c.method(i, (c := C(5)).x) == (0, 2, 5)
+    a = [1]
+    a.append((a := [2])[0])
+    assert a == [2]
+    sep = ","
+    assert sep.join(["a", (sep := "-")]) == "a,-"
+
+def old(x: object) -> str:
+    return "old"
+
+def new(x: object) -> str:
+    return "new"
+
+def test_callee() -> None:
+    f: Callable[[object], str] = old
+    assert f((f := new)) == "old"
+    assert f(0) == "new"
+
+def test_operators_and_displays() -> None:
+    i = 1
+    assert i - (i := 3) == -2
+    assert (i <= (i := 0)) is False
+    x = 1.5
+    assert x + (x := 2.0) == 3.5
+    n: i64 = 1
+    assert n - (n := 5) == -4
+    s = "a"
+    assert s + (s := "b") == "ab"
+    assert [i, (i := 1)] == [0, 1]
+    assert sorted({i, (i := 2)}) == [1, 2]
+    assert {i: (i := 3)} == {2: 3}
+    assert (i, *[(i := 4)]) == (3, 4)
+    items = [10, 20]
+    assert items[len(items := [30, 40]) - 1] == 20
+
+def test_comprehension() -> None:
+    y = -1
+    assert [pair(y, (y := x)) for x in range(3)] == [(-1, 0), (0, 1), (1, 2)]
+    t: Tuple[int, ...] = (1, 2, 3)
+    assert [x for x in t if (t := (9,))] == [1, 2, 3]
+    n = 3
+    assert [i for i in range(n) if (n := 0) == 0] == [0, 1, 2]
+
+def gen() -> Iterator[object]:
+    i = 0
+    yield pair(i, (i := 1))
+    yield collect(i, (yield i), (i := 2))
+
+def test_generator() -> None:
+    assert list(gen()) == [(0, 1), 1, ((1, None, 2), {})]
+
+def maybe_unbound(flag: bool) -> object:
+    if flag:
+        x = 0
+    return pair(x, (x := 1))
+
+def test_unbound_local() -> None:
+    assert maybe_unbound(True) == (0, 1)
+    with assertRaises(UnboundLocalError):
+        maybe_unbound(False)
+
+[case testFStrings]
+from datetime import datetime
+
+def test_fstring_equal_sign() -> None:
+    today = datetime(year=2017, month=1, day=27)
+    assert f"{today=:%B %d, %Y}" == 'today=January 27, 2017' # using date format specifier and debugging
+
+    foo = "bar"
+    assert f"{ foo = }" == " foo = 'bar'" # preserves whitespace
+
+    line = "The mill's closed"
+    assert f"{line = }" == 'line = "The mill\'s closed"'
+    assert f"{line = :20}" == "line = The mill's closed   "
+    assert f"{line = !r:20}" == 'line = "The mill\'s closed" '
+
+[case testMethodOverrideDefaultPosOnly1]
+class Foo:
+    def f(self, x: int=20, /, *, z: int=10) -> None:
+        pass
+
+class Bar(Foo):
+    def f(self, *args: int, **kwargs: int) -> None:
+        print("stuff", args, kwargs)
+
+def test_pos_only() -> None:
+    z: Foo = Bar()
+    z.f(1, z=50)
+    z.f()
+    z.f(1)
+    z.f(z=50)
+
+[out]
+stuff (1,) {'z': 50}
+stuff () {}
+stuff (1,) {}
+stuff () {'z': 50}

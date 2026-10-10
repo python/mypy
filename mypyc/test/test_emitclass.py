@@ -1,0 +1,82 @@
+from __future__ import annotations
+
+import unittest
+
+from mypyc.analysis.attrdefined import detect_undefined_bitmap
+from mypyc.codegen.emit import Emitter, EmitterContext
+from mypyc.codegen.emitclass import (
+    generate_getter,
+    generate_setter,
+    getter_name,
+    setter_name,
+    slot_key,
+)
+from mypyc.common import IS_FREE_THREADED
+from mypyc.ir.class_ir import ClassIR
+from mypyc.ir.rtypes import int32_rprimitive, object_rprimitive
+from mypyc.namegen import NameGenerator
+
+
+class TestEmitClass(unittest.TestCase):
+    def test_slot_key(self) -> None:
+        attrs = ["__add__", "__radd__", "__rshift__", "__rrshift__", "__setitem__", "__delitem__"]
+        s = sorted(attrs, key=lambda x: slot_key(x))
+        # __delitem__ and reverse methods should come last.
+        assert s == [
+            "__add__",
+            "__rshift__",
+            "__setitem__",
+            "__delitem__",
+            "__radd__",
+            "__rrshift__",
+        ]
+
+    def test_setter_name(self) -> None:
+        cls = ClassIR(module_name="testing", name="SomeClass")
+        generator = NameGenerator([["mod"]])
+
+        # This should never be `setup`, as it will conflict with the class `setup`
+        assert setter_name(cls, "up", generator) == "testing___SomeClass_set_up"
+
+    def test_getter_name(self) -> None:
+        cls = ClassIR(module_name="testing", name="SomeClass")
+        generator = NameGenerator([["mod"]])
+
+        assert getter_name(cls, "down", generator) == "testing___SomeClass_get_down"
+
+    @unittest.skipUnless(IS_FREE_THREADED, "requires a free threaded build")
+    def test_free_threaded_ref_attribute_getter_and_setter_use_owner(self) -> None:
+        # Note: We can't monkey patch IS_FREE_THREADED to test this on a build with
+        # the GIL enabled, since monkey patching doesn't work if mypyc is compiled.
+        cl = ClassIR("A", "mod")
+        cl.attributes = {"o": object_rprimitive}
+        cl.deletable = ["o"]
+        cl.mro = cl.base_mro = [cl]
+        emitter = Emitter(EmitterContext(NameGenerator([["mod"]]), True))
+
+        generate_getter(cl, "o", object_rprimitive, emitter)
+        generate_setter(cl, "o", object_rprimitive, emitter)
+
+        generated = "".join(emitter.fragments)
+        assert "CPy_GetAttrRef((PyObject *)self, (PyObject **)&self->_o)" in generated
+        assert "CPy_SetAttrRef((PyObject *)self, (PyObject **)&self->_o, tmp)" in generated
+        assert "CPy_SetAttrRef((PyObject *)self, (PyObject **)&self->_o, NULL)" in generated
+
+    def test_bitmap_attrs_stable_across_repeat_analysis(self) -> None:
+        # Regression: detect_undefined_bitmap used to mutate cl.bitmap_attrs
+        # in place, so under separate=True (one SCC per group) a shared base
+        # class would accumulate duplicate entries as each subclass's SCC
+        # walked into it, growing the emitted struct between builds.
+        base = ClassIR("Base", "mod")
+        base.attributes = {"i": int32_rprimitive}
+        sub = ClassIR("Sub", "mod")
+        sub.attributes = {"j": int32_rprimitive}
+        base.mro = base.base_mro = [base]
+        sub.mro = sub.base_mro = [sub, base]
+        base.children = [sub]
+
+        detect_undefined_bitmap(sub, seen=set())
+        for _ in range(10):
+            detect_undefined_bitmap(sub, seen=set())
+        assert base.bitmap_attrs == ["i"]
+        assert sub.bitmap_attrs == ["i", "j"]

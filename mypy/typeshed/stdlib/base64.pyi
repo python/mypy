@@ -1,0 +1,124 @@
+import sys
+from _typeshed import ReadableBuffer, SupportsNoArgReadline, SupportsRead, SupportsWrite
+
+__all__ = [
+    "encode",
+    "decode",
+    "encodebytes",
+    "decodebytes",
+    "b64encode",
+    "b64decode",
+    "b32encode",
+    "b32decode",
+    "b16encode",
+    "b16decode",
+    "b32hexencode",
+    "b32hexdecode",
+    "b85encode",
+    "b85decode",
+    "a85encode",
+    "a85decode",
+    "standard_b64encode",
+    "standard_b64decode",
+    "urlsafe_b64encode",
+    "urlsafe_b64decode",
+]
+
+if sys.version_info >= (3, 13):
+    __all__ += ["z85decode", "z85encode"]
+
+if sys.version_info >= (3, 15):
+    def b64encode(
+        s: ReadableBuffer, altchars: ReadableBuffer | None = None, *, padded: bool = True, wrapcol: int = 0
+    ) -> bytes: ...
+    def b64decode(
+        s: str | ReadableBuffer,
+        altchars: str | ReadableBuffer | None = None,
+        validate: bool = ...,
+        *,
+        padded: bool = True,
+        ignorechars: ReadableBuffer = ...,
+        canonical: bool = False,
+    ) -> bytes: ...
+
+else:
+    def b64encode(s: ReadableBuffer, altchars: ReadableBuffer | None = None) -> bytes: ...
+    def b64decode(s: str | ReadableBuffer, altchars: str | ReadableBuffer | None = None, validate: bool = False) -> bytes: ...
+
+def standard_b64encode(s: ReadableBuffer) -> bytes: ...
+def standard_b64decode(s: str | ReadableBuffer) -> bytes: ...
+
+if sys.version_info >= (3, 15):
+    def urlsafe_b64encode(s: ReadableBuffer, *, padded: bool = True) -> bytes: ...
+    def urlsafe_b64decode(s: str | ReadableBuffer, *, padded: bool = False) -> bytes: ...
+    def b32encode(s: ReadableBuffer, *, padded: bool = True, wrapcol: int = 0) -> bytes: ...
+    def b32decode(
+        s: str | ReadableBuffer,
+        casefold: bool = False,
+        map01: str | ReadableBuffer | None = None,
+        *,
+        padded: bool = True,
+        ignorechars: ReadableBuffer = b"",
+        canonical: bool = False,
+    ) -> bytes: ...
+    def b16encode(s: ReadableBuffer, *, wrapcol: int = 0) -> bytes: ...
+    def b16decode(s: str | ReadableBuffer, casefold: bool = False, *, ignorechars: ReadableBuffer = b"") -> bytes: ...
+
+else:
+    def urlsafe_b64encode(s: ReadableBuffer) -> bytes: ...
+    def urlsafe_b64decode(s: str | ReadableBuffer) -> bytes: ...
+    def b32encode(s: ReadableBuffer) -> bytes: ...
+    def b32decode(s: str | ReadableBuffer, casefold: bool = False, map01: str | ReadableBuffer | None = None) -> bytes: ...
+    def b16encode(s: ReadableBuffer) -> bytes: ...
+    def b16decode(s: str | ReadableBuffer, casefold: bool = False) -> bytes: ...
+
+if sys.version_info >= (3, 15):
+    def b32hexencode(s: ReadableBuffer, *, padded: bool = True, wrapcol: int = 0) -> bytes: ...
+    def b32hexdecode(
+        s: str | ReadableBuffer,
+        casefold: bool = False,
+        *,
+        padded: bool = True,
+        ignorechars: ReadableBuffer = b"",
+        canonical: bool = False,
+    ) -> bytes: ...
+
+else:
+    def b32hexencode(s: ReadableBuffer) -> bytes: ...
+    def b32hexdecode(s: str | ReadableBuffer, casefold: bool = False) -> bytes: ...
+
+def a85encode(
+    b: ReadableBuffer, *, foldspaces: bool = False, wrapcol: int = 0, pad: bool = False, adobe: bool = False
+) -> bytes: ...
+
+if sys.version_info >= (3, 15):
+    def a85decode(
+        b: str | ReadableBuffer,
+        *,
+        foldspaces: bool = False,
+        adobe: bool = False,
+        ignorechars: bytearray | bytes = b" \t\n\r\x0b",
+        canonical: bool = False,
+    ) -> bytes: ...
+    def b85encode(b: ReadableBuffer, pad: bool = False, *, wrapcol: int = 0) -> bytes: ...
+    def b85decode(b: str | ReadableBuffer, *, ignorechars: ReadableBuffer = b"", canonical: bool = False) -> bytes: ...
+
+else:
+    def a85decode(
+        b: str | ReadableBuffer, *, foldspaces: bool = False, adobe: bool = False, ignorechars: bytearray | bytes = b" \t\n\r\x0b"
+    ) -> bytes: ...
+    def b85encode(b: ReadableBuffer, pad: bool = False) -> bytes: ...
+    def b85decode(b: str | ReadableBuffer) -> bytes: ...
+
+def decode(input: SupportsNoArgReadline[bytes], output: SupportsWrite[bytes]) -> None: ...
+def encode(input: SupportsRead[bytes], output: SupportsWrite[bytes]) -> None: ...
+def encodebytes(s: ReadableBuffer) -> bytes: ...
+def decodebytes(s: ReadableBuffer) -> bytes: ...
+
+if sys.version_info >= (3, 13):
+    if sys.version_info >= (3, 15):
+        def z85encode(s: ReadableBuffer, pad: bool = False, *, wrapcol: int = 0) -> bytes: ...
+        def z85decode(s: str | ReadableBuffer, *, ignorechars: ReadableBuffer = b"", canonical: bool = False) -> bytes: ...
+    else:
+        def z85encode(s: ReadableBuffer) -> bytes: ...
+        def z85decode(s: str | ReadableBuffer) -> bytes: ...

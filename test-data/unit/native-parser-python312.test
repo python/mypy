@@ -1,0 +1,90 @@
+[case testPEP695TypeAlias]
+# comment
+type A[T] = C[T]
+[out]
+MypyFile:1(
+  TypeAliasStmt:2(
+    NameExpr(A)
+    TypeParam(
+      T)
+    LambdaExpr:2(
+      Block:-1(
+        ReturnStmt:2(
+          IndexExpr:2(
+            NameExpr(C)
+            NameExpr(T)))))))
+
+[case testPEP695GenericFunction]
+# comment
+
+def f[T](): pass
+def g[T: str](): pass
+def h[T: (int, str)](): pass
+[out]
+MypyFile:1(
+  FuncDef:3(
+    f
+    TypeParam(
+      T)
+    Block:3(
+      PassStmt:3()))
+  FuncDef:4(
+    g
+    TypeParam(
+      T
+      str?)
+    Block:4(
+      PassStmt:4()))
+  FuncDef:5(
+    h
+    TypeParam(
+      T
+      Values(
+        int?
+        str?))
+    Block:5(
+      PassStmt:5())))
+
+[case testPEP695ParamSpec]
+# comment
+
+def f[**P](): pass
+class C[T: int, **P]: pass
+[out]
+MypyFile:1(
+  FuncDef:3(
+    f
+    TypeParam(
+      **P)
+    Block:3(
+      PassStmt:3()))
+  ClassDef:4(
+    C
+    TypeParam(
+      T
+      int?)
+    TypeParam(
+      **P)
+    PassStmt:4()))
+
+[case testPEP695TypeVarTuple]
+# comment
+
+def f[*Ts](): pass
+class C[T: int, *Ts]: pass
+[out]
+MypyFile:1(
+  FuncDef:3(
+    f
+    TypeParam(
+      *Ts)
+    Block:3(
+      PassStmt:3()))
+  ClassDef:4(
+    C
+    TypeParam(
+      T
+      int?)
+    TypeParam(
+      *Ts)
+    PassStmt:4()))
