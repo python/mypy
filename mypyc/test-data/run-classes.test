@@ -1050,6 +1050,196 @@ yo!
 3
 yo!
 
+[case testSuperInClassMethod]
+from typing import Any
+from mypy_extensions import trait
+
+class A:
+    @classmethod
+    def name(cls) -> str:
+        return cls.__name__
+
+    @classmethod
+    def tagged(cls, tag: str, n: int = 1) -> str:
+        return f"{tag}{n}:{cls.__name__}"
+
+    @staticmethod
+    def static(x: int) -> int:
+        return x + 1
+
+    def method(self) -> str:
+        return "A.method:" + type(self).__name__
+
+class B(A):
+    @classmethod
+    def name(cls) -> str:
+        return "B." + super().name()
+
+    @classmethod
+    def tagged(cls, tag: str, n: int = 1) -> str:
+        return "B." + super().tagged(tag, n=n + 1)
+
+    @classmethod
+    def two_arg(cls) -> str:
+        return "B." + super(B, cls).name()
+
+    @classmethod
+    def call_static(cls, x: int) -> int:
+        return super().static(x) + 10
+
+    @classmethod
+    def call_method(cls, b: "B") -> str:
+        # An instance method looked up through the class isn't bound
+        return "B." + super().method(b)
+
+    def from_instance(self) -> str:
+        return "B." + super().name() + "+" + super(B, self).name()
+
+class C(B):
+    @classmethod
+    def name(cls) -> str:
+        return "C." + super().name()
+
+def test_super_in_classmethod() -> None:
+    assert B.name() == "B.B"
+    assert C.name() == "C.B.C"
+    assert C().name() == "C.B.C"
+    assert B.tagged("x") == "B.x2:B"
+    assert C.tagged("x", 5) == "B.x6:C"
+    assert B.two_arg() == "B.B"
+    assert C.two_arg() == "B.C"
+    assert C.call_static(1) == 12
+    assert C.call_method(C()) == "B.A.method:C"
+    assert B().from_instance() == "B.B+B"
+    assert C().from_instance() == "B.C+C"
+
+@trait
+class T:
+    @classmethod
+    def describe(cls) -> str:
+        return "T:" + cls.__name__
+
+class D(T):
+    @classmethod
+    def describe(cls) -> str:
+        return "D." + super().describe()
+
+class E(D):
+    pass
+
+def test_super_in_classmethod_with_trait() -> None:
+    assert D.describe() == "D.T:D"
+    assert E.describe() == "D.T:E"
+
+init_subclass_log: list[str] = []
+
+class Hooked:
+    def __init_subclass__(cls, **kwargs: Any) -> None:
+        super().__init_subclass__(**kwargs)
+        init_subclass_log.append("Hooked:" + cls.__name__)
+
+class HookedChild(Hooked):
+    def __init_subclass__(cls, **kwargs: Any) -> None:
+        super().__init_subclass__(**kwargs)
+        init_subclass_log.append("HookedChild:" + cls.__name__)
+
+class HookedGrandchild(HookedChild):
+    pass
+
+def test_super_in_init_subclass() -> None:
+    assert init_subclass_log == [
+        "Hooked:HookedChild",
+        "Hooked:HookedGrandchild",
+        "HookedChild:HookedGrandchild",
+    ]
+
+class New(A):
+    made_by: str
+
+    def __new__(cls) -> "New":
+        obj = super().__new__(cls)
+        obj.made_by = super().name()
+        return obj
+
+class NewChild(New):
+    pass
+
+def test_super_in_dunder_new() -> None:
+    assert New().made_by == "New"
+    assert NewChild().made_by == "NewChild"
+
+[case testSuperInGeneratorAndNestedFunction]
+import asyncio
+from typing import Callable, Iterator
+
+class A:
+    @classmethod
+    def name(cls) -> str:
+        return cls.__name__
+
+    @classmethod
+    async def async_name(cls) -> str:
+        return "A.async_name:" + cls.__name__
+
+    def method(self) -> str:
+        return "A.method:" + type(self).__name__
+
+class B(A):
+    @classmethod
+    def gen_cls(cls) -> Iterator[str]:
+        yield super().name()
+
+    def gen(self) -> Iterator[str]:
+        yield super().name()
+        yield super(B, self).name()
+        yield super().method()
+
+    @classmethod
+    async def async_name(cls) -> str:
+        return "B." + await super().async_name() + "+" + super().name()
+
+    async def coro(self) -> str:
+        return await super().async_name() + "+" + super().name()
+
+    def nested(self) -> list[str]:
+        def two_arg() -> str:
+            return super(B, self).method() + "+" + super(B, self).name()
+
+        # Zero-argument super() uses the first argument of the nested function
+        def zero_arg(b: B) -> str:
+            return super().method() + "+" + super().name()
+
+        f: Callable[[], str] = lambda: super(B, self).method()
+        return [two_arg(), zero_arg(self), f()]
+
+    @classmethod
+    def nested_cls(cls) -> list[str]:
+        def zero_arg(c: type[B]) -> str:
+            return super().name()
+
+        f: Callable[[], str] = lambda: super(B, cls).name()
+        return [zero_arg(cls), f()]
+
+class C(B):
+    pass
+
+def test_super_in_generator() -> None:
+    assert list(B.gen_cls()) == ["B"]
+    assert list(C.gen_cls()) == ["C"]
+    assert list(C().gen()) == ["C", "C", "A.method:C"]
+
+def test_super_in_coroutine() -> None:
+    assert asyncio.run(B.async_name()) == "B.A.async_name:B+B"
+    assert asyncio.run(C.async_name()) == "B.A.async_name:C+C"
+    assert asyncio.run(C().coro()) == "A.async_name:C+C"
+
+def test_super_in_nested_function() -> None:
+    assert C().nested() == ["A.method:C+C", "A.method:C+C", "A.method:C"]
+    assert C.nested_cls() == ["C", "C"]
+
+[file asyncio/__init__.pyi]
+def run(x: object) -> object: ...
+
 [case testSubclassException]
 class Failure(Exception):
     def __init__(self, x: int) -> None:
