@@ -8599,6 +8599,14 @@ class B(A):  # E: Final class __main__.B has abstract attributes "foo"
 class C:
     class C1(XX): pass  # E: Name "XX" is not defined
 
+[case testOuterClassAsNestedClassBase]
+class Outer:
+    class Invalid(Outer): pass  # E: Name "Outer" is not defined
+
+class Base: pass
+class OtherOuter:
+    class Valid(Base): pass
+
 [case testArgsKwargsInheritance]
 from typing import Any
 
