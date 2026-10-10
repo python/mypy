@@ -6160,6 +6160,103 @@ def test_deletable_attr() -> None:
 
 test_deletable_attr()
 
+[case testDunderDelAttrWithInheritedSetAttr]
+from mypy_extensions import mypyc_attr
+from testutil import assertRaises
+from typing import Any
+
+log: list[str] = []
+
+class SetAttr:
+    _attributes: dict[str, object]
+
+    def __init__(self) -> None:
+        object.__setattr__(self, "_attributes", {})
+
+    def __setattr__(self, key: str, val: object) -> None:
+        self._attributes[key] = val
+
+class SetAttrInherited(SetAttr):
+    pass
+
+class DelAttr(SetAttr):
+    def __delattr__(self, key: str) -> None:
+        log.append("DelAttr")
+        del self._attributes[key]
+
+class DelAttrInherited(DelAttr):
+    pass
+
+class DelAttrOverridden(DelAttr):
+    def __delattr__(self, key: str) -> None:
+        log.append("DelAttrOverridden")
+        super().__delattr__(key)
+
+class DelAttrInSubSubclass(SetAttrInherited):
+    def __delattr__(self, key: str) -> None:
+        log.append("DelAttrInSubSubclass")
+        del self._attributes[key]
+
+class SetAttrOverridden(DelAttr):
+    def __setattr__(self, key: str, val: object) -> None:
+        super().__setattr__(key, val)
+
+@mypyc_attr(native_class=False)
+class NonNative:
+    _attributes: dict[str, object]
+
+    def __init__(self) -> None:
+        object.__setattr__(self, "_attributes", {})
+
+    def __setattr__(self, key: str, val: object) -> None:
+        self._attributes[key] = val
+
+class DelAttrNonNativeBase(NonNative):
+    def __delattr__(self, key: str) -> None:
+        log.append("DelAttrNonNativeBase")
+        del self._attributes[key]
+
+def check_delattr(i: Any, calls: list[str]) -> None:
+    i.one = 1
+    i.two = 2
+    i.three = 3
+    assert i._attributes == {"one": 1, "two": 2, "three": 3}
+
+    log.clear()
+    del i.one
+    assert log == calls
+    assert i._attributes == {"two": 2, "three": 3}
+
+    delattr(i, "two")
+    assert log == calls * 2
+    assert i._attributes == {"three": 3}
+
+    i.__delattr__("three")
+    assert log == calls * 3
+    assert i._attributes == {}
+
+    with assertRaises(KeyError):
+        del i.one
+
+def test_delattr_with_inherited_setattr() -> None:
+    check_delattr(DelAttr(), ["DelAttr"])
+    check_delattr(DelAttrInherited(), ["DelAttr"])
+    check_delattr(DelAttrOverridden(), ["DelAttrOverridden", "DelAttr"])
+    check_delattr(DelAttrInSubSubclass(), ["DelAttrInSubSubclass"])
+    check_delattr(SetAttrOverridden(), ["DelAttr"])
+    check_delattr(DelAttrNonNativeBase(), ["DelAttrNonNativeBase"])
+
+def test_inherited_setattr_without_delattr() -> None:
+    i: Any = SetAttr()
+    i.one = 1
+    with assertRaises(AttributeError):
+        del i.one
+
+    i = SetAttrInherited()
+    i.one = 1
+    with assertRaises(AttributeError):
+        del i.one
+
 [case testBufferCorruptedData_librt_internal]
 from librt.internal import (
     ReadBuffer, read_bool, read_str, read_float, read_int, read_tag, read_bytes

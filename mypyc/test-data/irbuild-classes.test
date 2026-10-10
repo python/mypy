@@ -2498,6 +2498,116 @@ class InheritedSetAttr(SetAttr):
     def __delattr__(self, attr: str) -> None:
         pass
 
+[case testDelAttrWithInheritedSetAttr]
+from mypy_extensions import mypyc_attr
+
+class SetAttr:
+    _attributes: dict[str, object]
+
+    def __setattr__(self, key: str, val: object) -> None:
+        self._attributes[key] = val
+
+class DelAttr(SetAttr):
+    def __delattr__(self, key: str) -> None:
+        del self._attributes[key]
+
+@mypyc_attr(native_class=False)
+class NonNative:
+    def __setattr__(self, key: str, val: object) -> None:
+        pass
+
+class InheritsNonNative(NonNative):
+    def __delattr__(self, key: str) -> None:
+        pass
+
+[out]
+def SetAttr.__setattr__(self, key, val):
+    self :: __main__.SetAttr
+    key :: str
+    val :: object
+    r0 :: dict
+    r1 :: i32
+    r2 :: bit
+L0:
+    r0 = self._attributes
+    r1 = CPyDict_SetItem(r0, key, val)
+    r2 = r1 >= 0 :: signed
+    return 1
+def SetAttr.__setattr____wrapper(__mypyc_self__, attr, value):
+    __mypyc_self__ :: __main__.SetAttr
+    attr, value :: object
+    r0 :: bit
+    r1 :: i32
+    r2 :: bit
+    r3 :: str
+    r4 :: None
+L0:
+    r0 = value == 0
+    if r0 goto L1 else goto L2 :: bool
+L1:
+    r1 = CPyObject_GenericSetAttr(__mypyc_self__, attr, 0)
+    r2 = r1 >= 0 :: signed
+    return 0
+L2:
+    r3 = cast(str, attr)
+    r4 = __mypyc_self__.__setattr__(r3, value)
+    return 0
+def DelAttr.__delattr__(self, key):
+    self :: __main__.DelAttr
+    key :: str
+    r0 :: dict
+    r1 :: i32
+    r2 :: bit
+L0:
+    r0 = self._attributes
+    r1 = PyObject_DelItem(r0, key)
+    r2 = r1 >= 0 :: signed
+    return 1
+def DelAttr.__setattr____wrapper(__mypyc_self__, attr, value):
+    __mypyc_self__ :: __main__.DelAttr
+    attr, value :: object
+    r0 :: bit
+    r1 :: str
+    r2 :: None
+    r3 :: str
+    r4 :: None
+L0:
+    r0 = value == 0
+    if r0 goto L1 else goto L2 :: bool
+L1:
+    r1 = cast(str, attr)
+    r2 = __mypyc_self__.__delattr__(r1)
+    return 0
+L2:
+    r3 = cast(str, attr)
+    r4 = __mypyc_self__.__setattr__(r3, value)
+    return 0
+def __setattr___NonNative_obj.__get__(__mypyc_self__, instance, owner):
+    __mypyc_self__, instance, owner, r0 :: object
+    r1 :: bit
+    r2 :: object
+L0:
+    r0 = load_address _Py_NoneStruct
+    r1 = instance == r0
+    if r1 goto L1 else goto L2 :: bool
+L1:
+    return __mypyc_self__
+L2:
+    r2 = PyMethod_New(__mypyc_self__, instance)
+    return r2
+def __setattr___NonNative_obj.__call__(__mypyc_self__, self, key, val):
+    __mypyc_self__ :: __main__.__setattr___NonNative_obj
+    self :: __main__.NonNative
+    key :: str
+    val :: object
+L0:
+    return 1
+def InheritsNonNative.__delattr__(self, key):
+    self :: __main__.InheritsNonNative
+    key :: str
+L0:
+    return 1
+
 [case testSetAttr]
 from typing import ClassVar
 class SetAttr:
