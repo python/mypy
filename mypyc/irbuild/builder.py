@@ -929,11 +929,12 @@ class IRBuilder:
             self.add(Assign(target.register, rvalue_reg, line))
         elif isinstance(target, AssignmentTargetAttr):
             if isinstance(target.obj_type, RInstance):
-                setattr = target.obj_type.class_ir.get_method("__setattr__")
-                if setattr:
+                # Look at the method declarations, since the method bodies are added as
+                # they are compiled, and "__setattr__" may be compiled after this.
+                if target.obj_type.class_ir.has_method("__setattr__"):
                     key = self.load_str(target.attr, line)
                     boxed_reg = self.builder.box(rvalue_reg)
-                    call = MethodCall(target.obj, setattr.name, [key, boxed_reg], line)
+                    call = MethodCall(target.obj, "__setattr__", [key, boxed_reg], line)
                     self.add(call)
                 else:
                     rvalue_reg = self.coerce_rvalue(rvalue_reg, target.type, line)

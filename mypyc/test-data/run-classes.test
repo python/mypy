@@ -6096,6 +6096,68 @@ test_no_setattr_nonnative()
 
 [typing fixtures/typing-full.pyi]
 
+[case testDunderSetAttrDefinedAfterAssignment]
+setattr_calls: list[str] = []
+
+def assign_in_function(obj: "LateSetAttr") -> None:
+    obj.attr = 1
+
+class Other:
+    def assign_in_other_class(self, obj: "LateSetAttr") -> None:
+        obj.attr = 2
+
+class LateSetAttr:
+    def __init__(self) -> None:
+        self.attr = 0
+
+    def assign_in_method(self) -> None:
+        self.attr = 3
+        self.attr += 1
+
+    def __setattr__(self, key: str, val: object) -> None:
+        setattr_calls.append(f"{key}={val}")
+        super().__setattr__(key, val)
+
+class AssignInSetAttr:
+    attr: int
+    assigned: bool
+
+    def __init__(self) -> None:
+        object.__setattr__(self, "attr", 0)
+        object.__setattr__(self, "assigned", False)
+
+    def __setattr__(self, key: str, val: object) -> None:
+        setattr_calls.append(f"{key}={val}")
+        if key == "attr":
+            # This calls __setattr__ again.
+            self.assigned = True
+        super().__setattr__(key, val)
+
+def test_setattr_defined_after_assignment() -> None:
+    setattr_calls.clear()
+    obj = LateSetAttr()
+    assert setattr_calls == ["attr=0"]
+
+    assign_in_function(obj)
+    assert setattr_calls == ["attr=0", "attr=1"]
+
+    Other().assign_in_other_class(obj)
+    assert setattr_calls == ["attr=0", "attr=1", "attr=2"]
+
+    obj.assign_in_method()
+    assert setattr_calls == ["attr=0", "attr=1", "attr=2", "attr=3", "attr=4"]
+    assert obj.attr == 4
+
+def test_assignment_in_setattr() -> None:
+    setattr_calls.clear()
+    obj = AssignInSetAttr()
+    assert setattr_calls == []
+
+    obj.attr = 1
+    assert setattr_calls == ["attr=1", "assigned=True"]
+    assert obj.attr == 1
+    assert obj.assigned
+
 [case testDelAttrWithDeletableAttr]
 from testutil import assertRaises
 
