@@ -348,6 +348,23 @@ def are_related_types(
         )
 
 
+def _type_form_item_can_be_union(item: Type) -> bool:
+    """Can a value of TypeForm[item] be an instance of types.UnionType?
+
+    A type expression is a types.UnionType instance at runtime exactly when it
+    is a union expression such as `int | str`.
+    """
+    item = get_proper_type(item)
+    if isinstance(item, (AnyType, UnionType)):
+        return True
+    if isinstance(item, TypeVarType):
+        if item.values:
+            return any(_type_form_item_can_be_union(v) for v in item.values)
+        # An unconstrained type variable can be bound to a union.
+        return True
+    return False
+
+
 def is_overlapping_types(
     left: Type,
     right: Type,
@@ -522,6 +539,18 @@ def is_overlapping_types(
             # 1. Type[C] vs Callable[..., C] overlap even if the latter is not class object.
             if isinstance(left, TypeType) and isinstance(right, CallableType):
                 return _is_overlapping_types(left.item, right.ret_type)
+            # 2b. TypeForm[T] vs types.UnionType: a type expression like `int | str`
+            # is an instance of types.UnionType at runtime, so e.g.
+            # `isinstance(t, UnionType)` where `t: TypeForm[Any]` can be true.
+            # (Checked before case 2 below, which would otherwise return False.)
+            if (
+                isinstance(left, TypeType)
+                and left.is_type_form
+                and isinstance(right, Instance)
+                and right.type.fullname == "types.UnionType"
+                and _type_form_item_can_be_union(left.item)
+            ):
+                return True
             # 2. Type[C] vs Meta, where Meta is a metaclass for C.
             if isinstance(left, TypeType) and isinstance(right, Instance):
                 if isinstance(left.item, Instance):
