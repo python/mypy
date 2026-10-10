@@ -71,7 +71,7 @@ def specialize_parent_vtable(cls: ClassIR, parent: ClassIR) -> VTableEntries:
                 or orig_parent_method.name == "__init__"
             ):
                 entry = VTableMethod(entry.cls, entry.name, child_method, entry.shadow_method)
-            else:
+            elif entry.name in entry.cls.method_decls or entry.name in entry.cls.property_types:
                 entry = VTableMethod(
                     entry.cls,
                     entry.name,

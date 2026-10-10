@@ -509,3 +509,60 @@ L0:
     r0 = ''
     __mypyc_self__._x = r0
     return 1
+
+[case testNoGlueForOverrideOfDecoratedMethod_64bit]
+from typing import TypeVar
+
+T = TypeVar("T")
+
+def dec(f: T) -> T:
+    return f
+
+class Base:
+    @dec
+    def f(self) -> object:
+        return None
+
+class Sub(Base):
+    def f(self) -> int:
+        return 1
+
+def call_base(b: Base) -> object:
+    return b.f()
+
+def call_sub(s: Sub) -> int:
+    return s.f()
+[out]
+def dec(f):
+    f :: object
+L0:
+    return f
+def Base.f(self):
+    self :: __main__.Base
+    r0 :: object
+L0:
+    r0 = box(None, 1)
+    return r0
+def Sub.f(self):
+    self :: __main__.Sub
+L0:
+    return 2
+def call_base(b):
+    b :: __main__.Base
+    r0 :: str
+    r1 :: object[1]
+    r2 :: object_ptr
+    r3 :: object
+L0:
+    r0 = 'f'
+    r1 = [b]
+    r2 = load_address r1
+    r3 = PyObject_VectorcallMethod(r0, r2, 9223372036854775809, 0)
+    keep_alive b
+    return r3
+def call_sub(s):
+    s :: __main__.Sub
+    r0 :: int
+L0:
+    r0 = s.f()
+    return r0
