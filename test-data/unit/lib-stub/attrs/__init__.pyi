@@ -2,7 +2,7 @@ from typing import TypeVar, overload, Callable, Any, Optional, Union, Sequence, 
     Protocol, ClassVar, Type
 from typing_extensions import TypeGuard
 
-from attr import Attribute as Attribute
+from attr import Attribute as Attribute, Converter as Converter
 
 
 class AttrsInstance(Protocol):
@@ -14,6 +14,7 @@ _C = TypeVar('_C', bound=type)
 
 _ValidatorType = Callable[[Any, Any, _T], Any]
 _ConverterType = Callable[[Any], _T]
+_FieldConverterType = Union[_ConverterType[_T], Converter]
 _ValidatorArgType = Union[_ValidatorType[_T], Sequence[_ValidatorType[_T]]]
 
 @overload
@@ -95,7 +96,7 @@ def field(
     hash: Optional[bool] = ...,
     init: bool = ...,
     metadata: Optional[Mapping[Any, Any]] = ...,
-    converter: Optional[_ConverterType] = ...,
+    converter: Optional[_FieldConverterType[_T]] = ...,
     factory: Optional[Callable[[], _T]] = ...,
     kw_only: bool = ...,
     eq: Optional[bool] = ...,
@@ -114,7 +115,7 @@ def field(
     hash: Optional[bool] = ...,
     init: bool = ...,
     metadata: Optional[Mapping[Any, Any]] = ...,
-    converter: Optional[_ConverterType] = ...,
+    converter: Optional[_FieldConverterType[_T]] = ...,
     factory: Optional[Callable[[], _T]] = ...,
     kw_only: bool = ...,
     eq: Optional[bool] = ...,
@@ -133,7 +134,7 @@ def field(
     hash: Optional[bool] = ...,
     init: bool = ...,
     metadata: Optional[Mapping[Any, Any]] = ...,
-    converter: Optional[_ConverterType] = ...,
+    converter: Optional[_FieldConverterType[_T]] = ...,
     factory: Optional[Callable[[], _T]] = ...,
     kw_only: bool = ...,
     eq: Optional[bool] = ...,
