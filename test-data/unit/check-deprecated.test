@@ -49,7 +49,8 @@ from typing_extensions import deprecated
 @deprecated("use f2 instead")
 def f() -> None: ...
 
-f  # E: function __main__.f is deprecated: use f2 instead  # type: ignore[deprecated]
+f # type: ignore[deprecated]
+f # E: function __main__.f is deprecated: use f2 instead
 f(1)  # E: function __main__.f is deprecated: use f2 instead \
       # E: Too many arguments for "f"
 f[1]  # E: function __main__.f is deprecated: use f2 instead \
