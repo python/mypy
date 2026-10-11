@@ -323,7 +323,7 @@ def merge_type_ignores(ignores: TypeIgnores, mypy_ignores: TypeIgnores) -> TypeI
             assert codes is not None and mypy_codes is not None
             if not codes or not mypy_codes:
                 # If at least one ignore is blanket, make the merged ignore blanket.
-                # We are not overly strict here, in case someone want to quickly
+                # We are not overly strict here, in case someone wants to quickly
                 # silence everything.
                 new_codes = []
             else:

@@ -61,7 +61,7 @@ case the error code lists will be merged.
 
 Note that to allow better interoperability with other tools, mypy recognizes
 ``# type: ignore`` and ``mypy: ignore`` in any position in a comment, including
-after another "magic" comment used by other tools. To temporarily disable
+after another "magic" comments used by other tools. To temporarily disable
 an ignore, place it after an empty (i.e. whitespace only) comment. For example:
 
 .. code-block:: python
