@@ -38,6 +38,7 @@ def create_source_list(
     finder = SourceFinder(fscache, options)
 
     sources = []
+    empty_dirs = []
     for path in paths:
         path = os.path.normpath(path)
         if path.endswith(PY_EXTENSIONS):
@@ -47,11 +48,13 @@ def create_source_list(
         elif fscache.isdir(path):
             sub_sources = finder.find_sources_in_dir(path)
             if not sub_sources and not allow_empty_dir:
-                raise InvalidSourceList(f"There are no .py[i] files in directory '{path}'")
+                empty_dirs.append(path)
             sources.extend(sub_sources)
         else:
             mod = os.path.basename(path) if options.scripts_are_modules else None
             sources.append(BuildSource(path, mod, None))
+    if not sources and empty_dirs:
+        raise InvalidSourceList(f"There are no .py[i] files in directory '{empty_dirs[0]}'")
     return sources
 
 

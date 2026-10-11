@@ -261,6 +261,14 @@ class SourceFinderSuite(unittest.TestCase):
         finder = SourceFinder(FakeFSCache({"/a/pkg/a.py", "/b/pkg/b.py"}), options)
         assert find_sources_in_dir(finder, "/") == [("pkg.a", "/a"), ("pkg.b", "/b")]
 
+    def test_find_sources_with_empty_directory(self) -> None:
+        options = Options()
+        fscache = FakeFSCache({"/empty/README", "/src/a.py"})
+
+        assert find_sources(["/empty", "/src"], options, fscache) == [("a", "/src")]
+        with pytest.raises(InvalidSourceList, match=r"directory '.*[\\/]empty'"):
+            find_sources(["/empty"], options, fscache)
+
     def test_find_sources_exclude(self) -> None:
         options = Options()
         options.namespace_packages = True
