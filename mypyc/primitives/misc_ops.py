@@ -131,6 +131,14 @@ check_stop_op = custom_op(
     error_kind=ERR_MAGIC,
 )
 
+# Resolve __mro_entries__ in base class expressions before selecting the metaclass.
+py_resolve_bases_op = custom_op(
+    arg_types=[object_rprimitive],
+    return_type=object_rprimitive,
+    c_function_name="CPyType_ResolveBases",
+    error_kind=ERR_MAGIC,
+)
+
 # Determine the most derived metaclass and check for metaclass conflicts.
 # Arguments are (metaclass, bases).
 py_calc_meta_op = custom_op(

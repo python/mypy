@@ -151,6 +151,15 @@ static bool _CPy_IsSafeMetaClass(PyTypeObject *metaclass) {
     return matches;
 }
 
+// Resolve __mro_entries__ in base class expressions, returning an owned reference.
+PyObject *CPyType_ResolveBases(PyObject *bases) {
+    PyObject *resolved = update_bases(bases);
+    if (resolved == bases) {
+        Py_INCREF(resolved);
+    }
+    return resolved;
+}
+
 #if CPY_3_13_FEATURES
 
 // Adapted from CPython 3.13.0b3

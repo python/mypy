@@ -622,11 +622,20 @@ class NonExtClassInfo:
     the class annotations dictionary, and the metaclass.
     """
 
-    def __init__(self, dict: Value, bases: Value, anns: Value, metaclass: Value) -> None:
+    def __init__(
+        self,
+        dict: Value,
+        bases: Value,
+        anns: Value,
+        metaclass: Value,
+        orig_bases: Value | None = None,
+    ) -> None:
         self.dict = dict
         self.bases = bases
         self.anns = anns
         self.metaclass = metaclass
+        # Original expressions, before resolving __mro_entries__, if resolution was needed.
+        self.orig_bases = orig_bases
 
 
 def serialize_vtable_entry(entry: VTableMethod) -> JsonDict:

@@ -17,6 +17,7 @@ from mypy.nodes import (
     EllipsisExpr,
     ExpressionStmt,
     FuncDef,
+    IndexExpr,
     Lvalue,
     MemberExpr,
     NameExpr,
@@ -80,6 +81,7 @@ from mypyc.primitives.misc_ops import (
     not_implemented_op,
     py_calc_meta_op,
     py_init_subclass_op,
+    py_resolve_bases_op,
     pytype_from_template_op,
     type_object_op,
 )
@@ -265,16 +267,35 @@ class NonExtClassBuilder(ClassBuilder):
         return self.non_ext.dict
 
     def create_non_ext_info(self) -> NonExtClassInfo:
-        non_ext_bases = populate_non_ext_bases(self.builder, self.cdef)
-        non_ext_metaclass = find_non_ext_metaclass(self.builder, self.cdef, non_ext_bases)
-        non_ext_dict = setup_non_ext_dict(
-            self.builder, self.cdef, non_ext_metaclass, non_ext_bases
-        )
+        builder, cdef = self.builder, self.cdef
+        generic_base = None
+        type_params = None
+        if cdef.type_args:
+            # Create type parameters first, since base class expressions can refer to them.
+            generic_base, tvs = make_generic_base_class(
+                builder, cdef.fullname, cdef.type_args, cdef.line
+            )
+            type_params = builder.new_tuple(tvs, cdef.line)
+        non_ext_bases = populate_non_ext_bases(builder, cdef, generic_base)
+        orig_bases = None
+        if uses_non_ext_base_exprs(cdef):
+            orig_bases = non_ext_bases
+            non_ext_bases = builder.call_c(py_resolve_bases_op, [non_ext_bases], cdef.line)
+        non_ext_metaclass = find_non_ext_metaclass(builder, cdef, non_ext_bases)
+        non_ext_dict = setup_non_ext_dict(builder, cdef, non_ext_metaclass, non_ext_bases)
+        if type_params is not None:
+            builder.call_c(
+                exact_dict_set_item_op,
+                [non_ext_dict, builder.load_str("__type_params__"), type_params],
+                cdef.line,
+            )
         # We populate __annotations__ for non-extension classes
         # because dataclasses uses it to determine which attributes to compute on.
         # TODO: Maybe generate more precise types for annotations
-        non_ext_anns = self.builder.call_c(dict_new_op, [], self.cdef.line)
-        return NonExtClassInfo(non_ext_dict, non_ext_bases, non_ext_anns, non_ext_metaclass)
+        non_ext_anns = builder.call_c(dict_new_op, [], cdef.line)
+        return NonExtClassInfo(
+            non_ext_dict, non_ext_bases, non_ext_anns, non_ext_metaclass, orig_bases
+        )
 
     def add_method(self, fdef: FuncDef) -> None:
         handle_non_ext_method(self.builder, self.non_ext, self.cdef, fdef)
@@ -475,7 +496,10 @@ def allocate_class(builder: IRBuilder, cdef: ClassDef) -> Value:
     base_exprs = cdef.base_type_exprs + cdef.removed_base_type_exprs
     new_style_type_args = cdef.type_args
     if new_style_type_args:
-        bases = [make_generic_base_class(builder, cdef.fullname, new_style_type_args, cdef.line)]
+        generic_base, _ = make_generic_base_class(
+            builder, cdef.fullname, new_style_type_args, cdef.line
+        )
+        bases = [generic_base]
     else:
         bases = []
 
@@ -538,8 +562,11 @@ def allocate_class(builder: IRBuilder, cdef: ClassDef) -> Value:
 
 def make_generic_base_class(
     builder: IRBuilder, fullname: str, type_args: list[TypeParam], line: int
-) -> Value:
-    """Construct Generic[...] base class object for a new-style generic class (Python 3.12)."""
+) -> tuple[Value, list[Value]]:
+    """Construct Generic[...] base class object for a new-style generic class (Python 3.12).
+
+    Also return the created type parameter objects.
+    """
     mod = builder.call_c(import_op, [builder.load_str("_typing")], line)
     tvs = create_type_params(builder, mod, type_args, line)
     args = []
@@ -557,7 +584,7 @@ def make_generic_base_class(
         arg = builder.new_tuple(args, line)
 
     base = builder.primitive_op(py_get_item_op, [gent, arg], line)
-    return base
+    return base, tvs
 
 
 # Mypy uses these internally as base classes of TypedDict classes. These are
@@ -568,13 +595,51 @@ MAGIC_TYPED_DICT_CLASSES: Final[tuple[str, ...]] = (
 )
 
 
-def populate_non_ext_bases(builder: IRBuilder, cdef: ClassDef) -> Value:
+def uses_non_ext_base_exprs(cdef: ClassDef) -> bool:
+    """Should the base classes of a non-extension class be evaluated as written?
+
+    Resolved base types erase Generic[...] bases and type arguments, but they are
+    needed at runtime, e.g. to make the class generic.
+    """
+    info = cdef.info
+    if info.is_named_tuple or info.typeddict_type is not None:
+        # These have synthesized base classes that need special casing.
+        return False
+    return bool(
+        cdef.type_args
+        or cdef.removed_base_type_exprs
+        or any(isinstance(expr, IndexExpr) for expr in cdef.base_type_exprs)
+    )
+
+
+def populate_non_ext_bases(
+    builder: IRBuilder, cdef: ClassDef, generic_base: Value | None
+) -> Value:
     """Create base class tuple of a non-extension class.
 
-    The tuple is passed to the metaclass constructor.
+    The tuple is passed to the metaclass constructor, after resolving __mro_entries__
+    if uses_non_ext_base_exprs(cdef) is true. If given, generic_base is the implicit
+    Generic[...] base of a new-style generic class.
     """
     is_named_tuple = cdef.info.is_named_tuple
     ir = builder.mapper.type_to_ir[cdef.info]
+    for base_type in cdef.info.bases:
+        # Add the current class to the base classes list of concrete subclasses.
+        base_ir = builder.mapper.type_to_ir.get(base_type.type)
+        if base_ir is not None and base_ir.children is not None:
+            base_ir.children.append(ir)
+
+    if uses_non_ext_base_exprs(cdef):
+        # Mypy removes Generic[...] bases, so restore source order before evaluation.
+        base_exprs = sorted(
+            cdef.base_type_exprs + cdef.removed_base_type_exprs,
+            key=lambda expr: (expr.line, expr.column),
+        )
+        items = [builder.accept(expr) for expr in base_exprs]
+        if generic_base is not None:
+            items.append(generic_base)
+        return builder.new_tuple(items, cdef.line)
+
     bases = []
     for cls in (b.type for b in cdef.info.bases):
         if cls.fullname == "builtins.object":
@@ -590,12 +655,6 @@ def populate_non_ext_bases(builder: IRBuilder, cdef: ClassDef) -> Value:
             # HAX: Synthesized base classes added by mypy don't exist at runtime, so skip them.
             #      This could break if they were added explicitly, though...
             continue
-        # Add the current class to the base classes list of concrete subclasses
-        if cls in builder.mapper.type_to_ir:
-            base_ir = builder.mapper.type_to_ir[cls]
-            if base_ir.children is not None:
-                base_ir.children.append(ir)
-
         if cls.fullname in MAGIC_TYPED_DICT_CLASSES:
             # HAX: Mypy internally represents TypedDict classes differently from what
             #      should happen at runtime. Replace with something that works.
@@ -943,6 +1002,20 @@ def load_non_ext_class(
     cls_name = builder.load_str(ir.name)
 
     add_dunders_to_non_ext_dict(builder, non_ext, line)
+
+    if non_ext.orig_bases is not None:
+        changed = builder.builder.translate_is_op(
+            non_ext.bases, non_ext.orig_bases, "is not", line
+        )
+        update, done = BasicBlock(), BasicBlock()
+        builder.add_bool_branch(changed, update, done)
+        builder.activate_block(update)
+        builder.call_c(
+            exact_dict_set_item_op,
+            [non_ext.dict, builder.load_str("__orig_bases__"), non_ext.orig_bases],
+            line,
+        )
+        builder.goto_and_activate(done)
 
     class_type_obj = builder.py_call(
         non_ext.metaclass, [cls_name, non_ext.bases, non_ext.dict], line
