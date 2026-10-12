@@ -1546,7 +1546,7 @@ def test_raise_non_native_exception_subclass_2() -> None:
 [case testSubclassUnknownPythonBase]
 # The base class is unknown during compilation, so it has type Any
 from mypy_extensions import mypyc_attr
-from unchecked import Base, MetaBase, StrBase  # type: ignore
+from unchecked import Base, MetaBase, SecondBase, StrBase  # type: ignore
 
 @mypyc_attr(native_class=False)
 class C(Base):
@@ -1570,10 +1570,29 @@ class S(StrBase):
 class WithMeta(MetaBase):
     pass
 
+@mypyc_attr(native_class=False)
+class Known:
+    def marker(self) -> str:
+        return "known"
+
+@mypyc_attr(native_class=False)
+class KnownFirst(Known, Base):
+    pass
+
+@mypyc_attr(native_class=False)
+class UnknownFirst(Base, Known):
+    pass
+
+@mypyc_attr(native_class=False)
+class TwoUnknown(Base, SecondBase):
+    pass
+
 def test_unknown_base() -> None:
     c = C(1)
     assert c.x == 1
     assert c.y == 2
+    assert c.label == "base attribute"
+    assert c.marker() == "base"
     c.z = 3
     assert c.z == 3
     assert c.__dict__ == {"x": 1, "y": 2, "z": 3}
@@ -1583,7 +1602,10 @@ def test_inherited_init() -> None:
     assert InheritedInit().y == 2
     assert InheritedInit(7).y == 7
     assert InheritedInit(x=11).y == 11
-    assert D(13).y == 13
+    d = D(13)
+    assert d.y == 13
+    assert d.label == "base attribute"
+    assert d.marker() == "base"
     assert D(x=17).y == 17
     try:
         InheritedInit(-1)
@@ -1604,8 +1626,23 @@ def test_unknown_base_metaclass() -> None:
     assert isinstance(WithMeta, type(MetaBase))
     assert isinstance(WithMeta(), MetaBase)
 
+def test_multiple_inheritance() -> None:
+    assert KnownFirst.__bases__ == (Known, Base)
+    assert UnknownFirst.__bases__ == (Base, Known)
+    assert TwoUnknown.__bases__ == (Base, SecondBase)
+    assert KnownFirst(3).y == 3
+    assert UnknownFirst(x=5).y == 5
+    assert KnownFirst().marker() == "known"
+    assert UnknownFirst().marker() == "base"
+    assert TwoUnknown(7).y == 7
+    assert TwoUnknown().other() == "second"
+
 [file unchecked.py]
 StrBase = str
+
+class SecondBase:
+    def other(self):
+        return "second"
 
 class Meta(type):
     pass
@@ -1614,10 +1651,15 @@ class MetaBase(metaclass=Meta):
     pass
 
 class Base:
+    label = "base attribute"
+
     def __init__(self, x=2):
         if x < 0:
             raise ValueError("negative")
         self.y = x
+
+    def marker(self):
+        return "base"
 
 [case testSubclassPy]
 from b import B, V

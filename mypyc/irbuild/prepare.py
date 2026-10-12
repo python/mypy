@@ -34,6 +34,7 @@ from mypy.nodes import (
     OverloadedFuncDef,
     RefExpr,
     SymbolNode,
+    TypeAlias,
     TypeInfo,
     Var,
 )
@@ -539,6 +540,27 @@ def _check_deletable_declarations(path: str, cdef: ClassDef, ir: ClassIR, errors
                 )
 
 
+def check_unknown_base_classes(path: str, cdef: ClassDef, errors: Errors) -> None:
+    """Reject native classes whose layout depends on an Any base."""
+    if not cdef.info.fallback_to_any:
+        return
+
+    base_description = "a class with type Any"
+    for base_expr in cdef.base_type_exprs:
+        if not isinstance(base_expr, RefExpr):
+            continue
+        base_node = base_expr.node
+        if isinstance(base_node, TypeAlias):
+            target = get_proper_type(base_node.target)
+            if isinstance(target, Instance):
+                base_node = target.type
+        if not isinstance(base_node, TypeInfo) or base_node.fallback_to_any:
+            base_description = f'"{base_expr.name}" (unknown base class layout)'
+            break
+    errors.error(f"Native classes cannot inherit from {base_description}", path, cdef.line)
+    errors.note("Use @mypy_extensions.mypyc_attr(native_class=False)", path, cdef.line)
+
+
 def prepare_class_def(
     path: str,
     module_name: str,
@@ -556,9 +578,7 @@ def prepare_class_def(
     ir = mapper.type_to_ir[cdef.info]
     info = cdef.info
 
-    if info.fallback_to_any:
-        errors.error("Native classes cannot inherit from a class with type Any", path, cdef.line)
-        errors.note("Use @mypy_extensions.mypyc_attr(native_class=False)", path, cdef.line)
+    check_unknown_base_classes(path, cdef, errors)
 
     attrs, attrs_lines = get_mypyc_attrs(cdef, path, errors)
     if attrs.get("allow_interpreted_subclasses") is True:

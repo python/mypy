@@ -1723,11 +1723,11 @@ from mypy_extensions import mypyc_attr
 from typing import Any
 from missing_module import Base  # type: ignore
 
-class C(Base):  # E: Native classes cannot inherit from a class with type Any \
+class C(Base):  # E: Native classes cannot inherit from "Base" (unknown base class layout) \
                 # N: Use @mypy_extensions.mypyc_attr(native_class=False)
     pass
 
-class D(C):  # E: Native classes cannot inherit from a class with type Any \
+class D(C):  # E: Native classes cannot inherit from "C" (unknown base class layout) \
              # N: Use @mypy_extensions.mypyc_attr(native_class=False)
     pass
 
@@ -1735,13 +1735,33 @@ class D(C):  # E: Native classes cannot inherit from a class with type Any \
 class NonNative(Base):
     pass
 
-class NativeChild(NonNative):  # E: Native classes cannot inherit from a class with type Any \
+class NativeChild(NonNative):  # E: Native classes cannot inherit from "NonNative" (unknown base class layout) \
                              # N: Use @mypy_extensions.mypyc_attr(native_class=False)
     pass
 
 ExplicitAny: Any = str
-class S(ExplicitAny):  # E: Native classes cannot inherit from a class with type Any \
+class S(ExplicitAny):  # E: Native classes cannot inherit from "ExplicitAny" (unknown base class layout) \
                       # N: Use @mypy_extensions.mypyc_attr(native_class=False)
+    pass
+
+class Known:
+    pass
+
+class KnownFirst(Known, Base):  # E: Native classes cannot inherit from "Base" (unknown base class layout) \
+                              # N: Use @mypy_extensions.mypyc_attr(native_class=False)
+    pass
+
+class UnknownFirst(Base, Known):  # E: Native classes cannot inherit from "Base" (unknown base class layout) \
+                                # N: Use @mypy_extensions.mypyc_attr(native_class=False)
+    pass
+
+class TwoUnknown(Base, ExplicitAny):  # E: Native classes cannot inherit from "Base" (unknown base class layout) \
+                                     # N: Use @mypy_extensions.mypyc_attr(native_class=False)
+    pass
+
+Alias = Known
+class AliasFirst(Alias, Base):  # E: Native classes cannot inherit from "Base" (unknown base class layout) \
+                              # N: Use @mypy_extensions.mypyc_attr(native_class=False)
     pass
 
 [case testMypycAttrNativeClassMetaError]
