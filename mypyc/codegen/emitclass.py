@@ -53,6 +53,13 @@ from mypyc.sametype import is_same_type
 
 
 def native_slot(cl: ClassIR, fn: FuncIR, emitter: Emitter) -> str:
+    """Use a native method directly as a slot that takes self and returns an object.
+
+    If the method returns an unboxed value, such as an int from __next__, a wrapper
+    that boxes the value fills the slot instead.
+    """
+    if fn.ret_type.is_unboxed:
+        return generate_dunder_wrapper(cl, fn, emitter)
     return f"{NATIVE_PREFIX}{fn.cname(emitter.names)}"
 
 

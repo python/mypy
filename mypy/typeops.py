@@ -11,6 +11,7 @@ import itertools
 from collections.abc import Callable, Iterable, Sequence
 from typing import Any, TypeVar, cast
 
+import mypy.subtypes
 from mypy.checker_state import checker_state
 from mypy.copytype import copy_type
 from mypy.expandtype import expand_type, expand_type_by_instance
@@ -336,8 +337,6 @@ def class_callable(
     variables.extend(info.defn.type_vars)
     variables.extend(init_type.variables)
 
-    from mypy.subtypes import is_equivalent, is_subtype
-
     init_ret_type = get_proper_type(init_type.ret_type)
     orig_self_type = get_proper_type(orig_self_type)
     default_ret_type = fill_typevars(info)
@@ -356,7 +355,9 @@ def class_callable(
         and (
             isinstance(explicit_type, AnyType)
             and explicit_type.type_of_any != TypeOfAny.unannotated
-            or not is_equivalent(default_def_ret_type, explicit_type, ignore_type_params=True)
+            or not mypy.subtypes.is_equivalent(
+                default_def_ret_type, explicit_type, ignore_type_params=True
+            )
         )
     ):
         ret_type = explicit_type
@@ -367,7 +368,7 @@ def class_callable(
         and isinstance(default_ret_type, Instance)
         and not default_ret_type.type.is_protocol
         # Use the declared self in __init__ if it is a subtype of what we would use otherwise.
-        and is_subtype(explicit_type, default_ret_type, ignore_type_params=True)
+        and mypy.subtypes.is_subtype(explicit_type, default_ret_type, ignore_type_params=True)
     ):
         ret_type = explicit_type
     else:
@@ -463,15 +464,57 @@ def bind_self(
 
     """
     if isinstance(method, Overloaded):
-        items = [
-            bind_self(c, original_type, is_classmethod, ignore_instances) for c in method.items
-        ]
-        return cast(F, Overloaded(items))
+        items = []
+        # If the original object type has Any, we record the inferred self-types,
+        if original_type and mypy.subtypes.has_any_type(original_type, ignore_in_type_obj=True):
+            bound_args: list[Type] | None = []
+        else:
+            bound_args = None
+        for c in method.items:
+            bound = bind_self_inner(c, original_type, is_classmethod, ignore_instances)
+            if bound is None:
+                items.append(c)
+                bound_args = None
+                # If some items can't be bound, we ignore them all for simplicity.
+                continue
+            func, variables = bound
+            res = func.copy_modified(
+                arg_types=func.arg_types[1:],
+                arg_kinds=func.arg_kinds[1:],
+                arg_names=func.arg_names[1:],
+                variables=variables,
+                is_bound=True,
+            )
+            items.append(res)
+            if bound_args is not None:
+                bound_args.append(func.arg_types[0])
+        return cast(F, Overloaded(items, bound_args))
+
     assert isinstance(method, CallableType)
-    func: CallableType = method
+    bound = bind_self_inner(method, original_type, is_classmethod, ignore_instances)
+    if bound is None:
+        return method
+    func, variables = bound
+    res = func.copy_modified(
+        arg_types=func.arg_types[1:],
+        arg_kinds=func.arg_kinds[1:],
+        arg_names=func.arg_names[1:],
+        variables=variables,
+        is_bound=True,
+    )
+    return cast(F, res)
+
+
+def bind_self_inner(
+    func: CallableType,
+    original_type: Type | None = None,
+    is_classmethod: bool = False,
+    ignore_instances: bool = False,
+) -> tuple[CallableType, Sequence[TypeVarLikeType]] | None:
+    """Implementation of bind_self()."""
     if not func.arg_types:
         # Invalid method, return something.
-        return method
+        return None
     if func.arg_kinds[0] in (ARG_STAR, ARG_STAR2):
         # The signature is of the form 'def foo(*args, ...)'.
         # In this case we shouldn't drop the first arg,
@@ -480,7 +523,8 @@ def bind_self(
 
         # In the case of **kwargs we should probably emit an error, but
         # for now we simply skip it, to avoid crashes down the line.
-        return method
+        return None
+
     self_param_type = get_proper_type(func.arg_types[0])
 
     variables: Sequence[TypeVarLikeType]
@@ -527,15 +571,7 @@ def bind_self(
         variables = [v for v in func.variables if v not in self_vars]
     else:
         variables = func.variables
-
-    res = func.copy_modified(
-        arg_types=func.arg_types[1:],
-        arg_kinds=func.arg_kinds[1:],
-        arg_names=func.arg_names[1:],
-        variables=variables,
-        is_bound=True,
-    )
-    return cast(F, res)
+    return func, variables
 
 
 def erase_to_bound(t: Type) -> Type:

@@ -40,10 +40,12 @@ intern_strings(void) {
     INTERN_STRING(dispatch_cache, "dispatch_cache");
     INTERN_STRING(endswith, "endswith");
     INTERN_STRING(get_type_hints, "get_type_hints");
+    INTERN_STRING(imag, "imag");
     INTERN_STRING(keys, "keys");
     INTERN_STRING(lower, "lower");
     INTERN_STRING(items, "items");
     INTERN_STRING(join, "join");
+    INTERN_STRING(real, "real");
     INTERN_STRING(register_, "register");
     INTERN_STRING(registry, "registry");
     INTERN_STRING(send, "send");
