@@ -54,7 +54,8 @@ def create_source_list(
             mod = os.path.basename(path) if options.scripts_are_modules else None
             sources.append(BuildSource(path, mod, None))
     if not sources and empty_dirs:
-        raise InvalidSourceList(f"There are no .py[i] files in directory '{empty_dirs[0]}'")
+        empty_dirs_str = ", ".join(map(repr, empty_dirs))
+        raise InvalidSourceList(f"There are no .py[i] files in directories: {empty_dirs_str}")
     return sources
 
 
