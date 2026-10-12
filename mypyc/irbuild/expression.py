@@ -394,6 +394,32 @@ def check_instance_attribute_access_through_class(
                     )
 
 
+def check_property_call_through_class(
+    builder: IRBuilder, expr: CallExpr, callee: MemberExpr
+) -> None:
+    """Report error if calling a property through class object, as in "C.prop(obj)".
+
+    This always fails at runtime, since "C.prop" is a property object (or a getset
+    descriptor in a native class), but mypy may not report it. Since the getter is
+    stored as a method, we'd otherwise compile this as a direct call to the getter.
+    """
+    if isinstance(callee.expr, RefExpr):
+        node = callee.expr.node
+        typ = get_proper_type(builder.types.get(callee.expr))
+        if isinstance(typ, TypeType) and isinstance(typ.item, Instance):
+            node = typ.item.type
+        if isinstance(node, TypeInfo):
+            class_ir = builder.mapper.type_to_ir.get(node)
+            if (
+                class_ir is not None
+                and class_ir.has_method(callee.name)
+                and class_ir.method_decl(callee.name).is_prop_getter
+            ):
+                builder.error(
+                    f'Cannot call property "{callee.name}" through class object', expr.line
+                )
+
+
 def transform_super_expr(builder: IRBuilder, o: SuperExpr) -> Value:
     # warning(builder, 'can not optimize super() expression', o.line)
     sup_val = builder.load_module_attr_by_fullname("builtins.super", o.line)
@@ -499,6 +525,7 @@ def translate_method_call(builder: IRBuilder, expr: CallExpr, callee: MemberExpr
 
     This can also deal with calls to module-level functions.
     """
+    check_property_call_through_class(builder, expr, callee)
     if builder.is_native_ref_expr(callee):
         # Call to module-level native function or such
         return translate_call(builder, expr, callee)
