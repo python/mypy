@@ -224,7 +224,7 @@ def assert_target_equivalence(name: str, expected: list[str], actual: list[str])
 
 
 def show_align_message(s1: str, s2: str) -> None:
-    """Align s1 and s2 so that the their first difference is highlighted.
+    """Align s1 and s2 so that their first difference is highlighted.
 
     For example, if s1 is 'foobar' and s2 is 'fobar', display the
     following lines:
