@@ -90,6 +90,10 @@ class int:
     def __ge__(self, n: int) -> bool: pass
     def to_bytes(self, length: int, order: str, *, signed: bool = False) -> bytes: pass
     def bit_length(self) -> int: pass
+    @property
+    def real(self) -> int: ...
+    @property
+    def imag(self) -> int: ...
 
 class str:
     @overload
@@ -158,6 +162,10 @@ class float:
     def __le__(self, x: float) -> bool: ...
     def __gt__(self, x: float) -> bool: ...
     def __ge__(self, x: float) -> bool: ...
+    @property
+    def real(self) -> float: ...
+    @property
+    def imag(self) -> float: ...
 
 class complex:
     def __init__(self, x: object, y: object = None) -> None: pass
@@ -168,6 +176,10 @@ class complex:
     def __mul__(self, n: complex) -> complex: pass
     def __truediv__(self, n: complex) -> complex: pass
     def __neg__(self) -> complex: pass
+    @property
+    def real(self) -> float: ...
+    @property
+    def imag(self) -> float: ...
 
 class bytes:
     @overload

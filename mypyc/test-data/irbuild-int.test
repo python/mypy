@@ -243,3 +243,27 @@ def f(x):
 L0:
     r0 = CPyTagged_BitLength(x)
     return r0
+
+[case testIntRealImag]
+def int_parts(x: int) -> tuple[int, int]:
+    return x.real, x.imag
+def bool_parts(b: bool) -> tuple[int, int]:
+    return b.real, b.imag
+[out]
+def int_parts(x):
+    x, r0, r1 :: int
+    r2 :: tuple[int, int]
+L0:
+    r0 = CPyTagged_Real(x)
+    r1 = CPyTagged_Imag(x)
+    r2 = (r0, r1)
+    return r2
+def bool_parts(b):
+    b, r0 :: bool
+    r1 :: int
+    r2 :: tuple[int, int]
+L0:
+    r0 = b << 1
+    r1 = extend r0: builtins.bool to builtins.int
+    r2 = (r1, 0)
+    return r2
