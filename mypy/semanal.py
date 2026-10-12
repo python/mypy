@@ -51,7 +51,7 @@ Some important properties:
 from __future__ import annotations
 
 import re
-from collections.abc import Callable, Collection, Iterable, Iterator
+from collections.abc import Callable, Collection, Iterable, Iterator, Sequence
 from contextlib import contextmanager
 from typing import Any, Final, TypeAlias as _TypeAlias, TypeGuard, TypeVar, cast
 from typing_extensions import assert_never
@@ -60,6 +60,7 @@ from mypy import errorcodes as codes, message_registry
 from mypy.constant_fold import constant_fold_expr
 from mypy.errorcodes import PROPERTY_DECORATOR, ErrorCode
 from mypy.errors import Errors, report_internal_error
+from mypy.expandtype import expand_type
 from mypy.exprtotype import TypeTranslationError, expr_to_unanalyzed_type
 from mypy.message_registry import CANNOT_DECLARE_TYPE_OF_SPECIAL_FORM, ErrorMessage
 from mypy.messages import (
@@ -1198,19 +1199,42 @@ class SemanticAnalyzer(
                 return self.is_expected_self_type(typ.item, is_classmethod=False)
             if isinstance(typ, UnboundType):
                 sym = self.lookup_qualified(typ.name, typ, suppress_errors=True)
-                if sym is not None and sym.fullname in TYPE_NAMES and typ.args:
+                if sym is None or not typ.args:
+                    return False
+                if sym.fullname in TYPE_NAMES:
                     return self.is_expected_self_type(typ.args[0], is_classmethod=False)
-                if sym is not None and sym.fullname in ANNOTATED_TYPE_NAMES and typ.args:
+                if sym.fullname in ANNOTATED_TYPE_NAMES:
                     return self.is_expected_self_type(typ.args[0], is_classmethod=True)
+                expanded = self.expand_type_alias_for_self_check(sym.node, typ.args)
+                if expanded is not None:
+                    return self.is_expected_self_type(expanded, is_classmethod=True)
             return False
+
         if isinstance(typ, TypeVarType):
             return typ == self.type.self_type
         if isinstance(typ, UnboundType):
             sym = self.lookup_qualified(typ.name, typ, suppress_errors=True)
-            if sym is not None and sym.fullname in ANNOTATED_TYPE_NAMES and typ.args:
+            if sym is None:
+                return False
+            if sym.fullname in ANNOTATED_TYPE_NAMES and typ.args:
                 return self.is_expected_self_type(typ.args[0], is_classmethod=False)
-            return sym is not None and sym.fullname in SELF_TYPE_NAMES
+            expanded = self.expand_type_alias_for_self_check(sym.node, typ.args)
+            if expanded is not None:
+                return self.is_expected_self_type(expanded, is_classmethod=False)
+            return sym.fullname in SELF_TYPE_NAMES
         return False
+
+    def expand_type_alias_for_self_check(
+        self, node: SymbolNode | None, args: Sequence[Type]
+    ) -> Type | None:
+        """Substitute a type alias's own type parameters with the given arguments
+        (e.g. "Ident[Self]" for "type Ident[T] = T" gives back "Self"), so the
+        result can be checked like any other type.
+        """
+        if not isinstance(node, TypeAlias) or len(node.alias_tvars) != len(args):
+            return None
+        env = {tvar.id: arg for tvar, arg in zip(node.alias_tvars, args)}
+        return expand_type(node.target, env)
 
     def set_original_def(self, previous: Node | None, new: FuncDef | Decorator) -> bool:
         """If 'new' conditionally redefine 'previous', set 'previous' as original
