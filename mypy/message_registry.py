@@ -311,6 +311,9 @@ TYPE_IGNORE_WITH_ERRCODE_ON_MODULE: Final = ErrorMessage(
     codes.SYNTAX,
 )
 INVALID_TYPE_IGNORE: Final = ErrorMessage('Invalid "type: ignore" comment', codes.SYNTAX)
+NO_PREFIX_IN_MYPY_IGNORE: Final = (
+    'Error codes in "mypy: ignore" should not be prefixed with "mypy:"'
+)
 TYPE_COMMENT_SYNTAX_ERROR_VALUE: Final = ErrorMessage(
     'Syntax error in type comment "{}"', codes.SYNTAX
 )

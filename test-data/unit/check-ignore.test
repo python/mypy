@@ -361,7 +361,7 @@ main:14: error: Incompatible types in assignment (expression has type "int", var
 [case testPrefixInMypyCommentNotAllowed]
 x: str = 1  # mypy: ignore[mypy:assignment]
 [out]
-main:1: error: Error codes in "mypy: ignore" should not be prefixed
+main:1: error: Error codes in "mypy: ignore" should not be prefixed with "mypy:"
 main:1: note: Error code "misc" not covered by "type: ignore[assignment]" comment
 
 [case testDuplicateErrorCodeNotAllowed]

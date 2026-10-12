@@ -48,6 +48,7 @@ from mypy.cache import (
 )
 from mypy.errorcodes import error_codes
 from mypy.errors import CompileError
+from mypy.message_registry import NO_PREFIX_IN_MYPY_IGNORE
 from mypy.nodes import (
     ARG_KINDS,
     ARG_POS,
@@ -298,7 +299,7 @@ def normalize_error_codes(
                     {
                         "line": line,
                         "column": -1,
-                        "message": 'Error codes in "mypy: ignore" should not be prefixed',
+                        "message": NO_PREFIX_IN_MYPY_IGNORE,
                         "blocker": False,
                         "code": "misc",
                     }
