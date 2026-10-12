@@ -3444,7 +3444,7 @@ class State:
         # Every module implicitly depends on builtins.
         if self.id != "builtins":
             self.add_dependency("builtins")
-        if self.tree.uses_template_strings:
+        if self.tree.uses_template_strings and self.options.python_version >= (3, 14):
             self.add_dependency("string.templatelib")
 
         self.check_blockers()  # Can fail due to bogus relative imports
