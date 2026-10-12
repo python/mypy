@@ -1554,6 +1554,9 @@ class C(Base):
         super().__init__()
         self.x = x
 
+    def marker(self) -> str:
+        return "override " + super().marker()
+
 @mypyc_attr(native_class=False)
 class InheritedInit(Base):
     pass
@@ -1592,7 +1595,7 @@ def test_unknown_base() -> None:
     assert c.x == 1
     assert c.y == 2
     assert c.label == "base attribute"
-    assert c.marker() == "base"
+    assert c.marker() == "override base"
     c.z = 3
     assert c.z == 3
     assert c.__dict__ == {"x": 1, "y": 2, "z": 3}
