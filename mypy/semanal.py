@@ -4260,10 +4260,9 @@ class SemanticAnalyzer(
             # annotations (see the second rule).
             return False
         if not pep_613 and not pep_695 and not self.can_be_type_alias(rvalue):
-            if isinstance(rvalue, OpExpr):
-                # Backtrack potential alias to a regular variable.
-                if existing and isinstance(existing.node, TypeAlias):
-                    del self.current_symbol_table()[lvalue.name]
+            # Backtrack potential alias to a regular variable.
+            if existing and isinstance(existing.node, TypeAlias):
+                del self.current_symbol_table()[lvalue.name]
             return False
 
         if existing and not isinstance(existing.node, (PlaceholderNode, TypeAlias)):

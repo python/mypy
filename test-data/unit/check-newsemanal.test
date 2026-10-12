@@ -3265,6 +3265,17 @@ AB = Test.A | Test.B
 reveal_type(AB)  # N: Revealed type is "builtins.int"
 [builtins fixtures/ops.pyi]
 
+[case testUnionNewSyntaxUndefinedAttrRegularReassign]
+class Test(Flag):  # E: Name "Flag" is not defined
+    A = 1
+    B = 2
+
+AB = Test.A | Test.B
+C = AB
+reveal_type(AB)  # N: Revealed type is "builtins.int"
+reveal_type(C)  # N: Revealed type is "builtins.int"
+[builtins fixtures/ops.pyi]
+
 [case testUnionNewSyntaxNested]
 class Test(Flag):  # E: Name "Flag" is not defined
     class A: ...
