@@ -2715,6 +2715,12 @@ class Sub2(Derived2):
     def method(self, x: int) -> int:
         return super().method(x) + Derived.method(self, x) + Derived2.method(self, x)
 
+class WiderDerived2(Derived):
+    # Decorated override of a decorated override with a different signature
+    @add_ten
+    def method(self, x: object) -> int:
+        return 1000
+
 class DefaultsBase:
     def m(self, a: i64 = 1, b: float = 1.0, *, c: i64 = 1) -> float:
         return 0.0
@@ -2857,6 +2863,8 @@ def test_decorated_override() -> None:
     assert via_base(IdentitySub(), 1) == 2
     assert via_base(Derived2(), 1) == 34
     assert via_base(Sub2(), 1) == 34 + 12 + 34
+    assert via_base(WiderDerived2(), 1) == 1010
+    assert via_derived(WiderDerived2(), 1) == 1010
     assert via_defaults_base(Defaults()) == [244.0, 544.0, 274.0, 247.0, 577.0]
     assert via_sig_base(ChangesSig()) == [6, 0, 0, "ChangesSig"]
     assert via_sig_base(ChangesSigSub()) == [6, 0, 0, "ChangesSigSub"]
