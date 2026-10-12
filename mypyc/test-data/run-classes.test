@@ -1546,7 +1546,10 @@ def test_raise_non_native_exception_subclass_2() -> None:
 [case testSubclassUnknownPythonBase]
 # The base class is unknown during compilation, so it has type Any
 from mypy_extensions import mypyc_attr
+from typing import Any, Generic, TypeVar
 from unchecked import Base, MetaBase, SecondBase, StrBase  # type: ignore
+
+T = TypeVar("T")
 
 @mypyc_attr(native_class=False)
 class C(Base):
@@ -1588,6 +1591,22 @@ class UnknownFirst(Base, Known):
 
 @mypyc_attr(native_class=False)
 class TwoUnknown(Base, SecondBase):
+    pass
+
+@mypyc_attr(native_class=False)
+class GenericLast(Base, Generic[T]):
+    pass
+
+@mypyc_attr(native_class=False)
+class GenericFirst(Generic[T], Base):
+    pass
+
+@mypyc_attr(native_class=False)
+class KnownGeneric(Generic[T]):
+    pass
+
+@mypyc_attr(native_class=False)
+class KnownGenericBase(Base, KnownGeneric[int]):
     pass
 
 def test_unknown_base() -> None:
@@ -1639,6 +1658,21 @@ def test_multiple_inheritance() -> None:
     assert UnknownFirst().marker() == "base"
     assert TwoUnknown(7).y == 7
     assert TwoUnknown().other() == "second"
+
+def test_generic_bases() -> None:
+    generic: Any = globals()["Generic"]
+    type_var: Any = globals()["T"]
+    assert GenericLast.__bases__ == (Base, generic)
+    assert GenericFirst.__bases__ == (generic, Base)
+    assert GenericLast.__orig_bases__ == (Base, generic[type_var])
+    assert GenericFirst.__orig_bases__ == (generic[type_var], Base)
+    assert GenericLast.__parameters__ == (type_var,)
+    assert GenericFirst.__parameters__ == (type_var,)
+    assert GenericLast[int](3).y == 3
+    assert GenericFirst[str](5).y == 5
+    assert KnownGenericBase.__bases__ == (Base, KnownGeneric)
+    assert KnownGenericBase.__orig_bases__ == (Base, KnownGeneric[int])
+    assert KnownGenericBase(7).y == 7
 
 [file unchecked.py]
 StrBase = str

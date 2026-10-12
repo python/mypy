@@ -547,7 +547,7 @@ def check_unknown_base_classes(path: str, cdef: ClassDef, errors: Errors) -> Non
 
     base_description = "a class with type Any"
     for base_expr in cdef.base_type_exprs:
-        if not isinstance(base_expr, RefExpr):
+        if not isinstance(base_expr, (NameExpr, MemberExpr)):
             continue
         base_node = base_expr.node
         if isinstance(base_node, TypeAlias):
