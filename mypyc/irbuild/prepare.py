@@ -131,6 +131,14 @@ def build_type_map(
                     module.path, module.fullname, cdef, errors, mapper, options
                 )
 
+    # Set up constructors. This needs the method declarations of all classes. A class
+    # can be prepared before its base class, since the modules of a compilation group
+    # are prepared in name order.
+    for module, cdef in classes:
+        class_ir = mapper.type_to_ir[cdef.info]
+        if class_ir.is_ext_class:
+            prepare_init_method(cdef, class_ir, module.fullname, mapper)
+
     # Validate cross-class properties after all ClassIR flags are populated.
     for module, cdef in classes:
         with catch_errors(module.path, cdef.line):
@@ -610,7 +618,6 @@ def prepare_class_def(
     ir.base_mro = base_mro
 
     prepare_methods_and_attributes(cdef, ir, path, module_name, errors, mapper, options)
-    prepare_init_method(cdef, ir, module_name, mapper)
 
     for base in bases:
         if base.children is not None:
@@ -776,21 +783,16 @@ def has_non_native_new(cdef: ClassDef, mapper: Mapper) -> bool:
     """Are instances of a class created by a __new__ method that isn't called natively?
 
     This is ClassIR.has_non_native_new() for use before the methods have been built.
+    The methods of all classes in the MRO must have been declared.
     """
     for info in cdef.info.mro:
         class_ir = mapper.type_to_ir.get(info)
         symbol = info.names.get("__new__")
         if class_ir is None or not class_ir.is_ext_class or symbol is None:
             continue
-        node = symbol.node
-        if isinstance(node, OverloadedFuncDef):
-            node = node.impl
-        if isinstance(node, Decorator):
-            # A decorated method has no method declaration. Other methods only lack one
-            # while their class isn't prepared yet, which can happen in an import cycle.
+        if isinstance(symbol.node, (FuncDef, Decorator, OverloadedFuncDef)):
+            # A decorated method has no method declaration.
             return "__new__" not in class_ir.method_decls
-        if isinstance(node, FuncDef):
-            return False
     return False
 
 

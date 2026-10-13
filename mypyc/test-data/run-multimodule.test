@@ -2300,6 +2300,38 @@ class Base(Root):
 from native import test
 test()
 
+[case testDecoratedNewInBaseClassPreparedAfterSubclass]
+# The modules of a compilation group are prepared in name order, so Child is
+# prepared before Base. mypy removes @staticmethod from the decorators of
+# __new__, so it's a native method, and the constructor of Child calls it and
+# __init__ natively.
+from other import Base
+
+class Child(Base):
+    def __init__(self) -> None:
+        raise ValueError("expected init failure")
+
+def construct() -> Child:
+    return Child()
+
+[file other.py]
+from typing import Any
+
+class Base:
+    @staticmethod
+    def __new__(cls) -> Any:
+        return super().__new__(cls)
+
+    def __init__(self) -> None:
+        pass
+
+[file driver.py]
+from native import construct
+from testutil import assertRaises
+
+with assertRaises(ValueError):
+    construct()
+
 [case testIncrementalCrossModuleInheritedAttrDefaultsWithOverride]
 # Regression: same shape as testIncrementalCrossModuleInheritedAttrDefaults,
 # but the subclass adds an attribute of its own, so generate_attr_defaults_init

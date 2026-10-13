@@ -2353,6 +2353,86 @@ L0:
     r8 = C(6)
     return 1
 
+[case testDunderNewInBaseClassPreparedAfterSubclass]
+from typing import Any, Callable, TypeVar
+
+F = TypeVar("F", bound=Callable[..., Any])
+
+def deco(f: F) -> F:
+    return f
+
+# Classes are prepared in definition order, so these two are prepared before
+# their base classes. This also happens if the base class is in another module
+# of the compilation group that has a later name.
+class A(StaticBase):
+    def __init__(self, x: int) -> None:
+        pass
+
+class B(DecoratedBase):
+    def __init__(self, x: int) -> None:
+        pass
+
+class StaticBase:
+    # mypy removes @staticmethod from the decorators, so this is a native method.
+    @staticmethod
+    def __new__(cls, x: int) -> Any:
+        return super().__new__(cls)
+
+class DecoratedBase:
+    @deco
+    def __new__(cls, x: int) -> Any:
+        return super().__new__(cls)
+
+def f() -> None:
+    A(1)
+    B(2)
+[out]
+def deco(f):
+    f :: object
+L0:
+    return f
+def A.__init__(self, x):
+    self :: __main__.A
+    x :: int
+L0:
+    return 1
+def B.__init__(self, x):
+    self :: __main__.B
+    x :: int
+L0:
+    return 1
+def StaticBase.__new__(cls, x):
+    cls :: object
+    x :: int
+    r0 :: object
+    r1 :: __main__.StaticBase
+L0:
+    r0 = CPy_SetupObject(cls)
+    r1 = cast(__main__.StaticBase, r0)
+    return r1
+def DecoratedBase.__new__(cls, x):
+    cls :: object
+    x :: int
+    r0 :: object
+    r1 :: __main__.DecoratedBase
+L0:
+    r0 = CPy_SetupObject(cls)
+    r1 = cast(__main__.DecoratedBase, r0)
+    return r1
+def f():
+    r0 :: __main__.A
+    r1 :: object
+    r2 :: tuple
+    r3 :: dict
+    r4 :: __main__.B
+L0:
+    r0 = A(2)
+    r1 = object 2
+    r2 = PyTuple_Pack(1, r1)
+    r3 = PyDict_New()
+    r4 = B(r2, r3)
+    return 1
+
 [case testClassWithFreeList]
 from mypy_extensions import mypyc_attr, trait
 
