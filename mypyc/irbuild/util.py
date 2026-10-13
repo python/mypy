@@ -346,6 +346,14 @@ def get_func_def(op: FuncDef | Decorator | OverloadedFuncDef) -> FuncDef:
     return op
 
 
+def get_func_target_symbol(fdef: FuncDef) -> FuncDef | Var:
+    """Return the symbol used to store a possibly redefined function."""
+    original = fdef.original_def
+    if isinstance(original, Decorator):
+        return original.func
+    return original or fdef
+
+
 def concrete_arg_kind(kind: ArgKind) -> ArgKind:
     """Find the concrete version of an arg kind that is being passed."""
     if kind == ARG_OPT:

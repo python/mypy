@@ -77,6 +77,7 @@ from mypyc.irbuild.env_class import (
 )
 from mypyc.irbuild.generator import gen_generator_func, gen_generator_func_body
 from mypyc.irbuild.targets import AssignmentTarget
+from mypyc.irbuild.util import get_func_target_symbol
 from mypyc.primitives.dict_ops import (
     dict_get_method_with_none,
     dict_new_op,
@@ -925,11 +926,10 @@ def get_func_target(builder: IRBuilder, fdef: FuncDef) -> AssignmentTarget:
     If the function was not already defined somewhere, then define it
     and add it to the current environment.
     """
-    if orig := fdef.original_def:
-        if isinstance(orig, Decorator):
-            orig = orig.func
+    target_symbol = get_func_target_symbol(fdef)
+    if target_symbol is not fdef:
         # Get the target associated with the previously defined FuncDef.
-        return builder.lookup(orig)
+        return builder.lookup(target_symbol)
 
     if builder.fn_info.is_generator or builder.fn_info.add_nested_funcs_to_env:
         return builder.lookup(fdef)
