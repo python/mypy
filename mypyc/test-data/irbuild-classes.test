@@ -819,6 +819,41 @@ L0:
     r12 = unbox(int, r11)
     return r12
 
+[case testSuperSelfReassignedInArgument]
+class A:
+    def f(self, x: int) -> int:
+        return x
+
+class B(A):
+    def f(self, x: int) -> int:
+        # super() binds self before the argument is evaluated
+        return super().f((self := B()).g())
+
+    def g(self) -> int:
+        return 1
+[out]
+def A.f(self, x):
+    self :: __main__.A
+    x :: int
+L0:
+    return x
+def B.f(self, x):
+    self :: __main__.B
+    x :: int
+    r0, r1 :: __main__.B
+    r2, r3 :: int
+L0:
+    r0 = self
+    r1 = B()
+    self = r1
+    r2 = r1.g()
+    r3 = A.f(r0, r2)
+    return r3
+def B.g(self):
+    self :: __main__.B
+L0:
+    return 2
+
 [case testSuperCallToObjectInitIsOmitted]
 class C:
     def __init__(self) -> None:

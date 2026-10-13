@@ -1240,6 +1240,84 @@ def test_super_in_nested_function() -> None:
 [file asyncio/__init__.pyi]
 def run(x: object) -> object: ...
 
+[case testSuperSelfReassignedInArguments]
+from typing import Iterator
+
+class A:
+    def __init__(self, label: str) -> None:
+        self.label = label
+
+    def method(self, unused: int) -> str:
+        return self.label
+
+    @classmethod
+    def name(cls, unused: int) -> str:
+        return cls.__name__
+
+class B(A):
+    # super() binds self before the arguments are evaluated
+
+    def method(self, unused: int) -> str:
+        def change_receiver() -> int:
+            nonlocal self
+            self = C("replacement")
+            return 0
+
+        return super().method(change_receiver())
+
+    def two_arg(self) -> str:
+        def change_receiver() -> int:
+            nonlocal self
+            self = C("replacement")
+            return 0
+
+        return super(B, self).method(change_receiver())
+
+    def call_classmethod(self) -> str:
+        def change_receiver() -> int:
+            nonlocal self
+            self = C("replacement")
+            return 0
+
+        return super().name(change_receiver())
+
+    def walrus(self) -> str:
+        return super().method(len((self := C("replacement")).label))
+
+    def walrus_keyword(self) -> str:
+        return super().method(unused=len((self := C("replacement")).label))
+
+    def walrus_classmethod(self) -> str:
+        return super().name(len((self := C("replacement")).label))
+
+    def gen(self) -> Iterator[str]:
+        yield super().method(len((self := C("replacement")).label))
+        yield self.label
+
+    def reassigned_before_call(self) -> str:
+        def change_receiver() -> None:
+            nonlocal self
+            self = C("replacement")
+
+        change_receiver()
+        return super().method(0)
+
+class C(B):
+    pass
+
+def test_super_self_reassigned_in_arguments() -> None:
+    b = B("original")
+    assert b.method(0) == "original"
+    assert b.two_arg() == "original"
+    assert b.call_classmethod() == "B"
+    assert b.walrus() == "original"
+    assert b.walrus_keyword() == "original"
+    assert b.walrus_classmethod() == "B"
+    assert list(b.gen()) == ["original", "replacement"]
+
+def test_super_self_reassigned_before_call() -> None:
+    assert B("original").reassigned_before_call() == "replacement"
+
 [case testSubclassException]
 class Failure(Exception):
     def __init__(self, x: int) -> None:

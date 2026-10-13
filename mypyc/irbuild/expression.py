@@ -662,16 +662,26 @@ def translate_super_method_call(builder: IRBuilder, expr: CallExpr, callee: Supe
         # which can be either an instance or a class.
         return translate_call(builder, expr, callee)
 
-    arg_values = [builder.accept(arg) for arg in expr.args]
+    arg_values: list[Value] = []
     arg_kinds, arg_names = expr.arg_kinds.copy(), expr.arg_names.copy()
 
     if needs_self:
+        # super() binds the object before the arguments are evaluated, and an argument
+        # can reassign the variable.
         vself = builder.read(builder.lookup(self_var), expr.line)
+        if isinstance(vself, Register) and self_var in builder.reassigned_in_expr:
+            # The variable is reassigned via a walrus within the same expression, so
+            # copy the current value (see transform_name_expr).
+            temp = Register(vself.type)
+            builder.assign(temp, vself, expr.line)
+            vself = temp
         if decl.kind == FUNC_CLASSMETHOD and not self_var.is_cls:
             vself = builder.primitive_op(type_op, [vself], expr.line)
-        arg_values.insert(0, vself)
+        arg_values.append(vself)
         arg_kinds.insert(0, ARG_POS)
         arg_names.insert(0, None)
+
+    arg_values += [builder.accept(arg) for arg in expr.args]
 
     return builder.builder.call(decl, arg_values, arg_kinds, arg_names, expr.line)
 
