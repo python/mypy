@@ -3722,6 +3722,9 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
             if partial_types is None:
                 return
             rvalue_type = self.expr_checker.accept(rvalue)
+            if var not in partial_types:
+                # Partial type may have been inferred while visiting rvalue (e.g. by walrus).
+                return
             rvalue_type = get_proper_type(rvalue_type)
             if isinstance(rvalue_type, Instance):
                 if rvalue_type.type == typ.type and is_valid_inferred_type(
@@ -5230,6 +5233,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                     if (
                         is_valid_inferred_type(key_type, self.options)
                         and is_valid_inferred_type(value_type, self.options)
+                        and var in partial_types
                         and not self.current_node_deferred
                         and not (
                             typename == "collections.defaultdict"
