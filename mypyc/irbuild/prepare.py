@@ -545,8 +545,10 @@ def check_unknown_base_classes(path: str, cdef: ClassDef, errors: Errors) -> Non
     if not cdef.info.fallback_to_any:
         return
 
-    base_description = "a class with type Any"
+    base_description = "a base class with an unknown layout"
     for base_expr in cdef.base_type_exprs:
+        if isinstance(base_expr, IndexExpr):
+            base_expr = base_expr.base
         if not isinstance(base_expr, (NameExpr, MemberExpr)):
             continue
         base_node = base_expr.node
@@ -558,7 +560,14 @@ def check_unknown_base_classes(path: str, cdef: ClassDef, errors: Errors) -> Non
             base_description = f'"{base_expr.name}" (unknown base class layout)'
             break
     errors.error(f"Native classes cannot inherit from {base_description}", path, cdef.line)
-    errors.note("Use @mypy_extensions.mypyc_attr(native_class=False)", path, cdef.line)
+    errors.note(
+        "Potential workaround: @mypy_extensions.mypyc_attr(native_class=False)", path, cdef.line
+    )
+    errors.note(
+        "https://mypyc.readthedocs.io/en/stable/native_classes.html#defining-non-native-classes",
+        path,
+        cdef.line,
+    )
 
 
 def prepare_class_def(
