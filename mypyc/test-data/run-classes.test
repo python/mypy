@@ -686,6 +686,79 @@ c.set([1])
 assert c.x == [1]
 assert c.get() == [1]
 
+[case testNonNativeGenericClass]
+from typing import Dict, Generic, TypeVar
+from mypy_extensions import mypyc_attr
+
+T = TypeVar("T")
+S = TypeVar("S")
+
+@mypyc_attr(native_class=False)
+class G(Generic[T]):
+    def __init__(self, x: T) -> None:
+        self.x = x
+
+@mypyc_attr(native_class=False)
+class Known:
+    pass
+
+@mypyc_attr(native_class=False)
+class GenericFirst(Generic[T], Known):
+    pass
+
+@mypyc_attr(native_class=False)
+class GenericLast(Known, Generic[T]):
+    pass
+
+@mypyc_attr(native_class=False)
+class Sub(G[int]):
+    pass
+
+@mypyc_attr(native_class=False)
+class ImplicitGeneric(G[T]):
+    pass
+
+@mypyc_attr(native_class=False)
+class TwoParams(G[T], Generic[S, T]):
+    pass
+
+@mypyc_attr(native_class=False)
+class DictSub(Dict[str, int]):
+    pass
+
+def make() -> G[int]:
+    return G[int](5)
+
+[file driver.py]
+from typing import Generic
+from native import (
+    G, T, S, Known, GenericFirst, GenericLast, Sub, ImplicitGeneric, TwoParams, DictSub, make
+)
+
+assert G.__bases__ == (Generic,)
+assert G.__orig_bases__ == (Generic[T],)
+assert G.__parameters__ == (T,)
+assert G[int](3).x == 3
+assert G[int].__origin__ is G
+assert make().x == 5
+
+assert GenericFirst.__bases__ == (Generic, Known)
+assert GenericLast.__bases__ == (Known, Generic)
+assert GenericFirst.__parameters__ == GenericLast.__parameters__ == (T,)
+
+assert Sub.__bases__ == (G,)
+assert Sub.__orig_bases__ == (G[int],)
+assert Sub.__parameters__ == ()
+assert Sub(7).x == 7
+
+assert ImplicitGeneric.__parameters__ == (T,)
+assert ImplicitGeneric[str]("a").x == "a"
+assert TwoParams.__bases__ == (G, Generic)
+assert TwoParams.__parameters__ == (S, T)
+
+assert DictSub.__bases__ == (dict, Generic)
+assert DictSub(a=1) == {"a": 1}
+
 [case testSubclass1]
 from typing import Tuple
 
