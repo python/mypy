@@ -8,8 +8,9 @@ from typing import Final
 from mypy.constraints import (
     SUBTYPE_OF,
     SUPERTYPE_OF,
+    Constraint,
     infer_constraints,
-    infer_constraints_for_callable, Constraint,
+    infer_constraints_for_callable,
 )
 from mypy.nodes import ArgKind
 from mypy.solve import solve_constraints

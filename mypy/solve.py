@@ -302,6 +302,7 @@ def solve_one(lowers: Iterable[Type], uppers: Iterable[Type]) -> Type | None:
         if sorted_lowers:
             bottom = join_type_list(sorted_lowers)
 
+    top = bottom
     for target in uppers:
         if top is None:
             top = target

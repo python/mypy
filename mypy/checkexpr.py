@@ -1833,7 +1833,15 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                 isinstance(v, (ParamSpecType, TypeVarTupleType)) for v in fresh_callee.variables
             )
             callee = self.infer_function_type_arguments(
-                callee, fresh_callee, constraints, args, arg_kinds, arg_names, formal_to_actual, need_refresh, context
+                callee,
+                fresh_callee,
+                constraints,
+                args,
+                arg_kinds,
+                arg_names,
+                formal_to_actual,
+                need_refresh,
+                context,
             )
             if need_refresh:
                 # Argument kinds etc. may have changed due to
@@ -2195,9 +2203,10 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                 new_args.append(arg)
         # Don't show errors after we have only used the outer context for inference.
         # We will use argument context to infer more variables.
-        return self.apply_generic_arguments(
-            callable, new_args, error_context, skip_unsatisfied=True
-        ), constraints
+        return (
+            self.apply_generic_arguments(callable, new_args, error_context, skip_unsatisfied=True),
+            constraints,
+        )
 
     def infer_function_type_arguments(
         self,
@@ -2248,12 +2257,16 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                 strict=self.chk.in_checked_function(),
                 extra_constraints=ret_constraints,
             )
-            if not any(
-                a is None
-                or isinstance(get_proper_type(a), UninhabitedType)
-                or has_erased_component(a)
-                or set(get_type_vars(a)) & set(callee_type.variables)
-                for a in inferred_args
+            if (
+                not any(
+                    a is None
+                    or isinstance(get_proper_type(a), UninhabitedType)
+                    or has_erased_component(a)
+                    or set(get_type_vars(a)) & set(callee_type.variables)
+                    for a in inferred_args
+                )
+                and fresh_callee.special_sig is None
+                and not fresh_callee.is_type_obj()
             ):
                 return self.apply_inferred_arguments(fresh_callee, inferred_args, context)
             else:
@@ -2267,7 +2280,6 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                     strict=self.chk.in_checked_function(),
                 )
 
-            partially_applied = False
             if 2 in arg_pass_nums:
                 # Second pass of type inference.
                 callee_type, inferred_args = self.infer_function_type_arguments_pass2(
@@ -2280,7 +2292,6 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                     need_refresh,
                     context,
                 )
-                partially_applied = True
 
             if (
                 callee_type.special_sig == "dict"
