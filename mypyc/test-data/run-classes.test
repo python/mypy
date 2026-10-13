@@ -3710,6 +3710,283 @@ class Derived(Base):
 def test_inherited() -> None:
     assert Derived()() == 1
 
+[case testCallTypeObjectOfNativeClass]
+from abc import ABC, abstractmethod
+from typing import Any
+
+from mypy_extensions import i64, mypyc_attr
+
+class Point:
+    def __init__(self, x: int, y: int, name: str = "p") -> None:
+        self.x = x
+        self.y = y
+        self.name = name
+
+    @classmethod
+    def make(cls, x: int) -> "Point":
+        return cls(x, y=x + 1)
+
+    def copy(self) -> "Point":
+        return type(self)(self.x, self.y, self.name)
+
+class Point3(Point):
+    pass
+
+class Origin(Point):
+    def __init__(self, name: str) -> None:
+        super().__init__(0, 0, name)
+
+class KwOnly:
+    def __init__(self, a: int, *, s: str = "x", req: float) -> None:
+        self.a = a
+        self.s = s
+        self.req = req
+
+class Fixed:
+    def __init__(self, x: i64 = 5, y: i64 = -1) -> None:
+        self.x = x
+        self.y = y
+
+class NoArgs:
+    def __init__(self) -> None:
+        self.x = 1
+
+class Fails:
+    def __init__(self, x: int) -> None:
+        raise ValueError(str(x))
+
+@mypyc_attr(allow_interpreted_subclasses=True)
+class Open:
+    def __init__(self, a: int) -> None:
+        self.a = a
+
+class Adder:
+    def __call__(self, x: int) -> int:
+        return x + 1
+
+class AdderN(Adder):
+    def __init__(self, n: int) -> None:
+        self.n = n
+
+# A call to the type object of one of the classes below doesn't go straight to the
+# native constructor.
+
+class NoInit:
+    x = 3
+
+calls: list[str] = []
+
+def logged(f: Any) -> Any:
+    def wrapper(self: Any) -> None:
+        calls.append("logged")
+        f(self)
+    return wrapper
+
+class Decorated:
+    @logged
+    def __init__(self) -> None:
+        self.x = 1
+
+class WithNew:
+    def __new__(cls, x: int) -> Any:
+        if cls is WithNew and x < 0:
+            # type.__call__ calls __init__ on an instance of a subclass.
+            return WithNewSub.__new__(WithNewSub, x)
+        return super().__new__(cls)
+
+    def __init__(self, x: int) -> None:
+        self.x = x
+
+class WithNewSub(WithNew):
+    def __init__(self, x: int) -> None:
+        self.x = x * 10
+
+class VarArgs:
+    def __init__(self, *args: int, **kwargs: str) -> None:
+        self.args = args
+        self.kwargs = kwargs
+
+class Shape(ABC):
+    def __init__(self, sides: int) -> None:
+        self.sides = sides
+
+    @abstractmethod
+    def area(self) -> float: ...
+
+class Square(Shape):
+    def area(self) -> float:
+        return 1.0
+
+[file other.py]
+# Run in both interpreted and compiled mode
+from typing import Any
+
+import native
+from testutil import assertRaises
+
+# In compiled code a call to one of these is a call to the type object. A call to the
+# class itself would be a direct call to the native constructor.
+Point: Any = native.Point
+Point3: Any = native.Point3
+Origin: Any = native.Origin
+KwOnly: Any = native.KwOnly
+Fixed: Any = native.Fixed
+NoArgs: Any = native.NoArgs
+Fails: Any = native.Fails
+Open: Any = native.Open
+AdderN: Any = native.AdderN
+NoInit: Any = native.NoInit
+Decorated: Any = native.Decorated
+WithNew: Any = native.WithNew
+VarArgs: Any = native.VarArgs
+Shape: Any = native.Shape
+Square: Any = native.Square
+
+def test_arguments() -> None:
+    p = Point(1, 2)
+    assert (p.x, p.y, p.name) == (1, 2, "p")
+    p = Point(1, 2, "q")
+    assert (p.x, p.y, p.name) == (1, 2, "q")
+    p = Point(1, y=2, name="q")
+    assert (p.x, p.y, p.name) == (1, 2, "q")
+    p = Point(name="q", y=2, x=1)
+    assert (p.x, p.y, p.name) == (1, 2, "q")
+    args = (1, 2)
+    kwargs = {"name": "q"}
+    p = Point(*args, **kwargs)
+    assert (p.x, p.y, p.name) == (1, 2, "q")
+    p = Point(10**30, -(10**30))
+    assert (p.x, p.y) == (10**30, -(10**30))
+
+    k = KwOnly(1, req=2.5)
+    assert (k.a, k.s, k.req) == (1, "x", 2.5)
+    k = KwOnly(req=2, s="q", a=1)
+    assert (k.a, k.s, k.req) == (1, "q", 2.0)
+
+    f = Fixed()
+    assert (f.x, f.y) == (5, -1)
+    f = Fixed(7)
+    assert (f.x, f.y) == (7, -1)
+    f = Fixed(y=-(2**63))
+    assert (f.x, f.y) == (5, -(2**63))
+
+    assert NoArgs().x == 1
+    assert Open(7).a == 7
+    assert Open(a=7).a == 7
+
+def test_errors() -> None:
+    with assertRaises(TypeError, "__init__() missing required argument 'y' (pos 2)"):
+        Point(1)
+    with assertRaises(TypeError, "__init__() takes at most 3 arguments (4 given)"):
+        Point(1, 2, "q", 4)
+    with assertRaises(TypeError, "'z' is an invalid keyword argument for __init__()"):
+        Point(1, 2, z=3)
+    with assertRaises(TypeError, "argument for __init__() given by name ('x') and position (1)"):
+        Point(1, 2, x=3)
+    with assertRaises(TypeError, "int object expected; got str"):
+        Point("1", 2)
+    with assertRaises(TypeError, "str object expected; got int"):
+        Point(1, 2, name=3)
+    with assertRaises(TypeError, "__init__() missing required keyword-only argument 'req'"):
+        KwOnly(1)
+    with assertRaises(TypeError, "__init__() takes exactly 1 positional argument (2 given)"):
+        KwOnly(1, "q")
+    with assertRaises(TypeError, "i64 object expected; got int"):
+        Fixed(2**63)
+    with assertRaises(TypeError, "__init__() takes at most 0 arguments (1 given)"):
+        NoArgs(1)
+    with assertRaises(TypeError, "__init__() missing required argument 'a' (pos 1)"):
+        Open()
+    with assertRaises(ValueError, "5"):
+        Fails(5)
+
+def test_subclasses() -> None:
+    p = Point3(1, 2)
+    assert type(p) is native.Point3
+    assert (p.x, p.y, p.name) == (1, 2, "p")
+    with assertRaises(TypeError, "__init__() missing required argument 'y' (pos 2)"):
+        Point3(1)
+
+    o = Origin("o")
+    assert type(o) is native.Origin
+    assert (o.x, o.y, o.name) == (0, 0, "o")
+    with assertRaises(TypeError, "__init__() takes at most 1 argument (2 given)"):
+        Origin(1, 2)
+
+def test_calls_in_compiled_methods() -> None:
+    p = Point.make(4)
+    assert type(p) is native.Point
+    assert (p.x, p.y, p.name) == (4, 5, "p")
+    p = Point3.make(4)
+    assert type(p) is native.Point3
+    assert (p.x, p.y, p.name) == (4, 5, "p")
+
+    p = Point3(1, 2, "q").copy()
+    assert type(p) is native.Point3
+    assert (p.x, p.y, p.name) == (1, 2, "q")
+
+def test_callable_instance() -> None:
+    a = AdderN(5)
+    assert a.n == 5
+    assert a(1) == 2
+
+def test_classes_without_native_constructor_call() -> None:
+    assert NoInit().x == 3
+
+    native.calls.clear()
+    assert Decorated().x == 1
+    assert "logged" in native.calls
+
+    assert WithNew(5).x == 5
+    w = WithNew(-5)
+    assert type(w) is native.WithNewSub
+    assert w.x == -50
+
+    v = VarArgs(1, 2, a="b")
+    assert v.args == (1, 2)
+    assert v.kwargs == {"a": "b"}
+
+    s = Square(4)
+    assert s.sides == 4
+    with assertRaises(TypeError):
+        Shape(4)
+
+test_arguments()
+test_errors()
+test_subclasses()
+test_calls_in_compiled_methods()
+test_callable_instance()
+test_classes_without_native_constructor_call()
+
+[file driver.py]
+# Run the tests in both interpreted and compiled mode
+import other
+import other_interpreted
+
+from native import Open, Point
+
+# The slots that the type object used to be called through still work.
+p = type.__call__(Point, 1, y=2)
+assert (p.x, p.y, p.name) == (1, 2, "p")
+p = Point.__new__(Point, 1, 2, "q")
+assert (p.x, p.y, p.name) == (1, 2, "q")
+
+# An interpreted subclass doesn't use the native constructor of its base class.
+class Sub(Open):
+    def __init__(self, a, b):
+        super().__init__(a)
+        self.b = b
+
+class SubNoInit(Open):
+    pass
+
+s = Sub(1, b=2)
+assert type(s) is Sub
+assert (s.a, s.b) == (1, 2)
+s2 = SubNoInit(3)
+assert type(s2) is SubNoInit
+assert s2.a == 3
+
 [case testClassWithFinalAttribute]
 from typing import Final
 

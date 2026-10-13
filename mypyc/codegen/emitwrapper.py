@@ -26,7 +26,7 @@ from mypyc.common import (
     bitmap_name,
 )
 from mypyc.ir.class_ir import ClassIR
-from mypyc.ir.func_ir import FUNC_STATICMETHOD, FuncIR, RuntimeArg
+from mypyc.ir.func_ir import FUNC_STATICMETHOD, FuncDecl, FuncIR, RuntimeArg
 from mypyc.ir.rtypes import (
     RInstance,
     RType,
@@ -131,6 +131,23 @@ def make_format_string(func_name: str | None, groups: dict[ArgKind, list[Runtime
     return format
 
 
+def stack_parse_function(
+    real_args: list[RuntimeArg], groups: dict[ArgKind, list[RuntimeArg]]
+) -> str:
+    """Return the CPyArg_ParseStackAndKeywords* variant to use for the given arguments."""
+    # Special case some common signatures
+    if not real_args:
+        # No args
+        return "CPyArg_ParseStackAndKeywordsNoArgs"
+    elif len(real_args) == 1 and len(groups[ARG_POS]) == 1:
+        # Single positional arg
+        return "CPyArg_ParseStackAndKeywordsOneArg"
+    elif len(real_args) == len(groups[ARG_POS]) + len(groups[ARG_OPT]):
+        # No keyword-only args, *args or **kwargs
+        return "CPyArg_ParseStackAndKeywordsSimple"
+    return "CPyArg_ParseStackAndKeywords"
+
+
 def generate_wrapper_function(
     fn: FuncIR, emitter: Emitter, source_path: str, module_name: str
 ) -> None:
@@ -177,20 +194,9 @@ def generate_wrapper_function(
         nargs = "PyVectorcall_NARGS(nargs)"
     else:
         nargs = "nargs"
-    parse_fn = "CPyArg_ParseStackAndKeywords"
-    # Special case some common signatures
-    if not real_args:
-        # No args
-        parse_fn = "CPyArg_ParseStackAndKeywordsNoArgs"
-    elif len(real_args) == 1 and len(groups[ARG_POS]) == 1:
-        # Single positional arg
-        parse_fn = "CPyArg_ParseStackAndKeywordsOneArg"
-    elif len(real_args) == len(groups[ARG_POS]) + len(groups[ARG_OPT]):
-        # No keyword-only args, *args or **kwargs
-        parse_fn = "CPyArg_ParseStackAndKeywordsSimple"
     emitter.emit_lines(
         "if (!{}(args, {}, kwnames, &parser{})) {{".format(
-            parse_fn, nargs, "".join(", " + n for n in arg_ptrs)
+            stack_parse_function(real_args, groups), nargs, "".join(", " + n for n in arg_ptrs)
         ),
         "return NULL;",
         "}",
@@ -205,6 +211,64 @@ def generate_wrapper_function(
         groups[ARG_OPT] + groups[ARG_NAMED_OPT],
         cleanups=cleanups,
         traceback_code=traceback_code,
+    )
+
+    emitter.emit_line("}")
+
+
+def generate_constructor_wrapper_function(
+    cl: ClassIR,
+    init_fn: FuncIR,
+    func_name: str,
+    emitter: Emitter,
+    source_path: str,
+    module_name: str,
+) -> None:
+    """Generate a vectorcall wrapper for the native constructor of a class.
+
+    This is used as tp_vectorcall of the type object, so that calling the type object
+    doesn't go through tp_new and tp_init, which get the arguments as a tuple and a
+    dict and pass them on to the legacy wrapper of __init__.
+
+    The constructor takes the arguments of init_fn, and argument errors are reported
+    the same way as in the wrapper of init_fn. The source path and the module name are
+    those of init_fn, which cl may inherit from a class in another module.
+    """
+    ctor = cl.ctor
+    emitter.emit_line("static PyObject *")
+    emitter.emit_line(
+        f"{func_name}(PyObject *type, PyObject *const *args, size_t nargs, PyObject *kwnames)"
+    )
+    emitter.emit_line("{")
+
+    real_args = list(ctor.sig.args)
+    if ctor.sig.num_bitmap_args:
+        real_args = real_args[: -ctor.sig.num_bitmap_args]
+    groups = make_arg_groups(real_args)
+    assert not groups[ARG_STAR] and not groups[ARG_STAR2], ctor.sig
+    reordered_args = reorder_arg_groups(groups)
+
+    emitter.emit_line(make_static_kwlist(reordered_args))
+    fmt = make_format_string(init_fn.name, groups)
+    emitter.emit_line(f'static CPyArg_Parser parser = {{"{fmt}", kwlist, 0}};')
+    for arg in real_args:
+        emitter.emit_line(
+            "PyObject *obj_{}{};".format(arg.name, " = NULL" if arg.optional else "")
+        )
+    emitter.emit_lines(
+        "if (!{}(args, PyVectorcall_NARGS(nargs), kwnames, &parser{})) {{".format(
+            stack_parse_function(real_args, groups),
+            "".join(f", &obj_{arg.name}" for arg in reordered_args),
+        ),
+        "return NULL;",
+        "}",
+    )
+    for i in range(ctor.sig.num_bitmap_args):
+        name = bitmap_name(i)
+        emitter.emit_line(f"{BITMAP_TYPE} {name} = 0;")
+    traceback_code = generate_traceback_code(init_fn, emitter, source_path, module_name)
+    generate_wrapper_core(
+        ctor, emitter, groups[ARG_OPT] + groups[ARG_NAMED_OPT], traceback_code=traceback_code
     )
 
     emitter.emit_line("}")
@@ -785,7 +849,7 @@ def generate_contains_wrapper(cl: ClassIR, fn: FuncIR, emitter: Emitter) -> str:
 
 
 def generate_wrapper_core(
-    fn: FuncIR,
+    fn: FuncIR | FuncDecl,
     emitter: Emitter,
     optional_args: list[RuntimeArg] | None = None,
     arg_names: list[str] | None = None,
@@ -892,24 +956,27 @@ class WrapperGenerator:
         self.optional_args: list[RuntimeArg] = []
         self.traceback_code = ""
 
-    def set_target(self, fn: FuncIR) -> None:
+    def set_target(self, fn: FuncIR | FuncDecl) -> None:
         """Set the wrapped function.
 
         It's fine to modify the attributes initialized here later to customize
         the wrapper function.
+
+        The native constructor of a class only has a declaration.
         """
-        self.target_name = fn.name
-        self.target_cname = fn.cname(self.emitter.names)
+        decl = fn.decl if isinstance(fn, FuncIR) else fn
+        self.target_name = decl.name
+        self.target_cname = decl.cname(self.emitter.names)
         # Cached native-call expression so cross-group targets go through the
         # exports table; same as `NATIVE_PREFIX + cname` for in-group calls.
-        self.target_native_call = self.emitter.native_function_call(fn.decl)
-        self.num_bitmap_args = fn.sig.num_bitmap_args
+        self.target_native_call = self.emitter.native_function_call(decl)
+        self.num_bitmap_args = decl.sig.num_bitmap_args
         if self.num_bitmap_args:
-            self.args = fn.args[: -self.num_bitmap_args]
+            self.args = decl.sig.args[: -self.num_bitmap_args]
         else:
-            self.args = fn.args
+            self.args = decl.sig.args
         self.arg_names = [arg.name for arg in self.args]
-        self.ret_type = fn.ret_type
+        self.ret_type = decl.sig.ret_type
 
     def wrapper_name(self) -> str:
         """Return the name of the wrapper function."""
