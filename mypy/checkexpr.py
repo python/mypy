@@ -1177,7 +1177,10 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             if value_type is not None:
                 # Infer key type.
                 key_type = self.accept(index)
-                if mypy.checker.is_valid_inferred_type(key_type, self.chk.options):
+                if (
+                    mypy.checker.is_valid_inferred_type(key_type, self.chk.options)
+                    and var in partial_types
+                ):
                     # Store inferred partial type.
                     assert partial_type.type is not None
                     typename = partial_type.type.fullname
