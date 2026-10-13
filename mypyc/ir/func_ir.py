@@ -7,7 +7,14 @@ from collections.abc import Sequence
 from typing import Final
 
 from mypy.nodes import ARG_POS, ArgKind, Block, FuncDef
-from mypyc.common import BITMAP_BITS, JsonDict, bitmap_name, get_id_from_name, short_id_from_name
+from mypyc.common import (
+    BITMAP_BITS,
+    UNDECORATED_PREFIX,
+    JsonDict,
+    bitmap_name,
+    get_id_from_name,
+    short_id_from_name,
+)
 from mypyc.ir.ops import (
     Assign,
     AssignMulti,
@@ -157,6 +164,7 @@ class FuncDecl:
         is_final: bool = False,
         implicit: bool = False,
         internal: bool = False,
+        is_decorated_override: bool = False,
     ) -> None:
         self.name = name
         self.class_name = class_name
@@ -183,6 +191,11 @@ class FuncDecl:
 
         # If True, only direct C level calls are supported (no wrapper function)
         self.internal = internal
+
+        # If True, this is a decorated method that overrides a native method. The signature
+        # is that of the undecorated method, so calls checked against the decorated type
+        # must use the Python API.
+        self.is_decorated_override = is_decorated_override
 
         # This is optional because this will be set to the line number when the corresponding
         # FuncIR is created
@@ -232,6 +245,7 @@ class FuncDecl:
             "is_final": self.is_final,
             "implicit": self.implicit,
             "internal": self.internal,
+            "is_decorated_override": self.is_decorated_override,
         }
 
     # TODO: move this to FuncIR?
@@ -258,6 +272,7 @@ class FuncDecl:
             is_final=data["is_final"],
             implicit=data["implicit"],
             internal=data["internal"],
+            is_decorated_override=data["is_decorated_override"],
         )
 
 
@@ -455,7 +470,7 @@ def get_text_signature(fn: FuncIR, *, bound: bool = False) -> str | None:
             # Parameter.__init__/Parameter.replace do not accept $
             curr_param._name = f"${arg.name}"  # type: ignore[attr-defined]
             mark_self = False
-    return f"{fn.name}{inspect.Signature(parameters)}"
+    return f"{fn.name.removeprefix(UNDECORATED_PREFIX)}{inspect.Signature(parameters)}"
 
 
 def _find_default_argument(name: str, blocks: list[BasicBlock]) -> object:

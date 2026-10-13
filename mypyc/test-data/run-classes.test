@@ -2729,6 +2729,247 @@ assert c.value.s == "py"
 c.n = "7"
 assert c.n == 7
 
+[case testDecoratedMethodOverridesNativeMethod]
+import functools
+from typing import Any, Callable, TypeVar
+from mypy_extensions import i64, mypyc_attr, trait
+
+F = TypeVar("F", bound=Callable[..., Any])
+
+def add_ten(f: F) -> F:
+    @functools.wraps(f)
+    def wrapper(self: Any, *args: Any, **kwargs: Any) -> Any:
+        return f(self, *args, **kwargs) + 10
+    return wrapper  # type: ignore[return-value]
+
+def tag(f: F) -> F:
+    def wrapper(self: Any) -> str:
+        return "<" + f(self) + ">"
+    return wrapper  # type: ignore[return-value]
+
+class Base:
+    def method(self, x: int) -> int:
+        return x
+
+    def call(self, x: int) -> int:
+        return self.method(x)
+
+class Derived(Base):
+    @add_ten
+    def method(self, x: int) -> int:
+        return super().method(x) * 2
+
+class Sub(Derived):
+    def method(self, x: int) -> int:
+        return super().method(x) + 100
+
+class ExplicitSub(Derived):
+    def method(self, x: int) -> int:
+        return Derived.method(self, x) + 100
+
+def identity(f: Any) -> Any:
+    return f
+
+class IdentityDerived(Base):
+    @identity
+    def method(self, x: int) -> int:
+        return 2
+
+class IdentitySub(IdentityDerived):
+    def method(self, x: int) -> int:
+        return IdentityDerived.method(self, x)
+
+class Derived2(Derived):
+    @add_ten
+    def method(self, x: int) -> int:
+        return super().method(x) * 2
+
+class Sub2(Derived2):
+    def method(self, x: int) -> int:
+        return super().method(x) + Derived.method(self, x) + Derived2.method(self, x)
+
+class WiderDerived2(Derived):
+    # Decorated override of a decorated override with a different signature
+    @add_ten
+    def method(self, x: object) -> int:
+        return 1000
+
+class DefaultsBase:
+    def m(self, a: i64 = 1, b: float = 1.0, *, c: i64 = 1) -> float:
+        return 0.0
+
+class Defaults(DefaultsBase):
+    @add_ten
+    def m(self, a: i64 = 2, b: float = 3.0, *, c: i64 = 4) -> float:
+        return float(a * 100) + b * 10 + float(c)
+
+class ObjBase:
+    def m(self) -> object:
+        return 0
+
+class NarrowerReturn(ObjBase):
+    @add_ten
+    def m(self) -> int:
+        return 1
+
+@trait
+class T:
+    def m(self) -> int:
+        return 0
+
+class TraitImpl(T):
+    @add_ten
+    def m(self) -> int:
+        return 2
+
+class TraitImplSub(TraitImpl):
+    def m(self) -> int:
+        return TraitImpl.m(self) + super().m()
+
+class Repr:
+    @tag
+    def __repr__(self) -> str:
+        return "Repr"
+
+def to_object_arg(f: Callable[[Any, int], int]) -> Callable[[Any, object], int]:
+    def wrapper(self: Any, x: object) -> int:
+        return f(self, int(str(x)))
+    return wrapper
+
+def to_star_args(f: Callable[[Any, int, int], int]) -> Callable[..., int]:
+    def wrapper(self: Any, *args: int) -> int:
+        return f(self, len(args), 0)
+    return wrapper
+
+def as_static(f: Any) -> Any:
+    wrap: Any = staticmethod
+    return wrap(lambda *args: len(args))
+
+def as_class(f: Any) -> Any:
+    wrap: Any = classmethod
+    return wrap(lambda cls, *args: cls.__name__)
+
+class SigBase:
+    def f(self, x: object) -> int:
+        return 0
+
+    def g(self) -> int:
+        return 0
+
+    def s(self) -> Any:
+        return None
+
+    def c(self) -> Any:
+        return None
+
+class ChangesSig(SigBase):
+    # Calls typed against ChangesSig must use the decorated signatures
+    @to_object_arg
+    def f(self, x: int) -> int:
+        return x + 1
+
+    @to_star_args
+    def g(self, x: int, y: int) -> int:
+        return x + y
+
+    @as_static
+    def s(self) -> Any:
+        return None
+
+    @as_class
+    def c(self) -> Any:
+        return None
+
+class ChangesSigSub(ChangesSig):
+    pass
+
+@mypyc_attr(allow_interpreted_subclasses=True)
+class OpenBase:
+    def m(self) -> int:
+        return 0
+
+    def n(self, a: i64 = 1, b: float = 1.0) -> float:
+        return 0.0
+
+@mypyc_attr(allow_interpreted_subclasses=True)
+class Open(OpenBase):
+    @add_ten
+    def m(self) -> int:
+        return 3
+
+def via_base(b: Base, x: int) -> int:
+    return b.method(x)
+
+def via_derived(d: Derived, x: int) -> int:
+    return d.method(x)
+
+def via_obj_base(b: ObjBase) -> object:
+    return b.m()
+
+def via_trait(t: T) -> int:
+    return t.m()
+
+def via_open_base(b: OpenBase) -> int:
+    return b.m()
+
+def via_open_base_defaults(b: OpenBase) -> list[float]:
+    return [b.n(), b.n(5), b.n(b=6.0)]
+
+def via_sig_base(b: SigBase) -> list[Any]:
+    return [b.f("5"), b.g(), b.s(), b.c()]
+
+def via_changes_sig(d: ChangesSig) -> list[Any]:
+    return [d.f("5"), d.g(), d.g(1, 2), d.s(), d.c(), ChangesSig.f(d, "6")]
+
+def via_defaults_base(b: DefaultsBase) -> list[float]:
+    return [b.m(), b.m(5), b.m(b=6.0), b.m(c=7), b.m(5, 6.0, c=7)]
+
+def test_decorated_override() -> None:
+    d = Derived()
+    assert via_base(d, 1) == 12
+    assert via_derived(d, 1) == 12
+    assert d.call(1) == 12
+    assert via_base(Base(), 1) == 1
+    assert via_base(Sub(), 1) == 112
+    assert via_base(ExplicitSub(), 1) == 112
+    assert Derived.method(ExplicitSub(), 1) == 12
+    assert via_base(IdentitySub(), 1) == 2
+    assert via_base(Derived2(), 1) == 34
+    assert via_base(Sub2(), 1) == 34 + 12 + 34
+    assert via_base(WiderDerived2(), 1) == 1010
+    assert via_derived(WiderDerived2(), 1) == 1010
+    assert via_defaults_base(Defaults()) == [244.0, 544.0, 274.0, 247.0, 577.0]
+    assert via_sig_base(ChangesSig()) == [6, 0, 0, "ChangesSig"]
+    assert via_sig_base(ChangesSigSub()) == [6, 0, 0, "ChangesSigSub"]
+    assert via_changes_sig(ChangesSig()) == [6, 0, 2, 0, "ChangesSig", 7]
+    assert via_obj_base(NarrowerReturn()) == 11
+    assert via_trait(TraitImpl()) == 12
+    assert via_trait(TraitImplSub()) == 24
+    assert repr(Repr()) == "<Repr>"
+
+[typing fixtures/typing-full.pyi]
+[file driver.py]
+import inspect
+from native import (
+    Derived, Open, OpenBase, via_open_base, via_open_base_defaults, test_decorated_override
+)
+test_decorated_override()
+
+assert Derived().method(1) == 12
+assert Derived.method.__name__ == "method"
+assert list(inspect.signature(Derived.__dict__["method"].__wrapped__).parameters) == ["self", "x"]
+
+class Inherits(Open):
+    pass
+
+assert via_open_base(Inherits()) == 13
+
+class InterpretedDefaults(OpenBase):
+    def n(self, a: int = 2, b: float = 3.0) -> float:
+        return a * 10 + b
+
+assert via_open_base_defaults(InterpretedDefaults()) == [23.0, 53.0, 26.0]
+
 [case testAttributeOverridesProperty]
 from typing import Any
 from mypy_extensions import trait
