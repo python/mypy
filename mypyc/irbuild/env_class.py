@@ -346,7 +346,8 @@ def setup_func_for_recursive_call(builder: IRBuilder, fdef: FuncDef, base: Impli
     target_symbol = get_func_target_symbol(fdef)
     target = builder.symtables[-2].get(target_symbol)
     if (
-        not isinstance(target, AssignmentTargetAttr)
+        not isinstance(target_symbol, FuncDef)
+        or not isinstance(target, AssignmentTargetAttr)
         or not isinstance(target.obj.type, RInstance)
         or target.obj.type.class_ir is not prev_env
     ):
