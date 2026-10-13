@@ -772,6 +772,28 @@ def check_matching_args(init_sig: FuncSignature, new_sig: FuncSignature) -> bool
     return True
 
 
+def has_non_native_new(cdef: ClassDef, mapper: Mapper) -> bool:
+    """Are instances of a class created by a __new__ method that isn't called natively?
+
+    This is ClassIR.has_non_native_new() for use before the methods have been built.
+    """
+    for info in cdef.info.mro:
+        class_ir = mapper.type_to_ir.get(info)
+        symbol = info.names.get("__new__")
+        if class_ir is None or not class_ir.is_ext_class or symbol is None:
+            continue
+        node = symbol.node
+        if isinstance(node, OverloadedFuncDef):
+            node = node.impl
+        if isinstance(node, Decorator):
+            # A decorated method has no method declaration. Other methods only lack one
+            # while their class isn't prepared yet, which can happen in an import cycle.
+            return "__new__" not in class_ir.method_decls
+        if isinstance(node, FuncDef):
+            return False
+    return False
+
+
 def prepare_init_method(cdef: ClassDef, ir: ClassIR, module_name: str, mapper: Mapper) -> None:
     # Set up a constructor decl
     init_node = cdef.info["__init__"].node
@@ -792,6 +814,9 @@ def prepare_init_method(cdef: ClassDef, ir: ClassIR, module_name: str, mapper: M
         if isinstance(new_node, FuncDef):
             new_sig = mapper.fdef_to_sig(new_node, True)
             args_match = check_matching_args(init_sig, new_sig)
+        if has_non_native_new(cdef, mapper):
+            # The constructor calls the type object with *args, **kwargs.
+            args_match = False
 
         defining_ir = mapper.type_to_ir.get(init_node.info)
         # If there is a nontrivial __init__ that wasn't defined in an

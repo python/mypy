@@ -2212,8 +2212,11 @@ L0:
 
 [case testUnsupportedDunderNew]
 from __future__ import annotations
-from mypy_extensions import mypyc_attr
+from mypy_extensions import mypyc_attr, trait
 from typing import Any
+
+def decorator(f: Any) -> Any:
+    return f
 
 @mypyc_attr(native_class=False)
 class NonNative:
@@ -2260,6 +2263,95 @@ class WrongNumberOfArgs:
 class WrongNumberOfArgsObjectNew:
     def __new__(cls):
         return object.__new__(cls, 1)  # E: "object.__new__()" supported only with 1 argument, got 2
+
+@trait
+class DecoratedInTrait:
+    @decorator
+    def __new__(cls) -> Any:  # E: Decorated "__new__" not supported in traits
+        return super().__new__(cls)
+
+[case testDecoratedDunderNew]
+from typing import Any, Callable, TypeVar
+
+F = TypeVar("F", bound=Callable[..., Any])
+
+def deco(f: F) -> F:
+    return f
+
+class A:
+    @deco
+    def __new__(cls, x: int) -> Any:
+        return super().__new__(cls)
+
+    def __init__(self, x: int) -> None:
+        pass
+
+class B(A):
+    pass
+
+class C:
+    def __new__(cls, x: int) -> Any:
+        return super().__new__(cls)
+
+    def __init__(self, x: int) -> None:
+        pass
+
+def f() -> None:
+    A(1)
+    B(2)
+    C(3)
+[out]
+def deco(f):
+    f :: object
+L0:
+    return f
+def A.__new__(cls, x):
+    cls :: object
+    x :: int
+    r0 :: object
+    r1 :: __main__.A
+L0:
+    r0 = CPy_SetupObject(cls)
+    r1 = cast(__main__.A, r0)
+    return r1
+def A.__init__(self, x):
+    self :: __main__.A
+    x :: int
+L0:
+    return 1
+def C.__new__(cls, x):
+    cls :: object
+    x :: int
+    r0 :: __main__.C
+L0:
+    r0 = __mypyc__C_setup(cls)
+    return r0
+def C.__init__(self, x):
+    self :: __main__.C
+    x :: int
+L0:
+    return 1
+def f():
+    r0 :: object
+    r1 :: tuple
+    r2 :: dict
+    r3 :: __main__.A
+    r4 :: object
+    r5 :: tuple
+    r6 :: dict
+    r7 :: __main__.B
+    r8 :: __main__.C
+L0:
+    r0 = object 1
+    r1 = PyTuple_Pack(1, r0)
+    r2 = PyDict_New()
+    r3 = A(r1, r2)
+    r4 = object 2
+    r5 = PyTuple_Pack(1, r4)
+    r6 = PyDict_New()
+    r7 = B(r5, r6)
+    r8 = C(6)
+    return 1
 
 [case testClassWithFreeList]
 from mypy_extensions import mypyc_attr, trait
