@@ -147,6 +147,7 @@ from mypyc.primitives.float_ops import copysign_op, int_to_float_op
 from mypyc.primitives.generic_ops import (
     generic_len_op,
     generic_ssize_t_len_op,
+    method_wrapper_op,
     py_call_op,
     py_call_with_kwargs_op,
     py_call_with_posargs_op,
@@ -1363,11 +1364,35 @@ class LowLevelIRBuilder:
         arguments used to track the presence of values for certain arguments. By
         default, the values of the bitmap arguments are inferred from args.
         """
+        if decl.class_name is not None and not self.can_pass_args_natively(
+            arg_kinds, arg_names, decl.sig
+        ):
+            return self.call_method_wrapper(decl, args, arg_kinds, arg_names, line)
         # Normalize args to positionals.
         args = self.native_args_to_positional(
             args, arg_kinds, arg_names, decl.sig, line, bitmap_args=bitmap_args
         )
         return self.add(Call(decl, args, line))
+
+    def call_method_wrapper(
+        self,
+        decl: FuncDecl,
+        args: Sequence[Value],
+        arg_kinds: list[ArgKind],
+        arg_names: Sequence[str | None],
+        line: int,
+    ) -> Value:
+        """Call a native method through its wrapper function, which parses the arguments.
+
+        This is slower than a native call, but like a native call it calls the given
+        method without looking it up. A lookup could find an override, or the __init__
+        slot wrapper of a native class, which usually does nothing (__init__ is called
+        when the object is created instead).
+        """
+        typ = self.load_native_type_object(f"{decl.module_name}.{decl.class_name}")
+        wrapper = self.call_c(method_wrapper_op, [typ, self.load_str(decl.name)], line)
+        result = self.py_call(wrapper, list(args), line, arg_kinds, arg_names)
+        return self.coerce(result, decl.sig.ret_type, line)
 
     def native_args_to_positional(
         self,
@@ -1388,22 +1413,9 @@ class LowLevelIRBuilder:
         and coerce arguments to the appropriate type.
         """
 
-        sig_args = sig.args
+        sig_args = sig.real_args()
         n = sig.num_bitmap_args
-        if n:
-            sig_args = sig_args[:-n]
-
-        sig_arg_kinds = [arg.kind for arg in sig_args]
-        sig_arg_names = [arg.name for arg in sig_args]
-
-        concrete_kinds = [concrete_arg_kind(arg_kind) for arg_kind in arg_kinds]
-        formal_to_actual = map_actuals_to_formals(
-            concrete_kinds,
-            arg_names,
-            sig_arg_kinds,
-            sig_arg_names,
-            lambda n: AnyType(TypeOfAny.special_form),
-        )
+        formal_to_actual = self.map_native_call_args(arg_kinds, arg_names, sig)
 
         # First scan for */** and construct those
         has_star = has_star2 = False
@@ -1462,6 +1474,41 @@ class LowLevelIRBuilder:
             output_args.append(Integer(bitmap, bitmap_rprimitive))
 
         return output_args
+
+    def map_native_call_args(
+        self, arg_kinds: list[ArgKind], arg_names: Sequence[str | None], sig: FuncSignature
+    ) -> list[list[int]]:
+        """Map the arguments of a call to the arguments of a native function.
+
+        Return the indexes of the call arguments that each argument of the function
+        (excluding bitmap arguments) may get its value from.
+        """
+        sig_args = sig.real_args()
+        return map_actuals_to_formals(
+            [concrete_arg_kind(arg_kind) for arg_kind in arg_kinds],
+            arg_names,
+            [arg.kind for arg in sig_args],
+            [arg.name for arg in sig_args],
+            lambda n: AnyType(TypeOfAny.special_form),
+        )
+
+    def can_pass_args_natively(
+        self, arg_kinds: list[ArgKind], arg_names: Sequence[str | None], sig: FuncSignature
+    ) -> bool:
+        """Can native_args_to_positional() prepare the arguments of a call?
+
+        It can't unpack a *args or **kwargs argument, since we don't know at compile
+        time which arguments of the function the items are for. It can only pass one
+        on as a whole to the *args or **kwargs argument of the function.
+        """
+        if not any(kind.is_star() for kind in arg_kinds):
+            return True
+        formal_to_actual = self.map_native_call_args(arg_kinds, arg_names, sig)
+        for formal, actuals in zip(sig.real_args(), formal_to_actual):
+            for actual in actuals:
+                if arg_kinds[actual].is_star() and arg_kinds[actual] != formal.kind:
+                    return False
+        return True
 
     def gen_method_call(
         self,

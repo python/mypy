@@ -26,6 +26,7 @@ from mypyc.codegen.emitwrapper import (
     generate_len_wrapper,
     generate_richcompare_wrapper,
     generate_set_del_item_wrapper,
+    is_fastcall_supported,
 )
 from mypyc.common import (
     BITMAP_BITS,
@@ -1220,17 +1221,18 @@ def generate_methods_table(
             continue
         emitter.emit_line(f'{{"{fn.name.removeprefix(UNDECORATED_PREFIX)}",')
         emitter.emit_line(f" (PyCFunction){PREFIX}{fn.cname(emitter.names)},")
-        flags = ["METH_FASTCALL", "METH_KEYWORDS"]
-        if fn.name == "__new__" and "__new__" not in cl.method_decls:
-            # A decorated __new__. Its decorators get the callable that is in the type
-            # dict. The wrapper takes the class as self, like a class method, and a
+        if is_fastcall_supported(fn, emitter.capi_version):
+            flags = ["METH_FASTCALL", "METH_KEYWORDS"]
+        else:
+            flags = ["METH_VARARGS", "METH_KEYWORDS"]
+        if fn.decl.kind == FUNC_CLASSMETHOD or fn.name == "__new__":
+            # The wrapper of __new__ takes the class as self, like a class method, and a
             # class method descriptor that is called with a class as the first argument
-            # binds itself to that class.
-            flags = ["METH_VARARGS", "METH_KEYWORDS", "METH_CLASS"]
+            # binds itself to that class. The decorators of a decorated __new__ get the
+            # callable that is in the type dict, and CPy_GetMethodWrapper() uses it too.
+            flags.append("METH_CLASS")
         elif fn.decl.kind == FUNC_STATICMETHOD:
             flags.append("METH_STATIC")
-        elif fn.decl.kind == FUNC_CLASSMETHOD:
-            flags.append("METH_CLASS")
 
         doc = native_function_doc_initializer(fn)
         emitter.emit_line(" {}, PyDoc_STR({})}},".format(" | ".join(flags), doc))

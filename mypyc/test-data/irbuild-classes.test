@@ -710,6 +710,79 @@ def D.g(cls, x):
 L0:
     return x
 
+[case testNativeCallWithUnpackedArgs]
+from typing import Any
+
+class A:
+    def f(self, x: int, y: int = 0) -> int:
+        return x + y
+
+    def g(self, *args: Any, **kwargs: Any) -> int:
+        return len(args)
+
+class B(A):
+    def call_f(self, *args: int) -> int:
+        # The items are for ordinary arguments, so the wrapper function has to unpack them
+        return super().f(*args)
+
+    def call_g(self, *args: Any, **kwargs: Any) -> int:
+        return super().g(*args, **kwargs)
+[out]
+def A.f(self, x, y):
+    self :: __main__.A
+    x, y, r0 :: int
+L0:
+    if is_error(y) goto L1 else goto L2
+L1:
+    y = 0
+L2:
+    r0 = CPyTagged_Add(x, y)
+    return r0
+def A.g(self, args, kwargs):
+    self :: __main__.A
+    args :: tuple
+    kwargs :: dict
+    r0 :: native_int
+    r1 :: short_int
+L0:
+    r0 = var_object_size args
+    r1 = r0 << 1
+    return r1
+def B.call_f(self, args):
+    self :: __main__.B
+    args :: tuple
+    r0 :: object
+    r1 :: str
+    r2 :: object
+    r3 :: list
+    r4 :: ptr
+    r5 :: object
+    r6 :: tuple
+    r7 :: object
+    r8 :: int
+L0:
+    r0 = __main__.A :: type
+    r1 = 'f'
+    r2 = CPy_GetMethodWrapper(r0, r1)
+    r3 = PyList_New(1)
+    r4 = list_items r3
+    buf_init_item r4, 0, self
+    keep_alive r3
+    r5 = CPyList_Extend(r3, args)
+    r6 = PyList_AsTuple(r3)
+    r7 = PyObject_CallObject(r2, r6)
+    r8 = unbox(int, r7)
+    return r8
+def B.call_g(self, args, kwargs):
+    self :: __main__.B
+    args :: tuple
+    kwargs, r0 :: dict
+    r1 :: int
+L0:
+    r0 = PyDict_Copy(kwargs)
+    r1 = A.g(self, args, r0)
+    return r1
+
 [case testCannotAssignToClsArgument]
 from typing import Any, cast
 

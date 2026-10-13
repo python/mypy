@@ -84,3 +84,30 @@ PyObject *CPy_SetupObject(PyObject *type) {
     PyErr_SetString(PyExc_RuntimeError, "Internal mypyc error: Unable to find object setup function");
     return NULL;
 }
+
+// Return a callable for the wrapper function of a method that a native class defines.
+// It takes the same arguments as the method when looked up on the class (including self
+// or cls). Unlike an attribute lookup, this doesn't find an override in a subclass or a
+// slot wrapper. The __init__ slot of a native class usually does nothing.
+PyObject *CPy_GetMethodWrapper(PyObject *type, PyObject *name) {
+    PyTypeObject *tp = (PyTypeObject *)type;
+    PyMethodDef *def = tp->tp_methods;
+    const char *name_str = PyUnicode_AsUTF8(name);
+    if (name_str == NULL) {
+        return NULL;
+    }
+    for (; def != NULL && def->ml_name != NULL; def++) {
+        if (strcmp(name_str, def->ml_name) == 0) {
+            if (def->ml_flags & METH_STATIC) {
+                return PyCFunction_NewEx(def, NULL, NULL);
+            }
+            if (def->ml_flags & METH_CLASS) {
+                return PyDescr_NewClassMethod(tp, def);
+            }
+            return PyDescr_NewMethod(tp, def);
+        }
+    }
+
+    PyErr_SetString(PyExc_RuntimeError, "Internal mypyc error: Unable to find method wrapper");
+    return NULL;
+}

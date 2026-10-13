@@ -432,3 +432,12 @@ setup_object = custom_op(
     c_function_name="CPy_SetupObject",
     error_kind=ERR_MAGIC,
 )
+
+# Get a callable for the wrapper function of a method that a native class defines
+# (arguments: type object, method name).
+method_wrapper_op = custom_op(
+    arg_types=[object_rprimitive, object_rprimitive],
+    return_type=object_rprimitive,
+    c_function_name="CPy_GetMethodWrapper",
+    error_kind=ERR_MAGIC,
+)
