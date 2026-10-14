@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 from collections.abc import Iterable, Mapping
+from dataclasses import dataclass
 from functools import reduce
 from typing import Final, Literal, cast
 
@@ -12,6 +13,7 @@ from mypy.applytype import apply_generic_arguments
 from mypy.errorcodes import LITERAL_REQ
 from mypy.expandtype import expand_type, expand_type_by_instance
 from mypy.exprtotype import TypeTranslationError, expr_to_unanalyzed_type
+from mypy.maptype import map_instance_to_supertype
 from mypy.meet import meet_types
 from mypy.messages import format_type_bare
 from mypy.nodes import (
@@ -56,12 +58,7 @@ from mypy.plugins.common import (
 )
 from mypy.server.trigger import make_wildcard_trigger
 from mypy.state import state
-from mypy.typeops import (
-    get_type_vars,
-    make_simplified_union,
-    map_type_from_supertype,
-    type_object_type,
-)
+from mypy.typeops import make_simplified_union, map_type_from_supertype, type_object_type
 from mypy.types import (
     AnyType,
     CallableType,
@@ -99,12 +96,12 @@ MAGIC_ATTR_CLS_NAME_TEMPLATE: Final = "__{}_AttrsAttributes__"  # The tuple subc
 ATTRS_INIT_NAME: Final = "__attrs_init__"
 
 
+@dataclass
 class Converter:
     """Holds information about a `converter=` argument"""
 
-    def __init__(self, init_type: Type | None = None, ret_type: Type | None = None) -> None:
-        self.init_type = init_type
-        self.ret_type = ret_type
+    init_type: Type | None = None
+    ret_type: Type | None = None
 
 
 class Attribute:
@@ -139,15 +136,19 @@ class Attribute:
         if self.converter:
             if self.converter.init_type:
                 init_type = self.converter.init_type
-                if init_type and self.init_type and self.converter.ret_type:
-                    # The converter return type should be the same type as the attribute type.
-                    # Copy type vars from attr type to converter.
-                    converter_vars = get_type_vars(self.converter.ret_type)
-                    init_vars = get_type_vars(self.init_type)
-                    if converter_vars and len(converter_vars) == len(init_vars):
-                        variables = {
-                            binder.id: arg for binder, arg in zip(converter_vars, init_vars)
-                        }
+                left = get_proper_type(self.init_type)
+                right = get_proper_type(self.converter.ret_type)
+                if init_type and isinstance(left, Instance) and isinstance(right, Instance):
+                    # self.init_type must be a supertype of self.converter.ret_type
+                    right = map_instance_to_supertype(right, left.type)
+                    # now just map any top-level attributes 1-1
+                    # TODO: recurse into deeper things?
+                    if isinstance(right, Instance):
+                        variables = {}
+                        for lt, rt in zip(left.args, right.args, strict=True):
+                            # set the rt to the lt
+                            if isinstance(rt, TypeVarType):
+                                variables[rt.id] = lt
                         init_type = expand_type(init_type, variables)
             else:
                 ctx.api.fail("Cannot determine __init__ type from converter", self.context)
@@ -774,6 +775,7 @@ def _parse_converter(
             converter_info.ret_type = converter_type.ret_type
     elif isinstance(converter_type, Overloaded):
         types: list[Type] = []
+        ret_types: list[Type] = []
         for item in converter_type.items:
             # Walk the overloads looking for methods that can accept one argument.
             num_arg_types = len(item.arg_types)
@@ -782,9 +784,11 @@ def _parse_converter(
             if num_arg_types > 1 and any(kind == ARG_POS for kind in item.arg_kinds[1:]):
                 continue
             types.append(item.arg_types[0])
+            ret_types.append(item.ret_type)
         # Make a union of all the valid types.
         if types:
             converter_info.init_type = make_simplified_union(types)
+            converter_info.ret_type = make_simplified_union(ret_types)
 
     if is_attr_converters_optional and converter_info.init_type:
         # If the converter was attr.converter.optional(type) then add None to
