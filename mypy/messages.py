@@ -3524,13 +3524,11 @@ def ignore_last_known_values(t: UnionType) -> Type:
     union_items: list[Type] = []
     seen_instances = set()
     for item in t.items:
-        item = get_proper_type(item)
-        if isinstance(item, Instance):
-            erased = item.copy_modified(last_known_value=None)
+        proper = get_proper_type(item)
+        if isinstance(proper, Instance):
+            erased = proper.copy_modified(last_known_value=None)
             if erased in seen_instances:
                 continue
             seen_instances.add(erased)
-            union_items.append(erased)
-        else:
-            union_items.append(item)
+        union_items.append(item)
     return UnionType.make_union(union_items, t.line, t.column)
