@@ -153,6 +153,9 @@ class EmitterContext:
         self.names = names
         self.group_name = group_name
         self.group_map = group_map or {}
+        # Suffix that makes names of C globals local to the group unique across groups,
+        # so that groups can be statically linked together (empty if not using groups)
+        self.group_suffix = "_" + exported_name(group_name) if group_name else ""
         # Groups that this group depends on
         self.group_deps: set[str] = set()
 
@@ -349,7 +352,9 @@ class Emitter:
         # the pointer also.
         star_maybe = "*" if lib_prefix else ""
         suffix = self.names.private_name(module or "", id)
-        return f"{star_maybe}{lib_prefix}{prefix}{suffix}"
+        # Statics without a module are local to the group, so make them unique per group
+        group_suffix = "" if module else self.context.group_suffix
+        return f"{star_maybe}{lib_prefix}{prefix}{suffix}{group_suffix}"
 
     def type_struct_name(self, cl: ClassIR) -> str:
         return self.static_name(cl.name, cl.module_name, prefix=TYPE_PREFIX)

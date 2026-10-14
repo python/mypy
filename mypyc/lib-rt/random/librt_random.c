@@ -13,6 +13,13 @@
 
 #include "mypyc_util.h"
 #include "CPy.h"
+// With static linking, compiled code calls the API functions and refers to the
+// type objects directly, so they need external linkage
+#ifdef MYPYC_STATIC_LINKING
+#define LIBRT_API_LINKAGE
+#else
+#define LIBRT_API_LINKAGE static
+#endif
 #include "librt_random.h"
 
 //
@@ -442,12 +449,12 @@ typedef struct {
     chacha8_rng rng;
 } RandomObject;
 
-static PyTypeObject RandomType;
+LIBRT_API_LINKAGE PyTypeObject LibRTRandom_RandomType;
 
 static PyObject*
 Random_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
 {
-    if (type != &RandomType) {
+    if (type != &LibRTRandom_RandomType) {
         PyErr_SetString(PyExc_TypeError, "Random cannot be subclassed");
         return NULL;
     }
@@ -487,9 +494,9 @@ Random_init(RandomObject *self, PyObject *args, PyObject *kwds)
 
 // Internal constructors for capsule API (bypass tp_new/tp_init)
 
-static PyObject *
-Random_internal(void) {
-    RandomObject *self = (RandomObject *)RandomType.tp_alloc(&RandomType, 0);
+LIBRT_API_LINKAGE PyObject *
+LibRTRandom_Random_internal(void) {
+    RandomObject *self = (RandomObject *)LibRTRandom_RandomType.tp_alloc(&LibRTRandom_RandomType, 0);
     if (self == NULL)
         return NULL;
     if (chacha8_init(&self->rng) < 0) {
@@ -499,22 +506,22 @@ Random_internal(void) {
     return (PyObject *)self;
 }
 
-static PyObject *
-Random_from_seed_internal(int64_t seed_val) {
-    RandomObject *self = (RandomObject *)RandomType.tp_alloc(&RandomType, 0);
+LIBRT_API_LINKAGE PyObject *
+LibRTRandom_Random_from_seed_internal(int64_t seed_val) {
+    RandomObject *self = (RandomObject *)LibRTRandom_RandomType.tp_alloc(&LibRTRandom_RandomType, 0);
     if (self == NULL)
         return NULL;
     chacha8_seed_int(&self->rng, seed_val);
     return (PyObject *)self;
 }
 
-static PyTypeObject *
-Random_type_internal(void) {
-    return &RandomType;
+LIBRT_API_LINKAGE PyTypeObject *
+LibRTRandom_Random_type_internal(void) {
+    return &LibRTRandom_RandomType;
 }
 
-static int64_t
-Random_randrange1_internal(PyObject *self, int64_t stop) {
+LIBRT_API_LINKAGE int64_t
+LibRTRandom_Random_randrange1_internal(PyObject *self, int64_t stop) {
     if (unlikely(stop <= 0)) {
         PyErr_SetString(PyExc_ValueError, "empty range for randrange()");
         return CPY_LL_INT_ERROR;
@@ -522,8 +529,8 @@ Random_randrange1_internal(PyObject *self, int64_t stop) {
     return (int64_t)chacha8_next_ranged(&((RandomObject *)self)->rng, (uint64_t)stop);
 }
 
-static int64_t
-Random_randrange2_internal(PyObject *self, int64_t start, int64_t stop) {
+LIBRT_API_LINKAGE int64_t
+LibRTRandom_Random_randrange2_internal(PyObject *self, int64_t start, int64_t stop) {
     if (unlikely(start >= stop)) {
         PyErr_SetString(PyExc_ValueError, "empty range for randrange()");
         return CPY_LL_INT_ERROR;
@@ -532,8 +539,8 @@ Random_randrange2_internal(PyObject *self, int64_t start, int64_t stop) {
     return random_i64_from_range(&((RandomObject *)self)->rng, start, range);
 }
 
-static int64_t
-Random_randint_internal(PyObject *self, int64_t a, int64_t b) {
+LIBRT_API_LINKAGE int64_t
+LibRTRandom_Random_randint_internal(PyObject *self, int64_t a, int64_t b) {
     if (unlikely(a > b)) {
         PyErr_SetString(PyExc_ValueError, "empty range for randint()");
         return CPY_LL_INT_ERROR;
@@ -542,8 +549,8 @@ Random_randint_internal(PyObject *self, int64_t a, int64_t b) {
     return random_i64_from_range(&((RandomObject *)self)->rng, a, range);
 }
 
-static double
-Random_random_internal(PyObject *self) {
+LIBRT_API_LINKAGE double
+LibRTRandom_Random_random_internal(PyObject *self) {
     return random_double_impl(&((RandomObject *)self)->rng);
 }
 
@@ -615,7 +622,7 @@ static PyMethodDef Random_methods[] = {
     {NULL}  /* Sentinel */
 };
 
-static PyTypeObject RandomType = {
+LIBRT_API_LINKAGE PyTypeObject LibRTRandom_RandomType = {
     .ob_base = PyVarObject_HEAD_INIT(NULL, 0)
     .tp_name = "Random",
     .tp_doc = PyDoc_STR("Fast random number generator using ChaCha8"),
@@ -647,16 +654,16 @@ static PyMethodDef librt_random_module_methods[] = {
 
 // Module-level internal functions for mypyc primitives (use thread-local RNG)
 
-static double
-module_random_internal(void) {
+LIBRT_API_LINKAGE double
+LibRTRandom_module_random_internal(void) {
     chacha8_rng *rng = get_thread_rng();
     if (rng == NULL)
         return CPY_FLOAT_ERROR;
     return random_double_impl(rng);
 }
 
-static int64_t
-module_randint_internal(int64_t a, int64_t b) {
+LIBRT_API_LINKAGE int64_t
+LibRTRandom_module_randint_internal(int64_t a, int64_t b) {
     if (unlikely(a > b)) {
         PyErr_SetString(PyExc_ValueError, "empty range for randint()");
         return CPY_LL_INT_ERROR;
@@ -668,8 +675,8 @@ module_randint_internal(int64_t a, int64_t b) {
     return random_i64_from_range(rng, a, range);
 }
 
-static int64_t
-module_randrange1_internal(int64_t stop) {
+LIBRT_API_LINKAGE int64_t
+LibRTRandom_module_randrange1_internal(int64_t stop) {
     if (unlikely(stop <= 0)) {
         PyErr_SetString(PyExc_ValueError, "empty range for randrange()");
         return CPY_LL_INT_ERROR;
@@ -680,8 +687,8 @@ module_randrange1_internal(int64_t stop) {
     return (int64_t)chacha8_next_ranged(rng, (uint64_t)stop);
 }
 
-static int64_t
-module_randrange2_internal(int64_t start, int64_t stop) {
+LIBRT_API_LINKAGE int64_t
+LibRTRandom_module_randrange2_internal(int64_t start, int64_t stop) {
     if (unlikely(start >= stop)) {
         PyErr_SetString(PyExc_ValueError, "empty range for randrange()");
         return CPY_LL_INT_ERROR;
@@ -693,13 +700,13 @@ module_randrange2_internal(int64_t start, int64_t stop) {
     return random_i64_from_range(rng, start, range);
 }
 
-static int
-random_abi_version(void) {
+LIBRT_API_LINKAGE int
+LibRTRandom_ABIVersion(void) {
     return LIBRT_RANDOM_ABI_VERSION;
 }
 
-static int
-random_api_version(void) {
+LIBRT_API_LINKAGE int
+LibRTRandom_APIVersion(void) {
     return LIBRT_RANDOM_API_VERSION;
 }
 
@@ -709,32 +716,34 @@ librt_random_module_exec(PyObject *m)
     if (ensure_tls_key() < 0) {
         return -1;
     }
-    if (PyType_Ready(&RandomType) < 0) {
+    if (PyType_Ready(&LibRTRandom_RandomType) < 0) {
         return -1;
     }
-    if (PyModule_AddObjectRef(m, "Random", (PyObject *) &RandomType) < 0) {
+    if (PyModule_AddObjectRef(m, "Random", (PyObject *) &LibRTRandom_RandomType) < 0) {
         return -1;
     }
+#ifndef MYPYC_STATIC_LINKING
     // Export mypyc internal C API via capsule
     static void *librt_random_api[LIBRT_RANDOM_API_LEN] = {
-        (void *)random_abi_version,
-        (void *)random_api_version,
-        (void *)Random_internal,
-        (void *)Random_from_seed_internal,
-        (void *)Random_type_internal,
-        (void *)Random_random_internal,
-        (void *)Random_randint_internal,
-        (void *)Random_randrange1_internal,
-        (void *)Random_randrange2_internal,
-        (void *)module_random_internal,
-        (void *)module_randint_internal,
-        (void *)module_randrange1_internal,
-        (void *)module_randrange2_internal,
+        (void *)LibRTRandom_ABIVersion,
+        (void *)LibRTRandom_APIVersion,
+        (void *)LibRTRandom_Random_internal,
+        (void *)LibRTRandom_Random_from_seed_internal,
+        (void *)LibRTRandom_Random_type_internal,
+        (void *)LibRTRandom_Random_random_internal,
+        (void *)LibRTRandom_Random_randint_internal,
+        (void *)LibRTRandom_Random_randrange1_internal,
+        (void *)LibRTRandom_Random_randrange2_internal,
+        (void *)LibRTRandom_module_random_internal,
+        (void *)LibRTRandom_module_randint_internal,
+        (void *)LibRTRandom_module_randrange1_internal,
+        (void *)LibRTRandom_module_randrange2_internal,
     };
     PyObject *c_api_object = PyCapsule_New((void *)librt_random_api, "librt.random._C_API", NULL);
     if (PyModule_Add(m, "_C_API", c_api_object) < 0) {
         return -1;
     }
+#endif
     return 0;
 }
 

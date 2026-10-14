@@ -822,23 +822,7 @@ PyTypeObject VEC_TYPE = {
     .tp_methods = vec_methods,
 };
 
-NAME(API) FEATURES = {
-    &VEC_TYPE,
-    &BUF_TYPE,
-    FUNC(New),
-    FUNC(Box),
-    FUNC(Unbox),
-    FUNC(ConvertFromNested),
-    FUNC(Append),
-    FUNC(Pop),
-    FUNC(Remove),
-    FUNC(Slice),
-    FUNC(FromIterable),
-    FUNC(Extend),
-    FUNC(ExtendVec),
-    FUNC(ToList),
-    FUNC(ToTuple),
-};
+NAME(API) FEATURES = VEC_API_INIT(VEC);
 
 #undef VEC_BUF
 #undef VEC_CAP

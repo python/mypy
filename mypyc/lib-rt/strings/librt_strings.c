@@ -4,6 +4,13 @@
 #include <Python.h>
 #include <stdint.h>
 #include "CPy.h"
+// With static linking, compiled code calls the API functions and refers to the
+// type objects directly, so they need external linkage
+#ifdef MYPYC_STATIC_LINKING
+#define LIBRT_API_LINKAGE
+#else
+#define LIBRT_API_LINKAGE static
+#endif
 #include "librt_strings.h"
 
 #define CPY_BOOL_ERROR 2
@@ -18,10 +25,10 @@
        ((BytesWriterObject *)data)->len += sizeof(type); \
     } while (0)
 
-static PyTypeObject BytesWriterType;
+LIBRT_API_LINKAGE PyTypeObject LibRTStrings_BytesWriterType;
 
-static bool
-_grow_buffer(BytesWriterObject *data, Py_ssize_t n) {
+LIBRT_API_LINKAGE bool
+LibRTStrings_ByteWriter_grow_buffer_internal(BytesWriterObject *data, Py_ssize_t n) {
     if (unlikely(n > PY_SSIZE_T_MAX - data->len)) {
         PyErr_NoMemory();
         return false;
@@ -59,7 +66,7 @@ ensure_bytes_writer_size(BytesWriterObject *data, Py_ssize_t n) {
     if (likely(data->capacity - data->len >= n)) {
         return true;
     } else {
-        return _grow_buffer(data, n);
+        return LibRTStrings_ByteWriter_grow_buffer_internal(data, n);
     }
 }
 
@@ -73,7 +80,7 @@ BytesWriter_init_internal(BytesWriterObject *self) {
 static PyObject*
 BytesWriter_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
 {
-    if (type != &BytesWriterType) {
+    if (type != &LibRTStrings_BytesWriterType) {
         PyErr_SetString(PyExc_TypeError, "BytesWriter cannot be subclassed");
         return NULL;
     }
@@ -84,9 +91,9 @@ BytesWriter_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
     return (PyObject *)self;
 }
 
-static PyObject *
-BytesWriter_internal(void) {
-    BytesWriterObject *self = (BytesWriterObject *)BytesWriterType.tp_alloc(&BytesWriterType, 0);
+LIBRT_API_LINKAGE PyObject *
+LibRTStrings_BytesWriter_internal(void) {
+    BytesWriterObject *self = (BytesWriterObject *)LibRTStrings_BytesWriterType.tp_alloc(&LibRTStrings_BytesWriterType, 0);
     if (self == NULL)
         return NULL;
     BytesWriter_init_internal(self);
@@ -123,8 +130,8 @@ BytesWriter_dealloc(BytesWriterObject *self)
     Py_TYPE(self)->tp_free((PyObject *)self);
 }
 
-static PyObject*
-BytesWriter_getvalue_internal(PyObject *self)
+LIBRT_API_LINKAGE PyObject*
+LibRTStrings_BytesWriter_getvalue_internal(PyObject *self)
 {
     BytesWriterObject *obj = (BytesWriterObject *)self;
     return PyBytes_FromStringAndSize(obj->buf, obj->len);
@@ -133,7 +140,7 @@ BytesWriter_getvalue_internal(PyObject *self)
 static PyObject*
 BytesWriter_repr(BytesWriterObject *self)
 {
-    PyObject *value = BytesWriter_getvalue_internal((PyObject *)self);
+    PyObject *value = LibRTStrings_BytesWriter_getvalue_internal((PyObject *)self);
     if (value == NULL) {
         return NULL;
     }
@@ -229,7 +236,7 @@ static PyMethodDef BytesWriter_methods[] = {
     {NULL}  /* Sentinel */
 };
 
-static PyTypeObject BytesWriterType = {
+LIBRT_API_LINKAGE PyTypeObject LibRTStrings_BytesWriterType = {
     .ob_base = PyVarObject_HEAD_INIT(NULL, 0)
     .tp_name = "BytesWriter",
     .tp_doc = PyDoc_STR("Memory buffer for building bytes objects from parts"),
@@ -246,7 +253,7 @@ static PyTypeObject BytesWriterType = {
 
 static inline bool
 check_bytes_writer(PyObject *data) {
-    if (unlikely(Py_TYPE(data) != &BytesWriterType)) {
+    if (unlikely(Py_TYPE(data) != &LibRTStrings_BytesWriterType)) {
         PyErr_Format(
             PyExc_TypeError, "data must be a BytesWriter object, got %s", Py_TYPE(data)->tp_name
         );
@@ -296,8 +303,8 @@ BytesWriter_write(PyObject *self, PyObject *const *args, size_t nargs) {
     return Py_None;
 }
 
-static inline char
-BytesWriter_append_internal(BytesWriterObject *self, uint8_t value) {
+LIBRT_API_LINKAGE inline char
+LibRTStrings_BytesWriter_append_internal(BytesWriterObject *self, uint8_t value) {
     if (!ensure_bytes_writer_size(self, 1))
         return CPY_NONE_ERROR;
     _WRITE_BYTES(self, uint8_t, value);
@@ -320,15 +327,15 @@ BytesWriter_append(PyObject *self, PyObject *const *args, size_t nargs) {
         CPy_TypeError("u8", value);
         return NULL;
     }
-    if (unlikely(BytesWriter_append_internal((BytesWriterObject *)self, unboxed) == CPY_NONE_ERROR)) {
+    if (unlikely(LibRTStrings_BytesWriter_append_internal((BytesWriterObject *)self, unboxed) == CPY_NONE_ERROR)) {
         return NULL;
     }
     Py_INCREF(Py_None);
     return Py_None;
 }
 
-static char
-BytesWriter_truncate_internal(PyObject *self, int64_t size) {
+LIBRT_API_LINKAGE char
+LibRTStrings_BytesWriter_truncate_internal(PyObject *self, int64_t size) {
     BytesWriterObject *writer = (BytesWriterObject *)self;
     Py_ssize_t current_size = writer->len;
 
@@ -371,16 +378,16 @@ BytesWriter_truncate(PyObject *self, PyObject *const *args, size_t nargs) {
         return NULL;
     }
 
-    if (unlikely(BytesWriter_truncate_internal(self, size) == CPY_NONE_ERROR)) {
+    if (unlikely(LibRTStrings_BytesWriter_truncate_internal(self, size) == CPY_NONE_ERROR)) {
         return NULL;
     }
     Py_INCREF(Py_None);
     return Py_None;
 }
 
-static PyTypeObject *
-BytesWriter_type_internal(void) {
-    return &BytesWriterType;  // Return borrowed reference
+LIBRT_API_LINKAGE PyTypeObject *
+LibRTStrings_BytesWriter_type_internal(void) {
+    return &LibRTStrings_BytesWriterType;  // Return borrowed reference
 };
 
 static CPyTagged
@@ -393,7 +400,7 @@ BytesWriter_len_internal(PyObject *self) {
 // StringWriter
 //
 
-static PyTypeObject StringWriterType;
+LIBRT_API_LINKAGE PyTypeObject LibRTStrings_StringWriterType;
 
 static void convert_string_data_in_place(char *buf, Py_ssize_t len,
                                          char old_kind, char new_kind);
@@ -455,7 +462,7 @@ grow_string_buffer_helper(StringWriterObject *self, Py_ssize_t target_capacity, 
     return true;
 }
 
-static bool grow_string_buffer(StringWriterObject *data, Py_ssize_t n) {
+LIBRT_API_LINKAGE bool LibRTStrings_grow_string_buffer(StringWriterObject *data, Py_ssize_t n) {
     if (unlikely(n > PY_SSIZE_T_MAX - data->len)) {
         PyErr_NoMemory();
         return false;
@@ -470,7 +477,7 @@ ensure_string_writer_size(StringWriterObject *data, Py_ssize_t n) {
     } else {
         // Don't inline the grow function since this is slow path and we
         // want to keep this as short as possible for better inlining
-        return grow_string_buffer(data, n);
+        return LibRTStrings_grow_string_buffer(data, n);
     }
 }
 
@@ -485,7 +492,7 @@ StringWriter_init_internal(StringWriterObject *self) {
 static PyObject*
 StringWriter_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
 {
-    if (type != &StringWriterType) {
+    if (type != &LibRTStrings_StringWriterType) {
         PyErr_SetString(PyExc_TypeError, "StringWriter cannot be subclassed");
         return NULL;
     }
@@ -496,9 +503,9 @@ StringWriter_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
     return (PyObject *)self;
 }
 
-static PyObject *
-StringWriter_internal(void) {
-    StringWriterObject *self = (StringWriterObject *)StringWriterType.tp_alloc(&StringWriterType, 0);
+LIBRT_API_LINKAGE PyObject *
+LibRTStrings_StringWriter_internal(void) {
+    StringWriterObject *self = (StringWriterObject *)LibRTStrings_StringWriterType.tp_alloc(&LibRTStrings_StringWriterType, 0);
     if (self == NULL)
         return NULL;
     StringWriter_init_internal(self);
@@ -535,8 +542,8 @@ StringWriter_dealloc(StringWriterObject *self)
     Py_TYPE(self)->tp_free((PyObject *)self);
 }
 
-static PyObject*
-StringWriter_getvalue_internal(PyObject *self)
+LIBRT_API_LINKAGE PyObject*
+LibRTStrings_StringWriter_getvalue_internal(PyObject *self)
 {
     StringWriterObject *obj = (StringWriterObject *)self;
     return PyUnicode_FromKindAndData(obj->kind, obj->buf, obj->len);
@@ -545,7 +552,7 @@ StringWriter_getvalue_internal(PyObject *self)
 static PyObject*
 StringWriter_repr(StringWriterObject *self)
 {
-    PyObject *value = StringWriter_getvalue_internal((PyObject *)self);
+    PyObject *value = LibRTStrings_StringWriter_getvalue_internal((PyObject *)self);
     if (value == NULL) {
         return NULL;
     }
@@ -619,7 +626,7 @@ static PyMethodDef StringWriter_methods[] = {
     {NULL}  /* Sentinel */
 };
 
-static PyTypeObject StringWriterType = {
+LIBRT_API_LINKAGE PyTypeObject LibRTStrings_StringWriterType = {
     .ob_base = PyVarObject_HEAD_INIT(NULL, 0)
     .tp_name = "StringWriter",
     .tp_doc = PyDoc_STR("Memory buffer for building string objects from parts"),
@@ -636,7 +643,7 @@ static PyTypeObject StringWriterType = {
 
 static inline bool
 check_string_writer(PyObject *data) {
-    if (unlikely(Py_TYPE(data) != &StringWriterType)) {
+    if (unlikely(Py_TYPE(data) != &LibRTStrings_StringWriterType)) {
         PyErr_Format(
             PyExc_TypeError, "data must be a StringWriter object, got %s", Py_TYPE(data)->tp_name
         );
@@ -647,8 +654,8 @@ check_string_writer(PyObject *data) {
 
 static char string_writer_switch_kind(StringWriterObject *self, int32_t value);
 
-static char
-StringWriter_write_internal(PyObject *obj, PyObject *value) {
+LIBRT_API_LINKAGE char
+LibRTStrings_StringWriter_write_internal(PyObject *obj, PyObject *value) {
     StringWriterObject *self = (StringWriterObject *)obj;
     Py_ssize_t str_len = PyUnicode_GET_LENGTH(value);
     if (str_len == 0) {
@@ -705,7 +712,7 @@ StringWriter_write(PyObject *self, PyObject *const *args, size_t nargs) {
         PyErr_SetString(PyExc_TypeError, "value must be a str object");
         return NULL;
     }
-    if (unlikely(StringWriter_write_internal(self, value) == CPY_NONE_ERROR)) {
+    if (unlikely(LibRTStrings_StringWriter_write_internal(self, value) == CPY_NONE_ERROR)) {
         return NULL;
     }
     Py_INCREF(Py_None);
@@ -781,7 +788,7 @@ static char string_writer_switch_kind(StringWriterObject *self, int32_t value) {
 }
 
 // Handle all append cases except for append that stays within kind 1
-static char string_append_slow_path(StringWriterObject *self, int32_t value) {
+LIBRT_API_LINKAGE char LibRTStrings_string_append_slow_path(StringWriterObject *self, int32_t value) {
     if (self->kind == 2) {
         if ((uint32_t)value <= 0xffff) {
             // Fast path - kind 2 stays the same
@@ -798,7 +805,7 @@ static char string_append_slow_path(StringWriterObject *self, int32_t value) {
             goto fail_range;
         if (string_writer_switch_kind(self, value) == CPY_NONE_ERROR)
             return CPY_NONE_ERROR;
-        return string_append_slow_path(self, value);
+        return LibRTStrings_string_append_slow_path(self, value);
     } else if (self->kind == 1) {
         // Check precondition -- this must only be used on slow path
         assert((uint32_t)value > 0xff);
@@ -806,7 +813,7 @@ static char string_append_slow_path(StringWriterObject *self, int32_t value) {
             goto fail_range;
         if (string_writer_switch_kind(self, value) == CPY_NONE_ERROR)
             return CPY_NONE_ERROR;
-        return string_append_slow_path(self, value);
+        return LibRTStrings_string_append_slow_path(self, value);
     }
     assert(self->kind == 4);
     if (unlikely((uint32_t)value > 0x10FFFF))
@@ -835,7 +842,7 @@ StringWriter_append_internal(StringWriterObject *self, int32_t value) {
         self->kind = kind;
         return CPY_NONE;
     }
-    return string_append_slow_path(self, value);
+    return LibRTStrings_string_append_slow_path(self, value);
 }
 
 static PyObject*
@@ -861,9 +868,9 @@ StringWriter_append(PyObject *self, PyObject *const *args, size_t nargs) {
     return Py_None;
 }
 
-static PyTypeObject *
-StringWriter_type_internal(void) {
-    return &StringWriterType;  // Return borrowed reference
+LIBRT_API_LINKAGE PyTypeObject *
+LibRTStrings_StringWriter_type_internal(void) {
+    return &LibRTStrings_StringWriterType;  // Return borrowed reference
 };
 
 static CPyTagged
@@ -1288,53 +1295,55 @@ static PyMethodDef librt_strings_module_methods[] = {
     {NULL, NULL, 0, NULL}
 };
 
-static int
-strings_abi_version(void) {
+LIBRT_API_LINKAGE int
+LibRTStrings_ABIVersion(void) {
     return LIBRT_STRINGS_ABI_VERSION;
 }
 
-static int
-strings_api_version(void) {
+LIBRT_API_LINKAGE int
+LibRTStrings_APIVersion(void) {
     return LIBRT_STRINGS_API_VERSION;
 }
 
 static int
 librt_strings_module_exec(PyObject *m)
 {
-    if (PyType_Ready(&BytesWriterType) < 0) {
+    if (PyType_Ready(&LibRTStrings_BytesWriterType) < 0) {
         return -1;
     }
-    if (PyType_Ready(&StringWriterType) < 0) {
+    if (PyType_Ready(&LibRTStrings_StringWriterType) < 0) {
         return -1;
     }
-    if (PyModule_AddObjectRef(m, "BytesWriter", (PyObject *) &BytesWriterType) < 0) {
+    if (PyModule_AddObjectRef(m, "BytesWriter", (PyObject *) &LibRTStrings_BytesWriterType) < 0) {
         return -1;
     }
-    if (PyModule_AddObjectRef(m, "StringWriter", (PyObject *) &StringWriterType) < 0) {
+    if (PyModule_AddObjectRef(m, "StringWriter", (PyObject *) &LibRTStrings_StringWriterType) < 0) {
         return -1;
     }
 
+#ifndef MYPYC_STATIC_LINKING
     // Export mypy internal C API, be careful with the order!
     static void *librt_strings_api[LIBRT_STRINGS_API_LEN] = {
-        (void *)strings_abi_version,
-        (void *)strings_api_version,
-        (void *)BytesWriter_internal,
-        (void *)BytesWriter_getvalue_internal,
-        (void *)BytesWriter_append_internal,
-        (void *)_grow_buffer,
-        (void *)BytesWriter_type_internal,
-        (void *)BytesWriter_truncate_internal,
-        (void *)StringWriter_internal,
-        (void *)StringWriter_getvalue_internal,
-        (void *)string_append_slow_path,
-        (void *)StringWriter_type_internal,
-        (void *)StringWriter_write_internal,
-        (void *)grow_string_buffer,
+        (void *)LibRTStrings_ABIVersion,
+        (void *)LibRTStrings_APIVersion,
+        (void *)LibRTStrings_BytesWriter_internal,
+        (void *)LibRTStrings_BytesWriter_getvalue_internal,
+        (void *)LibRTStrings_BytesWriter_append_internal,
+        (void *)LibRTStrings_ByteWriter_grow_buffer_internal,
+        (void *)LibRTStrings_BytesWriter_type_internal,
+        (void *)LibRTStrings_BytesWriter_truncate_internal,
+        (void *)LibRTStrings_StringWriter_internal,
+        (void *)LibRTStrings_StringWriter_getvalue_internal,
+        (void *)LibRTStrings_string_append_slow_path,
+        (void *)LibRTStrings_StringWriter_type_internal,
+        (void *)LibRTStrings_StringWriter_write_internal,
+        (void *)LibRTStrings_grow_string_buffer,
     };
     PyObject *c_api_object = PyCapsule_New((void *)librt_strings_api, "librt.strings._C_API", NULL);
     if (PyModule_Add(m, "_C_API", c_api_object) < 0) {
         return -1;
     }
+#endif
     return 0;
 }
 

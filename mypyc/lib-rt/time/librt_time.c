@@ -2,6 +2,13 @@
 #include <Python.h>
 #include <time.h>
 #include <stdint.h>
+// With static linking, compiled code calls the API functions and refers to the
+// type objects directly, so they need external linkage
+#ifdef MYPYC_STATIC_LINKING
+#define LIBRT_API_LINKAGE
+#else
+#define LIBRT_API_LINKAGE static
+#endif
 #include "librt_time.h"
 #include "pythoncapi_compat.h"
 #include "mypyc_util.h"
@@ -14,8 +21,8 @@
 
 // Internal function that returns a C double for mypyc primitives
 // Returns high-precision time in seconds (like time.time())
-static double
-time_time_internal(void) {
+LIBRT_API_LINKAGE double
+LibRTTime_time(void) {
 #ifdef _WIN32
     // Windows: Use GetSystemTimePreciseAsFileTime for ~100ns precision
     FILETIME ft;
@@ -65,7 +72,7 @@ time_time(PyObject *self, PyObject *const *args, size_t nargs) {
         return NULL;
     }
 
-    double result = time_time_internal();
+    double result = LibRTTime_time();
     if (result == CPY_FLOAT_ERROR) {
         return NULL;
     }
@@ -78,29 +85,31 @@ static PyMethodDef librt_time_module_methods[] = {
     {NULL, NULL, 0, NULL}
 };
 
-static int
-time_abi_version(void) {
+LIBRT_API_LINKAGE int
+LibRTTime_ABIVersion(void) {
     return LIBRT_TIME_ABI_VERSION;
 }
 
-static int
-time_api_version(void) {
+LIBRT_API_LINKAGE int
+LibRTTime_APIVersion(void) {
     return LIBRT_TIME_API_VERSION;
 }
 
 static int
 librt_time_module_exec(PyObject *m)
 {
+#ifndef MYPYC_STATIC_LINKING
     // Export mypyc internal C API via capsule
     static void *time_api[LIBRT_TIME_API_LEN] = {
-        (void *)time_abi_version,
-        (void *)time_api_version,
-        (void *)time_time_internal,
+        (void *)LibRTTime_ABIVersion,
+        (void *)LibRTTime_APIVersion,
+        (void *)LibRTTime_time,
     };
     PyObject *c_api_object = PyCapsule_New((void *)time_api, "librt.time._C_API", NULL);
     if (PyModule_Add(m, "_C_API", c_api_object) < 0) {
         return -1;
     }
+#endif
     return 0;
 }
 

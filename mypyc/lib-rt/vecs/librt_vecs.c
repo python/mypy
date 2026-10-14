@@ -951,6 +951,7 @@ static PyObject *vec_extend(PyObject *self, PyObject *args)
     }
 }
 
+#ifndef MYPYC_STATIC_LINKING
 // Return the base VecType for isinstance checks
 static PyTypeObject *get_vec_type(void) {
     return &VecType;
@@ -979,6 +980,7 @@ static VecCapsule Capsule = {
     &Vec_BoolAPI,
     get_vec_type,
 };
+#endif
 
 static PyMethodDef VecsMethods[] = {
     {"append",  vec_append, METH_VARARGS, "Append a value to the end of a vec"},
@@ -1091,6 +1093,7 @@ librt_vecs_module_exec(PyObject *m)
         return -1;
     }
 
+#ifndef MYPYC_STATIC_LINKING
     PyObject *c_api = PyCapsule_New(&Capsule, "librt.vecs._C_API", NULL);
     if (c_api == NULL)
         return -1;
@@ -1100,6 +1103,7 @@ librt_vecs_module_exec(PyObject *m)
         Py_DECREF(&VecType);
         return -1;
     }
+#endif
 
     Py_DECREF(ext);
     return 0;

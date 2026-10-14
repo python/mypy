@@ -20,6 +20,7 @@ class CompilerOptions:
         depends_on_librt_internal: bool = False,
         experimental_features: bool = False,
         strict_traceback_checks: bool = False,
+        static_linking: bool = False,
     ) -> None:
         self.strip_asserts = strip_asserts
         self.multi_file = multi_file
@@ -27,8 +28,13 @@ class CompilerOptions:
         self.separate = separate
         self.global_opts = not separate
         self.target_dir = target_dir or "build"
+        if static_linking and include_runtime_files:
+            # Each group would have a copy of the runtime, which can't be linked together
+            raise ValueError("include_runtime_files is not supported with static_linking")
         self.include_runtime_files = (
-            include_runtime_files if include_runtime_files is not None else not multi_file
+            include_runtime_files
+            if include_runtime_files is not None
+            else not multi_file and not static_linking
         )
         # The target Python C API version. Overriding this is mostly
         # useful in IR tests, since there's no guarantee that
@@ -73,3 +79,13 @@ class CompilerOptions:
         # tests to make sure that no new code which leads to incorrect tracebacks is
         # added.
         self.strict_traceback_checks = strict_traceback_checks
+        # Generate code for statically linking the compiled extensions together, along
+        # with librt. No capsules are used: other groups, shim modules and librt are
+        # accessed directly through linked C symbols instead. This is only useful when
+        # using an advanced build system (e.g. Bazel or Buck2) that statically links
+        # extensions together, and it's only supported via mypyc_build(). The build
+        # system is responsible for compiling and linking everything, including librt
+        # and the lib-rt runtime, and must define MYPYC_STATIC_LINKING when compiling
+        # all the C (generated code, lib-rt and librt). Shims must be generated from
+        # the module_shim*.tmpl templates in lib-rt.
+        self.static_linking = static_linking

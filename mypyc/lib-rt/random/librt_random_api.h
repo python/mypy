@@ -9,6 +9,11 @@
 int
 import_librt_random(void);
 
+#ifdef MYPYC_STATIC_LINKING
+// librt is statically linked, so the API functions (declared in librt_random.h) are
+// called directly, and type objects are referred to directly
+#define LibRTRandom_Random_type_internal() (&LibRTRandom_RandomType)
+#else
 extern void *LibRTRandom_API[LIBRT_RANDOM_API_LEN];
 
 #define LibRTRandom_ABIVersion (*(int (*)(void)) LibRTRandom_API[0])
@@ -24,6 +29,7 @@ extern void *LibRTRandom_API[LIBRT_RANDOM_API_LEN];
 #define LibRTRandom_module_randint_internal (*(int64_t (*)(int64_t, int64_t)) LibRTRandom_API[10])
 #define LibRTRandom_module_randrange1_internal (*(int64_t (*)(int64_t)) LibRTRandom_API[11])
 #define LibRTRandom_module_randrange2_internal (*(int64_t (*)(int64_t, int64_t)) LibRTRandom_API[12])
+#endif
 
 static inline bool CPyRandom_Check(PyObject *obj) {
     return Py_TYPE(obj) == LibRTRandom_Random_type_internal();
