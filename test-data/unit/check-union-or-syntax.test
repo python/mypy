@@ -94,12 +94,14 @@ b: X  # E: Variable "__main__.X" is not valid as a type \
 [builtins fixtures/type.pyi]
 
 [case testUnionOrSyntaxWithTypeAliasDeduplication]
-from typing import TypeAlias
+from typing_extensions import TypeAlias
+
 TextInput: TypeAlias = str
 ImageInput: TypeAlias = str | None
+
 SingleInput: TypeAlias = TextInput | ImageInput
 def f(si: SingleInput) -> None:
-    print(si)
+    pass
 f(1)  # E: Argument 1 to "f" has incompatible type "int"; expected "str | None"
 [builtins fixtures/type.pyi]
 
