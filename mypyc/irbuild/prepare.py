@@ -132,6 +132,14 @@ def build_type_map(
                     module.path, module.fullname, cdef, errors, mapper, options
                 )
 
+    # Set up constructors. This needs the method declarations of all classes. A class
+    # can be prepared before its base class, since the modules of a compilation group
+    # are prepared in name order.
+    for module, cdef in classes:
+        class_ir = mapper.type_to_ir[cdef.info]
+        if class_ir.is_ext_class:
+            prepare_init_method(cdef, class_ir, module.fullname, mapper)
+
     # Validate cross-class properties after all ClassIR flags are populated.
     for module, cdef in classes:
         with catch_errors(module.path, cdef.line):
@@ -640,7 +648,6 @@ def prepare_class_def(
     ir.base_mro = base_mro
 
     prepare_methods_and_attributes(cdef, ir, path, module_name, errors, mapper, options)
-    prepare_init_method(cdef, ir, module_name, mapper)
 
     for base in bases:
         if base.children is not None:
@@ -802,6 +809,23 @@ def check_matching_args(init_sig: FuncSignature, new_sig: FuncSignature) -> bool
     return True
 
 
+def has_non_native_new(cdef: ClassDef, mapper: Mapper) -> bool:
+    """Are instances of a class created by a __new__ method that isn't called natively?
+
+    This is ClassIR.has_non_native_new() for use before the methods have been built.
+    The methods of all classes in the MRO must have been declared.
+    """
+    for info in cdef.info.mro:
+        class_ir = mapper.type_to_ir.get(info)
+        symbol = info.names.get("__new__")
+        if class_ir is None or not class_ir.is_ext_class or symbol is None:
+            continue
+        if isinstance(symbol.node, (FuncDef, Decorator, OverloadedFuncDef)):
+            # A decorated method has no method declaration.
+            return "__new__" not in class_ir.method_decls
+    return False
+
+
 def prepare_init_method(cdef: ClassDef, ir: ClassIR, module_name: str, mapper: Mapper) -> None:
     # Set up a constructor decl
     init_node = cdef.info["__init__"].node
@@ -822,6 +846,9 @@ def prepare_init_method(cdef: ClassDef, ir: ClassIR, module_name: str, mapper: M
         if isinstance(new_node, FuncDef):
             new_sig = mapper.fdef_to_sig(new_node, True)
             args_match = check_matching_args(init_sig, new_sig)
+        if has_non_native_new(cdef, mapper):
+            # The constructor calls the type object with *args, **kwargs.
+            args_match = False
 
         defining_ir = mapper.type_to_ir.get(init_node.info)
         # If there is a nontrivial __init__ that wasn't defined in an

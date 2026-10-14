@@ -322,6 +322,17 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
     # Fill out slots in the type object from dunder methods.
     fields.update(generate_slots(cl, SLOT_DEFS, emitter))
 
+    if cl.has_non_native_new():
+        # Leave tp_new unset. When a decorated __new__ is set as an attribute of the
+        # class that defines it, Python sets tp_new to a function that calls __new__
+        # from the type dict, and subclasses inherit that. A tp_new of our own would
+        # add a default __new__ to the type dict, which would hide the decorated one.
+        fields.pop("tp_new", None)
+        if init_fn is not None and "tp_init" not in fields:
+            # An inherited tp_init may do nothing, since tp_new of a class without
+            # __new__ calls __init__.
+            fields["tp_init"] = generate_init_for_class(cl, init_fn, emitter)
+
     # Fill out dunder methods that live in tables hanging off the side.
     for table_name, type, slot_defs in SIDE_TABLES:
         slots = generate_slots(cl, slot_defs, emitter)
@@ -684,6 +695,10 @@ def generate_setup_for_class(
     struct_name = cl.struct_name(emitter.names)
     emitter.emit_line(f"{struct_name} *self;")
 
+    if cl.has_non_native_new() and not cl.allow_interpreted_subclasses:
+        # tp_new normally checks this, but this class doesn't have its own.
+        emit_interpreted_subclass_check(cl, emitter)
+
     prefix = cl.name_prefix(emitter.names)
     if cl.reuse_freed_instance:
         # Attempt to use a per-type free list first (a free "list" with up to one object only).
@@ -789,6 +804,31 @@ def emit_setup_or_dunder_new_call(
     emitter.emit_line("    return self;")
 
 
+def emit_interpreted_subclass_check(cl: ClassIR, emitter: Emitter) -> None:
+    """Emit C code to raise an exception unless the C variable "type" is the type object of cl."""
+    emitter.emit_line(f"if (type != {emitter.type_struct_name(cl)}) {{")
+    emitter.emit_line(
+        'PyErr_SetString(PyExc_TypeError, "interpreted classes cannot inherit from compiled");'
+    )
+    emitter.emit_line("return NULL;")
+    emitter.emit_line("}")
+
+
+def emit_type_object_call(cl: ClassIR, fn: FuncDecl, emitter: Emitter) -> None:
+    """Emit C code to return the result of calling the type object of cl.
+
+    The arguments are the arguments of fn, which is the constructor of cl.
+    """
+    type_arg = "(PyObject *)" + emitter.type_struct_name(cl)
+    if fn.sig.args:
+        # The constructor takes *args, **kwargs.
+        assert [arg.kind for arg in fn.sig.args] == [ARG_STAR, ARG_STAR2], fn.sig
+        args = ", ".join(REG_PREFIX + arg.name for arg in fn.sig.args)
+        emitter.emit_line(f"return PyObject_Call({type_arg}, {args});")
+    else:
+        emitter.emit_line(f"return PyObject_CallNoArgs({type_arg});")
+
+
 def generate_constructor_for_class(
     cl: ClassIR,
     fn: FuncDecl,
@@ -800,6 +840,12 @@ def generate_constructor_for_class(
     """Generate a native function that allocates and initializes an instance of a class."""
     emitter.emit_line(f"{native_function_header(fn, emitter)}")
     emitter.emit_line("{")
+
+    if cl.has_non_native_new():
+        # A decorated __new__ isn't called natively, so call the type object.
+        emit_type_object_call(cl, fn, emitter)
+        emitter.emit_line("}")
+        return
 
     fn_args = [REG_PREFIX + arg.name for arg in fn.sig.args]
     type_arg = "(PyObject *)" + emitter.type_struct_name(cl)
@@ -852,7 +898,12 @@ def generate_init_for_class(cl: ClassIR, init_fn: FuncIR, emitter: Emitter) -> s
     emitter.emit_line("static int")
     emitter.emit_line(f"{func_name}(PyObject *self, PyObject *args, PyObject *kwds)")
     emitter.emit_line("{")
-    if cl.allow_interpreted_subclasses or cl.builtin_base or cl.has_method("__new__"):
+    if (
+        cl.allow_interpreted_subclasses
+        or cl.builtin_base
+        or cl.has_method("__new__")
+        or cl.has_non_native_new()
+    ):
         emitter.emit_line(
             f"return {emitter.wrapper_function_call(init_fn.decl)}"
             "(self, args, kwds) != NULL ? 0 : -1;"
@@ -872,17 +923,15 @@ def generate_new_for_class(
     init_fn: FuncIR | None,
     emitter: Emitter,
 ) -> None:
+    if cl.has_non_native_new():
+        # The class doesn't have its own tp_new.
+        return
     emitter.emit_line("static PyObject *")
     emitter.emit_line(f"{func_name}(PyTypeObject *type, PyObject *args, PyObject *kwds)")
     emitter.emit_line("{")
     # TODO: Check and unbox arguments
     if not cl.allow_interpreted_subclasses:
-        emitter.emit_line(f"if (type != {emitter.type_struct_name(cl)}) {{")
-        emitter.emit_line(
-            'PyErr_SetString(PyExc_TypeError, "interpreted classes cannot inherit from compiled");'
-        )
-        emitter.emit_line("return NULL;")
-        emitter.emit_line("}")
+        emit_interpreted_subclass_check(cl, emitter)
 
     type_arg = "(PyObject*)type"
     new_args = "args, kwds"
@@ -1125,7 +1174,13 @@ def generate_methods_table(
         emitter.emit_line(f'{{"{fn.name.removeprefix(UNDECORATED_PREFIX)}",')
         emitter.emit_line(f" (PyCFunction){PREFIX}{fn.cname(emitter.names)},")
         flags = ["METH_FASTCALL", "METH_KEYWORDS"]
-        if fn.decl.kind == FUNC_STATICMETHOD:
+        if fn.name == "__new__" and "__new__" not in cl.method_decls:
+            # A decorated __new__. Its decorators get the callable that is in the type
+            # dict. The wrapper takes the class as self, like a class method, and a
+            # class method descriptor that is called with a class as the first argument
+            # binds itself to that class.
+            flags = ["METH_VARARGS", "METH_KEYWORDS", "METH_CLASS"]
+        elif fn.decl.kind == FUNC_STATICMETHOD:
             flags.append("METH_STATIC")
         elif fn.decl.kind == FUNC_CLASSMETHOD:
             flags.append("METH_CLASS")
