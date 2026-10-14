@@ -1399,6 +1399,33 @@ print(f(1))
 [out]
 2
 
+[case testReassignedNestedFunction]
+from typing import Callable, Generator
+
+def outer(flag: bool) -> list[int]:
+    out: list[int] = []
+    f: Callable[[int], None] = lambda n: out.append(-1)
+
+    def swap() -> None:
+        nonlocal f
+        f = lambda n: out.append(100 + n)
+
+    if flag:
+        def f(n: int) -> None:
+            def k(m: int) -> int:
+                return k(m - 1) if m else 0
+
+            out.append(n + k(2))
+            if n == 0:
+                swap()
+                f(1)   # should call the lambda installed by swap()
+    f(0)
+    return out
+
+def test_reassigned_nested_function() -> None:
+    assert outer(False) == [-1]
+    assert outer(True) == [0, 101]
+
 [case testStarArgFastPaths]
 from typing import Any, Mapping
 def fn(x: str, y: int) -> str:

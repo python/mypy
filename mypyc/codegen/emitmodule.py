@@ -22,7 +22,7 @@ from mypy.build import (
 )
 from mypy.errors import CompileError
 from mypy.fscache import FileSystemCache
-from mypy.nodes import MypyFile, TypeInfo
+from mypy.nodes import ClassDef, MypyFile, TypeInfo
 from mypy.options import Options
 from mypy.plugin import Plugin, ReportConfigContext
 from mypy.util import hash_digest, json_dumps
@@ -79,6 +79,7 @@ from mypyc.ir.rtypes import RType
 from mypyc.irbuild.main import build_ir
 from mypyc.irbuild.mapper import Mapper
 from mypyc.irbuild.prepare import load_type_map
+from mypyc.irbuild.util import is_decorated_class, is_extension_class, is_trait
 from mypyc.namegen import NameGenerator, exported_name
 from mypyc.options import CompilerOptions
 from mypyc.transform.borrow_generator_attrs import borrow_generator_attrs
@@ -136,6 +137,12 @@ class MypycPlugin(Plugin):
       * If the IR metadata is missing or stale or any of the generated
         C source files associated missing or stale, then we need to
         recompile the module so we mark it as stale.
+      * Mypy doesn't record class decorators, but some of them change how
+        other modules use a class: @mypyc_attr(native_class=False) and
+        @trait decide what kind of class mypyc generates, and a decorator
+        that can replace the class changes what its name refers to (see
+        ClassIR.is_decorated). So we make the kinds of a module's classes
+        part of its interface.
     """
 
     def __init__(
@@ -151,8 +158,11 @@ class MypycPlugin(Plugin):
         self.compiler_options = compiler_options
         self.metastore = create_metastore(options, parallel_worker=False)
 
-    def report_config_data(self, ctx: ReportConfigContext) -> tuple[str | None, list[str]] | None:
-        # The config data we report is the group map entry for the module.
+    def report_config_data(
+        self, ctx: ReportConfigContext
+    ) -> tuple[str | None, list[str], list[tuple[str, bool, bool, bool]]] | None:
+        # The config data we report is the group map entry for the module,
+        # followed by the kinds of its classes (see class_kinds).
         # If the data is being used to check validity, we do additional checks
         # that the IR cache exists and matches the metadata cache and all
         # output source files exist and are up to date.
@@ -164,7 +174,8 @@ class MypycPlugin(Plugin):
 
         # If we aren't doing validity checks, just return the cache data
         if not is_check:
-            return self.group_map[id]
+            assert self._modules is not None
+            return (*self.group_map[id], class_kinds(self._modules[id], self.options))
 
         # Load the metadata and IR cache
         meta_path, _, _ = get_cache_names(id, path, self.options)
@@ -198,7 +209,14 @@ class MypycPlugin(Plugin):
             if hash != real_hash:
                 return None
 
-        return self.group_map[id]
+        # The module hasn't been parsed yet, so take the class kinds from the
+        # cached IR. It was built from the source the cache is for.
+        kinds = sorted(
+            (c["name"], c["is_ext_class"], c["is_trait"], c["is_decorated"])
+            for c in ir_data["ir"]["classes"]
+            if not c["is_generated"]
+        )
+        return (*self.group_map[id], kinds)
 
     def get_additional_deps(self, file: MypyFile) -> list[tuple[int, str, int]]:
         # Report dependency on modules in the module's group
@@ -225,6 +243,25 @@ class MypycPlugin(Plugin):
                 for ancestor in node.mro[1:]:
                     mods.add(ancestor.module_name)
         return mods
+
+
+def class_kinds(tree: MypyFile, options: Options) -> list[tuple[str, bool, bool, bool]]:
+    """Return (name, is_ext_class, is_trait, is_decorated) for each class in a module.
+
+    These match the ClassIR flags that build_type_map sets.
+    """
+    # Any errors are reported when the module is compiled.
+    errors = Errors(options)
+    return sorted(
+        (
+            node.name,
+            is_extension_class(tree.path, node, errors),
+            is_trait(node),
+            is_decorated_class(node),
+        )
+        for node in tree.defs
+        if isinstance(node, ClassDef)
+    )
 
 
 def parse_and_typecheck(

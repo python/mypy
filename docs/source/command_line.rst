@@ -1038,7 +1038,7 @@ Parallel type-checking
 
 By default, mypy checks all modules in the same Python process. This can be slow
 for large code bases. Mypy offers parallel type-checking mode using
-multiple worker processes. In parallel mode, modules that do not depend om each
+multiple worker processes. In parallel mode, modules that do not depend on each
 other are type-checked in parallel. :ref:`Incremental cache <incremental>` is
 used to manage most of the shared state. Parallel type-checking also requires
 :option:`--local-partial-types <mypy --no-local-partial-types>`, which is

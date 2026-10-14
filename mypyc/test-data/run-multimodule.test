@@ -530,6 +530,38 @@ globals()['A'] = None
 [file driver.py]
 import other_main
 
+[case testMultiModuleDecoratedMethodOverride]
+from typing import Any, Callable, TypeVar
+from other_base import Base, call_method
+
+F = TypeVar("F", bound=Callable[..., Any])
+
+def add_ten(f: F) -> F:
+    def wrapper(self: Any, x: int) -> int:
+        return f(self, x) + 10
+    return wrapper  # type: ignore[return-value]
+
+class Derived(Base):
+    @add_ten
+    def method(self, x: int) -> int:
+        return x * 2
+
+def test_decorated_override() -> None:
+    d = Derived()
+    assert d.method(1) == 12
+    assert call_method(d, 1) == 12
+    assert call_method(Base(), 1) == 1
+
+[file other_base.py]
+class Base:
+    def method(self, x: int) -> int:
+        return x
+
+def call_method(b: Base, x: int) -> int:
+    return b.method(x)
+
+[typing fixtures/typing-full.pyi]
+
 [case testNonNativeImportInPackageFile]
 # The import is really non-native only in separate compilation mode where __init__.py and
 # other_cache.py are in different libraries and the import uses the standard Python procedure.
@@ -1042,6 +1074,55 @@ except TypeError:
 else:
     assert False
 
+[case testMultiModuleAnnotationOfClassNotCreatedYet]
+from __future__ import annotations
+
+from dataclasses import dataclass
+from typing import TYPE_CHECKING
+
+from mypy_extensions import mypyc_attr
+
+from other_a import A
+
+if TYPE_CHECKING:
+    from other_b import B
+
+@dataclass(frozen=True)
+class Data:
+    a: A
+    b: B
+    quoted: "B"
+
+@mypyc_attr(native_class=False)
+class NonNative:
+    a: A
+    b: B
+
+[file other_a.py]
+class A:
+    pass
+
+[file other_b.py]
+class B:
+    pass
+
+[file driver.py]
+from dataclasses import fields
+
+# Importing native doesn't import other_b, so class B doesn't exist yet when the
+# classes in native are created
+import native
+from other_a import A
+
+assert native.Data.__annotations__ == {"a": A, "b": "other_b.B", "quoted": "other_b.B"}
+assert [f.type for f in fields(native.Data)] == [A, "other_b.B", "other_b.B"]
+assert native.NonNative.__annotations__ == {"a": A, "b": "other_b.B"}
+
+from other_b import B
+
+d = native.Data(A(), B(), B())
+assert isinstance(d.b, B)
+
 [case testMultiModuleRelative]
 from package.a import f
 [file package/__init__.py]
@@ -1442,6 +1523,111 @@ import native
 [out2]
 5
 
+[case testIncrementalCompilationAddingNonClassDecorator]
+# Mypy ignores class decorators, but adding one that replaces the class must
+# recompile native.py, since C then no longer refers to the class itself.
+from typing import Any, cast
+from other import C
+
+def same_instance() -> bool:
+    cls = cast(Any, C)
+    return cls() is cls()
+
+[file other.py]
+from functools import cache
+from mypy_extensions import mypyc_attr
+
+@mypyc_attr(native_class=False)
+class C:
+    pass
+
+[file other.py.2]
+from functools import cache
+from mypy_extensions import mypyc_attr
+
+@cache
+@mypyc_attr(native_class=False)
+class C:
+    pass
+
+[file other.py.3]
+from functools import cache
+from mypy_extensions import mypyc_attr
+
+@mypyc_attr(native_class=False)
+class C:
+    pass
+
+[file driver.py]
+from native import same_instance
+from other import C
+
+print(same_instance(), C() is C())
+[out]
+False False
+[out2]
+True True
+[out3]
+False False
+
+[rechecked native, other]
+[rechecked2 native, other]
+
+[case testIncrementalCompilationAddingNonClassDecoratorToNativeClass]
+# The decorator also makes C a non-native class, which changes how native.py
+# constructs it. In step 3 other.py is unchanged, so it must stay fresh.
+from other import C
+
+def get() -> int:
+    return C(3).get()
+
+def same_instance() -> bool:
+    return C(1) is C(1)
+
+[file native.py.3]
+from other import C
+
+def get() -> int:
+    return C(4).get()
+
+def same_instance() -> bool:
+    return C(1) is C(1)
+
+[file other.py]
+from functools import cache
+
+class C:
+    def __init__(self, x: int) -> None:
+        self.x = x
+
+    def get(self) -> int:
+        return self.x
+
+[file other.py.2]
+from functools import cache
+
+@cache
+class C:
+    def __init__(self, x: int) -> None:
+        self.x = x
+
+    def get(self) -> int:
+        return self.x
+
+[file driver.py]
+from native import get, same_instance
+
+print(get(), same_instance())
+[out]
+3 False
+[out2]
+3 True
+[out3]
+4 True
+
+[rechecked native, other]
+[rechecked2 native]
+
 [case testIncrementalCompilationWithNonClassTypeDef]
 import other_a
 [file other_a.py]
@@ -1489,6 +1675,134 @@ import native
 15
 NT(x=4)
 {'x': 5}
+
+[case testIncrementalCompilationTogglingNonExtClass]
+# Mypy ignores mypyc_attr, so making C a non-native class (or a native class
+# again) doesn't change the interface of other.py. native.py must still be
+# recompiled, since it constructs C and accesses its attributes differently.
+# In step 3 other.py is unchanged, so it must stay fresh.
+from other import C
+
+def make(x: int) -> C:
+    return C(x)
+
+def get(c: C) -> int:
+    return c.x
+
+[file other.py]
+from mypy_extensions import mypyc_attr
+
+class C:
+    def __init__(self, x: int) -> None:
+        self.x = x
+
+[file other.py.2]
+from mypy_extensions import mypyc_attr
+
+@mypyc_attr(native_class=False)
+class C:
+    def __init__(self, x: int) -> None:
+        self.x = x
+
+[file native.py.3]
+from other import C
+
+def make(x: int) -> C:
+    return C(x + 1)
+
+def get(c: C) -> int:
+    return c.x
+
+[file other.py.4]
+from mypy_extensions import mypyc_attr
+
+class C:
+    def __init__(self, x: int) -> None:
+        self.x = x
+
+[file driver.py]
+from native import get, make
+
+c = make(3)
+print(get(c), hasattr(c, "__dict__"))
+[out]
+3 False
+[out2]
+3 True
+[out3]
+4 True
+[out4]
+4 False
+
+[rechecked native, other]
+[rechecked2 native]
+[rechecked3 native, other]
+
+[case testIncrementalCompilationTogglingTrait]
+# Mypy also ignores @trait. Making T a trait changes how other.py calls m(),
+# so native.py must be recompiled to give D a vtable that matches.
+# In step 3 other.py is unchanged, so it must stay fresh.
+from other import T
+
+class D(T):
+    def m(self) -> int:
+        return 2
+
+[file other.py]
+from mypy_extensions import trait
+
+class T:
+    def m(self) -> int:
+        return 1
+
+def call(t: T) -> int:
+    return t.m()
+
+[file other.py.2]
+from mypy_extensions import trait
+
+@trait
+class T:
+    def m(self) -> int:
+        return 1
+
+def call(t: T) -> int:
+    return t.m()
+
+[file native.py.3]
+from other import T
+
+class D(T):
+    def m(self) -> int:
+        return 3
+
+[file other.py.4]
+from mypy_extensions import trait
+
+class T:
+    def m(self) -> int:
+        return 1
+
+def call(t: T) -> int:
+    return t.m()
+
+[file driver.py]
+from native import D
+from other import call
+
+print(call(D()))
+[out]
+2
+[out2]
+2
+[out3]
+3
+[out4]
+3
+
+[rechecked native, other]
+[rechecked2 native]
+[rechecked3 native, other]
 
 [case testExtraLibRtSourceFileDep]
 table_list = list(range(256))
@@ -1924,6 +2238,131 @@ hello
 [out2]
 empty
 hello
+
+[case testIncrementalCrossGroupDecoratedDunderNew]
+# A class with a decorated __new__ inherits tp_new, and so does a subclass that
+# inherits the __new__. When only the module of the subclass is recompiled, the
+# base class is loaded from the incremental cache, which doesn't have the
+# decorators.
+from typing import Any
+
+from other_a import Child, ChildWithInit
+from other_b import Base, log
+
+def take() -> list[str]:
+    result = list(log)
+    log.clear()
+    return result
+
+def test() -> None:
+    log.clear()
+    any_base: Any = Base
+    for base in Base, any_base:
+        b = base(1)
+        assert take() == ["before Base (1,)", "new", "after", "Root 1"]
+        assert b.x == 1
+    # Use Any to get non-native semantics
+    any_child: Any = Child
+    for child in Child, any_child:
+        c = child(2)
+        assert take() == ["before Child (2,)", "new", "after", "Root 2"]
+        assert type(c) is Child
+        assert c.x == 2
+    any_child = ChildWithInit
+    for child_with_init in ChildWithInit, any_child:
+        d = child_with_init(3)
+        assert take() == ["before ChildWithInit (3,)", "new", "after", "Root 4", "ChildWithInit"]
+        assert d.x == 4
+    e = Base.__new__(Child, 4)
+    assert take() == ["before Child (4,)", "new", "after"]
+    assert type(e) is Child
+
+[file other_a.py]
+from other_b import Base, log
+
+class Child(Base):
+    pass
+
+class ChildWithInit(Base):
+    def __init__(self, x: int) -> None:
+        super().__init__(x + 1)
+        log.append("ChildWithInit")
+
+[file other_a.py.2]
+from other_b import Base, log
+
+class Child(Base):
+    pass
+
+class ChildWithInit(Base):
+    def __init__(self, x: int) -> None:
+        super().__init__(x + 1)
+        log.append("ChildWithInit")
+
+def _force_recompile() -> int:
+    return 1
+
+[file other_b.py]
+from typing import Any, Callable, TypeVar
+
+F = TypeVar("F", bound=Callable[..., Any])
+
+log: list[str] = []
+
+def logged(f: F) -> F:
+    def wrapper(cls: Any, *args: Any) -> Any:
+        log.append(f"before {cls.__name__} {args}")
+        obj = f(cls, *args)
+        log.append("after")
+        return obj
+    return wrapper  # type: ignore[return-value]
+
+class Root:
+    def __init__(self, x: int) -> None:
+        log.append(f"Root {x}")
+        self.x = x
+
+class Base(Root):
+    @logged
+    def __new__(cls, x: int) -> Any:
+        log.append("new")
+        return super().__new__(cls)
+
+[file driver.py]
+from native import test
+test()
+
+[case testDecoratedNewInBaseClassPreparedAfterSubclass]
+# The modules of a compilation group are prepared in name order, so Child is
+# prepared before Base. mypy removes @staticmethod from the decorators of
+# __new__, so it's a native method, and the constructor of Child calls it and
+# __init__ natively.
+from other import Base
+
+class Child(Base):
+    def __init__(self) -> None:
+        raise ValueError("expected init failure")
+
+def construct() -> Child:
+    return Child()
+
+[file other.py]
+from typing import Any
+
+class Base:
+    @staticmethod
+    def __new__(cls) -> Any:
+        return super().__new__(cls)
+
+    def __init__(self) -> None:
+        pass
+
+[file driver.py]
+from native import construct
+from testutil import assertRaises
+
+with assertRaises(ValueError):
+    construct()
 
 [case testIncrementalCrossModuleInheritedAttrDefaultsWithOverride]
 # Regression: same shape as testIncrementalCrossModuleInheritedAttrDefaults,

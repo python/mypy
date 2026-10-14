@@ -1487,8 +1487,15 @@ class LowLevelIRBuilder:
             and not base.type.class_ir.builtin_base
         ):
             name = name if base.type.class_ir.is_ext_class else fast_name
-            if base.type.class_ir.has_method(name):
+            # Property getters are also stored as methods, but obj.prop(...) calls the
+            # property's value, so handle properties like attributes below.
+            if (
+                base.type.class_ir.has_method(name)
+                and not base.type.class_ir.method_decl(name).is_prop_getter
+            ):
                 decl = base.type.class_ir.method_decl(name)
+                if decl.is_decorated_override:
+                    return self.py_method_call(base, name, arg_values, line, arg_kinds, arg_names)
                 if arg_kinds is None:
                     assert arg_names is None, "arg_kinds not present but arg_names is"
                     arg_kinds = [ARG_POS for _ in arg_values]

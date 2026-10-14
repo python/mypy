@@ -1406,7 +1406,12 @@ def get_protocol_member(
         # if constructor signature didn't match, this can cause many false negatives.
         return None
 
-    subtype = find_member(member, left, original_left, class_obj=class_obj, is_lvalue=is_lvalue)
+    # We only reject attributes that give an error on subtype. This is not very principled,
+    # but this simplifies logic because we apply subtype as a self-type for supertype
+    # attribute access.
+    subtype = find_member(
+        member, left, original_left, class_obj=class_obj, is_lvalue=is_lvalue, strict_attrs=True
+    )
     if isinstance(subtype, PartialType):
         subtype = (
             NoneType()
@@ -1426,6 +1431,7 @@ def find_member(
     is_operator: bool = False,
     class_obj: bool = False,
     is_lvalue: bool = False,
+    strict_attrs: bool = False,
 ) -> Type | None:
     type_checker = checker_state.type_checker
     if type_checker is None:
@@ -1488,9 +1494,12 @@ def find_member(
     with type_checker.msg.filter_errors(filter_deprecated=True):
         if class_obj:
             fallback = itype.type.metaclass_type or mx.named_type("builtins.type")
-            return analyze_class_attribute_access(itype, name, mx, mcs_fallback=fallback)
+            result = analyze_class_attribute_access(itype, name, mx, mcs_fallback=fallback)
         else:
-            return analyze_instance_member_access(name, itype, mx, info)
+            result = analyze_instance_member_access(name, itype, mx, info)
+    if strict_attrs and mx.attribute_error:
+        return None
+    return result
 
 
 def find_member_simple(

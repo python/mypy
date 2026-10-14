@@ -2412,3 +2412,22 @@ class K(Base):
 class Base: ...
 reveal_type(K.q)  # N: Revealed type is "builtins.list[tuple[builtins.bool, builtins.int, builtins.str]]"
 [builtins fixtures/tuple.pyi]
+
+[case testTypeVarTupleCapturedByParamSpec_no_verbose_reveal]
+from typing import Callable
+
+class capture[**P, R]:
+    def __init__(self, func: Callable[P, R]): ...
+    def __call__(self, *args: P.args, **kwargs: P.kwargs) -> C[P, R]: ...
+
+class C[**P, R]: ...
+
+@capture
+def print_args[*Ts](*args: *Ts) -> tuple[*Ts]: ...
+
+reveal_type(print_args(2))  # N: Revealed type is "__main__.C[[Literal[2]?], tuple[Literal[2]?]]"
+
+def test[*Us](*xs: *Us) -> None:
+    # TODO: we should erase last_known_values from Parameters.
+    reveal_type(print_args(2, *xs, 4))  # N: Revealed type is "__main__.C[[Literal[2]?, *args: *tuple[*Us, Literal[4]?]], tuple[Literal[2]?, *Us, Literal[4]?]]"
+[builtins fixtures/paramspec.pyi]

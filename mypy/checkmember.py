@@ -101,6 +101,7 @@ class MemberContext:
         rvalue: Expression | None = None,
         suppress_errors: bool = False,
         preserve_type_var_ids: bool = False,
+        attribute_error: bool = False,
     ) -> None:
         self.is_lvalue = is_lvalue
         self.is_super = is_super
@@ -121,6 +122,13 @@ class MemberContext:
         # It is needed to avoid infinite recursion in cases involving self-referential
         # generic methods, see find_member() for details. Do not use for other purposes!
         self.preserve_type_var_ids = preserve_type_var_ids
+        # This is again used for protocol subtype checks. Normally protocol checks first
+        # quickly reject an attribute access by checking if there is a relevant symbol.
+        # This doesn't work in case of restricted self-types. We cannot rely on error
+        # messages, as those may be emitted in cases where an attribute access is valid
+        # for the purposes of structural subtyping. So instead we use this mutable attribute
+        # to indicate such failures reliably.
+        self.attribute_error = attribute_error
 
     def named_type(self, name: str) -> Instance:
         return self.chk.named_type(name)
@@ -152,6 +160,7 @@ class MemberContext:
             rvalue=self.rvalue,
             suppress_errors=self.suppress_errors,
             preserve_type_var_ids=self.preserve_type_var_ids,
+            attribute_error=self.attribute_error,
         )
         if self_type is not None:
             mx.self_type = self_type
@@ -375,9 +384,7 @@ def analyze_instance_member_access(
             if isinstance(method, (FuncDef, OverloadedFuncDef)) and method.is_trivial_self:
                 signature = bind_self_fast(signature, mx.self_type)
             else:
-                signature = check_self_arg(
-                    signature, mx.self_type, method.is_class, mx.context, name, mx.msg
-                )
+                signature = check_self_arg(signature, method.is_class, name, mx)
                 signature = bind_self(signature, mx.self_type, is_classmethod=method.is_class)
         typ = map_instance_to_supertype(typ, method.info)
         member_type = expand_type_by_instance(signature, typ)
@@ -501,6 +508,9 @@ def analyze_union_member_access(name: str, typ: UnionType, mx: MemberContext) ->
             # Self types should be bound to every individual item of a union.
             item_mx = mx.copy_modified(self_type=subtype)
             results.append(_analyze_member_access(name, subtype, item_mx))
+            if item_mx.attribute_error:
+                # Record an error if there is an error on at least one union item.
+                mx.attribute_error = True
     return make_simplified_union(results)
 
 
@@ -973,7 +983,7 @@ def expand_and_bind_callable(
     if is_trivial_self:
         typ = bind_self_fast(typ, mx.self_type)
     else:
-        typ = check_self_arg(typ, mx.self_type, var.is_classmethod, mx.context, name, mx.msg)
+        typ = check_self_arg(typ, var.is_classmethod, name, mx)
         typ = bind_self(typ, mx.self_type, var.is_classmethod)
     expanded = expand_type_by_instance(typ, itype)
     freeze_all_type_vars(expanded)
@@ -1050,12 +1060,7 @@ def expand_self_type_if_needed(
 
 
 def check_self_arg(
-    functype: FunctionLike,
-    dispatched_arg_type: Type,
-    is_classmethod: bool,
-    context: Context,
-    name: str,
-    msg: MessageBuilder,
+    functype: FunctionLike, is_classmethod: bool, name: str, mx: MemberContext
 ) -> FunctionLike:
     """Check that an instance has a valid type for a method with annotated 'self'.
 
@@ -1070,6 +1075,7 @@ def check_self_arg(
     if not items:
         return functype
     new_items = []
+    dispatched_arg_type = mx.self_type
     if is_classmethod:
         dispatched_arg_type = TypeType.make_normalized(dispatched_arg_type)
     p_dispatched_arg_type = get_proper_type(dispatched_arg_type)
@@ -1077,7 +1083,7 @@ def check_self_arg(
     for item in items:
         if not item.arg_types or item.arg_kinds[0] not in (ARG_POS, ARG_STAR):
             # No positional first (self) argument (*args is okay).
-            msg.no_formal_self(name, item, context)
+            mx.msg.no_formal_self(name, item, mx.context)
             # This is pretty bad, so just return the original signature if
             # there is at least one such error.
             return functype
@@ -1119,9 +1125,10 @@ def check_self_arg(
             raise NotImplementedError
     if not new_items:
         # Choose first item for the message (it may be not very helpful for overloads).
-        msg.incompatible_self_argument(
-            name, dispatched_arg_type, items[0], is_classmethod, context
+        mx.msg.incompatible_self_argument(
+            name, dispatched_arg_type, items[0], is_classmethod, mx.context
         )
+        mx.attribute_error = True
         return functype
     if len(new_items) == 1:
         return new_items[0]
@@ -1287,7 +1294,7 @@ def analyze_class_attribute_access(
             and not is_trivial_self
             and not t.bound()
         ):
-            t = check_self_arg(t, mx.self_type, False, mx.context, name, mx.msg)
+            t = check_self_arg(t, False, name, mx)
         t = add_class_tvars(
             t,
             isuper,
@@ -1492,7 +1499,7 @@ def analyze_decorator_or_funcbase_access(
     typ = mx.chk.function_type(defn)
     if isinstance(defn, (FuncDef, OverloadedFuncDef)) and defn.is_trivial_self:
         return bind_self_fast(typ, mx.self_type)
-    typ = check_self_arg(typ, mx.self_type, defn.is_class, mx.context, name, mx.msg)
+    typ = check_self_arg(typ, defn.is_class, name, mx)
     return bind_self(typ, original_type=mx.self_type, is_classmethod=defn.is_class)
 
 

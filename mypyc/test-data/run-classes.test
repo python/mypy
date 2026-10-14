@@ -125,6 +125,24 @@ print(C.__annotations__["spam"] is JSONDecoder)
 [out]
 True
 
+[case testNonExtClassAnnotationOfClassNotCreatedYet]
+from __future__ import annotations
+
+from mypy_extensions import mypyc_attr
+
+@mypyc_attr(native_class=False)
+class Node:
+    parent: Node
+    later: Later
+
+class Later:
+    pass
+
+[file driver.py]
+from native import Node
+
+assert Node.__annotations__ == {"parent": "native.Node", "later": "native.Later"}
+
 [case testClassWithDeletableAttributes]
 from typing import Any, cast
 from testutil import assertRaises
@@ -313,6 +331,106 @@ assert get(o, "test") == "test"
 assert o.get(20) == 20
 
 assert get_class_var() == 'xy'
+
+[case testNonExtClassDecoratorReturningNonClass]
+from functools import cache
+from typing import Any, Callable, TypeVar, cast
+
+from mypy_extensions import mypyc_attr
+
+T = TypeVar("T")
+
+@cache
+class Group:
+    size = 10
+
+    def __init__(self, d: int) -> None:
+        self.d = d
+
+    def order(self) -> int:
+        return self.d * 2
+
+    def same(self, other: Group) -> bool:
+        return self is other
+
+def make(d: int) -> Group:
+    return Group(d)
+
+def order(g: Group) -> int:
+    return g.order()
+
+@mypyc_attr(native_class=False)
+class Base:
+    def __init__(self, x: int) -> None:
+        self.x = x
+
+@cache
+class Derived(Base):
+    def __init__(self, x: int) -> None:
+        super().__init__(x)
+        self.y = x + 1
+
+def singleton(cls: Callable[[], T]) -> Callable[[], T]:
+    instances: list[T] = []
+
+    def get() -> T:
+        if not instances:
+            instances.append(cls())
+        return instances[0]
+
+    return get
+
+@singleton
+class Config:
+    def __init__(self) -> None:
+        self.value = 5
+
+    def get_value(self) -> int:
+        return self.value
+
+def replace_class(cls: Any) -> Any:
+    # Return a new class with the same namespace, like six.add_metaclass does
+    ns = {k: v for k, v in cls.__dict__.items() if k not in ("__dict__", "__weakref__")}
+    return type(cls)(cls.__name__, cls.__bases__, ns)
+
+@replace_class
+class Replaced:
+    def __init__(self, v: int) -> None:
+        self.v = v
+
+    def get(self) -> int:
+        return self.v
+
+def make_replaced(v: int) -> Replaced:
+    return Replaced(v)
+
+def test_cache() -> None:
+    g = make(3)
+    assert g.order() == 6
+    assert order(g) == 6
+    assert g is make(3)
+    assert g is Group(3)
+    assert g is not make(4)
+    assert g.same(Group(3))
+    assert Group.size == 10
+    assert type(Group).__name__ == "_lru_cache_wrapper"
+    assert cast(Any, Group).cache_info().currsize == 2
+
+def test_super() -> None:
+    d = Derived(4)
+    assert d.x == 4
+    assert d.y == 5
+    assert d is Derived(4)
+
+def test_singleton() -> None:
+    c = Config()
+    assert c.get_value() == 5
+    assert c is Config()
+
+def test_decorator_returning_class() -> None:
+    r = make_replaced(5)
+    assert r.get() == 5
+    assert type(r) is Replaced
 
 [case testEnum]
 from enum import Enum
@@ -567,6 +685,79 @@ assert c.x == 'x'
 c.set([1])
 assert c.x == [1]
 assert c.get() == [1]
+
+[case testNonNativeGenericClass]
+from typing import Dict, Generic, TypeVar
+from mypy_extensions import mypyc_attr
+
+T = TypeVar("T")
+S = TypeVar("S")
+
+@mypyc_attr(native_class=False)
+class G(Generic[T]):
+    def __init__(self, x: T) -> None:
+        self.x = x
+
+@mypyc_attr(native_class=False)
+class Known:
+    pass
+
+@mypyc_attr(native_class=False)
+class GenericFirst(Generic[T], Known):
+    pass
+
+@mypyc_attr(native_class=False)
+class GenericLast(Known, Generic[T]):
+    pass
+
+@mypyc_attr(native_class=False)
+class Sub(G[int]):
+    pass
+
+@mypyc_attr(native_class=False)
+class ImplicitGeneric(G[T]):
+    pass
+
+@mypyc_attr(native_class=False)
+class TwoParams(G[T], Generic[S, T]):
+    pass
+
+@mypyc_attr(native_class=False)
+class DictSub(Dict[str, int]):
+    pass
+
+def make() -> G[int]:
+    return G[int](5)
+
+[file driver.py]
+from typing import Generic
+from native import (
+    G, T, S, Known, GenericFirst, GenericLast, Sub, ImplicitGeneric, TwoParams, DictSub, make
+)
+
+assert G.__bases__ == (Generic,)
+assert G.__orig_bases__ == (Generic[T],)
+assert G.__parameters__ == (T,)
+assert G[int](3).x == 3
+assert G[int].__origin__ is G
+assert make().x == 5
+
+assert GenericFirst.__bases__ == (Generic, Known)
+assert GenericLast.__bases__ == (Known, Generic)
+assert GenericFirst.__parameters__ == GenericLast.__parameters__ == (T,)
+
+assert Sub.__bases__ == (G,)
+assert Sub.__orig_bases__ == (G[int],)
+assert Sub.__parameters__ == ()
+assert Sub(7).x == 7
+
+assert ImplicitGeneric.__parameters__ == (T,)
+assert ImplicitGeneric[str]("a").x == "a"
+assert TwoParams.__bases__ == (G, Generic)
+assert TwoParams.__parameters__ == (S, T)
+
+assert DictSub.__bases__ == (dict, Generic)
+assert DictSub(a=1) == {"a": 1}
 
 [case testSubclass1]
 from typing import Tuple
@@ -931,6 +1122,274 @@ yo!
 yo!
 3
 yo!
+
+[case testSuperInClassMethod]
+from typing import Any
+from mypy_extensions import trait
+
+class A:
+    @classmethod
+    def name(cls) -> str:
+        return cls.__name__
+
+    @classmethod
+    def tagged(cls, tag: str, n: int = 1) -> str:
+        return f"{tag}{n}:{cls.__name__}"
+
+    @staticmethod
+    def static(x: int) -> int:
+        return x + 1
+
+    def method(self) -> str:
+        return "A.method:" + type(self).__name__
+
+class B(A):
+    @classmethod
+    def name(cls) -> str:
+        return "B." + super().name()
+
+    @classmethod
+    def tagged(cls, tag: str, n: int = 1) -> str:
+        return "B." + super().tagged(tag, n=n + 1)
+
+    @classmethod
+    def two_arg(cls) -> str:
+        return "B." + super(B, cls).name()
+
+    @classmethod
+    def call_static(cls, x: int) -> int:
+        return super().static(x) + 10
+
+    @classmethod
+    def call_method(cls, b: "B") -> str:
+        # An instance method looked up through the class isn't bound
+        return "B." + super().method(b)
+
+    def from_instance(self) -> str:
+        return "B." + super().name() + "+" + super(B, self).name()
+
+class C(B):
+    @classmethod
+    def name(cls) -> str:
+        return "C." + super().name()
+
+def test_super_in_classmethod() -> None:
+    assert B.name() == "B.B"
+    assert C.name() == "C.B.C"
+    assert C().name() == "C.B.C"
+    assert B.tagged("x") == "B.x2:B"
+    assert C.tagged("x", 5) == "B.x6:C"
+    assert B.two_arg() == "B.B"
+    assert C.two_arg() == "B.C"
+    assert C.call_static(1) == 12
+    assert C.call_method(C()) == "B.A.method:C"
+    assert B().from_instance() == "B.B+B"
+    assert C().from_instance() == "B.C+C"
+
+@trait
+class T:
+    @classmethod
+    def describe(cls) -> str:
+        return "T:" + cls.__name__
+
+class D(T):
+    @classmethod
+    def describe(cls) -> str:
+        return "D." + super().describe()
+
+class E(D):
+    pass
+
+def test_super_in_classmethod_with_trait() -> None:
+    assert D.describe() == "D.T:D"
+    assert E.describe() == "D.T:E"
+
+init_subclass_log: list[str] = []
+
+class Hooked:
+    def __init_subclass__(cls, **kwargs: Any) -> None:
+        super().__init_subclass__(**kwargs)
+        init_subclass_log.append("Hooked:" + cls.__name__)
+
+class HookedChild(Hooked):
+    def __init_subclass__(cls, **kwargs: Any) -> None:
+        super().__init_subclass__(**kwargs)
+        init_subclass_log.append("HookedChild:" + cls.__name__)
+
+class HookedGrandchild(HookedChild):
+    pass
+
+def test_super_in_init_subclass() -> None:
+    assert init_subclass_log == [
+        "Hooked:HookedChild",
+        "Hooked:HookedGrandchild",
+        "HookedChild:HookedGrandchild",
+    ]
+
+class New(A):
+    made_by: str
+
+    def __new__(cls) -> "New":
+        obj = super().__new__(cls)
+        obj.made_by = super().name()
+        return obj
+
+class NewChild(New):
+    pass
+
+def test_super_in_dunder_new() -> None:
+    assert New().made_by == "New"
+    assert NewChild().made_by == "NewChild"
+
+[case testSuperInGeneratorAndNestedFunction]
+import asyncio
+from typing import Callable, Iterator
+
+class A:
+    @classmethod
+    def name(cls) -> str:
+        return cls.__name__
+
+    @classmethod
+    async def async_name(cls) -> str:
+        return "A.async_name:" + cls.__name__
+
+    def method(self) -> str:
+        return "A.method:" + type(self).__name__
+
+class B(A):
+    @classmethod
+    def gen_cls(cls) -> Iterator[str]:
+        yield super().name()
+
+    def gen(self) -> Iterator[str]:
+        yield super().name()
+        yield super(B, self).name()
+        yield super().method()
+
+    @classmethod
+    async def async_name(cls) -> str:
+        return "B." + await super().async_name() + "+" + super().name()
+
+    async def coro(self) -> str:
+        return await super().async_name() + "+" + super().name()
+
+    def nested(self) -> list[str]:
+        def two_arg() -> str:
+            return super(B, self).method() + "+" + super(B, self).name()
+
+        # Zero-argument super() uses the first argument of the nested function
+        def zero_arg(b: B) -> str:
+            return super().method() + "+" + super().name()
+
+        f: Callable[[], str] = lambda: super(B, self).method()
+        return [two_arg(), zero_arg(self), f()]
+
+    @classmethod
+    def nested_cls(cls) -> list[str]:
+        def zero_arg(c: type[B]) -> str:
+            return super().name()
+
+        f: Callable[[], str] = lambda: super(B, cls).name()
+        return [zero_arg(cls), f()]
+
+class C(B):
+    pass
+
+def test_super_in_generator() -> None:
+    assert list(B.gen_cls()) == ["B"]
+    assert list(C.gen_cls()) == ["C"]
+    assert list(C().gen()) == ["C", "C", "A.method:C"]
+
+def test_super_in_coroutine() -> None:
+    assert asyncio.run(B.async_name()) == "B.A.async_name:B+B"
+    assert asyncio.run(C.async_name()) == "B.A.async_name:C+C"
+    assert asyncio.run(C().coro()) == "A.async_name:C+C"
+
+def test_super_in_nested_function() -> None:
+    assert C().nested() == ["A.method:C+C", "A.method:C+C", "A.method:C"]
+    assert C.nested_cls() == ["C", "C"]
+
+[file asyncio/__init__.pyi]
+def run(x: object) -> object: ...
+
+[case testSuperSelfReassignedInArguments]
+from typing import Iterator
+
+class A:
+    def __init__(self, label: str) -> None:
+        self.label = label
+
+    def method(self, unused: int) -> str:
+        return self.label
+
+    @classmethod
+    def name(cls, unused: int) -> str:
+        return cls.__name__
+
+class B(A):
+    # super() binds self before the arguments are evaluated
+
+    def method(self, unused: int) -> str:
+        def change_receiver() -> int:
+            nonlocal self
+            self = C("replacement")
+            return 0
+
+        return super().method(change_receiver())
+
+    def two_arg(self) -> str:
+        def change_receiver() -> int:
+            nonlocal self
+            self = C("replacement")
+            return 0
+
+        return super(B, self).method(change_receiver())
+
+    def call_classmethod(self) -> str:
+        def change_receiver() -> int:
+            nonlocal self
+            self = C("replacement")
+            return 0
+
+        return super().name(change_receiver())
+
+    def walrus(self) -> str:
+        return super().method(len((self := C("replacement")).label))
+
+    def walrus_keyword(self) -> str:
+        return super().method(unused=len((self := C("replacement")).label))
+
+    def walrus_classmethod(self) -> str:
+        return super().name(len((self := C("replacement")).label))
+
+    def gen(self) -> Iterator[str]:
+        yield super().method(len((self := C("replacement")).label))
+        yield self.label
+
+    def reassigned_before_call(self) -> str:
+        def change_receiver() -> None:
+            nonlocal self
+            self = C("replacement")
+
+        change_receiver()
+        return super().method(0)
+
+class C(B):
+    pass
+
+def test_super_self_reassigned_in_arguments() -> None:
+    b = B("original")
+    assert b.method(0) == "original"
+    assert b.two_arg() == "original"
+    assert b.call_classmethod() == "B"
+    assert b.walrus() == "original"
+    assert b.walrus_keyword() == "original"
+    assert b.walrus_classmethod() == "B"
+    assert list(b.gen()) == ["original", "replacement"]
+
+def test_super_self_reassigned_before_call() -> None:
+    assert B("original").reassigned_before_call() == "replacement"
 
 [case testSubclassException]
 class Failure(Exception):
@@ -1731,6 +2190,74 @@ assert e.__getstate__() == {'y': 20, '__dict__': {'x': 10}}
 e2 = pickle.loads(pickle.dumps(e))
 assert e is not e2 and e.x == e2.x and e.y == e2.y
 
+[case testPickleFrozenDataclass]
+import copy
+import pickle
+from dataclasses import dataclass
+from typing import Any, Dict, List
+
+from mypy_extensions import mypyc_attr
+
+@dataclass(frozen=True)
+class Config:
+    py_version: str = "3"
+
+@dataclass(frozen=True)
+class Frozen:
+    x: int
+    y: str
+
+@dataclass(frozen=True)
+class FrozenSub(Frozen):
+    z: List[int]
+
+@dataclass(frozen=True, slots=True)
+class FrozenSlots:
+    a: int
+    b: Dict[int, int]
+
+setattr_calls: List[str] = []
+
+@mypyc_attr(serializable=True)
+class WithSetattr:
+    def __init__(self, x: int) -> None:
+        self.x = x
+
+    def __setattr__(self, name: str, value: object) -> None:
+        setattr_calls.append(name)
+        super().__setattr__(name, value)
+
+def round_trips(obj: Any) -> List[Any]:
+    # Protocols 0 and 1 can't rebuild any native class
+    out = [pickle.loads(pickle.dumps(obj, protocol))
+           for protocol in range(2, pickle.HIGHEST_PROTOCOL + 1)]
+    return out + [copy.copy(obj), copy.deepcopy(obj)]
+
+def test_frozen_dataclass() -> None:
+    for obj in Config(), Frozen(1, 'a'), FrozenSub(2, 'b', [3]), FrozenSlots(4, {5: 6}):
+        for copied in round_trips(obj):
+            assert copied == obj
+            assert copied is not obj
+            assert type(copied) is type(obj)
+
+def test_copy_is_still_frozen() -> None:
+    f: Any = copy.copy(Frozen(1, 'a'))
+    try:
+        f.x = 2
+    except AttributeError as e:
+        assert type(e).__name__ == 'FrozenInstanceError'
+    else:
+        assert False
+    assert f.x == 1
+
+def test_setattr_not_called() -> None:
+    # Python restores the state without calling __setattr__ too, by updating __dict__
+    obj = WithSetattr(1)
+    calls = len(setattr_calls)
+    for copied in round_trips(obj):
+        assert copied.x == 1
+    assert len(setattr_calls) == calls
+
 
 [case testInterpretedParentInit]
 from interp import C
@@ -2129,6 +2656,89 @@ Represents a sequence of values. Updates itself by next, which is a new value.
 3
 3
 
+[case testPropertyReturningCallable]
+from typing import Any, Callable
+from mypy_extensions import trait
+
+class Config:
+    def __init__(self) -> None:
+        self._sorting_function: Callable[..., list[str]] | None = None
+
+    @property
+    def sorting_function(self) -> Callable[..., list[str]]:
+        if self._sorting_function is not None:
+            return self._sorting_function
+        self._sorting_function = sorted
+        return self._sorting_function
+
+    def sort(self, items: list[str]) -> list[str]:
+        return self.sorting_function(items)
+
+class Item:
+    def __init__(self, n: int) -> None:
+        self.n = n
+
+class C:
+    @property
+    def no_args(self) -> Callable[[], str]:
+        return lambda: "called"
+
+    @property
+    def any_value(self) -> Any:
+        return lambda x: x * 2
+
+    @property
+    def item_type(self) -> type[Item]:
+        return Item
+
+class Base:
+    @property
+    def f(self) -> Callable[[int], int]:
+        return lambda x: x + 1
+
+class Derived(Base):
+    def call_super(self, x: int) -> int:
+        return super().f(x)
+
+class AttrOverride(Base):
+    # A builtin, so that it isn't bound as a method when interpreted
+    f: Callable[[int], int] = abs
+
+@trait
+class T:
+    @property
+    def f(self) -> Callable[[int], int]:
+        return lambda x: x - 1
+
+class UsesTrait(T):
+    pass
+
+def call_f(b: Base, x: int) -> int:
+    return b.f(x)
+
+def call_trait_f(t: T, x: int) -> int:
+    return t.f(x)
+
+def test_property_returning_callable() -> None:
+    config = Config()
+    assert config.sorting_function(["b2", "b10", "b1"]) == ["b1", "b10", "b2"]
+    assert config.sorting_function(["a", "b"], reverse=True) == ["b", "a"]
+    assert config.sort(["b", "a"]) == ["a", "b"]
+
+def test_property_returning_other_callables() -> None:
+    c = C()
+    assert c.no_args() == "called"
+    assert c.any_value(21) == 42
+    assert c.item_type(5).n == 5
+
+def test_property_returning_callable_inherited() -> None:
+    assert call_f(Base(), 1) == 2
+    assert call_f(Derived(), 1) == 2
+    assert Derived().call_super(2) == 3
+    assert call_f(AttrOverride(), -5) == 5
+    assert AttrOverride().f(-6) == 6
+    assert call_trait_f(UsesTrait(), 1) == 0
+
 [case testPropertySetters]
 
 from mypy_extensions import trait
@@ -2316,6 +2926,317 @@ import other
 import other_interpreted
 
 [out]
+
+[case testPropertySetterWiderThanGetter]
+from typing import Union
+from mypy_extensions import trait
+
+class Wrapped:
+    def __init__(self, s: str) -> None:
+        self.s = s
+
+@trait
+class T:
+    @property
+    def value(self) -> Wrapped:
+        raise NotImplementedError
+
+    @value.setter
+    def value(self, v: Union[Wrapped, str]) -> None:
+        raise NotImplementedError
+
+class C(T):
+    def __init__(self) -> None:
+        self._value = Wrapped("init")
+        self._n = 0
+
+    @property
+    def value(self) -> Wrapped:
+        return self._value
+
+    @value.setter
+    def value(self, v: Union[Wrapped, str]) -> None:
+        self._value = Wrapped(v) if isinstance(v, str) else v
+
+    @property
+    def n(self) -> int:
+        return self._n
+
+    @n.setter
+    def n(self, v: Union[int, str]) -> None:
+        self._n = int(v)
+
+def set_via_class(c: C, v: Union[Wrapped, str]) -> str:
+    c.value = v
+    return c.value.s
+
+def set_via_trait(t: T, v: Union[Wrapped, str]) -> str:
+    t.value = v
+    return t.value.s
+
+def set_unboxed(c: C, v: Union[int, str]) -> int:
+    c.n = v
+    return c.n
+
+def test_setter_wider_than_getter() -> None:
+    c = C()
+    assert set_via_class(c, "a") == "a"
+    assert set_via_class(c, Wrapped("b")) == "b"
+    assert set_via_trait(c, "c") == "c"
+    assert set_via_trait(c, Wrapped("d")) == "d"
+    assert set_unboxed(c, "5") == 5
+    assert set_unboxed(c, 6) == 6
+
+[file driver.py]
+from native import C, test_setter_wider_than_getter
+test_setter_wider_than_getter()
+
+c = C()
+c.value = "py"
+assert c.value.s == "py"
+c.n = "7"
+assert c.n == 7
+
+[case testDecoratedMethodOverridesNativeMethod]
+import functools
+from typing import Any, Callable, TypeVar
+from mypy_extensions import i64, mypyc_attr, trait
+
+F = TypeVar("F", bound=Callable[..., Any])
+
+def add_ten(f: F) -> F:
+    @functools.wraps(f)
+    def wrapper(self: Any, *args: Any, **kwargs: Any) -> Any:
+        return f(self, *args, **kwargs) + 10
+    return wrapper  # type: ignore[return-value]
+
+def tag(f: F) -> F:
+    def wrapper(self: Any) -> str:
+        return "<" + f(self) + ">"
+    return wrapper  # type: ignore[return-value]
+
+class Base:
+    def method(self, x: int) -> int:
+        return x
+
+    def call(self, x: int) -> int:
+        return self.method(x)
+
+class Derived(Base):
+    @add_ten
+    def method(self, x: int) -> int:
+        return super().method(x) * 2
+
+class Sub(Derived):
+    def method(self, x: int) -> int:
+        return super().method(x) + 100
+
+class ExplicitSub(Derived):
+    def method(self, x: int) -> int:
+        return Derived.method(self, x) + 100
+
+def identity(f: Any) -> Any:
+    return f
+
+class IdentityDerived(Base):
+    @identity
+    def method(self, x: int) -> int:
+        return 2
+
+class IdentitySub(IdentityDerived):
+    def method(self, x: int) -> int:
+        return IdentityDerived.method(self, x)
+
+class Derived2(Derived):
+    @add_ten
+    def method(self, x: int) -> int:
+        return super().method(x) * 2
+
+class Sub2(Derived2):
+    def method(self, x: int) -> int:
+        return super().method(x) + Derived.method(self, x) + Derived2.method(self, x)
+
+class WiderDerived2(Derived):
+    # Decorated override of a decorated override with a different signature
+    @add_ten
+    def method(self, x: object) -> int:
+        return 1000
+
+class DefaultsBase:
+    def m(self, a: i64 = 1, b: float = 1.0, *, c: i64 = 1) -> float:
+        return 0.0
+
+class Defaults(DefaultsBase):
+    @add_ten
+    def m(self, a: i64 = 2, b: float = 3.0, *, c: i64 = 4) -> float:
+        return float(a * 100) + b * 10 + float(c)
+
+class ObjBase:
+    def m(self) -> object:
+        return 0
+
+class NarrowerReturn(ObjBase):
+    @add_ten
+    def m(self) -> int:
+        return 1
+
+@trait
+class T:
+    def m(self) -> int:
+        return 0
+
+class TraitImpl(T):
+    @add_ten
+    def m(self) -> int:
+        return 2
+
+class TraitImplSub(TraitImpl):
+    def m(self) -> int:
+        return TraitImpl.m(self) + super().m()
+
+class Repr:
+    @tag
+    def __repr__(self) -> str:
+        return "Repr"
+
+def to_object_arg(f: Callable[[Any, int], int]) -> Callable[[Any, object], int]:
+    def wrapper(self: Any, x: object) -> int:
+        return f(self, int(str(x)))
+    return wrapper
+
+def to_star_args(f: Callable[[Any, int, int], int]) -> Callable[..., int]:
+    def wrapper(self: Any, *args: int) -> int:
+        return f(self, len(args), 0)
+    return wrapper
+
+def as_static(f: Any) -> Any:
+    wrap: Any = staticmethod
+    return wrap(lambda *args: len(args))
+
+def as_class(f: Any) -> Any:
+    wrap: Any = classmethod
+    return wrap(lambda cls, *args: cls.__name__)
+
+class SigBase:
+    def f(self, x: object) -> int:
+        return 0
+
+    def g(self) -> int:
+        return 0
+
+    def s(self) -> Any:
+        return None
+
+    def c(self) -> Any:
+        return None
+
+class ChangesSig(SigBase):
+    # Calls typed against ChangesSig must use the decorated signatures
+    @to_object_arg
+    def f(self, x: int) -> int:
+        return x + 1
+
+    @to_star_args
+    def g(self, x: int, y: int) -> int:
+        return x + y
+
+    @as_static
+    def s(self) -> Any:
+        return None
+
+    @as_class
+    def c(self) -> Any:
+        return None
+
+class ChangesSigSub(ChangesSig):
+    pass
+
+@mypyc_attr(allow_interpreted_subclasses=True)
+class OpenBase:
+    def m(self) -> int:
+        return 0
+
+    def n(self, a: i64 = 1, b: float = 1.0) -> float:
+        return 0.0
+
+@mypyc_attr(allow_interpreted_subclasses=True)
+class Open(OpenBase):
+    @add_ten
+    def m(self) -> int:
+        return 3
+
+def via_base(b: Base, x: int) -> int:
+    return b.method(x)
+
+def via_derived(d: Derived, x: int) -> int:
+    return d.method(x)
+
+def via_obj_base(b: ObjBase) -> object:
+    return b.m()
+
+def via_trait(t: T) -> int:
+    return t.m()
+
+def via_open_base(b: OpenBase) -> int:
+    return b.m()
+
+def via_open_base_defaults(b: OpenBase) -> list[float]:
+    return [b.n(), b.n(5), b.n(b=6.0)]
+
+def via_sig_base(b: SigBase) -> list[Any]:
+    return [b.f("5"), b.g(), b.s(), b.c()]
+
+def via_changes_sig(d: ChangesSig) -> list[Any]:
+    return [d.f("5"), d.g(), d.g(1, 2), d.s(), d.c(), ChangesSig.f(d, "6")]
+
+def via_defaults_base(b: DefaultsBase) -> list[float]:
+    return [b.m(), b.m(5), b.m(b=6.0), b.m(c=7), b.m(5, 6.0, c=7)]
+
+def test_decorated_override() -> None:
+    d = Derived()
+    assert via_base(d, 1) == 12
+    assert via_derived(d, 1) == 12
+    assert d.call(1) == 12
+    assert via_base(Base(), 1) == 1
+    assert via_base(Sub(), 1) == 112
+    assert via_base(ExplicitSub(), 1) == 112
+    assert Derived.method(ExplicitSub(), 1) == 12
+    assert via_base(IdentitySub(), 1) == 2
+    assert via_base(Derived2(), 1) == 34
+    assert via_base(Sub2(), 1) == 34 + 12 + 34
+    assert via_base(WiderDerived2(), 1) == 1010
+    assert via_derived(WiderDerived2(), 1) == 1010
+    assert via_defaults_base(Defaults()) == [244.0, 544.0, 274.0, 247.0, 577.0]
+    assert via_sig_base(ChangesSig()) == [6, 0, 0, "ChangesSig"]
+    assert via_sig_base(ChangesSigSub()) == [6, 0, 0, "ChangesSigSub"]
+    assert via_changes_sig(ChangesSig()) == [6, 0, 2, 0, "ChangesSig", 7]
+    assert via_obj_base(NarrowerReturn()) == 11
+    assert via_trait(TraitImpl()) == 12
+    assert via_trait(TraitImplSub()) == 24
+    assert repr(Repr()) == "<Repr>"
+
+[typing fixtures/typing-full.pyi]
+[file driver.py]
+import inspect
+from native import (
+    Derived, Open, OpenBase, via_open_base, via_open_base_defaults, test_decorated_override
+)
+test_decorated_override()
+
+assert Derived().method(1) == 12
+assert Derived.method.__name__ == "method"
+assert list(inspect.signature(Derived.__dict__["method"].__wrapped__).parameters) == ["self", "x"]
+
+class Inherits(Open):
+    pass
+
+assert via_open_base(Inherits()) == 13
+
+class InterpretedDefaults(OpenBase):
+    def n(self, a: int = 2, b: float = 3.0) -> float:
+        return a * 10 + b
+
+assert via_open_base_defaults(InterpretedDefaults()) == [23.0, 53.0, 26.0]
 
 [case testAttributeOverridesProperty]
 from typing import Any
@@ -4559,6 +5480,472 @@ def test_untransformed_dunder_new() -> None:
     with assertRaises(TypeError, "str.__new__(int): int is not a subtype of str"):
         k = TestStrInt.factory()
 
+[case testDecoratedDunderNew]
+from __future__ import annotations
+
+from typing import Any, Callable, TypeVar, overload
+
+from mypy_extensions import mypyc_attr
+from testutil import assertRaises
+from typing_extensions import Self
+
+from m import check_interpreted_subclasses
+
+F = TypeVar("F", bound=Callable[..., Any])
+
+log: list[str] = []
+
+def take() -> list[str]:
+    result = list(log)
+    log.clear()
+    return result
+
+def logged(f: F) -> F:
+    def wrapper(cls: Any, *args: Any, **kwargs: Any) -> Any:
+        log.append(f"before {cls.__name__} {args} {kwargs}")
+        obj = f(cls, *args, **kwargs)
+        log.append("after")
+        return obj
+    return wrapper  # type: ignore[return-value]
+
+def tagged(tag: str) -> Callable[[F], F]:
+    def deco(f: F) -> F:
+        def wrapper(*args: Any) -> Any:
+            log.append(tag)
+            return f(*args)
+        return wrapper  # type: ignore[return-value]
+    return deco
+
+def unchanged(f: F) -> F:
+    return f
+
+def non_negative(f: F) -> F:
+    def wrapper(cls: Any, x: int) -> Any:
+        if x < 0:
+            raise ValueError("negative")
+        return f(cls, x)
+    return wrapper  # type: ignore[return-value]
+
+class Point:
+    @logged
+    def __new__(cls, x: int, y: int = 0) -> Self:
+        log.append(f"new {x} {y}")
+        return super().__new__(cls)
+
+    def __init__(self, x: int, y: int = 0) -> None:
+        log.append(f"init {x} {y}")
+        self.x = x
+        self.y = y
+        self.label = f"{x},{y}"
+
+class PointChild(Point):
+    pass
+
+class PointChildWithInit(Point):
+    def __init__(self, x: int, y: int = 0) -> None:
+        super().__init__(x + 10, y + 10)
+        log.append("child init")
+
+def test_new_and_init() -> None:
+    p = Point(1)
+    assert take() == ["before Point (1,) {}", "new 1 0", "after", "init 1 0"]
+    assert (p.x, p.y) == (1, 0)
+    p = Point(2, y=3)
+    assert take() == ["before Point (2,) {'y': 3}", "new 2 3", "after", "init 2 3"]
+    assert (p.x, p.y) == (2, 3)
+
+    # Use Any to get non-native semantics
+    cls: Any = Point
+    p = cls(4, 5)
+    assert take() == ["before Point (4, 5) {}", "new 4 5", "after", "init 4 5"]
+    assert (p.x, p.y) == (4, 5)
+    with assertRaises(TypeError):
+        cls()
+    assert take() == ["before Point () {}"]
+
+def test_inherited_new() -> None:
+    c = PointChild(1, 2)
+    assert take() == ["before PointChild (1, 2) {}", "new 1 2", "after", "init 1 2"]
+    assert type(c) is PointChild
+    assert (c.x, c.y) == (1, 2)
+    d = PointChildWithInit(1, 2)
+    assert take() == [
+        "before PointChildWithInit (1, 2) {}",
+        "new 1 2",
+        "after",
+        "init 11 12",
+        "child init",
+    ]
+    assert type(d) is PointChildWithInit
+    assert (d.x, d.y) == (11, 12)
+
+    cls: Any = PointChild
+    c = cls(3)
+    assert take() == ["before PointChild (3,) {}", "new 3 0", "after", "init 3 0"]
+    assert type(c) is PointChild
+    cls = PointChildWithInit
+    d = cls(3)
+    assert take() == [
+        "before PointChildWithInit (3,) {}",
+        "new 3 0",
+        "after",
+        "init 13 10",
+        "child init",
+    ]
+    assert d.x == 13
+
+def test_explicit_call_does_not_call_init() -> None:
+    p = Point.__new__(Point, 1)
+    assert take() == ["before Point (1,) {}", "new 1 0", "after"]
+    assert type(p) is Point
+    with assertRaises(AttributeError):
+        p.x
+    with assertRaises(AttributeError):
+        p.label
+    c = Point.__new__(PointChild, 2)
+    assert take() == ["before PointChild (2,) {}", "new 2 0", "after"]
+    assert type(c) is PointChild
+
+    cls: Any = Point
+    p = cls.__new__(cls, 3, y=4)
+    assert take() == ["before Point (3,) {'y': 4}", "new 3 4", "after"]
+    with assertRaises(AttributeError):
+        p.label
+    assert type(cls.__dict__["__new__"]) is staticmethod
+
+class Root:
+    def __init__(self, x: int) -> None:
+        log.append(f"init {x}")
+        self.x = x
+
+class Mid(Root):
+    @logged
+    def __new__(cls, x: int) -> Self:
+        log.append("new")
+        return super().__new__(cls)
+
+class Leaf(Mid):
+    pass
+
+def test_init_from_base_class() -> None:
+    # Root doesn't define __new__, so its tp_new calls __init__, and its tp_init
+    # does nothing. The subclasses can't use that tp_init.
+    for cls in Mid, Leaf:
+        any_cls: Any = cls
+        obj = any_cls(1)
+        assert take() == [f"before {cls.__name__} (1,) {{}}", "new", "after", "init 1"]
+        assert obj.x == 1
+    m = Mid(2)
+    assert take() == ["before Mid (2,) {}", "new", "after", "init 2"]
+    assert m.x == 2
+    l = Leaf(3)
+    assert take() == ["before Leaf (3,) {}", "new", "after", "init 3"]
+    assert l.x == 3
+    r = Root(4)
+    assert take() == ["init 4"]
+    assert r.x == 4
+    any_cls = Root
+    r = any_cls(5)
+    assert take() == ["init 5"]
+
+class TwoDecorators:
+    @tagged("outer")
+    @tagged("inner")
+    def __new__(cls) -> Self:
+        log.append("new")
+        return super().__new__(cls)
+
+class Unchanged:
+    @unchanged
+    def __new__(cls) -> Self:
+        log.append("new")
+        return super().__new__(cls)
+
+def test_other_decorators() -> None:
+    TwoDecorators()
+    assert take() == ["outer", "inner", "new"]
+    Unchanged()
+    assert take() == ["new"]
+    cls: Any = TwoDecorators
+    cls()
+    assert take() == ["outer", "inner", "new"]
+    cls = Unchanged
+    cls()
+    cls.__new__(cls)
+    assert take() == ["new", "new"]
+
+class Overloaded:
+    @overload
+    def __new__(cls, x: int) -> Overloaded: ...
+    @overload
+    def __new__(cls, x: str) -> Overloaded: ...
+    @logged
+    def __new__(cls, x: object) -> Overloaded:
+        log.append(f"new {x}")
+        return super().__new__(cls)
+
+    def __init__(self, x: object) -> None:
+        self.x = x
+
+def test_overloaded_new_with_decorated_implementation() -> None:
+    o = Overloaded(1)
+    assert take() == ["before Overloaded (1,) {}", "new 1", "after"]
+    assert o.x == 1
+    cls: Any = Overloaded
+    o = cls("s")
+    assert take() == ["before Overloaded ('s',) {}", "new s", "after"]
+    assert o.x == "s"
+
+class NotAlwaysInstance:
+    @logged
+    def __new__(cls, x: int) -> Any:
+        if x == 0:
+            return "zero"
+        return super().__new__(cls)
+
+    def __init__(self, x: int) -> None:
+        log.append("init")
+        self.x = x
+
+def test_new_returns_instance_of_other_class() -> None:
+    a: Any = NotAlwaysInstance(0)
+    assert a == "zero"
+    assert take() == ["before NotAlwaysInstance (0,) {}", "after"]
+    b: Any = NotAlwaysInstance(1)
+    assert b.x == 1
+    assert take() == ["before NotAlwaysInstance (1,) {}", "after", "init"]
+    cls: Any = NotAlwaysInstance
+    assert cls(0) == "zero"
+    assert take() == ["before NotAlwaysInstance (0,) {}", "after"]
+
+class Checked:
+    @non_negative
+    def __new__(cls, x: int) -> Self:
+        if x == 0:
+            raise RuntimeError("zero")
+        return super().__new__(cls)
+
+    def __init__(self, x: int) -> None:
+        if x == 1:
+            raise KeyError("one")
+        self.x = x
+
+def test_exceptions() -> None:
+    any_cls: Any = Checked
+    for cls in Checked, any_cls:
+        with assertRaises(ValueError, "negative"):
+            cls(-1)
+        with assertRaises(RuntimeError, "zero"):
+            cls(0)
+        with assertRaises(KeyError, "one"):
+            cls(1)
+        assert cls(2).x == 2
+
+@mypyc_attr(allow_interpreted_subclasses=True)
+class Open:
+    @logged
+    def __new__(cls, x: int) -> Self:
+        return super().__new__(cls)
+
+    def __init__(self, x: int) -> None:
+        self.x = x
+
+    def value(self) -> int:
+        return self.x
+
+def call_value(o: Open) -> int:
+    return o.value()
+
+def test_interpreted_subclasses() -> None:
+    o = Open(1)
+    assert take() == ["before Open (1,) {}", "after"]
+    assert call_value(o) == 1
+    check_interpreted_subclasses()
+
+[file m.py]
+from testutil import assertRaises
+
+def check_interpreted_subclasses() -> None:
+    from native import Leaf, Open, Point, PointChild, call_value, take
+
+    class OpenChild(Open):
+        def value(self) -> int:
+            return self.x + 100
+
+    o = OpenChild(1)
+    assert take() == ["before OpenChild (1,) {}", "after"]
+    assert o.x == 1
+    assert call_value(o) == 101
+
+    class OpenChildWithNew(Open):
+        y: int
+
+        def __new__(cls, x):
+            obj = super().__new__(cls, x + 1)
+            obj.y = 5
+            return obj
+
+        def __init__(self, x):
+            super().__init__(x + 2)
+
+    o2 = OpenChildWithNew(1)
+    assert take() == ["before OpenChildWithNew (2,) {}", "after"]
+    assert (o2.x, o2.y) == (3, 5)
+    assert call_value(o2) == 3
+
+    # The other classes don't allow interpreted subclasses.
+    for base in Point, PointChild, Leaf:
+        class Child(base):  # type: ignore[misc, valid-type]
+            pass
+
+        with assertRaises(TypeError, "interpreted classes cannot inherit from compiled"):
+            Child(1)
+        take()
+
+        class ChildWithNew(base):  # type: ignore[misc, valid-type]
+            def __new__(cls, x):
+                return super().__new__(cls, x)
+
+        with assertRaises(TypeError, "interpreted classes cannot inherit from compiled"):
+            ChildWithNew(1)
+        take()
+
+[typing fixtures/typing-full.pyi]
+
+[case testDecoratedDunderNewWithOtherArgumentsThanInit]
+from __future__ import annotations
+
+import functools
+from typing import Any, Callable, TypeVar
+
+from typing_extensions import Self
+
+F = TypeVar("F", bound=Callable[..., Any])
+
+log: list[str] = []
+
+def take() -> list[str]:
+    result = list(log)
+    log.clear()
+    return result
+
+def logged(f: F) -> F:
+    def wrapper(cls: Any, *args: Any, **kwargs: Any) -> Any:
+        log.append(f"before {cls.__name__} {args} {kwargs}")
+        obj = f(cls, *args, **kwargs)
+        log.append("after")
+        return obj
+    return wrapper  # type: ignore[return-value]
+
+class NoInit:
+    x: int
+
+    @logged
+    def __new__(cls, x: int) -> Self:
+        obj = super().__new__(cls)
+        obj.x = x + 1
+        return obj
+
+def test_no_init() -> None:
+    n = NoInit(1)
+    assert take() == ["before NoInit (1,) {}", "after"]
+    assert n.x == 2
+    cls: Any = NoInit
+    n = cls(x=2)
+    assert take() == ["before NoInit () {'x': 2}", "after"]
+    assert n.x == 3
+
+class AnyArguments:
+    @logged
+    def __new__(cls, *args: Any, **kwargs: Any) -> Self:
+        log.append("new")
+        return super().__new__(cls)
+
+    def __init__(self, x: int, y: int = 0) -> None:
+        log.append(f"init {x} {y}")
+        self.x = x
+        self.y = y
+
+class AnyArgumentsChild(AnyArguments):
+    def __init__(self, x: int) -> None:
+        super().__init__(x, 10)
+
+def test_any_arguments() -> None:
+    a = AnyArguments(1, y=2)
+    assert take() == ["before AnyArguments (1,) {'y': 2}", "new", "after", "init 1 2"]
+    assert (a.x, a.y) == (1, 2)
+    c = AnyArgumentsChild(3)
+    assert take() == ["before AnyArgumentsChild (3,) {}", "new", "after", "init 3 10"]
+    assert (c.x, c.y) == (3, 10)
+    cls: Any = AnyArguments
+    a = cls(4)
+    assert take() == ["before AnyArguments (4,) {}", "new", "after", "init 4 0"]
+    assert (a.x, a.y) == (4, 0)
+
+class Interned:
+    name: str
+
+    @functools.cache  # type: ignore[misc]
+    def __new__(cls, name: str) -> Self:
+        log.append(f"new {name}")
+        obj = super().__new__(cls)
+        obj.name = name
+        return obj
+
+def test_cache() -> None:
+    a = Interned("a")
+    b = Interned("b")
+    assert Interned("a") is a
+    cls: Any = Interned
+    assert cls("b") is b
+    assert take() == ["new a", "new b"]
+    assert (a.name, b.name) == ("a", "b")
+    assert cls.__new__.cache_info().hits == 2
+
+[typing fixtures/typing-full.pyi]
+
+[case testDecoratedDunderNewWithBuiltInBaseClass]
+from typing import Any, Callable, TypeVar
+
+F = TypeVar("F", bound=Callable[..., Any])
+
+log: list[str] = []
+
+def logged(f: F) -> F:
+    def wrapper(cls: Any, *args: Any) -> Any:
+        log.append(f"before {cls.__name__} {args}")
+        obj = f(cls, *args)
+        log.append("after")
+        return obj
+    return wrapper  # type: ignore[return-value]
+
+class Table(dict):  # type: ignore[type-arg]
+    @logged
+    def __new__(cls, *args: Any) -> Any:
+        log.append("new")
+        return dict.__new__(cls)
+
+class Error(Exception):
+    @logged
+    def __new__(cls, *args: Any) -> Any:
+        log.append("new")
+        return Exception.__new__(cls, *args)
+
+    def __init__(self, x: int) -> None:
+        log.append("init")
+        super().__init__(str(x + 1))
+
+def test_built_in_base_class() -> None:
+    t = Table({"a": 1})
+    assert log == ["before Table ({'a': 1},)", "new", "after"]
+    assert type(t) is Table
+    assert t == {"a": 1}
+    log.clear()
+    e = Error(1)
+    assert log == ["before Error (1,)", "new", "after", "init"]
+    assert type(e) is Error
+    assert str(e) == "2"
+
 [case testPerTypeFreeList]
 from __future__ import annotations
 
@@ -5756,6 +7143,68 @@ test_no_setattr()
 test_no_setattr_nonnative()
 
 [typing fixtures/typing-full.pyi]
+
+[case testDunderSetAttrDefinedAfterAssignment]
+setattr_calls: list[str] = []
+
+def assign_in_function(obj: "LateSetAttr") -> None:
+    obj.attr = 1
+
+class Other:
+    def assign_in_other_class(self, obj: "LateSetAttr") -> None:
+        obj.attr = 2
+
+class LateSetAttr:
+    def __init__(self) -> None:
+        self.attr = 0
+
+    def assign_in_method(self) -> None:
+        self.attr = 3
+        self.attr += 1
+
+    def __setattr__(self, key: str, val: object) -> None:
+        setattr_calls.append(f"{key}={val}")
+        super().__setattr__(key, val)
+
+class AssignInSetAttr:
+    attr: int
+    assigned: bool
+
+    def __init__(self) -> None:
+        object.__setattr__(self, "attr", 0)
+        object.__setattr__(self, "assigned", False)
+
+    def __setattr__(self, key: str, val: object) -> None:
+        setattr_calls.append(f"{key}={val}")
+        if key == "attr":
+            # This calls __setattr__ again.
+            self.assigned = True
+        super().__setattr__(key, val)
+
+def test_setattr_defined_after_assignment() -> None:
+    setattr_calls.clear()
+    obj = LateSetAttr()
+    assert setattr_calls == ["attr=0"]
+
+    assign_in_function(obj)
+    assert setattr_calls == ["attr=0", "attr=1"]
+
+    Other().assign_in_other_class(obj)
+    assert setattr_calls == ["attr=0", "attr=1", "attr=2"]
+
+    obj.assign_in_method()
+    assert setattr_calls == ["attr=0", "attr=1", "attr=2", "attr=3", "attr=4"]
+    assert obj.attr == 4
+
+def test_assignment_in_setattr() -> None:
+    setattr_calls.clear()
+    obj = AssignInSetAttr()
+    assert setattr_calls == []
+
+    obj.attr = 1
+    assert setattr_calls == ["attr=1", "assigned=True"]
+    assert obj.attr == 1
+    assert obj.assigned
 
 [case testDelAttrWithDeletableAttr]
 from testutil import assertRaises

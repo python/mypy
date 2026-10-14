@@ -557,11 +557,13 @@ def any_constraints(options: list[list[Constraint] | None], *, eager: bool) -> l
         # Multiple sets of constraints that are all the same. Just pick any one of them.
         return valid_options[0]
 
-    if all(is_similar_constraints(valid_options[0], c) for c in valid_options[1:]):
+    # This special-casing is not safe for ParamSpecs and TypeVarTuples, since unions are
+    # not valid constraints for them. This is however only needed in niche edge cases.
+    if all(is_similar_constraints(valid_options[0], c) for c in valid_options[1:]) and all(
+        isinstance(c.origin_type_var, TypeVarType) for c in valid_options[0]
+    ):
         # All options have same structure. In this case we can merge-in trivial
         # options (i.e. those that only have Any) and try again.
-        # TODO: More generally, if a given (variable, direction) pair appears in
-        # every option, combine the bounds with meet/join always, not just for Any.
         trivial_options = select_trivial(valid_options)
         if trivial_options and len(trivial_options) < len(valid_options):
             merged_options = []
@@ -1422,7 +1424,13 @@ class ConstraintBuilderVisitor(TypeVisitor[list[Constraint]]):
         for t in flatten_nested_tuples(types):
             if isinstance(t, UnpackType):
                 if isinstance(t.type, TypeVarTupleType):
-                    res.append(Constraint(t.type, self.direction, any_type))
+                    res.append(
+                        Constraint(
+                            t.type,
+                            self.direction,
+                            t.type.tuple_fallback.copy_modified(args=[any_type]),
+                        )
+                    )
                 else:
                     unpacked = get_proper_type(t.type)
                     assert isinstance(unpacked, Instance)

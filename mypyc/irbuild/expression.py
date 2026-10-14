@@ -54,8 +54,10 @@ from mypy.types import (
     Instance,
     ProperType,
     TupleType,
+    Type,
     TypeOfAny,
     TypeType,
+    UnionType,
     get_proper_type,
 )
 from mypyc.common import KEEP_ALIVE_SHORT_LIVED, KEEP_ALIVE_WHOLE_EXPRESSION, MAX_SHORT_INT
@@ -68,6 +70,7 @@ from mypyc.ir.ops import (
     CallC,
     Cast,
     ComparisonOp,
+    Float,
     GetAttr,
     Integer,
     LoadAddress,
@@ -83,14 +86,17 @@ from mypyc.ir.ops import (
 from mypyc.ir.rtypes import (
     RInstance,
     RTuple,
+    RType,
     RVec,
     bool_rprimitive,
     int64_rprimitive,
     int_rprimitive,
     is_any_int,
+    is_bool_or_bit_rprimitive,
     is_bytearray_rprimitive,
     is_bytes_rprimitive,
     is_fixed_width_rtype,
+    is_float_rprimitive,
     is_int64_rprimitive,
     is_int_rprimitive,
     is_list_rprimitive,
@@ -140,7 +146,14 @@ from mypyc.irbuild.vec import (
 )
 from mypyc.primitives.bytes_ops import bytes_slice_op
 from mypyc.primitives.dict_ops import dict_get_item_op, dict_new_op, exact_dict_set_item_op
+from mypyc.primitives.float_ops import (
+    complex_imag_op,
+    complex_real_op,
+    number_imag_op,
+    number_real_op,
+)
 from mypyc.primitives.generic_ops import iter_op, name_op
+from mypyc.primitives.int_ops import int_imag_op, int_real_op
 from mypyc.primitives.list_ops import list_append_op, list_extend_op, list_slice_op
 from mypyc.primitives.misc_ops import ellipsis_op, get_module_dict_op, new_slice_op, type_op
 from mypyc.primitives.set_ops import set_add_op, set_in_op, set_update_op
@@ -230,7 +243,15 @@ def transform_name_expr(builder: IRBuilder, expr: NameExpr) -> Value:
             )
             return obj
         else:
-            return builder.read(builder.get_assignment_target(expr, for_read=True), expr.line)
+            reg = builder.read(builder.get_assignment_target(expr, for_read=True), expr.line)
+            if isinstance(reg, Register) and expr.node in builder.reassigned_in_expr:
+                # The variable is reassigned via a walrus within the same expression.
+                # Copy the current value, since otherwise the reassignment could happen
+                # before the value is used (e.g. 'f(x, (x := 1))' would pass 1 twice).
+                temp = Register(reg.type)
+                builder.assign(temp, reg, expr.line)
+                return temp
+            return reg
 
     # If we're evaluating a class body and this name is a ClassVar defined earlier
     # in the same class, load it from the class being built (type object for ext classes,
@@ -300,6 +321,9 @@ def transform_member_expr(builder: IRBuilder, expr: MemberExpr) -> Value:
         # only apply to RInstance types.
         return builder.primitive_op(type_op, [obj], expr.line)
 
+    if expr.name in ("real", "imag") and is_builtin_number_type(builder.types.get(expr.expr)):
+        return transform_real_imag(builder, obj, expr.name == "real", rtype, expr.line)
+
     # Special case: for named tuples transform attribute access to faster index access.
     typ = get_proper_type(builder.types.get(expr.expr))
     if isinstance(typ, TupleType) and typ.partial_fallback.type.is_named_tuple:
@@ -330,6 +354,49 @@ def transform_member_expr(builder: IRBuilder, expr: MemberExpr) -> Value:
     return builder.builder.get_attr(
         obj, expr.name, rtype, expr.line, borrow=borrow, borrow_scope=scope
     )
+
+
+def is_builtin_number_type(typ: Type | None) -> bool:
+    """Is typ int, bool, float, complex or a union of them (and not a subclass)?"""
+    typ = get_proper_type(typ)
+    if isinstance(typ, UnionType):
+        return all(is_builtin_number_type(item) for item in typ.items)
+    return isinstance(typ, Instance) and typ.type.fullname in (
+        "builtins.int",
+        "builtins.bool",
+        "builtins.float",
+        "builtins.complex",
+    )
+
+
+def transform_real_imag(
+    builder: IRBuilder, obj: Value, is_real: bool, rtype: RType, line: int
+) -> Value:
+    """Get obj.real or obj.imag, where obj is an int, a float or a complex."""
+    if is_tagged(obj.type):
+        # A large int could be an instance of an int subclass that overrides these
+        op = int_real_op if is_real else int_imag_op
+        return builder.primitive_op(op, [obj], line)
+    if is_bool_or_bit_rprimitive(obj.type):
+        # bool can't be subclassed, and b.real is an int
+        return builder.coerce(obj, int_rprimitive, line) if is_real else builder.load_int(0, line)
+    if is_float_rprimitive(obj.type):
+        # Unboxed floats are always exact floats, so these can't be overridden
+        if not is_real:
+            return Float(0.0, line)
+        if isinstance(obj, Register):
+            # Copy the variable, since it could be reassigned later in the same
+            # expression, as in "x.real + (x := 2.0)"
+            copy = Register(obj.type)
+            builder.assign(copy, obj, line)
+            return copy
+        return obj
+    if is_float_rprimitive(rtype):
+        op = complex_real_op if is_real else complex_imag_op
+        return builder.primitive_op(op, [obj], line)
+    # The result can be an int, for example with int | float | complex
+    op = number_real_op if is_real else number_imag_op
+    return builder.primitive_op(op, [obj], line, result_type=rtype)
 
 
 def value_borrow_scope(builder: IRBuilder, v: Value) -> int:
@@ -383,6 +450,32 @@ def check_instance_attribute_access_through_class(
                     )
 
 
+def check_property_call_through_class(
+    builder: IRBuilder, expr: CallExpr, callee: MemberExpr
+) -> None:
+    """Report error if calling a property through class object, as in "C.prop(obj)".
+
+    This always fails at runtime, since "C.prop" is a property object (or a getset
+    descriptor in a native class), but mypy may not report it. Since the getter is
+    stored as a method, we'd otherwise compile this as a direct call to the getter.
+    """
+    if isinstance(callee.expr, RefExpr):
+        node = callee.expr.node
+        typ = get_proper_type(builder.types.get(callee.expr))
+        if isinstance(typ, TypeType) and isinstance(typ.item, Instance):
+            node = typ.item.type
+        if isinstance(node, TypeInfo):
+            class_ir = builder.mapper.type_to_ir.get(node)
+            if (
+                class_ir is not None
+                and class_ir.has_method(callee.name)
+                and class_ir.method_decl(callee.name).is_prop_getter
+            ):
+                builder.error(
+                    f'Cannot call property "{callee.name}" through class object', expr.line
+                )
+
+
 def transform_super_expr(builder: IRBuilder, o: SuperExpr) -> Value:
     # warning(builder, 'can not optimize super() expression', o.line)
     sup_val = builder.load_module_attr_by_fullname("builtins.super", o.line)
@@ -391,19 +484,35 @@ def transform_super_expr(builder: IRBuilder, o: SuperExpr) -> Value:
     else:
         assert o.info is not None
         typ = builder.load_native_type_object(o.info.fullname)
-        ir = builder.mapper.type_to_ir[o.info]
-        iter_env = iter(builder.builder.args)
-        # Grab first argument
-        vself: Value = next(iter_env)
-        if builder.fn_info.is_generator:
-            # grab seventh argument (see comment in translate_super_method_call)
-            self_targ = list(builder.symtables[-1].values())[7]
-            vself = builder.read(self_targ, builder.fn_info.fitem.line)
-        elif not ir.is_ext_class:
-            vself = next(iter_env)  # second argument is self if non_extension class
+        vself = builder.read(builder.lookup(implicit_super_arg(builder)), o.line)
         args = [typ, vself]
     res = builder.py_call(sup_val, args, o.line)
     return builder.py_get_attr(res, o.name, o.line)
+
+
+def implicit_super_arg(builder: IRBuilder) -> Var:
+    """Return the variable that zero-argument super() uses as its second argument.
+
+    This is the first argument of the enclosing function. It isn't always the first
+    argument of the function being generated, since generators and nested functions
+    are compiled to methods of generated classes.
+    """
+    # A comprehension can have a scope of its own, but it has no arguments, and
+    # super() uses the function that contains the comprehension.
+    fn_info = next(info for info in reversed(builder.fn_infos) if not info.is_comprehension_scope)
+    return fn_info.fitem.arguments[0].variable
+
+
+def is_instance_method_self(builder: IRBuilder, var: Var) -> bool:
+    """Is this the self argument of an instance method?"""
+    if not var.is_self:
+        return False
+    # The cls argument of __new__ is also marked as a self argument.
+    for fn_info in builder.fn_infos:
+        fitem = fn_info.fitem
+        if fitem.name == "__new__" and fitem.arguments and fitem.arguments[0].variable is var:
+            return False
+    return True
 
 
 # Calls
@@ -460,8 +569,10 @@ def transform_call_expr(builder: IRBuilder, expr: CallExpr) -> Value:
 
 
 def translate_call(builder: IRBuilder, expr: CallExpr, callee: Expression) -> Value:
-    # The common case of calls is refexprs
-    if isinstance(callee, RefExpr):
+    # The common case of calls is refexprs. A callee reassigned via a walrus within
+    # the same expression (e.g. 'f(1, (f := g))') is handled below instead, since
+    # it must be evaluated before the arguments.
+    if isinstance(callee, RefExpr) and callee.node not in builder.reassigned_in_expr:
         return apply_function_specialization(builder, expr, callee) or translate_refexpr_call(
             builder, expr, callee
         )
@@ -486,6 +597,7 @@ def translate_method_call(builder: IRBuilder, expr: CallExpr, callee: MemberExpr
 
     This can also deal with calls to module-level functions.
     """
+    check_property_call_through_class(builder, expr, callee)
     if builder.is_native_ref_expr(callee):
         # Call to module-level native function or such
         return translate_call(builder, expr, callee)
@@ -542,6 +654,8 @@ def translate_method_call(builder: IRBuilder, expr: CallExpr, callee: MemberExpr
 
 def call_classmethod(builder: IRBuilder, ir: ClassIR, expr: CallExpr, callee: MemberExpr) -> Value:
     decl = ir.method_decl(callee.name)
+    if decl.is_decorated_override:
+        return translate_call(builder, expr, callee)
     args = []
     arg_kinds, arg_names = expr.arg_kinds.copy(), expr.arg_names.copy()
     # Add the class argument for class methods in extension classes
@@ -588,6 +702,9 @@ def translate_super_method_call(builder: IRBuilder, expr: CallExpr, callee: Supe
             or callee.info is not typ_arg.node
         ):
             return translate_call(builder, expr, callee)
+        self_var = self_arg.node
+    else:
+        self_var = implicit_super_arg(builder)
 
     ir = builder.mapper.type_to_ir[callee.info]
     # Search for the method in the mro, skipping ourselves. We
@@ -614,25 +731,44 @@ def translate_super_method_call(builder: IRBuilder, expr: CallExpr, callee: Supe
         return translate_call(builder, expr, callee)
 
     decl = base.method_decl(callee.name)
-    arg_values = [builder.accept(arg) for arg in expr.args]
+    if decl.is_prop_getter:
+        # super().prop(...) calls the property's value, so get it through super()
+        return translate_call(builder, expr, callee)
+    if decl.is_decorated_override:
+        return translate_call(builder, expr, callee)
+
+    needs_self = decl.kind != FUNC_STATICMETHOD and decl.name != "__new__"
+    if needs_self and not (
+        is_instance_method_self(builder, self_var)
+        or (self_var.is_cls and decl.kind == FUNC_CLASSMETHOD)
+    ):
+        # We can only bind the method statically if super() is given the self argument of
+        # an instance method, or the cls argument of a class method when calling a class
+        # method. Otherwise it's an instance method looked up through the class, or the
+        # first argument of a static method (such as __new__) or of a nested function,
+        # which can be either an instance or a class.
+        return translate_call(builder, expr, callee)
+
+    arg_values: list[Value] = []
     arg_kinds, arg_names = expr.arg_kinds.copy(), expr.arg_names.copy()
 
-    if decl.kind != FUNC_STATICMETHOD and decl.name != "__new__":
-        # Grab first argument
-        vself: Value = builder.self()
-        if decl.kind == FUNC_CLASSMETHOD:
+    if needs_self:
+        # super() binds the object before the arguments are evaluated, and an argument
+        # can reassign the variable.
+        vself = builder.read(builder.lookup(self_var), expr.line)
+        if isinstance(vself, Register) and self_var in builder.reassigned_in_expr:
+            # The variable is reassigned via a walrus within the same expression, so
+            # copy the current value (see transform_name_expr).
+            temp = Register(vself.type)
+            builder.assign(temp, vself, expr.line)
+            vself = temp
+        if decl.kind == FUNC_CLASSMETHOD and not self_var.is_cls:
             vself = builder.primitive_op(type_op, [vself], expr.line)
-        elif builder.fn_info.is_generator:
-            # For generator classes, the self target is the 7th value
-            # in the symbol table (which is an ordered dict). This is sort
-            # of ugly, but we can't search by name since the 'self' parameter
-            # could be named anything, and it doesn't get added to the
-            # environment indexes.
-            self_targ = list(builder.symtables[-1].values())[7]
-            vself = builder.read(self_targ, builder.fn_info.fitem.line)
-        arg_values.insert(0, vself)
+        arg_values.append(vself)
         arg_kinds.insert(0, ARG_POS)
         arg_names.insert(0, None)
+
+    arg_values += [builder.accept(arg) for arg in expr.args]
 
     return builder.builder.call(decl, arg_values, arg_kinds, arg_names, expr.line)
 

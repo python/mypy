@@ -343,7 +343,6 @@ Dunder methods
 Native classes **cannot** use these dunders. If defined, they will not
 work as expected.
 
-* ``__index__``
 * ``__getattribute__``
 * ``__delattr__``
 
