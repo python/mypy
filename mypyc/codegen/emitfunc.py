@@ -13,8 +13,6 @@ from mypyc.codegen.emit import (
     c_array_initializer,
 )
 from mypyc.common import (
-    HAVE_IMMORTAL,
-    IS_FREE_THREADED,
     NATIVE_PREFIX,
     REG_PREFIX,
     RUNNING_FIELD,
@@ -466,7 +464,7 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         ClassIR.attrs_are_thread_confined.
         """
         use_get_attr_ref = (
-            IS_FREE_THREADED
+            self.emitter.target_python.free_threaded
             and is_simple_refcounted_pointer(attr_rtype)
             and not op.is_borrowed
             and not cl.attrs_are_thread_confined()
@@ -629,7 +627,7 @@ class FunctionEmitterVisitor(OpVisitor[None]):
             self.emit_line(f"{dest} = 1;")
             self.emitter.emit_error_check(tmp, ret_type, f"{dest} = 0;")
         elif (
-            IS_FREE_THREADED
+            self.emitter.target_python.free_threaded
             and is_simple_refcounted_pointer(attr_rtype)
             and not cl.attrs_are_thread_confined()
         ):
@@ -763,12 +761,12 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         if (
             isinstance(op.src, Box)
             and (is_none_rprimitive(op.src.src.type) or is_bool_or_bit_rprimitive(op.src.src.type))
-            and HAVE_IMMORTAL
+            and self.emitter.target_python.have_immortal
         ):
             # On Python 3.12+, None/True/False are immortal, and we can skip inc ref
             return
 
-        if isinstance(op.src, LoadLiteral) and HAVE_IMMORTAL:
+        if isinstance(op.src, LoadLiteral) and self.emitter.target_python.have_immortal:
             value = op.src.value
             # We can skip inc ref for immortal literals on Python 3.12+
             if type(value) is int and -5 <= value <= 256:
