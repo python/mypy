@@ -1888,10 +1888,8 @@ class SemanticAnalyzer(
         return tvs
 
     def get_defined_type_param(self, name: str) -> TypeVarLikeExpr | None:
-        for names in self.locals:
-            if names is None:
-                continue
-            if name in names:
+        for names in reversed(self.locals):
+            if names is not None and name in names:
                 node = names[name].node
                 if isinstance(node, TypeVarLikeExpr):
                     return node
