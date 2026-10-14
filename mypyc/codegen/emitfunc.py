@@ -583,11 +583,12 @@ class FunctionEmitterVisitor(OpVisitor[None]):
 
         attr_expr = self.get_attr_expr(obj, op, decl_cl)
         # On free-threaded builds this takes a new reference atomically (see
-        # emit_load_attr_take_ref). CPy_GetAttrRef returns NULL when the field is
-        # undefined, which is precisely the error value here, so the "NULL without
-        # AttributeError" behavior is preserved (this op has error_kind ERR_NEVER).
-        # is_simple_refcounted_pointer excludes tuples/vecs, so error_value_check's
-        # special cases only matter on the plain-load path (where no ref was taken).
+        # emit_load_attr_take_ref). CPy_GetAttrRef returns NULL and CPyTagged_GetAttr
+        # returns CPY_INT_TAG when the field is undefined, which is precisely the error
+        # value here, so the "error value without AttributeError" behavior is preserved
+        # (this op has error_kind ERR_NEVER). The take-ref paths exclude tuples/vecs, so
+        # error_value_check's special cases only matter on the plain-load path (where no
+        # ref was taken).
         if not self.emit_load_attr_take_ref(dest, obj, op, cl, attr_rtype, attr_expr):
             # Only emit inc_ref if not NULL
             if attr_rtype.is_refcounted and not op.is_borrowed:

@@ -33,11 +33,11 @@ PyObject *CPy_GetAttrRefSlow(PyObject *v, PyObject *owner, PyObject **field) {
     return result;
 }
 
-// Cold slow path of CPyTagged_GetAttr, also used for undefined (CPY_INT_TAG)
-// values. Reload the field with acquire (rather than
-// using an acquire fence after the relaxed load, which TSan doesn't model), so that a
-// long stored with release by CPyTagged_SetAttrSlow is fully visible. Then secure a
-// reference to the PyLong using the CPy_GetAttrRef protocol.
+// Cold slow path of CPyTagged_GetAttr, also used for undefined (CPY_INT_TAG) values.
+// Reload the field with acquire (rather than using an acquire fence after the relaxed
+// load, which TSan doesn't model), so that a long stored with release by
+// CPyTagged_SetAttrSlow is fully visible. Then secure a reference to the PyLong using
+// the CPy_GetAttrRef protocol.
 CPy_NOINLINE
 CPy_COLD
 CPyTagged CPyTagged_GetAttrSlow(PyObject *owner, CPyTagged *field) {

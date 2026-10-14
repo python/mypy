@@ -210,8 +210,7 @@ static inline CPyTagged CPyTagged_GetAttr(PyObject *owner, CPyTagged *field) {
 static inline void CPyTagged_SetAttr(PyObject *owner, CPyTagged *field, CPyTagged value) {
     if (likely(CPyTagged_IsPointerFree(value))) {
         CPyTagged old = _Py_atomic_load_uintptr_relaxed((uintptr_t *)field);
-        // Test for a short int separately, so that it has the cheapest path.
-        if (likely(!(old & CPY_INT_TAG)) || old == CPY_INT_TAG) {
+        if (likely(CPyTagged_IsPointerFree(old))) {
             _Py_atomic_store_uintptr_relaxed((uintptr_t *)field, value);
             return;
         }
