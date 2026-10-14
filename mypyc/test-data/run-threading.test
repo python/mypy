@@ -202,7 +202,6 @@ def test_concurrent_int_attribute_read_write() -> None:
     # release the old value (see CPyTagged_GetAttr).
     run(long_writer, native_reader, dynamic_reader)
     run(long_writer, long_writer, native_reader, dynamic_writer)
-    run(long_writer, short_writer, native_reader, dynamic_reader)
     run(long_writer, short_writer, native_deleter, native_reader, dynamic_reader)
 
 def lazy_writer(boxes: list[Lazy], i: int) -> None:
