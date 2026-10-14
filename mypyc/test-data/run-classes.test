@@ -8164,3 +8164,128 @@ def test_interpreted_subclass_shadowing() -> None:
     assert (o.read_literal(), o.LITERAL) == (5, 97)
     assert o.read_items() is C.ITEMS
     assert o.ITEMS == [1]
+
+[case testIntAttributeShortAndLongValues]
+from typing import Any, Final
+import sys
+from testutil import assertRaises
+
+BIG: Final = 2**80
+MEDIUM: Final = 2**40  # Long on 32-bit platforms, short on 64-bit platforms
+
+def make_big(i: int) -> int:
+    # Not a literal, since literals may be immortal
+    return BIG * (i + 1)
+
+class C:
+    __deletable__ = ["n"]
+
+    def __init__(self, n: int) -> None:
+        self.n = n
+
+class Lazy:
+    def set_m(self, m: int) -> None:
+        # Not in __init__, so the attribute may be undefined at this point
+        self.m = m
+
+class Fin:
+    def __init__(self, n: int) -> None:
+        self.n: Final = n
+
+class T:
+    k: int
+
+class WithTrait(T):
+    def __init__(self, k: int) -> None:
+        self.k = k
+
+def get_k(t: T) -> int:
+    return t.k
+
+def set_k(t: T, k: int) -> None:
+    t.k = k
+
+def test_transitions() -> None:
+    c = C(1)
+    d: Any = c
+    for v in [BIG, 5, BIG + 1, BIG + 2, -BIG, 0, MEDIUM, -MEDIUM, -1, BIG * 3]:
+        c.n = v
+        assert c.n == v
+        assert d.n == v
+        d.n = v + 1
+        assert c.n == v + 1
+        assert d.n == v + 1
+
+def test_old_long_value_released() -> None:
+    c = C(make_big(1))
+    dynamic_sys: Any = sys
+    # Any, so that boxing doesn't steal the reference on the last use
+    old: Any = c.n
+    before = dynamic_sys.getrefcount(old)
+    c.n = 1
+    assert dynamic_sys.getrefcount(old) == before - 1
+    d: Any = c
+    d.n = make_big(2)
+    old = d.n
+    before = dynamic_sys.getrefcount(old)
+    d.n = make_big(3)
+    assert dynamic_sys.getrefcount(old) == before - 1
+    old = c.n
+    before = dynamic_sys.getrefcount(old)
+    del c.n
+    assert dynamic_sys.getrefcount(old) == before - 1
+
+def test_maybe_undefined() -> None:
+    o = Lazy()
+    with assertRaises(AttributeError):
+        o.m
+    o.set_m(BIG + 5)
+    assert o.m == BIG + 5
+    o.set_m(3)
+    assert o.m == 3
+    o2 = Lazy()
+    o2.set_m(4)
+    assert o2.m == 4
+    o2.set_m(BIG)
+    assert o2.m == BIG
+
+def test_delete() -> None:
+    for v in [1, BIG + 1]:
+        c = C(v)
+        del c.n
+        with assertRaises(AttributeError):
+            c.n
+        d: Any = c
+        with assertRaises(AttributeError):
+            d.n
+        d.n = v
+        assert c.n == v
+        delattr(d, "n")
+        with assertRaises(AttributeError):
+            c.n
+        c.n = v + 1
+        assert c.n == v + 1
+
+def test_dynamic_set_wrong_type() -> None:
+    for v in [1, BIG + 1]:
+        c = C(v)
+        with assertRaises(TypeError):
+            setattr(c, "n", "x")
+        assert c.n == v
+        assert getattr(c, "n") == v
+
+def test_final() -> None:
+    for v in [1, BIG + 1]:
+        f = Fin(v)
+        assert f.n == v
+        d: Any = f
+        assert d.n == v
+
+def test_trait() -> None:
+    w = WithTrait(BIG)
+    assert get_k(w) == BIG
+    set_k(w, 2)
+    assert get_k(w) == 2
+    set_k(w, BIG + 1)
+    assert get_k(w) == BIG + 1
+    assert w.k == BIG + 1

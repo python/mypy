@@ -48,7 +48,13 @@ from mypyc.ir.func_ir import (
     FuncIR,
     get_text_signature,
 )
-from mypyc.ir.rtypes import RTuple, RType, is_simple_refcounted_pointer, object_rprimitive
+from mypyc.ir.rtypes import (
+    RTuple,
+    RType,
+    is_int_rprimitive,
+    is_simple_refcounted_pointer,
+    object_rprimitive,
+)
 from mypyc.namegen import NameGenerator
 from mypyc.sametype import is_same_type
 
@@ -1346,6 +1352,20 @@ def generate_getter(cl: ClassIR, attr: str, rtype: RType, emitter: Emitter) -> N
         emitter.emit_line("}")
         return
 
+    if IS_FREE_THREADED and is_int_rprimitive(rtype) and attr not in cl.final_attributes:
+        # In free-threaded builds, CPyTagged_GetAttr takes a new reference to a long
+        # value without racing with a concurrent setter (see CPyTagged_SetAttr). It
+        # returns CPY_INT_TAG if the attribute is undefined.
+        emitter.emit_line(f"CPyTagged tmp = CPyTagged_GetAttr((PyObject *)self, &{attr_expr});")
+        emitter.emit_line("if (unlikely(tmp == CPY_INT_TAG)) {")
+        emitter.emit_line("PyErr_SetString(PyExc_AttributeError,")
+        emitter.emit_line(f'    "attribute {repr(attr)} of {repr(cl.name)} undefined");')
+        emitter.emit_line("return NULL;")
+        emitter.emit_line("}")
+        emitter.emit_line("return CPyTagged_StealAsObject(tmp);")
+        emitter.emit_line("}")
+        return
+
     # HACK: Don't consider refcounted values as always defined, since it's possible to
     #       access uninitialized values via 'gc.get_objects()'. Accessing non-refcounted
     #       values is benign.
@@ -1406,6 +1426,28 @@ def generate_setter(cl: ClassIR, attr: str, rtype: RType, emitter: Emitter) -> N
             emitter.emit_line("} else {")
             emitter.emit_line(
                 f"CPy_SetAttrRef((PyObject *)self, (PyObject **)&self->{attr_field}, NULL);"
+            )
+            emitter.emit_line("}")
+        emitter.emit_line("return 0;")
+        emitter.emit_line("}")
+        return
+
+    if IS_FREE_THREADED and is_int_rprimitive(rtype):
+        # In free-threaded builds, CPyTagged_SetAttr steals the new value and safely
+        # reclaims the old one (see CPyTagged_GetAttr). Unbox (borrowed) and take a
+        # new reference to hand over; a failed unbox leaves the attribute intact.
+        # CPY_INT_TAG deletes the attribute.
+        if deletable:
+            emitter.emit_line("if (value != NULL) {")
+        emitter.emit_unbox(
+            "value", "tmp", rtype, error=ReturnHandler("-1"), declare_dest=True, borrow=True
+        )
+        emitter.emit_inc_ref("tmp", rtype)
+        emitter.emit_line(f"CPyTagged_SetAttr((PyObject *)self, &self->{attr_field}, tmp);")
+        if deletable:
+            emitter.emit_line("} else {")
+            emitter.emit_line(
+                f"CPyTagged_SetAttr((PyObject *)self, &self->{attr_field}, CPY_INT_TAG);"
             )
             emitter.emit_line("}")
         emitter.emit_line("return 0;")

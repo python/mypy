@@ -462,9 +462,22 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         safe by borrow_generator_attrs. The default (GIL) build always takes the plain-load
         path and increfs separately.
 
+        Non-Final 'int' attributes use CPyTagged_GetAttr on free-threaded builds, which
+        also returns a new reference (or CPY_INT_TAG if undefined). Final 'int'
+        attributes keep the plain load + incref, like CPy_GetAttrRefFinal.
+
         Thread-confined attributes also use plain loads; see
         ClassIR.attrs_are_thread_confined.
         """
+        if (
+            IS_FREE_THREADED
+            and is_int_rprimitive(attr_rtype)
+            and not op.is_borrowed
+            and not cl.attrs_are_thread_confined()
+            and not cl.is_final_attr(op.attr)
+        ):
+            self.emitter.emit_line(f"{dest} = CPyTagged_GetAttr((PyObject *){obj}, &{attr_expr});")
+            return True
         use_get_attr_ref = (
             IS_FREE_THREADED
             and is_simple_refcounted_pointer(attr_rtype)
@@ -641,6 +654,21 @@ class FunctionEmitterVisitor(OpVisitor[None]):
             else:
                 self.emitter.emit_line(
                     f"CPy_SetAttrRef((PyObject *){obj}, (PyObject **)&{attr_expr}, {src});"
+                )
+            if op.error_kind == ERR_FALSE:
+                self.emitter.emit_line(f"{dest} = 1;")
+        elif (
+            IS_FREE_THREADED
+            and is_int_rprimitive(attr_rtype)
+            and not cl.attrs_are_thread_confined()
+        ):
+            # These also steal src, and reclaim the old value if it's a long.
+            attr_expr = self.get_attr_expr(obj, op, decl_cl)
+            if op.is_init:
+                self.emitter.emit_line(f"CPyTagged_InitAttr(&{attr_expr}, {src});")
+            else:
+                self.emitter.emit_line(
+                    f"CPyTagged_SetAttr((PyObject *){obj}, &{attr_expr}, {src});"
                 )
             if op.error_kind == ERR_FALSE:
                 self.emitter.emit_line(f"{dest} = 1;")

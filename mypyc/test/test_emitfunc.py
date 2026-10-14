@@ -517,6 +517,7 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
             """cpy_r_r0 = PyList_Append(cpy_r_l, cpy_r_o);""",
         )
 
+    @unittest.skipIf(IS_FREE_THREADED, "free threaded builds use CPyTagged_GetAttr")
     def test_get_attr(self) -> None:
         self.assert_emit(
             GetAttr(self.r, "y", 1),
@@ -527,6 +528,37 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
                    CPyTagged_INCREF(cpy_r_r0);
                }
             """,
+        )
+
+    @unittest.skipUnless(IS_FREE_THREADED, "requires a free threaded build")
+    def test_get_attr_int_free_threaded(self) -> None:
+        self.assert_emit(
+            GetAttr(self.r, "y", 1),
+            """\
+            cpy_r_r0 = CPyTagged_GetAttr((PyObject *)cpy_r_r, &((mod___AObject *)cpy_r_r)->_y);
+            if (unlikely(cpy_r_r0 == CPY_INT_TAG)) {
+                PyErr_SetString(PyExc_AttributeError, "attribute 'y' of 'A' undefined");
+            }
+            """,
+        )
+
+    @unittest.skipUnless(IS_FREE_THREADED, "requires a free threaded build")
+    def test_get_attr_int_merged_free_threaded(self) -> None:
+        op = GetAttr(self.r, "y", 1)
+        branch = Branch(op, BasicBlock(8), BasicBlock(9), Branch.IS_ERROR)
+        branch.traceback_entry = ("foobar", 123)
+        self.assert_emit(
+            op,
+            """\
+            cpy_r_r0 = CPyTagged_GetAttr((PyObject *)cpy_r_r, &((mod___AObject *)cpy_r_r)->_y);
+            if (unlikely(cpy_r_r0 == CPY_INT_TAG)) {
+                CPy_AttributeError("prog.py", "foobar", "A", "y", 123, CPyStatic_prog___globals);
+                goto CPyL8;
+            }
+            goto CPyL9;
+            """,
+            next_branch=branch,
+            skip_next=True,
         )
 
     def test_get_attr_non_refcounted(self) -> None:
@@ -553,6 +585,7 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
             """,
         )
 
+    @unittest.skipIf(IS_FREE_THREADED, "free threaded builds use CPyTagged_GetAttr")
     def test_get_attr_merged(self) -> None:
         op = GetAttr(self.r, "y", 1)
         branch = Branch(op, BasicBlock(8), BasicBlock(9), Branch.IS_ERROR)
@@ -593,6 +626,7 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
             """,
         )
 
+    @unittest.skipIf(IS_FREE_THREADED, "free threaded builds use CPyTagged_SetAttr")
     def test_set_attr(self) -> None:
         self.assert_emit(
             SetAttr(self.r, "y", self.m, 1),
@@ -614,6 +648,22 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
             """,
         )
 
+    @unittest.skipUnless(IS_FREE_THREADED, "requires a free threaded build")
+    def test_set_attr_int_free_threaded(self) -> None:
+        self.assert_emit(
+            SetAttr(self.r, "y", self.m, 1),
+            """\
+            CPyTagged_SetAttr((PyObject *)cpy_r_r, &((mod___AObject *)cpy_r_r)->_y, cpy_r_m);
+            cpy_r_r0 = 1;
+            """,
+        )
+
+    @unittest.skipUnless(IS_FREE_THREADED, "requires a free threaded build")
+    def test_set_attr_int_init_free_threaded(self) -> None:
+        op = SetAttr(self.r, "y", self.m, 1)
+        op.mark_as_initializer()
+        self.assert_emit(op, "CPyTagged_InitAttr(&((mod___AObject *)cpy_r_r)->_y, cpy_r_m);")
+
     def test_set_attr_non_refcounted(self) -> None:
         self.assert_emit(
             SetAttr(self.r, "x", self.b, 1),
@@ -622,6 +672,7 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
             """,
         )
 
+    @unittest.skipIf(IS_FREE_THREADED, "free threaded builds use CPyTagged_SetAttr")
     def test_set_attr_no_error(self) -> None:
         op = SetAttr(self.r, "y", self.m, 1)
         op.error_kind = ERR_NEVER
