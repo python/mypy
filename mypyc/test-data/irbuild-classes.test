@@ -1772,6 +1772,90 @@ class NonNativeClassContradiction():  # E: Class is marked as native_class=True 
 class BadUse():  # E: native_class must be used with True or False only
     pass
 
+[case testNativeClassUnknownBase]
+from mypy_extensions import mypyc_attr
+from typing import Any
+from missing_module import Base  # type: ignore
+
+class C(Base):  # E: Native classes cannot inherit from "Base" (unknown base class layout) \
+                # N: Potential workaround: @mypy_extensions.mypyc_attr(native_class=False) \
+                # N: https://mypyc.readthedocs.io/en/stable/native_classes.html#defining-non-native-classes
+    pass
+
+class D(C):  # E: Native classes cannot inherit from "C" (unknown base class layout)
+    pass
+
+@mypyc_attr(native_class=False)
+class NonNative(Base):
+    pass
+
+class NativeChild(NonNative):  # E: Native classes cannot inherit from "NonNative" (unknown base class layout) \
+                             # N: Potential workaround: @mypy_extensions.mypyc_attr(native_class=False) \
+                             # N: https://mypyc.readthedocs.io/en/stable/native_classes.html#defining-non-native-classes
+    pass
+
+ExplicitAny: Any = str
+class S(ExplicitAny):  # E: Native classes cannot inherit from "ExplicitAny" (unknown base class layout) \
+                      # N: Potential workaround: @mypy_extensions.mypyc_attr(native_class=False) \
+                      # N: https://mypyc.readthedocs.io/en/stable/native_classes.html#defining-non-native-classes
+    pass
+
+class Known:
+    pass
+
+class KnownFirst(Known, Base):  # E: Native classes cannot inherit from "Base" (unknown base class layout) \
+                              # N: Potential workaround: @mypy_extensions.mypyc_attr(native_class=False) \
+                              # N: https://mypyc.readthedocs.io/en/stable/native_classes.html#defining-non-native-classes
+    pass
+
+class UnknownFirst(Base, Known):  # E: Native classes cannot inherit from "Base" (unknown base class layout) \
+                                # N: Potential workaround: @mypy_extensions.mypyc_attr(native_class=False) \
+                                # N: https://mypyc.readthedocs.io/en/stable/native_classes.html#defining-non-native-classes
+    pass
+
+class TwoUnknown(Base, ExplicitAny):  # E: Native classes cannot inherit from "Base" (unknown base class layout) \
+                                     # N: Potential workaround: @mypy_extensions.mypyc_attr(native_class=False) \
+                                     # N: https://mypyc.readthedocs.io/en/stable/native_classes.html#defining-non-native-classes
+    pass
+
+Alias = Known
+class AliasFirst(Alias, Base):  # E: Native classes cannot inherit from "Base" (unknown base class layout) \
+                              # N: Potential workaround: @mypy_extensions.mypyc_attr(native_class=False) \
+                              # N: https://mypyc.readthedocs.io/en/stable/native_classes.html#defining-non-native-classes
+    pass
+
+class Indexed(Base[int]):  # type: ignore  # E: Native classes cannot inherit from "Base" (unknown base class layout) \
+                                           # N: Potential workaround: @mypy_extensions.mypyc_attr(native_class=False) \
+                                           # N: https://mypyc.readthedocs.io/en/stable/native_classes.html#defining-non-native-classes
+    pass
+
+def make_base() -> Any: ...
+class Dynamic(make_base()):  # type: ignore  # E: Native classes cannot inherit from a base class with an unknown layout \
+                                            # N: Potential workaround: @mypy_extensions.mypyc_attr(native_class=False) \
+                                            # N: https://mypyc.readthedocs.io/en/stable/native_classes.html#defining-non-native-classes
+    pass
+
+[case testNativeClassIndirectUnknownBase]
+# Any base class anywhere in the MRO makes the layout unknown
+from stubbed import Indirect, IndirectAlias
+
+class C(Indirect):  # E: Native classes cannot inherit from "Indirect" (unknown base class layout) \
+                    # N: Potential workaround: @mypy_extensions.mypyc_attr(native_class=False) \
+                    # N: https://mypyc.readthedocs.io/en/stable/native_classes.html#defining-non-native-classes
+    pass
+
+class D(IndirectAlias):  # E: Native classes cannot inherit from "IndirectAlias" (unknown base class layout) \
+                         # N: Potential workaround: @mypy_extensions.mypyc_attr(native_class=False) \
+                         # N: https://mypyc.readthedocs.io/en/stable/native_classes.html#defining-non-native-classes
+    pass
+
+[file stubbed.pyi]
+from typing import Any
+
+class AnyBase(Any): ...
+class Indirect(AnyBase): ...
+IndirectAlias = Indirect
+
 [case testMypycAttrNativeClassMetaError]
 from mypy_extensions import mypyc_attr
 
