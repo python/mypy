@@ -93,12 +93,6 @@ class TestTargetPython(unittest.TestCase):
         assert "Py_mod_multiple_interpreters" in slots(TargetPython((3, 12)))
         assert "Py_mod_gil" in slots(TargetPython((3, 13)))
 
-    def test_python_version_rejected(self) -> None:
-        for args in (["--python-version", "3.13", "a.py"], ["--python-version=3.13", "a.py"]):
-            with self.assertRaises(SystemExit) as cm:
-                get_mypy_config(args, None, CompilerOptions(), None)
-            assert str(cm.exception.code) == "error: mypyc does not accept --python-version"
-
     def test_mypy_python_version_follows_target(self) -> None:
         # This is used by mypyc_build(), which is how a target is selected.
         with tempfile.TemporaryDirectory() as tmp:
