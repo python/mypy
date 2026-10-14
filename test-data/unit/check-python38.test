@@ -831,3 +831,18 @@ def fn() -> tuple[int, int]:
                               # E: Unsupported operand types for + ("None" and "int") \
                               # N: Left operand is of type "int | None"
 [builtins fixtures/dict.pyi]
+
+[case testPartialTypeResolvedByWalrusInAssignmentRvalueList]
+errors = []
+errors = [
+    i for i in [1, 2, 3] if (errors := [1])
+]
+reveal_type(errors)  # N: Revealed type is "builtins.list[builtins.int]"
+[builtins fixtures/list.pyi]
+
+[case testPartialTypeResolvedByCallInAssignmentRvalueDict]
+errors = {}
+errors["42"] = 1 if int() else errors.update({"43": 1})  # E: Incompatible types in assignment (expression has type "int | None", target has type "int") \
+                                                         # E: "update" of "dict" does not return a value (it only ever returns None)
+reveal_type(errors)  # N: Revealed type is "builtins.dict[builtins.str, builtins.int]"
+[builtins fixtures/dict.pyi]
