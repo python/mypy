@@ -20,7 +20,6 @@ from mypy.nodes import (
     UnaryExpr,
     Var,
 )
-from mypyc.common import IS_FREE_THREADED
 from mypyc.ir.ops import BasicBlock
 from mypyc.ir.rtypes import RVec, is_fixed_width_rtype, is_tagged
 from mypyc.irbuild.builder import IRBuilder
@@ -126,7 +125,7 @@ def is_borrow_friendly_expr(self: IRBuilder, expr: Expression) -> bool:
         #  - Native Final attributes are read-only at runtime, so they can never be reassigned.
         #  - Vec-typed attributes require manual synchronization, so we borrow them liberally.
         return (
-            not IS_FREE_THREADED
+            not self.options.target_python.free_threaded
             or isinstance(self.node_type(expr), RVec)
             or self.is_final_native_attr_ref(expr)
         )

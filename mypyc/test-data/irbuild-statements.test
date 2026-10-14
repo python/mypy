@@ -314,7 +314,7 @@ L3:
 L4:
     return y
 
-[case testForList_nogil]
+[case testForList_nogil_64bit]
 from typing import List
 
 def f(ls: List[int]) -> int:
@@ -708,7 +708,7 @@ L0:
     y = r9
     return 1
 
-[case testMultipleAssignmentUnpackFromSequence_nogil]
+[case testMultipleAssignmentUnpackFromSequence_nogil_64bit]
 from typing import List, Tuple
 
 def f(l: List[int], t: Tuple[int, ...]) -> None:

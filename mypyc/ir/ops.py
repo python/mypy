@@ -718,6 +718,7 @@ class PrimitiveDescription:
         experimental: bool,
         dependencies: list[Dependency] | None,
         type_params: list[RTypeVar] | None,
+        gil_only: bool = False,
     ) -> None:
         # Each primitive much have a distinct name, but otherwise they are arbitrary.
         self.name: Final = name
@@ -743,6 +744,9 @@ class PrimitiveDescription:
         # Experimental primitives are not used unless mypyc experimental features are
         # explicitly enabled
         self.experimental = experimental
+        # GIL-only primitives are not used when targeting a free-threaded build
+        # (e.g. because they return a borrowed reference that could be unsafe)
+        self.gil_only = gil_only
         # Dependencies for the primitive, such as a capsule that needs to imported
         # and configured to call the primitive.
         self.dependencies = dependencies
