@@ -540,7 +540,19 @@ def _check_deletable_declarations(path: str, cdef: ClassDef, ir: ClassIR, errors
                 )
 
 
-def check_unknown_base_classes(path: str, cdef: ClassDef, errors: Errors) -> None:
+def report_needs_non_native_class(errors: Errors, msg: str, path: str, line: int) -> None:
+    errors.error(msg, path, line)
+    errors.note(
+        "Potential workaround: @mypy_extensions.mypyc_attr(native_class=False)", path, line
+    )
+    errors.note(
+        "https://mypyc.readthedocs.io/en/stable/native_classes.html#defining-non-native-classes",
+        path,
+        line,
+    )
+
+
+def check_unknown_base_classes(path: str, cdef: ClassDef, errors: Errors, mapper: Mapper) -> None:
     """Reject native classes whose layout depends on an Any base."""
     if not cdef.info.fallback_to_any:
         return
@@ -559,15 +571,15 @@ def check_unknown_base_classes(path: str, cdef: ClassDef, errors: Errors) -> Non
         if not isinstance(base_node, TypeInfo) or base_node.fallback_to_any:
             base_description = f'"{base_expr.name}" (unknown base class layout)'
             break
-    errors.error(f"Native classes cannot inherit from {base_description}", path, cdef.line)
-    errors.note(
-        "Potential workaround: @mypy_extensions.mypyc_attr(native_class=False)", path, cdef.line
-    )
-    errors.note(
-        "https://mypyc.readthedocs.io/en/stable/native_classes.html#defining-non-native-classes",
-        path,
-        cdef.line,
-    )
+    msg = f"Native classes cannot inherit from {base_description}"
+    if any(
+        base.fallback_to_any and base in mapper.type_to_ir and mapper.type_to_ir[base].is_ext_class
+        for base in cdef.info.mro[1:]
+    ):
+        # A native base class already reported the error with the notes
+        errors.error(msg, path, cdef.line)
+    else:
+        report_needs_non_native_class(errors, msg, path, cdef.line)
 
 
 def prepare_class_def(
@@ -587,7 +599,7 @@ def prepare_class_def(
     ir = mapper.type_to_ir[cdef.info]
     info = cdef.info
 
-    check_unknown_base_classes(path, cdef, errors)
+    check_unknown_base_classes(path, cdef, errors, mapper)
 
     attrs, attrs_lines = get_mypyc_attrs(cdef, path, errors)
     if attrs.get("allow_interpreted_subclasses") is True:
@@ -613,18 +625,8 @@ def prepare_class_def(
                 # isn't in builtins, bad things will happen and we won't
                 # catch it here! But this should catch a lot of the most
                 # common pitfalls.
-                errors.error(
-                    "Inheriting from most builtin types is unimplemented", path, cdef.line
-                )
-                errors.note(
-                    "Potential workaround: @mypy_extensions.mypyc_attr(native_class=False)",
-                    path,
-                    cdef.line,
-                )
-                errors.note(
-                    "https://mypyc.readthedocs.io/en/stable/native_classes.html#defining-non-native-classes",
-                    path,
-                    cdef.line,
+                report_needs_non_native_class(
+                    errors, "Inheriting from most builtin types is unimplemented", path, cdef.line
                 )
 
     free_list_len = attrs.get("free_list_len")

@@ -67,8 +67,9 @@ classes:
 * ``UserWarning``
 
 A native class can't inherit from a base class with type ``Any``, such
-as a class imported from a module that isn't type checked, since mypyc
-needs to know the layout of all base classes. Use a
+as a class imported from a module that isn't type checked, even
+indirectly through other base classes, since mypyc needs to know the
+layout of all base classes. Use a
 :ref:`non-native class <non-native-classes>` instead.
 
 By default, a non-native class can't inherit a native class, and you

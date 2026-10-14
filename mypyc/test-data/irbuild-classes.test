@@ -1728,9 +1728,7 @@ class C(Base):  # E: Native classes cannot inherit from "Base" (unknown base cla
                 # N: https://mypyc.readthedocs.io/en/stable/native_classes.html#defining-non-native-classes
     pass
 
-class D(C):  # E: Native classes cannot inherit from "C" (unknown base class layout) \
-             # N: Potential workaround: @mypy_extensions.mypyc_attr(native_class=False) \
-             # N: https://mypyc.readthedocs.io/en/stable/native_classes.html#defining-non-native-classes
+class D(C):  # E: Native classes cannot inherit from "C" (unknown base class layout)
     pass
 
 @mypyc_attr(native_class=False)
@@ -1782,6 +1780,27 @@ class Dynamic(make_base()):  # type: ignore  # E: Native classes cannot inherit 
                                             # N: Potential workaround: @mypy_extensions.mypyc_attr(native_class=False) \
                                             # N: https://mypyc.readthedocs.io/en/stable/native_classes.html#defining-non-native-classes
     pass
+
+[case testNativeClassIndirectUnknownBase]
+# Any base class anywhere in the MRO makes the layout unknown
+from stubbed import Indirect, IndirectAlias
+
+class C(Indirect):  # E: Native classes cannot inherit from "Indirect" (unknown base class layout) \
+                    # N: Potential workaround: @mypy_extensions.mypyc_attr(native_class=False) \
+                    # N: https://mypyc.readthedocs.io/en/stable/native_classes.html#defining-non-native-classes
+    pass
+
+class D(IndirectAlias):  # E: Native classes cannot inherit from "IndirectAlias" (unknown base class layout) \
+                         # N: Potential workaround: @mypy_extensions.mypyc_attr(native_class=False) \
+                         # N: https://mypyc.readthedocs.io/en/stable/native_classes.html#defining-non-native-classes
+    pass
+
+[file stubbed.pyi]
+from typing import Any
+
+class AnyBase(Any): ...
+class Indirect(AnyBase): ...
+IndirectAlias = Indirect
 
 [case testMypycAttrNativeClassMetaError]
 from mypy_extensions import mypyc_attr
