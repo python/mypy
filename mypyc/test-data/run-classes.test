@@ -5480,6 +5480,472 @@ def test_untransformed_dunder_new() -> None:
     with assertRaises(TypeError, "str.__new__(int): int is not a subtype of str"):
         k = TestStrInt.factory()
 
+[case testDecoratedDunderNew]
+from __future__ import annotations
+
+from typing import Any, Callable, TypeVar, overload
+
+from mypy_extensions import mypyc_attr
+from testutil import assertRaises
+from typing_extensions import Self
+
+from m import check_interpreted_subclasses
+
+F = TypeVar("F", bound=Callable[..., Any])
+
+log: list[str] = []
+
+def take() -> list[str]:
+    result = list(log)
+    log.clear()
+    return result
+
+def logged(f: F) -> F:
+    def wrapper(cls: Any, *args: Any, **kwargs: Any) -> Any:
+        log.append(f"before {cls.__name__} {args} {kwargs}")
+        obj = f(cls, *args, **kwargs)
+        log.append("after")
+        return obj
+    return wrapper  # type: ignore[return-value]
+
+def tagged(tag: str) -> Callable[[F], F]:
+    def deco(f: F) -> F:
+        def wrapper(*args: Any) -> Any:
+            log.append(tag)
+            return f(*args)
+        return wrapper  # type: ignore[return-value]
+    return deco
+
+def unchanged(f: F) -> F:
+    return f
+
+def non_negative(f: F) -> F:
+    def wrapper(cls: Any, x: int) -> Any:
+        if x < 0:
+            raise ValueError("negative")
+        return f(cls, x)
+    return wrapper  # type: ignore[return-value]
+
+class Point:
+    @logged
+    def __new__(cls, x: int, y: int = 0) -> Self:
+        log.append(f"new {x} {y}")
+        return super().__new__(cls)
+
+    def __init__(self, x: int, y: int = 0) -> None:
+        log.append(f"init {x} {y}")
+        self.x = x
+        self.y = y
+        self.label = f"{x},{y}"
+
+class PointChild(Point):
+    pass
+
+class PointChildWithInit(Point):
+    def __init__(self, x: int, y: int = 0) -> None:
+        super().__init__(x + 10, y + 10)
+        log.append("child init")
+
+def test_new_and_init() -> None:
+    p = Point(1)
+    assert take() == ["before Point (1,) {}", "new 1 0", "after", "init 1 0"]
+    assert (p.x, p.y) == (1, 0)
+    p = Point(2, y=3)
+    assert take() == ["before Point (2,) {'y': 3}", "new 2 3", "after", "init 2 3"]
+    assert (p.x, p.y) == (2, 3)
+
+    # Use Any to get non-native semantics
+    cls: Any = Point
+    p = cls(4, 5)
+    assert take() == ["before Point (4, 5) {}", "new 4 5", "after", "init 4 5"]
+    assert (p.x, p.y) == (4, 5)
+    with assertRaises(TypeError):
+        cls()
+    assert take() == ["before Point () {}"]
+
+def test_inherited_new() -> None:
+    c = PointChild(1, 2)
+    assert take() == ["before PointChild (1, 2) {}", "new 1 2", "after", "init 1 2"]
+    assert type(c) is PointChild
+    assert (c.x, c.y) == (1, 2)
+    d = PointChildWithInit(1, 2)
+    assert take() == [
+        "before PointChildWithInit (1, 2) {}",
+        "new 1 2",
+        "after",
+        "init 11 12",
+        "child init",
+    ]
+    assert type(d) is PointChildWithInit
+    assert (d.x, d.y) == (11, 12)
+
+    cls: Any = PointChild
+    c = cls(3)
+    assert take() == ["before PointChild (3,) {}", "new 3 0", "after", "init 3 0"]
+    assert type(c) is PointChild
+    cls = PointChildWithInit
+    d = cls(3)
+    assert take() == [
+        "before PointChildWithInit (3,) {}",
+        "new 3 0",
+        "after",
+        "init 13 10",
+        "child init",
+    ]
+    assert d.x == 13
+
+def test_explicit_call_does_not_call_init() -> None:
+    p = Point.__new__(Point, 1)
+    assert take() == ["before Point (1,) {}", "new 1 0", "after"]
+    assert type(p) is Point
+    with assertRaises(AttributeError):
+        p.x
+    with assertRaises(AttributeError):
+        p.label
+    c = Point.__new__(PointChild, 2)
+    assert take() == ["before PointChild (2,) {}", "new 2 0", "after"]
+    assert type(c) is PointChild
+
+    cls: Any = Point
+    p = cls.__new__(cls, 3, y=4)
+    assert take() == ["before Point (3,) {'y': 4}", "new 3 4", "after"]
+    with assertRaises(AttributeError):
+        p.label
+    assert type(cls.__dict__["__new__"]) is staticmethod
+
+class Root:
+    def __init__(self, x: int) -> None:
+        log.append(f"init {x}")
+        self.x = x
+
+class Mid(Root):
+    @logged
+    def __new__(cls, x: int) -> Self:
+        log.append("new")
+        return super().__new__(cls)
+
+class Leaf(Mid):
+    pass
+
+def test_init_from_base_class() -> None:
+    # Root doesn't define __new__, so its tp_new calls __init__, and its tp_init
+    # does nothing. The subclasses can't use that tp_init.
+    for cls in Mid, Leaf:
+        any_cls: Any = cls
+        obj = any_cls(1)
+        assert take() == [f"before {cls.__name__} (1,) {{}}", "new", "after", "init 1"]
+        assert obj.x == 1
+    m = Mid(2)
+    assert take() == ["before Mid (2,) {}", "new", "after", "init 2"]
+    assert m.x == 2
+    l = Leaf(3)
+    assert take() == ["before Leaf (3,) {}", "new", "after", "init 3"]
+    assert l.x == 3
+    r = Root(4)
+    assert take() == ["init 4"]
+    assert r.x == 4
+    any_cls = Root
+    r = any_cls(5)
+    assert take() == ["init 5"]
+
+class TwoDecorators:
+    @tagged("outer")
+    @tagged("inner")
+    def __new__(cls) -> Self:
+        log.append("new")
+        return super().__new__(cls)
+
+class Unchanged:
+    @unchanged
+    def __new__(cls) -> Self:
+        log.append("new")
+        return super().__new__(cls)
+
+def test_other_decorators() -> None:
+    TwoDecorators()
+    assert take() == ["outer", "inner", "new"]
+    Unchanged()
+    assert take() == ["new"]
+    cls: Any = TwoDecorators
+    cls()
+    assert take() == ["outer", "inner", "new"]
+    cls = Unchanged
+    cls()
+    cls.__new__(cls)
+    assert take() == ["new", "new"]
+
+class Overloaded:
+    @overload
+    def __new__(cls, x: int) -> Overloaded: ...
+    @overload
+    def __new__(cls, x: str) -> Overloaded: ...
+    @logged
+    def __new__(cls, x: object) -> Overloaded:
+        log.append(f"new {x}")
+        return super().__new__(cls)
+
+    def __init__(self, x: object) -> None:
+        self.x = x
+
+def test_overloaded_new_with_decorated_implementation() -> None:
+    o = Overloaded(1)
+    assert take() == ["before Overloaded (1,) {}", "new 1", "after"]
+    assert o.x == 1
+    cls: Any = Overloaded
+    o = cls("s")
+    assert take() == ["before Overloaded ('s',) {}", "new s", "after"]
+    assert o.x == "s"
+
+class NotAlwaysInstance:
+    @logged
+    def __new__(cls, x: int) -> Any:
+        if x == 0:
+            return "zero"
+        return super().__new__(cls)
+
+    def __init__(self, x: int) -> None:
+        log.append("init")
+        self.x = x
+
+def test_new_returns_instance_of_other_class() -> None:
+    a: Any = NotAlwaysInstance(0)
+    assert a == "zero"
+    assert take() == ["before NotAlwaysInstance (0,) {}", "after"]
+    b: Any = NotAlwaysInstance(1)
+    assert b.x == 1
+    assert take() == ["before NotAlwaysInstance (1,) {}", "after", "init"]
+    cls: Any = NotAlwaysInstance
+    assert cls(0) == "zero"
+    assert take() == ["before NotAlwaysInstance (0,) {}", "after"]
+
+class Checked:
+    @non_negative
+    def __new__(cls, x: int) -> Self:
+        if x == 0:
+            raise RuntimeError("zero")
+        return super().__new__(cls)
+
+    def __init__(self, x: int) -> None:
+        if x == 1:
+            raise KeyError("one")
+        self.x = x
+
+def test_exceptions() -> None:
+    any_cls: Any = Checked
+    for cls in Checked, any_cls:
+        with assertRaises(ValueError, "negative"):
+            cls(-1)
+        with assertRaises(RuntimeError, "zero"):
+            cls(0)
+        with assertRaises(KeyError, "one"):
+            cls(1)
+        assert cls(2).x == 2
+
+@mypyc_attr(allow_interpreted_subclasses=True)
+class Open:
+    @logged
+    def __new__(cls, x: int) -> Self:
+        return super().__new__(cls)
+
+    def __init__(self, x: int) -> None:
+        self.x = x
+
+    def value(self) -> int:
+        return self.x
+
+def call_value(o: Open) -> int:
+    return o.value()
+
+def test_interpreted_subclasses() -> None:
+    o = Open(1)
+    assert take() == ["before Open (1,) {}", "after"]
+    assert call_value(o) == 1
+    check_interpreted_subclasses()
+
+[file m.py]
+from testutil import assertRaises
+
+def check_interpreted_subclasses() -> None:
+    from native import Leaf, Open, Point, PointChild, call_value, take
+
+    class OpenChild(Open):
+        def value(self) -> int:
+            return self.x + 100
+
+    o = OpenChild(1)
+    assert take() == ["before OpenChild (1,) {}", "after"]
+    assert o.x == 1
+    assert call_value(o) == 101
+
+    class OpenChildWithNew(Open):
+        y: int
+
+        def __new__(cls, x):
+            obj = super().__new__(cls, x + 1)
+            obj.y = 5
+            return obj
+
+        def __init__(self, x):
+            super().__init__(x + 2)
+
+    o2 = OpenChildWithNew(1)
+    assert take() == ["before OpenChildWithNew (2,) {}", "after"]
+    assert (o2.x, o2.y) == (3, 5)
+    assert call_value(o2) == 3
+
+    # The other classes don't allow interpreted subclasses.
+    for base in Point, PointChild, Leaf:
+        class Child(base):  # type: ignore[misc, valid-type]
+            pass
+
+        with assertRaises(TypeError, "interpreted classes cannot inherit from compiled"):
+            Child(1)
+        take()
+
+        class ChildWithNew(base):  # type: ignore[misc, valid-type]
+            def __new__(cls, x):
+                return super().__new__(cls, x)
+
+        with assertRaises(TypeError, "interpreted classes cannot inherit from compiled"):
+            ChildWithNew(1)
+        take()
+
+[typing fixtures/typing-full.pyi]
+
+[case testDecoratedDunderNewWithOtherArgumentsThanInit]
+from __future__ import annotations
+
+import functools
+from typing import Any, Callable, TypeVar
+
+from typing_extensions import Self
+
+F = TypeVar("F", bound=Callable[..., Any])
+
+log: list[str] = []
+
+def take() -> list[str]:
+    result = list(log)
+    log.clear()
+    return result
+
+def logged(f: F) -> F:
+    def wrapper(cls: Any, *args: Any, **kwargs: Any) -> Any:
+        log.append(f"before {cls.__name__} {args} {kwargs}")
+        obj = f(cls, *args, **kwargs)
+        log.append("after")
+        return obj
+    return wrapper  # type: ignore[return-value]
+
+class NoInit:
+    x: int
+
+    @logged
+    def __new__(cls, x: int) -> Self:
+        obj = super().__new__(cls)
+        obj.x = x + 1
+        return obj
+
+def test_no_init() -> None:
+    n = NoInit(1)
+    assert take() == ["before NoInit (1,) {}", "after"]
+    assert n.x == 2
+    cls: Any = NoInit
+    n = cls(x=2)
+    assert take() == ["before NoInit () {'x': 2}", "after"]
+    assert n.x == 3
+
+class AnyArguments:
+    @logged
+    def __new__(cls, *args: Any, **kwargs: Any) -> Self:
+        log.append("new")
+        return super().__new__(cls)
+
+    def __init__(self, x: int, y: int = 0) -> None:
+        log.append(f"init {x} {y}")
+        self.x = x
+        self.y = y
+
+class AnyArgumentsChild(AnyArguments):
+    def __init__(self, x: int) -> None:
+        super().__init__(x, 10)
+
+def test_any_arguments() -> None:
+    a = AnyArguments(1, y=2)
+    assert take() == ["before AnyArguments (1,) {'y': 2}", "new", "after", "init 1 2"]
+    assert (a.x, a.y) == (1, 2)
+    c = AnyArgumentsChild(3)
+    assert take() == ["before AnyArgumentsChild (3,) {}", "new", "after", "init 3 10"]
+    assert (c.x, c.y) == (3, 10)
+    cls: Any = AnyArguments
+    a = cls(4)
+    assert take() == ["before AnyArguments (4,) {}", "new", "after", "init 4 0"]
+    assert (a.x, a.y) == (4, 0)
+
+class Interned:
+    name: str
+
+    @functools.cache  # type: ignore[misc]
+    def __new__(cls, name: str) -> Self:
+        log.append(f"new {name}")
+        obj = super().__new__(cls)
+        obj.name = name
+        return obj
+
+def test_cache() -> None:
+    a = Interned("a")
+    b = Interned("b")
+    assert Interned("a") is a
+    cls: Any = Interned
+    assert cls("b") is b
+    assert take() == ["new a", "new b"]
+    assert (a.name, b.name) == ("a", "b")
+    assert cls.__new__.cache_info().hits == 2
+
+[typing fixtures/typing-full.pyi]
+
+[case testDecoratedDunderNewWithBuiltInBaseClass]
+from typing import Any, Callable, TypeVar
+
+F = TypeVar("F", bound=Callable[..., Any])
+
+log: list[str] = []
+
+def logged(f: F) -> F:
+    def wrapper(cls: Any, *args: Any) -> Any:
+        log.append(f"before {cls.__name__} {args}")
+        obj = f(cls, *args)
+        log.append("after")
+        return obj
+    return wrapper  # type: ignore[return-value]
+
+class Table(dict):  # type: ignore[type-arg]
+    @logged
+    def __new__(cls, *args: Any) -> Any:
+        log.append("new")
+        return dict.__new__(cls)
+
+class Error(Exception):
+    @logged
+    def __new__(cls, *args: Any) -> Any:
+        log.append("new")
+        return Exception.__new__(cls, *args)
+
+    def __init__(self, x: int) -> None:
+        log.append("init")
+        super().__init__(str(x + 1))
+
+def test_built_in_base_class() -> None:
+    t = Table({"a": 1})
+    assert log == ["before Table ({'a': 1},)", "new", "after"]
+    assert type(t) is Table
+    assert t == {"a": 1}
+    log.clear()
+    e = Error(1)
+    assert log == ["before Error (1,)", "new", "after", "init"]
+    assert type(e) is Error
+    assert str(e) == "2"
+
 [case testPerTypeFreeList]
 from __future__ import annotations
 

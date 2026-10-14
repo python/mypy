@@ -2239,6 +2239,131 @@ hello
 empty
 hello
 
+[case testIncrementalCrossGroupDecoratedDunderNew]
+# A class with a decorated __new__ inherits tp_new, and so does a subclass that
+# inherits the __new__. When only the module of the subclass is recompiled, the
+# base class is loaded from the incremental cache, which doesn't have the
+# decorators.
+from typing import Any
+
+from other_a import Child, ChildWithInit
+from other_b import Base, log
+
+def take() -> list[str]:
+    result = list(log)
+    log.clear()
+    return result
+
+def test() -> None:
+    log.clear()
+    any_base: Any = Base
+    for base in Base, any_base:
+        b = base(1)
+        assert take() == ["before Base (1,)", "new", "after", "Root 1"]
+        assert b.x == 1
+    # Use Any to get non-native semantics
+    any_child: Any = Child
+    for child in Child, any_child:
+        c = child(2)
+        assert take() == ["before Child (2,)", "new", "after", "Root 2"]
+        assert type(c) is Child
+        assert c.x == 2
+    any_child = ChildWithInit
+    for child_with_init in ChildWithInit, any_child:
+        d = child_with_init(3)
+        assert take() == ["before ChildWithInit (3,)", "new", "after", "Root 4", "ChildWithInit"]
+        assert d.x == 4
+    e = Base.__new__(Child, 4)
+    assert take() == ["before Child (4,)", "new", "after"]
+    assert type(e) is Child
+
+[file other_a.py]
+from other_b import Base, log
+
+class Child(Base):
+    pass
+
+class ChildWithInit(Base):
+    def __init__(self, x: int) -> None:
+        super().__init__(x + 1)
+        log.append("ChildWithInit")
+
+[file other_a.py.2]
+from other_b import Base, log
+
+class Child(Base):
+    pass
+
+class ChildWithInit(Base):
+    def __init__(self, x: int) -> None:
+        super().__init__(x + 1)
+        log.append("ChildWithInit")
+
+def _force_recompile() -> int:
+    return 1
+
+[file other_b.py]
+from typing import Any, Callable, TypeVar
+
+F = TypeVar("F", bound=Callable[..., Any])
+
+log: list[str] = []
+
+def logged(f: F) -> F:
+    def wrapper(cls: Any, *args: Any) -> Any:
+        log.append(f"before {cls.__name__} {args}")
+        obj = f(cls, *args)
+        log.append("after")
+        return obj
+    return wrapper  # type: ignore[return-value]
+
+class Root:
+    def __init__(self, x: int) -> None:
+        log.append(f"Root {x}")
+        self.x = x
+
+class Base(Root):
+    @logged
+    def __new__(cls, x: int) -> Any:
+        log.append("new")
+        return super().__new__(cls)
+
+[file driver.py]
+from native import test
+test()
+
+[case testDecoratedNewInBaseClassPreparedAfterSubclass]
+# The modules of a compilation group are prepared in name order, so Child is
+# prepared before Base. mypy removes @staticmethod from the decorators of
+# __new__, so it's a native method, and the constructor of Child calls it and
+# __init__ natively.
+from other import Base
+
+class Child(Base):
+    def __init__(self) -> None:
+        raise ValueError("expected init failure")
+
+def construct() -> Child:
+    return Child()
+
+[file other.py]
+from typing import Any
+
+class Base:
+    @staticmethod
+    def __new__(cls) -> Any:
+        return super().__new__(cls)
+
+    def __init__(self) -> None:
+        pass
+
+[file driver.py]
+from native import construct
+from testutil import assertRaises
+
+with assertRaises(ValueError):
+    construct()
+
 [case testIncrementalCrossModuleInheritedAttrDefaultsWithOverride]
 # Regression: same shape as testIncrementalCrossModuleInheritedAttrDefaults,
 # but the subclass adds an attribute of its own, so generate_attr_defaults_init

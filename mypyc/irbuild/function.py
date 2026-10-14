@@ -491,6 +491,10 @@ def handle_ext_method(builder: IRBuilder, cdef: ClassDef, fdef: FuncDef) -> None
     builder.functions.append(func_ir)
 
     if is_decorated(builder, fdef):
+        if name == "__new__" and class_ir.is_trait:
+            # A decorated __new__ is called by an inherited tp_new, and a class only
+            # inherits tp_new from its first base class.
+            builder.error('Decorated "__new__" not supported in traits', fdef.line)
         # Obtain the function name in order to construct the name of the helper function.
         _, _, name = fdef.fullname.rpartition(".")
         # Get the callable representing the non-decorated method directly from the type
