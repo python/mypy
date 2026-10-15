@@ -63,6 +63,11 @@ def native_slot(cl: ClassIR, fn: FuncIR, emitter: Emitter) -> str:
     return f"{NATIVE_PREFIX}{fn.cname(emitter.names)}"
 
 
+def wrapper_slot(cl: ClassIR, fn: FuncIR, emitter: Emitter) -> str:
+    """Use a generated wrapper function directly as a slot, without boxing its result."""
+    return f"{NATIVE_PREFIX}{fn.cname(emitter.names)}"
+
+
 def dunder_attr_slot(cl: ClassIR, fn: FuncIR, emitter: Emitter) -> str:
     wrapper_fn = cl.get_method(fn.name + "__wrapper")
     assert wrapper_fn
@@ -88,7 +93,7 @@ SLOT_DEFS: SlotTable = {
     "__getattr__": ("tp_getattro", dunder_attr_slot),
     # The wrapper is also generated for a class that defines only __delattr__, so fill
     # the slot based on the wrapper instead of __setattr__.
-    "__setattr____wrapper": ("tp_setattro", native_slot),
+    "__setattr____wrapper": ("tp_setattro", wrapper_slot),
 }
 
 AS_MAPPING_SLOT_DEFS: SlotTable = {
