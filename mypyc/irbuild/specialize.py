@@ -148,7 +148,7 @@ from mypyc.primitives.librt_strings_ops import (
     string_writer_range_check_op,
 )
 from mypyc.primitives.librt_vecs_ops import isinstance_vec
-from mypyc.primitives.list_ops import isinstance_list, new_list_set_item_op
+from mypyc.primitives.list_ops import isinstance_list
 from mypyc.primitives.misc_ops import (
     isinstance_bool,
     isinstance_complex,
@@ -431,31 +431,17 @@ def dict_methods_fast_path(builder: IRBuilder, expr: CallExpr, callee: RefExpr) 
 def translate_list_from_generator_call(
     builder: IRBuilder, expr: CallExpr, callee: RefExpr
 ) -> Value | None:
-    """Special case for simplest list comprehension.
+    """Special case for list(<generator expression>), which acts like a list comprehension.
 
     For example:
-        list(f(x) for x in some_list/some_tuple/some_str)
-    'translate_list_comprehension()' would take care of other cases
-    if this fails.
+        list(f(x) for x in some_iterable)
     """
     if (
         len(expr.args) == 1
         and expr.arg_kinds[0] == ARG_POS
         and isinstance(expr.args[0], GeneratorExpr)
-        and can_preallocate_from_generator(builder, expr.args[0])
     ):
-        gen = expr.args[0]
-
-        def set_item(x: Value, y: Value, z: Value, line: int) -> None:
-            builder.call_c(new_list_set_item_op, [x, y, z], line)
-
-        with comprehension_scope(builder, gen):
-            return sequence_from_generator_preallocate_helper(
-                builder,
-                gen,
-                empty_op_llbuilder=builder.builder.new_list_op_with_length,
-                set_item_op=set_item,
-            )
+        return translate_generator_to_list(builder, expr.args[0])
     return None
 
 

@@ -447,6 +447,46 @@ L8:
     b = r11
     return 1
 
+[case testListFromGeneratorExpr]
+def f(n: int) -> list[int]:
+    return list(x + 1 for x in range(n) if x != 2)
+[out]
+def f(n):
+    n :: int
+    r0 :: list
+    r1 :: int
+    r2 :: bit
+    x :: int
+    r3 :: bit
+    r4 :: int
+    r5 :: object
+    r6 :: i32
+    r7 :: bit
+    r8 :: int
+L0:
+    r0 = PyList_New(0)
+    r1 = 0
+L1:
+    r2 = int_lt r1, n
+    if r2 goto L2 else goto L6 :: bool
+L2:
+    x = r1
+    r3 = int_ne x, 4
+    if r3 goto L4 else goto L3 :: bool
+L3:
+    goto L5
+L4:
+    r4 = CPyTagged_Add(x, 2)
+    r5 = box(int, r4)
+    r6 = PyList_Append(r0, r5)
+    r7 = r6 >= 0 :: signed
+L5:
+    r8 = CPyTagged_Add(r1, 2)
+    r1 = r8
+    goto L1
+L6:
+    return r0
+
 [case testGeneratorNext_withgil]
 from typing import List, Optional
 
