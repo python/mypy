@@ -4198,3 +4198,23 @@ assert o.ITEMS == [1, 2]
 b: Any = Base()
 assert b.COMPUTED == 7
 assert b.ITEMS is Base.ITEMS
+
+[case testImportPackageWithModuleGetattr]
+[file other_pkg/__init__.py]
+def __getattr__(name: str) -> str:
+    if name.startswith("__"):
+        raise AttributeError(name)
+    return name
+[file other_pkg/other_sub.py]
+x = 1
+[file driver.py]
+import importlib.machinery
+import other_pkg.other_sub
+
+assert other_pkg.other_sub.x == 1
+ext_suffixes = importlib.machinery.EXTENSION_SUFFIXES
+assert any(other_pkg.__file__.endswith(s) for s in ext_suffixes), other_pkg.__file__
+assert other_pkg.__path__
+assert other_pkg.__spec__ is not None
+assert other_pkg.__package__ == "other_pkg"
+assert other_pkg.missing == "missing"
