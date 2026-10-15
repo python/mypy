@@ -7854,6 +7854,14 @@ def drop_arg(f: Callable[[Any, int], int]) -> Callable[[Any], int]:
         return f(self, 10)
     return wrapper
 
+events: list[str] = []
+
+def logged(f: F) -> F:
+    def wrapper(self: Any) -> None:
+        events.append("decorated")
+        f(self)
+    return wrapper  # type: ignore[return-value]
+
 class Base:
     @same
     def o(self) -> object:
@@ -7933,6 +7941,15 @@ class Impl(Trait):
 
 class Uses(Trait):
     pass
+
+class Del:
+    @logged
+    def __del__(self) -> None:
+        events.append("Del")
+
+class NativeDel(Del):
+    def __del__(self) -> None:
+        events.append("NativeDel")
 
 @mypyc_attr(allow_interpreted_subclasses=True)
 class Open:
@@ -8030,8 +8047,8 @@ def test_native_method_overrides_decorated_method() -> None:
 [file driver.py]
 import asyncio
 from native import (
-    Base, Native, Leaf, Open, OpenNative, co_base, co_native, s_open, s_open_native,
-    test_native_method_overrides_decorated_method,
+    Base, Native, Leaf, Del, NativeDel, Open, OpenNative, co_base, co_native, events, s_open,
+    s_open_native, test_native_method_overrides_decorated_method,
 )
 
 test_native_method_overrides_decorated_method()
@@ -8047,6 +8064,12 @@ assert Native().n() == 2
 assert asyncio.run(co_base(Base())) == 1
 assert asyncio.run(co_base(Native())) == 2
 assert asyncio.run(co_native(Native())) == 2
+
+Del()
+assert events == ["decorated", "Del"], events
+events.clear()
+NativeDel()
+assert events == ["NativeDel"], events
 
 class Interp(OpenNative):
     def s(self) -> str:
@@ -8064,6 +8087,76 @@ assert s_open_native(Interp()) == "interp"
 assert s_open(InterpInherits()) == "open"
 assert s_open_native(InterpInherits()) == "open"
 assert s_open(InterpOpen()) == "interp open"
+
+[case testNativePropertyOverridesDecoratedProperty]
+from typing import Any, Callable
+from mypy_extensions import trait
+
+def to_str(f: Callable[[Any], int]) -> Callable[[Any], str]:
+    def wrapper(self: Any) -> str:
+        return "s" + str(f(self))
+    return wrapper
+
+class Base:
+    @property
+    @to_str
+    def p(self) -> int:
+        return 5
+
+class Native(Base):
+    @property
+    def p(self) -> str:
+        return "native"
+
+class Leaf(Native):
+    @property
+    def p(self) -> str:
+        return "leaf"
+
+@trait
+class Trait:
+    @property
+    @to_str
+    def p(self) -> int:
+        return 7
+
+class Impl(Trait):
+    @property
+    def p(self) -> str:
+        return "impl"
+
+class Uses(Trait):
+    pass
+
+def p_base(b: Base) -> str:
+    return b.p
+
+def p_native(b: Native) -> str:
+    return b.p
+
+def p_trait(t: Trait) -> str:
+    return t.p
+
+def p_impl(i: Impl) -> str:
+    return i.p
+
+def test_native_property_overrides_decorated_property() -> None:
+    assert p_base(Base()) == "s5"
+    assert p_base(Native()) == "native"
+    assert p_base(Leaf()) == "leaf"
+    assert p_native(Native()) == "native"
+    assert p_native(Leaf()) == "leaf"
+    assert p_trait(Impl()) == "impl"
+    assert p_trait(Uses()) == "s7"
+    assert p_impl(Impl()) == "impl"
+
+[file driver.py]
+from native import Base, Native, Leaf, test_native_property_overrides_decorated_property
+
+test_native_property_overrides_decorated_property()
+assert Base().p == "s5"
+assert Native().p == "native"
+assert Leaf().p == "leaf"
 
 [case testClassVarSelfReference]
 # ClassVar initializers that reference other ClassVars from the same class.

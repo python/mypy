@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import itertools
 
-from mypyc.common import UNDECORATED_PREFIX
 from mypyc.ir.class_ir import ClassIR, VTableEntries, VTableMethod
 from mypyc.sametype import is_same_method_signature
 
@@ -40,9 +39,11 @@ def compute_vtable(cls: ClassIR) -> None:
 
     for t in [cls] + [t for t in all_traits if t is not cls]:
         for fn in itertools.chain(t.methods.values()):
-            if fn.name.startswith(UNDECORATED_PREFIX):
-                # The undecorated function of a decorated override is only called by the
-                # decorator at runtime, never natively
+            if fn.name not in t.method_decls:
+                # Decorated methods aren't declared as native methods, since they are only
+                # called through the Python API, so they don't need an entry. This includes
+                # the undecorated function of a decorated override, which only the
+                # decorators call.
                 continue
             # TODO: don't generate a new entry when we overload without changing the type
             if fn == cls.get_method(fn.name, prefer_method=True):
@@ -76,7 +77,7 @@ def specialize_parent_vtable(cls: ClassIR, parent: ClassIR) -> VTableEntries:
                 or orig_parent_method.name == "__init__"
             ):
                 entry = VTableMethod(entry.cls, entry.name, child_method, entry.shadow_method)
-            elif entry.name in entry.cls.method_decls or entry.name in entry.cls.property_types:
+            else:
                 entry = VTableMethod(
                     entry.cls,
                     entry.name,
