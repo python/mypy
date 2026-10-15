@@ -756,7 +756,7 @@ class GroupGenerator:
 
             for cl in module.classes:
                 if cl.is_ext_class:
-                    generate_class(cl, module_name, emitter)
+                    generate_class(cl, module_name, emitter, self.source_paths)
 
             running_flag_classes = {cl.name: cl for cl in module.classes if cl.has_running_flag}
 
@@ -1733,7 +1733,9 @@ def is_fastcall_supported(fn: FuncIR, capi_version: tuple[int, int]) -> bool:
         if fn.name == "__call__":
             # We can use vectorcalls (PEP 590) when supported
             return True
-        # TODO: Support fastcall for __init__ and __new__.
+        # The wrappers of __init__ and __new__ are called from tp_init and tp_new,
+        # which get a tuple and a dict. A call to the type object can skip them, see
+        # can_use_constructor_for_type_call().
         return fn.name != "__init__" and fn.name != "__new__"
     return True
 

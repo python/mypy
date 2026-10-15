@@ -17,6 +17,7 @@ from mypyc.codegen.emitwrapper import (
     generate_am_send_wrapper,
     generate_bin_op_wrapper,
     generate_bool_wrapper,
+    generate_constructor_wrapper_function,
     generate_contains_wrapper,
     generate_dunder_wrapper,
     generate_get_wrapper,
@@ -258,10 +259,40 @@ def generate_class_reuse(
     context.declarations[name] = HeaderDeclaration(f"CPyThreadLocal {struct_name} *{name};")
 
 
-def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
+def can_use_constructor_for_type_call(cl: ClassIR) -> bool:
+    """Can a call to the type object of cl go straight to the native constructor?
+
+    If so, the type object gets a tp_vectorcall that parses the arguments and calls
+    the native constructor. Otherwise a call goes through tp_new and tp_init.
+    """
+    init = cl.get_method_and_class("__init__")
+    if init is None or "__init__" not in init[1].method_decls:
+        # Without __init__ there are no arguments to parse, and tp_new accepts and
+        # ignores any that are passed. A decorated __init__ isn't called natively.
+        return False
+    if cl.has_method("__new__") or cl.has_non_native_new():
+        # If __new__ returns an instance of a subclass, type.__call__ calls __init__ of
+        # the subclass, but the native constructor doesn't. With a decorated __new__,
+        # the native constructor calls the type object.
+        return False
+    if cl.is_abstract:
+        # The only thing that stops an abstract class from being instantiated is the
+        # check of the self argument in the wrapper of __init__.
+        return False
+    # If __init__ isn't native, the constructor takes *args and **kwargs and calls
+    # tp_init. Building a tuple and a dict for it wouldn't be any faster.
+    return all(arg.kind not in (ARG_STAR, ARG_STAR2) for arg in cl.ctor.sig.args)
+
+
+def generate_class(
+    cl: ClassIR, module: str, emitter: Emitter, source_paths: dict[str, str]
+) -> None:
     """Generate C code for a class.
 
     This is the main entry point to the module.
+
+    Args:
+        source_paths: Map from module names to source file paths
     """
     name = cl.name
     name_prefix = cl.name_prefix(emitter.names)
@@ -433,6 +464,15 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
         generate_new_for_class(cl, new_name, vtable_name, setup_name, init_fn, emitter)
         emit_line()
 
+        if init_fn is not None and can_use_constructor_for_type_call(cl):
+            vectorcall_name = f"{name_prefix}_vectorcall"
+            init_module = init_fn.decl.module_name
+            generate_constructor_wrapper_function(
+                cl, init_fn, vectorcall_name, emitter, source_paths[init_module], init_module
+            )
+            fields["tp_vectorcall"] = vectorcall_name
+            emit_line()
+
         if cl.allow_interpreted_subclasses:
             shadow_vtable_name: str | None = generate_vtables(
                 cl, vtable_setup_name + "_shadow", vtable_name + "_shadow", emitter, shadow=True
@@ -468,7 +508,7 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
             cl.struct_name(emitter.names)
         )
         flags.append("_Py_TPFLAGS_HAVE_VECTORCALL")
-        if not fields.get("tp_vectorcall"):
+        if not fields.get("tp_call"):
             # This is just a placeholder to please CPython. It will be
             # overridden during setup.
             fields["tp_call"] = "PyVectorcall_Call"
