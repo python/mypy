@@ -83,3 +83,42 @@ def test_exception_in_later_argument() -> None:
     with assertRaises(ValueError, "fail"):
         max((elt(x) for x in it()), key=fail())
     check(["iterable", "fail"])
+
+def test_lambda_in_generator() -> None:
+    assert sum(((lambda: elt(x))() for x in it()), arg("start", 10)) == 13
+    check(["iterable", "start", "elt 1", "elt 2"])
+    assert next(((lambda: elt(x))() for x in it()), arg("default", -1)) == 1
+    check(["iterable", "default", "elt 1"])
+    n = -1
+    assert max(((lambda: elt(x))() for x in it()), key=arg("key", lambda v: v * n)) == 1
+    check(["iterable", "key", "elt 1", "elt 2"])
+
+[case testLambdaInSpecializedGeneratorExpr]
+from typing import Callable
+
+def test_lambdas_capture_loop_variable() -> None:
+    fs = tuple((lambda: x) for x in range(3))
+    assert [f() for f in fs] == [2, 2, 2]
+    gs = list((lambda: x) for x in range(3))
+    assert [g() for g in gs] == [2, 2, 2]
+    assert sorted(f() for f in [(lambda: x) for x in range(3)]) == [2, 2, 2]
+
+def test_lambdas_called_while_iterating() -> None:
+    assert sum((lambda: x)() for x in range(4)) == 6
+    assert sum(((lambda: x)() for x in range(4)), 10) == 16
+    assert any((lambda: x)() == 2 for x in range(3))
+    assert not all((lambda: x)() < 2 for x in range(3))
+    assert next((lambda: x)() for x in range(5) if x > 2) == 3
+    assert next(((lambda: x)() for x in range(5) if x > 10), -1) == -1
+    assert set((lambda: x)() % 2 for x in range(5)) == {0, 1}
+    assert tuple((lambda: x)() for x in [5, 6]) == (5, 6)
+    assert list((lambda: x)() for x in "ab") == ["a", "b"]
+    assert max(((lambda: x)() for x in [3, 1, 2]), key=lambda v: -v) == 1
+    assert ",".join((lambda: s)() for s in ["a", "b"]) == "a,b"
+
+def test_lambda_captures_outer_variable() -> None:
+    n = 10
+    assert sum((lambda: x + n)() for x in range(3)) == 33
+    fs: list[Callable[[], int]] = []
+    fs.extend((lambda: x * n) for x in range(3))
+    assert [f() for f in fs] == [20, 20, 20]

@@ -93,7 +93,7 @@ from mypyc.ir.rtypes import (
 from mypyc.irbuild.builder import IRBuilder, find_walrus_targets, get_call_target_fullname
 from mypyc.irbuild.constant_fold import constant_fold_expr
 from mypyc.irbuild.for_helpers import (
-    comprehension_helper,
+    comprehension_scope,
     generator_loop_helper,
     get_expr_length_value,
     sequence_from_generator_preallocate_helper,
@@ -441,6 +441,8 @@ def translate_list_from_generator_call(
         len(expr.args) == 1
         and expr.arg_kinds[0] == ARG_POS
         and isinstance(expr.args[0], GeneratorExpr)
+        # Comprehensions that need a scope are handled by the general case.
+        and expr.args[0] not in builder.comprehension_to_fitem
     ):
 
         def set_item(x: Value, y: Value, z: Value, line: int) -> None:
@@ -480,6 +482,8 @@ def translate_tuple_from_generator_call(
         len(expr.args) == 1
         and expr.arg_kinds[0] == ARG_POS
         and isinstance(expr.args[0], GeneratorExpr)
+        # Comprehensions that need a scope are handled by translate_safe_generator_call.
+        and expr.args[0] not in builder.comprehension_to_fitem
     ):
 
         def set_item(x: Value, y: Value, z: Value, line: int) -> None:
@@ -508,7 +512,9 @@ def translate_set_from_generator_call(
         and expr.arg_kinds[0] == ARG_POS
         and isinstance(expr.args[0], GeneratorExpr)
     ):
-        return translate_set_comprehension(builder, expr.args[0])
+        gen = expr.args[0]
+        with comprehension_scope(builder, gen):
+            return translate_set_comprehension(builder, gen)
     return None
 
 
@@ -626,7 +632,6 @@ def any_all_helper(
     init_val = initial_value()
     retval = Register(bool_rprimitive, line=init_val.line)
     builder.assign(retval, init_val, init_val.line)
-    loop_params = list(zip(gen.indices, gen.sequences, gen.condlists, gen.is_async))
     true_block, false_block, exit_block = BasicBlock(), BasicBlock(), BasicBlock()
 
     def gen_inner_stmts() -> None:
@@ -638,7 +643,7 @@ def any_all_helper(
         builder.goto(exit_block)
         builder.activate_block(false_block)
 
-    comprehension_helper(builder, loop_params, gen_inner_stmts, gen.line)
+    generator_loop_helper(builder, gen, gen_inner_stmts)
     builder.goto_and_activate(exit_block)
 
     return retval

@@ -7,7 +7,8 @@ such special case.
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
+from contextlib import contextmanager
 from typing import ClassVar, cast
 
 from mypy.nodes import (
@@ -369,7 +370,8 @@ def translate_generator_to_list(
     CPython evaluates them after the first iterable (when the generator object is created)
     but before the generator runs, so we do the same.
     """
-    return translate_list_comprehension(builder, gen, after_first_init=before_loop)
+    with comprehension_scope(builder, gen):
+        return translate_list_comprehension(builder, gen, after_first_init=before_loop)
 
 
 def generator_loop_helper(
@@ -385,9 +387,44 @@ def generator_loop_helper(
     translate_generator_to_list for the meaning of before_loop.
     """
     loop_params = list(zip(gen.indices, gen.sequences, gen.condlists, gen.is_async))
-    comprehension_helper(
-        builder, loop_params, gen_inner_stmts, gen.line, after_first_init=before_loop
+    with comprehension_scope(builder, gen):
+        comprehension_helper(
+            builder, loop_params, gen_inner_stmts, gen.line, after_first_init=before_loop
+        )
+
+
+@contextmanager
+def comprehension_scope(
+    builder: IRBuilder, node: GeneratorExpr | DictionaryComprehension
+) -> Iterator[None]:
+    """Enter a lightweight scope for a comprehension, if it needs one.
+
+    A comprehension gets a scope when it contains a lambda, so that the closure/env-class
+    machinery sees the comprehension as a separate scope and the lambda can capture loop
+    variables. The comprehension is still generated inline (same basic blocks and
+    registers).
+    """
+    if node not in builder.comprehension_to_fitem:
+        yield
+        return
+
+    from mypyc.irbuild.context import FuncInfo
+    from mypyc.irbuild.env_class import add_vars_to_env, finalize_env_class, setup_env_class
+
+    comprehension_fdef = builder.comprehension_to_fitem[node]
+    fn_info = FuncInfo(
+        fitem=comprehension_fdef,
+        name=comprehension_fdef.name,
+        is_nested=True,
+        contains_nested=True,
+        is_comprehension_scope=True,
     )
+
+    with builder.enter_scope(fn_info):
+        setup_env_class(builder)
+        finalize_env_class(builder)
+        add_vars_to_env(builder)
+        yield
 
 
 def raise_error_if_contains_unreachable_names(
