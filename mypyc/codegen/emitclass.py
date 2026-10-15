@@ -299,7 +299,8 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
             fields["tp_traverse"] = f"(traverseproc){name_prefix}_traverse"
             fields["tp_clear"] = f"(inquiry){clear_name}"
     # Populate .tp_finalize and generate a finalize method only if __del__ is defined for this class.
-    del_method = next((e.method for e in cl.vtable_entries if e.name == "__del__"), None)
+    # A decorated __del__ has no vtable entry, so it's looked up in the methods.
+    del_method = cl.get_method("__del__")
     if del_method:
         fields["tp_finalize"] = f"(destructor){finalize_name}"
     if needs_getseters:
