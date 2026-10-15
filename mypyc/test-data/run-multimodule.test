@@ -2598,6 +2598,40 @@ except TypeError as e:
 else:
     assert False
 
+[case testSeparateCrossGroupUnpackedArgs]
+-- A call with *args or **kwargs that a native call can't unpack goes through the
+-- wrapper function of the method. Under separate=True, the wrapper of a method in
+-- another group is called through the exports table.
+from typing import Any
+
+from other_base import Base
+
+class Child(Base):
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
+
+    def add(self, *args: int, **kwargs: int) -> int:
+        return super().add(*args, **kwargs) + 100
+
+def make(*args: Any, **kwargs: Any) -> tuple[int, int, int]:
+    c = Child(*args, **kwargs)
+    return c.x, c.y, c.add(c.x, y=c.y)
+
+[file other_base.py]
+class Base:
+    def __init__(self, x: int, y: int = 0) -> None:
+        self.x = x
+        self.y = y
+
+    def add(self, x: int, y: int = 0) -> int:
+        return x + y
+
+[file driver.py]
+from native import make
+assert make(1) == (1, 0, 101), make(1)
+assert make(1, y=2) == (1, 2, 103), make(1, y=2)
+assert make(x=3, y=4) == (3, 4, 107), make(x=3, y=4)
+
 [case testFinalMethodCallsWithinAndAcrossModules]
 from other import FinalMethods, NativeBaseWithFinals, FinalTrait, SubclassOfNativeBase, SubclassOfTrait
 

@@ -38,7 +38,7 @@ from mypyc.ir.rtypes import (
 from mypyc.namegen import NameGenerator
 
 
-def is_fastcall_supported(fn: FuncIR, capi_version: tuple[int, int]) -> bool:
+def is_fastcall_supported(fn: FuncIR | FuncDecl, capi_version: tuple[int, int]) -> bool:
     if fn.class_name is not None:
         if fn.name == "__call__":
             # We can use vectorcalls (PEP 590) when supported

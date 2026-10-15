@@ -725,6 +725,9 @@ class B(A):
         # The items are for ordinary arguments, so the wrapper function has to unpack them
         return super().f(*args)
 
+    def call_f_kwargs(self, **kwargs: int) -> int:
+        return super().f(**kwargs)
+
     def call_g(self, *args: Any, **kwargs: Any) -> int:
         return super().g(*args, **kwargs)
 [out]
@@ -751,28 +754,38 @@ L0:
 def B.call_f(self, args):
     self :: __main__.B
     args :: tuple
-    r0 :: object
-    r1 :: str
+    r0 :: list
+    r1 :: ptr
     r2 :: object
-    r3 :: list
-    r4 :: ptr
-    r5 :: object
-    r6 :: tuple
-    r7 :: object
-    r8 :: int
+    r3 :: tuple
+    r4 :: object
+    r5 :: int
 L0:
-    r0 = __main__.A :: type
-    r1 = 'f'
-    r2 = CPy_GetMethodWrapper(r0, r1)
-    r3 = PyList_New(1)
-    r4 = list_items r3
-    buf_init_item r4, 0, self
-    keep_alive r3
-    r5 = CPyList_Extend(r3, args)
-    r6 = PyList_AsTuple(r3)
-    r7 = PyObject_CallObject(r2, r6)
-    r8 = unbox(int, r7)
-    return r8
+    r0 = PyList_New(1)
+    r1 = list_items r0
+    buf_init_item r1, 0, self
+    keep_alive r0
+    r2 = CPyList_Extend(r0, args)
+    r3 = PyList_AsTuple(r0)
+    r4 = A.f(*r3)
+    r5 = unbox(int, r4)
+    return r5
+def B.call_f_kwargs(self, kwargs):
+    self :: __main__.B
+    kwargs, r0 :: dict
+    r1 :: i32
+    r2 :: bit
+    r3 :: tuple
+    r4 :: object
+    r5 :: int
+L0:
+    r0 = PyDict_New()
+    r1 = CPyDict_UpdateInDisplay(r0, kwargs)
+    r2 = r1 >= 0 :: signed
+    r3 = PyTuple_Pack(1, self)
+    r4 = A.f(*r3, **r0)
+    r5 = unbox(int, r4)
+    return r5
 def B.call_g(self, args, kwargs):
     self :: __main__.B
     args :: tuple

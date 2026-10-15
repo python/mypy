@@ -41,6 +41,7 @@ from mypyc.ir.ops import (
     Branch,
     Call,
     CallC,
+    CallWrapper,
     Cast,
     ComparisonOp,
     Extend,
@@ -147,7 +148,6 @@ from mypyc.primitives.float_ops import copysign_op, int_to_float_op
 from mypyc.primitives.generic_ops import (
     generic_len_op,
     generic_ssize_t_len_op,
-    method_wrapper_op,
     py_call_op,
     py_call_with_kwargs_op,
     py_call_with_posargs_op,
@@ -1364,17 +1364,15 @@ class LowLevelIRBuilder:
         arguments used to track the presence of values for certain arguments. By
         default, the values of the bitmap arguments are inferred from args.
         """
-        if decl.class_name is not None and not self.can_pass_args_natively(
-            arg_kinds, arg_names, decl.sig
-        ):
-            return self.call_method_wrapper(decl, args, arg_kinds, arg_names, line)
+        if not decl.internal and not self.can_pass_args_natively(arg_kinds, arg_names, decl.sig):
+            return self.call_wrapper(decl, args, arg_kinds, arg_names, line)
         # Normalize args to positionals.
         args = self.native_args_to_positional(
             args, arg_kinds, arg_names, decl.sig, line, bitmap_args=bitmap_args
         )
         return self.add(Call(decl, args, line))
 
-    def call_method_wrapper(
+    def call_wrapper(
         self,
         decl: FuncDecl,
         args: Sequence[Value],
@@ -1382,16 +1380,18 @@ class LowLevelIRBuilder:
         arg_names: Sequence[str | None],
         line: int,
     ) -> Value:
-        """Call a native method through its wrapper function, which parses the arguments.
+        """Call a native function through its wrapper function, which unpacks the arguments.
 
-        This is slower than a native call, but like a native call it calls the given
-        method without looking it up. A lookup could find an override, or the __init__
-        slot wrapper of a native class, which usually does nothing (__init__ is called
-        when the object is created instead).
+        This is much slower than a native call, but it can unpack *args and **kwargs into
+        ordinary arguments. Like a native call, it calls the given function without a
+        lookup. A lookup could find an override, or the __init__ slot wrapper of a native
+        class, which usually does nothing (__init__ is called when the object is created).
         """
-        typ = self.load_native_type_object(f"{decl.module_name}.{decl.class_name}")
-        wrapper = self.call_c(method_wrapper_op, [typ, self.load_str(decl.name)], line)
-        result = self.py_call(wrapper, list(args), line, arg_kinds, arg_names)
+        pos_args, kw_args = self._construct_varargs(
+            list(zip(args, arg_kinds, arg_names)), line, has_star=True, has_star2=True
+        )
+        assert pos_args is not None
+        result = self.add(CallWrapper(decl, pos_args, kw_args, line))
         return self.coerce(result, decl.sig.ret_type, line)
 
     def native_args_to_positional(
