@@ -238,6 +238,7 @@ from mypy.treetransform import TransformVisitor
 from mypy.typeanal import check_for_explicit_any, has_any_from_unimported_type, make_optional_type
 from mypy.typeops import (
     bind_self,
+    callable_corresponding_argument,
     can_have_shared_disjoint_base,
     coerce_to_literal,
     custom_special_method,
@@ -1144,7 +1145,28 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                 if not is_callable_compatible(
                     impl, sig1, is_compat=is_subtype, is_proper_subtype=False, ignore_return=True
                 ):
-                    self.msg.overloaded_signatures_param_specific(i + 1, defn.impl)
+                    positional_only_args: list[str] = []
+                    if is_callable_compatible(
+                        impl,
+                        sig1,
+                        is_compat=is_subtype,
+                        is_proper_subtype=False,
+                        ignore_return=True,
+                        ignore_pos_arg_names=True,
+                    ):
+                        normalized_impl = impl.with_unpacked_kwargs().with_normalized_var_args()
+                        normalized_sig = sig1.with_unpacked_kwargs().with_normalized_var_args()
+                        for arg in normalized_sig.formal_arguments():
+                            impl_arg = callable_corresponding_argument(normalized_impl, arg)
+                            if (
+                                arg.name is not None
+                                and impl_arg is not None
+                                and arg.name != impl_arg.name
+                            ):
+                                positional_only_args.append(arg.name)
+                    self.msg.overloaded_signatures_param_specific(
+                        i + 1, defn.impl, positional_only_args
+                    )
 
                 # Is the overload alternative's return type a subtype of the implementation's?
                 if not (
