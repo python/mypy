@@ -1032,7 +1032,6 @@ PyObject *CPy_GetAIter(PyObject *obj)
                      "'async for' requires an object with "
                      "__aiter__ method, got %.100s",
                      type->tp_name);
-        Py_DECREF(obj);
         return NULL;
     }
 
