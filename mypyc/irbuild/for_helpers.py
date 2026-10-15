@@ -106,6 +106,7 @@ def for_loop_helper(
     else_insts: GenFunc | None,
     is_async: bool,
     line: int,
+    after_init: GenFunc | None = None,
 ) -> None:
     """Generate IR for a loop.
 
@@ -114,6 +115,8 @@ def for_loop_helper(
         expr: the expression to iterate over
         body_insts: a function that generates the body of the loop
         else_insts: a function that generates the else block instructions
+        after_init: a function that generates instructions to run after the iterable has
+            been evaluated (and iter() called on it) but before the first iteration
     """
     # Body of the loop
     body_block = BasicBlock()
@@ -130,6 +133,8 @@ def for_loop_helper(
     for_gen = make_for_loop_generator(
         builder, index, expr, body_block, normal_loop_exit, line, is_async=is_async
     )
+    if after_init is not None:
+        after_init()
 
     builder.push_loop_stack(step_block, exit_block)
     condition_block = BasicBlock()
@@ -223,6 +228,7 @@ def sequence_from_generator_preallocate_helper(
     gen: GeneratorExpr,
     empty_op_llbuilder: Callable[[Value, int], Value],
     set_item_op: Callable[[Value, Value, Value, int], None],
+    after_first_init: GenFunc | None = None,
 ) -> Value | None:
     """Generate a new tuple or list from a simple generator expression.
 
@@ -245,6 +251,8 @@ def sequence_from_generator_preallocate_helper(
                 - New Value
             See `new_list_set_item_op` and `new_tuple_set_item_op` for detailed
             implementation.
+        after_first_init: Optional function that generates instructions to run after the
+            sequence has been evaluated (see comprehension_helper).
     """
     if len(gen.sequences) == 1 and len(gen.indices) == 1 and len(gen.condlists[0]) == 0:
         line = gen.line
@@ -289,6 +297,9 @@ def sequence_from_generator_preallocate_helper(
         else:
             sequence = builder.accept(sequence_expr)
 
+        if after_first_init is not None:
+            after_first_init()
+
         length = get_expr_length_value(builder, sequence_expr, sequence, line, use_pyssize_t=True)
 
         target_op = empty_op_llbuilder(length, line)
@@ -306,8 +317,16 @@ def sequence_from_generator_preallocate_helper(
     return None
 
 
-def translate_list_comprehension(builder: IRBuilder, gen: GeneratorExpr) -> Value:
+def translate_list_comprehension(
+    builder: IRBuilder, gen: GeneratorExpr, *, after_first_init: GenFunc | None = None
+) -> Value:
+    """Generate a list from a comprehension or generator expression.
+
+    See comprehension_helper for the meaning of after_first_init.
+    """
     if raise_error_if_contains_unreachable_names(builder, gen):
+        if after_first_init is not None:
+            after_first_init()
         return builder.none()
 
     def set_item(x: Value, y: Value, z: Value, line: int) -> None:
@@ -319,6 +338,7 @@ def translate_list_comprehension(builder: IRBuilder, gen: GeneratorExpr) -> Valu
         gen,
         empty_op_llbuilder=builder.builder.new_list_op_with_length,
         set_item_op=set_item,
+        after_first_init=after_first_init,
     )
     if val is not None:
         return val
@@ -331,8 +351,43 @@ def translate_list_comprehension(builder: IRBuilder, gen: GeneratorExpr) -> Valu
         e = builder.accept(gen.left_expr)
         builder.primitive_op(list_append_op, [builder.read(list_ops, gen.line), e], gen.line)
 
-    comprehension_helper(builder, loop_params, gen_inner_stmts, gen.line)
+    comprehension_helper(
+        builder, loop_params, gen_inner_stmts, gen.line, after_first_init=after_first_init
+    )
     return builder.read(list_ops, gen.line)
+
+
+def translate_generator_to_list(
+    builder: IRBuilder, gen: GeneratorExpr, *, before_loop: GenFunc | None = None
+) -> Value:
+    """Generate a list from a generator expression whose items are all consumed at once.
+
+    This is equivalent to creating and fully consuming a generator object, when the
+    consumer doesn't run other code while iterating.
+
+    If given, before_loop generates code for the other arguments of the consuming call.
+    CPython evaluates them after the first iterable (when the generator object is created)
+    but before the generator runs, so we do the same.
+    """
+    return translate_list_comprehension(builder, gen, after_first_init=before_loop)
+
+
+def generator_loop_helper(
+    builder: IRBuilder,
+    gen: GeneratorExpr,
+    gen_inner_stmts: GenFunc,
+    *,
+    before_loop: GenFunc | None = None,
+) -> None:
+    """Generate loops that iterate a generator expression inline (no generator object).
+
+    gen_inner_stmts generates code for each item (gen.left_expr). See
+    translate_generator_to_list for the meaning of before_loop.
+    """
+    loop_params = list(zip(gen.indices, gen.sequences, gen.condlists, gen.is_async))
+    comprehension_helper(
+        builder, loop_params, gen_inner_stmts, gen.line, after_first_init=before_loop
+    )
 
 
 def raise_error_if_contains_unreachable_names(
@@ -407,6 +462,7 @@ def comprehension_helper(
     loop_params: list[tuple[Lvalue, Expression, list[Expression], bool]],
     gen_inner_stmts: Callable[[], None],
     line: int,
+    after_first_init: GenFunc | None = None,
 ) -> None:
     """Helper function for list comprehensions.
 
@@ -417,9 +473,14 @@ def comprehension_helper(
             - "conditions" is a list of conditions, evaluated in order with short-circuiting,
                 that must all be true for the loop body to be executed
         gen_inner_stmts: function to generate the IR for the body of the innermost loop
+        after_first_init: function to generate IR to run after the first (outermost)
+            iterable has been evaluated, but before the first iteration
     """
 
-    def handle_loop(loop_params: list[tuple[Lvalue, Expression, list[Expression], bool]]) -> None:
+    def handle_loop(
+        loop_params: list[tuple[Lvalue, Expression, list[Expression], bool]],
+        after_init: GenFunc | None = None,
+    ) -> None:
         """Generate IR for a loop.
 
         Given a list of (index, expression, [conditions]) tuples, generate IR
@@ -434,6 +495,7 @@ def comprehension_helper(
             None,
             is_async=is_async,
             line=line,
+            after_init=after_init,
         )
 
     def loop_contents(
@@ -468,7 +530,7 @@ def comprehension_helper(
             with builder.enter_borrow_scope(line):
                 gen_inner_stmts()
 
-    handle_loop(loop_params)
+    handle_loop(loop_params, after_first_init)
 
 
 def is_range_ref(expr: RefExpr) -> bool:
