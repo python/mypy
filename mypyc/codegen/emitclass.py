@@ -264,9 +264,10 @@ def can_use_constructor_for_type_call(cl: ClassIR) -> bool:
         # Without __init__ there are no arguments to parse, and tp_new accepts and
         # ignores any that are passed. A decorated __init__ isn't called natively.
         return False
-    if cl.has_method("__new__"):
+    if cl.has_method("__new__") or cl.has_non_native_new():
         # If __new__ returns an instance of a subclass, type.__call__ calls __init__ of
-        # the subclass, but the native constructor doesn't.
+        # the subclass, but the native constructor doesn't. With a decorated __new__,
+        # the native constructor calls the type object.
         return False
     if cl.is_abstract:
         # The only thing that stops an abstract class from being instantiated is the

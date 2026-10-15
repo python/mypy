@@ -3712,7 +3712,7 @@ def test_inherited() -> None:
 
 [case testCallTypeObjectOfNativeClass]
 from abc import ABC, abstractmethod
-from typing import Any
+from typing import Any, overload
 
 from mypy_extensions import i64, mypyc_attr
 
@@ -3801,6 +3801,26 @@ class WithNewSub(WithNew):
     def __init__(self, x: int) -> None:
         self.x = x * 10
 
+def logged_new(f: Any) -> Any:
+    def wrapper(cls: Any, *args: Any) -> Any:
+        calls.append("logged_new")
+        return f(cls, *args)
+    return wrapper
+
+class DecoratedNew:
+    @logged_new
+    def __new__(cls, x: Any = None) -> Any:
+        return super().__new__(cls)
+
+    # With an overloaded __init__ the native constructor takes no arguments
+    # (mypyc/mypyc#961) instead of *args and **kwargs. It calls the type object.
+    @overload
+    def __init__(self) -> None: ...
+    @overload
+    def __init__(self, x: int) -> None: ...
+    def __init__(self, x: Any = None) -> None:
+        self.x = x
+
 class VarArgs:
     def __init__(self, *args: int, **kwargs: str) -> None:
         self.args = args
@@ -3838,6 +3858,7 @@ AdderN: Any = native.AdderN
 NoInit: Any = native.NoInit
 Decorated: Any = native.Decorated
 WithNew: Any = native.WithNew
+DecoratedNew: Any = native.DecoratedNew
 VarArgs: Any = native.VarArgs
 Shape: Any = native.Shape
 Square: Any = native.Square
@@ -3941,6 +3962,11 @@ def test_classes_without_native_constructor_call() -> None:
     w = WithNew(-5)
     assert type(w) is native.WithNewSub
     assert w.x == -50
+
+    native.calls.clear()
+    assert DecoratedNew(5).x == 5
+    assert DecoratedNew().x is None
+    assert native.calls == ["logged_new", "logged_new"]
 
     v = VarArgs(1, 2, a="b")
     assert v.args == (1, 2)
