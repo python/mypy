@@ -4,6 +4,8 @@
 from collections import OrderedDict
 from typing import Any
 
+from testutil import assertRaises
+
 log: list[str] = []
 
 def it() -> list[int]:
@@ -72,18 +74,12 @@ def test_exception_in_later_argument() -> None:
         log.append("fail")
         raise ValueError("fail")
 
-    try:
+    with assertRaises(ValueError, "fail"):
         sum((elt(x) for x in it()), fail())
-    except ValueError:
-        pass
     check(["iterable", "fail"])
-    try:
+    with assertRaises(ValueError, "fail"):
         next((elt(x) for x in it()), fail())
-    except ValueError:
-        pass
     check(["iterable", "fail"])
-    try:
+    with assertRaises(ValueError, "fail"):
         max((elt(x) for x in it()), key=fail())
-    except ValueError:
-        pass
     check(["iterable", "fail"])
