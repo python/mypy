@@ -1920,10 +1920,16 @@ def create_metastore(
                     num_shards=options.sqlite_num_shards,
                 )
             except (OSError, sqlite3.OperationalError) as os_error:
-                msg = f"mypy: note: Failed to initialize sqlite cache: {os_error}"
+                msg = f"Failed to initialize sqlite cache: {os_error}"
         except ImportError as import_error:
-            msg = f"mypy: note: Cannot import sqlite: {import_error}"
+            msg = f"Cannot import sqlite: {import_error}"
+        if parallel_worker:
+            # If the sqlite cache fails *only* in the workers, this indicates something
+            # very wrong. It is tricky to fail gracefully, so we raise ValueError to make
+            # sure this exception is not swallowed in the worker top-level code.
+            raise ValueError(msg)
         if flush_errors:
+            msg = f"mypy: note: {msg}"
             flush_errors(None, [msg, "mypy: note: Using filesystem cache instead"], False)
     return FilesystemMetadataStore(_cache_dir_prefix(options))
 
