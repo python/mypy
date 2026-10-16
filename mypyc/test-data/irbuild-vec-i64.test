@@ -333,7 +333,7 @@ L3:
 L4:
     return r1
 
-[case testVecI64FastComprehensionFromList_nogil]
+[case testVecI64FastComprehensionFromList_nogil_64bit]
 from librt.vecs import vec
 from mypy_extensions import i64
 from typing import List

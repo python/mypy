@@ -12,6 +12,7 @@ from mypyc.ir.ops import (
     Branch,
     Call,
     CallC,
+    CallWrapper,
     Cast,
     ComparisonOp,
     DecRef,
@@ -162,6 +163,9 @@ class IRTransform(OpVisitor[Value | None]):
     def visit_call(self, op: Call) -> Value | None:
         return self.add(op)
 
+    def visit_call_wrapper(self, op: CallWrapper) -> Value | None:
+        return self.add(op)
+
     def visit_method_call(self, op: MethodCall) -> Value | None:
         return self.add(op)
 
@@ -300,6 +304,11 @@ class PatchVisitor(OpVisitor[None]):
 
     def visit_call(self, op: Call) -> None:
         op.args = [self.fix_op(arg) for arg in op.args]
+
+    def visit_call_wrapper(self, op: CallWrapper) -> None:
+        op.args = self.fix_op(op.args)
+        if op.kwargs is not None:
+            op.kwargs = self.fix_op(op.kwargs)
 
     def visit_method_call(self, op: MethodCall) -> None:
         op.obj = self.fix_op(op.obj)

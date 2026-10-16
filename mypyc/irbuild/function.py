@@ -431,7 +431,7 @@ def generate_getattr_wrapper(builder: IRBuilder, cdef: ClassDef, getattr: FuncDe
         builder.add(Return(getattr_result, line))
 
 
-def generate_setattr_wrapper(builder: IRBuilder, cdef: ClassDef, setattr: FuncDef) -> None:
+def generate_setattr_wrapper(builder: IRBuilder, cdef: ClassDef, fdef: FuncDef) -> None:
     """
     Generate a wrapper function for __setattr__ that can be put into the tp_setattro slot.
     The wrapper takes two arguments besides self - attribute name and the new value.
@@ -442,16 +442,21 @@ def generate_setattr_wrapper(builder: IRBuilder, cdef: ClassDef, setattr: FuncDe
     When it's NULL, this means that the call to tp_setattro comes from a del statement,
     so it calls __delattr__ instead. If __delattr__ is not overridden in the native class,
     this will call the base implementation in object which doesn't work without __dict__.
-    """
-    name = setattr.name + "__wrapper"
-    ir = builder.mapper.type_to_ir[cdef.info]
-    line = setattr.line
 
-    error_base = f'"__setattr__" not supported in class "{cdef.name}" because '
-    if ir.allow_interpreted_subclasses:
-        builder.error(error_base + "it allows interpreted subclasses", line)
-    if ir.inherits_python:
-        builder.error(error_base + "it inherits from a non-native class", line)
+    The wrapper is generated for a class that defines __setattr__, and for a class that
+    defines only __delattr__ and inherits __setattr__ from a native class. The argument
+    fdef is the definition of __setattr__ in the first case and of __delattr__ in the second.
+    """
+    name = "__setattr____wrapper"
+    ir = builder.mapper.type_to_ir[cdef.info]
+    line = fdef.line
+
+    if fdef.name == "__setattr__":
+        error_base = f'"__setattr__" not supported in class "{cdef.name}" because '
+        if ir.allow_interpreted_subclasses:
+            builder.error(error_base + "it allows interpreted subclasses", line)
+        if ir.inherits_python:
+            builder.error(error_base + "it inherits from a non-native class", line)
 
     with builder.enter_method(ir, name, c_int_rprimitive, internal=True):
         attr_arg = builder.add_argument("attr", object_rprimitive)
@@ -478,7 +483,7 @@ def generate_setattr_wrapper(builder: IRBuilder, cdef: ClassDef, setattr: FuncDe
         builder.add(Return(Integer(0, c_int_rprimitive), line))
 
         builder.activate_block(call_setattr)
-        builder.gen_method_call(builder.self(), setattr.name, [attr_arg, value_arg], None, line)
+        builder.gen_method_call(builder.self(), "__setattr__", [attr_arg, value_arg], None, line)
         builder.add(Return(Integer(0, c_int_rprimitive), line))
 
 
@@ -491,6 +496,10 @@ def handle_ext_method(builder: IRBuilder, cdef: ClassDef, fdef: FuncDef) -> None
     builder.functions.append(func_ir)
 
     if is_decorated(builder, fdef):
+        if name == "__new__" and class_ir.is_trait:
+            # A decorated __new__ is called by an inherited tp_new, and a class only
+            # inherits tp_new from its first base class.
+            builder.error('Decorated "__new__" not supported in traits', fdef.line)
         # Obtain the function name in order to construct the name of the helper function.
         _, _, name = fdef.fullname.rpartition(".")
         # Get the callable representing the non-decorated method directly from the type
@@ -516,6 +525,12 @@ def handle_ext_method(builder: IRBuilder, cdef: ClassDef, fdef: FuncDef) -> None
         elif func_ir.decl.kind == FUNC_STATICMETHOD:
             stat_meth = builder.load_module_attr_by_fullname("builtins.staticmethod", fdef.line)
             decorated_func = builder.py_call(stat_meth, [decorated_func], fdef.line)
+        elif fdef.is_property:
+            # Mypy also removes @property, and only accepts other decorators below it.
+            # The decorated getter can't be called natively, so this becomes a regular
+            # Python property instead of a native one.
+            prop = builder.load_module_attr_by_fullname("builtins.property", fdef.line)
+            decorated_func = builder.py_call(prop, [decorated_func], fdef.line)
 
         # Set the callable object representing the decorated method as an attribute of the
         # extension class.
@@ -523,7 +538,7 @@ def handle_ext_method(builder: IRBuilder, cdef: ClassDef, fdef: FuncDef) -> None
             py_setattr_op, [typ, builder.load_str(name), decorated_func], fdef.line
         )
 
-    if fdef.is_property:
+    elif fdef.is_property:
         # If there is a property setter, it will be processed after the getter,
         # We populate the optional setter field with none for now.
         assert name not in class_ir.properties
@@ -531,9 +546,14 @@ def handle_ext_method(builder: IRBuilder, cdef: ClassDef, fdef: FuncDef) -> None
 
     elif fdef in builder.prop_setters:
         # The respective property getter must have been processed already
-        assert name in class_ir.properties
-        getter_ir, _ = class_ir.properties[name]
-        class_ir.properties[name] = (getter_ir, func_ir)
+        if name in class_ir.properties:
+            getter_ir, _ = class_ir.properties[name]
+            class_ir.properties[name] = (getter_ir, func_ir)
+        else:
+            # A getter with other decorators isn't a native property (see above).
+            builder.error(
+                "Property setter not supported when the getter has other decorators", fdef.line
+            )
 
     class_ir.methods[func_ir.decl.name] = func_ir
 
@@ -612,6 +632,15 @@ def handle_ext_method(builder: IRBuilder, cdef: ClassDef, fdef: FuncDef) -> None
                 + "or inherit from a native class that overrides it.",
                 fdef.line,
             )
+        elif "__setattr__" not in class_ir.method_decls:
+            # The class inherits __setattr__. If that comes from a native class, the class
+            # would also inherit its tp_setattro wrapper, which was generated without this
+            # __delattr__ and may not call it. So generate a wrapper for this class as well.
+            setattr_cls = next(
+                (base for base in class_ir.mro if "__setattr__" in base.method_decls), None
+            )
+            if setattr_cls is not None and setattr_cls.is_ext_class:
+                generate_setattr_wrapper(builder, cdef, fdef)
 
 
 def handle_non_ext_method(

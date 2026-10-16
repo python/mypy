@@ -262,12 +262,28 @@ def test_pop_index() -> None:
     assert l.pop(-1) == 1002
     assert l == [1001]
 
+def test_pop_many_then_append() -> None:
+    l = [str(i) for i in range(100)]
+    for i in range(99, -1, -1):
+        assert l.pop() == str(i)
+    assert l == []
+    for i in range(100):
+        l.append(str(i))
+    assert l.pop(50) == "50"
+    assert l.pop(0) == "0"
+    assert l == [str(i) for i in range(1, 100) if i != 50]
+
 def test_pop_index_errors() -> None:
     l = [int() + 1000]
-    with assertRaises(IndexError):
+    with assertRaises(IndexError, "pop index out of range"):
         l.pop(1)
-    with assertRaises(IndexError):
+    with assertRaises(IndexError, "pop index out of range"):
         l.pop(-2)
+    l.pop()
+    with assertRaises(IndexError, "pop from empty list"):
+        l.pop()
+    with assertRaises(IndexError, "pop from empty list"):
+        l.pop(0)
     with assertRaises(OverflowError):
         l.pop(1 << 100)
     with assertRaises(OverflowError):

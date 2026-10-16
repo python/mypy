@@ -1032,7 +1032,6 @@ PyObject *CPy_GetAIter(PyObject *obj)
                      "'async for' requires an object with "
                      "__aiter__ method, got %.100s",
                      type->tp_name);
-        Py_DECREF(obj);
         return NULL;
     }
 
@@ -1224,6 +1223,18 @@ static int CPyImport_InitSpecClasses(void) {
     return 0;
 }
 
+// Look up an attribute directly from the module dict. Unlike
+// PyObject_GetOptionalAttrString, this doesn't call a module-level __getattr__,
+// which isn't safe to call before the module has been initialized.
+static int CPyImport_GetModuleDictItem(PyObject *modobj, const char *name, PyObject **result) {
+    PyObject *dict = PyModule_GetDict(modobj);  // Borrowed
+    if (dict == NULL) {
+        *result = NULL;
+        return -1;
+    }
+    return PyDict_GetItemStringRef(dict, name, result);
+}
+
 // Set __package__ before executing the module body so it is available
 // during module initialization. For a package, __package__ is the module
 // name itself. For a non-package submodule "a.b.c", it is "a.b". For a
@@ -1231,7 +1242,7 @@ static int CPyImport_InitSpecClasses(void) {
 static int CPyImport_SetModulePackage(PyObject *modobj, PyObject *module_name,
                                       Py_ssize_t is_package) {
     PyObject *pkg = NULL;
-    int rc = PyObject_GetOptionalAttrString(modobj, "__package__", &pkg);
+    int rc = CPyImport_GetModuleDictItem(modobj, "__package__", &pkg);
     if (rc < 0) {
         return -1;
     }
@@ -1271,7 +1282,7 @@ static int CPyImport_SetModuleFile(PyObject *modobj, PyObject *module_name,
                                     PyObject *shared_lib_file, PyObject *ext_suffix,
                                     Py_ssize_t is_package) {
     PyObject *file = NULL;
-    int rc = PyObject_GetOptionalAttrString(modobj, "__file__", &file);
+    int rc = CPyImport_GetModuleDictItem(modobj, "__file__", &file);
     if (rc < 0) {
         return -1;
     }
@@ -1396,7 +1407,7 @@ static int CPyImport_SetModuleFile(PyObject *modobj, PyObject *module_name,
 // Returns 0 on success, -1 on error.
 static int CPyImport_SetModulePath(PyObject *modobj) {
     PyObject *existing_path = NULL;
-    int rc = PyObject_GetOptionalAttrString(modobj, "__path__", &existing_path);
+    int rc = CPyImport_GetModuleDictItem(modobj, "__path__", &existing_path);
     if (rc < 0) {
         return -1;
     }
@@ -1405,7 +1416,7 @@ static int CPyImport_SetModulePath(PyObject *modobj) {
         return 0;
     }
     PyObject *file = NULL;
-    rc = PyObject_GetOptionalAttrString(modobj, "__file__", &file);
+    rc = CPyImport_GetModuleDictItem(modobj, "__file__", &file);
     if (rc <= 0) {
         return rc;
     }
@@ -1435,7 +1446,7 @@ static int CPyImport_SetModulePath(PyObject *modobj) {
 static int CPyImport_SetModuleSpec(PyObject *modobj, PyObject *module_name,
                                     Py_ssize_t is_package) {
     PyObject *spec = NULL;
-    int rc = PyObject_GetOptionalAttrString(modobj, "__spec__", &spec);
+    int rc = CPyImport_GetModuleDictItem(modobj, "__spec__", &spec);
     if (rc < 0) {
         return -1;
     }
@@ -1449,7 +1460,7 @@ static int CPyImport_SetModuleSpec(PyObject *modobj, PyObject *module_name,
         return -1;
     }
     PyObject *file = NULL;
-    if (PyObject_GetOptionalAttrString(modobj, "__file__", &file) < 0) {
+    if (CPyImport_GetModuleDictItem(modobj, "__file__", &file) < 0) {
         return -1;
     }
     if (file == NULL) {
@@ -1479,7 +1490,7 @@ static int CPyImport_SetModuleSpec(PyObject *modobj, PyObject *module_name,
     if (is_package) {
         // Set submodule_search_locations from __path__
         PyObject *path = NULL;
-        if (PyObject_GetOptionalAttrString(modobj, "__path__", &path) < 0) {
+        if (CPyImport_GetModuleDictItem(modobj, "__path__", &path) < 0) {
             Py_DECREF(spec);
             Py_DECREF(loader);
             return -1;

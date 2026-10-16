@@ -5,7 +5,7 @@ import unittest
 from mypy.test.helpers import assert_string_arrays_equal
 from mypyc.codegen.emit import Emitter, EmitterContext
 from mypyc.codegen.emitfunc import FunctionEmitterVisitor, generate_native_function
-from mypyc.common import HAVE_IMMORTAL, IS_FREE_THREADED, PLATFORM_SIZE
+from mypyc.common import PLATFORM_SIZE
 from mypyc.ir.class_ir import ClassIR
 from mypyc.ir.func_ir import (
     FUNC_CLASSMETHOD,
@@ -77,6 +77,7 @@ from mypyc.ir.rtypes import (
 )
 from mypyc.irbuild.vtable import compute_vtable
 from mypyc.namegen import NameGenerator
+from mypyc.options import TargetPython
 from mypyc.primitives.dict_ops import (
     dict_get_item_op,
     dict_new_op,
@@ -147,6 +148,16 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
         self.st = add_local("st", self.struct_type)
 
         self.context = EmitterContext(NameGenerator([["mod"]]), True)
+
+    def use_free_threaded_target(self) -> None:
+        self.context = EmitterContext(
+            NameGenerator([["mod"]]), True, target_python=TargetPython((3, 14), True)
+        )
+
+    def use_gil_target(self) -> None:
+        self.context = EmitterContext(
+            NameGenerator([["mod"]]), True, target_python=TargetPython((3, 14), False)
+        )
 
     def test_goto(self) -> None:
         self.assert_emit(Goto(BasicBlock(2)), "goto CPyL2;")
@@ -518,6 +529,7 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
         )
 
     def test_get_attr(self) -> None:
+        self.use_gil_target()
         self.assert_emit(
             GetAttr(self.r, "y", 1),
             """cpy_r_r0 = ((mod___AObject *)cpy_r_r)->_y;
@@ -527,6 +539,37 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
                    CPyTagged_INCREF(cpy_r_r0);
                }
             """,
+        )
+
+    def test_get_attr_int_free_threaded(self) -> None:
+        self.use_free_threaded_target()
+        self.assert_emit(
+            GetAttr(self.r, "y", 1),
+            """\
+            cpy_r_r0 = CPyTagged_GetAttr((PyObject *)cpy_r_r, &((mod___AObject *)cpy_r_r)->_y);
+            if (unlikely(cpy_r_r0 == CPY_INT_TAG)) {
+                PyErr_SetString(PyExc_AttributeError, "attribute 'y' of 'A' undefined");
+            }
+            """,
+        )
+
+    def test_get_attr_int_merged_free_threaded(self) -> None:
+        self.use_free_threaded_target()
+        op = GetAttr(self.r, "y", 1)
+        branch = Branch(op, BasicBlock(8), BasicBlock(9), Branch.IS_ERROR)
+        branch.traceback_entry = ("foobar", 123)
+        self.assert_emit(
+            op,
+            """\
+            cpy_r_r0 = CPyTagged_GetAttr((PyObject *)cpy_r_r, &((mod___AObject *)cpy_r_r)->_y);
+            if (unlikely(cpy_r_r0 == CPY_INT_TAG)) {
+                CPy_AttributeError("prog.py", "foobar", "A", "y", 123, CPyStatic_prog___globals);
+                goto CPyL8;
+            }
+            goto CPyL9;
+            """,
+            next_branch=branch,
+            skip_next=True,
         )
 
     def test_get_attr_non_refcounted(self) -> None:
@@ -539,10 +582,8 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
             """,
         )
 
-    # Note: We can't monkey patch IS_FREE_THREADED to test this on a build with the
-    # GIL enabled, since monkey patching doesn't work if mypyc is compiled.
-    @unittest.skipUnless(IS_FREE_THREADED, "requires a free threaded build")
     def test_get_attr_ref_free_threaded(self) -> None:
+        self.use_free_threaded_target()
         self.assert_emit(
             GetAttr(self.r, "o", 1),
             """\
@@ -554,6 +595,7 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
         )
 
     def test_get_attr_merged(self) -> None:
+        self.use_gil_target()
         op = GetAttr(self.r, "y", 1)
         branch = Branch(op, BasicBlock(8), BasicBlock(9), Branch.IS_ERROR)
         branch.traceback_entry = ("foobar", 123)
@@ -594,6 +636,7 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
         )
 
     def test_set_attr(self) -> None:
+        self.use_gil_target()
         self.assert_emit(
             SetAttr(self.r, "y", self.m, 1),
             """if (((mod___AObject *)cpy_r_r)->_y != CPY_INT_TAG) {
@@ -604,8 +647,8 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
             """,
         )
 
-    @unittest.skipUnless(IS_FREE_THREADED, "requires a free threaded build")
     def test_set_attr_ref_free_threaded(self) -> None:
+        self.use_free_threaded_target()
         self.assert_emit(
             SetAttr(self.r, "o", self.o, 1),
             """\
@@ -613,6 +656,22 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
             cpy_r_r0 = 1;
             """,
         )
+
+    def test_set_attr_int_free_threaded(self) -> None:
+        self.use_free_threaded_target()
+        self.assert_emit(
+            SetAttr(self.r, "y", self.m, 1),
+            """\
+            CPyTagged_SetAttr((PyObject *)cpy_r_r, &((mod___AObject *)cpy_r_r)->_y, cpy_r_m);
+            cpy_r_r0 = 1;
+            """,
+        )
+
+    def test_set_attr_int_init_free_threaded(self) -> None:
+        self.use_free_threaded_target()
+        op = SetAttr(self.r, "y", self.m, 1)
+        op.mark_as_initializer()
+        self.assert_emit(op, "CPyTagged_InitAttr(&((mod___AObject *)cpy_r_r)->_y, cpy_r_m);")
 
     def test_set_attr_non_refcounted(self) -> None:
         self.assert_emit(
@@ -623,6 +682,7 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
         )
 
     def test_set_attr_no_error(self) -> None:
+        self.use_gil_target()
         op = SetAttr(self.r, "y", self.m, 1)
         op.error_kind = ERR_NEVER
         self.assert_emit(
@@ -1009,16 +1069,23 @@ else {
 
     def test_inc_ref_none(self) -> None:
         b = Box(self.none)
-        self.assert_emit([b, IncRef(b)], "" if HAVE_IMMORTAL else "CPy_INCREF(cpy_r_r0);")
+        self.assert_emit(
+            [b, IncRef(b)], "" if TargetPython.host().have_immortal else "CPy_INCREF(cpy_r_r0);"
+        )
 
     def test_inc_ref_bool(self) -> None:
         b = Box(self.b)
-        self.assert_emit([b, IncRef(b)], "" if HAVE_IMMORTAL else "CPy_INCREF(cpy_r_r0);")
+        self.assert_emit(
+            [b, IncRef(b)], "" if TargetPython.host().have_immortal else "CPy_INCREF(cpy_r_r0);"
+        )
 
     def test_inc_ref_int_literal(self) -> None:
         for x in -5, 0, 1, 5, 255, 256:
             b = LoadLiteral(x, object_rprimitive)
-            self.assert_emit([b, IncRef(b)], "" if HAVE_IMMORTAL else "CPy_INCREF(cpy_r_r0);")
+            self.assert_emit(
+                [b, IncRef(b)],
+                "" if TargetPython.host().have_immortal else "CPy_INCREF(cpy_r_r0);",
+            )
         for x in -1123355, -6, 257, 123235345:
             b = LoadLiteral(x, object_rprimitive)
             self.assert_emit([b, IncRef(b)], "CPy_INCREF(cpy_r_r0);")

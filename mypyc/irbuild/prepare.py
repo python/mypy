@@ -34,6 +34,7 @@ from mypy.nodes import (
     OverloadedFuncDef,
     RefExpr,
     SymbolNode,
+    TypeAlias,
     TypeInfo,
     Var,
 )
@@ -131,6 +132,14 @@ def build_type_map(
                 prepare_non_ext_class_def(
                     module.path, module.fullname, cdef, errors, mapper, options
                 )
+
+    # Set up constructors. This needs the method declarations of all classes. A class
+    # can be prepared before its base class, since the modules of a compilation group
+    # are prepared in name order.
+    for module, cdef in classes:
+        class_ir = mapper.type_to_ir[cdef.info]
+        if class_ir.is_ext_class:
+            prepare_init_method(cdef, class_ir, module.fullname, mapper)
 
     # Validate cross-class properties after all ClassIR flags are populated.
     for module, cdef in classes:
@@ -339,7 +348,9 @@ def prepare_method_def(
             decl.is_decorated_override = True
             ir.method_decls[node.name] = decl
 
-        if node.func.is_property:
+        # A getter with other decorators isn't a native property. It's set up at runtime
+        # like other decorated methods, and accessed using generic attribute operations.
+        if node.func.is_property and not node.decorators:
             assert node.func.type, f"Expected return type annotation for property '{node.name}'"
             decl.is_prop_getter = True
             ir.property_types[node.name] = decl.sig.ret_type
@@ -531,6 +542,48 @@ def _check_deletable_declarations(path: str, cdef: ClassDef, ir: ClassIR, errors
                 )
 
 
+def report_needs_non_native_class(errors: Errors, msg: str, path: str, line: int) -> None:
+    errors.error(msg, path, line)
+    errors.note(
+        "Potential workaround: @mypy_extensions.mypyc_attr(native_class=False)", path, line
+    )
+    errors.note(
+        "https://mypyc.readthedocs.io/en/stable/native_classes.html#defining-non-native-classes",
+        path,
+        line,
+    )
+
+
+def check_unknown_base_classes(path: str, cdef: ClassDef, errors: Errors, mapper: Mapper) -> None:
+    """Reject native classes whose layout depends on an Any base."""
+    if not cdef.info.fallback_to_any:
+        return
+
+    base_description = "a base class with an unknown layout"
+    for base_expr in cdef.base_type_exprs:
+        if isinstance(base_expr, IndexExpr):
+            base_expr = base_expr.base
+        if not isinstance(base_expr, (NameExpr, MemberExpr)):
+            continue
+        base_node = base_expr.node
+        if isinstance(base_node, TypeAlias):
+            target = get_proper_type(base_node.target)
+            if isinstance(target, Instance):
+                base_node = target.type
+        if not isinstance(base_node, TypeInfo) or base_node.fallback_to_any:
+            base_description = f'"{base_expr.name}" (unknown base class layout)'
+            break
+    msg = f"Native classes cannot inherit from {base_description}"
+    if any(
+        base.fallback_to_any and base in mapper.type_to_ir and mapper.type_to_ir[base].is_ext_class
+        for base in cdef.info.mro[1:]
+    ):
+        # A native base class already reported the error with the notes
+        errors.error(msg, path, cdef.line)
+    else:
+        report_needs_non_native_class(errors, msg, path, cdef.line)
+
+
 def prepare_class_def(
     path: str,
     module_name: str,
@@ -547,6 +600,8 @@ def prepare_class_def(
 
     ir = mapper.type_to_ir[cdef.info]
     info = cdef.info
+
+    check_unknown_base_classes(path, cdef, errors, mapper)
 
     attrs, attrs_lines = get_mypyc_attrs(cdef, path, errors)
     if attrs.get("allow_interpreted_subclasses") is True:
@@ -572,18 +627,8 @@ def prepare_class_def(
                 # isn't in builtins, bad things will happen and we won't
                 # catch it here! But this should catch a lot of the most
                 # common pitfalls.
-                errors.error(
-                    "Inheriting from most builtin types is unimplemented", path, cdef.line
-                )
-                errors.note(
-                    "Potential workaround: @mypy_extensions.mypyc_attr(native_class=False)",
-                    path,
-                    cdef.line,
-                )
-                errors.note(
-                    "https://mypyc.readthedocs.io/en/stable/native_classes.html#defining-non-native-classes",
-                    path,
-                    cdef.line,
+                report_needs_non_native_class(
+                    errors, "Inheriting from most builtin types is unimplemented", path, cdef.line
                 )
 
     free_list_len = attrs.get("free_list_len")
@@ -640,7 +685,6 @@ def prepare_class_def(
     ir.base_mro = base_mro
 
     prepare_methods_and_attributes(cdef, ir, path, module_name, errors, mapper, options)
-    prepare_init_method(cdef, ir, module_name, mapper)
 
     for base in bases:
         if base.children is not None:
@@ -802,6 +846,23 @@ def check_matching_args(init_sig: FuncSignature, new_sig: FuncSignature) -> bool
     return True
 
 
+def has_non_native_new(cdef: ClassDef, mapper: Mapper) -> bool:
+    """Are instances of a class created by a __new__ method that isn't called natively?
+
+    This is ClassIR.has_non_native_new() for use before the methods have been built.
+    The methods of all classes in the MRO must have been declared.
+    """
+    for info in cdef.info.mro:
+        class_ir = mapper.type_to_ir.get(info)
+        symbol = info.names.get("__new__")
+        if class_ir is None or not class_ir.is_ext_class or symbol is None:
+            continue
+        if isinstance(symbol.node, (FuncDef, Decorator, OverloadedFuncDef)):
+            # A decorated method has no method declaration.
+            return "__new__" not in class_ir.method_decls
+    return False
+
+
 def prepare_init_method(cdef: ClassDef, ir: ClassIR, module_name: str, mapper: Mapper) -> None:
     # Set up a constructor decl
     init_node = cdef.info["__init__"].node
@@ -822,6 +883,9 @@ def prepare_init_method(cdef: ClassDef, ir: ClassIR, module_name: str, mapper: M
         if isinstance(new_node, FuncDef):
             new_sig = mapper.fdef_to_sig(new_node, True)
             args_match = check_matching_args(init_sig, new_sig)
+        if has_non_native_new(cdef, mapper):
+            # The constructor calls the type object with *args, **kwargs.
+            args_match = False
 
         defining_ir = mapper.type_to_ir.get(init_node.info)
         # If there is a nontrivial __init__ that wasn't defined in an

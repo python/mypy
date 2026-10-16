@@ -12,6 +12,7 @@ from mypyc.ir.ops import (
     Branch,
     Call,
     CallC,
+    CallWrapper,
     Cast,
     ComparisonOp,
     ControlOp,
@@ -386,6 +387,9 @@ class OpChecker(OpVisitor[None]):
         # in a way that can't be incorrect
         for arg_value, arg_runtime in zip(op.args, op.fn.sig.args):
             self.check_type_coercion(op, arg_value.type, arg_runtime.type)
+
+    def visit_call_wrapper(self, op: CallWrapper) -> None:
+        pass
 
     def visit_method_call(self, op: MethodCall) -> None:
         # Similar to above, but we must look up method first.

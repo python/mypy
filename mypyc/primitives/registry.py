@@ -108,6 +108,7 @@ def method_op(
     is_pure: bool = False,
     experimental: bool = False,
     dependencies: list[Dependency] | None = None,
+    gil_only: bool = False,
 ) -> PrimitiveDescription:
     """Define a c function call op that replaces a method call.
 
@@ -134,6 +135,7 @@ def method_op(
         priority: if multiple ops match, the one with the highest priority is picked
         is_pure: if True, declare that the C function has no side effects, takes immutable
                  arguments, and never raises an exception
+        gil_only: if True, don't use this op when targeting a free-threaded build
     """
     if extra_int_constants is None:
         extra_int_constants = []
@@ -153,6 +155,7 @@ def method_op(
         priority,
         is_pure=is_pure,
         experimental=experimental,
+        gil_only=gil_only,
         dependencies=dependencies,
         type_params=None,
     )

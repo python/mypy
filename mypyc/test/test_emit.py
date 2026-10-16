@@ -3,7 +3,6 @@ from __future__ import annotations
 import unittest
 
 from mypyc.codegen.emit import Emitter, EmitterContext
-from mypyc.common import HAVE_IMMORTAL
 from mypyc.ir.class_ir import ClassIR
 from mypyc.ir.ops import BasicBlock, Register, Value
 from mypyc.ir.rtypes import (
@@ -19,6 +18,7 @@ from mypyc.ir.rtypes import (
 )
 from mypyc.irbuild.vtable import compute_vtable
 from mypyc.namegen import NameGenerator
+from mypyc.options import TargetPython
 
 
 class TestEmitter(unittest.TestCase):
@@ -107,14 +107,14 @@ class TestEmitter(unittest.TestCase):
 
     def test_emit_inc_ref_list(self) -> None:
         self.emitter.emit_inc_ref("x", list_rprimitive)
-        if HAVE_IMMORTAL:
+        if TargetPython.host().have_immortal:
             self.assert_output("CPy_INCREF_NO_IMM(x);\n")
         else:
             self.assert_output("CPy_INCREF(x);\n")
 
     def test_emit_inc_ref_instance(self) -> None:
         self.emitter.emit_inc_ref("x", self.instance_a)
-        if HAVE_IMMORTAL:
+        if TargetPython.host().have_immortal:
             self.assert_output("CPy_INCREF_NO_IMM(x);\n")
         else:
             self.assert_output("CPy_INCREF(x);\n")
@@ -144,24 +144,24 @@ class TestEmitter(unittest.TestCase):
 
     def test_emit_dec_ref_list(self) -> None:
         self.emitter.emit_dec_ref("x", list_rprimitive)
-        if HAVE_IMMORTAL:
+        if TargetPython.host().have_immortal:
             self.assert_output("CPy_DECREF_NO_IMM(x);\n")
         else:
             self.assert_output("CPy_DECREF(x);\n")
         self.emitter.emit_dec_ref("x", list_rprimitive, is_xdec=True)
-        if HAVE_IMMORTAL:
+        if TargetPython.host().have_immortal:
             self.assert_output("CPy_XDECREF_NO_IMM(x);\n")
         else:
             self.assert_output("CPy_XDECREF(x);\n")
 
     def test_emit_dec_ref_instance(self) -> None:
         self.emitter.emit_dec_ref("x", self.instance_a)
-        if HAVE_IMMORTAL:
+        if TargetPython.host().have_immortal:
             self.assert_output("CPy_DECREF_NO_IMM(x);\n")
         else:
             self.assert_output("CPy_DECREF(x);\n")
         self.emitter.emit_dec_ref("x", self.instance_a, is_xdec=True)
-        if HAVE_IMMORTAL:
+        if TargetPython.host().have_immortal:
             self.assert_output("CPy_XDECREF_NO_IMM(x);\n")
         else:
             self.assert_output("CPy_XDECREF(x);\n")

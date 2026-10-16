@@ -2239,6 +2239,131 @@ hello
 empty
 hello
 
+[case testIncrementalCrossGroupDecoratedDunderNew]
+# A class with a decorated __new__ inherits tp_new, and so does a subclass that
+# inherits the __new__. When only the module of the subclass is recompiled, the
+# base class is loaded from the incremental cache, which doesn't have the
+# decorators.
+from typing import Any
+
+from other_a import Child, ChildWithInit
+from other_b import Base, log
+
+def take() -> list[str]:
+    result = list(log)
+    log.clear()
+    return result
+
+def test() -> None:
+    log.clear()
+    any_base: Any = Base
+    for base in Base, any_base:
+        b = base(1)
+        assert take() == ["before Base (1,)", "new", "after", "Root 1"]
+        assert b.x == 1
+    # Use Any to get non-native semantics
+    any_child: Any = Child
+    for child in Child, any_child:
+        c = child(2)
+        assert take() == ["before Child (2,)", "new", "after", "Root 2"]
+        assert type(c) is Child
+        assert c.x == 2
+    any_child = ChildWithInit
+    for child_with_init in ChildWithInit, any_child:
+        d = child_with_init(3)
+        assert take() == ["before ChildWithInit (3,)", "new", "after", "Root 4", "ChildWithInit"]
+        assert d.x == 4
+    e = Base.__new__(Child, 4)
+    assert take() == ["before Child (4,)", "new", "after"]
+    assert type(e) is Child
+
+[file other_a.py]
+from other_b import Base, log
+
+class Child(Base):
+    pass
+
+class ChildWithInit(Base):
+    def __init__(self, x: int) -> None:
+        super().__init__(x + 1)
+        log.append("ChildWithInit")
+
+[file other_a.py.2]
+from other_b import Base, log
+
+class Child(Base):
+    pass
+
+class ChildWithInit(Base):
+    def __init__(self, x: int) -> None:
+        super().__init__(x + 1)
+        log.append("ChildWithInit")
+
+def _force_recompile() -> int:
+    return 1
+
+[file other_b.py]
+from typing import Any, Callable, TypeVar
+
+F = TypeVar("F", bound=Callable[..., Any])
+
+log: list[str] = []
+
+def logged(f: F) -> F:
+    def wrapper(cls: Any, *args: Any) -> Any:
+        log.append(f"before {cls.__name__} {args}")
+        obj = f(cls, *args)
+        log.append("after")
+        return obj
+    return wrapper  # type: ignore[return-value]
+
+class Root:
+    def __init__(self, x: int) -> None:
+        log.append(f"Root {x}")
+        self.x = x
+
+class Base(Root):
+    @logged
+    def __new__(cls, x: int) -> Any:
+        log.append("new")
+        return super().__new__(cls)
+
+[file driver.py]
+from native import test
+test()
+
+[case testDecoratedNewInBaseClassPreparedAfterSubclass]
+# The modules of a compilation group are prepared in name order, so Child is
+# prepared before Base. mypy removes @staticmethod from the decorators of
+# __new__, so it's a native method, and the constructor of Child calls it and
+# __init__ natively.
+from other import Base
+
+class Child(Base):
+    def __init__(self) -> None:
+        raise ValueError("expected init failure")
+
+def construct() -> Child:
+    return Child()
+
+[file other.py]
+from typing import Any
+
+class Base:
+    @staticmethod
+    def __new__(cls) -> Any:
+        return super().__new__(cls)
+
+    def __init__(self) -> None:
+        pass
+
+[file driver.py]
+from native import construct
+from testutil import assertRaises
+
+with assertRaises(ValueError):
+    construct()
+
 [case testIncrementalCrossModuleInheritedAttrDefaultsWithOverride]
 # Regression: same shape as testIncrementalCrossModuleInheritedAttrDefaults,
 # but the subclass adds an attribute of its own, so generate_attr_defaults_init
@@ -2440,6 +2565,72 @@ from mypy_extensions import mypyc_attr
 class CompiledBase:
     def value(self) -> int:
         raise NotImplementedError
+
+[case testMultiModuleCallTypeObjectWithInheritedInit]
+from other import Base
+
+class Child(Base):
+    pass
+
+[file other.py]
+class Base:
+    def __init__(self, x: int) -> None:
+        self.x = x
+
+[file driver.py]
+import other
+from native import Child
+
+c = Child(7)
+assert type(c) is Child
+assert c.x == 7
+assert Child(x=8).x == 8
+
+# An argument with the wrong type is reported in __init__, which is in another module.
+try:
+    Child("7")
+except TypeError as e:
+    assert str(e) == "int object expected; got str"
+    tb = e.__traceback__.tb_next
+    assert tb.tb_frame.f_globals is other.__dict__
+    assert tb.tb_frame.f_code.co_name == "__init__"
+    assert tb.tb_lineno == 2
+else:
+    assert False
+
+[case testSeparateCrossGroupUnpackedArgs]
+-- A call with *args or **kwargs that a native call can't unpack goes through the
+-- wrapper function of the method. Under separate=True, the wrapper of a method in
+-- another group is called through the exports table.
+from typing import Any
+
+from other_base import Base
+
+class Child(Base):
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
+
+    def add(self, *args: int, **kwargs: int) -> int:
+        return super().add(*args, **kwargs) + 100
+
+def make(*args: Any, **kwargs: Any) -> tuple[int, int, int]:
+    c = Child(*args, **kwargs)
+    return c.x, c.y, c.add(c.x, y=c.y)
+
+[file other_base.py]
+class Base:
+    def __init__(self, x: int, y: int = 0) -> None:
+        self.x = x
+        self.y = y
+
+    def add(self, x: int, y: int = 0) -> int:
+        return x + y
+
+[file driver.py]
+from native import make
+assert make(1) == (1, 0, 101), make(1)
+assert make(1, y=2) == (1, 2, 103), make(1, y=2)
+assert make(x=3, y=4) == (3, 4, 107), make(x=3, y=4)
 
 [case testFinalMethodCallsWithinAndAcrossModules]
 from other import FinalMethods, NativeBaseWithFinals, FinalTrait, SubclassOfNativeBase, SubclassOfTrait
@@ -4073,3 +4264,23 @@ assert o.ITEMS == [1, 2]
 b: Any = Base()
 assert b.COMPUTED == 7
 assert b.ITEMS is Base.ITEMS
+
+[case testImportPackageWithModuleGetattr]
+[file other_pkg/__init__.py]
+def __getattr__(name: str) -> str:
+    if name.startswith("__"):
+        raise AttributeError(name)
+    return name
+[file other_pkg/other_sub.py]
+x = 1
+[file driver.py]
+import importlib.machinery
+import other_pkg.other_sub
+
+assert other_pkg.other_sub.x == 1
+ext_suffixes = importlib.machinery.EXTENSION_SUFFIXES
+assert any(other_pkg.__file__.endswith(s) for s in ext_suffixes), other_pkg.__file__
+assert other_pkg.__path__
+assert other_pkg.__spec__ is not None
+assert other_pkg.__package__ == "other_pkg"
+assert other_pkg.missing == "missing"
