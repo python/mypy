@@ -316,12 +316,21 @@ class WorkerClient:
     def close(self) -> None:
         if self.connected:
             self.conn.close()
-        # Technically we don't need to wait, but otherwise we will get ResourceWarnings.
-        # Also, it is generally good to not leave some running worker processes behind.
+            # Give the worker a chance to shut down gracefully.
+            try:
+                self.proc.wait(timeout=WORKER_SHUTDOWN_TIMEOUT)
+            except subprocess.TimeoutExpired:
+                self.proc.terminate()
+        else:
+            # There is no connection, hence no graceful shutdown to wait for.
+            self.proc.terminate()
+        # Wait until the process is really gone, otherwise we may leave a worker behind
+        # that is still reading shared files (such as the serialized options file).
         try:
             self.proc.wait(timeout=WORKER_SHUTDOWN_TIMEOUT)
         except subprocess.TimeoutExpired:
-            self.proc.terminate()
+            self.proc.kill()
+            self.proc.wait()
         if os.path.isfile(self.status_file):
             os.unlink(self.status_file)
 
@@ -451,8 +460,6 @@ def build(
         # shut them down cleanly. Otherwise, they will linger until connection timeout.
         for thread in connect_threads:
             thread.join()
-        if options_data is not None:
-            os.unlink(options_data)
         for worker in workers:
             if not worker.connected:
                 continue
@@ -462,6 +469,12 @@ def build(
                 pass
         for worker in workers:
             worker.close()
+        # Only delete the options file once every worker process is known to have exited.
+        # A worker that is still starting up (which is why we are in this error path in the
+        # first place) may otherwise try to read the file after we removed it, and crash
+        # with a confusing FileNotFoundError.
+        if options_data is not None:
+            os.unlink(options_data)
 
 
 def build_inner(
