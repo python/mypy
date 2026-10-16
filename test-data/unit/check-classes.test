@@ -2262,6 +2262,45 @@ def foo(x: Type[Union[X1, X2]]) -> None:
     reveal_type(x.prop)  # N: Revealed type is "__main__.getter"
 
 
+[case testDescriptorGetNamedTuple]
+from typing import Any, NamedTuple
+
+class D(NamedTuple):
+    def __get__(self, instance: Any, owner: Any) -> str: return 's'
+
+class A:
+    f = D()
+
+reveal_type(A.f)  # N: Revealed type is "builtins.str"
+reveal_type(A().f)  # N: Revealed type is "builtins.str"
+
+class P(NamedTuple):
+    x: int
+
+class B:
+    p = P(1)
+
+reveal_type(B.p)  # N: Revealed type is "tuple[builtins.int, fallback=__main__.P]"
+reveal_type(B().p)  # N: Revealed type is "tuple[builtins.int, fallback=__main__.P]"
+[builtins fixtures/tuple.pyi]
+
+[case testDescriptorSetNamedTuple]
+from typing import Any, NamedTuple
+
+class D(NamedTuple):
+    def __get__(self, instance: Any, owner: Any) -> str: return 's'
+    def __set__(self, instance: Any, value: int) -> None: pass
+
+class A:
+    f = D()
+
+a = A()
+a.f = 1
+reveal_type(a.f)  # N: Revealed type is "builtins.str"
+a.f = 'x'  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+[builtins fixtures/tuple.pyi]
+
+
 -- _promote decorators
 -- -------------------
 

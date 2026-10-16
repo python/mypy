@@ -689,6 +689,11 @@ def analyze_descriptor_access(descriptor_type: Type, mx: MemberContext) -> Type:
         return make_simplified_union(
             [analyze_descriptor_access(typ, mx) for typ in descriptor_type.items]
         )
+    elif isinstance(descriptor_type, TupleType):
+        # Named tuples (and other tuple subclasses) are represented as TupleType.
+        # As with regular member access, use the fallback instance to look up
+        # descriptor methods such as __get__ and __set__.
+        descriptor_type = tuple_fallback(descriptor_type)
     elif not isinstance(descriptor_type, Instance):
         return orig_descriptor_type
 
