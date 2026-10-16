@@ -63,13 +63,16 @@ class TestEmitClass(unittest.TestCase):
         assert "CPy_SetAttrRef((PyObject *)self, (PyObject **)&self->_o, tmp)" in generated
         assert "CPy_SetAttrRef((PyObject *)self, (PyObject **)&self->_o, NULL)" in generated
 
-    @unittest.skipUnless(IS_FREE_THREADED, "requires a free threaded build")
     def test_free_threaded_int_attribute_getter_and_setter(self) -> None:
         cl = ClassIR("A", "mod")
         cl.attributes = {"n": int_rprimitive}
         cl.deletable = ["n"]
         cl.mro = cl.base_mro = [cl]
-        emitter = Emitter(EmitterContext(NameGenerator([["mod"]]), True))
+        emitter = Emitter(
+            EmitterContext(
+                NameGenerator([["mod"]]), True, target_python=TargetPython((3, 14), True)
+            )
+        )
 
         generate_getter(cl, "n", int_rprimitive, emitter)
         generate_setter(cl, "n", int_rprimitive, emitter)

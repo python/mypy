@@ -470,7 +470,7 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         ClassIR.attrs_are_thread_confined.
         """
         if (
-            IS_FREE_THREADED
+            self.emitter.target_python.free_threaded
             and is_int_rprimitive(attr_rtype)
             and not op.is_borrowed
             and not cl.attrs_are_thread_confined()
@@ -659,7 +659,7 @@ class FunctionEmitterVisitor(OpVisitor[None]):
             if op.error_kind == ERR_FALSE:
                 self.emitter.emit_line(f"{dest} = 1;")
         elif (
-            IS_FREE_THREADED
+            self.emitter.target_python.free_threaded
             and is_int_rprimitive(attr_rtype)
             and not cl.attrs_are_thread_confined()
         ):

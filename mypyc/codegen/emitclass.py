@@ -1399,7 +1399,11 @@ def generate_getter(cl: ClassIR, attr: str, rtype: RType, emitter: Emitter) -> N
         emitter.emit_line("}")
         return
 
-    if IS_FREE_THREADED and is_int_rprimitive(rtype) and attr not in cl.final_attributes:
+    if (
+        emitter.target_python.free_threaded
+        and is_int_rprimitive(rtype)
+        and attr not in cl.final_attributes
+    ):
         # In free-threaded builds, CPyTagged_GetAttr takes a new reference to a long
         # value without racing with a concurrent setter (see CPyTagged_SetAttr). It
         # returns CPY_INT_TAG if the attribute is undefined.
@@ -1479,7 +1483,7 @@ def generate_setter(cl: ClassIR, attr: str, rtype: RType, emitter: Emitter) -> N
         emitter.emit_line("}")
         return
 
-    if IS_FREE_THREADED and is_int_rprimitive(rtype):
+    if emitter.target_python.free_threaded and is_int_rprimitive(rtype):
         # In free-threaded builds, CPyTagged_SetAttr steals the new value and safely
         # reclaims the old one (see CPyTagged_GetAttr). Unbox (borrowed) and take a
         # new reference to hand over; a failed unbox leaves the attribute intact.
