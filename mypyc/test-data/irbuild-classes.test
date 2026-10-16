@@ -710,6 +710,92 @@ def D.g(cls, x):
 L0:
     return x
 
+[case testNativeCallWithUnpackedArgs]
+from typing import Any
+
+class A:
+    def f(self, x: int, y: int = 0) -> int:
+        return x + y
+
+    def g(self, *args: Any, **kwargs: Any) -> int:
+        return len(args)
+
+class B(A):
+    def call_f(self, *args: int) -> int:
+        # The items are for ordinary arguments, so the wrapper function has to unpack them
+        return super().f(*args)
+
+    def call_f_kwargs(self, **kwargs: int) -> int:
+        return super().f(**kwargs)
+
+    def call_g(self, *args: Any, **kwargs: Any) -> int:
+        return super().g(*args, **kwargs)
+[out]
+def A.f(self, x, y):
+    self :: __main__.A
+    x, y, r0 :: int
+L0:
+    if is_error(y) goto L1 else goto L2
+L1:
+    y = 0
+L2:
+    r0 = CPyTagged_Add(x, y)
+    return r0
+def A.g(self, args, kwargs):
+    self :: __main__.A
+    args :: tuple
+    kwargs :: dict
+    r0 :: native_int
+    r1 :: short_int
+L0:
+    r0 = var_object_size args
+    r1 = r0 << 1
+    return r1
+def B.call_f(self, args):
+    self :: __main__.B
+    args :: tuple
+    r0 :: list
+    r1 :: ptr
+    r2 :: object
+    r3 :: tuple
+    r4 :: object
+    r5 :: int
+L0:
+    r0 = PyList_New(1)
+    r1 = list_items r0
+    buf_init_item r1, 0, self
+    keep_alive r0
+    r2 = CPyList_Extend(r0, args)
+    r3 = PyList_AsTuple(r0)
+    r4 = A.f(*r3)
+    r5 = unbox(int, r4)
+    return r5
+def B.call_f_kwargs(self, kwargs):
+    self :: __main__.B
+    kwargs, r0 :: dict
+    r1 :: i32
+    r2 :: bit
+    r3 :: tuple
+    r4 :: object
+    r5 :: int
+L0:
+    r0 = PyDict_New()
+    r1 = CPyDict_UpdateInDisplay(r0, kwargs)
+    r2 = r1 >= 0 :: signed
+    r3 = PyTuple_Pack(1, self)
+    r4 = A.f(*r3, **r0)
+    r5 = unbox(int, r4)
+    return r5
+def B.call_g(self, args, kwargs):
+    self :: __main__.B
+    args :: tuple
+    kwargs, r0 :: dict
+    r1 :: int
+L0:
+    r0 = PyDict_Copy(kwargs)
+    r1 = A.g(self, args, r0)
+    return r1
+
 [case testCannotAssignToClsArgument]
 from typing import Any, cast
 

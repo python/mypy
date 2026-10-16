@@ -18,6 +18,7 @@ from mypyc.ir.ops import (
     Branch,
     Call,
     CallC,
+    CallWrapper,
     Cast,
     ComparisonOp,
     ControlOp,
@@ -188,6 +189,11 @@ class IRPrettyPrintVisitor(OpVisitor[str]):
         if not op.is_void:
             s = self.format("%r = ", op) + s
         return s
+
+    def visit_call_wrapper(self, op: CallWrapper) -> str:
+        if op.kwargs is None:
+            return self.format("%r = %s(*%r)", op, op.fn.shortname, op.args)
+        return self.format("%r = %s(*%r, **%r)", op, op.fn.shortname, op.args, op.kwargs)
 
     def visit_method_call(self, op: MethodCall) -> str:
         args = ", ".join(self.format("%r", arg) for arg in op.args)

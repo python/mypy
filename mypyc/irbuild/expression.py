@@ -606,7 +606,13 @@ def translate_method_call(builder: IRBuilder, expr: CallExpr, callee: MemberExpr
         and isinstance(callee.expr.node, TypeInfo)
         and callee.expr.node in builder.mapper.type_to_ir
         and builder.mapper.type_to_ir[callee.expr.node].has_method(callee.name)
-        and all(kind in (ARG_POS, ARG_NAMED) for kind in expr.arg_kinds)
+        and (
+            all(kind in (ARG_POS, ARG_NAMED) for kind in expr.arg_kinds)
+            # A lookup of __init__ would find the slot wrapper, and the __init__ slot of
+            # a native class usually does nothing (__init__ is called when the object is
+            # created instead).
+            or is_native_init(builder.mapper.type_to_ir[callee.expr.node], callee.name)
+        )
     ):
         # Call a method via the *class*
         assert isinstance(callee.expr.node, TypeInfo), callee.expr.node
@@ -650,6 +656,15 @@ def translate_method_call(builder: IRBuilder, expr: CallExpr, callee: MemberExpr
             expr.arg_kinds,
             expr.arg_names,
         )
+
+
+def is_native_init(ir: ClassIR, name: str) -> bool:
+    """Is this the __init__ method of the class, and does an extension class define it?"""
+    if name == "__init__":
+        for base in ir.mro:
+            if name in base.method_decls:
+                return base.is_ext_class
+    return False
 
 
 def call_classmethod(builder: IRBuilder, ir: ClassIR, expr: CallExpr, callee: MemberExpr) -> Value:

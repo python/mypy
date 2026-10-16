@@ -12,6 +12,7 @@ from mypyc.codegen.emit import (
     TracebackAndGotoHandler,
     c_array_initializer,
 )
+from mypyc.codegen.emitwrapper import is_fastcall_supported
 from mypyc.common import (
     NATIVE_PREFIX,
     REG_PREFIX,
@@ -31,6 +32,7 @@ from mypyc.ir.ops import (
     Branch,
     Call,
     CallC,
+    CallWrapper,
     Cast,
     ComparisonOp,
     ControlOp,
@@ -705,6 +707,22 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         lib = self.emitter.get_group_prefix(op.fn)
         cname = op.fn.cname(self.names)
         self.emit_line(f"{dest}{lib}{NATIVE_PREFIX}{cname}({args});")
+
+    def visit_call_wrapper(self, op: CallWrapper) -> None:
+        """Call the wrapper function of a native function."""
+        dest = self.get_dest_assign(op)
+        wrapper = self.emitter.wrapper_function_call(op.fn)
+        args = self.reg(op.args)
+        kwargs = self.reg(op.kwargs) if op.kwargs is not None else "NULL"
+        if is_fastcall_supported(op.fn, self.emitter.capi_version):
+            # The wrapper of a function or a static method doesn't take self.
+            takes_self = int(op.fn.class_name is not None and op.fn.kind != FUNC_STATICMETHOD)
+            self.emit_line(
+                f"{dest}CPy_CallFastcallWrapper({wrapper}, {takes_self}, {args}, {kwargs});"
+            )
+        else:
+            # The wrappers of __init__ and __new__ take the first argument as self.
+            self.emit_line(f"{dest}CPy_CallLegacyWrapper({wrapper}, {args}, {kwargs});")
 
     def visit_method_call(self, op: MethodCall) -> None:
         """Call native method."""

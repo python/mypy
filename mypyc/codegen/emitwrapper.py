@@ -37,6 +37,19 @@ from mypyc.ir.rtypes import (
 )
 from mypyc.namegen import NameGenerator
 
+
+def is_fastcall_supported(fn: FuncIR | FuncDecl, capi_version: tuple[int, int]) -> bool:
+    if fn.class_name is not None:
+        if fn.name == "__call__":
+            # We can use vectorcalls (PEP 590) when supported
+            return True
+        # The wrappers of __init__ and __new__ are called from tp_init and tp_new,
+        # which get a tuple and a dict. A call to the type object can skip them, see
+        # can_use_constructor_for_type_call().
+        return fn.name != "__init__" and fn.name != "__new__"
+    return True
+
+
 # Generic vectorcall wrapper functions (Python 3.7+)
 #
 # A wrapper function has a signature like this:

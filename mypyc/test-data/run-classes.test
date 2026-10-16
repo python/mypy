@@ -5003,6 +5003,205 @@ import native
 (31, 12, 23)
 (61, 42, 53)
 
+[case testNativeCallsWithUnpackedArgs]
+from typing import Any, final
+
+from testutil import assertRaises
+
+class Base:
+    def __init__(self, x: int, y: int = 0) -> None:
+        self.x = x
+        self.y = y
+
+    def add(self, x: int, y: int = 0) -> int:
+        return x + y
+
+    def pair(self, a: object, b: object = None) -> tuple[object, object]:
+        return a, b
+
+    def rest(self, x: int, *args: int, key: str = "k", **kwargs: int) -> str:
+        return f"{x} {args} {key} {kwargs}"
+
+    def star(self, *args: Any, **kwargs: Any) -> str:
+        return f"{args} {kwargs}"
+
+    @classmethod
+    def cm(cls, x: int, y: int = 0) -> str:
+        return f"{cls.__name__} {x} {y}"
+
+    @staticmethod
+    def sm(x: int, y: int = 0) -> int:
+        return x * 10 + y
+
+class Sub(Base):
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
+
+    def add_args(self, *args: int) -> int:
+        return super().add(*args)
+
+    def add_kwargs(self, **kwargs: int) -> int:
+        return super().add(**kwargs)
+
+    def add_both(self, *args: int, **kwargs: int) -> int:
+        return super().add(*args, **kwargs)
+
+    def add_after_arg(self, *args: int, **kwargs: int) -> list[int]:
+        return [super().add(1, *args), super().add(1, **kwargs)]
+
+    def add_tuple(self, t: tuple[int, int]) -> int:
+        return super().add(*t)
+
+    def add_list(self, a: list[int]) -> int:
+        return super().add(*a)
+
+    def add_dict(self, d: dict[str, int]) -> int:
+        return super().add(**d)
+
+    def pair_args(self, *args: object) -> tuple[object, object]:
+        return super().pair(*args)
+
+    def rest_args(self, *args: int, **kwargs: Any) -> str:
+        return super().rest(*args, **kwargs)
+
+    def star_args(self, *args: Any, **kwargs: Any) -> str:
+        return super().star(*args, **kwargs)
+
+    def cm_args(self, *args: int) -> str:
+        return super().cm(*args)
+
+    def sm_args(self, *args: int, **kwargs: int) -> int:
+        return super().sm(*args, **kwargs)
+
+def test_super_call_with_unpacked_args() -> None:
+    s = Sub(1)
+    assert s.add_args(2, 3) == 5
+    assert s.add_args(2) == 2
+    assert s.add_kwargs(x=2, y=3) == 5
+    assert s.add_kwargs(x=2) == 2
+    assert s.add_both(2, y=3) == 5
+    assert s.add_after_arg() == [1, 1]
+    assert s.add_after_arg(2) == [3, 1]
+    assert s.add_after_arg(y=4) == [1, 5]
+    assert s.add_tuple((2, 3)) == 5
+    assert s.add_list([2, 3]) == 5
+    assert s.add_dict({"x": 2, "y": 3}) == 5
+    # The unpacked items must not be passed on as a single argument
+    assert s.pair_args(1, "x") == (1, "x")
+    assert s.pair_args((1, 2)) == ((1, 2), None)
+    assert s.rest_args(1) == "1 () k {}"
+    assert s.rest_args(1, 2, 3, key="a", z=4) == "1 (2, 3) a {'z': 4}"
+    assert s.star_args(1, 2, a=3) == "(1, 2) {'a': 3}"
+    assert s.cm_args(1, 2) == "Sub 1 2"
+    assert s.sm_args(1) == 10
+    assert s.sm_args(1, y=2) == 12
+
+def test_super_call_with_invalid_unpacked_args() -> None:
+    s = Sub(1)
+    with assertRaises(TypeError):
+        s.add_args()
+    with assertRaises(TypeError):
+        s.add_args(1, 2, 3)
+    with assertRaises(TypeError):
+        s.add_kwargs(y=1)
+    with assertRaises(TypeError):
+        s.add_kwargs(x=1, z=2)
+    with assertRaises(TypeError):
+        s.add_after_arg(x=2)
+    with assertRaises(TypeError):
+        s.pair_args()
+
+def test_super_init_with_unpacked_args() -> None:
+    s = Sub(1, 2)
+    assert (s.x, s.y) == (1, 2)
+    s = Sub(3)
+    assert (s.x, s.y) == (3, 0)
+    s = Sub(4, y=5)
+    assert (s.x, s.y) == (4, 5)
+    s = Sub(y=6, x=7)
+    assert (s.x, s.y) == (7, 6)
+    with assertRaises(TypeError):
+        Sub()
+    with assertRaises(TypeError):
+        Sub(1, 2, 3)
+
+class ViaClass(Base):
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        Base.__init__(self, *args, **kwargs)
+
+    def add_args(self, *args: int) -> int:
+        return Base.add(self, *args)
+
+    def add_self_in_args(self, *args: Any) -> int:
+        return Base.add(*args)
+
+    def cm_args(self, *args: int) -> str:
+        return Base.cm(*args)
+
+def test_call_via_class_with_unpacked_args() -> None:
+    v = ViaClass(1, y=2)
+    assert (v.x, v.y) == (1, 2)
+    assert v.add_args(2, 3) == 5
+    assert v.add_self_in_args(v, 2, 3) == 5
+    assert v.cm_args(1, 2) == "Base 1 2"
+    with assertRaises(TypeError):
+        ViaClass()
+
+class New:
+    x: int
+    y: int
+
+    def __new__(cls, x: int, y: int = 0) -> "New":
+        obj = object.__new__(cls)
+        obj.x = x
+        obj.y = y
+        return obj
+
+class SubNew(New):
+    def __new__(cls, *args: Any, **kwargs: Any) -> "SubNew":
+        obj = super().__new__(cls, *args, **kwargs)
+        assert isinstance(obj, SubNew)
+        return obj
+
+def test_super_new_with_unpacked_args() -> None:
+    n = SubNew(1, 2)
+    assert (n.x, n.y) == (1, 2)
+    n = SubNew(y=3, x=4)
+    assert (n.x, n.y) == (4, 3)
+    with assertRaises(TypeError):
+        SubNew()
+
+@final
+class Final:
+    @classmethod
+    def join(cls, a: str, b: str = "?") -> str:
+        return f"{cls.__name__} {a} {b}"
+
+    @classmethod
+    def pair(cls, a: object, b: object = None) -> tuple[object, object]:
+        return a, b
+
+    @classmethod
+    def join_args(cls, *args: str) -> str:
+        return cls.join(*args)
+
+    @classmethod
+    def join_kwargs(cls, **kwargs: str) -> str:
+        return cls.join(**kwargs)
+
+    @classmethod
+    def pair_tuple(cls, t: tuple[int, str]) -> tuple[object, object]:
+        return cls.pair(*t)
+
+def test_call_via_cls_with_unpacked_args() -> None:
+    assert Final.join_args("a", "b") == "Final a b"
+    assert Final.join_args("a") == "Final a ?"
+    assert Final.join_kwargs(a="a", b="b") == "Final a b"
+    assert Final.join_kwargs(a="a") == "Final a ?"
+    assert Final.pair_tuple((1, "x")) == (1, "x")
+    with assertRaises(TypeError):
+        Final.join_args()
+
 [case testDataclassInitVar]
 import dataclasses
 
