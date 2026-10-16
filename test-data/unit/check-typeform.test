@@ -808,3 +808,28 @@ from typing import Optional, TypeForm
 typx: TypeForm = Optional  # E: Incompatible types in assignment (expression has type "int", variable has type "TypeForm[Any]")
 [builtins fixtures/primitives.pyi]
 [typing fixtures/typing-full.pyi]
+
+
+-- isinstance() with types.UnionType and TypeForm (see #21910)
+
+[case testTypeFormIsinstanceUnionType]
+# flags: --warn-unreachable
+from types import UnionType
+from typing import Any
+from typing_extensions import TypeForm
+
+def f(t: TypeForm[Any]) -> None:
+    if isinstance(t, UnionType):
+        reveal_type(t)  # N: Revealed type is "types.UnionType"
+    else:
+        reveal_type(t)  # N: Revealed type is "TypeForm[Any]"
+
+def g(t: TypeForm[int | str]) -> None:
+    if isinstance(t, UnionType):
+        reveal_type(t)  # N: Revealed type is "types.UnionType"
+
+def h(t: TypeForm[int]) -> None:
+    if isinstance(t, UnionType):
+        pass  # E: Statement is unreachable
+[builtins fixtures/isinstance_python3_10.pyi]
+[typing fixtures/typing-full.pyi]
