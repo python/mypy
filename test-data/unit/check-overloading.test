@@ -233,6 +233,25 @@ reveal_type(f(A())) # N: Revealed type is "__main__.B"
 reveal_type(f(B())) # N: Revealed type is "__main__.A"
 [builtins fixtures/isinstance.pyi]
 
+[case testOverloadImplementationArgumentNames]
+from typing import overload
+
+@overload
+def f(x: int, y: int) -> None: ...
+@overload
+def f(x: str, y: int, /) -> None: ...
+def f(a: int | str, /, b: int) -> None:  # E: Overloaded function implementation does not accept all possible parameters of signature 1 \
+                                         # N: Consider marking "x", "y" positional-only in signature 1
+    pass
+
+@overload
+def h(x: int = 0, y: int = 0) -> None: ...
+@overload
+def h(x: str, /, y: int = 0) -> None: ...
+def h(a: int | str = 0, b: int = 0, /, *, y: int = 0) -> None:  # E: Overloaded function implementation does not accept all possible parameters of signature 1 \
+                                                                # N: Consider marking "x" positional-only in signature 1
+    pass
+
 [case testTypeCheckOverloadImplOverlapVarArgsAndKwargs]
 from __future__ import annotations
 from typing import overload
