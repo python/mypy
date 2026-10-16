@@ -94,9 +94,10 @@ from mypyc.irbuild.builder import IRBuilder, find_walrus_targets, get_call_targe
 from mypyc.irbuild.constant_fold import constant_fold_expr
 from mypyc.irbuild.for_helpers import (
     comprehension_helper,
+    generator_loop_helper,
     get_expr_length_value,
     sequence_from_generator_preallocate_helper,
-    translate_list_comprehension,
+    translate_generator_to_list,
     translate_set_comprehension,
 )
 from mypyc.irbuild.format_str_tokenizer import (
@@ -561,28 +562,29 @@ def translate_safe_generator_call(
         and expr.arg_kinds[0] == ARG_POS
         and isinstance(expr.args[0], GeneratorExpr)
     ):
-        if isinstance(callee, MemberExpr):
+        receiver = builder.accept(callee.expr) if isinstance(callee, MemberExpr) else None
+        other_args: list[Value] = []
+
+        def gen_other_args() -> None:
+            other_args.extend(builder.accept(arg) for arg in expr.args[1:])
+
+        items = translate_generator_to_list(
+            builder, expr.args[0], before_loop=gen_other_args if len(expr.args) > 1 else None
+        )
+        args = [items] + other_args
+        if receiver is not None:
+            assert isinstance(callee, MemberExpr)
             return builder.gen_method_call(
-                builder.accept(callee.expr),
+                receiver,
                 callee.name,
-                (
-                    [translate_list_comprehension(builder, expr.args[0])]
-                    + [builder.accept(arg) for arg in expr.args[1:]]
-                ),
+                args,
                 builder.node_type(expr),
                 expr.line,
                 expr.arg_kinds,
                 expr.arg_names,
             )
         else:
-            return builder.call_refexpr_with_args(
-                expr,
-                callee,
-                (
-                    [translate_list_comprehension(builder, expr.args[0])]
-                    + [builder.accept(arg) for arg in expr.args[1:]]
-                ),
-            )
+            return builder.call_refexpr_with_args(expr, callee, args)
     return None
 
 
@@ -667,9 +669,10 @@ def translate_sum_call(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> V
     gen_expr = expr.args[0]
     target_type = builder.node_type(expr)
     retval = Register(target_type, line=expr.line)
-    builder.assign(
-        retval, builder.coerce(builder.accept(start_expr), target_type, expr.line), expr.line
-    )
+
+    def gen_start() -> None:
+        start = builder.coerce(builder.accept(start_expr), target_type, expr.line)
+        builder.assign(retval, start, expr.line)
 
     def gen_inner_stmts() -> None:
         call_expr = builder.accept(gen_expr.left_expr)
@@ -677,10 +680,7 @@ def translate_sum_call(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> V
             retval, builder.binary_op(retval, call_expr, "+", call_expr.line), call_expr.line
         )
 
-    loop_params = list(
-        zip(gen_expr.indices, gen_expr.sequences, gen_expr.condlists, gen_expr.is_async)
-    )
-    comprehension_helper(builder, loop_params, gen_inner_stmts, gen_expr.line)
+    generator_loop_helper(builder, gen_expr, gen_inner_stmts, before_loop=gen_start)
 
     return retval
 
@@ -720,8 +720,12 @@ def translate_next_call(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> 
 
     gen = expr.args[0]
     retval = Register(builder.node_type(expr))
-    default_val = builder.accept(expr.args[1]) if len(expr.args) > 1 else None
+    default_val: Value | None = None
     exit_block = BasicBlock()
+
+    def gen_default() -> None:
+        nonlocal default_val
+        default_val = builder.accept(expr.args[1])
 
     def gen_inner_stmts() -> None:
         # next takes the first element of the generator, so if
@@ -729,8 +733,9 @@ def translate_next_call(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> 
         builder.assign(retval, builder.accept(gen.left_expr), gen.left_expr.line)
         builder.goto(exit_block)
 
-    loop_params = list(zip(gen.indices, gen.sequences, gen.condlists, gen.is_async))
-    comprehension_helper(builder, loop_params, gen_inner_stmts, gen.line)
+    generator_loop_helper(
+        builder, gen, gen_inner_stmts, before_loop=gen_default if len(expr.args) > 1 else None
+    )
 
     # Now we need the case for when nothing got hit. If there was
     # a default value, we produce it, and otherwise we raise
