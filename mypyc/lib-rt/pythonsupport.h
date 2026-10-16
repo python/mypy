@@ -162,6 +162,69 @@ static inline void CPy_InitAttrRef(PyObject **field, PyObject *value) {
     _Py_atomic_store_ptr_relaxed(field, value);
 }
 
+// Native attributes of type 'int' (CPyTagged fields).
+//
+// A tagged value is pointer-free if it carries no reference: a short int (tag bit
+// clear) or the undefined value CPY_INT_TAG (a tagged NULL). Only a long int
+// (tag bit set, not CPY_INT_TAG) owns a reference to a PyLong object.
+//
+// Reads and writes of pointer-free values (the common case) use only relaxed loads
+// and stores, with no lock and no refcount operation. A long value goes through
+// cold slow paths that follow the CPy_GetAttrRef/CPy_SetAttrRef protocol on the
+// untagged pointer. The fast path writer never releases a reference, and only
+// stores pointer-free values. Acting on a stale pointer-free view it may overwrite
+// a long concurrently stored by another writer, which then leaks (stays alive
+// forever) -- this needs unsynchronized concurrent writers to the same attribute.
+// Only slow path writers release references, each releasing only the value it
+// loaded under the owner's lock after storing its replacement under that lock, so
+// there are no double frees, and the reader guarantees of CPy_GetAttrRef still
+// hold. Longs are stored with release and dereferenced only after an acquire load.
+//
+// The relaxed fast path gives the same (lack of) ordering guarantees as other
+// unboxed attribute types such as 'bool', 'float' and 'i64'.
+static inline int CPyTagged_IsPointerFree(CPyTagged x) {
+    // Short-int test first: the 'x == CPY_INT_TAG' compare only runs for odd values.
+    return !(x & CPY_INT_TAG) || x == CPY_INT_TAG;
+}
+
+CPy_COLD CPyTagged CPyTagged_GetAttrSlow(PyObject *owner, CPyTagged *field);
+CPy_COLD void CPyTagged_SetAttrSlow(PyObject *owner, CPyTagged *field, CPyTagged value);
+
+// Read an 'int' attribute, returning a new reference (or CPY_INT_TAG if undefined).
+// The hot path costs the same as the GIL build's load + CPyTagged_INCREF. Reading an
+// undefined attribute is an error, so it's left to the slow path, which keeps the
+// hot path to a single tag bit test.
+static inline CPyTagged CPyTagged_GetAttr(PyObject *owner, CPyTagged *field) {
+    CPyTagged v = _Py_atomic_load_uintptr_relaxed((uintptr_t *)field);
+    if (likely(!(v & CPY_INT_TAG))) {
+        return v;
+    }
+    return CPyTagged_GetAttrSlow(owner, field);
+}
+
+// Set an 'int' attribute, stealing the reference to 'value' (CPY_INT_TAG deletes the
+// attribute) and reclaiming the previous value. A long 'value' always takes the
+// locked slow path, even if the old value looks pointer-free: without the lock, a
+// writer can't know that the old value it read isn't a pointer, and releases must
+// happen under the lock (see above).
+static inline void CPyTagged_SetAttr(PyObject *owner, CPyTagged *field, CPyTagged value) {
+    if (likely(CPyTagged_IsPointerFree(value))) {
+        CPyTagged old = _Py_atomic_load_uintptr_relaxed((uintptr_t *)field);
+        if (likely(CPyTagged_IsPointerFree(old))) {
+            _Py_atomic_store_uintptr_relaxed((uintptr_t *)field, value);
+            return;
+        }
+    }
+    CPyTagged_SetAttrSlow(owner, field, value);
+}
+
+// Initialize a previously undefined 'int' attribute, stealing the reference to
+// 'value'. This happens while 'self' is still thread-local, so a relaxed store
+// suffices (see CPy_InitAttrRef).
+static inline void CPyTagged_InitAttr(CPyTagged *field, CPyTagged value) {
+    _Py_atomic_store_uintptr_relaxed((uintptr_t *)field, value);
+}
+
 #endif
 
 // Generated generator and coroutine helpers claim this flag while executing,

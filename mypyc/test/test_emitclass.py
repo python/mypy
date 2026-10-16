@@ -12,7 +12,7 @@ from mypyc.codegen.emitclass import (
     slot_key,
 )
 from mypyc.ir.class_ir import ClassIR
-from mypyc.ir.rtypes import int32_rprimitive, object_rprimitive
+from mypyc.ir.rtypes import int32_rprimitive, int_rprimitive, object_rprimitive
 from mypyc.namegen import NameGenerator
 from mypyc.options import TargetPython
 
@@ -62,6 +62,24 @@ class TestEmitClass(unittest.TestCase):
         assert "CPy_GetAttrRef((PyObject *)self, (PyObject **)&self->_o)" in generated
         assert "CPy_SetAttrRef((PyObject *)self, (PyObject **)&self->_o, tmp)" in generated
         assert "CPy_SetAttrRef((PyObject *)self, (PyObject **)&self->_o, NULL)" in generated
+
+    @unittest.skipUnless(IS_FREE_THREADED, "requires a free threaded build")
+    def test_free_threaded_int_attribute_getter_and_setter(self) -> None:
+        cl = ClassIR("A", "mod")
+        cl.attributes = {"n": int_rprimitive}
+        cl.deletable = ["n"]
+        cl.mro = cl.base_mro = [cl]
+        emitter = Emitter(EmitterContext(NameGenerator([["mod"]]), True))
+
+        generate_getter(cl, "n", int_rprimitive, emitter)
+        generate_setter(cl, "n", int_rprimitive, emitter)
+
+        generated = "".join(emitter.fragments)
+        assert "CPyTagged tmp = CPyTagged_GetAttr((PyObject *)self, &self->_n);" in generated
+        assert "return CPyTagged_StealAsObject(tmp);" in generated
+        assert "CPyTagged_SetAttr((PyObject *)self, &self->_n, tmp);" in generated
+        assert "CPyTagged_SetAttr((PyObject *)self, &self->_n, CPY_INT_TAG);" in generated
+        assert "CPyTagged_DECREF" not in generated
 
     def test_bitmap_attrs_stable_across_repeat_analysis(self) -> None:
         # Regression: detect_undefined_bitmap used to mutate cl.bitmap_attrs

@@ -9421,3 +9421,96 @@ def test_interpreted_subclass_shadowing() -> None:
     assert (o.read_literal(), o.LITERAL) == (5, 97)
     assert o.read_items() is C.ITEMS
     assert o.ITEMS == [1]
+
+[case testIntAttributeShortAndLongValues]
+from typing import Any, Final
+import sys
+from mypy_extensions import trait
+from testutil import assertRaises
+
+BIG: Final = 2**80
+MEDIUM: Final = 2**40  # Long on 32-bit platforms, short on 64-bit platforms
+
+def make_big(i: int) -> int:
+    # Not a literal, since literals may be immortal
+    return BIG * (i + 1)
+
+class C:
+    __deletable__ = ["n"]
+
+    def __init__(self, n: int) -> None:
+        self.n = n
+
+class Fin:
+    def __init__(self, n: int) -> None:
+        self.n: Final = n
+
+@trait
+class T:
+    k: int
+
+class WithTrait(T):
+    def __init__(self, k: int) -> None:
+        self.k = k
+
+def get_k(t: T) -> int:
+    return t.k
+
+def set_k(t: T, k: int) -> None:
+    t.k = k
+
+def test_transitions() -> None:
+    c = C(1)
+    d: Any = c
+    for v in [BIG, 5, BIG + 1, BIG + 2, -BIG, 0, MEDIUM, -MEDIUM, -1, BIG * 3]:
+        c.n = v
+        assert c.n == v
+        assert d.n == v
+        d.n = v + 1
+        assert c.n == v + 1
+        assert d.n == v + 1
+
+def test_old_long_value_released() -> None:
+    c = C(make_big(1))
+    dynamic_sys: Any = sys
+    # Any, so that boxing doesn't steal the reference on the last use
+    old: Any = c.n
+    before = dynamic_sys.getrefcount(old)
+    c.n = 1
+    assert dynamic_sys.getrefcount(old) == before - 1
+    c.n = make_big(2)
+    old = c.n
+    before = dynamic_sys.getrefcount(old)
+    del c.n
+    assert dynamic_sys.getrefcount(old) == before - 1
+
+def test_delete() -> None:
+    c = C(BIG + 1)
+    del c.n
+    with assertRaises(AttributeError):
+        c.n
+    d: Any = c
+    with assertRaises(AttributeError):
+        d.n
+    d.n = BIG + 2
+    assert c.n == BIG + 2
+    del c.n
+    c.n = BIG + 3
+    assert c.n == BIG + 3
+
+def test_final() -> None:
+    for v in [1, BIG + 1]:
+        f = Fin(v)
+        assert f.n == v
+        d: Any = f
+        assert d.n == v
+
+def test_trait() -> None:
+    # Access through the trait type uses a field offset looked up at runtime
+    w = WithTrait(BIG)
+    assert get_k(w) == BIG
+    set_k(w, 2)
+    assert get_k(w) == 2
+    set_k(w, BIG + 1)
+    assert get_k(w) == BIG + 1
+    assert w.k == BIG + 1
