@@ -796,6 +796,13 @@ class MessageBuilder:
                         quote_type_string(expected_type_str),
                     )
                 expected_type = get_proper_type(expected_type)
+                if (
+                    isinstance(context, StrExpr)
+                    and context.as_type is None
+                    and isinstance(expected_type, TypeType)
+                    and expected_type.is_type_form
+                ):
+                    msg += f". {message_registry.TYPE_FORM_STRING_ARGUMENT_HINT}"
                 if isinstance(expected_type, UnionType):
                     expected_types = get_proper_types(expected_type.items)
                 else:

@@ -342,6 +342,6 @@ def identity(typx: TypeForm) -> TypeForm:
     return typx
 
 # This should not generate SyntaxWarning despite invalid escape sequence
-identity(r"re\.match")  # E: Argument 1 to "identity" has incompatible type "str"; expected "TypeForm[Any]"
+identity(r"re\.match")  # E: Argument 1 to "identity" has incompatible type "str"; expected "TypeForm[Any]". If this string was intended as a type expression, wrap it in TypeForm(...) to get a more specific error.
 [builtins fixtures/tuple.pyi]
 [typing fixtures/typing-full.pyi]
