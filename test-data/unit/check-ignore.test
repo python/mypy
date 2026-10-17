@@ -241,6 +241,16 @@ IGNORE
 # type: ignore
 import MISSING
 
+[case testIgnoreWholeModule5]
+# mypy: ignore
+import MISSING
+
+[case testIgnoreWholeModule6]
+# flags: --warn-unused-ignores
+
+# type: ignore
+x = 1  # mypy: ignore
+
 [case testDontIgnoreWholeModule1]
 if True:
     # type: ignore
@@ -254,6 +264,12 @@ ERROR # E: Name "ERROR" is not defined
 
 [case testDontIgnoreWholeModule3]
 @d  # type: ignore
+
+def f(): ...
+ERROR # E: Name "ERROR" is not defined
+
+[case testDontIgnoreWholeModule4]
+@d  # mypy: ignore
 
 def f(): ...
 ERROR # E: Name "ERROR" is not defined
