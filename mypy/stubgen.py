@@ -530,6 +530,7 @@ class ASTStubGenerator(BaseStubGenerator, mypy.traverser.TraverserVisitor):
     ) -> None:
         super().__init__(_all_, include_private, export_less, include_docstrings)
         self._decorators: list[str] = []
+        self._has_async_contextmanager = False
         # Stack of defined variables (per scope).
         self._vars: list[list[str]] = [[]]
         # What was generated previously in the stub file.
@@ -748,7 +749,10 @@ class ASTStubGenerator(BaseStubGenerator, mypy.traverser.TraverserVisitor):
         sigs = self.get_signatures(default_sig, self.sig_generators, ctx)
 
         for output in self.format_func_def(
-            sigs, is_coroutine=o.is_coroutine, decorators=self._decorators, docstring=ctx.docstring
+            sigs,
+            is_coroutine=o.is_coroutine and not self._has_async_contextmanager,
+            decorators=self._decorators,
+            docstring=ctx.docstring,
         ):
             self.add(output + "\n")
 
@@ -809,6 +813,10 @@ class ASTStubGenerator(BaseStubGenerator, mypy.traverser.TraverserVisitor):
                 o.func.is_overload = True
             elif qualname.endswith((".setter", ".deleter")):
                 self.add_decorator(qualname, require_name=False)
+            elif fullname == "contextlib.asynccontextmanager":
+                p = AliasPrinter(self)
+                self._decorators.append(f"@{decorator.accept(p)}")
+                self._has_async_contextmanager = True
             elif fullname in DATACLASS_TRANSFORM_NAMES:
                 p = AliasPrinter(self)
                 self._decorators.append(f"@{decorator.accept(p)}")
@@ -1365,6 +1373,7 @@ class ASTStubGenerator(BaseStubGenerator, mypy.traverser.TraverserVisitor):
 
     def clear_decorators(self) -> None:
         self._decorators.clear()
+        self._has_async_contextmanager = False
 
     def is_private_member(self, fullname: str) -> bool:
         parts = fullname.split(".")
