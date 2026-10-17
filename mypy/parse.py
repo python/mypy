@@ -95,6 +95,7 @@ def load_from_raw(
     # Report parse errors, this replicates the logic in parse().
     all_errors = raw_data.raw_errors + state.errors
     errors.set_file(fnam, module, options=options)
+    errors.set_file_ignored_lines(fnam, tree.ignored_lines, options.ignore_errors)
     for error in all_errors:
         # Note we never raise in this function, so it should not be called in coordinator.
         report_parse_error(error, errors)

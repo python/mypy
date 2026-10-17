@@ -48,6 +48,7 @@ from mypy.cache import (
 )
 from mypy.errorcodes import error_codes
 from mypy.errors import CompileError
+from mypy.message_registry import NO_PREFIX_IN_MYPY_IGNORE
 from mypy.nodes import (
     ARG_KINDS,
     ARG_POS,
@@ -235,14 +236,25 @@ def native_parse(
         b,
         errors,
         ignores,
+        mypy_ignores,
         import_bytes,
         is_partial_package,
         uses_template_strings,
         source_hash,
         mypy_comments,
     ) = parse_to_binary_ast(filename, options, source, skip_function_bodies)
+
     ignores, extra_errors = normalize_error_codes(ignores)
     errors.extend(extra_errors)
+    mypy_ignores, extra_errors = normalize_error_codes(
+        mypy_ignores, verify_all=True, prohibit_prefix=True
+    )
+    errors.extend(extra_errors)
+
+    ignores = merge_type_ignores(ignores, mypy_ignores)
+    ignores, extra_errors = remove_duplicate_codes(ignores)
+    errors.extend(extra_errors)
+
     node = MypyFile([], [])
     node.path = filename
     node.raw_data = FileRawData(
@@ -258,29 +270,89 @@ def native_parse(
     return node, errors, ignores
 
 
-def normalize_error_codes(ignores: TypeIgnores) -> tuple[TypeIgnores, list[ParseError]]:
+def normalize_error_codes(
+    ignores: TypeIgnores, verify_all: bool = False, prohibit_prefix: bool = False
+) -> tuple[TypeIgnores, list[ParseError]]:
     """Remove mypy: prefix from error codes (if present)."""
     normalized = []
     extra_errors: list[ParseError] = []
     for line, codes in ignores:
         new_codes = []
         for c in codes:
-            if not c.startswith("mypy:"):
-                new_codes.append(c)
-                continue
+            prefixed = c.startswith("mypy:")
             c = c.removeprefix("mypy:")
-            if c in error_codes:
-                new_codes.append(c)
+            # Always record unknown codes, so that type: ignore[unknown]
+            # will not become blanket ignore.
+            new_codes.append(c)
+            if (prefixed or verify_all) and c not in error_codes:
+                extra_errors.append(
+                    {
+                        "line": line,
+                        "column": -1,
+                        "message": f'Unrecognized error code "{c}"',
+                        "blocker": False,
+                        "code": "misc",
+                    }
+                )
+            if prefixed and prohibit_prefix:
+                extra_errors.append(
+                    {
+                        "line": line,
+                        "column": -1,
+                        "message": NO_PREFIX_IN_MYPY_IGNORE,
+                        "blocker": False,
+                        "code": "misc",
+                    }
+                )
+        normalized.append((line, new_codes))
+    return normalized, extra_errors
+
+
+def merge_type_ignores(ignores: TypeIgnores, mypy_ignores: TypeIgnores) -> TypeIgnores:
+    """Merge error codes specified in # type: ignore[...] and in # mypy: ignore[...]."""
+    merged = []
+    ignores_by_line = dict(ignores)
+    mypy_ignores_by_line = dict(mypy_ignores)
+    for line in sorted(ignores_by_line.keys() | mypy_ignores_by_line.keys()):
+        codes = ignores_by_line.get(line)
+        mypy_codes = mypy_ignores_by_line.get(line)
+        if codes is not None and mypy_codes is None:
+            new_codes = codes
+        elif codes is None and mypy_codes is not None:
+            new_codes = mypy_codes
+        else:
+            assert codes is not None and mypy_codes is not None
+            if not codes or not mypy_codes:
+                # If at least one ignore is blanket, make the merged ignore blanket.
+                # We are not overly strict here, in case someone wants to quickly
+                # silence everything.
+                new_codes = []
+            else:
+                new_codes = codes + mypy_codes
+        merged.append((line, new_codes))
+    return merged
+
+
+def remove_duplicate_codes(ignores: TypeIgnores) -> tuple[TypeIgnores, list[ParseError]]:
+    normalized = []
+    extra_errors: list[ParseError] = []
+    for line, codes in ignores:
+        seen = set()
+        new_codes = []
+        for c in codes:
+            if c in seen:
+                extra_errors.append(
+                    {
+                        "line": line,
+                        "column": -1,
+                        "message": f'Duplicate error code "{c}"',
+                        "blocker": False,
+                        "code": "misc",
+                    }
+                )
                 continue
-            extra_errors.append(
-                {
-                    "line": line,
-                    "column": -1,
-                    "message": f'Unrecognized error code "{c}"',
-                    "blocker": False,
-                    "code": "misc",
-                }
-            )
+            seen.add(c)
+            new_codes.append(c)
         normalized.append((line, new_codes))
     return normalized, extra_errors
 
@@ -327,7 +399,17 @@ def parse_to_binary_ast(
     options: Options,
     source: str | bytes | None = None,
     skip_function_bodies: bool = False,
-) -> tuple[bytes, list[ParseError], TypeIgnores, bytes, bool, bool, str, list[tuple[int, str]]]:
+) -> tuple[
+    bytes,
+    list[ParseError],
+    TypeIgnores,
+    TypeIgnores,
+    bytes,
+    bool,
+    bool,
+    str,
+    list[tuple[int, str]],
+]:
     try:
         ast_bytes, errors, ignores, import_bytes, ast_data = ast_serialize.parse(
             filename,
@@ -337,7 +419,7 @@ def parse_to_binary_ast(
             platform=options.platform,
             always_true=options.always_true,
             always_false=options.always_false,
-            cache_version=5,
+            cache_version=7,
         )
     except ValueError as exc:
         if source is None:
@@ -366,6 +448,7 @@ def parse_to_binary_ast(
         ast_bytes,
         errors,
         ignores,
+        ast_data["mypy_ignores"],
         import_bytes,
         ast_data["is_partial_package"],
         ast_data["uses_template_strings"],
@@ -796,6 +879,7 @@ def read_func_def(state: State, data: ReadBuffer) -> FuncDef:
     func_def = FuncDef(name, arguments, body, typ=typ, type_args=type_params)
     if is_async:
         func_def.is_coroutine = True
+    func_def.has_type_comments = read_bool(data)
     read_loc(data, func_def)
     if type_params:
         state.check_min_version(

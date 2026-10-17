@@ -1114,6 +1114,7 @@ class FuncDef(FuncItem, SymbolNode, Statement):
         "docstring",
         "deprecated",
         "original_first_arg",
+        "has_type_comments",
     )
 
     __match_args__ = ("name", "arguments", "type", "body")
@@ -1156,6 +1157,9 @@ class FuncDef(FuncItem, SymbolNode, Statement):
         # We record this status to avoid multiple (similar but different) errors in case
         # of partial types etc.
         self.is_invalid_redefinition = False
+        # Record if the function definition has any type comments (including per-argument).
+        # This is only available with the native parser (and always False otherwise).
+        self.has_type_comments = False
 
     @property
     def name(self) -> str:

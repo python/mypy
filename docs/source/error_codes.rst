@@ -53,6 +53,43 @@ codes prefixed with ``mypy:`` will be validated:
    # OK: error code may be used by other type checker.
    y = 2  # type: ignore[something-else]
 
+An alternative way to specify mypy-specific type ignores is to use
+``# mypy: ignore[one-code, other-code]``. Such form is equivalent to writing
+``# type: ignore[mypy:one-code, mypy:other-code]``. You can have both
+``# type: ignore[...]`` and ``# mypy: ignore[...]`` on the same line, in this
+case the error code lists will be merged.
+
+Note that to allow better interoperability with other tools, mypy recognizes
+``# type: ignore`` and ``mypy: ignore`` in any position in a comment, including
+after another "magic" comments used by other tools. To temporarily disable
+an ignore, place it after an empty (i.e. whitespace only) comment. For example:
+
+.. code-block:: python
+
+   from typing import Any
+
+   # No error, type ignore is active.
+   x: str = 1  # noqa  # pragma: no cover  # type: ignore[assignment]
+
+   # Error: Incompatible types in assignment (expression has type "int", variable has type "str")
+   y: str = 1  ## type: ignore[assignment]
+
+   # Error: Incompatible types in assignment (expression has type "int", variable has type "str")
+   z: str = 1  # # type: ignore[assignment]
+
+The only exception to this logic, is if there is no other code on a line
+except for the comment. In this case type ignores preceded by another comment
+are disabled. This is done to avoid spurious errors about unused ignores in
+a commented out block of code:
+
+.. code-block:: python
+
+   # mypy: warn-unused-ignores
+
+   x: int = 1
+   # OK, no unused-ignore error below.
+   # x = "no way"  # type: ignore[assignment]
+
 Enabling/disabling specific error codes globally
 ------------------------------------------------
 
