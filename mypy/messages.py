@@ -3526,11 +3526,20 @@ def ignore_last_known_values(t: UnionType) -> Type:
     last_known_values are kept during union simplification, but may cause
     weird formatting for e.g. tuples of literals.
     """
+    # Flatten nested unions reached through type aliases so an item like
+    # ``AnotherAlias`` (where ``AnotherAlias = str | None``) does not
+    # bypass deduplication just because it is wrapped in a TypeAliasType.
+    # Keep recursive aliases intact so we don't try to expand them forever.
+    items = flatten_nested_unions(t.items, handle_recursive=False)
     union_items: list[Type] = []
     seen_instances = set()
-    for item in t.items:
-        if isinstance(item, ProperType) and isinstance(item, Instance):
-            erased = item.copy_modified(last_known_value=None)
+    for item in items:
+        if isinstance(item, TypeAliasType) and item.is_recursive:
+            union_items.append(item)
+            continue
+        proper = get_proper_type(item)
+        if isinstance(proper, Instance):
+            erased = proper.copy_modified(last_known_value=None)
             if erased in seen_instances:
                 continue
             seen_instances.add(erased)
