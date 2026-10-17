@@ -8888,13 +8888,13 @@ def conditional_types(
 
     proposed_type = make_simplified_union([type_range.item for type_range in proposed_type_ranges])
     items = proposed_type.items if isinstance(proposed_type, UnionType) else [proposed_type]
-    for i in range(len(items)):
-        item = get_proper_type(items[i])
-        # Avoid ever narrowing to a NewType. The principle is values of NewType should only be
-        # produce by explicit wrapping
-        while isinstance(item, Instance) and item.type.is_newtype:
-            item = item.type.bases[0]
-        items[i] = item
+    if consider_runtime_isinstance:
+        for i in range(len(items)):
+            item = get_proper_type(items[i])
+            # Runtime checks can't distinguish a NewType from its base type.
+            while isinstance(item, Instance) and item.type.is_newtype:
+                item = item.type.bases[0]
+            items[i] = item
     proposed_type = get_proper_type(UnionType.make_union(items))
 
     if isinstance(p_current_type, AnyType):
