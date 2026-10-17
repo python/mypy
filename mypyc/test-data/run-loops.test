@@ -281,6 +281,240 @@ expected = [0, 1, 2, 2, 0, 1, 2, 2, 0, 1, 2, 2]
 assert list(gen) == expected
 [out]
 
+[case testForLoopReassignIterable]
+from typing import Any, Iterator
+
+from mypy_extensions import i64
+
+class Ctx:
+    def __enter__(self) -> tuple[int, ...]:
+        return (9,)
+
+    def __exit__(self, *args: Any) -> None:
+        pass
+
+def test_sequence() -> None:
+    t: tuple[int, ...] = (1, 2, 3)
+    items = []
+    for x in t:
+        t = (9,)
+        items.append(x)
+    assert items == [1, 2, 3]
+
+    a = [1, 2, 3]
+    items = []
+    for x in a:
+        a = [9]
+        items.append(x)
+    assert items == [1, 2, 3]
+
+    s = "abc"
+    chars = []
+    for c in s:
+        s = "z"
+        chars.append(c)
+    assert chars == ["a", "b", "c"]
+
+    b = b"abc"
+    items = []
+    for x in b:
+        b = b"z"
+        items.append(x)
+    assert items == [97, 98, 99]
+
+def test_loop_target_is_iterable() -> None:
+    s = "abc"
+    chars = []
+    for s in s:
+        chars.append(s)
+    assert chars == ["a", "b", "c"]
+
+def test_reversed_enumerate_zip() -> None:
+    a = [1, 2, 3]
+    items = []
+    for x in reversed(a):
+        a = [9]
+        items.append(x)
+    assert items == [3, 2, 1]
+
+    a = [1, 2, 3]
+    pairs = []
+    for i, x in enumerate(a):
+        a = [9]
+        pairs.append((i, x))
+    assert pairs == [(0, 1), (1, 2), (2, 3)]
+
+    a = [1, 2, 3]
+    b = ["a", "b", "c"]
+    zipped = []
+    for x, y in zip(a, b):
+        a = [9]
+        b = ["z"]
+        zipped.append((x, y))
+    assert zipped == [(1, "a"), (2, "b"), (3, "c")]
+
+def test_dict() -> None:
+    d = {"a": 1, "b": 2}
+    keys = []
+    for k in d:
+        d = {"z": 0}
+        keys.append(k)
+    assert keys == ["a", "b"]
+
+    d = {"a": 1, "b": 2}
+    keys = []
+    for k in d.keys():
+        d = {"z": 0}
+        keys.append(k)
+    assert keys == ["a", "b"]
+
+    d = {"a": 1, "b": 2}
+    values = []
+    for v in d.values():
+        d = {"z": 0}
+        values.append(v)
+    assert values == [1, 2]
+
+    d = {"a": 1, "b": 2}
+    items = []
+    for k, v in d.items():
+        d = {"z": 0}
+        items.append((k, v))
+    assert items == [("a", 1), ("b", 2)]
+
+    # The dict that is iterated over is still checked for size changes
+    d = {"a": 1, "b": 2}
+    try:
+        for k in d:
+            old = d
+            d = {"x": 1, "y": 2}
+            old["c"] = 3
+    except RuntimeError as e:
+        assert str(e) == "dictionary changed size during iteration"
+    else:
+        assert False
+
+def range_end_arg(n: int) -> list[int]:
+    items = []
+    for i in range(n):
+        n = 0
+        items.append(i)
+    return items
+
+def test_range() -> None:
+    assert range_end_arg(3) == [0, 1, 2]
+
+    n = 5
+    items = []
+    for i in range(n):
+        n -= 1
+        items.append(i)
+    assert items == [0, 1, 2, 3, 4]
+
+    lo = 0
+    items = []
+    for i in range(3, lo, -1):
+        lo = 5
+        items.append(i)
+    assert items == [3, 2, 1]
+
+    n = 3
+    pairs = []
+    for i, j in zip(range(n), range(10)):
+        n = 0
+        pairs.append((i, j))
+    assert pairs == [(0, 0), (1, 1), (2, 2)]
+
+    m: i64 = 3
+    items64 = []
+    for k in range(m):
+        m = 0
+        items64.append(k)
+    assert items64 == [0, 1, 2]
+
+def test_other_assignments() -> None:
+    t: tuple[int, ...] = (1, 2, 3)
+    items = []
+    for x in t:
+        if x == 1:
+            del t
+        items.append(x)
+    assert items == [1, 2, 3]
+
+    t = (1, 2, 3)
+    items = []
+    for x in t:
+        if t := (9,):
+            items.append(x)
+    assert items == [1, 2, 3]
+
+    t = (1, 2, 3)
+    items = []
+    for x in t:
+        [(t := (9,)) for _ in range(1)]
+        items.append(x)
+    assert items == [1, 2, 3]
+
+    t = (1, 2, 3)
+    items = []
+    for x in t:
+        for t in [(9,)]:
+            pass
+        items.append(x)
+    assert items == [1, 2, 3]
+
+    t = (1, 2, 3)
+    items = []
+    for x in t:
+        with Ctx() as t:
+            pass
+        items.append(x)
+    assert items == [1, 2, 3]
+
+    a = [1, 2, 3]
+    items = []
+    for x in a:
+        first, *a = [9, 9]
+        items.append(x)
+    assert items == [1, 2, 3]
+
+def test_match() -> None:
+    t: tuple[int, ...] = (1, 2, 3)
+    items = []
+    for x in t:
+        match (9,):
+            case t:
+                pass
+        items.append(x)
+    assert items == [1, 2, 3]
+
+    a = [1, 2, 3]
+    items = []
+    for x in a:
+        match [9]:
+            case [*a]:
+                pass
+        items.append(x)
+    assert items == [1, 2, 3]
+
+    d = {"a": 1, "b": 2}
+    keys = []
+    for k in d:
+        match {"z": 0}:
+            case {**d}:
+                pass
+        keys.append(k)
+    assert keys == ["a", "b"]
+
+def gen() -> Iterator[int]:
+    t: tuple[int, ...] = (1, 2, 3)
+    for x in t:
+        t = (9,)
+        yield x
+
+def test_generator() -> None:
+    assert list(gen()) == [1, 2, 3]
+
 [case testRangeLoopVariableAfterLoop]
 for i in range(3):
     pass
