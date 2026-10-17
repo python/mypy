@@ -1502,7 +1502,7 @@ x: TVariadic  # E: TypeVarTuple "TVariadic" is unbound
 y: Unpack[TVariadic]  # E: Unpack is only valid in a variadic position
 
 
-class Variadic(Generic[Unpack[TVariadic], Unpack[TVariadic2]]):  # E: Can only use one type var tuple in a class def
+class Variadic(Generic[Unpack[TVariadic], Unpack[TVariadic2]]):  # E: Can only use one TypeVarTuple in a class definition
     pass
 
 def bad_args(*args: TVariadic):  # E: TypeVarTuple "TVariadic" is only valid with an unpack

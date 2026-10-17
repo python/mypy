@@ -1180,7 +1180,12 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             self.fail(message_registry.INVALID_UNPACK_POSITION, t.type, code=codes.VALID_TYPE)
             return AnyType(TypeOfAny.from_error)
         self.allow_type_var_tuple = self.nesting_level + 1
-        result = UnpackType(self.anal_type(t.type), from_star_syntax=t.from_star_syntax)
+        result = UnpackType(
+            self.anal_type(t.type),
+            from_star_syntax=t.from_star_syntax,
+            line=t.line,
+            column=t.column,
+        )
         self.allow_type_var_tuple = -1
         return result
 
@@ -2078,7 +2083,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
 
         if num_unpacks > 1:
             assert final_unpack is not None
-            self.fail("More than one variadic Unpack in a type is not allowed", final_unpack.type)
+            self.fail("More than one variadic Unpack in a type is not allowed", final_unpack)
         return new_items
 
     def tuple_type(self, items: list[Type], line: int, column: int) -> TupleType:
