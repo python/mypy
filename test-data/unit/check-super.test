@@ -237,7 +237,7 @@ class A:
     def f(self, s: str) -> None: pass
 
 class B(A):
-    def f(self, i: Union[int, str]) -> None: pass
+    def f(self, s: Union[int, str]) -> None: pass
 
 class C:
     def g(self, b: B) -> None:
@@ -251,7 +251,7 @@ class A:
     def f(self, s: str) -> None: pass
 
 class B(A):
-    def f(self, i: Union[int, str]) -> None: pass
+    def f(self, s: Union[int, str]) -> None: pass
 
 def g(b: B) -> None:
     super(B, b).f('42')

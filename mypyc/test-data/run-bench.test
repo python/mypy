@@ -98,8 +98,8 @@ class Node(Tree):
 
 @trait
 class TreeVisitor(Generic[T]):
-    def visit_leaf(self, x: Leaf) -> T: return cast(T, None)
-    def visit_node(self, x: Node) -> T: return cast(T, None)
+    def visit_leaf(self, x: Leaf, /) -> T: return cast(T, None)
+    def visit_node(self, x: Node, /) -> T: return cast(T, None)
 
 class SumVisitor(TreeVisitor[int]):
     def sum(self, x: Tree) -> int:
