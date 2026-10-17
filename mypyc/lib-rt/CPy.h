@@ -786,6 +786,11 @@ PyObject *CPyNumber_Power(PyObject *base, PyObject *index);
 PyObject *CPyNumber_InPlacePower(PyObject *base, PyObject *index);
 // An omitted slice bound is represented by CPY_INT_TAG.
 PyObject *CPyObject_GetSlice(PyObject *obj, CPyTagged start, CPyTagged end);
+typedef PyObject *(*CPyFastcallWrapper)(PyObject *, PyObject *const *, size_t, PyObject *);
+PyObject *CPy_CallFastcallWrapper(CPyFastcallWrapper wrapper, int takes_self,
+                                  PyObject *args, PyObject *kwargs);
+PyObject *CPy_CallLegacyWrapper(PyCFunctionWithKeywords wrapper, PyObject *args,
+                                PyObject *kwargs);
 
 
 // List operations
@@ -1117,6 +1122,7 @@ static inline PyObject *CPy_TYPE(PyObject *obj) {
 }
 
 PyObject *CPy_CalculateMetaclass(PyObject *type, PyObject *o);
+PyObject *CPyType_ResolveBases(PyObject *bases);
 PyObject *CPy_GetCoro(PyObject *obj);
 PyObject *CPyGen_AlreadyExecutingError(int is_coroutine);
 PyObject *CPyIter_Send(PyObject *iter, PyObject *val, PyObject **stop_iter_value);

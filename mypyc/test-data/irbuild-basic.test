@@ -2944,9 +2944,9 @@ def call_sum(l: Iterable[int], comparison: Callable[[int], bool]) -> int:
 
 [out]
 def call_sum(l, comparison):
-    l, comparison :: object
-    r0 :: int
-    r1, r2 :: object
+    l, comparison, r0 :: object
+    r1 :: int
+    r2 :: object
     r3, x :: int
     r4 :: object
     r5 :: object[1]
@@ -2956,10 +2956,10 @@ def call_sum(l, comparison):
     r10, r11 :: int
     r12 :: bit
 L0:
-    r0 = 0
-    r1 = PyObject_GetIter(l)
+    r0 = PyObject_GetIter(l)
+    r1 = 0
 L1:
-    r2 = PyIter_Next(r1)
+    r2 = PyIter_Next(r0)
     if is_error(r2) goto L4 else goto L2
 L2:
     r3 = unbox(int, r2)
@@ -2972,14 +2972,14 @@ L2:
     r8 = unbox(bool, r7)
     r9 = r8 << 1
     r10 = extend r9: builtins.bool to builtins.int
-    r11 = CPyTagged_Add(r0, r10)
-    r0 = r11
+    r11 = CPyTagged_Add(r1, r10)
+    r1 = r11
 L3:
     goto L1
 L4:
     r12 = CPy_NoErrOccurred()
 L5:
-    return r0
+    return r1
 
 [case testSetAttr1]
 from typing import Any, Dict, List

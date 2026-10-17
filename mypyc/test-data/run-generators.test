@@ -907,6 +907,38 @@ def test_nested_generator_private_spill() -> None:
     assert yields == ("right",)
     assert value == "capturedleftsent"
 
+[case testNestedGeneratorPrivateHelper]
+from typing import Iterator
+
+def outer() -> Iterator[int]:
+    def captured() -> Iterator[int]:
+        yield 1
+
+    def private() -> Iterator[int]:
+        yield from captured()
+
+    yield from private()
+
+def test_nested_generator_private_helper() -> None:
+    assert list(outer()) == [1]
+
+[case testRedefinedNestedGeneratorHelper]
+from typing import Iterator
+
+def redefined_nested_helper(flag: bool) -> Iterator[int]:
+    if flag:
+        def helper(n: int) -> int:
+            return 1
+    else:
+        def helper(n: int) -> int:
+            return helper(1) if not n else 2
+
+    yield helper(0)
+
+def test_redefined_nested_generator_helper() -> None:
+    assert list(redefined_nested_helper(True)) == [1]
+    assert list(redefined_nested_helper(False)) == [2]
+
 [case testGeneratorPrivateAndEscapedBindings]
 from typing import Any, Callable, Generator, Iterator
 

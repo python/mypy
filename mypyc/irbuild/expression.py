@@ -60,12 +60,7 @@ from mypy.types import (
     UnionType,
     get_proper_type,
 )
-from mypyc.common import (
-    IS_FREE_THREADED,
-    KEEP_ALIVE_SHORT_LIVED,
-    KEEP_ALIVE_WHOLE_EXPRESSION,
-    MAX_SHORT_INT,
-)
+from mypyc.common import KEEP_ALIVE_SHORT_LIVED, KEEP_ALIVE_WHOLE_EXPRESSION, MAX_SHORT_INT
 from mypyc.ir.class_ir import ClassIR
 from mypyc.ir.func_ir import FUNC_CLASSMETHOD, FUNC_STATICMETHOD
 from mypyc.ir.ops import (
@@ -308,14 +303,16 @@ def transform_member_expr(builder: IRBuilder, expr: MemberExpr) -> Value:
     #  - Native Final attributes are read-only at runtime, so they can never be reassigned.
     #  - Vec-typed attributes require manual synchronization, so we borrow them liberally.
     can_borrow = builder.is_native_attr_ref(expr) and (
-        not IS_FREE_THREADED or isinstance(rtype, RVec) or builder.is_final_native_attr_ref(expr)
+        not builder.options.target_python.free_threaded
+        or isinstance(rtype, RVec)
+        or builder.is_final_native_attr_ref(expr)
     )
     obj = builder.accept(expr.expr, can_borrow=can_borrow)
 
     if (
         is_object_rprimitive(obj.type)
         and expr.name == "__name__"
-        and builder.options.capi_version >= (3, 11)
+        and builder.options.target_python.version >= (3, 11)
     ):
         return builder.primitive_op(name_op, [obj], expr.line)
 
@@ -487,19 +484,35 @@ def transform_super_expr(builder: IRBuilder, o: SuperExpr) -> Value:
     else:
         assert o.info is not None
         typ = builder.load_native_type_object(o.info.fullname)
-        ir = builder.mapper.type_to_ir[o.info]
-        iter_env = iter(builder.builder.args)
-        # Grab first argument
-        vself: Value = next(iter_env)
-        if builder.fn_info.is_generator:
-            # grab seventh argument (see comment in translate_super_method_call)
-            self_targ = list(builder.symtables[-1].values())[7]
-            vself = builder.read(self_targ, builder.fn_info.fitem.line)
-        elif not ir.is_ext_class:
-            vself = next(iter_env)  # second argument is self if non_extension class
+        vself = builder.read(builder.lookup(implicit_super_arg(builder)), o.line)
         args = [typ, vself]
     res = builder.py_call(sup_val, args, o.line)
     return builder.py_get_attr(res, o.name, o.line)
+
+
+def implicit_super_arg(builder: IRBuilder) -> Var:
+    """Return the variable that zero-argument super() uses as its second argument.
+
+    This is the first argument of the enclosing function. It isn't always the first
+    argument of the function being generated, since generators and nested functions
+    are compiled to methods of generated classes.
+    """
+    # A comprehension can have a scope of its own, but it has no arguments, and
+    # super() uses the function that contains the comprehension.
+    fn_info = next(info for info in reversed(builder.fn_infos) if not info.is_comprehension_scope)
+    return fn_info.fitem.arguments[0].variable
+
+
+def is_instance_method_self(builder: IRBuilder, var: Var) -> bool:
+    """Is this the self argument of an instance method?"""
+    if not var.is_self:
+        return False
+    # The cls argument of __new__ is also marked as a self argument.
+    for fn_info in builder.fn_infos:
+        fitem = fn_info.fitem
+        if fitem.name == "__new__" and fitem.arguments and fitem.arguments[0].variable is var:
+            return False
+    return True
 
 
 # Calls
@@ -593,7 +606,13 @@ def translate_method_call(builder: IRBuilder, expr: CallExpr, callee: MemberExpr
         and isinstance(callee.expr.node, TypeInfo)
         and callee.expr.node in builder.mapper.type_to_ir
         and builder.mapper.type_to_ir[callee.expr.node].has_method(callee.name)
-        and all(kind in (ARG_POS, ARG_NAMED) for kind in expr.arg_kinds)
+        and (
+            all(kind in (ARG_POS, ARG_NAMED) for kind in expr.arg_kinds)
+            # A lookup of __init__ would find the slot wrapper, and the __init__ slot of
+            # a native class usually does nothing (__init__ is called when the object is
+            # created instead).
+            or is_native_init(builder.mapper.type_to_ir[callee.expr.node], callee.name)
+        )
     ):
         # Call a method via the *class*
         assert isinstance(callee.expr.node, TypeInfo), callee.expr.node
@@ -639,8 +658,19 @@ def translate_method_call(builder: IRBuilder, expr: CallExpr, callee: MemberExpr
         )
 
 
+def is_native_init(ir: ClassIR, name: str) -> bool:
+    """Is this the __init__ method of the class, and does an extension class define it?"""
+    if name == "__init__":
+        for base in ir.mro:
+            if name in base.method_decls:
+                return base.is_ext_class
+    return False
+
+
 def call_classmethod(builder: IRBuilder, ir: ClassIR, expr: CallExpr, callee: MemberExpr) -> Value:
     decl = ir.method_decl(callee.name)
+    if decl.is_decorated_override:
+        return translate_call(builder, expr, callee)
     args = []
     arg_kinds, arg_names = expr.arg_kinds.copy(), expr.arg_names.copy()
     # Add the class argument for class methods in extension classes
@@ -687,6 +717,9 @@ def translate_super_method_call(builder: IRBuilder, expr: CallExpr, callee: Supe
             or callee.info is not typ_arg.node
         ):
             return translate_call(builder, expr, callee)
+        self_var = self_arg.node
+    else:
+        self_var = implicit_super_arg(builder)
 
     ir = builder.mapper.type_to_ir[callee.info]
     # Search for the method in the mro, skipping ourselves. We
@@ -716,26 +749,41 @@ def translate_super_method_call(builder: IRBuilder, expr: CallExpr, callee: Supe
     if decl.is_prop_getter:
         # super().prop(...) calls the property's value, so get it through super()
         return translate_call(builder, expr, callee)
+    if decl.is_decorated_override:
+        return translate_call(builder, expr, callee)
 
-    arg_values = [builder.accept(arg) for arg in expr.args]
+    needs_self = decl.kind != FUNC_STATICMETHOD and decl.name != "__new__"
+    if needs_self and not (
+        is_instance_method_self(builder, self_var)
+        or (self_var.is_cls and decl.kind == FUNC_CLASSMETHOD)
+    ):
+        # We can only bind the method statically if super() is given the self argument of
+        # an instance method, or the cls argument of a class method when calling a class
+        # method. Otherwise it's an instance method looked up through the class, or the
+        # first argument of a static method (such as __new__) or of a nested function,
+        # which can be either an instance or a class.
+        return translate_call(builder, expr, callee)
+
+    arg_values: list[Value] = []
     arg_kinds, arg_names = expr.arg_kinds.copy(), expr.arg_names.copy()
 
-    if decl.kind != FUNC_STATICMETHOD and decl.name != "__new__":
-        # Grab first argument
-        vself: Value = builder.self()
-        if decl.kind == FUNC_CLASSMETHOD:
+    if needs_self:
+        # super() binds the object before the arguments are evaluated, and an argument
+        # can reassign the variable.
+        vself = builder.read(builder.lookup(self_var), expr.line)
+        if isinstance(vself, Register) and self_var in builder.reassigned_in_expr:
+            # The variable is reassigned via a walrus within the same expression, so
+            # copy the current value (see transform_name_expr).
+            temp = Register(vself.type)
+            builder.assign(temp, vself, expr.line)
+            vself = temp
+        if decl.kind == FUNC_CLASSMETHOD and not self_var.is_cls:
             vself = builder.primitive_op(type_op, [vself], expr.line)
-        elif builder.fn_info.is_generator:
-            # For generator classes, the self target is the 7th value
-            # in the symbol table (which is an ordered dict). This is sort
-            # of ugly, but we can't search by name since the 'self' parameter
-            # could be named anything, and it doesn't get added to the
-            # environment indexes.
-            self_targ = list(builder.symtables[-1].values())[7]
-            vself = builder.read(self_targ, builder.fn_info.fitem.line)
-        arg_values.insert(0, vself)
+        arg_values.append(vself)
         arg_kinds.insert(0, ARG_POS)
         arg_names.insert(0, None)
+
+    arg_values += [builder.accept(arg) for arg in expr.args]
 
     return builder.builder.call(decl, arg_values, arg_kinds, arg_names, expr.line)
 
@@ -927,9 +975,9 @@ def transform_index_expr(builder: IRBuilder, expr: IndexExpr) -> Value:
     base_type = builder.node_type(expr.base)
     # We can borrow a list item safely only if GIL is enabled. The vec type is optimized for
     # performance, so we'll do unsafe borrowing.
-    can_borrow = (is_list_rprimitive(base_type) and not IS_FREE_THREADED) or isinstance(
-        base_type, RVec
-    )
+    can_borrow = (
+        is_list_rprimitive(base_type) and not builder.options.target_python.free_threaded
+    ) or isinstance(base_type, RVec)
     can_borrow_base = (
         is_list_rprimitive(base_type) or isinstance(base_type, RVec)
     ) and is_borrow_friendly_expr(builder, index)

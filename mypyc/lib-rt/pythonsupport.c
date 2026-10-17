@@ -32,6 +32,53 @@ PyObject *CPy_GetAttrRefSlow(PyObject *v, PyObject *owner, PyObject **field) {
     Py_END_CRITICAL_SECTION();
     return result;
 }
+
+// Cold slow path of CPyTagged_GetAttr, also used for undefined (CPY_INT_TAG) values.
+// Reload the field with acquire (rather than using an acquire fence after the relaxed
+// load, which TSan doesn't model), so that a long stored with release by
+// CPyTagged_SetAttrSlow is fully visible. Then secure a reference to the PyLong using
+// the CPy_GetAttrRef protocol.
+CPy_NOINLINE
+CPy_COLD
+CPyTagged CPyTagged_GetAttrSlow(PyObject *owner, CPyTagged *field) {
+    CPyTagged v = _Py_atomic_load_uintptr_acquire((uintptr_t *)field);
+    if (CPyTagged_IsPointerFree(v)) {
+        return v;
+    }
+    PyObject *p = (PyObject *)(v & ~CPY_INT_TAG);
+    if (_Py_TryIncrefFast(p)) {
+        return v;
+    }
+    if (_Py_TryIncRefShared(p)) {
+        if (v == _Py_atomic_load_uintptr((uintptr_t *)field)) {
+            return v;
+        }
+        Py_DECREF(p);
+    }
+    Py_BEGIN_CRITICAL_SECTION(owner);
+    v = _Py_atomic_load_uintptr_relaxed((uintptr_t *)field);
+    if (!CPyTagged_IsPointerFree(v)) {
+        _Py_NewRefWithLock((PyObject *)(v & ~CPY_INT_TAG));
+    }
+    Py_END_CRITICAL_SECTION();
+    return v;
+}
+
+// Cold slow path of CPyTagged_SetAttr, used when the new or the old value may be a
+// long. Like CPy_SetAttrRef: store the new value under the owner's critical section
+// and release the old value (if it's a long) after leaving it.
+CPy_NOINLINE
+CPy_COLD
+void CPyTagged_SetAttrSlow(PyObject *owner, CPyTagged *field, CPyTagged value) {
+    CPyTagged old;
+    Py_BEGIN_CRITICAL_SECTION(owner);
+    old = _Py_atomic_load_uintptr_relaxed((uintptr_t *)field);
+    _Py_atomic_store_uintptr_release((uintptr_t *)field, value);
+    Py_END_CRITICAL_SECTION();
+    if (!CPyTagged_IsPointerFree(old)) {
+        Py_DECREF((PyObject *)(old & ~CPY_INT_TAG));
+    }
+}
 #endif
 
 /////////////////////////////////////////

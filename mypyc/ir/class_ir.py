@@ -438,6 +438,17 @@ class ClassIR:
     def has_method_decl(self, name: str) -> bool:
         return any(name in ir.method_decls for ir in self.mro)
 
+    def has_non_native_new(self) -> bool:
+        """Are instances created by a __new__ method that isn't called natively?
+
+        A decorated __new__ is one. Like any decorated method it has no method
+        declaration, since only the decorated callable in the type dict can be called.
+        Instances are then created like instances of a Python class: tp_new looks up
+        __new__ in the type dict, and tp_init calls __init__.
+        """
+        res = self.get_method_and_class("__new__")
+        return res is not None and "__new__" not in res[1].method_decls
+
     def has_no_subclasses(self) -> bool:
         return self.children == [] and not self.allow_interpreted_subclasses
 
@@ -622,11 +633,20 @@ class NonExtClassInfo:
     the class annotations dictionary, and the metaclass.
     """
 
-    def __init__(self, dict: Value, bases: Value, anns: Value, metaclass: Value) -> None:
+    def __init__(
+        self,
+        dict: Value,
+        bases: Value,
+        anns: Value,
+        metaclass: Value,
+        orig_bases: Value | None = None,
+    ) -> None:
         self.dict = dict
         self.bases = bases
         self.anns = anns
         self.metaclass = metaclass
+        # Original expressions, before resolving __mro_entries__, if resolution was needed.
+        self.orig_bases = orig_bases
 
 
 def serialize_vtable_entry(entry: VTableMethod) -> JsonDict:

@@ -690,6 +690,43 @@ class MethodCall(RegisterOp):
 
 
 @final
+class CallWrapper(RegisterOp):
+    """Call the wrapper function of a native function: result = fn(*args, **kwargs)
+
+    The wrapper function checks and unboxes the arguments, as when the function
+    is called from Python code. This is much slower than Call, but it can unpack
+    *args and **kwargs into ordinary arguments.
+
+    Attributes:
+      fn: The native function
+      args: Tuple with the positional arguments (for a method, self or cls first)
+      kwargs: Dict with the keyword arguments, or None if there are none
+    """
+
+    error_kind = ERR_MAGIC
+
+    def __init__(self, fn: FuncDecl, args: Value, kwargs: Value | None, line: int) -> None:
+        super().__init__(line)
+        self.fn = fn
+        self.args = args
+        self.kwargs = kwargs
+        self.type = object_rprimitive
+
+    def sources(self) -> list[Value]:
+        if self.kwargs is None:
+            return [self.args]
+        return [self.args, self.kwargs]
+
+    def set_sources(self, new: list[Value]) -> None:
+        self.args = new[0]
+        if self.kwargs is not None:
+            self.kwargs = new[1]
+
+    def accept(self, visitor: OpVisitor[T]) -> T:
+        return visitor.visit_call_wrapper(self)
+
+
+@final
 class PrimitiveDescription:
     """Description of a primitive op.
 
@@ -718,6 +755,7 @@ class PrimitiveDescription:
         experimental: bool,
         dependencies: list[Dependency] | None,
         type_params: list[RTypeVar] | None,
+        gil_only: bool = False,
     ) -> None:
         # Each primitive much have a distinct name, but otherwise they are arbitrary.
         self.name: Final = name
@@ -743,6 +781,9 @@ class PrimitiveDescription:
         # Experimental primitives are not used unless mypyc experimental features are
         # explicitly enabled
         self.experimental = experimental
+        # GIL-only primitives are not used when targeting a free-threaded build
+        # (e.g. because they return a borrowed reference that could be unsafe)
+        self.gil_only = gil_only
         # Dependencies for the primitive, such as a capsule that needs to imported
         # and configured to call the primitive.
         self.dependencies = dependencies
@@ -2007,6 +2048,10 @@ class OpVisitor(Generic[T]):
 
     @abstractmethod
     def visit_method_call(self, op: MethodCall) -> T:
+        raise NotImplementedError
+
+    @abstractmethod
+    def visit_call_wrapper(self, op: CallWrapper) -> T:
         raise NotImplementedError
 
     @abstractmethod

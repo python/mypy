@@ -31,6 +31,7 @@ from mypyc.ir.rtypes import RInstance, bitmap_rprimitive, object_rprimitive
 from mypyc.irbuild.builder import IRBuilder, SymbolTarget
 from mypyc.irbuild.context import FuncInfo, GeneratorClass, ImplicitClass
 from mypyc.irbuild.targets import AssignmentTargetAttr
+from mypyc.irbuild.util import get_func_target_symbol
 
 
 def setup_env_class(builder: IRBuilder) -> ClassIR:
@@ -141,7 +142,7 @@ def load_env_registers(builder: IRBuilder, prefix: str = "") -> None:
         # If this is a FuncDef, then make sure to load the FuncDef into its own environment
         # class so that the function can be called recursively.
         if isinstance(fitem, FuncDef) and fn_info.add_nested_funcs_to_env:
-            setup_func_for_recursive_call(builder, fitem, fn_info.callable_class, prefix=prefix)
+            setup_func_for_recursive_call(builder, fitem, fn_info.callable_class)
 
 
 def load_outer_env(
@@ -298,8 +299,13 @@ def add_vars_to_env(builder: IRBuilder, prefix: str = "") -> None:
                 )
 
     if fn_info.fitem in builder.encapsulating_funcs:
+        added: set[SymbolNode] = set()
         for nested_fn in builder.encapsulating_funcs[fn_info.fitem]:
             if isinstance(nested_fn, FuncDef):
+                target_symbol = get_func_target_symbol(nested_fn)
+                if target_symbol in added:
+                    continue
+                added.add(target_symbol)
                 # The return type is 'object' instead of an RInstance of the
                 # callable class because differently defined functions with
                 # the same name and signature across conditional blocks
@@ -308,10 +314,10 @@ def add_vars_to_env(builder: IRBuilder, prefix: str = "") -> None:
                 nested_prefix = prefix
                 if nested_fn.is_generator or nested_fn.is_coroutine:
                     nested_prefix = GENERATOR_ATTRIBUTE_PREFIX
-                keep_alive = is_free_variable(builder, nested_fn)
-                if fn_info.is_generator and not builder.is_captured_by_nested_func(nested_fn):
+                keep_alive = is_free_variable(builder, target_symbol)
+                if fn_info.is_generator and not builder.is_captured_by_nested_func(target_symbol):
                     builder.add_var_to_generator_frame(
-                        nested_fn,
+                        target_symbol,
                         object_rprimitive,
                         fn_info.generator_class.self_reg,
                         reassign=False,
@@ -319,7 +325,7 @@ def add_vars_to_env(builder: IRBuilder, prefix: str = "") -> None:
                     )
                 else:
                     builder.add_var_to_env_class(
-                        nested_fn,
+                        target_symbol,
                         object_rprimitive,
                         env_for_func,
                         reassign=False,
@@ -328,9 +334,7 @@ def add_vars_to_env(builder: IRBuilder, prefix: str = "") -> None:
                     )
 
 
-def setup_func_for_recursive_call(
-    builder: IRBuilder, fdef: FuncDef, base: ImplicitClass, prefix: str = ""
-) -> None:
+def setup_func_for_recursive_call(builder: IRBuilder, fdef: FuncDef, base: ImplicitClass) -> None:
     """Enable calling a nested function (with a callable class) recursively.
 
     Adds the instance of the callable class representing the given
@@ -338,10 +342,18 @@ def setup_func_for_recursive_call(
     be called recursively. Note that this needs to be done only for
     nested functions.
     """
-    # First, set the attribute of the environment class so that GetAttr can be called on it.
     prev_env = builder.fn_infos[-2].env_class
-    attr_name = prefix + fdef.name
-    prev_env.attributes[attr_name] = builder.type_to_rtype(fdef.type)
+    target_symbol = get_func_target_symbol(fdef)
+    target = builder.symtables[-2].get(target_symbol)
+    if (
+        not isinstance(target_symbol, FuncDef)
+        or not isinstance(target, AssignmentTargetAttr)
+        or not isinstance(target.obj.type, RInstance)
+        or target.obj.type.class_ir is not prev_env
+    ):
+        return
+
+    attr_name = target.attr
     line = fdef.line
 
     if isinstance(base, GeneratorClass):
@@ -355,7 +367,7 @@ def setup_func_for_recursive_call(
     # Obtain the instance of the callable class representing the FuncDef, and add it to the
     # current environment.
     val = builder.add(GetAttr(prev_env_reg, attr_name, line))
-    target = builder.add_local_reg(fdef, object_rprimitive)
+    target = builder.add_local_reg(target_symbol, object_rprimitive)
     builder.assign(target, val, line)
 
 

@@ -130,6 +130,94 @@ def test_concurrent_native_attribute_delete() -> None:
     for thread in threads:
         thread.join()
 
+[case testConcurrentNativeIntAttribute]
+from typing import Any
+import threading
+
+BIG = 2**80
+COUNT = 10_000
+
+class Box:
+    __deletable__ = ["n"]
+
+    def __init__(self) -> None:
+        self.n = 0
+
+class Lazy:
+    def set_n(self, n: int) -> None:
+        self.n = n
+
+def check(v: int) -> None:
+    assert 0 <= v < COUNT or BIG <= v < BIG + COUNT, v
+
+def long_writer(box: Box, count: int) -> None:
+    for i in range(count):
+        box.n = BIG + i
+
+def short_writer(box: Box, count: int) -> None:
+    for i in range(count):
+        box.n = i
+
+def native_reader(box: Box, count: int) -> None:
+    for _ in range(count):
+        try:
+            v = box.n
+        except AttributeError:
+            continue
+        check(v)
+
+def native_deleter(box: Box, count: int) -> None:
+    for _ in range(count):
+        try:
+            del box.n
+        except AttributeError:
+            pass
+
+def dynamic_writer(box: Any, count: int) -> None:
+    for i in range(count):
+        box.n = BIG + i if i % 2 else i
+
+def dynamic_reader(box: Any, count: int) -> None:
+    for _ in range(count):
+        try:
+            v = box.n
+        except AttributeError:
+            continue
+        check(v)
+
+def run(*targets: Any) -> None:
+    box = Box()
+    threads = [threading.Thread(target=t, args=(box, COUNT)) for t in targets]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join()
+    try:
+        check(box.n)
+    except AttributeError:
+        pass
+
+def test_concurrent_int_attribute_read_write() -> None:
+    # Long values own a reference to a PyLong, so readers race with writers that
+    # release the old value (see CPyTagged_GetAttr).
+    run(long_writer, native_reader, dynamic_reader)
+    run(long_writer, long_writer, native_reader, dynamic_writer)
+    run(long_writer, short_writer, native_deleter, native_reader, dynamic_reader)
+
+def lazy_writer(boxes: list[Lazy], i: int) -> None:
+    for j, box in enumerate(boxes):
+        box.set_n(BIG + j if (i + j) % 2 else j)
+
+def test_concurrent_first_assignment() -> None:
+    boxes = [Lazy() for _ in range(COUNT)]
+    threads = [threading.Thread(target=lazy_writer, args=(boxes, i)) for i in range(4)]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join()
+    for box in boxes:
+        check(box.n)
+
 [case testLockBasics_librt]
 from typing import Any
 from testutil import assertRaises

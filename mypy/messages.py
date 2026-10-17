@@ -1755,7 +1755,9 @@ class MessageBuilder:
             context,
         )
 
-    def overloaded_signatures_param_specific(self, index: int, context: Context) -> None:
+    def overloaded_signatures_param_specific(
+        self, index: int, context: Context, positional_only_args: list[str]
+    ) -> None:
         self.fail(
             (
                 f"Overloaded function implementation does not accept all possible parameters "
@@ -1763,6 +1765,9 @@ class MessageBuilder:
             ),
             context,
         )
+        if positional_only_args:
+            names = ", ".join(f'"{name}"' for name in positional_only_args)
+            self.note(f"Consider marking {names} positional-only in signature {index}", context)
 
     def overloaded_signatures_ret_specific(self, index: int, context: Context) -> None:
         self.fail(
