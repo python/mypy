@@ -3251,14 +3251,13 @@ def narrow_tuple_exact(x: Literal['a', 'b', 'c'], t: tuple[Literal['a'], Literal
         reveal_type(x)  # N: Revealed type is "Literal['a'] | Literal['b']"
 
 def narrow_tuple_expression(x: Literal['a', 'b', 'c']):
-    # TODO: this should match narrow_tuple_exact
     if x in ('a', 'b'):
         reveal_type(x)  # N: Revealed type is "Literal['a'] | Literal['b']"
     else:
-        reveal_type(x)  # N: Revealed type is "Literal['a'] | Literal['b'] | Literal['c']"
+        reveal_type(x)  # N: Revealed type is "Literal['c']"
 
     if x not in ('a', 'b'):
-        reveal_type(x)  # N: Revealed type is "Literal['a'] | Literal['b'] | Literal['c']"
+        reveal_type(x)  # N: Revealed type is "Literal['c']"
     else:
         reveal_type(x)  # N: Revealed type is "Literal['a'] | Literal['b']"
 
@@ -3294,7 +3293,7 @@ def narrow_list(x: Literal['a', 'b', 'c'], t: list[Literal['a', 'b']]):
     if x in ['a', 'b']:
         reveal_type(x)  # N: Revealed type is "Literal['a'] | Literal['b']"
     else:
-        reveal_type(x)  # N: Revealed type is "Literal['a'] | Literal['b'] | Literal['c']"
+        reveal_type(x)  # N: Revealed type is "Literal['c']"
 
     if x in ['a', 'b', *[]]:
         reveal_type(x)  # N: Revealed type is "Literal['a'] | Literal['b'] | Literal['c']"
@@ -3310,7 +3309,7 @@ def narrow_set(x: Literal['a', 'b', 'c'], t: set[Literal['a', 'b']]):
     if x in {'a', 'b'}:
         reveal_type(x)  # N: Revealed type is "Literal['a'] | Literal['b']"
     else:
-        reveal_type(x)  # N: Revealed type is "Literal['a'] | Literal['b'] | Literal['c']"
+        reveal_type(x)  # N: Revealed type is "Literal['c']"
 
     if x in {'a', 'b', *[]}:
         reveal_type(x)  # N: Revealed type is "Literal['a'] | Literal['b'] | Literal['c']"
@@ -3326,12 +3325,59 @@ def narrow_dict(x: Literal['a', 'b', 'c'], t: dict[Literal['a', 'b'], int]):
     if x in {'a': 0, 'b': 1}:
         reveal_type(x)  # N: Revealed type is "Literal['a'] | Literal['b']"
     else:
-        reveal_type(x)  # N: Revealed type is "Literal['a'] | Literal['b'] | Literal['c']"
+        reveal_type(x)  # N: Revealed type is "Literal['c']"
 
     if x in {'a': 0, 'b': 1, **{}}:
         reveal_type(x)  # N: Revealed type is "Literal['a'] | Literal['b'] | Literal['c']"
     else:
         reveal_type(x)  # N: Revealed type is "Literal['a'] | Literal['b'] | Literal['c']"
+[builtins fixtures/primitives.pyi]
+
+
+[case testNarrowNotInLiteralContainer]
+# flags: --strict-equality --warn-unreachable
+from typing import Final, Literal
+
+VALID: Final = ('a', 'b')
+
+def narrow_int_literals(x: Literal[1, 2, 3]):
+    if x not in (1, 2):
+        reveal_type(x)  # N: Revealed type is "Literal[3]"
+    else:
+        reveal_type(x)  # N: Revealed type is "Literal[1] | Literal[2]"
+
+def narrow_final_tuple(x: Literal['a', 'b', 'c']):
+    if x not in VALID:
+        reveal_type(x)  # N: Revealed type is "Literal['c']"
+    else:
+        reveal_type(x)  # N: Revealed type is "Literal['a'] | Literal['b']"
+
+def narrow_mixed_container(x: Literal['a', 'b'] | None):
+    if x not in ('a', None):
+        reveal_type(x)  # N: Revealed type is "Literal['b']"
+    else:
+        reveal_type(x)  # N: Revealed type is "Literal['a'] | None"
+
+def exhaustive_check(x: Literal['a', 'b']) -> int:
+    if x in ('a',):
+        return 1
+    elif x in ('b',):
+        return 2
+    return 0  # E: Statement is unreachable
+
+def non_literal_item(x: Literal['a', 'b'], y: str):
+    # `y` denotes more than one value, so the negative branch stays wide
+    if x not in (y,):
+        reveal_type(x)  # N: Revealed type is "Literal['a'] | Literal['b']"
+    else:
+        reveal_type(x)  # N: Revealed type is "Literal['a'] | Literal['b']"
+
+def bool_int_overlap(x: Literal[0, 1, 2]):
+    # `False == 0` and `True == 1`, so this must stay as wide as `x != False`
+    if x not in (False,):
+        reveal_type(x)  # N: Revealed type is "Literal[0] | Literal[1] | Literal[2]"
+    else:
+        reveal_type(x)  # N: Revealed type is "Literal[0] | Literal[1] | Literal[2]"
 [builtins fixtures/primitives.pyi]
 
 
