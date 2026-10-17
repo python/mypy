@@ -103,6 +103,7 @@ from mypy.types import (
     flatten_nested_unions,
     get_proper_type,
     get_proper_types,
+    remove_dups,
 )
 from mypy.typetraverser import TypeTraverserVisitor
 from mypy.util import plural_s, unmangle
@@ -2793,7 +2794,7 @@ def format_type_inner(
     elif isinstance(typ, LiteralType):
         return f"Literal[{format_literal_value(typ)}]"
     elif isinstance(typ, UnionType):
-        typ = get_proper_type(ignore_last_known_values(typ))
+        typ = get_proper_type(ignore_last_known_values(strip_alias_duplicates(typ)))
         if not isinstance(typ, UnionType):
             return format(typ)
         literal_items, union_items = separate_union_literals(typ)
@@ -3529,12 +3530,28 @@ def ignore_last_known_values(t: UnionType) -> Type:
     union_items: list[Type] = []
     seen_instances = set()
     for item in t.items:
-        if isinstance(item, ProperType) and isinstance(item, Instance):
-            erased = item.copy_modified(last_known_value=None)
+        proper = get_proper_type(item)
+        if isinstance(proper, Instance):
+            erased = proper.copy_modified(last_known_value=None)
             if erased in seen_instances:
                 continue
             seen_instances.add(erased)
-            union_items.append(erased)
-        else:
-            union_items.append(item)
+        union_items.append(item)
     return UnionType.make_union(union_items, t.line, t.column)
+
+
+def strip_alias_duplicates(t: UnionType) -> UnionType:
+    """Drop union items that duplicate another item once aliases are expanded.
+
+    A union like ``TextInput | ImageInput``, where ``TextInput`` is ``str`` and
+    ``ImageInput`` is ``str | None``, currently renders as ``str | str | None``
+    because the duplicate only shows up after the aliases are resolved (GH
+    22194). Expanding the aliases and re-deduplicating here keeps the message
+    readable without changing the type recorded in the symbol table, so it is
+    safe for recursive aliases, which stay collapsed by the formatter.
+    """
+    expanded = flatten_nested_unions(t.items, handle_recursive=False)
+    unique = remove_dups([get_proper_type(item) for item in expanded])
+    if len(unique) == len(expanded):
+        return t
+    return UnionType(unique, t.line, t.column)
