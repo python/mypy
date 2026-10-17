@@ -1145,6 +1145,8 @@ def try_expanding_sum_type_to_union(typ: Type, target_fullname: str | None) -> T
         target_fullname is None or typ.type.fullname == target_fullname
     ):
         if typ.type.fullname == "builtins.bool":
+            if typ.last_known_value is not None:
+                return typ.last_known_value
             return UnionType([LiteralType(True, typ), LiteralType(False, typ)])
 
         if typ.type.is_enum:
