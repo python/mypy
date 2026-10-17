@@ -12,6 +12,8 @@ Mypy: Static Typing for Python
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 [![Linting: Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/charliermarsh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 
+Add type annotations to your Python programs, and use mypy to type check them. Mypy is essentially a Python linter on steroids, and it can catch many programming errors by analyzing your program, without actually having to run it. Mypy has a powerful type system with features such as type inference, gradual typing, generics and union types.
+
 Got a question?
 ---------------
 
@@ -168,7 +170,8 @@ Help in testing, development, documentation and other tasks is
 highly appreciated and useful to the project. There are tasks for
 contributors of all experience levels.
 
-To get started with developing mypy, see [CONTRIBUTING.md](CONTRIBUTING.md).
+To get started with developing mypy, see
+[CONTRIBUTING.md](https://github.com/python/mypy/blob/master/CONTRIBUTING.md).
 
 Mypyc and compiled version of mypy
 ----------------------------------
