@@ -1587,6 +1587,21 @@ bt = t[::0]  # E: Slice step cannot be zero
 reveal_type(bt)  # N: Revealed type is "builtins.tuple[Any, ...]"
 [builtins fixtures/tuple.pyi]
 
+[case testVariadicTupleEmptySlice]
+from typing import Unpack, TypeVarTuple
+
+Ts = TypeVarTuple("Ts")
+def f(x: tuple[int, Unpack[Ts], str], y: tuple[int, Unpack[tuple[str, ...]]]) -> None:
+    reveal_type(x[2:1])  # N: Revealed type is "tuple[()]"
+    reveal_type(x[3:3])  # N: Revealed type is "tuple[()]"
+    reveal_type(x[-1:-2])  # N: Revealed type is "tuple[()]"
+    reveal_type(x[1:2:-1])  # N: Revealed type is "tuple[()]"
+    reveal_type(y[5:2])  # N: Revealed type is "tuple[()]"
+    reveal_type(y[-3:-3:2])  # N: Revealed type is "tuple[()]"
+    y[1:5]  # E: Ambiguous slice of a variadic tuple
+    y[-2:-5:-1]  # E: Ambiguous slice of a variadic tuple
+[builtins fixtures/tuple.pyi]
+
 [case testAnyVariadicTupleLenientUnpacking]
 from typing import Any, Unpack
 
