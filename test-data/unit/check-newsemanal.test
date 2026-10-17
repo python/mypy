@@ -3316,3 +3316,20 @@ class D: ...
 
 x: A
 reveal_type(x)  # N: Revealed type is "builtins.str | __main__.D"
+
+[case testBrokenClassUsingItselfAsTypeVarNoCrash]
+from typing import Generic
+
+class C(Generic[C]):  # E: Free type variable expected in Generic[...] \
+                      # E: Cannot resolve name "C" (possible cyclic definition)
+    pass
+
+class D(Generic[E]):  # E: Free type variable expected in Generic[...] \
+                      # E: Cannot resolve name "E" (possible cyclic definition)
+    pass
+
+class E(Generic[DD]):  # E: Free type variable expected in Generic[...] \
+                       # E: Cannot resolve name "DD" (possible cyclic definition)
+    pass
+
+DD = D  # E: Cannot resolve name "DD" (possible cyclic definition)
