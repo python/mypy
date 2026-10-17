@@ -12,6 +12,20 @@ c = cast(int, a)
 [out]
 main:5: error: Redundant cast to "int"
 
+[case testRedundantCastGenericReturn]
+# flags: --warn-redundant-casts
+from typing import TypeVar, cast
+
+T = TypeVar("T")
+
+def identity(xs: list[T]) -> list[T]:
+    return xs
+
+def f(xs: list[int]) -> list[int]:
+    return cast(list[int], identity(xs))
+[out]
+main:10: error: Redundant cast to "list[int]"
+
 [case testRedundantCastWithIsinstance]
 # flags: --warn-redundant-casts
 from typing import cast, Union
