@@ -8293,3 +8293,15 @@ Jérôme = False
 [stale]
 [out]
 [out2]
+
+[case testInvalidUnpackTargetFromUndefinedNoCrash]
+*a = b
+a
+[out]
+main:1: error: Starred assignment target must be in a list or tuple
+main:1: error: Name "b" is not defined
+main:2: error: Name "a" is not defined
+[out2]
+main:1: error: Starred assignment target must be in a list or tuple
+main:1: error: Name "b" is not defined
+main:2: error: Name "a" is not defined
