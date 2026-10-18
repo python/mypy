@@ -340,6 +340,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             tuple[Expression, Type | None],
             tuple[int, Type, list[ErrorInfo], dict[Expression, Type]],
         ] = {}
+        self.freshen_cache: dict[tuple[Context, CallableType], CallableType] = {}
         self.in_lambda_expr = False
 
         self._literal_true: Instance | None = None
@@ -347,6 +348,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
 
     def reset(self) -> None:
         self.expr_cache.clear()
+        self.freshen_cache.clear()
 
     def visit_name_expr(self, e: NameExpr) -> Type:
         """Type check a name expression.
@@ -1175,7 +1177,10 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             if value_type is not None:
                 # Infer key type.
                 key_type = self.accept(index)
-                if mypy.checker.is_valid_inferred_type(key_type, self.chk.options):
+                if (
+                    mypy.checker.is_valid_inferred_type(key_type, self.chk.options)
+                    and var in partial_types
+                ):
                     # Store inferred partial type.
                     assert partial_type.type is not None
                     typename = partial_type.type.fullname
@@ -1574,7 +1579,10 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             args: actual argument expressions
             arg_kinds: contains nodes.ARG_* constant for each argument in args
                  describing whether the argument is positional, *arg, etc.
-            context: current expression context, used for inference.
+            context: current expression context, used for inference. Note: for "synthetic"
+                 calls (such as decorators or comprehensions), pass the exact context, so
+                 that two conceptually different calls will not accidentally have same
+                 context (since it is used as a cache key for inference).
             arg_names: names of arguments (optional)
             callable_node: associate the inferred callable type to this node,
                 if specified
@@ -1763,18 +1771,28 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                         return AnyType(TypeOfAny.from_error), callee
                     seen_unpack = True
 
-        # This is tricky: return type may contain its own type variables, like in
-        # def [S] (S) -> def [T] (T) -> tuple[S, T], so we need to update their ids
-        # to avoid possible id clashes if this call itself appears in a generic
-        # function body.
+        # If the callable is generic, we need to replace its type variables with unique
+        # meta variables. We however do this at most once per callable, so that expression
+        # cache stays efficient in absence of outer type context.
         ret_type = get_proper_type(callee.ret_type)
-        if isinstance(ret_type, CallableType) and ret_type.variables:
-            fresh_ret_type = freshen_all_functions_type_vars(callee.ret_type)
-            freeze_all_type_vars(fresh_ret_type)
-            callee = callee.copy_modified(ret_type=fresh_ret_type)
+        if callee.is_generic() or isinstance(ret_type, CallableType) and ret_type.is_generic():
+            if (context, callee) in self.freshen_cache:
+                callee = self.freshen_cache[(context, callee)]
+            else:
+                original_callee = callee
+                if isinstance(ret_type, CallableType) and ret_type.is_generic():
+                    # This is tricky: return type may contain its own type variables, like in
+                    # def [S] (S) -> def [T] (T) -> tuple[S, T], so we need to update their ids
+                    # to avoid possible id clashes if this call itself appears in a generic
+                    # function body.
+                    fresh_ret_type = freshen_all_functions_type_vars(callee.ret_type)
+                    freeze_all_type_vars(fresh_ret_type)
+                    callee = callee.copy_modified(ret_type=fresh_ret_type)
+                if callee.is_generic():
+                    callee = freshen_function_type_vars(callee)
+                self.freshen_cache[(context, original_callee)] = callee
 
         if callee.is_generic():
-            callee = freshen_function_type_vars(callee)
             callee = self.infer_function_type_arguments_using_context(callee, context)
 
         formal_to_actual = map_actuals_to_formals(
@@ -2883,6 +2901,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                         callable_name,
                         object_type,
                         none_type_var_overlap,
+                        callee.bound_args,
                         context,
                     )
             except TooManyUnions:
@@ -2911,6 +2930,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             arg_names,
             callable_name,
             object_type,
+            callee.bound_args,
             context,
         )
         # If any of checks succeed, perform deprecation tests and stop early.
@@ -2989,7 +3009,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         arg_kinds: list[ArgKind],
         arg_names: Sequence[str | None] | None,
         overload: Overloaded,
-    ) -> list[CallableType]:
+    ) -> list[tuple[int, CallableType]]:
         """Returns all overload call targets that having matching argument counts.
 
         If the given args contains a star-arg (*arg or **kwarg argument, except for
@@ -2999,7 +3019,10 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         The only exception is if the starred argument is something like a Tuple or a
         NamedTuple, which has a definitive "shape". If so, we don't move the corresponding
         alternative to the front since we can infer a more precise match using the original
-        order."""
+        order.
+
+        The return also contains the original overload index for each plausible target.
+        """
 
         def has_shape(typ: Type) -> bool:
             typ = get_proper_type(typ)
@@ -3007,8 +3030,8 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                 isinstance(typ, Instance) and typ.type.is_named_tuple
             )
 
-        matches: list[CallableType] = []
-        star_matches: list[CallableType] = []
+        matches: list[tuple[int, CallableType]] = []
+        star_matches: list[tuple[int, CallableType]] = []
 
         args_have_var_arg = False
         args_have_kw_arg = False
@@ -3018,7 +3041,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             if kind == ARG_STAR2 and not has_shape(typ):
                 args_have_kw_arg = True
 
-        for typ in overload.items:
+        for idx, typ in enumerate(overload.items):
             formal_to_actual = map_actuals_to_formals(
                 arg_kinds, arg_names, typ.arg_kinds, typ.arg_names, lambda i: arg_types[i]
             )
@@ -3029,28 +3052,29 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                     # is safe: it will be filtered out later.
                     # Unlike other var-args signatures, ParamSpec produces essentially
                     # a fixed signature, so there's no need to push them to the top.
-                    matches.append(typ)
+                    matches.append((idx, typ))
                 elif self.check_argument_count(
                     typ, arg_types, arg_kinds, arg_names, formal_to_actual, None
                 ):
                     if args_have_var_arg and typ.is_var_arg:
-                        star_matches.append(typ)
+                        star_matches.append((idx, typ))
                     elif args_have_kw_arg and typ.is_kw_arg:
-                        star_matches.append(typ)
+                        star_matches.append((idx, typ))
                     else:
-                        matches.append(typ)
+                        matches.append((idx, typ))
 
         return star_matches + matches
 
     def infer_overload_return_type(
         self,
-        plausible_targets: list[CallableType],
+        plausible_targets: list[tuple[int, CallableType]],
         args: list[Expression],
         arg_types: list[Type],
         arg_kinds: list[ArgKind],
         arg_names: Sequence[str | None] | None,
         callable_name: str | None,
         object_type: Type | None,
+        bound_args: list[Type] | None,
         context: Context,
     ) -> tuple[Type, Type] | None:
         """Attempts to find the first matching callable from the given list.
@@ -3060,16 +3084,17 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         If multiple targets match due to ambiguous Any parameters, returns (AnyType, AnyType).
         If no targets match, returns None.
 
-        Assumes all of the given targets have argument counts compatible with the caller.
+        Assumes all the given targets have argument counts compatible with the caller.
         """
 
-        matches: list[CallableType] = []
+        matches: list[tuple[int, CallableType]] = []
         return_types: list[Type] = []
         inferred_types: list[Type] = []
-        args_contain_any = any(map(has_any_type, arg_types))
+        # bound_arg are recorded only if the original object type contained any.
+        args_contain_any = any(map(has_any_type, arg_types)) or bound_args is not None
         type_maps: list[dict[Expression, Type]] = []
 
-        for typ in plausible_targets:
+        for idx, typ in plausible_targets:
             assert self.msg is self.chk.msg
             with self.msg.filter_errors(filter_revealed_type=True) as w:
                 with self.chk.local_type_map as m:
@@ -3093,40 +3118,58 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                 if isinstance(p_infer_type, CallableType):
                     # Prefer inferred types if possible, this will avoid false triggers for
                     # Any-ambiguity caused by arguments with Any passed to generic overloads.
-                    matches.append(p_infer_type)
+                    matches.append((idx, p_infer_type))
                 else:
-                    matches.append(typ)
+                    matches.append((idx, typ))
                 return_types.append(ret_type)
                 inferred_types.append(infer_type)
                 type_maps.append(m)
 
         if not matches:
             return None
-        elif any_causes_overload_ambiguity(matches, return_types, arg_types, arg_kinds, arg_names):
+        elif any_causes_overload_ambiguity(
+            matches, return_types, arg_types, arg_kinds, arg_names, bound_args
+        ):
             return_types = remove_dups(return_types)
             # An argument of type or containing the type 'Any' caused ambiguity.
             # We try returning a precise type if we can. If not, we give up and just return 'Any'.
             if all_same_types(return_types):
                 self.chk.store_types(type_maps[0])
                 return return_types[0], inferred_types[0]
-            elif len(return_types) < MAX_PRECISE_OVERLOAD_FALLBACK and (
-                common := common_type(return_types)
-            ):
-                self.chk.store_types(type_maps[0])
-                return common, erase_type(inferred_types[0])
-            elif all_same_types([erase_type(typ) for typ in return_types]):
+
+            # This is quite ad-hoc, but this is needed to support some numerical libraries.
+            # They add "fake" overload to some __op__ methods, to prevent fallback to __rop__
+            # where it would fail at runtime. We can ignore such overloads when deciding
+            # ambiguous overload fallback to get a more precise type, see #22011.
+            return_types = [
+                rt
+                for rt in return_types
+                if not isinstance(p := get_proper_type(rt), UninhabitedType) or p.ambiguous
+            ]
+
+            # Before using the erased types, try checking if there is "best" fallback,
+            # such that it is a unique return type that is both (non-proper) subtype and
+            # supertype of all other return types. We do this only if there are few matches,
+            # since this check is expensive.
+            if len(return_types) < MAX_PRECISE_OVERLOAD_FALLBACK:
+                common = common_type(return_types)
+                if common is not None:
+                    self.chk.store_types(type_maps[0])
+                    return common, erase_type(inferred_types[0])
+
+            if all_same_types([erase_type(typ) for typ in return_types]):
                 self.chk.store_types(type_maps[0])
                 return erase_type(return_types[0]), erase_type(inferred_types[0])
-            else:
-                return self.check_call(
-                    callee=AnyType(TypeOfAny.special_form),
-                    args=args,
-                    arg_kinds=arg_kinds,
-                    arg_names=arg_names,
-                    context=context,
-                    callable_name=callable_name,
-                    object_type=object_type,
-                )
+
+            return self.check_call(
+                callee=AnyType(TypeOfAny.special_form),
+                args=args,
+                arg_kinds=arg_kinds,
+                arg_names=arg_names,
+                context=context,
+                callable_name=callable_name,
+                object_type=object_type,
+            )
         else:
             # Success! No ambiguity; return the first match.
             self.chk.store_types(type_maps[0])
@@ -3134,7 +3177,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
 
     def overload_erased_call_targets(
         self,
-        plausible_targets: list[CallableType],
+        plausible_targets: list[tuple[int, CallableType]],
         arg_types: list[Type],
         arg_kinds: list[ArgKind],
         arg_names: Sequence[str | None] | None,
@@ -3146,7 +3189,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         Assumes all of the given targets have argument counts compatible with the caller.
         """
         matches: list[CallableType] = []
-        for typ in plausible_targets:
+        for _, typ in plausible_targets:
             if self.erased_signature_similarity(
                 arg_types, arg_kinds, arg_names, args, typ, context
             ):
@@ -3154,7 +3197,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         return matches
 
     def possible_none_type_var_overlap(
-        self, arg_types: list[Type], plausible_targets: list[CallableType]
+        self, arg_types: list[Type], plausible_targets: list[tuple[int, CallableType]]
     ) -> bool:
         """Heuristic to determine whether we need to try forcing union math.
 
@@ -3181,19 +3224,20 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         if not has_optional_arg:
             return False
 
-        min_prefix = min(len(c.arg_types) for c in plausible_targets)
+        min_prefix = min(len(c.arg_types) for _, c in plausible_targets)
         for i in range(min_prefix):
             if any(
-                isinstance(get_proper_type(c.arg_types[i]), NoneType) for c in plausible_targets
+                isinstance(get_proper_type(c.arg_types[i]), NoneType) for _, c in plausible_targets
             ) and any(
-                isinstance(get_proper_type(c.arg_types[i]), TypeVarType) for c in plausible_targets
+                isinstance(get_proper_type(c.arg_types[i]), TypeVarType)
+                for _, c in plausible_targets
             ):
                 return True
         return False
 
     def union_overload_result(
         self,
-        plausible_targets: list[CallableType],
+        plausible_targets: list[tuple[int, CallableType]],
         args: list[Expression],
         arg_types: list[Type],
         arg_kinds: list[ArgKind],
@@ -3201,6 +3245,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         callable_name: str | None,
         object_type: Type | None,
         none_type_var_overlap: bool,
+        bound_args: list[Type] | None,
         context: Context,
         level: int = 0,
     ) -> list[tuple[Type, Type]] | None:
@@ -3210,7 +3255,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         Return a list of (<return type>, <inferred variant type>) if call succeeds for every
         item of the desctructured union. Returns None if there is no match.
         """
-        # Step 1: If we are already too deep, then stop immediately. Otherwise mypy might
+        # Step 1: If we are already too deep, then stop immediately. Otherwise, mypy might
         # hang for long time because of a weird overload call. The caller will get
         # the exception and generate an appropriate note message, if needed.
         if level >= MAX_UNIONS:
@@ -3232,6 +3277,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                     arg_names,
                     callable_name,
                     object_type,
+                    bound_args,
                     context,
                 )
             if res is not None:
@@ -3250,6 +3296,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                     arg_names,
                     callable_name,
                     object_type,
+                    bound_args,
                     context,
                 )
             if direct is not None and not isinstance(
@@ -3275,6 +3322,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                 callable_name,
                 object_type,
                 none_type_var_overlap,
+                bound_args,
                 context,
                 level + 1,
             )
@@ -6248,7 +6296,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             # context, and use enclosing one, see infer_lambda_type_using_context().
             # TODO: consider using cache for more expression kinds.
             elif (
-                isinstance(node, (CallExpr, ListExpr, TupleExpr, DictExpr, OpExpr))
+                isinstance(node, (CallExpr, ListExpr, TupleExpr, DictExpr, OpExpr, MemberExpr))
                 and not (self.in_lambda_expr or self.chk.current_node_deferred)
                 and not self.chk.options.disable_expression_cache
             ):
@@ -6435,14 +6483,8 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         elif self.chk.type_is_iterable(subexpr_type):
             if is_async_def(subexpr_type) and not has_coroutine_decorator(return_type):
                 self.chk.msg.yield_from_invalid_operand_type(subexpr_type, e)
-
-            any_type = AnyType(TypeOfAny.special_form)
-            generic_generator_type = self.chk.named_generic_type(
-                "typing.Generator", [any_type, any_type, any_type]
-            )
-            generic_generator_type.set_line(e)
             iter_type, _ = self.check_method_call_by_name(
-                "__iter__", subexpr_type, [], [], context=generic_generator_type
+                "__iter__", subexpr_type, [], [], context=e
             )
         else:
             if not (is_async_def(subexpr_type) and has_coroutine_decorator(return_type)):
@@ -6859,11 +6901,12 @@ def arg_approximate_similarity(actual: Type, formal: Type) -> bool:
 
 
 def any_causes_overload_ambiguity(
-    items: list[CallableType],
+    items: list[tuple[int, CallableType]],
     return_types: list[Type],
     arg_types: list[Type],
     arg_kinds: list[ArgKind],
     arg_names: Sequence[str | None] | None,
+    bound_args: list[Type] | None,
 ) -> bool:
     """May an argument containing 'Any' cause ambiguous result type on call to overloaded function?
 
@@ -6873,9 +6916,11 @@ def any_causes_overload_ambiguity(
 
     Args:
         items: Overload items matching the actual arguments
+        return_types: Corresponding inferred return type for each item
         arg_types: Actual argument types
         arg_kinds: Actual argument kinds
         arg_names: Actual argument names
+        bound_args: Full list of self-types bound (if overload is a method)
     """
     if all_same_types(return_types):
         return False
@@ -6884,7 +6929,7 @@ def any_causes_overload_ambiguity(
         map_formals_to_actuals(
             arg_kinds, arg_names, item.arg_kinds, item.arg_names, lambda i: arg_types[i]
         )
-        for item in items
+        for _, item in items
     ]
 
     for arg_idx, arg_type in enumerate(arg_types):
@@ -6901,7 +6946,7 @@ def any_causes_overload_ambiguity(
             matching_returns = []
             matching_formals = []
             for item_idx, formals in matching_formals_unfiltered:
-                matched_callable = items[item_idx]
+                _, matched_callable = items[item_idx]
                 matching_returns.append(matched_callable.ret_type)
 
                 # Note: if an actual maps to multiple formals of differing types within
@@ -6913,6 +6958,12 @@ def any_causes_overload_ambiguity(
             if not all_same_types(matching_formals) and not all_same_types(matching_returns):
                 # Any maps to multiple different types, and the return types of these items differ.
                 return True
+
+    # If the original object type for methods contained Any, check the self-types as well.
+    if bound_args is not None:
+        matching_bound = [bound_args[idx] for idx, _ in items]
+        if not all_same_types(matching_bound):
+            return True
     return False
 
 

@@ -1,0 +1,85 @@
+-- Generator expressions
+
+[case testGeneratorExprConsumerArgumentOrder]
+from collections import OrderedDict
+from typing import Any
+
+from testutil import assertRaises
+
+log: list[str] = []
+
+def it() -> list[int]:
+    log.append("iterable")
+    return [1, 2]
+
+def elt(x: int) -> int:
+    log.append(f"elt {x}")
+    return x
+
+def arg(name: str, value: Any) -> Any:
+    log.append(name)
+    return value
+
+def check(expected: list[str]) -> None:
+    actual = log[:]
+    log.clear()
+    assert actual == expected, actual
+
+def test_sum() -> None:
+    assert sum((elt(x) for x in it()), arg("start", 10)) == 13
+    check(["iterable", "start", "elt 1", "elt 2"])
+    assert sum((elt(x) for x in it() if x > 1), start=arg("start", 10)) == 12
+    check(["iterable", "start", "elt 2"])
+    assert sum((elt(x) + y for x in it() for y in it()), arg("start", 0)) == 12
+    check(["iterable", "start", "iterable", "elt 1", "elt 1", "iterable", "elt 2", "elt 2"])
+
+def test_sum_over_range() -> None:
+    n = 3
+    assert sum((elt(x) for x in range(n)), arg("start", 1)) == 4
+    check(["start", "elt 0", "elt 1", "elt 2"])
+
+def test_next() -> None:
+    assert next((elt(x) for x in it()), arg("default", -1)) == 1
+    check(["iterable", "default", "elt 1"])
+    assert next((elt(x) for x in it() if x > 5), arg("default", -1)) == -1
+    check(["iterable", "default"])
+
+def test_min_max_sorted() -> None:
+    assert max((elt(x) for x in it()), key=arg("key", abs)) == 2
+    check(["iterable", "key", "elt 1", "elt 2"])
+    assert min((elt(x) for x in it() if x > 5), default=arg("default", 0)) == 0
+    check(["iterable", "default"])
+    assert sorted((elt(x) for x in it()), key=arg("key", lambda x: -x)) == [2, 1]
+    check(["iterable", "key", "elt 1", "elt 2"])
+
+def test_dict() -> None:
+    expected = {"1": 1, "2": 2, "k": 0}
+    assert dict(((str(elt(x)), x) for x in it()), k=arg("kwarg", 0)) == expected
+    check(["iterable", "kwarg", "elt 1", "elt 2"])
+    assert OrderedDict(((str(elt(x)), x) for x in it()), k=arg("kwarg", 0)) == expected
+    check(["iterable", "kwarg", "elt 1", "elt 2"])
+
+def receiver(d: dict[str, int]) -> dict[str, int]:
+    log.append("receiver")
+    return d
+
+def test_method() -> None:
+    d: dict[str, int] = {}
+    receiver(d).update(((str(elt(x)), x) for x in it()), k=arg("kwarg", 0))
+    assert d == {"1": 1, "2": 2, "k": 0}
+    check(["receiver", "iterable", "kwarg", "elt 1", "elt 2"])
+
+def test_exception_in_later_argument() -> None:
+    def fail() -> Any:
+        log.append("fail")
+        raise ValueError("fail")
+
+    with assertRaises(ValueError, "fail"):
+        sum((elt(x) for x in it()), fail())
+    check(["iterable", "fail"])
+    with assertRaises(ValueError, "fail"):
+        next((elt(x) for x in it()), fail())
+    check(["iterable", "fail"])
+    with assertRaises(ValueError, "fail"):
+        max((elt(x) for x in it()), key=fail())
+    check(["iterable", "fail"])

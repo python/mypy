@@ -12,9 +12,8 @@ from mypyc.codegen.emit import (
     TracebackAndGotoHandler,
     c_array_initializer,
 )
+from mypyc.codegen.emitwrapper import is_fastcall_supported
 from mypyc.common import (
-    HAVE_IMMORTAL,
-    IS_FREE_THREADED,
     NATIVE_PREFIX,
     REG_PREFIX,
     RUNNING_FIELD,
@@ -33,6 +32,7 @@ from mypyc.ir.ops import (
     Branch,
     Call,
     CallC,
+    CallWrapper,
     Cast,
     ComparisonOp,
     ControlOp,
@@ -462,11 +462,24 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         safe by borrow_generator_attrs. The default (GIL) build always takes the plain-load
         path and increfs separately.
 
+        Non-Final 'int' attributes use CPyTagged_GetAttr on free-threaded builds, which
+        also returns a new reference (or CPY_INT_TAG if undefined). Final 'int'
+        attributes keep the plain load + incref, like CPy_GetAttrRefFinal.
+
         Thread-confined attributes also use plain loads; see
         ClassIR.attrs_are_thread_confined.
         """
+        if (
+            self.emitter.target_python.free_threaded
+            and is_int_rprimitive(attr_rtype)
+            and not op.is_borrowed
+            and not cl.attrs_are_thread_confined()
+            and not cl.is_final_attr(op.attr)
+        ):
+            self.emitter.emit_line(f"{dest} = CPyTagged_GetAttr((PyObject *){obj}, &{attr_expr});")
+            return True
         use_get_attr_ref = (
-            IS_FREE_THREADED
+            self.emitter.target_python.free_threaded
             and is_simple_refcounted_pointer(attr_rtype)
             and not op.is_borrowed
             and not cl.attrs_are_thread_confined()
@@ -570,11 +583,12 @@ class FunctionEmitterVisitor(OpVisitor[None]):
 
         attr_expr = self.get_attr_expr(obj, op, decl_cl)
         # On free-threaded builds this takes a new reference atomically (see
-        # emit_load_attr_take_ref). CPy_GetAttrRef returns NULL when the field is
-        # undefined, which is precisely the error value here, so the "NULL without
-        # AttributeError" behavior is preserved (this op has error_kind ERR_NEVER).
-        # is_simple_refcounted_pointer excludes tuples/vecs, so error_value_check's
-        # special cases only matter on the plain-load path (where no ref was taken).
+        # emit_load_attr_take_ref). CPy_GetAttrRef returns NULL and CPyTagged_GetAttr
+        # returns CPY_INT_TAG when the field is undefined, which is precisely the error
+        # value here, so the "error value without AttributeError" behavior is preserved
+        # (this op has error_kind ERR_NEVER). The take-ref paths exclude tuples/vecs, so
+        # error_value_check's special cases only matter on the plain-load path (where no
+        # ref was taken).
         if not self.emit_load_attr_take_ref(dest, obj, op, cl, attr_rtype, attr_expr):
             # Only emit inc_ref if not NULL
             if attr_rtype.is_refcounted and not op.is_borrowed:
@@ -621,7 +635,7 @@ class FunctionEmitterVisitor(OpVisitor[None]):
                     rtype.setter_index(op.attr),
                     src,
                     rtype.struct_name(self.names),
-                    self.ctype(rtype.attr_type(op.attr)),
+                    self.ctype(op.propset.sig.args[1].type),
                     c_ret_type,
                     op.attr,
                 )
@@ -629,7 +643,7 @@ class FunctionEmitterVisitor(OpVisitor[None]):
             self.emit_line(f"{dest} = 1;")
             self.emitter.emit_error_check(tmp, ret_type, f"{dest} = 0;")
         elif (
-            IS_FREE_THREADED
+            self.emitter.target_python.free_threaded
             and is_simple_refcounted_pointer(attr_rtype)
             and not cl.attrs_are_thread_confined()
         ):
@@ -641,6 +655,21 @@ class FunctionEmitterVisitor(OpVisitor[None]):
             else:
                 self.emitter.emit_line(
                     f"CPy_SetAttrRef((PyObject *){obj}, (PyObject **)&{attr_expr}, {src});"
+                )
+            if op.error_kind == ERR_FALSE:
+                self.emitter.emit_line(f"{dest} = 1;")
+        elif (
+            self.emitter.target_python.free_threaded
+            and is_int_rprimitive(attr_rtype)
+            and not cl.attrs_are_thread_confined()
+        ):
+            # These also steal src, and reclaim the old value if it's a long.
+            attr_expr = self.get_attr_expr(obj, op, decl_cl)
+            if op.is_init:
+                self.emitter.emit_line(f"CPyTagged_InitAttr(&{attr_expr}, {src});")
+            else:
+                self.emitter.emit_line(
+                    f"CPyTagged_SetAttr((PyObject *){obj}, &{attr_expr}, {src});"
                 )
             if op.error_kind == ERR_FALSE:
                 self.emitter.emit_line(f"{dest} = 1;")
@@ -708,6 +737,22 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         cname = op.fn.cname(self.names)
         self.emit_line(f"{dest}{lib}{NATIVE_PREFIX}{cname}({args});")
 
+    def visit_call_wrapper(self, op: CallWrapper) -> None:
+        """Call the wrapper function of a native function."""
+        dest = self.get_dest_assign(op)
+        wrapper = self.emitter.wrapper_function_call(op.fn)
+        args = self.reg(op.args)
+        kwargs = self.reg(op.kwargs) if op.kwargs is not None else "NULL"
+        if is_fastcall_supported(op.fn, self.emitter.capi_version):
+            # The wrapper of a function or a static method doesn't take self.
+            takes_self = int(op.fn.class_name is not None and op.fn.kind != FUNC_STATICMETHOD)
+            self.emit_line(
+                f"{dest}CPy_CallFastcallWrapper({wrapper}, {takes_self}, {args}, {kwargs});"
+            )
+        else:
+            # The wrappers of __init__ and __new__ take the first argument as self.
+            self.emit_line(f"{dest}CPy_CallLegacyWrapper({wrapper}, {args}, {kwargs});")
+
     def visit_method_call(self, op: MethodCall) -> None:
         """Call native method."""
         dest = self.get_dest_assign(op)
@@ -763,12 +808,12 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         if (
             isinstance(op.src, Box)
             and (is_none_rprimitive(op.src.src.type) or is_bool_or_bit_rprimitive(op.src.src.type))
-            and HAVE_IMMORTAL
+            and self.emitter.target_python.have_immortal
         ):
             # On Python 3.12+, None/True/False are immortal, and we can skip inc ref
             return
 
-        if isinstance(op.src, LoadLiteral) and HAVE_IMMORTAL:
+        if isinstance(op.src, LoadLiteral) and self.emitter.target_python.have_immortal:
             value = op.src.value
             # We can skip inc ref for immortal literals on Python 3.12+
             if type(value) is int and -5 <= value <= 256:

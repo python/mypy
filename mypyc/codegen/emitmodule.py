@@ -7,7 +7,6 @@ from __future__ import annotations
 
 import json
 import os
-import sys
 from collections.abc import Iterable
 from typing import TypeVar
 
@@ -23,7 +22,7 @@ from mypy.build import (
 )
 from mypy.errors import CompileError
 from mypy.fscache import FileSystemCache
-from mypy.nodes import MypyFile, TypeInfo
+from mypy.nodes import ClassDef, MypyFile, TypeInfo
 from mypy.options import Options
 from mypy.plugin import Plugin, ReportConfigContext
 from mypy.util import hash_digest, json_dumps
@@ -41,14 +40,13 @@ from mypyc.codegen.emitfunc import generate_native_function, native_function_hea
 from mypyc.codegen.emitwrapper import (
     generate_legacy_wrapper_function,
     generate_wrapper_function,
+    is_fastcall_supported,
     legacy_wrapper_function_header,
     wrapper_function_header,
 )
 from mypyc.codegen.literals import Literals
 from mypyc.common import (
-    EXT_SUFFIX,
     GENERATOR_HELPER_NAME,
-    IS_FREE_THREADED,
     MODULE_PREFIX,
     PREFIX,
     RUNTIME_C_FILES,
@@ -82,6 +80,7 @@ from mypyc.ir.rtypes import RType
 from mypyc.irbuild.main import build_ir
 from mypyc.irbuild.mapper import Mapper
 from mypyc.irbuild.prepare import load_type_map
+from mypyc.irbuild.util import is_decorated_class, is_extension_class, is_trait
 from mypyc.namegen import NameGenerator, exported_name
 from mypyc.options import CompilerOptions
 from mypyc.transform.borrow_generator_attrs import borrow_generator_attrs
@@ -139,6 +138,12 @@ class MypycPlugin(Plugin):
       * If the IR metadata is missing or stale or any of the generated
         C source files associated missing or stale, then we need to
         recompile the module so we mark it as stale.
+      * Mypy doesn't record class decorators, but some of them change how
+        other modules use a class: @mypyc_attr(native_class=False) and
+        @trait decide what kind of class mypyc generates, and a decorator
+        that can replace the class changes what its name refers to (see
+        ClassIR.is_decorated). So we make the kinds of a module's classes
+        part of its interface.
     """
 
     def __init__(
@@ -154,8 +159,11 @@ class MypycPlugin(Plugin):
         self.compiler_options = compiler_options
         self.metastore = create_metastore(options, parallel_worker=False)
 
-    def report_config_data(self, ctx: ReportConfigContext) -> tuple[str | None, list[str]] | None:
-        # The config data we report is the group map entry for the module.
+    def report_config_data(
+        self, ctx: ReportConfigContext
+    ) -> tuple[str | None, list[str], list[tuple[str, bool, bool, bool]]] | None:
+        # The config data we report is the group map entry for the module,
+        # followed by the kinds of its classes (see class_kinds).
         # If the data is being used to check validity, we do additional checks
         # that the IR cache exists and matches the metadata cache and all
         # output source files exist and are up to date.
@@ -167,7 +175,8 @@ class MypycPlugin(Plugin):
 
         # If we aren't doing validity checks, just return the cache data
         if not is_check:
-            return self.group_map[id]
+            assert self._modules is not None
+            return (*self.group_map[id], class_kinds(self._modules[id], self.options))
 
         # Load the metadata and IR cache
         meta_path, _, _ = get_cache_names(id, path, self.options)
@@ -201,7 +210,14 @@ class MypycPlugin(Plugin):
             if hash != real_hash:
                 return None
 
-        return self.group_map[id]
+        # The module hasn't been parsed yet, so take the class kinds from the
+        # cached IR. It was built from the source the cache is for.
+        kinds = sorted(
+            (c["name"], c["is_ext_class"], c["is_trait"], c["is_decorated"])
+            for c in ir_data["ir"]["classes"]
+            if not c["is_generated"]
+        )
+        return (*self.group_map[id], kinds)
 
     def get_additional_deps(self, file: MypyFile) -> list[tuple[int, str, int]]:
         # Report dependency on modules in the module's group
@@ -228,6 +244,25 @@ class MypycPlugin(Plugin):
                 for ancestor in node.mro[1:]:
                     mods.add(ancestor.module_name)
         return mods
+
+
+def class_kinds(tree: MypyFile, options: Options) -> list[tuple[str, bool, bool, bool]]:
+    """Return (name, is_ext_class, is_trait, is_decorated) for each class in a module.
+
+    These match the ClassIR flags that build_type_map sets.
+    """
+    # Any errors are reported when the module is compiled.
+    errors = Errors(options)
+    return sorted(
+        (
+            node.name,
+            is_extension_class(tree.path, node, errors),
+            is_trait(node),
+            is_decorated_class(node),
+        )
+        for node in tree.defs
+        if isinstance(node, ClassDef)
+    )
 
 
 def parse_and_typecheck(
@@ -651,7 +686,11 @@ class GroupGenerator:
         self.modules = modules
         self.source_paths = source_paths
         self.context = EmitterContext(
-            names, compiler_options.strict_traceback_checks, group_name, group_map
+            names,
+            compiler_options.strict_traceback_checks,
+            group_name,
+            group_map,
+            target_python=compiler_options.target_python,
         )
         self.names = names
         # Initializations of globals to simple values that we can't
@@ -663,7 +702,7 @@ class GroupGenerator:
         self.multi_file = compiler_options.multi_file
         # Multi-phase init is needed to enable free-threading. In the future we'll
         # probably want to enable it always, but we'll wait until it's stable.
-        self.multi_phase_init = IS_FREE_THREADED
+        self.multi_phase_init = compiler_options.target_python.free_threaded
 
     @property
     def group_suffix(self) -> str:
@@ -718,7 +757,7 @@ class GroupGenerator:
 
             for cl in module.classes:
                 if cl.is_ext_class:
-                    generate_class(cl, module_name, emitter)
+                    generate_class(cl, module_name, emitter, self.source_paths)
 
             running_flag_classes = {cl.name: cl for cl in module.classes if cl.has_running_flag}
 
@@ -1186,13 +1225,13 @@ class GroupGenerator:
 
         emitter.emit_line(f"static PyModuleDef_Slot {name}[] = {{")
         emitter.emit_line(f"{{Py_mod_exec, {exec_name}}},")
-        if sys.version_info >= (3, 12):
+        if emitter.capi_version >= (3, 12):
             # Multiple interpreter support requires not using any C global state,
             # which we don't support yet.
             emitter.emit_line(
                 "{Py_mod_multiple_interpreters, Py_MOD_MULTIPLE_INTERPRETERS_NOT_SUPPORTED},"
             )
-        if sys.version_info >= (3, 13):
+        if emitter.capi_version >= (3, 13):
             # Declare support for free-threading to enable experimentation,
             # even if we don't properly support it.
             emitter.emit_line("{Py_mod_gil, Py_MOD_GIL_NOT_USED},")
@@ -1465,6 +1504,7 @@ class GroupGenerator:
         emitter.emit_line(f'modname = PyUnicode_FromString("{module_name}");')
         emitter.emit_line("if (modname == NULL) CPyError_OutOfMemory();")
         emitter.emit_line("int rv = 0;")
+        ext_suffix = emitter.target_python.ext_suffix
         if self.group_name:
             shared_lib_mod_name = shared_lib_name(self.group_name)
             emitter.emit_line("PyObject *mod_dict = PyImport_GetModuleDict();")
@@ -1479,10 +1519,10 @@ class GroupGenerator:
             emitter.emit_line("if (shared_lib_file == NULL) goto fail;")
         else:
             emitter.emit_line(
-                f'PyObject *shared_lib_file = PyUnicode_FromString("{module_name + EXT_SUFFIX}");'
+                f'PyObject *shared_lib_file = PyUnicode_FromString("{module_name + ext_suffix}");'
             )
             emitter.emit_line("if (shared_lib_file == NULL) CPyError_OutOfMemory();")
-        emitter.emit_line(f'PyObject *ext_suffix = PyUnicode_FromString("{EXT_SUFFIX}");')
+        emitter.emit_line(f'PyObject *ext_suffix = PyUnicode_FromString("{ext_suffix}");')
         emitter.emit_line("if (ext_suffix == NULL) CPyError_OutOfMemory();")
         is_pkg = int(self.source_paths[module_name].endswith("__init__.py"))
         emitter.emit_line(f"Py_ssize_t is_pkg = {is_pkg};")
@@ -1687,16 +1727,6 @@ def toposort(deps: dict[T, set[T]]) -> list[T]:
         visit(item)
 
     return result
-
-
-def is_fastcall_supported(fn: FuncIR, capi_version: tuple[int, int]) -> bool:
-    if fn.class_name is not None:
-        if fn.name == "__call__":
-            # We can use vectorcalls (PEP 590) when supported
-            return True
-        # TODO: Support fastcall for __init__ and __new__.
-        return fn.name != "__init__" and fn.name != "__new__"
-    return True
 
 
 def collect_literals(fn: FuncIR, literals: Literals) -> None:

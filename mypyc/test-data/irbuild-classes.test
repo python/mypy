@@ -155,7 +155,7 @@ L0:
     self.y = 60
     return 1
 
-[case testAttrLvalue]
+[case testAttrLvalue_withgil]
 class O(object):
     def __init__(self) -> None:
         self.x = 1
@@ -175,6 +175,34 @@ def increment(o):
     r2 :: bool
 L0:
     r0 = borrow o.x
+    r1 = CPyTagged_Add(r0, 2)
+    o.x = r1; r2 = is_error
+    return o
+
+[case testAttrLvalue_nogil]
+# On free-threaded builds an operator assignment such as 'o.x += 1' must not borrow
+# the native attribute read: a concurrent store could free the old value between the
+# borrowed load and its use. Contrast testAttrLvalue_withgil, where the read is
+# borrowed. is_borrow_friendly_expr applies the same rule as transform_member_expr.
+class O(object):
+    def __init__(self) -> None:
+        self.x = 1
+
+def increment(o: O) -> O:
+    o.x += 1
+    return o
+[out]
+def O.__init__(self):
+    self :: __main__.O
+L0:
+    self.x = 2
+    return 1
+def increment(o):
+    o :: __main__.O
+    r0, r1 :: int
+    r2 :: bool
+L0:
+    r0 = o.x
     r1 = CPyTagged_Add(r0, 2)
     o.x = r1; r2 = is_error
     return o
@@ -682,6 +710,92 @@ def D.g(cls, x):
 L0:
     return x
 
+[case testNativeCallWithUnpackedArgs]
+from typing import Any
+
+class A:
+    def f(self, x: int, y: int = 0) -> int:
+        return x + y
+
+    def g(self, *args: Any, **kwargs: Any) -> int:
+        return len(args)
+
+class B(A):
+    def call_f(self, *args: int) -> int:
+        # The items are for ordinary arguments, so the wrapper function has to unpack them
+        return super().f(*args)
+
+    def call_f_kwargs(self, **kwargs: int) -> int:
+        return super().f(**kwargs)
+
+    def call_g(self, *args: Any, **kwargs: Any) -> int:
+        return super().g(*args, **kwargs)
+[out]
+def A.f(self, x, y):
+    self :: __main__.A
+    x, y, r0 :: int
+L0:
+    if is_error(y) goto L1 else goto L2
+L1:
+    y = 0
+L2:
+    r0 = CPyTagged_Add(x, y)
+    return r0
+def A.g(self, args, kwargs):
+    self :: __main__.A
+    args :: tuple
+    kwargs :: dict
+    r0 :: native_int
+    r1 :: short_int
+L0:
+    r0 = var_object_size args
+    r1 = r0 << 1
+    return r1
+def B.call_f(self, args):
+    self :: __main__.B
+    args :: tuple
+    r0 :: list
+    r1 :: ptr
+    r2 :: object
+    r3 :: tuple
+    r4 :: object
+    r5 :: int
+L0:
+    r0 = PyList_New(1)
+    r1 = list_items r0
+    buf_init_item r1, 0, self
+    keep_alive r0
+    r2 = CPyList_Extend(r0, args)
+    r3 = PyList_AsTuple(r0)
+    r4 = A.f(*r3)
+    r5 = unbox(int, r4)
+    return r5
+def B.call_f_kwargs(self, kwargs):
+    self :: __main__.B
+    kwargs, r0 :: dict
+    r1 :: i32
+    r2 :: bit
+    r3 :: tuple
+    r4 :: object
+    r5 :: int
+L0:
+    r0 = PyDict_New()
+    r1 = CPyDict_UpdateInDisplay(r0, kwargs)
+    r2 = r1 >= 0 :: signed
+    r3 = PyTuple_Pack(1, self)
+    r4 = A.f(*r3, **r0)
+    r5 = unbox(int, r4)
+    return r5
+def B.call_g(self, args, kwargs):
+    self :: __main__.B
+    args :: tuple
+    kwargs, r0 :: dict
+    r1 :: int
+L0:
+    r0 = PyDict_Copy(kwargs)
+    r1 = A.g(self, args, r0)
+    return r1
+
 [case testCannotAssignToClsArgument]
 from typing import Any, cast
 
@@ -740,6 +854,119 @@ def X.foo(self):
 L0:
     r0 = T.foo(self)
     return 1
+
+[case testSuperClassMethod]
+class A:
+    @classmethod
+    def f(cls, x: int) -> int:
+        return x
+
+    def g(self) -> int:
+        return 1
+
+class B(A):
+    @classmethod
+    def f(cls, x: int) -> int:
+        return super().f(x)
+
+    def call_f(self) -> int:
+        return super().f(1)
+
+    @classmethod
+    def call_g(cls, b: B) -> int:
+        # An instance method looked up through the class isn't bound
+        return super().g(b)
+[out]
+def A.f(cls, x):
+    cls :: object
+    x :: int
+L0:
+    return x
+def A.g(self):
+    self :: __main__.A
+L0:
+    return 2
+def B.f(cls, x):
+    cls :: object
+    x, r0 :: int
+L0:
+    r0 = A.f(cls, x)
+    return r0
+def B.call_f(self):
+    self :: __main__.B
+    r0 :: object
+    r1 :: int
+L0:
+    r0 = CPy_TYPE(self)
+    r1 = A.f(r0, 2)
+    return r1
+def B.call_g(cls, b):
+    cls :: object
+    b :: __main__.B
+    r0 :: object
+    r1 :: str
+    r2, r3 :: object
+    r4 :: object[2]
+    r5 :: object_ptr
+    r6 :: object
+    r7 :: str
+    r8 :: object
+    r9 :: object[1]
+    r10 :: object_ptr
+    r11 :: object
+    r12 :: int
+L0:
+    r0 = builtins :: module
+    r1 = 'super'
+    r2 = CPyObject_GetAttr(r0, r1)
+    r3 = __main__.B :: type
+    r4 = [r3, cls]
+    r5 = load_address r4
+    r6 = PyObject_Vectorcall(r2, r5, 2, 0)
+    keep_alive r3, cls
+    r7 = 'g'
+    r8 = CPyObject_GetAttr(r6, r7)
+    r9 = [b]
+    r10 = load_address r9
+    r11 = PyObject_Vectorcall(r8, r10, 1, 0)
+    keep_alive b
+    r12 = unbox(int, r11)
+    return r12
+
+[case testSuperSelfReassignedInArgument]
+class A:
+    def f(self, x: int) -> int:
+        return x
+
+class B(A):
+    def f(self, x: int) -> int:
+        # super() binds self before the argument is evaluated
+        return super().f((self := B()).g())
+
+    def g(self) -> int:
+        return 1
+[out]
+def A.f(self, x):
+    self :: __main__.A
+    x :: int
+L0:
+    return x
+def B.f(self, x):
+    self :: __main__.B
+    x :: int
+    r0, r1 :: __main__.B
+    r2, r3 :: int
+L0:
+    r0 = self
+    r1 = B()
+    self = r1
+    r2 = r1.g()
+    r3 = A.f(r0, r2)
+    return r3
+def B.g(self):
+    self :: __main__.B
+L0:
+    return 2
 
 [case testSuperCallToObjectInitIsOmitted]
 class C:
@@ -1352,6 +1579,152 @@ L0:
     r2 = r1.x
     return r2
 
+[case testPropertyWithOtherDecorator]
+from typing import TypeVar
+
+T = TypeVar("T")
+
+def dec(f: T) -> T:
+    return f
+
+class C:
+    @property
+    @dec
+    def p(self) -> int:
+        return 1
+
+def get(c: C) -> int:
+    return c.p
+[out]
+def dec(f):
+    f :: object
+L0:
+    return f
+def C.p(self):
+    self :: __main__.C
+L0:
+    return 2
+def get(c):
+    c :: __main__.C
+    r0 :: str
+    r1 :: object
+    r2 :: int
+L0:
+    r0 = 'p'
+    r1 = CPyObject_GetAttr(c, r0)
+    r2 = unbox(int, r1)
+    return r2
+
+[case testPropertySetterWithDecoratedGetter]
+from typing import TypeVar
+
+T = TypeVar("T")
+
+def dec(f: T) -> T:
+    return f
+
+class C:
+    @property
+    @dec
+    def p(self) -> int:
+        return 1
+
+    @p.setter
+    def p(self, value: int) -> None:  # E: Property setter not supported when the getter has other decorators
+        pass
+
+[case testPropertyReturningCallable]
+from typing import Callable
+
+class C:
+    _f: Callable[[int], int]
+
+    @property
+    def f(self) -> Callable[[int], int]:
+        return self._f
+
+def g(c: C) -> int:
+    return c.f(1)
+[out]
+def C.f(self):
+    self :: __main__.C
+    r0 :: object
+L0:
+    r0 = self._f
+    return r0
+def g(c):
+    c :: __main__.C
+    r0, r1 :: object
+    r2 :: object[1]
+    r3 :: object_ptr
+    r4 :: object
+    r5 :: int
+L0:
+    r0 = c.f
+    r1 = object 1
+    r2 = [r1]
+    r3 = load_address r2
+    r4 = PyObject_Vectorcall(r0, r3, 1, 0)
+    keep_alive r1
+    r5 = unbox(int, r4)
+    return r5
+
+[case testCallPropertyThroughClass]
+from typing import Callable, Type
+
+from mypy_extensions import mypyc_attr, trait
+
+class C:
+    _f: Callable[[int], int]
+
+    @property
+    def f(self) -> Callable[[int], int]:
+        return self._f
+
+    @property
+    def x(self) -> int:
+        return 0
+
+    @x.setter
+    def x(self, value: int) -> None:
+        pass
+
+    def m(self) -> int:
+        return 0
+
+    @classmethod
+    def g(cls, c):
+        cls.f(c)  # E: Cannot call property "f" through class object
+
+class D(C):
+    pass
+
+@trait
+class T:
+    @property
+    def p(self) -> int:
+        return 0
+
+@mypyc_attr(native_class=False)
+class N:
+    @property
+    def p(self) -> int:
+        return 0
+
+def f(c, d, t, n):
+    # mypy doesn't type check unannotated functions, so only mypyc can catch these
+    C.f(c)  # E: Cannot call property "f" through class object
+    C.x(c)  # E: Cannot call property "x" through class object
+    D.f(d)(1)  # E: Cannot call property "f" through class object
+    T.p(t)  # E: Cannot call property "p" through class object
+    N.p(n)  # E: Cannot call property "p" through class object
+
+def ok(c: C, tc: Type[C]) -> None:
+    C.f
+    C.m(c)
+    tc.m(c)
+    c.f(1)
+
 [case testBorrowResultOfCustomGetItemInIfStatement_withgil]
 from typing import List
 
@@ -1485,6 +1858,90 @@ class NonNativeClassContradiction():  # E: Class is marked as native_class=True 
 class BadUse():  # E: native_class must be used with True or False only
     pass
 
+[case testNativeClassUnknownBase]
+from mypy_extensions import mypyc_attr
+from typing import Any
+from missing_module import Base  # type: ignore
+
+class C(Base):  # E: Native classes cannot inherit from "Base" (unknown base class layout) \
+                # N: Potential workaround: @mypy_extensions.mypyc_attr(native_class=False) \
+                # N: https://mypyc.readthedocs.io/en/stable/native_classes.html#defining-non-native-classes
+    pass
+
+class D(C):  # E: Native classes cannot inherit from "C" (unknown base class layout)
+    pass
+
+@mypyc_attr(native_class=False)
+class NonNative(Base):
+    pass
+
+class NativeChild(NonNative):  # E: Native classes cannot inherit from "NonNative" (unknown base class layout) \
+                             # N: Potential workaround: @mypy_extensions.mypyc_attr(native_class=False) \
+                             # N: https://mypyc.readthedocs.io/en/stable/native_classes.html#defining-non-native-classes
+    pass
+
+ExplicitAny: Any = str
+class S(ExplicitAny):  # E: Native classes cannot inherit from "ExplicitAny" (unknown base class layout) \
+                      # N: Potential workaround: @mypy_extensions.mypyc_attr(native_class=False) \
+                      # N: https://mypyc.readthedocs.io/en/stable/native_classes.html#defining-non-native-classes
+    pass
+
+class Known:
+    pass
+
+class KnownFirst(Known, Base):  # E: Native classes cannot inherit from "Base" (unknown base class layout) \
+                              # N: Potential workaround: @mypy_extensions.mypyc_attr(native_class=False) \
+                              # N: https://mypyc.readthedocs.io/en/stable/native_classes.html#defining-non-native-classes
+    pass
+
+class UnknownFirst(Base, Known):  # E: Native classes cannot inherit from "Base" (unknown base class layout) \
+                                # N: Potential workaround: @mypy_extensions.mypyc_attr(native_class=False) \
+                                # N: https://mypyc.readthedocs.io/en/stable/native_classes.html#defining-non-native-classes
+    pass
+
+class TwoUnknown(Base, ExplicitAny):  # E: Native classes cannot inherit from "Base" (unknown base class layout) \
+                                     # N: Potential workaround: @mypy_extensions.mypyc_attr(native_class=False) \
+                                     # N: https://mypyc.readthedocs.io/en/stable/native_classes.html#defining-non-native-classes
+    pass
+
+Alias = Known
+class AliasFirst(Alias, Base):  # E: Native classes cannot inherit from "Base" (unknown base class layout) \
+                              # N: Potential workaround: @mypy_extensions.mypyc_attr(native_class=False) \
+                              # N: https://mypyc.readthedocs.io/en/stable/native_classes.html#defining-non-native-classes
+    pass
+
+class Indexed(Base[int]):  # type: ignore  # E: Native classes cannot inherit from "Base" (unknown base class layout) \
+                                           # N: Potential workaround: @mypy_extensions.mypyc_attr(native_class=False) \
+                                           # N: https://mypyc.readthedocs.io/en/stable/native_classes.html#defining-non-native-classes
+    pass
+
+def make_base() -> Any: ...
+class Dynamic(make_base()):  # type: ignore  # E: Native classes cannot inherit from a base class with an unknown layout \
+                                            # N: Potential workaround: @mypy_extensions.mypyc_attr(native_class=False) \
+                                            # N: https://mypyc.readthedocs.io/en/stable/native_classes.html#defining-non-native-classes
+    pass
+
+[case testNativeClassIndirectUnknownBase]
+# Any base class anywhere in the MRO makes the layout unknown
+from stubbed import Indirect, IndirectAlias
+
+class C(Indirect):  # E: Native classes cannot inherit from "Indirect" (unknown base class layout) \
+                    # N: Potential workaround: @mypy_extensions.mypyc_attr(native_class=False) \
+                    # N: https://mypyc.readthedocs.io/en/stable/native_classes.html#defining-non-native-classes
+    pass
+
+class D(IndirectAlias):  # E: Native classes cannot inherit from "IndirectAlias" (unknown base class layout) \
+                         # N: Potential workaround: @mypy_extensions.mypyc_attr(native_class=False) \
+                         # N: https://mypyc.readthedocs.io/en/stable/native_classes.html#defining-non-native-classes
+    pass
+
+[file stubbed.pyi]
+from typing import Any
+
+class AnyBase(Any): ...
+class Indirect(AnyBase): ...
+IndirectAlias = Indirect
+
 [case testMypycAttrNativeClassMetaError]
 from mypy_extensions import mypyc_attr
 
@@ -1497,6 +1954,51 @@ class M(type):  # E: Inheriting from most builtin types is unimplemented \
 @mypyc_attr(native_class=True)
 class A(metaclass=M):  # E: Class is marked as native_class=True but it can't be a native class. Classes with a metaclass other than ABCMeta, TypingMeta or GenericMeta can't be native classes.
     pass
+
+[case testDecoratedNonExtClassReference]
+from typing import Any
+
+def decorator(cls: Any) -> Any:
+    return cls
+
+@decorator
+class C:
+    pass
+
+def f() -> C:
+    return C()
+
+def g(x: object) -> bool:
+    return isinstance(x, C)
+[out]
+def decorator(cls):
+    cls :: object
+L0:
+    return cls
+def f():
+    r0 :: dict
+    r1 :: str
+    r2, r3 :: object
+    r4 :: __main__.C
+L0:
+    r0 = __main__.globals :: static
+    r1 = 'C'
+    r2 = CPyDict_GetItem(r0, r1)
+    r3 = PyObject_Vectorcall(r2, 0, 0, 0)
+    r4 = cast(__main__.C, r3)
+    return r4
+def g(x):
+    x, r0 :: object
+    r1 :: ptr
+    r2 :: object
+    r3 :: bit
+L0:
+    r0 = __main__.C :: type
+    r1 = get_element_ptr x ob_type :: PyObject
+    r2 = borrow load_mem r1 :: builtins.object*
+    keep_alive x
+    r3 = r2 == r0
+    return r3
 
 [case testReservedName]
 from typing import Any, overload
@@ -2131,8 +2633,11 @@ L0:
 
 [case testUnsupportedDunderNew]
 from __future__ import annotations
-from mypy_extensions import mypyc_attr
+from mypy_extensions import mypyc_attr, trait
 from typing import Any
+
+def decorator(f: Any) -> Any:
+    return f
 
 @mypyc_attr(native_class=False)
 class NonNative:
@@ -2179,6 +2684,175 @@ class WrongNumberOfArgs:
 class WrongNumberOfArgsObjectNew:
     def __new__(cls):
         return object.__new__(cls, 1)  # E: "object.__new__()" supported only with 1 argument, got 2
+
+@trait
+class DecoratedInTrait:
+    @decorator
+    def __new__(cls) -> Any:  # E: Decorated "__new__" not supported in traits
+        return super().__new__(cls)
+
+[case testDecoratedDunderNew]
+from typing import Any, Callable, TypeVar
+
+F = TypeVar("F", bound=Callable[..., Any])
+
+def deco(f: F) -> F:
+    return f
+
+class A:
+    @deco
+    def __new__(cls, x: int) -> Any:
+        return super().__new__(cls)
+
+    def __init__(self, x: int) -> None:
+        pass
+
+class B(A):
+    pass
+
+class C:
+    def __new__(cls, x: int) -> Any:
+        return super().__new__(cls)
+
+    def __init__(self, x: int) -> None:
+        pass
+
+def f() -> None:
+    A(1)
+    B(2)
+    C(3)
+[out]
+def deco(f):
+    f :: object
+L0:
+    return f
+def A.__new__(cls, x):
+    cls :: object
+    x :: int
+    r0 :: object
+    r1 :: __main__.A
+L0:
+    r0 = CPy_SetupObject(cls)
+    r1 = cast(__main__.A, r0)
+    return r1
+def A.__init__(self, x):
+    self :: __main__.A
+    x :: int
+L0:
+    return 1
+def C.__new__(cls, x):
+    cls :: object
+    x :: int
+    r0 :: __main__.C
+L0:
+    r0 = __mypyc__C_setup(cls)
+    return r0
+def C.__init__(self, x):
+    self :: __main__.C
+    x :: int
+L0:
+    return 1
+def f():
+    r0 :: object
+    r1 :: tuple
+    r2 :: dict
+    r3 :: __main__.A
+    r4 :: object
+    r5 :: tuple
+    r6 :: dict
+    r7 :: __main__.B
+    r8 :: __main__.C
+L0:
+    r0 = object 1
+    r1 = PyTuple_Pack(1, r0)
+    r2 = PyDict_New()
+    r3 = A(r1, r2)
+    r4 = object 2
+    r5 = PyTuple_Pack(1, r4)
+    r6 = PyDict_New()
+    r7 = B(r5, r6)
+    r8 = C(6)
+    return 1
+
+[case testDunderNewInBaseClassPreparedAfterSubclass]
+from typing import Any, Callable, TypeVar
+
+F = TypeVar("F", bound=Callable[..., Any])
+
+def deco(f: F) -> F:
+    return f
+
+# Classes are prepared in definition order, so these two are prepared before
+# their base classes. This also happens if the base class is in another module
+# of the compilation group that has a later name.
+class A(StaticBase):
+    def __init__(self, x: int) -> None:
+        pass
+
+class B(DecoratedBase):
+    def __init__(self, x: int) -> None:
+        pass
+
+class StaticBase:
+    # mypy removes @staticmethod from the decorators, so this is a native method.
+    @staticmethod
+    def __new__(cls, x: int) -> Any:
+        return super().__new__(cls)
+
+class DecoratedBase:
+    @deco
+    def __new__(cls, x: int) -> Any:
+        return super().__new__(cls)
+
+def f() -> None:
+    A(1)
+    B(2)
+[out]
+def deco(f):
+    f :: object
+L0:
+    return f
+def A.__init__(self, x):
+    self :: __main__.A
+    x :: int
+L0:
+    return 1
+def B.__init__(self, x):
+    self :: __main__.B
+    x :: int
+L0:
+    return 1
+def StaticBase.__new__(cls, x):
+    cls :: object
+    x :: int
+    r0 :: object
+    r1 :: __main__.StaticBase
+L0:
+    r0 = CPy_SetupObject(cls)
+    r1 = cast(__main__.StaticBase, r0)
+    return r1
+def DecoratedBase.__new__(cls, x):
+    cls :: object
+    x :: int
+    r0 :: object
+    r1 :: __main__.DecoratedBase
+L0:
+    r0 = CPy_SetupObject(cls)
+    r1 = cast(__main__.DecoratedBase, r0)
+    return r1
+def f():
+    r0 :: __main__.A
+    r1 :: object
+    r2 :: tuple
+    r3 :: dict
+    r4 :: __main__.B
+L0:
+    r0 = A(2)
+    r1 = object 2
+    r2 = PyTuple_Pack(1, r1)
+    r3 = PyDict_New()
+    r4 = B(r2, r3)
+    return 1
 
 [case testClassWithFreeList]
 from mypy_extensions import mypyc_attr, trait
@@ -2416,6 +3090,116 @@ class NoSetAttr:
 class InheritedSetAttr(SetAttr):
     def __delattr__(self, attr: str) -> None:
         pass
+
+[case testDelAttrWithInheritedSetAttr]
+from mypy_extensions import mypyc_attr
+
+class SetAttr:
+    _attributes: dict[str, object]
+
+    def __setattr__(self, key: str, val: object) -> None:
+        self._attributes[key] = val
+
+class DelAttr(SetAttr):
+    def __delattr__(self, key: str) -> None:
+        del self._attributes[key]
+
+@mypyc_attr(native_class=False)
+class NonNative:
+    def __setattr__(self, key: str, val: object) -> None:
+        pass
+
+class InheritsNonNative(NonNative):
+    def __delattr__(self, key: str) -> None:
+        pass
+
+[out]
+def SetAttr.__setattr__(self, key, val):
+    self :: __main__.SetAttr
+    key :: str
+    val :: object
+    r0 :: dict
+    r1 :: i32
+    r2 :: bit
+L0:
+    r0 = self._attributes
+    r1 = CPyDict_SetItem(r0, key, val)
+    r2 = r1 >= 0 :: signed
+    return 1
+def SetAttr.__setattr____wrapper(__mypyc_self__, attr, value):
+    __mypyc_self__ :: __main__.SetAttr
+    attr, value :: object
+    r0 :: bit
+    r1 :: i32
+    r2 :: bit
+    r3 :: str
+    r4 :: None
+L0:
+    r0 = value == 0
+    if r0 goto L1 else goto L2 :: bool
+L1:
+    r1 = CPyObject_GenericSetAttr(__mypyc_self__, attr, 0)
+    r2 = r1 >= 0 :: signed
+    return 0
+L2:
+    r3 = cast(str, attr)
+    r4 = __mypyc_self__.__setattr__(r3, value)
+    return 0
+def DelAttr.__delattr__(self, key):
+    self :: __main__.DelAttr
+    key :: str
+    r0 :: dict
+    r1 :: i32
+    r2 :: bit
+L0:
+    r0 = self._attributes
+    r1 = PyObject_DelItem(r0, key)
+    r2 = r1 >= 0 :: signed
+    return 1
+def DelAttr.__setattr____wrapper(__mypyc_self__, attr, value):
+    __mypyc_self__ :: __main__.DelAttr
+    attr, value :: object
+    r0 :: bit
+    r1 :: str
+    r2 :: None
+    r3 :: str
+    r4 :: None
+L0:
+    r0 = value == 0
+    if r0 goto L1 else goto L2 :: bool
+L1:
+    r1 = cast(str, attr)
+    r2 = __mypyc_self__.__delattr__(r1)
+    return 0
+L2:
+    r3 = cast(str, attr)
+    r4 = __mypyc_self__.__setattr__(r3, value)
+    return 0
+def __setattr___NonNative_obj.__get__(__mypyc_self__, instance, owner):
+    __mypyc_self__, instance, owner, r0 :: object
+    r1 :: bit
+    r2 :: object
+L0:
+    r0 = load_address _Py_NoneStruct
+    r1 = instance == r0
+    if r1 goto L1 else goto L2 :: bool
+L1:
+    return __mypyc_self__
+L2:
+    r2 = PyMethod_New(__mypyc_self__, instance)
+    return r2
+def __setattr___NonNative_obj.__call__(__mypyc_self__, self, key, val):
+    __mypyc_self__ :: __main__.__setattr___NonNative_obj
+    self :: __main__.NonNative
+    key :: str
+    val :: object
+L0:
+    return 1
+def InheritsNonNative.__delattr__(self, key):
+    self :: __main__.InheritsNonNative
+    key :: str
+L0:
+    return 1
 
 [case testSetAttr]
 from typing import ClassVar
@@ -2682,6 +3466,64 @@ L0:
     r1 = PyObject_DelItem(r0, key)
     r2 = r1 >= 0 :: signed
     return 1
+
+[case testSetAttrDefinedAfterAssignment]
+def assign(i: "SetAttr") -> None:
+    i.regular_attr = 1
+
+class SetAttr:
+    def __init__(self) -> None:
+        self.regular_attr = 0
+
+    def __setattr__(self, key: str, val: object) -> None:
+        pass
+
+[out]
+def assign(i):
+    i :: __main__.SetAttr
+    r0 :: str
+    r1 :: object
+    r2 :: None
+L0:
+    r0 = 'regular_attr'
+    r1 = object 1
+    r2 = i.__setattr__(r0, r1)
+    return 1
+def SetAttr.__init__(self):
+    self :: __main__.SetAttr
+    r0 :: str
+    r1 :: object
+    r2 :: None
+L0:
+    r0 = 'regular_attr'
+    r1 = object 0
+    r2 = self.__setattr__(r0, r1)
+    return 1
+def SetAttr.__setattr__(self, key, val):
+    self :: __main__.SetAttr
+    key :: str
+    val :: object
+L0:
+    return 1
+def SetAttr.__setattr____wrapper(__mypyc_self__, attr, value):
+    __mypyc_self__ :: __main__.SetAttr
+    attr, value :: object
+    r0 :: bit
+    r1 :: i32
+    r2 :: bit
+    r3 :: str
+    r4 :: None
+L0:
+    r0 = value == 0
+    if r0 goto L1 else goto L2 :: bool
+L1:
+    r1 = CPyObject_GenericSetAttr(__mypyc_self__, attr, 0)
+    r2 = r1 >= 0 :: signed
+    return 0
+L2:
+    r3 = cast(str, attr)
+    r4 = __mypyc_self__.__setattr__(r3, value)
+    return 0
 
 [case testUntransformedSetAttr_64bit]
 from mypy_extensions import mypyc_attr

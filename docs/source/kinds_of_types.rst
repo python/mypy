@@ -688,7 +688,7 @@ Generators
 **********
 
 A basic generator that only yields values can be succinctly annotated as having a return
-type of either :py:class:`Iterator[YieldType] <typing.Iterator>` or :py:class:`Iterable[YieldType] <typing.Iterable>`. For example:
+type of either :py:class:`Iterator[YieldType] <collections.abc.Iterator>` or :py:class:`Iterable[YieldType] <collections.abc.Iterable>`. For example:
 
 .. code-block:: python
 
@@ -699,8 +699,8 @@ type of either :py:class:`Iterator[YieldType] <typing.Iterator>` or :py:class:`I
 A good rule of thumb is to annotate functions with the most specific return
 type possible. However, you should also take care to avoid leaking implementation
 details into a function's public API. In keeping with these two principles, prefer
-:py:class:`Iterator[YieldType] <typing.Iterator>` over
-:py:class:`Iterable[YieldType] <typing.Iterable>` as the return-type annotation for a
+:py:class:`Iterator[YieldType] <collections.abc.Iterator>` over
+:py:class:`Iterable[YieldType] <collections.abc.Iterable>` as the return-type annotation for a
 generator function, as it lets mypy know that users are able to call :py:func:`next` on
 the object returned by the function. Nonetheless, bear in mind that ``Iterable`` may
 sometimes be the better option, if you consider it an implementation detail that
@@ -708,7 +708,7 @@ sometimes be the better option, if you consider it an implementation detail that
 
 If you want your generator to accept values via the :py:meth:`~generator.send` method or return
 a value, on the other hand, you should use the
-:py:class:`Generator[YieldType, SendType, ReturnType] <typing.Generator>` generic type instead of
+:py:class:`Generator[YieldType, SendType, ReturnType] <collections.abc.Generator>` generic type instead of
 either ``Iterator`` or ``Iterable``. For example:
 
 .. code-block:: python

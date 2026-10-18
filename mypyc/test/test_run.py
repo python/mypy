@@ -66,6 +66,7 @@ files = [
     "run-classes.test",
     "run-traits.test",
     "run-generators.test",
+    "run-generator-exprs.test",
     "run-generics.test",
     "run-multimodule.test",
     "run-bench.test",

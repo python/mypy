@@ -15,7 +15,7 @@ See comment below for more documentation.
 from __future__ import annotations
 
 from collections.abc import Callable
-from typing import Final, cast
+from typing import Final
 
 from mypy.nodes import (
     ARG_NAMED,
@@ -31,12 +31,14 @@ from mypy.nodes import (
     NameExpr,
     RefExpr,
     SliceExpr,
+    StarExpr,
     StrExpr,
     SuperExpr,
     TupleExpr,
     Var,
 )
 from mypy.types import AnyType, TypeOfAny
+from mypyc.ir.class_ir import ClassIR
 from mypyc.ir.ops import (
     BasicBlock,
     Call,
@@ -88,13 +90,14 @@ from mypyc.ir.rtypes import (
     string_writer_rprimitive,
     uint8_rprimitive,
 )
-from mypyc.irbuild.builder import IRBuilder, get_call_target_fullname
+from mypyc.irbuild.builder import IRBuilder, find_walrus_targets, get_call_target_fullname
 from mypyc.irbuild.constant_fold import constant_fold_expr
 from mypyc.irbuild.for_helpers import (
     comprehension_helper,
+    generator_loop_helper,
     get_expr_length_value,
     sequence_from_generator_preallocate_helper,
-    translate_list_comprehension,
+    translate_generator_to_list,
     translate_set_comprehension,
 )
 from mypyc.irbuild.format_str_tokenizer import (
@@ -152,6 +155,7 @@ from mypyc.primitives.misc_ops import (
     isinstance_range,
     isinstance_slice,
     isinstance_type,
+    slow_isinstance_op,
 )
 from mypyc.primitives.set_ops import isinstance_frozenset, isinstance_set
 from mypyc.primitives.str_ops import (
@@ -558,28 +562,29 @@ def translate_safe_generator_call(
         and expr.arg_kinds[0] == ARG_POS
         and isinstance(expr.args[0], GeneratorExpr)
     ):
-        if isinstance(callee, MemberExpr):
+        receiver = builder.accept(callee.expr) if isinstance(callee, MemberExpr) else None
+        other_args: list[Value] = []
+
+        def gen_other_args() -> None:
+            other_args.extend(builder.accept(arg) for arg in expr.args[1:])
+
+        items = translate_generator_to_list(
+            builder, expr.args[0], before_loop=gen_other_args if len(expr.args) > 1 else None
+        )
+        args = [items] + other_args
+        if receiver is not None:
+            assert isinstance(callee, MemberExpr)
             return builder.gen_method_call(
-                builder.accept(callee.expr),
+                receiver,
                 callee.name,
-                (
-                    [translate_list_comprehension(builder, expr.args[0])]
-                    + [builder.accept(arg) for arg in expr.args[1:]]
-                ),
+                args,
                 builder.node_type(expr),
                 expr.line,
                 expr.arg_kinds,
                 expr.arg_names,
             )
         else:
-            return builder.call_refexpr_with_args(
-                expr,
-                callee,
-                (
-                    [translate_list_comprehension(builder, expr.args[0])]
-                    + [builder.accept(arg) for arg in expr.args[1:]]
-                ),
-            )
+            return builder.call_refexpr_with_args(expr, callee, args)
     return None
 
 
@@ -664,9 +669,10 @@ def translate_sum_call(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> V
     gen_expr = expr.args[0]
     target_type = builder.node_type(expr)
     retval = Register(target_type, line=expr.line)
-    builder.assign(
-        retval, builder.coerce(builder.accept(start_expr), target_type, expr.line), expr.line
-    )
+
+    def gen_start() -> None:
+        start = builder.coerce(builder.accept(start_expr), target_type, expr.line)
+        builder.assign(retval, start, expr.line)
 
     def gen_inner_stmts() -> None:
         call_expr = builder.accept(gen_expr.left_expr)
@@ -674,10 +680,7 @@ def translate_sum_call(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> V
             retval, builder.binary_op(retval, call_expr, "+", call_expr.line), call_expr.line
         )
 
-    loop_params = list(
-        zip(gen_expr.indices, gen_expr.sequences, gen_expr.condlists, gen_expr.is_async)
-    )
-    comprehension_helper(builder, loop_params, gen_inner_stmts, gen_expr.line)
+    generator_loop_helper(builder, gen_expr, gen_inner_stmts, before_loop=gen_start)
 
     return retval
 
@@ -717,8 +720,12 @@ def translate_next_call(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> 
 
     gen = expr.args[0]
     retval = Register(builder.node_type(expr))
-    default_val = builder.accept(expr.args[1]) if len(expr.args) > 1 else None
+    default_val: Value | None = None
     exit_block = BasicBlock()
+
+    def gen_default() -> None:
+        nonlocal default_val
+        default_val = builder.accept(expr.args[1])
 
     def gen_inner_stmts() -> None:
         # next takes the first element of the generator, so if
@@ -726,8 +733,9 @@ def translate_next_call(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> 
         builder.assign(retval, builder.accept(gen.left_expr), gen.left_expr.line)
         builder.goto(exit_block)
 
-    loop_params = list(zip(gen.indices, gen.sequences, gen.condlists, gen.is_async))
-    comprehension_helper(builder, loop_params, gen_inner_stmts, gen.line)
+    generator_loop_helper(
+        builder, gen, gen_inner_stmts, before_loop=gen_default if len(expr.args) > 1 else None
+    )
 
     # Now we need the case for when nothing got hit. If there was
     # a default value, we produce it, and otherwise we raise
@@ -764,6 +772,10 @@ isinstance_primitives: Final = {
 }
 
 
+# A function that generates a check of an isinstance() argument against one class
+IsinstanceCheck = Callable[[], Value]
+
+
 @specialize_function("builtins.isinstance")
 def translate_isinstance(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value | None:
     """Special case for builtins.isinstance.
@@ -777,10 +789,6 @@ def translate_isinstance(builder: IRBuilder, expr: CallExpr, callee: RefExpr) ->
 
     obj_expr = expr.args[0]
     type_expr = expr.args[1]
-
-    if isinstance(type_expr, TupleExpr) and not type_expr.items:
-        # we can compile this case to a noop
-        return builder.false()
 
     if isinstance(type_expr, (RefExpr, TupleExpr)):
         builder.types[obj_expr] = AnyType(TypeOfAny.from_error)
@@ -803,54 +811,111 @@ def translate_isinstance(builder: IRBuilder, expr: CallExpr, callee: RefExpr) ->
                 return builder.primitive_op(desc, [obj], expr.line)
 
     elif isinstance(type_expr, TupleExpr):
-        node_names: list[str] = []
-        for item in type_expr.items:
-            if not isinstance(item, RefExpr):
-                return None
-            if item.node is None:
-                return None
-            if item.node.fullname not in node_names:
-                node_names.append(item.node.fullname)
-
-        descs = [isinstance_primitives.get(fullname) for fullname in node_names]
-        if None in descs:
-            # not all types are primitive types, abort
+        items = flatten_isinstance_classes(type_expr)
+        if any(isinstance(item, StarExpr) for item in items) or find_walrus_targets(type_expr):
+            # Fall back to building a tuple. A star item has an unknown number of classes,
+            # and a walrus could reassign a variable used as an earlier class before the
+            # check that uses it.
             return None
 
         obj = builder.accept(obj_expr)
 
-        retval = Register(bool_rprimitive)
-        pass_block = BasicBlock()
-        fail_block = BasicBlock()
-        exit_block = BasicBlock()
+        # Generate checks for all the classes. Classes that need to be evaluated are
+        # evaluated now, in order, so that errors are raised before any checks are
+        # performed (as with an explicit tuple). Native classes and primitive types
+        # can be checked without evaluating them.
+        checks: list[IsinstanceCheck] = []
+        seen: set[str] = set()
+        for item in items:
+            if isinstance(item, RefExpr) and item.node is not None:
+                fullname = item.node.fullname
+                if fullname in seen:
+                    continue
+                irs = builder.flatten_classes(item)
+                # Non-extension classes may have a metaclass with __instancecheck__, so
+                # they are checked using PyObject_IsInstance below.
+                if irs is not None and irs[0].is_ext_class:
+                    seen.add(fullname)
+                    checks.append(native_isinstance_check(builder, obj, irs[0], expr.line))
+                    continue
+                desc = isinstance_primitives.get(fullname)
+                if desc is not None:
+                    seen.add(fullname)
+                    checks.append(primitive_isinstance_check(builder, obj, desc, expr.line))
+                    continue
+            cls = builder.accept(item)
+            checks.append(generic_isinstance_check(builder, obj, cls, expr.line))
 
-        # Chain the checks: if any succeed, jump to pass_block; else, continue
-        for i, desc in enumerate(descs):
-            is_last = i == len(descs) - 1
-            next_block = fail_block if is_last else BasicBlock()
-            builder.add_bool_branch(
-                builder.primitive_op(cast(PrimitiveDescription, desc), [obj], expr.line),
-                pass_block,
-                next_block,
-            )
-            if not is_last:
-                builder.activate_block(next_block)
-
-        # If any check passed
-        builder.activate_block(pass_block)
-        builder.assign(retval, builder.true(), expr.line)
-        builder.goto(exit_block)
-
-        # If all checks failed
-        builder.activate_block(fail_block)
-        builder.assign(retval, builder.false(), expr.line)
-        builder.goto(exit_block)
-
-        # Return the result
-        builder.activate_block(exit_block)
-        return retval
+        return isinstance_any_of(builder, checks, expr.line)
 
     return None
+
+
+def flatten_isinstance_classes(type_expr: TupleExpr) -> list[Expression]:
+    """Flatten nested tuples in isinstance(obj, (A, (B, C))).
+
+    isinstance() treats these the same as a flat tuple of classes.
+    """
+    result: list[Expression] = []
+    for item in type_expr.items:
+        if isinstance(item, TupleExpr):
+            result.extend(flatten_isinstance_classes(item))
+        else:
+            result.append(item)
+    return result
+
+
+def native_isinstance_check(
+    builder: IRBuilder, obj: Value, class_ir: ClassIR, line: int
+) -> IsinstanceCheck:
+    return lambda: builder.builder.isinstance_native(obj, class_ir, line)
+
+
+def primitive_isinstance_check(
+    builder: IRBuilder, obj: Value, desc: PrimitiveDescription, line: int
+) -> IsinstanceCheck:
+    return lambda: builder.primitive_op(desc, [obj], line)
+
+
+def generic_isinstance_check(
+    builder: IRBuilder, obj: Value, cls: Value, line: int
+) -> IsinstanceCheck:
+    return lambda: builder.primitive_op(slow_isinstance_op, [obj, cls], line)
+
+
+def isinstance_any_of(builder: IRBuilder, checks: list[IsinstanceCheck], line: int) -> Value:
+    """Generate checks in order, stopping at the first one that succeeds."""
+    if not checks:
+        return builder.false()
+    if len(checks) == 1:
+        return checks[0]()
+
+    retval = Register(bool_rprimitive)
+    pass_block = BasicBlock()
+    fail_block = BasicBlock()
+    exit_block = BasicBlock()
+
+    # Chain the checks: if any succeed, jump to pass_block; else, continue
+    for i, check in enumerate(checks):
+        is_last = i == len(checks) - 1
+        next_block = fail_block if is_last else BasicBlock()
+        builder.add_bool_branch(check(), pass_block, next_block)
+        if not is_last:
+            builder.activate_block(next_block)
+
+    # If any check passed
+    builder.activate_block(pass_block)
+    builder.assign(retval, builder.true(), line)
+    builder.goto(exit_block)
+
+    # If all checks failed
+    builder.activate_block(fail_block)
+    builder.assign(retval, builder.false(), line)
+    builder.goto(exit_block)
+
+    # Return the result
+    builder.activate_block(exit_block)
+    return retval
 
 
 @specialize_function("setdefault", dict_rprimitive)

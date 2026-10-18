@@ -13,7 +13,8 @@ import subprocess
 import sys
 import sysconfig
 
-from mypy.test.config import PREFIX, test_temp_dir
+import mypy
+from mypy.test.config import test_temp_dir
 from mypy.test.data import DataDrivenTestCase, DataSuite
 from mypy.test.helpers import (
     assert_string_arrays_equal,
@@ -72,7 +73,8 @@ def test_python_cmdline(testcase: DataDrivenTestCase, step: int) -> None:
     env = os.environ.copy()
     env.pop("COLUMNS", None)
     extra_path = os.path.join(os.path.abspath(test_temp_dir), "pypath")
-    env["PYTHONPATH"] = PREFIX
+    # Use the same mypy installation as pytest, including the compiled wheel in CI.
+    env["PYTHONPATH"] = os.path.dirname(os.path.abspath(mypy.__path__[0]))
     if os.path.isdir(extra_path):
         env["PYTHONPATH"] += os.pathsep + extra_path
     cwd = os.path.join(test_temp_dir, custom_cwd or "")

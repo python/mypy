@@ -4803,3 +4803,19 @@ class C:
 # This should not cause infinite recursion.
 x: P[int] = C()
 [builtins fixtures/tuple.pyi]
+
+[case testLateSelfArgCheckRejectsProtoImpl]
+from typing import Generic, Protocol, TypeVar
+
+T = TypeVar("T")
+
+class SupportsFoo(Protocol):
+    def foo(self) -> None: ...
+
+class Bad(Generic[T]):
+    x: T
+    def foo(self: Bad[int]) -> None: ...
+
+bad: Bad[str] = Bad()
+fail: SupportsFoo = bad  # E: Incompatible types in assignment (expression has type "Bad[str]", variable has type "SupportsFoo")
+[builtins fixtures/tuple.pyi]

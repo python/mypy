@@ -290,8 +290,8 @@ def increment(l):
     l :: list
     r0 :: native_int
     r1, r2 :: short_int
-    i :: int
     r3 :: bit
+    i :: int
     r4, r5, r6 :: object
     r7 :: bit
     r8 :: short_int
@@ -299,7 +299,6 @@ L0:
     r0 = var_object_size l
     r1 = r0 << 1
     r2 = 0
-    i = r2
 L1:
     r3 = int_lt r2, r1
     if r3 goto L2 else goto L4 :: bool

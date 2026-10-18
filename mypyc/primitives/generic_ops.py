@@ -178,6 +178,14 @@ function_op(
     priority=0,
 )
 
+# operator.index(obj)
+index_op = custom_op(
+    arg_types=[object_rprimitive],
+    return_type=object_rprimitive,
+    c_function_name="PyNumber_Index",
+    error_kind=ERR_MAGIC,
+)
+
 # obj1[obj2]
 py_get_item_op = method_op(
     name="__getitem__",

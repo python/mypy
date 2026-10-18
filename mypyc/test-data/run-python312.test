@@ -243,3 +243,52 @@ def test_param_spec_type_alias() -> None:
         assert str(D[[int, str]]) == "D[[int, str]]"
     assert str(getattr(D, "__value__")) == "typing.Callable[P, int]"
 [typing fixtures/typing-full.pyi]
+
+[case testPEP695NonNativeClass]
+from mypy_extensions import mypyc_attr
+
+@mypyc_attr(native_class=False)
+class Base:
+    pass
+
+@mypyc_attr(native_class=False)
+class G[T]:
+    def __init__(self, x: T) -> None:
+        self.x = x
+
+@mypyc_attr(native_class=False)
+class WithBase[T](Base):
+    pass
+
+@mypyc_attr(native_class=False)
+class Sub[S](G[S]):
+    pass
+
+@mypyc_attr(native_class=False)
+class Variadic[T, *Ts, **P]:
+    pass
+
+[file driver.py]
+from typing import Generic
+from native import Base, G, WithBase, Sub, Variadic
+
+(T,) = G.__type_params__
+assert G.__bases__ == (Generic,)
+assert G.__orig_bases__ == (Generic[T],)
+assert G.__parameters__ == (T,)
+assert G[int](3).x == 3
+
+assert WithBase.__bases__ == (Base, Generic)
+assert WithBase.__parameters__ == WithBase.__type_params__
+assert WithBase[int]() is not None
+
+(S,) = Sub.__type_params__
+assert Sub.__bases__ == (G, Generic)
+assert Sub.__orig_bases__ == (G[S], Generic[S])
+assert Sub.__parameters__ == (S,)
+assert Sub[str]("a").x == "a"
+
+assert len(Variadic.__type_params__) == 3
+assert Variadic.__parameters__ == Variadic.__type_params__
+assert Variadic[int, str, [int]] is not None
+[typing fixtures/typing-full.pyi]
