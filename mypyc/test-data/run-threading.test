@@ -392,3 +392,224 @@ def test_release_unlocked() -> None:
     lock.release()
     with assertRaises(RuntimeError):
         lock.release()
+
+[case testConcurrentNativeTupleAttributeGetSetDelete]
+from threading import Barrier, Thread
+from typing import Any
+from mypy_extensions import trait
+
+class Item:
+    def __init__(self, value: int) -> None:
+        self.value = value
+
+@trait
+class RefView:
+    refs: tuple[Item, tuple[Item, int]]
+
+class Box(RefView):
+    __deletable__ = ["refs", "numbers"]
+    refs: tuple[Item, tuple[Item, int]]
+    numbers: tuple[float, float]
+
+    def __init__(self) -> None:
+        self.refs = (Item(0), (Item(0), 0))
+        self.numbers = (0.0, 0.0)
+
+def native_writer(box: Box, count: int) -> None:
+    for i in range(count):
+        box.refs = (Item(i), (Item(i), i))
+        box.numbers = (float(i), float(i))
+
+def dynamic_writer(box: Any, count: int) -> None:
+    for i in range(count):
+        box.refs = (Item(i), (Item(i), i))
+        box.numbers = (float(i), float(i))
+
+def native_reader(box: Box, count: int) -> None:
+    for _ in range(count):
+        try:
+            refs = box.refs
+        except AttributeError:
+            pass
+        else:
+            assert refs[0].value == refs[1][0].value == refs[1][1]
+        try:
+            numbers = box.numbers
+        except AttributeError:
+            pass
+        else:
+            assert numbers[0] == numbers[1]
+
+def trait_reader(box: RefView, count: int) -> None:
+    for _ in range(count):
+        try:
+            refs = box.refs
+        except AttributeError:
+            pass
+        else:
+            assert refs[0].value == refs[1][0].value == refs[1][1]
+
+def dynamic_reader(box: Any, count: int) -> None:
+    for _ in range(count):
+        try:
+            refs = box.refs
+        except AttributeError:
+            pass
+        else:
+            assert refs[0].value == refs[1][0].value == refs[1][1]
+        try:
+            numbers = box.numbers
+        except AttributeError:
+            pass
+        else:
+            assert numbers[0] == numbers[1]
+
+def native_deleter(box: Box, count: int) -> None:
+    for _ in range(count):
+        try:
+            del box.refs
+        except AttributeError:
+            pass
+        try:
+            del box.numbers
+        except AttributeError:
+            pass
+
+def dynamic_deleter(box: Any, count: int) -> None:
+    for _ in range(count):
+        try:
+            del box.refs
+        except AttributeError:
+            pass
+        try:
+            del box.numbers
+        except AttributeError:
+            pass
+
+def test_concurrent_tuple_attribute_get_set_delete() -> None:
+    # Native and descriptor access must share the owner lock. New Items on each
+    # store also exercise acquiring references before the old tuple is reclaimed.
+    # Collect worker exceptions so assertions in a thread fail the test runner.
+    box = Box()
+    # This valid tuple overlaps the undefined sentinel and needs the bitmap.
+    box.numbers = (-113.0, -113.0)
+    assert box.numbers == (-113.0, -113.0)
+    dynamic: Any = box
+    assert dynamic.numbers == (-113.0, -113.0)
+    del dynamic.numbers
+    dynamic.numbers = (-113.0, -113.0)
+    assert box.numbers == (-113.0, -113.0)
+    workers = [native_writer, dynamic_writer, native_reader, dynamic_reader,
+               native_deleter, dynamic_deleter, trait_reader]
+    barrier = Barrier(len(workers))
+    errors: list[BaseException] = []
+    def run(worker: Any) -> None:
+        try:
+            barrier.wait()
+            worker(box, 10_000)
+        except BaseException as error:
+            errors.append(error)
+    threads = [Thread(target=run, args=(worker,)) for worker in workers]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join()
+    assert not errors, errors
+
+[case testConcurrentTupleScalarAttributeBitmap]
+from threading import Barrier, Thread
+from typing import Any
+from testutil import assertRaises
+
+class Box:
+    __deletable__ = ["pair", "flag"]
+    pair: tuple[float, float]
+    flag: float
+
+    def __init__(self) -> None:
+        self.pair = (-113.0, -113.0)
+        self.flag = -113.0
+
+def pair_worker(box: Box, count: int) -> None:
+    dynamic: Any = box
+    for _ in range(count):
+        del dynamic.pair
+        # Only this worker touches pair. Scalar bitmap updates must neither
+        # restore a deleted pair's bit nor erase a successfully assigned bit.
+        with assertRaises(AttributeError):
+            pair = box.pair
+        box.pair = (-113.0, -113.0)
+        assert box.pair == (-113.0, -113.0)
+        del box.pair
+        dynamic.pair = (-113.0, -113.0)
+        assert dynamic.pair == (-113.0, -113.0)
+
+def scalar_worker(box: Box, count: int) -> None:
+    dynamic: Any = box
+    for _ in range(count):
+        del box.flag
+        box.flag = -113.0
+        del dynamic.flag
+        dynamic.flag = -113.0
+
+def test_concurrent_tuple_scalar_attribute_bitmap() -> None:
+    box = Box()
+    barrier = Barrier(2)
+    errors: list[BaseException] = []
+    def run(worker: Any) -> None:
+        try:
+            barrier.wait()
+            worker(box, 100_000)
+        except BaseException as error:
+            errors.append(error)
+    threads = [Thread(target=run, args=(worker,)) for worker in [pair_worker, scalar_worker]]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join()
+    assert not errors, errors
+
+[case testConcurrentTupleAttributeExplicitReinitialize]
+from typing import Any
+
+class Box:
+    def __init__(self, value: float) -> None:
+        # A wide, nonrefcounted tuple makes tearing easy to observe without
+        # depending on the ownership semantics of repeated refcounted __init__.
+        self.values = (value, value, value, value, value, value, value, value, value, value, \
+            value, value, value, value, value, value, value, value, value, value, value, value, \
+            value, value, value, value, value, value, value, value, value, value)
+
+def writer(box: Box, count: int) -> None:
+    for i in range(count):
+        Box.__init__(box, float(i))
+
+def reader(box: Box, count: int) -> None:
+    for _ in range(count):
+        values = box.values
+        assert all(value == values[0] for value in values), values
+
+def dynamic_reader(box: Any, count: int) -> None:
+    for _ in range(count):
+        values = box.values
+        assert all(value == values[0] for value in values), values
+
+[file driver.py]
+from threading import Barrier, Thread
+from native import Box, writer, reader, dynamic_reader
+
+box = Box(0.0)
+barrier = Barrier(3)
+errors = []
+def run(worker):
+    try:
+        barrier.wait()
+        worker(box, 100_000)
+    except BaseException as error:
+        errors.append(error)
+threads = [Thread(target=run, args=(worker,)) for worker in [writer, reader, dynamic_reader]]
+for thread in threads:
+    thread.start()
+for thread in threads:
+    thread.join()
+assert not errors, errors

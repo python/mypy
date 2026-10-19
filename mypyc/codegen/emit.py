@@ -471,7 +471,14 @@ class Emitter:
         index = cl.bitmap_attrs.index(attr)
         mask = 1 << (index & (BITMAP_BITS - 1))
         bitmap = self.attr_bitmap_expr(obj, cl, index)
-        if clear:
+        if self.target_python.free_threaded and not cl.attrs_are_thread_confined():
+            # Scalar and tuple attributes share bitmap words. All concurrent
+            # loads and RMWs must be atomic.
+            if clear:
+                self.emit_line(f"_Py_atomic_and_uint32(&{bitmap}, ~{mask}U);")
+            else:
+                self.emit_line(f"_Py_atomic_or_uint32(&{bitmap}, {mask});")
+        elif clear:
             self.emit_line(f"{bitmap} &= ~{mask};")
         else:
             self.emit_line(f"{bitmap} |= {mask};")
@@ -497,8 +504,81 @@ class Emitter:
             bit = 1 << (index & (BITMAP_BITS - 1))
             attr = self.bitmap_field(index)
             obj_expr = f"({cl.struct_name(self.names)} *){obj}"
-            check = f"{check} && !(({obj_expr})->{attr} & {bit})"
+            bitmap = f"({obj_expr})->{attr}"
+            if self.target_python.free_threaded and not cl.attrs_are_thread_confined():
+                bitmap = f"_Py_atomic_load_uint32(&{bitmap})"
+            check = f"{check} && !({bitmap} & {bit})"
         self.emit_line(f"if ({check}) {{")
+
+    def emit_tuple_attr_load_locked(
+        self,
+        dest: str,
+        attr_expr: str,
+        obj: str,
+        rtype: RTuple,
+        cl: ClassIR,
+        attr: str,
+        *,
+        borrow: bool = False,
+    ) -> str:
+        """Snapshot a tuple attribute and its defined state while holding the owner lock.
+
+        Secure references before unlocking: tuple fields can otherwise tear or be
+        reclaimed by a concurrent setter. The bitmap must be read under the same lock.
+        """
+        undefined = self.temp_name()
+        self.emit_line(f"char {undefined} = 0;")
+        self.emit_line(f"Py_BEGIN_CRITICAL_SECTION({obj});")
+        self.emit_line(f"{dest} = {attr_expr};")
+        if not cl.is_always_defined(attr) or rtype.is_refcounted:
+            self.emit_undefined_attr_check(rtype, dest, "==", obj, attr, cl)
+            self.emit_line(f"{undefined} = 1;")
+            self.emit_line("}")
+        if rtype.is_refcounted and not borrow:
+            self.emit_line(f"if (!{undefined}) {{")
+            self.emit_inc_ref(dest, rtype)
+            self.emit_line("}")
+        self.emit_line("Py_END_CRITICAL_SECTION();")
+        return undefined
+
+    def emit_tuple_attr_store_locked(
+        self,
+        src: str,
+        attr_expr: str,
+        obj: str,
+        rtype: RTuple,
+        cl: ClassIR,
+        attr: str,
+        *,
+        delete: bool = False,
+        is_init: bool = False,
+    ) -> None:
+        """Assign src to a tuple attribute attr under the owner lock.
+
+        References to the old value of the attribute are released outside the lock.
+        """
+        release_old = rtype.is_refcounted and not is_init
+        old = self.temp_name()
+        if release_old:
+            self.emit_line(f"{self.ctype(rtype)} {old};")
+        self.emit_line(f"Py_BEGIN_CRITICAL_SECTION({obj});")
+        if release_old:
+            self.emit_line(f"{old} = {attr_expr};")
+        if delete:
+            self.set_undefined_value(attr_expr, rtype)
+        else:
+            self.emit_line(f"{attr_expr} = {src};")
+        if rtype.error_overlap and not cl.is_always_defined(attr):
+            if delete:
+                self.emit_attr_bitmap_clear(obj, rtype, cl, attr)
+            else:
+                self.emit_attr_bitmap_set(src, obj, rtype, cl, attr)
+        self.emit_line("Py_END_CRITICAL_SECTION();")
+        if release_old:
+            # Refcounted tuple types have a disjoint undefined value (no bitmap).
+            self.emit_line(f"if ({self.error_value_check(rtype, old, '!=')}) {{")
+            self.emit_dec_ref(old, rtype)
+            self.emit_line("}")
 
     def error_value_check(self, rtype: RType, value: str, compare: str) -> str:
         if isinstance(rtype, RTuple):
