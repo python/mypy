@@ -181,9 +181,15 @@ class Mapper:
 
     def fdef_to_sig(self, fdef: FuncDef, strict_dunders_typing: bool) -> FuncSignature:
         if isinstance(fdef.type, CallableType):
+            # Use the parameter variable's type rather than the declared Callable arg
+            # type: under --allow-redefinition-new the variable type is widened to the
+            # join of the declaration and every redefinition, and the local register
+            # (and any closure environment attribute) is created with that wider type.
+            # Keeping the declared type here would make the native signature narrower
+            # than the register that actually receives the argument (#22221).
             arg_types = [
-                self.get_arg_rtype(typ, kind)
-                for typ, kind in zip(fdef.type.arg_types, fdef.type.arg_kinds)
+                self.get_arg_rtype(arg.variable.type or typ, kind)
+                for arg, typ, kind in zip(fdef.arguments, fdef.type.arg_types, fdef.type.arg_kinds)
             ]
             arg_pos_onlys = [name is None for name in fdef.type.arg_names]
             ret = self.type_to_rtype(fdef.type.ret_type)
