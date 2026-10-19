@@ -83,3 +83,117 @@ def test_exception_in_later_argument() -> None:
     with assertRaises(ValueError, "fail"):
         max((elt(x) for x in it()), key=fail())
     check(["iterable", "fail"])
+
+def test_lambda_in_generator() -> None:
+    assert sum(((lambda: elt(x))() for x in it()), arg("start", 10)) == 13
+    check(["iterable", "start", "elt 1", "elt 2"])
+    assert next(((lambda: elt(x))() for x in it()), arg("default", -1)) == 1
+    check(["iterable", "default", "elt 1"])
+    n = -1
+    assert max(((lambda: elt(x))() for x in it()), key=arg("key", lambda v: v * n)) == 1
+    check(["iterable", "key", "elt 1", "elt 2"])
+
+[case testLambdaInSpecializedGeneratorExpr]
+from typing import Callable
+
+def test_lambdas_capture_loop_variable() -> None:
+    fs = tuple((lambda: x) for x in range(3))
+    assert [f() for f in fs] == [2, 2, 2]
+    gs = list((lambda: x) for x in range(3))
+    assert [g() for g in gs] == [2, 2, 2]
+    assert sorted(f() for f in [(lambda: x) for x in range(3)]) == [2, 2, 2]
+
+def test_lambdas_called_while_iterating() -> None:
+    assert sum((lambda: x)() for x in range(4)) == 6
+    assert sum(((lambda: x)() for x in range(4)), 10) == 16
+    assert any((lambda: x)() == 2 for x in range(3))
+    assert not all((lambda: x)() < 2 for x in range(3))
+    assert next((lambda: x)() for x in range(5) if x > 2) == 3
+    assert next(((lambda: x)() for x in range(5) if x > 10), -1) == -1
+    assert set((lambda: x)() % 2 for x in range(5)) == {0, 1}
+    assert tuple((lambda: x)() for x in [5, 6]) == (5, 6)
+    assert list((lambda: x)() for x in "ab") == ["a", "b"]
+    assert max(((lambda: x)() for x in [3, 1, 2]), key=lambda v: -v) == 1
+    assert ",".join((lambda: s)() for s in ["a", "b"]) == "a,b"
+
+def test_lambda_captures_outer_variable() -> None:
+    n = 10
+    assert sum((lambda: x + n)() for x in range(3)) == 33
+    fs: list[Callable[[], int]] = []
+    fs.extend((lambda: x * n) for x in range(3))
+    assert [f() for f in fs] == [20, 20, 20]
+
+[case testLambdaInGeneratorExprInNestedFunction]
+from typing import Callable, Iterator
+
+def test_nested_function() -> None:
+    n = 7
+    def inner() -> list[int]:
+        a = [f() for f in tuple((lambda: n + x) for x in range(3))]
+        b = [f() for f in [(lambda: n + x) for x in range(3)]]
+        c = [f() for f in tuple((lambda y=x: y + n) for x in range(3))]
+        return a + b + c + [sum((lambda: n + x)() for x in range(3))]
+    assert inner() == [9, 9, 9, 9, 9, 9, 7, 8, 9, 24]
+
+def test_nested_generator() -> None:
+    n = 7
+    def inner() -> Iterator[int]:
+        yield sum((lambda: n + x)() for x in range(3))
+        for f in tuple((lambda: n + x) for x in range(3)):
+            yield f()
+    assert list(inner()) == [24, 9, 9, 9]
+
+def test_default_bound_lambdas() -> None:
+    data = [1, 2]
+    assert [f() for f in list((lambda y=x: y) for x in data)] == [1, 2]
+    assert [f() for f in tuple((lambda y=x: y) for x in data)] == [1, 2]
+
+[case testLambdaInGeneratorExprWithAwait]
+import asyncio
+from typing import Callable
+
+async def items() -> list[int]:
+    await asyncio.sleep(0)
+    return [1, 2]
+
+async def value(x: int) -> int:
+    await asyncio.sleep(0)
+    return x
+
+async def first_iterable() -> int:
+    return sum((lambda: x)() for x in await items())
+
+async def consumer_arg() -> int:
+    return sum(((lambda: x)() for x in range(3)), await value(10))
+
+async def list_comprehension() -> list[int]:
+    return [(lambda: x)() for x in await items()]
+
+async def await_in_body() -> list[int]:
+    return [(lambda: x)() + await value(10) for x in await items() if await value(x) > 1]
+
+async def capture_across_await() -> list[int]:
+    fs: list[Callable[[], int]] = [(lambda: x + y) for x in await items() for y in [await value(10)]]
+    return [f() for f in fs]
+
+async def nested() -> list[int]:
+    n = 3
+    async def inner() -> list[int]:
+        return [(lambda: x + n)() + await value(10) for x in await items()]
+    return await inner()
+
+def test_await() -> None:
+    assert asyncio.run(first_iterable()) == 3
+    assert asyncio.run(consumer_arg()) == 13
+    assert asyncio.run(list_comprehension()) == [1, 2]
+    assert asyncio.run(await_in_body()) == [12]
+    assert asyncio.run(capture_across_await()) == [12, 12]
+    assert asyncio.run(nested()) == [14, 15]
+
+[file asyncio/__init__.pyi]
+from typing import Any, Awaitable, TypeVar
+T = TypeVar("T")
+async def sleep(t: float) -> None: ...
+def run(x: Awaitable[T]) -> T: ...
+
+[typing fixtures/typing-full.pyi]

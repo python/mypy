@@ -106,15 +106,16 @@ def instantiate_env_class(builder: IRBuilder) -> Value:
             )
         )
     else:
+        if builder.fn_info.is_comprehension_scope and builder.code_fn_info.is_generator:
+            # The comprehension may contain an await, and only registers can be kept
+            # alive across one.
+            curr_env_reg = builder.ensure_register(curr_env_reg)
         # Top-level functions and comprehension scopes store env reg directly.
         builder.fn_info._curr_env_reg = curr_env_reg
         # Comprehension scopes link to parent env if it exists.
         parent = builder.fn_infos[-2] if builder.fn_info.is_nested else None
         if parent is not None and parent._env_class is not None:
-            if parent.is_generator:
-                parent_env_reg = parent.generator_class.curr_env_reg
-            else:
-                parent_env_reg = parent._curr_env_reg
+            parent_env_reg = get_curr_env_reg(parent)
         else:
             parent_env_reg = None
         if parent_env_reg is not None:
@@ -123,6 +124,16 @@ def instantiate_env_class(builder: IRBuilder) -> Value:
             )
 
     return curr_env_reg
+
+
+def get_curr_env_reg(fn_info: FuncInfo) -> Value | None:
+    """Return the register holding the current environment of a function, if any."""
+    if fn_info.is_generator:
+        return fn_info.generator_class.curr_env_reg
+    elif fn_info.is_nested and not fn_info.is_comprehension_scope:
+        # Nested functions store their environment on the callable class.
+        return fn_info.callable_class._curr_env_reg
+    return fn_info._curr_env_reg
 
 
 def load_env_registers(builder: IRBuilder, prefix: str = "") -> None:

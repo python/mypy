@@ -115,7 +115,9 @@ from mypyc.irbuild.builder import IRBuilder, int_borrow_friendly_op
 from mypyc.irbuild.constant_fold import constant_fold_expr
 from mypyc.irbuild.for_helpers import (
     comprehension_helper,
+    comprehension_scope,
     raise_error_if_contains_unreachable_names,
+    translate_generator_to_list,
     translate_list_comprehension,
     translate_set_comprehension,
     translate_vec_comprehension,
@@ -499,8 +501,7 @@ def implicit_super_arg(builder: IRBuilder) -> Var:
     """
     # A comprehension can have a scope of its own, but it has no arguments, and
     # super() uses the function that contains the comprehension.
-    fn_info = next(info for info in reversed(builder.fn_infos) if not info.is_comprehension_scope)
-    return fn_info.fitem.arguments[0].variable
+    return builder.code_fn_info.fitem.arguments[0].variable
 
 
 def is_instance_method_self(builder: IRBuilder, var: Var) -> bool:
@@ -1527,14 +1528,10 @@ def _visit_display(
 
 # Comprehensions
 #
-# mypyc always inlines comprehensions (the loop body is emitted directly into
-# the enclosing function's IR, no implicit function call like CPython).
-#
-# However, when a comprehension body contains a lambda, we need a lightweight
-# scope boundary so the closure/env-class machinery can see the comprehension
-# as a separate scope. The comprehension is still inlined (same basic blocks
-# and registers), but we push a new FuncInfo and set up an env class so the
-# lambda can capture loop variables through the standard env-class chain.
+# mypyc always inlines list, set and dict comprehensions (the loop body is
+# emitted directly into the enclosing function's IR, no implicit function call
+# like CPython). When a comprehension body contains a lambda, it gets a
+# lightweight scope (see for_helpers.comprehension_scope).
 
 
 def transform_list_comprehension(builder: IRBuilder, o: ListComprehension) -> Value:
@@ -1542,11 +1539,8 @@ def transform_list_comprehension(builder: IRBuilder, o: ListComprehension) -> Va
         builder.error("Unpacking in comprehensions is not supported yet", o.line)
         return builder.none()
     gen = o.generator
-    if gen in builder.comprehension_to_fitem:
-        return _translate_comprehension_with_scope(
-            builder, gen, lambda: translate_list_comprehension(builder, gen)
-        )
-    return translate_list_comprehension(builder, gen)
+    with comprehension_scope(builder, gen):
+        return translate_list_comprehension(builder, gen)
 
 
 def transform_set_comprehension(builder: IRBuilder, o: SetComprehension) -> Value:
@@ -1554,20 +1548,16 @@ def transform_set_comprehension(builder: IRBuilder, o: SetComprehension) -> Valu
         builder.error("Unpacking in comprehensions is not supported yet", o.line)
         return builder.none()
     gen = o.generator
-    if gen in builder.comprehension_to_fitem:
-        return _translate_comprehension_with_scope(
-            builder, gen, lambda: translate_set_comprehension(builder, gen)
-        )
-    return translate_set_comprehension(builder, gen)
+    with comprehension_scope(builder, gen):
+        return translate_set_comprehension(builder, gen)
 
 
 def transform_dictionary_comprehension(builder: IRBuilder, o: DictionaryComprehension) -> Value:
     if raise_error_if_contains_unreachable_names(builder, o):
         return builder.none()
 
-    if o in builder.comprehension_to_fitem:
-        return _translate_comprehension_with_scope(builder, o, lambda: _dict_comp_body(builder, o))
-    return _dict_comp_body(builder, o)
+    with comprehension_scope(builder, o):
+        return _dict_comp_body(builder, o)
 
 
 def _dict_comp_body(builder: IRBuilder, o: DictionaryComprehension) -> Value:
@@ -1585,31 +1575,6 @@ def _dict_comp_body(builder: IRBuilder, o: DictionaryComprehension) -> Value:
 
     comprehension_helper(builder, loop_params, gen_inner_stmts, o.line)
     return builder.read(d, o.line)
-
-
-def _translate_comprehension_with_scope(
-    builder: IRBuilder,
-    node: GeneratorExpr | DictionaryComprehension,
-    gen_body: Callable[[], Value],
-) -> Value:
-    """Wrap a comprehension body with a lightweight scope for closure capture."""
-    from mypyc.irbuild.context import FuncInfo
-    from mypyc.irbuild.env_class import add_vars_to_env, finalize_env_class, setup_env_class
-
-    comprehension_fdef = builder.comprehension_to_fitem[node]
-    fn_info = FuncInfo(
-        fitem=comprehension_fdef,
-        name=comprehension_fdef.name,
-        is_nested=True,
-        contains_nested=True,
-        is_comprehension_scope=True,
-    )
-
-    with builder.enter_scope(fn_info):
-        setup_env_class(builder)
-        finalize_env_class(builder)
-        add_vars_to_env(builder)
-        return gen_body()
 
 
 # Misc
@@ -1631,17 +1596,7 @@ def transform_generator_expr(builder: IRBuilder, o: GeneratorExpr) -> Value:
         builder.error("Unpacking in comprehensions is not supported yet", o.line)
         return builder.none()
     builder.warning("Treating generator comprehension as list", o.line)
-    if o in builder.comprehension_to_fitem:
-        return builder.primitive_op(
-            iter_op,
-            [
-                _translate_comprehension_with_scope(
-                    builder, o, lambda: translate_list_comprehension(builder, o)
-                )
-            ],
-            o.line,
-        )
-    return builder.primitive_op(iter_op, [translate_list_comprehension(builder, o)], o.line)
+    return builder.primitive_op(iter_op, [translate_generator_to_list(builder, o)], o.line)
 
 
 def transform_assignment_expr(builder: IRBuilder, o: AssignmentExpr) -> Value:
