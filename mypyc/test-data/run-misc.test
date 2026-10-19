@@ -1148,6 +1148,8 @@ def test_redefinition() -> None:
     assert i == b"foo"
 
 [case testWithNative]
+from base import Base, EnterBase
+
 class DummyContext:
     def __init__(self):
         self.c = 0
@@ -1161,6 +1163,50 @@ def test_dummy_context() -> None:
     with c:
         assert c.c == 1
     assert c.c == 0
+
+class InheritsEnter(EnterBase):
+    def __init__(self) -> None:
+        self.log: list[str] = []
+
+    def __exit__(self, exc_type: object, exc_value: object, traceback: object) -> None:
+        self.log.append("exit")
+
+class InheritsExit(Base):
+    def __enter__(self) -> str:
+        return "enter"
+
+class InheritsBoth(Base):
+    pass
+
+def test_inherited_enter() -> None:
+    c = InheritsEnter()
+    with c as x:
+        assert x is c
+        c.log.append("body")
+    assert c.log == ["body", "exit"]
+
+def test_inherited_exit() -> None:
+    with InheritsExit() as x:
+        assert x == "enter"
+    with InheritsExit():
+        # Base.__exit__ suppresses the exception
+        raise ValueError()
+
+def test_inherited_both() -> None:
+    with InheritsBoth() as x:
+        assert x == "base"
+
+[file base.py]
+class EnterBase:
+    def __enter__(self) -> "EnterBase":
+        return self
+
+class Base:
+    def __enter__(self) -> str:
+        return "base"
+
+    def __exit__(self, exc_type: object, exc_value: object, traceback: object) -> bool:
+        return True
 
 [case testWithNativeVarArgs]
 class DummyContext:

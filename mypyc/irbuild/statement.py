@@ -1137,7 +1137,13 @@ def transform_with(
     if not is_async and mgr_v.type == lock_rprimitive:
         transform_with_lock(builder, mgr_v, target, body, line)
         return
-    is_native = isinstance(mgr_v.type, RInstance)
+    # The methods may be inherited from a non-native class, and then they can't be
+    # called natively.
+    is_native = (
+        isinstance(mgr_v.type, RInstance)
+        and mgr_v.type.class_ir.has_method(f"__{al}enter__")
+        and mgr_v.type.class_ir.has_method(f"__{al}exit__")
+    )
     if is_native:
         value = builder.add(MethodCall(mgr_v, f"__{al}enter__", args=[], line=line))
         exit_ = None
