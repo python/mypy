@@ -9789,3 +9789,16 @@ class C(Generic[T]): ...
 [file lib.py]
 from typing import TypeVar
 T = TypeVar("T", default=int, bound=str)  # E: TypeVar default must be a subtype of the bound type
+
+[case testSettablePropertyGetterCheckedWhenPartOfInterface]
+class A:
+    @property
+    def p(self) -> str:
+        def nested() -> int:
+            return "no"  # E: Incompatible return value type (got "str", expected "int")
+        return 0  # E: Incompatible return value type (got "int", expected "str")
+
+    @p.setter
+    def p(self, value: int) -> None:
+        self.x = value
+[builtins fixtures/property.pyi]
