@@ -7,11 +7,11 @@ import sys
 import unittest
 
 from mypy.errors import CompileError
+from mypy.nodes import FuncDef
 from mypy.test.config import test_temp_dir
 from mypy.test.data import DataDrivenTestCase
 from mypyc.common import TOP_LEVEL_NAME
 from mypyc.ir.pprint import format_func
-from mypy.nodes import FuncDef
 from mypyc.test.testutil import (
     ICODE_GEN_BUILTINS,
     MypycDataSuite,
