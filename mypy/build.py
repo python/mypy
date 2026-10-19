@@ -1843,9 +1843,7 @@ def _is_corrupt_cache_assertion(err: BaseException) -> bool:
     ``AssertionError`` with this exact message. That only happens for cached modules,
     so it is a reliable signal that the cache is corrupt.
     """
-    return isinstance(err, AssertionError) and str(err).startswith(
-        "De-serialization failure"
-    )
+    return isinstance(err, AssertionError) and str(err).startswith("De-serialization failure")
 
 
 def _load_json_file(
