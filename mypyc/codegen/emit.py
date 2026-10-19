@@ -553,7 +553,7 @@ class Emitter:
         delete: bool = False,
         is_init: bool = False,
     ) -> None:
-        """Assign a tuple attribute attr to src under the owner lock.
+        """Assign src to a tuple attribute attr under the owner lock.
 
         References to the old value of the attribute are released outside the lock.
         """
