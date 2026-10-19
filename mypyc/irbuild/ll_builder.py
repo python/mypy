@@ -27,7 +27,7 @@ from mypyc.common import (
 )
 from mypyc.errors import Errors
 from mypyc.ir.class_ir import ClassIR, all_concrete_classes
-from mypyc.ir.func_ir import FuncDecl, FuncSignature
+from mypyc.ir.func_ir import FUNC_STATICMETHOD, FuncDecl, FuncSignature, is_fastcall_supported
 from mypyc.ir.ops import (
     ERR_FALSE,
     ERR_NEVER,
@@ -41,7 +41,6 @@ from mypyc.ir.ops import (
     Branch,
     Call,
     CallC,
-    CallWrapper,
     Cast,
     ComparisonOp,
     Extend,
@@ -146,6 +145,8 @@ from mypyc.primitives.dict_ops import (
 from mypyc.primitives.exc_ops import err_occurred_op, keep_propagating_op
 from mypyc.primitives.float_ops import copysign_op, int_to_float_op
 from mypyc.primitives.generic_ops import (
+    call_fastcall_wrapper_op,
+    call_legacy_wrapper_op,
     generic_len_op,
     generic_ssize_t_len_op,
     py_call_op,
@@ -1391,7 +1392,20 @@ class LowLevelIRBuilder:
             list(zip(args, arg_kinds, arg_names)), line, has_star=True, has_star2=True
         )
         assert pos_args is not None
-        result = self.add(CallWrapper(decl, pos_args, kw_args, line))
+        wrapper = self.add(LoadAddress(c_pointer_rprimitive, decl, line))
+        if kw_args is None:
+            kw_args = Integer(0, object_rprimitive)
+        if is_fastcall_supported(decl):
+            # The wrapper of a function or a static method doesn't take self.
+            takes_self = decl.class_name is not None and decl.kind != FUNC_STATICMETHOD
+            result = self.call_c(
+                call_fastcall_wrapper_op,
+                [wrapper, Integer(int(takes_self), c_int_rprimitive), pos_args, kw_args],
+                line,
+            )
+        else:
+            # The wrappers of __init__ and __new__ take the first argument as self.
+            result = self.call_c(call_legacy_wrapper_op, [wrapper, pos_args, kw_args], line)
         return self.coerce(result, decl.sig.ret_type, line)
 
     def native_args_to_positional(

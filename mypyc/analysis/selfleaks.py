@@ -15,7 +15,6 @@ from mypyc.ir.ops import (
     Branch,
     Call,
     CallC,
-    CallWrapper,
     Cast,
     ComparisonOp,
     DecRef,
@@ -113,9 +112,6 @@ class SelfLeakedVisitor(OpVisitor[GenAndKill]):
             cl = self_type.class_ir
             if not cl.init_self_leak:
                 return CLEAN
-        return self.check_register_op(op)
-
-    def visit_call_wrapper(self, op: CallWrapper) -> GenAndKill:
         return self.check_register_op(op)
 
     def visit_method_call(self, op: MethodCall) -> GenAndKill:

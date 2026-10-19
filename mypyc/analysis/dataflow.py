@@ -15,7 +15,6 @@ from mypyc.ir.ops import (
     Branch,
     Call,
     CallC,
-    CallWrapper,
     Cast,
     ComparisonOp,
     ControlOp,
@@ -208,9 +207,6 @@ class BaseAnalysisVisitor(OpVisitor[GenAndKill[T]]):
         return self.visit_register_op(op)
 
     def visit_call(self, op: Call) -> GenAndKill[T]:
-        return self.visit_register_op(op)
-
-    def visit_call_wrapper(self, op: CallWrapper) -> GenAndKill[T]:
         return self.visit_register_op(op)
 
     def visit_method_call(self, op: MethodCall) -> GenAndKill[T]:
