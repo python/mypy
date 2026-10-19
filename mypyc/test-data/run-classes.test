@@ -9514,3 +9514,53 @@ def test_trait() -> None:
     set_k(w, BIG + 1)
     assert get_k(w) == BIG + 1
     assert w.k == BIG + 1
+
+
+[case testFinalTupleAttributeOwnedBorrowedInherited]
+from typing import Final
+
+class Base:
+    def __init__(self, item: object, number: int) -> None:
+        self.refs: Final[tuple[object, tuple[object, int]]] = (item, (item, number))
+        self.numbers: Final[tuple[float, float]] = (1.0, 2.0)
+
+class Child(Base):
+    pass
+
+def owned_base(box: Base) -> tuple[object, tuple[object, int]]:
+    return box.refs
+
+def owned_child(box: Child) -> tuple[object, tuple[object, int]]:
+    return box.refs
+
+def borrowed_base(box: Base) -> object:
+    return box.refs[1][0]
+
+def borrowed_child(box: Child) -> object:
+    return box.refs[1][0]
+
+def read_numbers(box: Child, count: int) -> float:
+    result = 0.0
+    for _ in range(count):
+        result += box.numbers[0] + box.numbers[1]
+    return result
+
+[file driver.py]
+import sys
+from native import Base, Child, owned_base, owned_child, borrowed_base, borrowed_child, read_numbers
+
+item = object()
+number = 1 << 100
+for box in [Base(item, number), Child(item, number)]:
+    before = sys.getrefcount(item)
+    for _ in range(100):
+        assert owned_base(box) == (item, (item, number))
+        assert borrowed_base(box) is item
+        # Interpreted access uses the defining-class Final getset descriptor.
+        assert box.refs == (item, (item, number))
+    assert sys.getrefcount(item) == before
+child = Child(item, number)
+for _ in range(100):
+    assert owned_child(child) == (item, (item, number))
+    assert borrowed_child(child) is item
+assert read_numbers(child, 100) == 300.0

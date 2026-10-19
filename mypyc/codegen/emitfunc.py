@@ -526,15 +526,30 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         else:
             # Otherwise, use direct or offset struct access.
             attr_expr = self.get_attr_expr(obj, op, decl_cl)
-            use_get_attr_ref = self.emit_load_attr_take_ref(
-                dest, obj, op, cl, attr_rtype, attr_expr
-            )
+            tuple_undefined = None
+            if (
+                self.emitter.target_python.free_threaded
+                and isinstance(attr_rtype, RTuple)
+                and not cl.is_final_attr(op.attr)
+                and not cl.attrs_are_thread_confined()
+            ):
+                tuple_undefined = self.emitter.emit_tuple_attr_load(
+                    dest, attr_expr, obj, attr_rtype, cl, op.attr, borrow=op.is_borrowed
+                )
+                use_get_attr_ref = True
+            else:
+                use_get_attr_ref = self.emit_load_attr_take_ref(
+                    dest, obj, op, cl, attr_rtype, attr_expr
+                )
             always_defined = cl.is_always_defined(op.attr)
             merged_branch = None
             if not always_defined:
-                self.emitter.emit_undefined_attr_check(
-                    attr_rtype, dest, "==", obj, op.attr, cl, unlikely=True
-                )
+                if tuple_undefined is not None:
+                    self.emitter.emit_line(f"if (unlikely({tuple_undefined})) {{")
+                else:
+                    self.emitter.emit_undefined_attr_check(
+                        attr_rtype, dest, "==", obj, op.attr, cl, unlikely=True
+                    )
                 branch = self.next_branch()
                 if branch is not None:
                     if (
@@ -580,6 +595,16 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         attr_rtype, decl_cl = cl.attr_details(op.attr)
 
         attr_expr = self.get_attr_expr(obj, op, decl_cl)
+        if (
+            self.emitter.target_python.free_threaded
+            and isinstance(attr_rtype, RTuple)
+            and not cl.is_final_attr(op.attr)
+            and not cl.attrs_are_thread_confined()
+        ):
+            self.emitter.emit_tuple_attr_load(
+                dest, attr_expr, obj, attr_rtype, cl, op.attr, borrow=op.is_borrowed
+            )
+            return
         # On free-threaded builds this takes a new reference atomically (see
         # emit_load_attr_take_ref). CPy_GetAttrRef returns NULL and CPyTagged_GetAttr
         # returns CPY_INT_TAG when the field is undefined, which is precisely the error
@@ -669,6 +694,17 @@ class FunctionEmitterVisitor(OpVisitor[None]):
                 self.emitter.emit_line(
                     f"CPyTagged_SetAttr((PyObject *){obj}, &{attr_expr}, {src});"
                 )
+            if op.error_kind == ERR_FALSE:
+                self.emitter.emit_line(f"{dest} = 1;")
+        elif (
+            self.emitter.target_python.free_threaded
+            and isinstance(attr_rtype, RTuple)
+            and not cl.attrs_are_thread_confined()
+        ):
+            attr_expr = self.get_attr_expr(obj, op, decl_cl)
+            self.emitter.emit_tuple_attr_store(
+                src, attr_expr, obj, attr_rtype, cl, op.attr, is_init=op.is_init
+            )
             if op.error_kind == ERR_FALSE:
                 self.emitter.emit_line(f"{dest} = 1;")
         else:

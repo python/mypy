@@ -10,6 +10,7 @@ from mypyc.ir.rtypes import (
     RTuple,
     RUnion,
     bool_rprimitive,
+    int64_rprimitive,
     int_rprimitive,
     list_rprimitive,
     none_rprimitive,
@@ -34,6 +35,48 @@ class TestEmitter(unittest.TestCase):
 
     def test_label(self) -> None:
         assert self.emitter.label(BasicBlock(4)) == "CPyL4"
+
+    def test_private_frame_bitmap_access(self) -> None:
+        cl = self.instance_a.class_ir
+        cl.attributes = {"value": int64_rprimitive}
+        cl.bitmap_attrs = ["value"]
+        cl.is_generated = True
+        cl.has_private_generator_frame = True
+        cl.has_running_flag = True
+        cl.needs_getseters = False
+        emitter = Emitter(
+            EmitterContext(
+                NameGenerator([["mod"]]), True, target_python=TargetPython((3, 14), True)
+            )
+        )
+        # Exposing the frame or removing its execution guard requires atomics again.
+        for changed in (
+            None,
+            "needs_getseters",
+            "has_running_flag",
+            "has_private_generator_frame",
+        ):
+            with self.subTest(changed=changed):
+                if changed is not None:
+                    previous = getattr(cl, changed)
+                    setattr(cl, changed, not previous)
+                emitter.fragments.clear()
+                emitter.emit_attr_bitmap_set("value", "obj", int64_rprimitive, cl, "value")
+                emitter.emit_attr_bitmap_clear("obj", int64_rprimitive, cl, "value")
+                emitter.emit_undefined_attr_check(
+                    int64_rprimitive, "value", "==", "obj", "value", cl
+                )
+                generated = "".join(emitter.fragments)
+                if changed is None:
+                    assert "((mod___AObject *)obj)->bitmap |= 1;" in generated
+                    assert "((mod___AObject *)obj)->bitmap &= ~1;" in generated
+                    assert "!(((mod___AObject *)obj)->bitmap & 1)" in generated
+                    assert "_Py_atomic_" not in generated
+                else:
+                    assert "_Py_atomic_or_uint32" in generated
+                    assert "_Py_atomic_and_uint32" in generated
+                    assert "_Py_atomic_load_uint32" in generated
+                    setattr(cl, changed, previous)
 
     def test_reg(self) -> None:
         names: dict[Value, str] = {self.n: "n"}
