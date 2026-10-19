@@ -85,11 +85,14 @@ PyObject *CPy_SetupObject(PyObject *type) {
     return NULL;
 }
 
+typedef PyObject *(*CPyFastcallWrapper)(PyObject *, PyObject *const *, size_t, PyObject *);
+
 // Call the wrapper function of a native function that uses the vectorcall convention,
 // with the positional arguments in a tuple and the keyword arguments in a dict (or NULL).
 // If takes_self is set, the first positional argument is passed to the wrapper as self.
-PyObject *CPy_CallFastcallWrapper(CPyFastcallWrapper wrapper, int takes_self,
-                                  PyObject *args, PyObject *kwargs) {
+PyObject *CPy_CallFastcallWrapper(void *wrapper_ptr, int takes_self, PyObject *args,
+                                  PyObject *kwargs) {
+    CPyFastcallWrapper wrapper = (CPyFastcallWrapper)wrapper_ptr;
     PyObject *const *items = &PyTuple_GET_ITEM(args, 0);
     Py_ssize_t nargs = PyTuple_GET_SIZE(args);
     PyObject *self = NULL;
@@ -143,8 +146,8 @@ PyObject *CPy_CallFastcallWrapper(CPyFastcallWrapper wrapper, int takes_self,
 // Call the wrapper function of __init__ or __new__ of a native class, with the positional
 // arguments in a tuple and the keyword arguments in a dict (or NULL). These wrappers take
 // the first argument (self or cls) separately.
-PyObject *CPy_CallLegacyWrapper(PyCFunctionWithKeywords wrapper, PyObject *args,
-                                PyObject *kwargs) {
+PyObject *CPy_CallLegacyWrapper(void *wrapper_ptr, PyObject *args, PyObject *kwargs) {
+    PyCFunctionWithKeywords wrapper = (PyCFunctionWithKeywords)wrapper_ptr;
     Py_ssize_t nargs = PyTuple_GET_SIZE(args);
     if (nargs == 0) {
         PyErr_SetString(PyExc_TypeError, "missing the self argument");

@@ -4,7 +4,7 @@
 #
 #    pip-compile --allow-unsafe --output-file=dev-requirements.txt --strip-extras dev-requirements.in
 #
-ast-serialize==0.13.0
+ast-serialize==0.13.1
     # via
     #   -r mypy-requirements.txt
     #   -r test-requirements.txt

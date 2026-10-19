@@ -7,7 +7,7 @@ from collections.abc import Sequence
 from typing import Any, Final
 
 from mypyc.common import short_name
-from mypyc.ir.func_ir import FuncIR, all_values_full
+from mypyc.ir.func_ir import FuncDecl, FuncIR, all_values_full
 from mypyc.ir.module_ir import ModuleIRs
 from mypyc.ir.ops import (
     ERR_NEVER,
@@ -18,7 +18,6 @@ from mypyc.ir.ops import (
     Branch,
     Call,
     CallC,
-    CallWrapper,
     Cast,
     ComparisonOp,
     ControlOp,
@@ -190,11 +189,6 @@ class IRPrettyPrintVisitor(OpVisitor[str]):
             s = self.format("%r = ", op) + s
         return s
 
-    def visit_call_wrapper(self, op: CallWrapper) -> str:
-        if op.kwargs is None:
-            return self.format("%r = %s(*%r)", op, op.fn.shortname, op.args)
-        return self.format("%r = %s(*%r, **%r)", op, op.fn.shortname, op.args, op.kwargs)
-
     def visit_method_call(self, op: MethodCall) -> str:
         args = ", ".join(self.format("%r", arg) for arg in op.args)
         s = self.format("%r.%s(%s)", op.obj, op.method, args)
@@ -309,6 +303,8 @@ class IRPrettyPrintVisitor(OpVisitor[str]):
             if op.src.module_name is not None:
                 name = f"{op.src.module_name}.{name}"
             return self.format("%r = load_address %s :: %s", op, name, op.src.namespace)
+        elif isinstance(op.src, FuncDecl):
+            return self.format("%r = load_address %s :: wrapper", op, op.src.shortname)
         else:
             return self.format("%r = load_address %s", op, op.src)
 

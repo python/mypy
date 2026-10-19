@@ -726,7 +726,7 @@ def transform_try_except(
     builder.builder.push_error_handler(double_except_block)
     builder.activate_block(except_entry)
     old_exc = builder.call_c(error_catch_op, [], line)
-    if builder.fn_info.is_generator:
+    if builder.code_fn_info.is_generator:
         # CFG cleanup may remove the CallC's block while resume cleanup paths remain.
         old_exc = builder.ensure_register(old_exc)
     # Compile the except blocks with the nonlocal control flow overridden to clear exc_info
@@ -1137,7 +1137,13 @@ def transform_with(
     if not is_async and mgr_v.type == lock_rprimitive:
         transform_with_lock(builder, mgr_v, target, body, line)
         return
-    is_native = isinstance(mgr_v.type, RInstance)
+    # The methods may be inherited from a non-native class, and then they can't be
+    # called natively.
+    is_native = (
+        isinstance(mgr_v.type, RInstance)
+        and mgr_v.type.class_ir.has_method(f"__{al}enter__")
+        and mgr_v.type.class_ir.has_method(f"__{al}exit__")
+    )
     if is_native:
         value = builder.add(MethodCall(mgr_v, f"__{al}enter__", args=[], line=line))
         exit_ = None
@@ -1312,7 +1318,7 @@ def transform_del_item(builder: IRBuilder, target: AssignmentTarget, line: int) 
 def emit_yield(builder: IRBuilder, val: Value, line: int) -> Value:
     retval = builder.coerce(val, builder.ret_types[-1], line)
 
-    cls = builder.fn_info.generator_class
+    cls = builder.code_fn_info.generator_class
     # Create a new block for the instructions immediately following the yield expression, and
     # set the next label so that the next time '__next__' is called on the generator object,
     # the function continues at the new block.

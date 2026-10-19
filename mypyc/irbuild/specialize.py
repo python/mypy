@@ -93,7 +93,8 @@ from mypyc.ir.rtypes import (
 from mypyc.irbuild.builder import IRBuilder, find_walrus_targets, get_call_target_fullname
 from mypyc.irbuild.constant_fold import constant_fold_expr
 from mypyc.irbuild.for_helpers import (
-    comprehension_helper,
+    can_preallocate_from_generator,
+    comprehension_scope,
     generator_loop_helper,
     get_expr_length_value,
     sequence_from_generator_preallocate_helper,
@@ -441,17 +442,20 @@ def translate_list_from_generator_call(
         len(expr.args) == 1
         and expr.arg_kinds[0] == ARG_POS
         and isinstance(expr.args[0], GeneratorExpr)
+        and can_preallocate_from_generator(builder, expr.args[0])
     ):
+        gen = expr.args[0]
 
         def set_item(x: Value, y: Value, z: Value, line: int) -> None:
             builder.call_c(new_list_set_item_op, [x, y, z], line)
 
-        return sequence_from_generator_preallocate_helper(
-            builder,
-            expr.args[0],
-            empty_op_llbuilder=builder.builder.new_list_op_with_length,
-            set_item_op=set_item,
-        )
+        with comprehension_scope(builder, gen):
+            return sequence_from_generator_preallocate_helper(
+                builder,
+                gen,
+                empty_op_llbuilder=builder.builder.new_list_op_with_length,
+                set_item_op=set_item,
+            )
     return None
 
 
@@ -480,17 +484,20 @@ def translate_tuple_from_generator_call(
         len(expr.args) == 1
         and expr.arg_kinds[0] == ARG_POS
         and isinstance(expr.args[0], GeneratorExpr)
+        and can_preallocate_from_generator(builder, expr.args[0])
     ):
+        gen = expr.args[0]
 
         def set_item(x: Value, y: Value, z: Value, line: int) -> None:
             builder.call_c(new_tuple_set_item_op, [x, y, z], line)
 
-        return sequence_from_generator_preallocate_helper(
-            builder,
-            expr.args[0],
-            empty_op_llbuilder=builder.builder.new_tuple_with_length,
-            set_item_op=set_item,
-        )
+        with comprehension_scope(builder, gen):
+            return sequence_from_generator_preallocate_helper(
+                builder,
+                gen,
+                empty_op_llbuilder=builder.builder.new_tuple_with_length,
+                set_item_op=set_item,
+            )
     return None
 
 
@@ -508,7 +515,9 @@ def translate_set_from_generator_call(
         and expr.arg_kinds[0] == ARG_POS
         and isinstance(expr.args[0], GeneratorExpr)
     ):
-        return translate_set_comprehension(builder, expr.args[0])
+        gen = expr.args[0]
+        with comprehension_scope(builder, gen):
+            return translate_set_comprehension(builder, gen)
     return None
 
 
@@ -626,7 +635,6 @@ def any_all_helper(
     init_val = initial_value()
     retval = Register(bool_rprimitive, line=init_val.line)
     builder.assign(retval, init_val, init_val.line)
-    loop_params = list(zip(gen.indices, gen.sequences, gen.condlists, gen.is_async))
     true_block, false_block, exit_block = BasicBlock(), BasicBlock(), BasicBlock()
 
     def gen_inner_stmts() -> None:
@@ -638,7 +646,7 @@ def any_all_helper(
         builder.goto(exit_block)
         builder.activate_block(false_block)
 
-    comprehension_helper(builder, loop_params, gen_inner_stmts, gen.line)
+    generator_loop_helper(builder, gen, gen_inner_stmts)
     builder.goto_and_activate(exit_block)
 
     return retval
