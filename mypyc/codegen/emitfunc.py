@@ -533,7 +533,7 @@ class FunctionEmitterVisitor(OpVisitor[None]):
                 and not cl.is_final_attr(op.attr)
                 and not cl.attrs_are_thread_confined()
             ):
-                tuple_undefined = self.emitter.emit_tuple_attr_load(
+                tuple_undefined = self.emitter.emit_tuple_attr_load_locked(
                     dest, attr_expr, obj, attr_rtype, cl, op.attr, borrow=op.is_borrowed
                 )
                 use_get_attr_ref = True
@@ -601,7 +601,7 @@ class FunctionEmitterVisitor(OpVisitor[None]):
             and not cl.is_final_attr(op.attr)
             and not cl.attrs_are_thread_confined()
         ):
-            self.emitter.emit_tuple_attr_load(
+            self.emitter.emit_tuple_attr_load_locked(
                 dest, attr_expr, obj, attr_rtype, cl, op.attr, borrow=op.is_borrowed
             )
             return
@@ -702,7 +702,7 @@ class FunctionEmitterVisitor(OpVisitor[None]):
             and not cl.attrs_are_thread_confined()
         ):
             attr_expr = self.get_attr_expr(obj, op, decl_cl)
-            self.emitter.emit_tuple_attr_store(
+            self.emitter.emit_tuple_attr_store_locked(
                 src, attr_expr, obj, attr_rtype, cl, op.attr, is_init=op.is_init
             )
             if op.error_kind == ERR_FALSE:

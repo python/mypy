@@ -1430,7 +1430,7 @@ def generate_getter(cl: ClassIR, attr: str, rtype: RType, emitter: Emitter) -> N
     if tuple_snapshot:
         assert isinstance(rtype, RTuple)
         emitter.emit_line(f"{emitter.ctype(rtype)} tmp;")
-        undefined = emitter.emit_tuple_attr_load("tmp", attr_expr, "self", rtype, cl, attr)
+        undefined = emitter.emit_tuple_attr_load_locked("tmp", attr_expr, "self", rtype, cl, attr)
         attr_expr = "tmp"
     if not always_defined:
         if tuple_snapshot:
@@ -1557,7 +1557,7 @@ def generate_setter(cl: ClassIR, attr: str, rtype: RType, emitter: Emitter) -> N
     # particular, a failed cast must leave the attribute and its reference intact.
     emitter.emit_inc_ref("tmp", rtype)
     if emitter.target_python.free_threaded and isinstance(rtype, RTuple):
-        emitter.emit_tuple_attr_store("tmp", f"self->{attr_field}", "self", rtype, cl, attr)
+        emitter.emit_tuple_attr_store_locked("tmp", f"self->{attr_field}", "self", rtype, cl, attr)
     else:
         emit_decref_old_value()
         emitter.emit_line(f"self->{attr_field} = tmp;")
@@ -1567,7 +1567,7 @@ def generate_setter(cl: ClassIR, attr: str, rtype: RType, emitter: Emitter) -> N
     if deletable:
         emitter.emit_line("} else {")
         if emitter.target_python.free_threaded and isinstance(rtype, RTuple):
-            emitter.emit_tuple_attr_store(
+            emitter.emit_tuple_attr_store_locked(
                 "", f"self->{attr_field}", "self", rtype, cl, attr, delete=True
             )
         else:

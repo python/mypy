@@ -510,7 +510,7 @@ class Emitter:
             check = f"{check} && !({bitmap} & {bit})"
         self.emit_line(f"if ({check}) {{")
 
-    def emit_tuple_attr_load(
+    def emit_tuple_attr_load_locked(
         self,
         dest: str,
         attr_expr: str,
@@ -541,7 +541,7 @@ class Emitter:
         self.emit_line("Py_END_CRITICAL_SECTION();")
         return undefined
 
-    def emit_tuple_attr_store(
+    def emit_tuple_attr_store_locked(
         self,
         src: str,
         attr_expr: str,
@@ -553,7 +553,10 @@ class Emitter:
         delete: bool = False,
         is_init: bool = False,
     ) -> None:
-        """Publish a tuple under the owner lock, releasing old references outside it."""
+        """Assign a tuple attribute attr to src under the owner lock.
+
+        References to the old value of the attribute are released outside the lock.
+        """
         release_old = rtype.is_refcounted and not is_init
         old = self.temp_name()
         if release_old:

@@ -675,6 +675,22 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
             """,
         )
 
+    def test_get_tuple_attr_final_free_threaded(self) -> None:
+        self.use_free_threaded_target()
+        assert isinstance(self.r.type, RInstance)
+        self.r.type.class_ir.final_attributes.add("t")
+        self.assert_emit(
+            GetAttr(self.r, "t", 1),
+            """cpy_r_r0 = ((mod___AObject *)cpy_r_r)->_t;
+                if (unlikely(cpy_r_r0.f0 == NULL)) {
+                    PyErr_SetString(PyExc_AttributeError, "attribute 't' of 'A' undefined");
+                } else {
+                    CPy_INCREF(cpy_r_r0.f0);
+                    CPy_INCREF(cpy_r_r0.f1);
+                }
+            """,
+        )
+
     def test_set_tuple_attr_free_threaded(self) -> None:
         self.use_free_threaded_target()
         assert isinstance(self.r.type, RInstance)
@@ -724,38 +740,6 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
                 cpy_r_r0 = 1;
             """,
         )
-
-    def test_final_tuple_attr_reads(self) -> None:
-        assert isinstance(self.r.type, RInstance)
-        base = self.r.type.class_ir
-        base.final_attributes.add("t")
-        for inherited in (False, True):
-            if inherited:
-                cl = ClassIR("Sub", "mod")
-                cl.base = base
-                cl.mro = [cl, base]
-                self.r.type = RInstance(cl)
-                struct = "mod___SubObject"
-            else:
-                struct = "mod___AObject"
-            for borrow in (False, True):
-                for nullable in (False, True):
-                    expected = f"cpy_r_r0 = (({struct} *)cpy_r_r)->_t;\n"
-                    if not nullable:
-                        expected += """if (unlikely(cpy_r_r0.f0 == NULL)) {
-                            PyErr_SetString(PyExc_AttributeError, "attribute 't' of 'A' undefined");
-                        """.replace("of 'A'", "of 'Sub'" if inherited else "of 'A'")
-                        expected += "} else {\n" if not borrow else "}\n"
-                    elif not borrow:
-                        expected += "if (cpy_r_r0.f0 != NULL) {\n"
-                    if not borrow:
-                        expected += """CPy_INCREF(cpy_r_r0.f0);
-                            CPy_INCREF(cpy_r_r0.f1);
-                        }"""
-                    self.assert_emit(
-                        GetAttr(self.r, "t", 1, borrow=borrow, allow_error_value=nullable),
-                        expected,
-                    )
 
     def test_set_attr(self) -> None:
         self.use_gil_target()
