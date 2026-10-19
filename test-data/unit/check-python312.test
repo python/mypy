@@ -2288,11 +2288,11 @@ from typing_extensions import TypeVarTuple, Unpack
 
 Us = TypeVarTuple("Us")
 
-class C[*Ts, *Us]:  # E: Can only use one type var tuple in a class def
+class C[*Ts, *Us]:  # E: Can only use one TypeVarTuple in a class definition
    pass
 
 class D[*Ts](Generic[Unpack[Us]]):  # E: Generic[...] base class is redundant \
-                                    # E: Can only use one type var tuple in a class def
+                                    # E: Can only use one TypeVarTuple in a class definition
     pass
 [builtins fixtures/tuple.pyi]
 
@@ -2438,3 +2438,34 @@ def test[*Us](*xs: *Us) -> None:
     # TODO: we should erase last_known_values from Parameters.
     reveal_type(print_args(2, *xs, 4))  # N: Revealed type is "__main__.C[[Literal[2]?, *args: *tuple[*Us, Literal[4]?]], tuple[Literal[2]?, *Us, Literal[4]?]]"
 [builtins fixtures/paramspec.pyi]
+
+[case testBrokenClassUsingItselfAsTypeVarNoCrashNewSyntax]
+class C[C]:
+    x: C
+c: C[int]
+reveal_type(c.x)  # N: Revealed type is "builtins.int"
+
+[case testDoubleTypeVarTupleNoCrashNewSyntax]
+class C[*T, *U](T, U):  # E: Can only use one TypeVarTuple in a class definition \
+                        # E: TypeVarTuple "T" is only valid with an unpack \
+                        # E: TypeVarTuple "U" is unbound
+    x: tuple[*T]
+    y: tuple[*T, *U]  # E: More than one variadic Unpack in a type is not allowed \
+                      # E: TypeVarTuple "U" is unbound
+    z: tuple[*U]  # E: TypeVarTuple "U" is unbound
+
+type A[*T, *U] = tuple[tuple[*T], tuple[*T, *U], tuple[*U]]  # E: Can only use one TypeVarTuple in a type alias definition \
+                                                             # E: More than one variadic Unpack in a type is not allowed \
+                                                             # E: TypeVarTuple "U" is unbound
+
+c: C[int, str]
+a: A[int, str]
+
+reveal_type(c.x)  # N: Revealed type is "tuple[builtins.int, builtins.str]"
+reveal_type(c.y)  # N: Revealed type is "tuple[builtins.int, builtins.str]"
+reveal_type(c.z)  # N: Revealed type is "builtins.tuple[Any, ...]"
+
+reveal_type(a[0])  # N: Revealed type is "tuple[builtins.int, builtins.str]"
+reveal_type(a[1])  # N: Revealed type is "tuple[builtins.int, builtins.str]"
+reveal_type(a[2])  # N: Revealed type is "builtins.tuple[Any, ...]"
+[builtins fixtures/tuple.pyi]

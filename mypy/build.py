@@ -385,7 +385,9 @@ def build(
     extra_plugins = extra_plugins or []
 
     # Create metastore before workers to avoid race conditions.
-    metastore = create_metastore(options, parallel_worker=False)
+    metastore = create_metastore(options, parallel_worker=False, flush_errors=flush_errors)
+    # In case we failed to initialize sqlite cache, pass this info to the parallel workers.
+    options.sqlite_cache = isinstance(metastore, SqliteMetadataStore)
     workers = []
     connect_threads = []
     # A quasi-unique ID for this specific mypy invocation.
@@ -1896,17 +1898,40 @@ def exclude_from_backups(target_dir: str) -> None:
         pass
 
 
-def create_metastore(options: Options, parallel_worker: bool) -> MetadataStore:
-    """Create the appropriate metadata store."""
+def create_metastore(
+    options: Options,
+    parallel_worker: bool,
+    flush_errors: Callable[[str | None, list[str], bool], None] | None = None,
+) -> MetadataStore:
+    """Create the appropriate metadata store.
+
+    Note: there are few scenarios where we may fail to initialize sqlite cache,
+    for example read-only FS, or a Python build without sqlite support. In such
+    cases we print a note and fall back to FS cache.
+    """
     if options.sqlite_cache:
-        mds: MetadataStore = SqliteMetadataStore(
-            _cache_dir_prefix(options),
-            set_journal_mode=not parallel_worker,
-            num_shards=options.sqlite_num_shards,
-        )
-    else:
-        mds = FilesystemMetadataStore(_cache_dir_prefix(options))
-    return mds
+        try:
+            import sqlite3
+
+            try:
+                return SqliteMetadataStore(
+                    _cache_dir_prefix(options),
+                    set_journal_mode=not parallel_worker,
+                    num_shards=options.sqlite_num_shards,
+                )
+            except (OSError, sqlite3.OperationalError) as os_error:
+                msg = f"Failed to initialize sqlite cache: {os_error}"
+        except ImportError as import_error:
+            msg = f"Cannot import sqlite: {import_error}"
+        if parallel_worker:
+            # If the sqlite cache fails *only* in the workers, this indicates something
+            # very wrong. It is tricky to fail gracefully, so we raise ValueError to make
+            # sure this exception is not swallowed in the worker top-level code.
+            raise ValueError(msg)
+        if flush_errors:
+            msg = f"mypy: note: {msg}"
+            flush_errors(None, [msg, "mypy: note: Using filesystem cache instead"], False)
+    return FilesystemMetadataStore(_cache_dir_prefix(options))
 
 
 def get_meta_ex_name(meta_name: str) -> str:

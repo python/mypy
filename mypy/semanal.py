@@ -2338,17 +2338,10 @@ class SemanticAnalyzer(
         removed: list[int] = []
         declared_tvars: TypeVarLikeList = []
         is_protocol = False
-        has_type_var_tuple = False
         if defn.type_args is not None:
             for p in defn.type_args:
                 node = self.get_defined_type_param(p.name)
-                assert node is not None
                 assert isinstance(node, TypeVarLikeExpr)
-                if isinstance(node, TypeVarTupleExpr):
-                    if has_type_var_tuple:
-                        self.fail("Can only use one type var tuple in a class def", context)
-                        continue
-                    has_type_var_tuple = True
                 declared_tvars.append((p.name, node))
 
         for i, base_expr in enumerate(base_type_exprs):
@@ -2361,7 +2354,7 @@ class SemanticAnalyzer(
             except TypeTranslationError:
                 # This error will be caught later.
                 continue
-            result = self.analyze_class_typevar_declaration(base, has_type_var_tuple)
+            result = self.analyze_class_typevar_declaration(base)
             if result is not None:
                 tvars = result[0]
                 is_protocol |= result[1]
@@ -2412,12 +2405,11 @@ class SemanticAnalyzer(
             # grained incremental mode.
             defn.removed_base_type_exprs.append(defn.base_type_exprs[i])
             del base_type_exprs[i]
+        declared_tvars = self.pre_validate_declared_tvars(declared_tvars, context, "class")
         tvar_defs = self.tvar_defs_from_tvars(declared_tvars, context)
         return base_type_exprs, tvar_defs, is_protocol, declared_tvars
 
-    def analyze_class_typevar_declaration(
-        self, base: Type, has_type_var_tuple: bool
-    ) -> tuple[TypeVarLikeList, bool] | None:
+    def analyze_class_typevar_declaration(self, base: Type) -> tuple[TypeVarLikeList, bool] | None:
         """Analyze type variables declared using Generic[...] or Protocol[...].
 
         Args:
@@ -2443,11 +2435,6 @@ class SemanticAnalyzer(
                 tag = self.track_incomplete_refs()
                 tvar = self.analyze_unbound_tvar(arg)
                 if tvar:
-                    if isinstance(tvar[1], TypeVarTupleExpr):
-                        if has_type_var_tuple:
-                            self.fail("Can only use one type var tuple in a class def", base)
-                            continue
-                        has_type_var_tuple = True
                     tvars.append(tvar)
                 elif not self.found_incomplete_ref(tag):
                     self.fail("Free type variable expected in %s[...]" % sym.node.name, base)
@@ -2476,7 +2463,10 @@ class SemanticAnalyzer(
         assert not is_unpacked or not is_typealias_param, "Mutually exclusive conditions"
         sym = self.lookup_qualified(t.name, t)
         if sym and isinstance(sym.node, PlaceholderNode):
-            self.record_incomplete_ref()
+            if self.final_iteration:
+                self.cannot_resolve_name(t.name, "name", t)
+            else:
+                self.record_incomplete_ref()
         if not is_unpacked and sym and isinstance(sym.node, ParamSpecExpr):
             if sym.fullname and not self.tvar_scope.allow_binding(sym.fullname):
                 # It's bound by our type variable scope
@@ -4083,6 +4073,24 @@ class SemanticAnalyzer(
             return typ.copy_modified(last_known_value=LiteralType(value=value, fallback=typ))
         return typ
 
+    def pre_validate_declared_tvars(
+        self, declared_tvars: TypeVarLikeList, ctx: Context, kind: str
+    ) -> TypeVarLikeList:
+        has_type_var_tuple = False
+        valid_declared_tvars = []
+        for name, node in declared_tvars:
+            if isinstance(node, TypeVarTupleExpr):
+                if has_type_var_tuple:
+                    self.fail(
+                        f"Can only use one TypeVarTuple in a {kind} definition",
+                        ctx,
+                        code=codes.TYPE_VAR,
+                    )
+                    continue
+                has_type_var_tuple = True
+            valid_declared_tvars.append((name, node))
+        return valid_declared_tvars
+
     def analyze_alias(
         self,
         name: str,
@@ -4119,6 +4127,7 @@ class SemanticAnalyzer(
         found_type_vars = self.find_type_var_likes(typ)
         namespace = self.qualified_name(name)
         alias_type_vars = found_type_vars if declared_type_vars is None else declared_type_vars
+        alias_type_vars = self.pre_validate_declared_tvars(alias_type_vars, rvalue, "type alias")
         with self.tvar_scope_frame(self.tvar_scope.class_frame(namespace)):
             tvar_defs = self.tvar_defs_from_tvars(alias_type_vars, typ)
 
@@ -4426,7 +4435,6 @@ class SemanticAnalyzer(
 
         declared_tvars: TypeVarLikeList = []
         all_declared_tvar_names: list[str] = []  # includes bound type variables
-        have_type_var_tuple = False
         for tp_expr in type_params:
             if isinstance(tp_expr, StarExpr):
                 tp_expr.valid = False
@@ -4440,18 +4448,7 @@ class SemanticAnalyzer(
 
             tag = self.track_incomplete_refs()
             tvar = self.analyze_unbound_tvar_impl(base, is_typealias_param=True)
-            if tvar:
-                if isinstance(tvar[1], TypeVarTupleExpr):
-                    if have_type_var_tuple:
-                        self.fail(
-                            "Can only use one TypeVarTuple in type_params argument to TypeAliasType",
-                            base,
-                            code=codes.TYPE_VAR,
-                        )
-                        have_type_var_tuple = True
-                        continue
-                    have_type_var_tuple = True
-            elif not self.found_incomplete_ref(tag):
+            if not tvar and not self.found_incomplete_ref(tag):
                 sym = self.lookup_qualified(base.name, base)
                 if sym and isinstance(sym.node, TypeVarLikeExpr):
                     all_declared_tvar_names.append(sym.node.name)  # Error will be reported later
@@ -8499,16 +8496,16 @@ def names_modified_by_assignment(s: AssignmentStmt) -> list[NameExpr]:
     return result
 
 
-def names_modified_in_lvalue(lvalue: Lvalue) -> list[NameExpr]:
+def names_modified_in_lvalue(lvalue: Lvalue, include_star: bool = False) -> list[NameExpr]:
     """Return all NameExpr assignment targets in an Lvalue."""
     if isinstance(lvalue, NameExpr):
         return [lvalue]
-    elif isinstance(lvalue, StarExpr):
+    elif isinstance(lvalue, StarExpr) and include_star:
         return names_modified_in_lvalue(lvalue.expr)
     elif isinstance(lvalue, (ListExpr, TupleExpr)):
         result: list[NameExpr] = []
         for item in lvalue.items:
-            result += names_modified_in_lvalue(item)
+            result += names_modified_in_lvalue(item, include_star=True)
         return result
     return []
 

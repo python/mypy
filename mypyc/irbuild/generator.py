@@ -217,7 +217,7 @@ def add_raise_exception_blocks_to_generator_class(builder: IRBuilder, line: int)
     helper method for generator functions, and raises an exception if
     those flags are set.
     """
-    cls = builder.fn_info.generator_class
+    cls = builder.code_fn_info.generator_class
     assert cls.exc_regs is not None
     exc_type, exc_val, exc_tb = cls.exc_regs
 
