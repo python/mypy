@@ -93,6 +93,7 @@ from mypyc.ir.rtypes import (
 from mypyc.irbuild.builder import IRBuilder, find_walrus_targets, get_call_target_fullname
 from mypyc.irbuild.constant_fold import constant_fold_expr
 from mypyc.irbuild.for_helpers import (
+    can_preallocate_from_generator,
     comprehension_scope,
     generator_loop_helper,
     get_expr_length_value,
@@ -441,19 +442,20 @@ def translate_list_from_generator_call(
         len(expr.args) == 1
         and expr.arg_kinds[0] == ARG_POS
         and isinstance(expr.args[0], GeneratorExpr)
-        # Comprehensions that need a scope are handled by the general case.
-        and expr.args[0] not in builder.comprehension_to_fitem
+        and can_preallocate_from_generator(builder, expr.args[0])
     ):
+        gen = expr.args[0]
 
         def set_item(x: Value, y: Value, z: Value, line: int) -> None:
             builder.call_c(new_list_set_item_op, [x, y, z], line)
 
-        return sequence_from_generator_preallocate_helper(
-            builder,
-            expr.args[0],
-            empty_op_llbuilder=builder.builder.new_list_op_with_length,
-            set_item_op=set_item,
-        )
+        with comprehension_scope(builder, gen):
+            return sequence_from_generator_preallocate_helper(
+                builder,
+                gen,
+                empty_op_llbuilder=builder.builder.new_list_op_with_length,
+                set_item_op=set_item,
+            )
     return None
 
 
@@ -482,19 +484,20 @@ def translate_tuple_from_generator_call(
         len(expr.args) == 1
         and expr.arg_kinds[0] == ARG_POS
         and isinstance(expr.args[0], GeneratorExpr)
-        # Comprehensions that need a scope are handled by translate_safe_generator_call.
-        and expr.args[0] not in builder.comprehension_to_fitem
+        and can_preallocate_from_generator(builder, expr.args[0])
     ):
+        gen = expr.args[0]
 
         def set_item(x: Value, y: Value, z: Value, line: int) -> None:
             builder.call_c(new_tuple_set_item_op, [x, y, z], line)
 
-        return sequence_from_generator_preallocate_helper(
-            builder,
-            expr.args[0],
-            empty_op_llbuilder=builder.builder.new_tuple_with_length,
-            set_item_op=set_item,
-        )
+        with comprehension_scope(builder, gen):
+            return sequence_from_generator_preallocate_helper(
+                builder,
+                gen,
+                empty_op_llbuilder=builder.builder.new_tuple_with_length,
+                set_item_op=set_item,
+            )
     return None
 
 

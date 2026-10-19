@@ -1500,6 +1500,16 @@ class IRBuilder:
         self.fn_info = self.fn_infos[-1]
         return builder.args, runtime_args, builder.blocks, ret_type, fn_info
 
+    @property
+    def code_fn_info(self) -> FuncInfo:
+        """Return info about the function whose code is being generated.
+
+        This is fn_info, except in a comprehension scope, which is generated inline in the
+        enclosing function. Use this for state related to the generated code, such as the
+        generator class of a coroutine, and fn_info for name binding.
+        """
+        return next(info for info in reversed(self.fn_infos) if not info.is_comprehension_scope)
+
     @contextmanager
     def enter_scope(self, fn_info: FuncInfo) -> Iterator[None]:
         """Push a lightweight scope for comprehensions.
@@ -1517,8 +1527,9 @@ class IRBuilder:
         self.runtime_args.append([])
         self.fn_info = fn_info
         self.fn_infos.append(self.fn_info)
-        self.ret_types.append(none_rprimitive)
-        self.nonlocal_control.append(BaseNonlocalControl())
+        # Yields (from await) and nonlocal control flow belong to the enclosing function.
+        self.ret_types.append(self.ret_types[-1])
+        self.nonlocal_control.append(self.nonlocal_control[-1])
         try:
             yield
         finally:

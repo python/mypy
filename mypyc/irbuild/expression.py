@@ -501,8 +501,7 @@ def implicit_super_arg(builder: IRBuilder) -> Var:
     """
     # A comprehension can have a scope of its own, but it has no arguments, and
     # super() uses the function that contains the comprehension.
-    fn_info = next(info for info in reversed(builder.fn_infos) if not info.is_comprehension_scope)
-    return fn_info.fitem.arguments[0].variable
+    return builder.code_fn_info.fitem.arguments[0].variable
 
 
 def is_instance_method_self(builder: IRBuilder, var: Var) -> bool:

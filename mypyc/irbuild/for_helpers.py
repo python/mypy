@@ -71,6 +71,8 @@ from mypyc.ir.rtypes import (
 )
 from mypyc.irbuild.builder import IRBuilder
 from mypyc.irbuild.constant_fold import constant_fold_expr
+from mypyc.irbuild.context import FuncInfo
+from mypyc.irbuild.env_class import add_vars_to_env, finalize_env_class, setup_env_class
 from mypyc.irbuild.targets import AssignmentTargetTuple
 from mypyc.irbuild.vec import vec_append, vec_create, vec_get_item_unsafe, vec_init_item_unsafe
 from mypyc.primitives.dict_ops import (
@@ -224,6 +226,20 @@ def for_loop_helper_with_index(
     builder.activate_block(exit_block)
 
 
+def can_preallocate_from_generator(builder: IRBuilder, gen: GeneratorExpr) -> bool:
+    """Can a sequence be built from a generator expression with a preallocated length?
+
+    This requires a single loop without conditions over a sequence of known length.
+    """
+    if not (len(gen.sequences) == 1 and len(gen.indices) == 1 and len(gen.condlists[0]) == 0):
+        return False
+    rtype = builder.node_type(gen.sequences[0])
+    if isinstance(rtype, RTuple):
+        # for_loop_helper_with_index crashes for empty tuples
+        return bool(rtype.types)
+    return is_sequence_rprimitive(rtype) or isinstance(rtype, RVec)
+
+
 def sequence_from_generator_preallocate_helper(
     builder: IRBuilder,
     gen: GeneratorExpr,
@@ -255,23 +271,16 @@ def sequence_from_generator_preallocate_helper(
         after_first_init: Optional function that generates instructions to run after the
             sequence has been evaluated (see comprehension_helper).
     """
-    if len(gen.sequences) == 1 and len(gen.indices) == 1 and len(gen.condlists[0]) == 0:
+    if can_preallocate_from_generator(builder, gen):
         line = gen.line
         sequence_expr = gen.sequences[0]
         rtype = builder.node_type(sequence_expr)
-        if not (is_sequence_rprimitive(rtype) or isinstance(rtype, (RTuple, RVec))):
-            return None
 
         if isinstance(rtype, RTuple):
             # If input is RTuple, box it to tuple_rprimitive for generic iteration
             # TODO: this can be optimized a bit better with an unrolled ForRTuple helper
             proper_type = get_proper_type(builder.types[sequence_expr])
             assert isinstance(proper_type, TupleType), proper_type
-
-            # the for_loop_helper_with_index crashes for empty tuples, bail out
-            if not proper_type.items:
-                return None
-
             proper_types = get_proper_types(proper_type.items)
 
             get_item_ops: list[LoadLiteral | TupleGet]
@@ -407,9 +416,6 @@ def comprehension_scope(
     if node not in builder.comprehension_to_fitem:
         yield
         return
-
-    from mypyc.irbuild.context import FuncInfo
-    from mypyc.irbuild.env_class import add_vars_to_env, finalize_env_class, setup_env_class
 
     comprehension_fdef = builder.comprehension_to_fitem[node]
     fn_info = FuncInfo(
