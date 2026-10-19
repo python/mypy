@@ -1821,6 +1821,33 @@ def _load_ff_file(
     return data
 
 
+def _report_corrupt_cache_error(manager: BuildManager, file: str) -> None:
+    """Report a blocking error for a cache file that can't be read or deserialized."""
+    manager.errors.set_file(file, None, manager.options)
+    manager.error(
+        None,
+        "Error reading cache file;"
+        " you likely have a corrupt cache.\n"
+        "Try removing the {cache_dir} directory"
+        " and run mypy again.".format(cache_dir=manager.options.cache_dir),
+        blocker=True,
+    )
+
+
+def _is_corrupt_cache_assertion(err: BaseException) -> bool:
+    """Return True if the exception indicates a partially deserialized (corrupt) cache.
+
+    During deserialization mypy leaves ``Instance`` types pointing at a ``NOT_READY``
+    placeholder and only resolves them in a later fix-up pass. If that pass fails to
+    find the referenced type, any later attribute access on the placeholder raises an
+    ``AssertionError`` with this exact message. That only happens for cached modules,
+    so it is a reliable signal that the cache is corrupt.
+    """
+    return isinstance(err, AssertionError) and str(err).startswith(
+        "De-serialization failure"
+    )
+
+
 def _load_json_file(
     file: str, manager: BuildManager, log_success: str, log_error: str
 ) -> dict[str, Any] | None:
@@ -1840,15 +1867,7 @@ def _load_json_file(
         result = json_loads(data)
         manager.add_stats(data_file_load_time=time.time() - t1)
     except json.JSONDecodeError:
-        manager.errors.set_file(file, None, manager.options)
-        manager.error(
-            None,
-            "Error reading JSON file;"
-            " you likely have a bad cache.\n"
-            "Try removing the {cache_dir} directory"
-            " and run mypy again.".format(cache_dir=manager.options.cache_dir),
-            blocker=True,
-        )
+        _report_corrupt_cache_error(manager, file)
         return None
     else:
         assert isinstance(result, dict)
@@ -2026,9 +2045,17 @@ def find_cache_meta(
             manager.log(f"Metadata abandoned for {id}: incompatible cache format")
             return None
         data_io = ReadBuffer(meta[2:])
-        m = CacheMeta.read(data_io, data_file)
+        try:
+            m = CacheMeta.read(data_io, data_file)
+        except Exception:
+            _report_corrupt_cache_error(manager, meta_file)
+            return None
     else:
-        m = CacheMeta.deserialize(meta, data_file)
+        try:
+            m = CacheMeta.deserialize(meta, data_file)
+        except Exception:
+            _report_corrupt_cache_error(manager, meta_file)
+            return None
     if m is None:
         manager.log(f"Metadata abandoned for {id}: cannot deserialize data")
         return None
@@ -2118,9 +2145,17 @@ def find_cache_meta(
         return None
     if isinstance(meta_ex, bytes):
         data_io = ReadBuffer(meta_ex)
-        me = CacheMetaEx.read(data_io)
+        try:
+            me = CacheMetaEx.read(data_io)
+        except Exception:
+            _report_corrupt_cache_error(manager, meta_ex_file)
+            return None
     else:
-        me = CacheMetaEx.deserialize(meta_ex)
+        try:
+            me = CacheMetaEx.deserialize(meta_ex)
+        except Exception:
+            _report_corrupt_cache_error(manager, meta_ex_file)
+            return None
     if me is None:
         return None
     manager.add_stats(fresh_metas=1)
@@ -3095,6 +3130,13 @@ class State:
         except CompileError:
             raise
         except Exception as err:
+            if _is_corrupt_cache_assertion(err):
+                # A cached module was only partially deserialized (likely a corrupt
+                # cache), so it leaks a ``NOT_READY`` placeholder that blows up on the
+                # first attribute access. Report a clean, actionable error instead of
+                # an internal error.
+                _report_corrupt_cache_error(self.manager, self.path or "<unknown>")
+                self.check_blockers()
             report_internal_error(
                 err,
                 self.path,
@@ -3132,11 +3174,19 @@ class State:
 
         t0 = time.time()
         # TODO: Assert data file wasn't changed.
-        if isinstance(data, bytes):
-            data_io = ReadBuffer(data)
-            self.tree = MypyFile.read(data_io)
-        else:
-            self.tree = MypyFile.deserialize(data)
+        try:
+            if isinstance(data, bytes):
+                data_io = ReadBuffer(data)
+                self.tree = MypyFile.read(data_io)
+            else:
+                self.tree = MypyFile.deserialize(data)
+        except Exception:
+            # If the cache data file can't be deserialized, it is likely corrupt.
+            # Report a clean error instead of failing with an internal error.
+            _report_corrupt_cache_error(self.manager, data_file)
+            # Abort the build right away, as the module tree is unusable.
+            self.check_blockers()
+            raise
         t1 = time.time()
         self.manager.add_stats(deserialize_time=t1 - t0)
         if not temporary:
@@ -3147,8 +3197,25 @@ class State:
         assert self.tree is not None, "Internal error: method must be called on parsed file only"
         # Do initial lightweight pass fixing TypeInfos and module cross-references.
         assert modules_state.node_fixer is not None
-        modules_state.node_fixer.visit_symbol_table(self.tree.names)
-        type_fixer = modules_state.node_fixer.type_fixer
+        try:
+            self._fix_cross_refs()
+        except Exception:
+            # Failing to resolve cross-references almost always means the cache is
+            # corrupt. Report a clean, actionable error instead of crashing with an
+            # internal error.
+            _report_corrupt_cache_error(
+                self.manager,
+                self.meta.data_file if self.meta is not None else (self.path or "<unknown>"),
+            )
+            self.check_blockers()
+            raise
+
+    def _fix_cross_refs(self) -> None:
+        node_fixer = modules_state.node_fixer
+        assert node_fixer is not None
+        assert self.tree is not None
+        node_fixer.visit_symbol_table(self.tree.names)
+        type_fixer = node_fixer.type_fixer
         # Eagerly fix shared instances, before they are used by named_type() calls.
         if instance_cache.str_type is not None:
             instance_cache.str_type.accept(type_fixer)

@@ -2,6 +2,13 @@
 
 ## Next Release
 
+### Fixes to Crashes
+
+- Report a clean error instead of an internal error when the mypy cache is
+  corrupt (for example, if the cache directory was partially overwritten).
+  Mypy now tells you to remove the cache directory (or pass a different
+  `--cache-dir`) and re-run, instead of crashing with `INTERNAL ERROR`.
+
 ## Mypy 2.4
 
 We've just uploaded mypy 2.4.0 to the Python Package Index ([PyPI](https://pypi.org/project/mypy/)).
