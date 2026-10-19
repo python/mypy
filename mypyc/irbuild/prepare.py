@@ -866,6 +866,10 @@ def has_non_native_new(cdef: ClassDef, mapper: Mapper) -> bool:
 def prepare_init_method(cdef: ClassDef, ir: ClassIR, module_name: str, mapper: Mapper) -> None:
     # Set up a constructor decl
     init_node = cdef.info["__init__"].node
+    if isinstance(init_node, OverloadedFuncDef):
+        init_node = init_node.impl
+    if isinstance(init_node, Decorator):
+        init_node = init_node.func
 
     new_node: SymbolNode | None = None
     new_symbol = cdef.info.get("__new__")
@@ -890,12 +894,15 @@ def prepare_init_method(cdef: ClassDef, ir: ClassIR, module_name: str, mapper: M
         defining_ir = mapper.type_to_ir.get(init_node.info)
         # If there is a nontrivial __init__ that wasn't defined in an
         # extension class, we need to make the constructor take *args,
-        # **kwargs so it can call tp_init.
+        # **kwargs so it can call tp_init. This includes a decorated
+        # __init__, which has no method declaration since it isn't
+        # called natively.
         if (
             (
                 defining_ir is None
                 or not defining_ir.is_ext_class
                 or cdef.info["__init__"].plugin_generated
+                or "__init__" not in defining_ir.method_decls
             )
             and init_node.info.fullname != "builtins.object"
         ) or not args_match:
