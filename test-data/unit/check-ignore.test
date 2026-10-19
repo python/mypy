@@ -241,6 +241,16 @@ IGNORE
 # type: ignore
 import MISSING
 
+[case testIgnoreWholeModule5]
+# mypy: ignore
+import MISSING
+
+[case testIgnoreWholeModule6]
+# flags: --warn-unused-ignores
+
+# type: ignore
+x = 1  # mypy: ignore
+
 [case testDontIgnoreWholeModule1]
 if True:
     # type: ignore
@@ -254,6 +264,12 @@ ERROR # E: Name "ERROR" is not defined
 
 [case testDontIgnoreWholeModule3]
 @d  # type: ignore
+
+def f(): ...
+ERROR # E: Name "ERROR" is not defined
+
+[case testDontIgnoreWholeModule4]
+@d  # mypy: ignore
 
 def f(): ...
 ERROR # E: Name "ERROR" is not defined
@@ -309,3 +325,96 @@ x = 1  # type: ignore[mypy:foobar]
 main:2: error: Incompatible types in assignment (expression has type "int", variable has type "str")
 main:2: note: Error code "assignment" not covered by "type: ignore[arg-type, other:foobar]" comment
 main:3: error: Unrecognized error code "foobar"
+main:3: note: Error code "misc" not covered by "type: ignore[foobar]" comment
+main:3: error: Incompatible types in assignment (expression has type "int", variable has type "str")
+main:3: note: Error code "assignment" not covered by "type: ignore[foobar]" comment
+
+[case testIgnoreNonBlockingParseError]
+# flags: --python-version=3.10
+m[*(), :]  # type: ignore[syntax]
+[builtins fixtures/tuple.pyi]
+[out]
+main:2: error: Name "m" is not defined
+main:2: note: Error code "name-defined" not covered by "type: ignore[syntax]" comment
+
+[case testIgnoreNonBlockingParseErrorSilent]
+# cmd: mypy -m a
+# flags: --python-version=3.10 --follow-import=silent
+[file a.py]
+import m
+reveal_type(m.x)  # N: Revealed type is "builtins.int"
+[file m.py]
+x: int
+x = m[*(), :]
+[builtins fixtures/tuple.pyi]
+[out]
+
+[case testIgnoresWorkAfterOtherComments]
+x: str = 1  # noqa  # pragma: no cover  # type: ignore
+y: str = 1  # noqa  # pragma: no cover  # mypy: ignore
+z: str = 1  # noqa  # pragma: no cover  # type: ignore[assignment]
+t: str = 1  # noqa  # pragma: no cover  # mypy: ignore[assignment]
+
+x1: str = 1  ## type: ignore
+y1: str = 1  ## mypy: ignore
+z1: str = 1  ## type: ignore[assignment]
+t1: str = 1  ## mypy: ignore[assignment]
+
+x2: str = 1  # noqa  ## type: ignore
+y2: str = 1  # noqa  ## mypy: ignore
+z2: str = 1  # noqa  ## type: ignore[assignment]
+t2: str = 1  # noqa  ## mypy: ignore[assignment]
+[out]
+main:6: error: Incompatible types in assignment (expression has type "int", variable has type "str")
+main:7: error: Incompatible types in assignment (expression has type "int", variable has type "str")
+main:8: error: Incompatible types in assignment (expression has type "int", variable has type "str")
+main:9: error: Incompatible types in assignment (expression has type "int", variable has type "str")
+main:11: error: Incompatible types in assignment (expression has type "int", variable has type "str")
+main:12: error: Incompatible types in assignment (expression has type "int", variable has type "str")
+main:13: error: Incompatible types in assignment (expression has type "int", variable has type "str")
+main:14: error: Incompatible types in assignment (expression has type "int", variable has type "str")
+
+[case testPrefixInMypyCommentNotAllowed]
+x: str = 1  # mypy: ignore[mypy:assignment]
+[out]
+main:1: error: Error codes in "mypy: ignore" should not be prefixed with "mypy:"
+main:1: note: Error code "misc" not covered by "type: ignore[assignment]" comment
+
+[case testDuplicateErrorCodeNotAllowed]
+x: str = 1  # mypy: ignore[assignment]  # type: ignore[assignment]
+[out]
+main:1: error: Duplicate error code "assignment"
+main:1: note: Error code "misc" not covered by "type: ignore[assignment]" comment
+
+[case testUnusedMypyIgnoreReported]
+# flags: --warn-unused-ignores
+x = 1  # mypy: ignore
+y = 1  # mypy: ignore[assignment]
+z: str = 1  # mypy: ignore[assignment, arg-type]
+[out]
+main:2: error: Unused "type: ignore" comment
+main:3: error: Unused "type: ignore" comment
+main:4: error: Unused "type: ignore[arg-type]" comment
+
+[case testNoUnusedIgnoreInCommentedBlock]
+# flags: --warn-unused-ignores
+# x: str = 1  # mypy: ignore
+# y: str = 1  # type: ignore
+# z: str = 1  # mypy: ignore[assignment]
+# t: str = 1  # type: ignore[assignment]
+
+[case testIgnoreErrorCodesMerged]
+def f() -> None: pass
+
+f(x)  # mypy: ignore[name-defined]  # type: ignore[call-arg]
+f(x)  # type: ignore[name-defined]  # mypy: ignore[call-arg]
+
+[case testBlanketIgnoreWinsWhenMixed]
+x  # mypy: ignore  # type: ignore[assignment]
+y  # mypy: ignore[assignment]  # type: ignore
+
+[case testUnknownErrorCodeNotAllowedInMypyIgnore]
+1  # mypy: ignore[whatever]
+[out]
+main:1: error: Unrecognized error code "whatever"
+main:1: note: Error code "misc" not covered by "type: ignore[whatever]" comment

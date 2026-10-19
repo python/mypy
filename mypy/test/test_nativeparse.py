@@ -268,15 +268,15 @@ class TestNativeParserBinaryFormat(unittest.TestCase):
 
     def test_trivial_binary_data_from_file(self) -> None:
         with temp_source("print('hello')") as fnam:
-            b, _, _, _, _, _, _, _ = parse_to_binary_ast(fnam, Options())
+            b, _, _, _, _, _, _, _, _ = parse_to_binary_ast(fnam, Options())
             self._assert_trivial_binary_data(b)
 
     def test_trivial_binary_data_from_string_source(self) -> None:
-        b, _, _, _, _, _, _, _ = parse_to_binary_ast("", Options(), "print('hello')")
+        b, _, _, _, _, _, _, _, _ = parse_to_binary_ast("", Options(), "print('hello')")
         self._assert_trivial_binary_data(b)
 
     def test_trivial_binary_data_from_bytes_source(self) -> None:
-        b, _, _, _, _, _, _, _ = parse_to_binary_ast("", Options(), b"print('hello')")
+        b, _, _, _, _, _, _, _, _ = parse_to_binary_ast("", Options(), b"print('hello')")
         self._assert_trivial_binary_data(b)
 
     def test_invalid_bytes_raises(self) -> None:
