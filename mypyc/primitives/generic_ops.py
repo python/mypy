@@ -15,6 +15,7 @@ from mypyc.ir.ops import ERR_MAGIC, ERR_NEVER
 from mypyc.ir.rtypes import (
     bool_rprimitive,
     c_int_rprimitive,
+    c_pointer_rprimitive,
     c_pyssize_t_rprimitive,
     c_size_t_rprimitive,
     int_rprimitive,
@@ -322,6 +323,26 @@ py_call_with_posargs_op = custom_op(
     arg_types=[object_rprimitive, object_rprimitive],
     return_type=object_rprimitive,
     c_function_name="PyObject_CallObject",
+    error_kind=ERR_MAGIC,
+)
+
+# Call a native function's vectorcall wrapper: func(*args, **kwargs)
+# Arguments are (wrapper, takes_self, *args tuple, **kwargs dict or NULL).
+# If takes_self is nonzero, pass the first positional argument separately as self.
+call_fastcall_wrapper_op = custom_op(
+    arg_types=[c_pointer_rprimitive, c_int_rprimitive, object_rprimitive, object_rprimitive],
+    return_type=object_rprimitive,
+    c_function_name="CPy_CallFastcallWrapper",
+    error_kind=ERR_MAGIC,
+)
+
+# Call a native class's __init__ or __new__ wrapper: func(*args, **kwargs)
+# Arguments are (wrapper, *args tuple, **kwargs dict or NULL).
+# Pass the first positional argument separately as self (or cls).
+call_legacy_wrapper_op = custom_op(
+    arg_types=[c_pointer_rprimitive, object_rprimitive, object_rprimitive],
+    return_type=object_rprimitive,
+    c_function_name="CPy_CallLegacyWrapper",
     error_kind=ERR_MAGIC,
 )
 

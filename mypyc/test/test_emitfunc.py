@@ -63,6 +63,7 @@ from mypyc.ir.rtypes import (
     RVec,
     bool_rprimitive,
     c_int_rprimitive,
+    c_pointer_rprimitive,
     cstring_rprimitive,
     dict_rprimitive,
     int32_rprimitive,
@@ -923,6 +924,12 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
         self.assert_emit(
             LoadAddress(object_rprimitive, "PyDict_Type"),
             """cpy_r_r0 = (PyObject *)&PyDict_Type;""",
+        )
+
+    def test_load_address_of_wrapper(self) -> None:
+        decl = FuncDecl("myfn", None, "mod", FuncSignature([], int_rprimitive))
+        self.assert_emit(
+            LoadAddress(c_pointer_rprimitive, decl), """cpy_r_r0 = (void *)CPyPy_myfn;"""
         )
 
     def test_assign_multi(self) -> None:

@@ -758,8 +758,9 @@ def B.call_f(self, args):
     r1 :: ptr
     r2 :: object
     r3 :: tuple
-    r4 :: object
-    r5 :: int
+    r4 :: c_ptr
+    r5 :: object
+    r6 :: int
 L0:
     r0 = PyList_New(1)
     r1 = list_items r0
@@ -767,25 +768,28 @@ L0:
     keep_alive r0
     r2 = CPyList_Extend(r0, args)
     r3 = PyList_AsTuple(r0)
-    r4 = A.f(*r3)
-    r5 = unbox(int, r4)
-    return r5
+    r4 = load_address A.f :: wrapper
+    r5 = CPy_CallFastcallWrapper(r4, 1, r3, 0)
+    r6 = unbox(int, r5)
+    return r6
 def B.call_f_kwargs(self, kwargs):
     self :: __main__.B
     kwargs, r0 :: dict
     r1 :: i32
     r2 :: bit
     r3 :: tuple
-    r4 :: object
-    r5 :: int
+    r4 :: c_ptr
+    r5 :: object
+    r6 :: int
 L0:
     r0 = PyDict_New()
     r1 = CPyDict_UpdateInDisplay(r0, kwargs)
     r2 = r1 >= 0 :: signed
     r3 = PyTuple_Pack(1, self)
-    r4 = A.f(*r3, **r0)
-    r5 = unbox(int, r4)
-    return r5
+    r4 = load_address A.f :: wrapper
+    r5 = CPy_CallFastcallWrapper(r4, 1, r3, r0)
+    r6 = unbox(int, r5)
+    return r6
 def B.call_g(self, args, kwargs):
     self :: __main__.B
     args :: tuple
@@ -795,6 +799,46 @@ L0:
     r0 = PyDict_Copy(kwargs)
     r1 = A.g(self, args, r0)
     return r1
+
+[case testNativeInitCallWithUnpackedArgs]
+from typing import Any
+
+class A:
+    def __init__(self, x: int) -> None:
+        self.x = x
+
+class B(A):
+    def __init__(self, *args: Any) -> None:
+        # The wrapper of __init__ takes a tuple and a dict
+        super().__init__(*args)
+[out]
+def A.__init__(self, x):
+    self :: __main__.A
+    x :: int
+L0:
+    self.x = x
+    return 1
+def B.__init__(self, args):
+    self :: __main__.B
+    args :: tuple
+    r0 :: list
+    r1 :: ptr
+    r2 :: object
+    r3 :: tuple
+    r4 :: c_ptr
+    r5 :: object
+    r6 :: None
+L0:
+    r0 = PyList_New(1)
+    r1 = list_items r0
+    buf_init_item r1, 0, self
+    keep_alive r0
+    r2 = CPyList_Extend(r0, args)
+    r3 = PyList_AsTuple(r0)
+    r4 = load_address A.__init__ :: wrapper
+    r5 = CPy_CallLegacyWrapper(r4, r3, 0)
+    r6 = unbox(None, r5)
+    return 1
 
 [case testCannotAssignToClsArgument]
 from typing import Any, cast
