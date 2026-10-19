@@ -2439,6 +2439,12 @@ def test[*Us](*xs: *Us) -> None:
     reveal_type(print_args(2, *xs, 4))  # N: Revealed type is "__main__.C[[Literal[2]?, *args: *tuple[*Us, Literal[4]?]], tuple[Literal[2]?, *Us, Literal[4]?]]"
 [builtins fixtures/paramspec.pyi]
 
+[case testBrokenClassUsingItselfAsTypeVarNoCrashNewSyntax]
+class C[C]:
+    x: C
+c: C[int]
+reveal_type(c.x)  # N: Revealed type is "builtins.int"
+
 [case testDoubleTypeVarTupleNoCrashNewSyntax]
 class C[*T, *U](T, U):  # E: Can only use one TypeVarTuple in a class definition \
                         # E: TypeVarTuple "T" is only valid with an unpack \

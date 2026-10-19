@@ -2463,7 +2463,10 @@ class SemanticAnalyzer(
         assert not is_unpacked or not is_typealias_param, "Mutually exclusive conditions"
         sym = self.lookup_qualified(t.name, t)
         if sym and isinstance(sym.node, PlaceholderNode):
-            self.record_incomplete_ref()
+            if self.final_iteration:
+                self.cannot_resolve_name(t.name, "name", t)
+            else:
+                self.record_incomplete_ref()
         if not is_unpacked and sym and isinstance(sym.node, ParamSpecExpr):
             if sym.fullname and not self.tvar_scope.allow_binding(sym.fullname):
                 # It's bound by our type variable scope
