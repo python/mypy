@@ -574,6 +574,7 @@ class int:
     pass
 
 [case testIntToBytes]
+import sys
 from testutil import assertRaises
 def to_bytes(n: int, length: int, byteorder: str, signed: bool = False) -> bytes:
     return n.to_bytes(length, byteorder, signed=signed)
@@ -593,6 +594,19 @@ def test_to_bytes() -> None:
     # signed, too large for 1 byte
     with assertRaises(OverflowError):
         to_bytes(128, 1, "big", True)
+
+def test_invalid_byteorder_refcount() -> None:
+    n = int("123456789012345678901234567890")
+    before = sys.getrefcount(n)
+    for _ in range(10):
+        with assertRaises(ValueError):
+            to_bytes(n, 16, "invalid")
+    assert sys.getrefcount(n) == before
+    # Keep n alive across both refcount checks.
+    assert n == int("123456789012345678901234567890")
+
+[file sys/__init__.pyi]
+def getrefcount(n: object) -> int: ...
 
 [case testBitLength]
 def bit_length(n: int) -> int:
