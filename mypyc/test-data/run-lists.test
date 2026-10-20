@@ -671,3 +671,48 @@ class subc(list[Any]):
 [file userdefinedlist.py]
 class list:
     pass
+
+[case testListSetErrorOwnership]
+from typing import Any, List
+def assign(items: List[Any], index: int, value: Any) -> None:
+    items[index] = value
+
+[file driver.py]
+import gc
+import weakref
+from native import assign
+from testutil import assertRaises
+
+class Sentinel:
+    pass
+
+for index in (1, -2, 2**100, -2**100):
+    value = Sentinel()
+    ref = weakref.ref(value)
+    try:
+        assign([None], index, value)
+    except (IndexError, OverflowError):
+        pass
+    else:
+        assert False, index
+    del value
+    gc.collect()
+    assert ref() is None, index
+with assertRaises(IndexError):
+    assign([], 0, None)
+items = [None]
+value = Sentinel()
+assign(items, -1, value)
+assert items[0] is value
+assign(items, 0, None)
+assert items == [None]
+
+# Replacing an element may run Python code that mutates the same list.
+class Reentrant:
+    def __del__(self):
+        items.clear()
+
+for index in (0, -1):
+    items = [Reentrant()]
+    assign(items, index, None)
+    assert items == []
