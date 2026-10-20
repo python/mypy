@@ -915,6 +915,34 @@ def maybe_strip_cls(name: str, args: list[nodes.Argument]) -> list[nodes.Argumen
     return args
 
 
+def expand_unpacked_kwargs(args: list[nodes.Argument]) -> list[nodes.Argument]:
+    """Replace `**kwargs: Unpack[SomeTypedDict]` with a keyword argument per key."""
+    expanded = []
+    for arg in args:
+        if (
+            arg.kind == nodes.ARG_STAR2
+            and arg.variable.type is not None
+            and isinstance(
+                (typed_dict := mypy.types.get_proper_type(arg.variable.type)),
+                mypy.types.TypedDictType,
+            )
+        ):
+            for key_name, key_type in typed_dict.items.items():
+                optional = key_name not in typed_dict.required_keys
+                expanded.append(
+                    nodes.Argument(
+                        nodes.Var(key_name, key_type),
+                        type_annotation=key_type,
+                        initializer=nodes.EllipsisExpr() if optional else None,
+                        kind=nodes.ARG_NAMED_OPT if optional else nodes.ARG_NAMED,
+                        pos_only=False,
+                    )
+                )
+        else:
+            expanded.append(arg)
+    return expanded
+
+
 class Signature(Generic[T]):
     def __init__(self) -> None:
         self.pos: list[T] = []
@@ -966,7 +994,7 @@ class Signature(Generic[T]):
     @staticmethod
     def from_funcitem(stub: nodes.FuncItem) -> Signature[nodes.Argument]:
         stub_sig: Signature[nodes.Argument] = Signature()
-        stub_args = maybe_strip_cls(stub.name, stub.arguments)
+        stub_args = expand_unpacked_kwargs(maybe_strip_cls(stub.name, stub.arguments))
         for stub_arg in stub_args:
             if stub_arg.kind.is_positional():
                 stub_sig.pos.append(stub_arg)
@@ -975,21 +1003,7 @@ class Signature(Generic[T]):
             elif stub_arg.kind == nodes.ARG_STAR:
                 stub_sig.varpos = stub_arg
             elif stub_arg.kind == nodes.ARG_STAR2:
-                if stub_arg.variable.type is not None and isinstance(
-                    (typed_dict_arg := mypy.types.get_proper_type(stub_arg.variable.type)),
-                    mypy.types.TypedDictType,
-                ):
-                    for key_name, key_type in typed_dict_arg.items.items():
-                        optional = key_name not in typed_dict_arg.required_keys
-                        stub_sig.kwonly[key_name] = nodes.Argument(
-                            nodes.Var(key_name, key_type),
-                            type_annotation=key_type,
-                            initializer=nodes.EllipsisExpr() if optional else None,
-                            kind=nodes.ARG_NAMED_OPT if optional else nodes.ARG_NAMED,
-                            pos_only=False,
-                        )
-                else:
-                    stub_sig.varkw = stub_arg
+                stub_sig.varkw = stub_arg
             else:
                 raise AssertionError
         return stub_sig
@@ -1029,7 +1043,7 @@ class Signature(Generic[T]):
         is_arg_pos_only: defaultdict[str, set[bool]] = defaultdict(set)
         for func in map(_resolve_funcitem_from_decorator, stub.items):
             assert func is not None, f"Failed to resolve decorated overload of {stub.fullname!r}"
-            args = maybe_strip_cls(stub.name, func.arguments)
+            args = expand_unpacked_kwargs(maybe_strip_cls(stub.name, func.arguments))
             for index, arg in enumerate(args):
                 if (
                     arg.variable.name.startswith("__")
@@ -1045,7 +1059,7 @@ class Signature(Generic[T]):
         all_args: dict[str, list[tuple[nodes.Argument, int]]] = {}
         for func in map(_resolve_funcitem_from_decorator, stub.items):
             assert func is not None, f"Failed to resolve decorated overload of {stub.fullname!r}"
-            args = maybe_strip_cls(stub.name, func.arguments)
+            args = expand_unpacked_kwargs(maybe_strip_cls(stub.name, func.arguments))
             for index, arg in enumerate(args):
                 # For positional-only args, we allow overloads to have different names for the same
                 # argument. To accomplish this, we just make up a fake index-based name.
