@@ -136,6 +136,18 @@ y = 1  # type: int, int  # type: ignore[syntax]
                                  # N: Error code "attr-defined" not covered by "type: ignore[xyz]" comment
 'x'.foobar  # type: ignore
 
+[case testOperatorUnionNoteWithIgnoredArgType]
+class OnlyA:
+    def __call__(self, other: "A") -> bool:
+        return True
+
+class A:
+    __le__ = OnlyA()
+
+def f(x: A, y: A | int) -> None:
+    x <= y  # type: ignore[arg-type]
+[out]
+
 [case testErrorCodeIgnore2]
 a = 'x'.foobar  # type: int  # type: ignore[attr-defined]
 b = 'x'.foobar  # type: int  # type: ignore[xyz]  # E: "str" has no attribute "foobar"  [attr-defined] \
