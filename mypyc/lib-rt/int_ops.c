@@ -641,6 +641,7 @@ PyObject *CPyTagged_ToBytes(CPyTagged self, Py_ssize_t length, PyObject *byteord
     } else if (strcmp(order, "little") == 0) {
         little_endian = 1;
     } else {
+        Py_DECREF(pyint);
         PyErr_SetString(PyExc_ValueError, "byteorder must be either 'little' or 'big'");
         return NULL;
     }
