@@ -259,7 +259,9 @@ def test_non_ext_any() -> None:
         n.y
 
 [case testNonExtMisc]
-from typing import Any, overload
+from typing import Any, Callable, Iterator, overload
+
+from mypy_extensions import mypyc_attr
 
 def decorator(cls) -> Any:
     return cls
@@ -305,32 +307,80 @@ class Overload:
     def get(self, index: Any) -> Any:
         return index
 
-def get(c: Overload, s: str) -> str:
-    return c.get(s)
-
 @decorator
 class Var:
     x = 'xy'
 
-def get_class_var() -> str:
-    return Var.x
+def call(f: Callable[[int], int], x: int) -> int:
+    return f(x)
 
-[file driver.py]
-from native import A, Overload, get, get_class_var
-a = A()
-assert a.a == 1
-assert a.b == 2
-assert a.c == 3
-assert a.get_a() == 1
-assert a.get_b() == 2
-assert a.get_c() == 3
-assert A.constant() == 4
+@mypyc_attr(native_class=False)
+class NestedFunc:
+    def __init__(self, n: int) -> None:
+        self.n = n
 
-o = Overload()
-assert get(o, "test") == "test"
-assert o.get(20) == 20
+    def no_capture(self, x: int) -> int:
+        def f(y: int) -> int:
+            return y + 1
+        return call(f, x)
 
-assert get_class_var() == 'xy'
+    def conditional(self, x: int) -> int:
+        if x:
+            def f(y: int) -> int:
+                return y * 2
+            return call(f, x)
+        return -1
+
+    def capture(self, x: int) -> int:
+        def f(y: int) -> int:
+            return y + x + self.n
+        return call(f, 1)
+
+    def recursive(self, x: int) -> int:
+        def f(y: int) -> int:
+            return 0 if y == 0 else y + f(y - 1)
+        return f(x)
+
+    def with_lambda(self, x: int) -> int:
+        return call(lambda y: y + x + self.n, 1)
+
+    def return_lambda(self) -> Callable[[], "NestedFunc"]:
+        return lambda: self
+
+    def gen(self, x: int) -> Iterator[int]:
+        def f(y: int) -> int:
+            return y + x
+        yield call(f, 1)
+        yield call(f, 2)
+
+def test_inheritance() -> None:
+    a = A()
+    assert a.a == 1
+    assert a.b == 2
+    assert a.c == 3
+    assert a.get_a() == 1
+    assert a.get_b() == 2
+    assert a.get_c() == 3
+    assert A.constant() == 4
+
+def test_overload() -> None:
+    o = Overload()
+    assert o.get("test") == "test"
+    assert o.get(20) == 20
+
+def test_class_var() -> None:
+    assert Var.x == 'xy'
+
+def test_nested_functions_in_methods() -> None:
+    n = NestedFunc(10)
+    assert n.no_capture(1) == 2
+    assert n.conditional(3) == 6
+    assert n.conditional(0) == -1
+    assert n.capture(2) == 13
+    assert n.recursive(4) == 10
+    assert n.with_lambda(2) == 13
+    assert n.return_lambda()() is n
+    assert list(n.gen(5)) == [6, 7]
 
 [case testNonExtClassDecoratorReturningNonClass]
 from functools import cache
