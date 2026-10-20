@@ -209,7 +209,8 @@ def _apply_specialization(
     #       they check that everything in arg_kinds is ARG_POS.
 
     # Specializers translate generator expression arguments inline, which doesn't support
-    # unpacking (Python 3.15+). Use the generic path, which reports an error.
+    # unpacking (Python 3.15+). Use the generic path, where transform_generator_expr
+    # reports an error.
     if any(
         isinstance(arg, GeneratorExpr) and isinstance(arg.left_expr, StarExpr) for arg in expr.args
     ):
