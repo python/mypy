@@ -724,3 +724,85 @@ assert f(C()) == 'c'
 
 [file driver.py]
 import register
+
+[case testRegisterAnnotationErrorOwnership]
+import sys
+from functools import singledispatch
+from typing import Any
+from testutil import assertRaises
+from helpers import invalid
+
+@singledispatch
+def fun(arg: Any) -> bool:
+    return False
+
+def test_annotation_error_ownership() -> None:
+    getrefcount = getattr(sys, "getrefcount")
+    annotations = getattr(invalid, "__annotations__")
+    before = getrefcount(annotations)
+    for _ in range(5):
+        with assertRaises(NameError):
+            fun.register(invalid)
+    assert getrefcount(annotations) == before
+
+[file helpers.py]
+# Annotation-based registration requires an interpreted Python function.
+def invalid(arg: "UnknownType") -> bool:  # type: ignore[name-defined]
+    return False
+
+[case testRegisterSuccessOwnership]
+import gc
+import sys
+import weakref
+from functools import singledispatch
+from mypy_extensions import mypyc_attr
+from typing import Any
+from helpers import specialized
+
+@singledispatch
+def fun(arg: Any) -> bool:
+    return False
+
+class Arg:
+    pass
+
+# Keep the dict subclass weak-referenceable.
+@mypyc_attr(native_class=False)
+class Hints(dict):
+    pass
+
+def test_success_ownership() -> None:
+    refs: list[weakref.ReferenceType[Hints]] = []
+    def get_type_hints(func: Any) -> Hints:
+        hints = Hints(arg=Arg)
+        refs.append(weakref.ref(hints))
+        return hints
+
+    getrefcount = getattr(sys, "getrefcount")
+    registry = getattr(fun, "registry")
+    cache = getattr(fun, "dispatch_cache")
+    registry_before = getrefcount(registry)
+    cache_before = getrefcount(cache)
+    # Access typing dynamically to work with the minimal test stubs.
+    typing = getattr(sys, "modules")["typing"]
+    original_get_type_hints = typing.get_type_hints
+    typing.get_type_hints = get_type_hints
+    try:
+        for _ in range(5):
+            fun.register(specialized)
+            assert fun(Arg())
+            fun.register(int)(specialized)
+            assert fun(1)
+            fun.register(str, specialized)
+            assert fun("")
+    finally:
+        typing.get_type_hints = original_get_type_hints
+    gc.collect()
+    assert all(ref() is None for ref in refs)
+    assert getrefcount(registry) == registry_before
+    assert getrefcount(cache) == cache_before
+
+[file helpers.py]
+# Annotation-based registration requires an interpreted Python function.
+def specialized(arg: object) -> bool:
+    return True
