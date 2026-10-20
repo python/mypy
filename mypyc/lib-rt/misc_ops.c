@@ -230,6 +230,8 @@ PyObject *CPyType_FromTemplate(PyObject *template,
 
     if (orig_bases) {
         bases = update_bases(orig_bases);
+        if (bases == NULL)
+            goto error;
         // update_bases doesn't increment the refcount if nothing changes,
         // so we do it to make sure we have distinct "references" to both
         if (bases == orig_bases)
@@ -252,17 +254,6 @@ PyObject *CPyType_FromTemplate(PyObject *template,
     if (!name)
         goto error;
 
-    if (template_->tp_doc) {
-        // cpython expects tp_doc to be heap-allocated so convert it here to
-        // avoid segfaults on deallocation.
-        Py_ssize_t size = strlen(template_->tp_doc) + 1;
-        char *doc = (char *)PyMem_Malloc(size);
-        if (!doc)
-            goto error;
-        memcpy(doc, template_->tp_doc, size);
-        template_->tp_doc = doc;
-    }
-
     // Allocate the type and then copy the main stuff in.
     t = (PyHeapTypeObject*)PyType_GenericAlloc(&PyType_Type, 0);
     if (!t)
@@ -270,6 +261,21 @@ PyObject *CPyType_FromTemplate(PyObject *template,
     memcpy((char *)t + sizeof(PyVarObject),
            (char *)template_ + sizeof(PyVarObject),
            sizeof(PyTypeObject) - sizeof(PyVarObject));
+
+    t->ht_type.tp_doc = NULL;
+    // Unlike the tp_doc slots of most other object, a heap type's tp_doc
+    // must be heap allocated.
+    if (template_->tp_doc) {
+        // Silently truncate the docstring if it contains a null byte
+        size_t size = strlen(template_->tp_doc) + 1;
+        char *doc = (char *)PyMem_Malloc(size);
+        if (doc == NULL) {
+            PyErr_NoMemory();
+            goto error;
+        }
+        memcpy(doc, template_->tp_doc, size);
+        t->ht_type.tp_doc = doc;
+    }
 
     if (bases != orig_bases) {
         if (PyObject_SetAttr((PyObject *)t, mypyc_interned_str.__orig_bases__, orig_bases) < 0)
@@ -332,21 +338,6 @@ PyObject *CPyType_FromTemplate(PyObject *template,
         goto error;
 
     Py_XDECREF(dummy_class);
-
-    // Unlike the tp_doc slots of most other object, a heap type's tp_doc
-    // must be heap allocated.
-    if (template_->tp_doc) {
-        // Silently truncate the docstring if it contains a null byte
-        Py_ssize_t size = strlen(template_->tp_doc) + 1;
-        char *tp_doc = (char *)PyMem_Malloc(size);
-        if (tp_doc == NULL) {
-            PyErr_NoMemory();
-            goto error;
-        }
-
-        memcpy(tp_doc, template_->tp_doc, size);
-        t->ht_type.tp_doc = tp_doc;
-    }
 
 #if PY_MINOR_VERSION == 11
     // This is a hack. Python 3.11 doesn't include good public APIs to work with managed
