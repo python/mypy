@@ -208,6 +208,13 @@ def _apply_specialization(
     # TODO: Allow special cases to have default args or named args. Currently they don't since
     #       they check that everything in arg_kinds is ARG_POS.
 
+    # Specializers translate generator expression arguments inline, which doesn't support
+    # unpacking (Python 3.15+). Use the generic path, which reports an error.
+    if any(
+        isinstance(arg, GeneratorExpr) and isinstance(arg.left_expr, StarExpr) for arg in expr.args
+    ):
+        return None
+
     # If there is a specializer for this function, try calling it.
     # Return the first successful one.
     if name and (name, typ) in specializers:
