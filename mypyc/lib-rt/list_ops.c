@@ -14,6 +14,12 @@ PyObject *CPyList_Build(Py_ssize_t len, ...) {
 
     PyObject *res = PyList_New(len);
     if (res == NULL) {
+        va_list args;
+        va_start(args, len);
+        for (i = 0; i < len; i++) {
+            Py_DECREF(va_arg(args, PyObject *));
+        }
+        va_end(args);
         return NULL;
     }
 
@@ -123,22 +129,26 @@ bool CPyList_SetItem(PyObject *list, CPyTagged index, PyObject *value) {
         Py_ssize_t size = PyList_GET_SIZE(list);
         if (n >= 0) {
             if (n >= size) {
+                Py_DECREF(value);
                 PyErr_SetString(PyExc_IndexError, "list assignment index out of range");
                 return false;
             }
         } else {
             n += size;
             if (n < 0) {
+                Py_DECREF(value);
                 PyErr_SetString(PyExc_IndexError, "list assignment index out of range");
                 return false;
             }
         }
-        // PyList_SET_ITEM doesn't decref the old element, so we do
-        Py_DECREF(PyList_GET_ITEM(list, n));
+        // Set the replacement before decref, which may run reentrant Python code.
+        PyObject *old = PyList_GET_ITEM(list, n);
         // N.B: Steals reference
         PyList_SET_ITEM(list, n, value);
+        Py_DECREF(old);
         return true;
     } else {
+        Py_DECREF(value);
         PyErr_SetString(PyExc_OverflowError, CPYTHON_LARGE_INT_ERRMSG);
         return false;
     }
@@ -147,20 +157,23 @@ bool CPyList_SetItem(PyObject *list, CPyTagged index, PyObject *value) {
 bool CPyList_SetItemInt64(PyObject *list, int64_t index, PyObject *value) {
     size_t size = PyList_GET_SIZE(list);
     if (unlikely((uint64_t)index >= size)) {
-        if (index > 0) {
+        if (index >= 0) {
+            Py_DECREF(value);
             PyErr_SetString(PyExc_IndexError, "list assignment index out of range");
             return false;
         }
         index += size;
         if (index < 0) {
+            Py_DECREF(value);
             PyErr_SetString(PyExc_IndexError, "list assignment index out of range");
             return false;
         }
     }
-    // PyList_SET_ITEM doesn't decref the old element, so we do
-    Py_DECREF(PyList_GET_ITEM(list, index));
+    // Set the replacement before decref, which may run reentrant Python code.
+    PyObject *old = PyList_GET_ITEM(list, index);
     // N.B: Steals reference
     PyList_SET_ITEM(list, index, value);
+    Py_DECREF(old);
     return true;
 }
 
@@ -188,6 +201,7 @@ bool CPyList_SetItem_(PyObject *list, CPyTagged index, PyObject *value) {
         }
         return PyList_SetItem(list, n, value) >= 0;
     } else {
+        Py_DECREF(value);
         PyErr_SetString(PyExc_OverflowError, CPYTHON_LARGE_INT_ERRMSG);
         return false;
     }
