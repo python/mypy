@@ -639,3 +639,30 @@ def test_buffer_extend_from_shared_buffer() -> None:
     v = extend(old, memoryview_(new))
     assert v == vec[u8]([1, 2, 1, 2, 3])
     assert new == vec[u8]([1, 2, 3])
+
+[case testLibrtVecsFailedImportOwnership_librt]
+pass
+
+[file driver.py]
+import gc
+import importlib
+import weakref
+import mypy_extensions
+from testutil import assertRaises
+
+original_i64 = mypy_extensions.i64
+original_i32 = mypy_extensions.i32
+class Sentinel:
+    pass
+ref = weakref.ref(Sentinel)
+mypy_extensions.i64 = Sentinel
+mypy_extensions.i32 = object()
+with assertRaises(TypeError, "mypy_extensions.i32 is not a type"):
+    importlib.import_module("librt.vecs")
+mypy_extensions.i64 = original_i64
+mypy_extensions.i32 = original_i32
+del Sentinel
+gc.collect()
+assert ref() is None
+vecs = importlib.import_module("librt.vecs")
+assert list(vecs.vec[original_i64]([1, 2])) == [1, 2]
