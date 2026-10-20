@@ -15,3 +15,4 @@ def f(it: Iterator[list[int]], x: list[list[int]], xs: list[list[str]]) -> None:
     sorted(*l for l in x)  # E: Unpacking in comprehensions is not supported yet
     any(*l for l in x)  # E: Unpacking in comprehensions is not supported yet
     ",".join(*l for l in xs)  # E: Unpacking in comprehensions is not supported yet
+    sorted((*l for l in x), key=abs)  # E: Unpacking in comprehensions is not supported yet
