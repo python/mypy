@@ -4713,7 +4713,7 @@ class SemanticAnalyzer(
                 and original_def.node.is_inferred
             ):
                 for func in self.scope.functions:
-                    func.def_or_infer_vars = True
+                    mark_as_top_level(func)
 
     def analyze_tuple_or_list_lvalue(self, lval: TupleExpr, explicit_type: bool = False) -> None:
         """Analyze an lvalue or assignment target that is a list or tuple."""
@@ -4798,7 +4798,7 @@ class SemanticAnalyzer(
                     # TODO: should we also set lval.kind = MDEF?
                     self.type.names[lval.name] = SymbolTableNode(MDEF, v, implicit=True)
                     for func in self.scope.functions:
-                        func.def_or_infer_vars = True
+                        mark_as_top_level(func)
 
         if self.is_self_member_ref(lval) or self.is_cls_member_ref(lval):
             assert self.type, "Self or cls member outside a class"
@@ -4810,7 +4810,7 @@ class SemanticAnalyzer(
                 and cur_node.node.is_initialized_in_class
             ):
                 for func in self.scope.functions:
-                    func.def_or_infer_vars = True
+                    mark_as_top_level(func)
         self.check_lvalue_validity(lval.node, lval)
 
     def is_self_member_ref(self, memberexpr: MemberExpr) -> bool:
@@ -8596,6 +8596,18 @@ def erase_func_annotations(func: FuncDef) -> None:
         arg.variable.type = None
     func.type = None
     func.unanalyzed_type = None
+
+
+def mark_as_top_level(func: FuncBase) -> None:
+    """Mark a function to be processed as part of module top level.
+
+    A non-trivial part here is that we want to keep overloads as a whole.
+    """
+    func.def_or_infer_vars = True
+    if isinstance(func, OverloadedFuncDef):
+        for item in func.items:
+            defn = item if isinstance(item, FuncDef) else item.func
+            defn.def_or_infer_vars = True
 
 
 def dotted_identifier_leftmost(s: str) -> str | None:

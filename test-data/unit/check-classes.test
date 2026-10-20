@@ -9741,3 +9741,16 @@ class C:
 
 reveal_type(C.x)  # N: Revealed type is "builtins.int | None"
 [builtins fixtures/classmethod.pyi]
+
+[case testSettablePropertyGetterCheckedWhenPartOfInterface]
+class A:
+    @property
+    def p(self) -> str:
+        def nested() -> int:
+            return "no"  # E: Incompatible return value type (got "str", expected "int")
+        return 0  # E: Incompatible return value type (got "int", expected "str")
+
+    @p.setter
+    def p(self, value: int) -> None:
+        self.x = value
+[builtins fixtures/property.pyi]
