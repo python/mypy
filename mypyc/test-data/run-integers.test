@@ -602,6 +602,8 @@ def test_invalid_byteorder_refcount() -> None:
         with assertRaises(ValueError):
             to_bytes(n, 16, "invalid")
     assert sys.getrefcount(n) == before
+    # Keep n alive across both refcount checks.
+    assert n == int("123456789012345678901234567890")
 
 [file sys/__init__.pyi]
 def getrefcount(n: object) -> int: ...
