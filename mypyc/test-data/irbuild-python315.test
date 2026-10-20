@@ -1,12 +1,11 @@
 [case testPEP798FailGracefully_python3_15]
+from typing import Iterator
+
 x = [[1]]
 y = [*l for l in x]  # E: Unpacking in comprehensions is not supported yet
 
 dx = [{1: 1}]
 dy = {**d for d in dx}  # E: Unpacking in comprehensions is not supported yet
-
-[case testPEP798GeneratorArgFailGracefully_python3_15]
-from typing import Iterator
 
 def f(it: Iterator[list[int]], x: list[list[int]], xs: list[list[str]]) -> None:
     list(*l for l in it)  # E: Unpacking in comprehensions is not supported yet
