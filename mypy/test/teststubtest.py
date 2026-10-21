@@ -836,6 +836,28 @@ class StubtestUnit(unittest.TestCase):
             """,
             error="f3",
         )
+        yield Case(
+            stub="""
+            from typing import overload
+
+            @overload
+            def f5(x: int, **kwargs: Unpack[_Args]) -> None: ...
+            @overload
+            def f5(x: str, **kwargs: Unpack[_Args]) -> None: ...
+            """,
+            runtime="def f5(x, *, a, b): pass",
+            error=None,
+        )
+        yield Case(
+            stub="""
+            @overload
+            def f6(x: int, **kwargs: Unpack[_Args]) -> None: ...
+            @overload
+            def f6(x: str, **kwargs: Unpack[_Args]) -> None: ...
+            """,
+            runtime="def f6(x, *, a, c): pass",
+            error="f6",
+        )
 
     @collect_cases
     def test_overload(self) -> Iterator[Case]:
