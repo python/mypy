@@ -6866,12 +6866,11 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
 
         # Restrict the type of the variable to True-ish/False-ish in the if and else branches
         # respectively
-        original_vartype = self.lookup_type(node)
+        vartype = self.lookup_type(node)
         if in_boolean_context:
             # We don't check `:=` values in expressions like `(a := A())`,
             # because they produce two error messages.
-            self.check_for_truthy_type(original_vartype, node)
-        vartype = try_expanding_sum_type_to_union(original_vartype, "builtins.bool")
+            self.check_for_truthy_type(vartype, node)
 
         if_map = {node: true_only(vartype)}
         else_map = {node: false_only(vartype)}
