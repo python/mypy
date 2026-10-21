@@ -9081,7 +9081,10 @@ def and_conditional_maps(m1: TypeMap, m2: TypeMap, *, use_meet: bool = False) ->
             result[e1] = m1[e1]
             continue
 
-        if not use_meet:
+        if use_meet:
+            e2 = m2_exprs[e1_hash]
+            result[e1] = meet_types(m1[e1], m2[e2])
+        else:
             # If use_meet=False and the same expression's type is refined by both conditions,
             # we somewhat arbitrarily give precedence to m2, unless a) m1's value is Never, or
             # b) m2's value is Any and m1 isn't a union that could have been narrowed to Any.
@@ -9098,14 +9101,6 @@ def and_conditional_maps(m1: TypeMap, m2: TypeMap, *, use_meet: bool = False) ->
                 ):
                     result[e1] = t1
 
-    if use_meet:
-        # For now, meet common keys only if specifically requested.
-        # This is currently used for tuple types narrowing, where having
-        # a precise result is important.
-        for e1 in m1:
-            for e2 in m2:
-                if literal_hash(e1) == literal_hash(e2):
-                    result[e1] = meet_types(m1[e1], m2[e2])
     return result
 
 
