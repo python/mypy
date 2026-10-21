@@ -7168,9 +7168,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                 if narrowable_expr_type is None:
                     if_type = else_type = ambiguous_expr_type
                 else:
-                    narrowable_expr_type = try_expanding_sum_type_to_union(
-                        coerce_to_literal(narrowable_expr_type), None
-                    )
+                    narrowable_expr_type = coerce_to_literal(narrowable_expr_type)
                     if_type, else_type = conditional_types(
                         narrowable_expr_type,
                         [TypeRange(target_type, is_upper_bound=False)],
@@ -7247,7 +7245,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                     # we narrow to in the if_map
                     or_if_maps.append({operands[i]: expr_type})
 
-                expr_type = coerce_to_literal(try_expanding_sum_type_to_union(expr_type, None))
+                expr_type = coerce_to_literal(expr_type)
                 for j in expr_indices:
                     if j in custom_eq_indices:
                         if i == j:
@@ -7273,9 +7271,6 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                     if narrowable_expr_type is None:
                         if_type = else_type = ambiguous_expr_type
                     else:
-                        narrowable_expr_type = coerce_to_literal(
-                            try_expanding_sum_type_to_union(narrowable_expr_type, None)
-                        )
                         if_type, else_type = conditional_types(
                             narrowable_expr_type,
                             [TypeRange(target_type, is_upper_bound=False)],
