@@ -45,6 +45,14 @@ will always run on the current host. Example::
 ``dmypy run`` will automatically restart the daemon if the
 configuration or mypy version changes.
 
+.. note::
+
+    The set of source files may change between runs. If you add a file
+    to the command line, the running daemon picks it up and type checks
+    it without a restart, so the cached state is preserved. To type
+    check different sets of files at the same time, run one daemon per
+    set, each with its own status file (see ``--status-file``).
+
 The initial run will process all the code and may take a while to
 finish, but subsequent runs will be quick, especially if you've only
 changed a few files. (You can use :ref:`remote caching <remote-cache>`
