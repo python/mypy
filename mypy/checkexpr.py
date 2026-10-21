@@ -2247,7 +2247,11 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                 else:
                     pass1_args.append(arg)
 
-            if fresh_callee.special_sig is None and not fresh_callee.is_type_obj():
+            if (
+                fresh_callee != callee_type
+                and fresh_callee.special_sig is None
+                and not fresh_callee.is_type_obj()
+            ):
                 inferred_args, _ = infer_function_type_arguments(
                     fresh_callee,
                     pass1_args,
