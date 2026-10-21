@@ -111,7 +111,7 @@ from mypyc.ir.rtypes import (
     vec_api_by_item_type,
 )
 from mypyc.irbuild.ast_helpers import is_borrow_friendly_expr, process_conditional
-from mypyc.irbuild.builder import IRBuilder, int_borrow_friendly_op
+from mypyc.irbuild.builder import IRBuilder, expr_has_suspend, int_borrow_friendly_op
 from mypyc.irbuild.constant_fold import constant_fold_expr
 from mypyc.irbuild.for_helpers import (
     comprehension_helper,
@@ -1613,8 +1613,23 @@ def transform_generator_expr(builder: IRBuilder, o: GeneratorExpr) -> Value:
     if isinstance(o.left_expr, StarExpr):
         builder.error("Unpacking in comprehensions is not supported yet", o.line)
         return builder.none()
+    if is_async_generator_expr(o):
+        builder.error("Async generator expressions are not supported", o.line)
+        return builder.none()
     builder.warning("Treating generator comprehension as list", o.line)
     return builder.primitive_op(iter_op, [translate_generator_to_list(builder, o)], o.line)
+
+
+def is_async_generator_expr(o: GeneratorExpr) -> bool:
+    """Is this an async generator expression (it has 'async for' or 'await')?
+
+    The first iterable is evaluated in the enclosing scope, so an 'await' there doesn't
+    make the generator expression async.
+    """
+    if any(o.is_async):
+        return True
+    parts = [o.left_expr, *o.sequences[1:]] + [cond for conds in o.condlists for cond in conds]
+    return any(expr_has_suspend(e) for e in parts)
 
 
 def transform_assignment_expr(builder: IRBuilder, o: AssignmentExpr) -> Value:

@@ -3868,3 +3868,17 @@ def get_length():
 L0:
     r0 = 'https://w3id.org/cwl/salad#'
     return 54
+
+[case testAsyncGeneratorExprNotSupported]
+from typing import AsyncIterator
+
+async def h(x: int) -> int:
+    return x
+
+async def f(xs: list[int], a: AsyncIterator[int]) -> None:
+    g1 = (await h(x) for x in xs)  # E: Async generator expressions are not supported
+    g2 = (x async for x in a)  # E: Async generator expressions are not supported
+    g3 = (x for x in xs if [y async for y in a])  # E: Async generator expressions are not supported
+    # An 'await' in the first iterable is evaluated in the enclosing function.
+    g4 = (x for x in [await h(1)])  # W: Treating generator comprehension as list
+[typing fixtures/typing-full.pyi]
