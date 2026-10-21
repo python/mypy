@@ -875,7 +875,7 @@ def f(o: Base) -> None:
 [out]
 
 [case testNamedTupleNew]
-from typing import NamedTuple
+from typing import Generic, NamedTuple, TypeVar
 
 Base = NamedTuple('Base', [('param', int)])
 
@@ -885,6 +885,18 @@ class Child(Base):
 
 Base(param=10)
 Child(param=10)
+
+T = TypeVar("T")
+class GenericBase(NamedTuple, Generic[T]):
+    value: T
+
+class GenericChild(GenericBase[T]):
+    def __new__(cls, value: int) -> GenericChild[int]:
+        raise BaseException
+
+class BadChild(GenericBase[T]):
+    def __new__(cls, value: int) -> GenericBase[int]:  # E: Incompatible return type for "__new__" (returns "GenericBase[int]", but must return a subtype of "BadChild[Any]")
+        raise BaseException
 [builtins fixtures/tuple.pyi]
 
 [case testNamedTupleClassMethodWithGenericReturnValue]
