@@ -950,8 +950,9 @@ PyObject *CPySingledispatch_RegisterFunction(PyObject *singledispatch_func,
     PyObject *typing = NULL;
     PyObject *get_type_hints = NULL;
     PyObject *type_hints = NULL;
+    PyObject *result = NULL;
 
-    if (registry == NULL) goto fail;
+    if (registry == NULL) goto done;
     if (func == NULL) {
         // one argument case
         if (PyType_Check(cls)) {
@@ -959,8 +960,9 @@ PyObject *CPySingledispatch_RegisterFunction(PyObject *singledispatch_func,
             // bind cls to the first argument so that register gets called again with both the
             // class and the function
             register_func = PyObject_GetAttr(singledispatch_func, mypyc_interned_str.register_);
-            if (register_func == NULL) goto fail;
-            return PyMethod_New(register_func, cls);
+            if (register_func == NULL) goto done;
+            result = PyMethod_New(register_func, cls);
+            goto done;
         }
         // passed a function
         PyObject *annotations = PyFunction_GetAnnotations(cls);
@@ -971,49 +973,49 @@ PyObject *CPySingledispatch_RegisterFunction(PyObject *singledispatch_func,
 
         if (annotations == NULL) {
             PyErr_Format(PyExc_TypeError, invalid_first_arg_msg, cls);
-            goto fail;
+            goto done;
         }
-
-        Py_INCREF(annotations);
 
         func = cls;
         typing = PyImport_ImportModule("typing");
-        if (typing == NULL) goto fail;
+        if (typing == NULL) goto done;
         get_type_hints = PyObject_GetAttr(typing, mypyc_interned_str.get_type_hints);
 
+        if (get_type_hints == NULL) goto done;
         type_hints = PyObject_CallOneArg(get_type_hints, func);
+        if (type_hints == NULL) goto done;
         PyObject *argname;
         Py_ssize_t pos = 0;
         if (!PyDict_Next(type_hints, &pos, &argname, &cls)) {
             // the functools implementation raises the same type error if annotations is an empty dict
             PyErr_Format(PyExc_TypeError, invalid_first_arg_msg, cls);
-            goto fail;
+            goto done;
         }
         if (!PyType_Check(cls)) {
             const char *invalid_annotation_msg = "Invalid annotation for %R. %R is not a class.";
             PyErr_Format(PyExc_TypeError, invalid_annotation_msg, argname, cls);
-            goto fail;
+            goto done;
         }
     }
     if (PyDict_SetItem(registry, cls, func) == -1) {
-        goto fail;
+        goto done;
     }
 
     // clear the cache so we consider the newly added function when dispatching
     PyObject *dispatch_cache = PyObject_GetAttr(singledispatch_func, mypyc_interned_str.dispatch_cache);
-    if (dispatch_cache == NULL) goto fail;
+    if (dispatch_cache == NULL) goto done;
     PyDict_Clear(dispatch_cache);
+    Py_DECREF(dispatch_cache);
 
-    Py_INCREF(func);
-    return func;
+    result = Py_NewRef(func);
 
-fail:
+done:
     Py_XDECREF(registry);
     Py_XDECREF(register_func);
     Py_XDECREF(typing);
     Py_XDECREF(get_type_hints);
     Py_XDECREF(type_hints);
-    return NULL;
+    return result;
 
 }
 
