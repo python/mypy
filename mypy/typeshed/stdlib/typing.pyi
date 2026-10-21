@@ -1,7 +1,7 @@
 # Since this module defines "overload" it is not recognized by Ruff as typing.overload
 # TODO: The collections import is required, otherwise mypy crashes.
 # https://github.com/python/mypy/issues/16744
-import collections  # noqa: F401  # pyright: ignore[reportUnusedImport]
+import collections  # ruff: ignore[unused-import]  # pyright: ignore[reportUnusedImport]
 import sys
 import typing_extensions
 from _collections_abc import dict_items, dict_keys, dict_values
@@ -665,14 +665,17 @@ class AsyncGenerator(AsyncIterator[_YieldT_co], Protocol[_YieldT_co, _SendT_cont
 
     def aclose(self) -> Coroutine[Any, Any, None]: ...
 
-@runtime_checkable
-class Container(Protocol[_T_co]):
-    # This is generic more on vibes than anything else
-    @abstractmethod
-    def __contains__(self, x: object, /) -> bool: ...
+_ContainerT_contra = TypeVar("_ContainerT_contra", contravariant=True, default=Any)
 
 @runtime_checkable
-class Collection(Iterable[_T_co], Container[_T_co], Protocol[_T_co]):
+class Container(Protocol[_ContainerT_contra]):
+    # This is generic more on vibes than anything else
+    @abstractmethod
+    def __contains__(self, x: _ContainerT_contra, /) -> bool: ...
+
+@runtime_checkable
+class Collection(Iterable[_T_co], Container[Any], Protocol[_T_co]):
+    # Note: need to use Container[Any] instead of Container[_T_co] to ensure covariance.
     # Implement Sized (but don't have it as a base class).
     @abstractmethod
     def __len__(self) -> int: ...

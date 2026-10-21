@@ -133,7 +133,7 @@ class DocTestFinder:
         self,
         obj: object,
         name: str | None = None,
-        module: None | bool | types.ModuleType = None,
+        module: bool | types.ModuleType | None = None,
         globs: dict[str, Any] | None = None,
         extraglobs: dict[str, Any] | None = None,
     ) -> list[DocTest]: ...
@@ -198,7 +198,7 @@ def testfile(
     filename: str,
     module_relative: bool = True,
     name: str | None = None,
-    package: None | str | types.ModuleType = None,
+    package: str | types.ModuleType | None = None,
     globs: dict[str, Any] | None = None,
     verbose: bool | None = None,
     report: bool = True,
@@ -239,7 +239,7 @@ class SkipDocTestCase(DocTestCase):
 class _DocTestSuite(unittest.TestSuite): ...
 
 def DocTestSuite(
-    module: None | str | types.ModuleType = None,
+    module: str | types.ModuleType | None = None,
     globs: dict[str, Any] | None = None,
     extraglobs: dict[str, Any] | None = None,
     test_finder: DocTestFinder | None = None,
@@ -251,7 +251,7 @@ class DocFileCase(DocTestCase): ...
 def DocFileTest(
     path: str,
     module_relative: bool = True,
-    package: None | str | types.ModuleType = None,
+    package: str | types.ModuleType | None = None,
     globs: dict[str, Any] | None = None,
     parser: DocTestParser = ...,
     encoding: str | None = None,
@@ -259,7 +259,7 @@ def DocFileTest(
 ) -> DocFileCase: ...
 def DocFileSuite(*paths: str, **kw: Any) -> _DocTestSuite: ...
 def script_from_examples(s: str) -> str: ...
-def testsource(module: None | str | types.ModuleType, name: str) -> str: ...
+def testsource(module: str | types.ModuleType | None, name: str) -> str: ...
 def debug_src(src: str, pm: bool = False, globs: dict[str, Any] | None = None) -> None: ...
 def debug_script(src: str, pm: bool = False, globs: dict[str, Any] | None = None) -> None: ...
-def debug(module: None | str | types.ModuleType, name: str, pm: bool = False) -> None: ...
+def debug(module: str | types.ModuleType | None, name: str, pm: bool = False) -> None: ...
