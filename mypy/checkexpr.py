@@ -2201,6 +2201,8 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                 new_args.append(None)
             else:
                 new_args.append(arg)
+        if all(a is None for a in new_args):
+            return callable, constraints
         # Don't show errors after we have only used the outer context for inference.
         # We will use argument context to infer more variables.
         return (
