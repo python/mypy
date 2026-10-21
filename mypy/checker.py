@@ -6989,16 +6989,6 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                         all_if_maps = []
                         all_else_maps = []
                         for known_item in container_item_types:
-                            # Match the should_coerce_literals logic from narrow_type_by_identity_equality
-                            p_known_item = get_proper_type(known_item)
-                            if (
-                                is_literal_type_like(p_known_item)
-                                or (
-                                    isinstance(p_known_item, Instance)
-                                    and p_known_item.type.is_enum
-                                )
-                            ) and not has_custom_eq_checks(p_known_item):
-                                known_item = coerce_to_literal(known_item)
                             if_map, else_map = self.narrow_type_by_identity_equality(
                                 "==",
                                 operands=[operands[left_index], operands[right_index]],
@@ -7007,8 +6997,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                                 narrowable_indices={0},
                             )
                             all_if_maps.append(if_map)
-                            if is_singleton_equality_type(get_proper_type(known_item)):
-                                all_else_maps.append(else_map)
+                            all_else_maps.append(else_map)
                         if_map = reduce_or_conditional_type_maps(all_if_maps)
                         else_map = reduce_and_conditional_type_maps(all_else_maps, use_meet=True)
                     else:
