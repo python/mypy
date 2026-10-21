@@ -2247,38 +2247,38 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                 else:
                     pass1_args.append(arg)
 
-            inferred_args, _ = infer_function_type_arguments(
-                fresh_callee,
-                pass1_args,
-                arg_kinds,
-                arg_names,
-                formal_to_actual,
-                context=self.argument_infer_context(),
-                strict=self.chk.in_checked_function(),
-                extra_constraints=ret_constraints,
-            )
-            if (
-                not any(
-                    a is None
-                    or isinstance(get_proper_type(a), UninhabitedType)
-                    or has_erased_component(a)
-                    or set(get_type_vars(a)) & set(callee_type.variables)
-                    for a in inferred_args
-                )
-                and fresh_callee.special_sig is None
-                and not fresh_callee.is_type_obj()
-            ):
-                return self.apply_inferred_arguments(fresh_callee, inferred_args, context)
-            else:
+            if fresh_callee.special_sig is None and not fresh_callee.is_type_obj():
                 inferred_args, _ = infer_function_type_arguments(
-                    callee_type,
+                    fresh_callee,
                     pass1_args,
                     arg_kinds,
                     arg_names,
                     formal_to_actual,
                     context=self.argument_infer_context(),
                     strict=self.chk.in_checked_function(),
+                    extra_constraints=ret_constraints,
                 )
+                if not any(
+                    a is None
+                    or isinstance(get_proper_type(a), UninhabitedType)
+                    or has_erased_component(a)
+                    or set(get_type_vars(a)) & set(callee_type.variables)
+                    for a in inferred_args
+                ):
+                    return self.apply_inferred_arguments(fresh_callee, inferred_args, context)
+
+            if not callee_type.is_generic():
+                return callee_type
+
+            inferred_args, _ = infer_function_type_arguments(
+                callee_type,
+                pass1_args,
+                arg_kinds,
+                arg_names,
+                formal_to_actual,
+                context=self.argument_infer_context(),
+                strict=self.chk.in_checked_function(),
+            )
 
             if 2 in arg_pass_nums:
                 # Second pass of type inference.
