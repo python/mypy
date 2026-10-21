@@ -6330,7 +6330,11 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             # context, and use enclosing one, see infer_lambda_type_using_context().
             # TODO: consider using cache for more expression kinds.
             elif (
-                isinstance(node, (CallExpr, ListExpr, TupleExpr, DictExpr, OpExpr, MemberExpr))
+                (
+                    isinstance(node, (CallExpr, ListExpr, TupleExpr, DictExpr, OpExpr))
+                    or isinstance(node, MemberExpr)
+                    and node.node is None
+                )
                 and not (self.in_lambda_expr or self.chk.current_node_deferred)
                 and not self.chk.options.disable_expression_cache
             ):
