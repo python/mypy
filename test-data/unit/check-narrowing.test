@@ -861,7 +861,7 @@ def f2(x: Union[Default, Literal[1], Literal[2]]):
 
 [case testNarrowingEqualityCustomEqualityEnum]
 # flags: --strict-equality --warn-unreachable
-from typing import Literal, Union
+from typing import Literal
 from enum import Enum
 
 class CustomEnum(Enum):
@@ -870,18 +870,24 @@ class CustomEnum(Enum):
 
     def __eq__(self, other: object) -> bool: return True
 
-x3: CustomEnum
-key: Literal[CustomEnum.A]
-if x3 == key:
-    reveal_type(x3)  # N: Revealed type is "__main__.CustomEnum"
-else:
-    reveal_type(x3)  # N: Revealed type is "Literal[__main__.CustomEnum.B]"
+def check_equality(x: CustomEnum, key: Literal[CustomEnum.A]) -> None:
+    if x == key:
+        reveal_type(x)  # N: Revealed type is "__main__.CustomEnum"
+    else:
+        reveal_type(x)  # N: Revealed type is "Literal[__main__.CustomEnum.B]"
 
 # For comparison, this narrows since we bypass __eq__
-if x3 is key:
-    reveal_type(x3)  # N: Revealed type is "Literal[__main__.CustomEnum.A]"
-else:
-    reveal_type(x3)  # N: Revealed type is "Literal[__main__.CustomEnum.B]"
+def check_identity(x: CustomEnum, key: Literal[CustomEnum.A]) -> None:
+    if x is key:
+        reveal_type(x)  # N: Revealed type is "Literal[__main__.CustomEnum.A]"
+    else:
+        reveal_type(x)  # N: Revealed type is "Literal[__main__.CustomEnum.B]"
+
+def check_optional_equality(x: CustomEnum | None, key: Literal[CustomEnum.A]) -> None:
+    if x == key:
+        reveal_type(x)  # N: Revealed type is "__main__.CustomEnum"
+    else:
+        reveal_type(x)  # N: Revealed type is "Literal[__main__.CustomEnum.B] | None"
 [builtins fixtures/primitives.pyi]
 
 [case testNarrowingEqualityCustomEqualityChainedComparison]
