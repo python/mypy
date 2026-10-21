@@ -996,113 +996,126 @@ librt_vecs_module_exec(PyObject *m)
         return -1;
     }
 
-    LibRTVecs_I64TypeObj = (PyTypeObject *)PyObject_GetAttrString(ext, "i64");
-    if (LibRTVecs_I64TypeObj == NULL) {
-        return -1;
+    PyTypeObject *i64 = NULL, *i32 = NULL, *i16 = NULL, *u8 = NULL;
+
+    i64 = (PyTypeObject *)PyObject_GetAttrString(ext, "i64");
+    if (i64 == NULL) {
+        goto error;
     }
-    if (!PyType_Check(LibRTVecs_I64TypeObj)) {
+    if (!PyType_Check(i64)) {
         PyErr_SetString(PyExc_TypeError, "mypy_extensions.i64 is not a type");
-        return -1;
+        goto error;
     }
-    LibRTVecs_I32TypeObj = (PyTypeObject *)PyObject_GetAttrString(ext, "i32");
-    if (LibRTVecs_I32TypeObj == NULL) {
-        return -1;
+    i32 = (PyTypeObject *)PyObject_GetAttrString(ext, "i32");
+    if (i32 == NULL) {
+        goto error;
     }
-    if (!PyType_Check(LibRTVecs_I32TypeObj)) {
+    if (!PyType_Check(i32)) {
         PyErr_SetString(PyExc_TypeError, "mypy_extensions.i32 is not a type");
-        return -1;
+        goto error;
     }
-    LibRTVecs_I16TypeObj = (PyTypeObject *)PyObject_GetAttrString(ext, "i16");
-    if (LibRTVecs_I16TypeObj == NULL) {
-        return -1;
+    i16 = (PyTypeObject *)PyObject_GetAttrString(ext, "i16");
+    if (i16 == NULL) {
+        goto error;
     }
-    if (!PyType_Check(LibRTVecs_I16TypeObj)) {
+    if (!PyType_Check(i16)) {
         PyErr_SetString(PyExc_TypeError, "mypy_extensions.i16 is not a type");
-        return -1;
+        goto error;
     }
-    LibRTVecs_U8TypeObj = (PyTypeObject *)PyObject_GetAttrString(ext, "u8");
-    if (LibRTVecs_U8TypeObj == NULL) {
-        return -1;
+    u8 = (PyTypeObject *)PyObject_GetAttrString(ext, "u8");
+    if (u8 == NULL) {
+        goto error;
     }
-    if (!PyType_Check(LibRTVecs_U8TypeObj)) {
+    if (!PyType_Check(u8)) {
         PyErr_SetString(PyExc_TypeError, "mypy_extensions.u8 is not a type");
-        return -1;
+        goto error;
     }
 
     if (PyType_Ready(&VecType) < 0)
-        return -1;
+        goto error;
     if (PyType_Ready(&VecGenericAliasType) < 0)
-        return -1;
+        goto error;
 
     if (PyType_Ready(&VecTType) < 0)
-        return -1;
+        goto error;
     if (PyType_Ready(&VecTBufType) < 0)
-        return -1;
+        goto error;
     if (PyType_Ready(&VecTIterType) < 0)
-        return -1;
+        goto error;
 
     if (PyType_Ready(&VecNestedType) < 0)
-        return -1;
+        goto error;
     if (PyType_Ready(&VecNestedBufType) < 0)
-        return -1;
+        goto error;
     if (PyType_Ready(&VecNestedIterType) < 0)
-        return -1;
+        goto error;
 
     if (PyType_Ready(&VecI64Type) < 0)
-        return -1;
+        goto error;
     if (PyType_Ready(&VecI64BufType) < 0)
-        return -1;
+        goto error;
     if (PyType_Ready(&VecI64IterType) < 0)
-        return -1;
+        goto error;
     if (PyType_Ready(&VecI32Type) < 0)
-        return -1;
+        goto error;
     if (PyType_Ready(&VecI32BufType) < 0)
-        return -1;
+        goto error;
     if (PyType_Ready(&VecI32IterType) < 0)
-        return -1;
+        goto error;
     if (PyType_Ready(&VecI16Type) < 0)
-        return -1;
+        goto error;
     if (PyType_Ready(&VecI16BufType) < 0)
-        return -1;
+        goto error;
     if (PyType_Ready(&VecI16IterType) < 0)
-        return -1;
+        goto error;
     if (PyType_Ready(&VecU8Type) < 0)
-        return -1;
+        goto error;
     if (PyType_Ready(&VecU8BufType) < 0)
-        return -1;
+        goto error;
     if (PyType_Ready(&VecU8IterType) < 0)
-        return -1;
+        goto error;
     if (PyType_Ready(&VecFloatType) < 0)
-        return -1;
+        goto error;
     if (PyType_Ready(&VecFloatBufType) < 0)
-        return -1;
+        goto error;
     if (PyType_Ready(&VecFloatIterType) < 0)
-        return -1;
+        goto error;
     if (PyType_Ready(&VecBoolType) < 0)
-        return -1;
+        goto error;
     if (PyType_Ready(&VecBoolBufType) < 0)
-        return -1;
+        goto error;
     if (PyType_Ready(&VecBoolIterType) < 0)
-        return -1;
+        goto error;
 
     Py_INCREF(&VecType);
     if (PyModule_AddObject(m, "vec", (PyObject *)&VecType) < 0) {
         Py_DECREF(&VecType);
-        return -1;
+        goto error;
     }
 
     PyObject *c_api = PyCapsule_New(&Capsule, "librt.vecs._C_API", NULL);
     if (c_api == NULL)
-        return -1;
+        goto error;
 
     if (PyModule_AddObject(m, "_C_API", c_api) < 0) {
-        Py_XDECREF(c_api);
-        Py_DECREF(&VecType);
-        return -1;
+        Py_DECREF(c_api);
+        goto error;
     }
 
+    Py_XSETREF(LibRTVecs_I64TypeObj, i64);
+    Py_XSETREF(LibRTVecs_I32TypeObj, i32);
+    Py_XSETREF(LibRTVecs_I16TypeObj, i16);
+    Py_XSETREF(LibRTVecs_U8TypeObj, u8);
     Py_DECREF(ext);
     return 0;
+
+error:
+    Py_XDECREF(i64);
+    Py_XDECREF(i32);
+    Py_XDECREF(i16);
+    Py_XDECREF(u8);
+    Py_DECREF(ext);
+    return -1;
 }
 
 static PyModuleDef_Slot librt_vecs_module_slots[] = {
