@@ -2272,29 +2272,101 @@ native.test()
 ok
 
 [case testNativeClassHiddenMetaclass]
-# The stub hides the metaclass of the base class, so it's only detected at runtime
-from hidden import Base
+# The stub hides the base classes' metaclass and base resolution behavior.
+from hidden import Prefix, Base, Second
 
-class C(Base):
+class C(Prefix, Base, Second):
     pass
 
 [file hidden.pyi]
+class Prefix: ...
 class Base: ...
+class Second: ...
 
 [file hidden.py]
+class Prefix:
+    pass
+
 class Meta(type):
     pass
 
 class Base(metaclass=Meta):
     pass
 
+class Second:
+    pass
+
+class SlotsBase:
+    __slots__ = ("attribute",)
+
+# Resolution fails before type creation, so a sentinel can stand in for a base.
+# Unlike types, its refcount is reliable on free-threaded Python too.
+Resolved = object()
+
+class Proxy:
+    def __init__(self, result):
+        self.result = result
+        self.failure = None
+
+    @property
+    def __mro_entries__(self):
+        if self.failure == "lookup":
+            raise RuntimeError("base lookup failed")
+        return self.resolve
+
+    def resolve(self, bases):
+        if self.failure == "call":
+            raise RuntimeError("base resolution failed")
+        return self.result
+
 [file driver.py]
-try:
-    import native
-except TypeError as e:
-    assert str(e) == "mypyc classes can't have a metaclass"
-else:
-    assert False
+import gc
+import sys
+import hidden
+from testutil import assertRaises
+
+for _ in range(3):
+    with assertRaises(TypeError, "mypyc classes can't have a metaclass"):
+        import native
+    gc.collect()
+
+hidden.Base = hidden.SlotsBase
+for _ in range(3):
+    with assertRaises(TypeError, "mypyc classes can't have __slots__"):
+        import native
+    gc.collect()
+
+second_base = hidden.Second
+hidden.Base = hidden.Proxy((hidden.Resolved,))
+hidden.Second = hidden.Proxy([])
+# Base creates a replacement list containing Prefix and Resolved before
+# Second fails. Neither that list nor a non-tuple result may leak references.
+tracked = (hidden.Resolved, hidden.Base, hidden.Second,
+           hidden.Base.result, hidden.Second.result)
+for failure, error, message in [
+    ("lookup", RuntimeError, "base lookup failed"),
+    ("call", RuntimeError, "base resolution failed"),
+    (None, TypeError, "__mro_entries__ must return a tuple"),
+]:
+    hidden.Second.failure = failure
+    gc.collect()
+    before = [sys.getrefcount(obj) for obj in tracked]
+    for _ in range(3):
+        with assertRaises(error, message):
+            import native
+        gc.collect()
+        after = [sys.getrefcount(obj) for obj in tracked]
+        assert after == before, (failure, before, after)
+
+# Keep the base layout but permit the next initialization to complete.
+hidden.Base = hidden.SlotsBase
+hidden.Base.__slots__ = ()
+hidden.Second = second_base
+import native
+# The template's tp_doc contains only the generated constructor signature.
+# CPython extracts it into __text_signature__, leaving __doc__ empty.
+assert native.C.__doc__ == ""
+assert native.C.__text_signature__ == "()"
 
 [case testMetaclass]
 from meta import Meta

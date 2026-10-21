@@ -130,6 +130,7 @@ update_bases(PyObject *bases)
             /* If this is a first successful replacement, create new_bases list and
                copy previously encountered bases. */
             if (!(new_bases = PyList_New(i))) {
+                Py_DECREF(new_base);
                 goto error;
             }
             for (j = 0; j < i; j++) {
@@ -140,6 +141,7 @@ update_bases(PyObject *bases)
         }
         j = PyList_GET_SIZE(new_bases);
         if (PyList_SetSlice(new_bases, j, j, new_base) < 0) {
+            Py_DECREF(new_base);
             goto error;
         }
         Py_DECREF(new_base);
