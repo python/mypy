@@ -159,7 +159,6 @@ from mypy.typeops import (
     is_literal_type_like,
     make_simplified_union,
     true_only,
-    try_expanding_sum_type_to_union,
     try_getting_str_literals,
     tuple_fallback,
     type_object_type,
@@ -4468,7 +4467,6 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         # '[1] or []' are inferred correctly.
         ctx = self.type_context[-1]
         left_type = self.accept(e.left, ctx)
-        expanded_left_type = try_expanding_sum_type_to_union(left_type, "builtins.bool")
 
         assert e.op in ("and", "or")  # Checked by visit_op_expr
 
@@ -4504,7 +4502,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             self.msg.unreachable_right_operand(e.op, e.right)
 
         right_type = self.analyze_cond_branch(
-            right_map, e.right, self._combined_context(expanded_left_type)
+            right_map, e.right, self._combined_context(left_type)
         )
 
         if left_unreachable and right_unreachable:
@@ -4518,11 +4516,11 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             return right_type
 
         if e.op == "and":
-            restricted_left_type = false_only(expanded_left_type)
-            result_is_left = not expanded_left_type.can_be_true
+            restricted_left_type = false_only(left_type)
+            result_is_left = not left_type.can_be_true
         elif e.op == "or":
-            restricted_left_type = true_only(expanded_left_type)
-            result_is_left = not expanded_left_type.can_be_false
+            restricted_left_type = true_only(left_type)
+            result_is_left = not left_type.can_be_false
 
         if isinstance(restricted_left_type, UninhabitedType):
             # The left operand can never be the result

@@ -841,6 +841,8 @@ def true_only(t: Type) -> ProperType:
         new_items = [true_only(item) for item in t.items]
         can_be_true_items = [item for item in new_items if item.can_be_true]
         return make_simplified_union(can_be_true_items, line=t.line, column=t.column)
+    elif isinstance(t, Instance) and t.type.fullname == "builtins.bool":
+        return LiteralType(True, fallback=t)
     else:
         ret_type = _get_type_method_ret_type(t, name="__bool__") or _get_type_method_ret_type(
             t, name="__len__"
@@ -880,6 +882,8 @@ def false_only(t: Type) -> ProperType:
         return LiteralType("", fallback=t)
     elif isinstance(t, Instance) and t.type.fullname == "builtins.int":
         return LiteralType(0, fallback=t)
+    elif isinstance(t, Instance) and t.type.fullname == "builtins.bool":
+        return LiteralType(False, fallback=t)
     else:
         ret_type = _get_type_method_ret_type(t, name="__bool__") or _get_type_method_ret_type(
             t, name="__len__"
