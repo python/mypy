@@ -2346,7 +2346,6 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                     context=self.argument_infer_context(),
                     strict=self.chk.in_checked_function(),
                     allow_polymorphic=True,
-                    # extra_constraints=ret_constraints if not partially_applied else None,
                 )
                 poly_callee_type = self.apply_generic_arguments(
                     callee_type, poly_inferred_args, context
