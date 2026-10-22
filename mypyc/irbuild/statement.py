@@ -1131,7 +1131,6 @@ def transform_with(
     line: int,
 ) -> None:
 
-
     if isinstance(expr, mypy.nodes.CallExpr) and isinstance(expr.callee, mypy.nodes.RefExpr):
         callee = expr.callee
         ctm_def_node: mypy.nodes.SymbolNode | None = callee.node
