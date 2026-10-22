@@ -18,6 +18,7 @@ from mypy.options import Options
 from mypy.test.config import test_temp_dir
 from mypy.test.data import DataDrivenTestCase, DataSuite
 from mypy.test.helpers import assert_string_arrays_equal
+from mypy.test.update_data import update_testcase_output
 from mypy.types import Type
 from mypyc.analysis.ircheck import assert_func_ir_valid
 from mypyc.common import IS_32_BIT_PLATFORM, PLATFORM_SIZE
@@ -153,46 +154,20 @@ def build_ir_for_single_file2(
     return module, tree, result.types, mapper
 
 
-def update_testcase_output(testcase: DataDrivenTestCase, output: list[str]) -> None:
-    # TODO: backport this to mypy
-    assert testcase.old_cwd is not None, "test was not properly set up"
-    testcase_path = os.path.join(testcase.old_cwd, testcase.file)
-    with open(testcase_path) as f:
-        data_lines = f.read().splitlines()
-
-    # We can't rely on the test line numbers to *find* the test, since
-    # we might fix multiple tests in a run. So find it by the case
-    # header. Give up if there are multiple tests with the same name.
-    test_slug = f"[case {testcase.name}]"
-    if data_lines.count(test_slug) != 1:
-        return
-    start_idx = data_lines.index(test_slug)
-    stop_idx = start_idx + 11
-    while stop_idx < len(data_lines) and not data_lines[stop_idx].startswith("[case "):
-        stop_idx += 1
-
-    test = data_lines[start_idx:stop_idx]
-    out_start = test.index("[out]")
-    test[out_start + 1 :] = output
-    data_lines[start_idx:stop_idx] = test + [""]
-    data = "\n".join(data_lines)
-
-    with open(testcase_path, "w") as f:
-        print(data, file=f)
-
-
 def assert_test_output(
     testcase: DataDrivenTestCase,
     actual: list[str],
     message: str,
     expected: list[str] | None = None,
     formatted: list[str] | None = None,
+    *,
+    incremental_step: int = 1,
 ) -> None:
     __tracebackhide__ = True
 
     expected_output = expected if expected is not None else testcase.output
     if expected_output != actual and testcase.config.getoption("--update-data", False):
-        update_testcase_output(testcase, actual)
+        update_testcase_output(testcase, actual, incremental_step=incremental_step)
 
     assert_string_arrays_equal(
         expected_output, actual, f"{message} ({testcase.file}, line {testcase.line})"
