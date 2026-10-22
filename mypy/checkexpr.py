@@ -6133,7 +6133,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                     # To preserve backward compatibility, avoid inferring Never for "_"
                     sequence_type = AnyType(TypeOfAny.special_form)
 
-            self.chk.analyze_index_variables(index, sequence_type, True, e)
+            self.chk.analyze_index_variables(index, sequence_type, True, index)
             for condition in conditions:
                 self.accept(condition)
 

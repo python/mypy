@@ -1177,6 +1177,66 @@ for e, f in [[]]:  # E: Need type annotation for "e" \
 
 [builtins fixtures/for.pyi]
 
+[case testInferenceOfIndexInMultiLineComprehension]
+def f(x: object) -> None: pass
+
+f(
+    y
+    for y in []  # E: Need type annotation for "y"
+)
+a = [
+    y
+    for y in []  # E: Need type annotation for "y"
+]
+b = {
+    y
+    for y in []  # E: Need type annotation for "y"
+}
+c = {
+    k: 0
+    for k in []  # E: Need type annotation for "k"
+}
+d = [
+    (y, z)
+    for y in [1]
+    for z in []  # E: Need type annotation for "z"
+]
+e = [
+    y
+    for y, z in [(1, 2, 3)]  # E: Too many values to unpack (2 expected, 3 provided)
+]
+[builtins fixtures/primitives.pyi]
+
+[case testInferenceOfIndexInMultiLineComprehension_old_parser]
+def f(x: object) -> None: pass
+
+f(
+    y
+    for y in []  # E: Need type annotation for "y"
+)
+a = [
+    y
+    for y in []  # E: Need type annotation for "y"
+]
+b = {
+    y
+    for y in []  # E: Need type annotation for "y"
+}
+c = {
+    k: 0
+    for k in []  # E: Need type annotation for "k"
+}
+d = [
+    (y, z)
+    for y in [1]
+    for z in []  # E: Need type annotation for "z"
+]
+e = [
+    y
+    for y, z in [(1, 2, 3)]  # E: Too many values to unpack (2 expected, 3 provided)
+]
+[builtins fixtures/primitives.pyi]
+
 [case testForStatementInferenceWithVoid]
 def f() -> None: pass
 
