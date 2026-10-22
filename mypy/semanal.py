@@ -1231,7 +1231,11 @@ class SemanticAnalyzer(
         (e.g. "Ident[Self]" for "type Ident[T] = T" gives back "Self"), so the
         result can be checked like any other type.
         """
-        if not isinstance(node, TypeAlias) or len(node.alias_tvars) != len(args):
+        if (
+            not isinstance(node, TypeAlias)
+            or len(node.alias_tvars) != len(args)
+            or not all(isinstance(tv, TypeVarType) for tv in node.alias_tvars)
+        ):
             return None
         env = {tvar.id: arg for tvar, arg in zip(node.alias_tvars, args)}
         return expand_type(node.target, env)

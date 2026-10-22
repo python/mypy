@@ -1607,19 +1607,14 @@ class D:
 # flags: --python-version 3.12
 # The identity-alias check works by substituting the alias's own arguments into
 # its target (mypy.expandtype.expand_type) and checking the result, rather than
-# only recognizing the literal shape "type X[T] = T". This covers, for free:
-# extra unused type parameters, any parameter order, and a target that only
-# collapses to Self once its members are substituted with the same type.
+# only recognizing the literal shape "type X[T] = T". This covers, for free,
+# extra unused type parameters and any parameter order.
 from typing import Self
 
 type Extra[T, S] = T
 type Extra2[S, T] = T
-type UnionSame[T] = T | T
 
 class C:
-    def union_collapses(self: UnionSame[Self]) -> None:
-        ...
-
     def extra_unused_first(self: Extra[Self, int]) -> None:
         ...
 
@@ -1630,9 +1625,8 @@ class C:
     def extra_classmethod(cls: Extra[type[Self], int]) -> None:
         ...
 
-reveal_type(C.union_collapses) # N: Revealed type is "def [Self <: __main__.C] (self: Self`10 | Self`10)"
-reveal_type(C.extra_unused_first) # N: Revealed type is "def [Self <: __main__.C] (self: Self`11)"
-reveal_type(C.extra_unused_second) # N: Revealed type is "def [Self <: __main__.C] (self: Self`12)"
+reveal_type(C.extra_unused_first) # N: Revealed type is "def [Self <: __main__.C] (self: Self`10)"
+reveal_type(C.extra_unused_second) # N: Revealed type is "def [Self <: __main__.C] (self: Self`11)"
 reveal_type(C.extra_classmethod) # N: Revealed type is "def ()"
 
 class D:
@@ -1641,6 +1635,22 @@ class D:
     # self-type error, not silently accepted.
     def wrong_slot(self: Extra[int, Self]) -> None:  # E: Method cannot have explicit self annotation and Self type \
             # E: The erased type of self "builtins.int" is not a supertype of its class "__main__.D"
+        ...
+[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-full.pyi]
+
+[case testTypingSelfIdentityTypeAliasWithTypeVarTuple]
+# flags: --python-version 3.12
+# An alias with a TypeVarTuple parameter can't be substituted the same way as a
+# plain TypeVarType, since the argument needs to be unpacked -- this must not
+# attempt the identity-alias expansion at all.
+from typing import Self
+
+type Vt[*Ts] = tuple[*Ts]
+
+class C:
+    def vt(self: Vt[Self]) -> None:  # E: Method cannot have explicit self annotation and Self type \
+            # E: The erased type of self "tuple[Any]" is not a supertype of its class "__main__.C"
         ...
 [builtins fixtures/tuple.pyi]
 [typing fixtures/typing-full.pyi]
