@@ -2219,6 +2219,29 @@ class A:
 
 [builtins fixtures/float.pyi]
 
+[case testAugmentedAssignmentUsesGetterTypeForProperty]
+class P:
+    def __iadd__(self, other: int) -> P: ...
+
+class Q:
+    def __iadd__(self, other: int) -> int: ...
+
+class C:
+    @property
+    def p(self) -> P: ...
+    @p.setter
+    def p(self, value: P | str) -> None: ...
+
+    @property
+    def q(self) -> Q: ...
+    @q.setter
+    def q(self, value: Q) -> None: ...
+
+c = C()
+c.p += 1
+c.q += 1  # E: Result type of + incompatible in assignment
+[builtins fixtures/property.pyi]
+
 [case testAugmentedAssignmentIntFloatDict]
 from typing import Dict
 d = {'weight0': 65.5}
