@@ -1375,12 +1375,7 @@ class ASTConverter:
         handlers = [self.as_required_block(h.body) for h in n.handlers]
 
         node = TryStmt(
-            body,
-            vs,
-            types,
-            handlers,
-            self.as_block(n.orelse),
-            self.as_block(n.finalbody),
+            body, vs, types, handlers, self.as_block(n.orelse), self.as_block(n.finalbody)
         )
         return self.set_line(node, n)
 
@@ -1393,12 +1388,7 @@ class ASTConverter:
         handlers = [self.as_required_block(h.body) for h in n.handlers]
 
         node = TryStmt(
-            body,
-            vs,
-            types,
-            handlers,
-            self.as_block(n.orelse),
-            self.as_block(n.finalbody),
+            body, vs, types, handlers, self.as_block(n.orelse), self.as_block(n.finalbody)
         )
         node.is_star = True
         return self.set_line(node, n)
