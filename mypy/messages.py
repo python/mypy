@@ -1775,14 +1775,24 @@ class MessageBuilder:
             context,
         )
 
-    def warn_both_operands_are_from_unions(self, context: Context) -> None:
-        self.note("Both left and right operands are unions", context, code=codes.OPERATOR)
+    def warn_both_operands_are_from_unions(
+        self, context: Context, parent_error: ErrorInfo | None = None
+    ) -> None:
+        self.note(
+            "Both left and right operands are unions",
+            context,
+            code=codes.OPERATOR,
+            parent_error=parent_error,
+        )
 
-    def warn_operand_was_from_union(self, side: str, original: Type, context: Context) -> None:
+    def warn_operand_was_from_union(
+        self, side: str, original: Type, context: Context, parent_error: ErrorInfo | None = None
+    ) -> None:
         self.note(
             f"{side} operand is of type {format_type(original, self.options)}",
             context,
             code=codes.OPERATOR,
+            parent_error=parent_error,
         )
 
     def operator_method_signatures_overlap(

@@ -109,6 +109,16 @@ x[2] + 1 # E: Unsupported operand types for + ("str" and "int") \
          # N: Left operand is of type "int | str"
 [builtins fixtures/isinstancelist.pyi]
 
+[case testIgnoredOperatorErrorDoesNotLeakNote]
+# A note attached to an error ignored by a "type: ignore" comment on a
+# different line of the same multi-line expression must not leak.
+a:b
+b =dict[0, b|0]  # type:ignore[valid-type]
+a[0
+]+"" # type:ignore[operator]
+[builtins fixtures/isinstancelist.pyi]
+
+
 [case testUnionAsOverloadArg]
 from foo import *
 x = 0

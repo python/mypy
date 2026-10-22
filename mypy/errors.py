@@ -149,7 +149,7 @@ class ErrorInfo:
         self.code = code
         self.blocker = blocker
         self.only_once = only_once
-        self.origin_span = origin_span or [line]
+        self.origin_span = list(origin_span) if origin_span is not None else [line]
         self.target = target
         self.priority = priority
         if parent_error is not None:
@@ -776,6 +776,15 @@ class Errors:
         if self._filter_error(file, info):
             return
         if not info.blocker:  # Blockers cannot be ignored
+            if info.parent_error is not None and file in self.ignored_lines:
+                # A note attached to an error must not outlive its parent: if
+                # the parent error is ignored on its own line(s), the note is
+                # not shown even if it is reported on another line.
+                for scope_line in info.parent_error.origin_span:
+                    if self.is_ignored_error(
+                        scope_line, info.parent_error, self.ignored_lines[file]
+                    ):
+                        return
             if file in self.ignored_lines:
                 # Check each line in this context for "type: ignore" comments.
                 # line == end_line for most nodes, so we only loop once.
