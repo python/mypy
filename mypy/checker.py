@@ -248,6 +248,7 @@ from mypy.typeops import (
     false_only,
     fixup_partial_type,
     function_type,
+    get_tuple_item_types,
     is_literal_type_like,
     is_singleton_equality_type,
     is_singleton_identity_type,
@@ -9020,19 +9021,7 @@ def builtin_item_type(tp: Type) -> Type | None:
             if not isinstance(get_proper_type(tp.args[0]), AnyType):
                 return tp.args[0]
     elif isinstance(tp, TupleType):
-        normalized_items = []
-        for it in tp.items:
-            # This use case is probably rare, but not handling unpacks here can cause crashes.
-            if isinstance(it, UnpackType):
-                unpacked = get_proper_type(it.type)
-                if isinstance(unpacked, TypeVarTupleType):
-                    unpacked = get_proper_type(unpacked.upper_bound)
-                assert (
-                    isinstance(unpacked, Instance) and unpacked.type.fullname == "builtins.tuple"
-                )
-                normalized_items.append(unpacked.args[0])
-            else:
-                normalized_items.append(it)
+        normalized_items = get_tuple_item_types(tp)
         if all(not isinstance(it, AnyType) for it in get_proper_types(normalized_items)):
             return make_simplified_union(normalized_items)  # this type is not externally visible
     elif isinstance(tp, TypedDictType):

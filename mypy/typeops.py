@@ -109,6 +109,17 @@ def tuple_fallback(typ: TupleType) -> Instance:
     info = typ.partial_fallback.type
     if info.fullname != "builtins.tuple":
         return typ.partial_fallback
+    return Instance(
+        info,
+        # Note: flattening recursive unions is dangerous, since it can fool recursive
+        # types optimization in subtypes.py and go into infinite recursion.
+        [make_simplified_union(get_tuple_item_types(typ), handle_recursive=False)],
+        extra_attrs=typ.partial_fallback.extra_attrs,
+    )
+
+
+def get_tuple_item_types(typ: TupleType) -> list[Type]:
+    """Return tuple item types, replacing unpacks with their possible item types."""
     items = []
     for item in typ.items:
         if isinstance(item, UnpackType):
@@ -124,13 +135,7 @@ def tuple_fallback(typ: TupleType) -> Instance:
                 raise NotImplementedError
         else:
             items.append(item)
-    return Instance(
-        info,
-        # Note: flattening recursive unions is dangerous, since it can fool recursive
-        # types optimization in subtypes.py and go into infinite recursion.
-        [make_simplified_union(items, handle_recursive=False)],
-        extra_attrs=typ.partial_fallback.extra_attrs,
-    )
+    return items
 
 
 def get_self_type(func: CallableType, def_info: TypeInfo) -> Type | None:
