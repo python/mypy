@@ -3239,6 +3239,24 @@ import b  # type: ignore[import-not-found]
 tmp/a.py:1: error: Unused "type: ignore" comment
 [out2]
 
+[case testRepeatedMissingImportKeepsFirstUnsuppressedError]
+try:
+    import someweirdpackage
+except:
+    import someweirdpackage  # type: ignore[import-not-found]
+[out]
+main:2: error: Cannot find implementation or library stub for module named "someweirdpackage"
+main:2: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
+
+[case testRepeatedMissingImportKeepsFirstUnsuppressedError_old_parser]
+try:
+    import someweirdpackage
+except:
+    import someweirdpackage  # type: ignore[import-not-found]
+[out]
+main:2: error: Cannot find implementation or library stub for module named "someweirdpackage"
+main:2: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
+
 [case testImportErrorStaleLoadedFromCacheIncremental]
 import a
 [file a.py]
