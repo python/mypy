@@ -398,6 +398,8 @@ class ConditionalTypeBinder:
             if (
                 current_value is None
                 or not is_same_type(type, current_value.type)
+                # 新语义下，即使类型语义等价，也要保留合并得到的窄化表示。
+                or (not old_semantics and type != current_value.type)
                 # Manually carry over any narrowing from hasattr() from inner frames. This is
                 # a bit ad-hoc, but our handling of hasattr() is on best effort basis anyway.
                 or isinstance(p_type := get_proper_type(type), Instance)

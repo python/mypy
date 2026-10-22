@@ -1297,6 +1297,44 @@ def foo() -> None:
         if bool():
             name = "a"
 
+[case testNarrowingSurvivesAlwaysTrueBlock]
+# flags: --allow-redefinition
+class Base: ...
+class Sub(Base): ...
+
+def f(x: Sub | Base) -> None:
+    if True:
+        assert not isinstance(x, Sub)
+        reveal_type(x)  # N: Revealed type is "__main__.Base"
+    reveal_type(x)  # N: Revealed type is "__main__.Base"
+[builtins fixtures/isinstance.pyi]
+
+[case testNarrowingSurvivesAlwaysTrueBlockDefault]
+class Base: ...
+class Sub(Base): ...
+
+def f(x: Sub | Base) -> None:
+    if True:
+        assert not isinstance(x, Sub)
+        reveal_type(x)  # N: Revealed type is "__main__.Base"
+    reveal_type(x)  # N: Revealed type is "__main__.Base"
+[builtins fixtures/isinstance.pyi]
+
+[case testNarrowingSurvivesTypeCheckingBlock]
+# flags: --allow-redefinition
+from typing import TYPE_CHECKING
+
+class Base: ...
+class Sub(Base): ...
+
+def f(x: Sub | Base) -> None:
+    if TYPE_CHECKING:
+        assert not isinstance(x, Sub)
+        reveal_type(x)  # N: Revealed type is "__main__.Base"
+    reveal_type(x)  # N: Revealed type is "__main__.Base"
+[builtins fixtures/isinstance.pyi]
+[typing fixtures/typing-full.pyi]
+
 [case testNewRedefinePartialTypeForUnderscore]
 # flags: --allow-redefinition
 

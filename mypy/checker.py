@@ -5477,7 +5477,8 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                 s.unreachable_else = is_unreachable_map(else_map)
 
                 # XXX Issue a warning if condition is always False?
-                with self.binder.frame_context(can_skip=True, fall_through=2):
+                # else 分支不可达时，不能把进入 if 前的状态作为可跳过路径合并。
+                with self.binder.frame_context(can_skip=not s.unreachable_else, fall_through=2):
                     self.push_type_map(if_map, from_assignment=False)
                     self.accept(b)
 
