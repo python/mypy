@@ -1137,7 +1137,7 @@ def transform_with(
         self_expr: Expression | None = None
         if isinstance(callee, mypy.nodes.MemberExpr) and not builder.is_module_member_expr(callee):
             ctm_def_node = None
-            # Keep the experimental method path to ordinary, non-suspending calls.
+            # Keep the method path to ordinary, non-suspending calls.
             if not find_walrus_targets(expr) and not expr_has_suspend(expr):
                 self_type = get_proper_type(builder.types[callee.expr])
                 if isinstance(self_type, Instance):
