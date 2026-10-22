@@ -1131,43 +1131,35 @@ def transform_with(
     line: int,
 ) -> None:
 
-    node: mypy.nodes.SymbolNode | None = None
-    receiver_expr: Expression | None = None
+
     if isinstance(expr, mypy.nodes.CallExpr) and isinstance(expr.callee, mypy.nodes.RefExpr):
         callee = expr.callee
-        node = callee.node
+        ctm_def_node: mypy.nodes.SymbolNode | None = callee.node
+        self_expr: Expression | None = None
         if isinstance(callee, mypy.nodes.MemberExpr) and not builder.is_module_member_expr(callee):
-            node = None
+            ctm_def_node = None
             # Keep the experimental method path to ordinary, non-suspending calls.
-            if (
-                all(kind in (ARG_POS, ARG_NAMED) for kind in expr.arg_kinds)
-                and not find_walrus_targets(expr)
-                and not expr_has_suspend(expr)
-            ):
-                receiver_type = get_proper_type(builder.types[callee.expr])
-                if isinstance(receiver_type, Instance):
-                    symbol = receiver_type.type.get(callee.name)
+            if not find_walrus_targets(expr) and not expr_has_suspend(expr):
+                self_type = get_proper_type(builder.types[callee.expr])
+                if isinstance(self_type, Instance):
+                    symbol = self_type.type.get(callee.name)
                     if symbol is not None:
-                        node = symbol.node
-                        receiver_expr = callee.expr
+                        ctm_def_node = symbol.node
+                        self_expr = callee.expr
 
-    if (
-        not is_async
-        and isinstance(expr, mypy.nodes.CallExpr)
-        and isinstance(expr.callee, mypy.nodes.RefExpr)
-        and isinstance(dec := node, mypy.nodes.Decorator)
-        and not (receiver_expr is not None and (dec.func.is_static or dec.func.is_class))
-        and len(dec.decorators) == 1
-        and isinstance(dec1 := dec.decorators[0], mypy.nodes.RefExpr)
-        and dec1.node
-        and dec1.node.fullname == "contextlib.contextmanager"
-    ):
-        return _transform_with_contextmanager(builder, expr, target, body, line, receiver_expr)
+        if (
+            not is_async
+            and isinstance(dec := ctm_def_node, mypy.nodes.Decorator)
+            and not (self_expr is not None and (dec.func.is_static or dec.func.is_class))
+            and len(dec.decorators) == 1
+            and isinstance(dec1 := dec.decorators[0], mypy.nodes.RefExpr)
+            and dec1.node
+            and dec1.node.fullname == "contextlib.contextmanager"
+        ):
+            return _transform_with_contextmanager(builder, expr, target, body, line, self_expr)
 
     # This is basically a straight transcription of the Python code in PEP 343.
     # I don't actually understand why a bunch of it is the way it is.
-    # We could probably optimize the case where the manager is compiled by us,
-    # but that is not our common case at all, so.
 
     al = "a" if is_async else ""
 
@@ -1287,6 +1279,10 @@ def _transform_with_contextmanager(
     line: int,
     receiver_expr: Expression | None,
 ) -> None:
+
+    # wrapped_call = {expr.callee}.__wrapped__(*args, **kwargs)
+    # where {expr.callee} is either a function or a method
+
     assert isinstance(expr.callee, mypy.nodes.RefExpr)
     if receiver_expr is None:
         wrapped_call = mypy.nodes.CallExpr(
@@ -1306,10 +1302,11 @@ def _transform_with_contextmanager(
         args = [builder.accept(arg) for arg in expr.args]
         gen = builder.py_call(wrapped, args, line, expr.arg_kinds, expr.arg_names)
 
-    # Require exactly one yield: enter here, finish after a successful body.
+    # try:
+    #     mgr_target = next(gen)
+    # except StopIteration:
+    #     raise RuntimeError("generator didn't yield") from None
     mgr_target = builder.call_c(contextmanager_enter_op, [gen], line)
-
-    exc = builder.ensure_register(builder.true())
 
     # try:
     #     {body}
@@ -1318,6 +1315,13 @@ def _transform_with_contextmanager(
         if target:
             builder.assign(builder.get_assignment_target(target), mgr_target, line)
         with_body()
+
+    # except BaseException as e:
+    #     {contextmanager_exit_exception_op}
+    # finally:
+    #     {contextmanager_exit_normal_op}
+
+    exc = builder.ensure_register(builder.true())
 
     def except_body() -> None:
         builder.assign(exc, builder.false(), line)

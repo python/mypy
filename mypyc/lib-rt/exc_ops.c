@@ -208,17 +208,15 @@ PyObject *CPyContextManager_Enter(PyObject *gen) {
 static void contextmanager_exit_error(PyObject *gen, const char *message) {
     PyErr_SetString(PyExc_RuntimeError, message);
 #if PY_VERSION_HEX >= 0x030B0000
-    // Since Python 3.11, contextlib closes the generator in a finally block.
-    // Make the protocol error the handled exception so cleanup sees it and
-    // any cleanup failure chains to it in the same way.
+    // Since Python 3.11, contextlib closes the generator in a finally block
     tuple_T3OOO old_exc = CPy_CatchError();
     PyObject *type, *value, *traceback;
     PyErr_GetExcInfo(&type, &value, &traceback);
     PyObject *closed = PyObject_CallMethod(gen, "close", NULL);
     if (closed != NULL) {
         Py_DECREF(closed);
-        // A native generator can change the handled exception during close().
-        // Reraise the saved protocol error, as a Python finally block does.
+        // A native generator can change the handled exception during close()
+        // Reraise the saved protocol error, as a Python finally block does
         PyErr_Restore(type, value, traceback);
     } else {
         Py_XDECREF(type);
@@ -234,11 +232,16 @@ static void contextmanager_exit_error(PyObject *gen, const char *message) {
 
 // Finish a contextmanager whose body succeeded. Return false on error.
 bool CPyContextManager_ExitNormal(PyObject *gen) {
+    // try:
+    //     next(self.gen)
     if (!PyIter_Check(gen)) {
         PyErr_Format(PyExc_TypeError, "'%.200s' object is not an iterator", Py_TYPE(gen)->tp_name);
         return false;
     }
     PyObject *value = Py_TYPE(gen)->tp_iternext(gen);
+
+    // except StopIteration:
+    //     return False
     if (value == NULL) {
         if (!PyErr_Occurred() || PyErr_ExceptionMatches(PyExc_StopIteration)) {
             PyErr_Clear();
@@ -246,28 +249,41 @@ bool CPyContextManager_ExitNormal(PyObject *gen) {
         }
         return false;
     }
+
+    // else:
+    //     try:
+    //         raise RuntimeError("generator didn't stop")
+    //     finally:
+    //         self.gen.close()
     Py_DECREF(value);
     contextmanager_exit_error(gen, "generator didn't stop");
     return false;
 }
 
 // Match contextlib._GeneratorContextManager.__exit__ for a failed with body.
-// The borrowed exception arguments are already normalized by CPy_CatchError.
-// Return 1 to suppress, 0 to propagate the original, or -1 with a new error pending.
-// Preserve the caller's handled exception on every path.
 int CPyContextManager_ExitException(PyObject *gen, PyObject *type,
-                                  PyObject *value, PyObject *traceback) {
+                                    PyObject *value, PyObject *traceback) {
+
     // Native generators can change the handled exception when throw() unwinds
-    // an except block. Preserve the caller's state before interpreting the result.
+    // an except block. Preserve the caller's state before interpreting the result
     PyObject *saved_type, *saved_value, *saved_traceback;
     PyErr_GetExcInfo(&saved_type, &saved_value, &saved_traceback);
+
+    // try:
+    //     self.gen.throw(typ, value, traceback)
 #if PY_VERSION_HEX >= 0x030C0000
     PyObject *yielded = PyObject_CallMethod(gen, "throw", "(O)", value);
 #else
     PyObject *yielded = PyObject_CallMethod(gen, "throw", "(OOO)", type, value, traceback);
 #endif
     PyErr_SetExcInfo(saved_type, saved_value, saved_traceback);
+
+    // ... if we didn't get an exception from throw, in particular, StopIteration ...
     if (yielded != NULL) {
+        // try:
+        //     raise RuntimeError("generator didn't stop after throw()")
+        // finally:
+        //     self.gen.close()
         Py_DECREF(yielded);
         contextmanager_exit_error(gen, "generator didn't stop after throw()");
         return -1;
@@ -277,11 +293,27 @@ int CPyContextManager_ExitException(PyObject *gen, PyObject *type,
     PyObject *error = CPy_GetExcValue();
     int result = -1;
 
+    // # Note the `return False` in the code comments is how contextlib tells Python to
+    // # propagate the exception being handled by __exit__
+
+    // except StopIteration as exc:
+    //     return exc is not value
     if (CPy_ExceptionMatches(PyExc_StopIteration)) {
         // A body StopIteration must not be mistaken for generator completion.
         result = error != value;
         goto done;
     }
+    // except RuntimeError as exc:
+    //     if exc is value:
+    //         exc.__traceback__ = traceback
+    //         return False
+    //     if (
+    //         isinstance(value, StopIteration)
+    //         and exc.__cause__ is value
+    //     ):
+    //         value.__traceback__ = traceback
+    //         return False
+    //     raise
     if (CPy_ExceptionMatches(PyExc_RuntimeError)) {
         if (error == value) {
             goto original;
@@ -302,7 +334,13 @@ int CPyContextManager_ExitException(PyObject *gen, PyObject *type,
                 goto original;
             }
         }
-    } else if (error == value) {
+    }
+    // except BaseException as exc:
+    //     if exc is not value:
+    //         raise
+    //     exc.__traceback__ = traceback
+    //     return False
+    else if (error == value) {
         goto original;
     }
     CPy_Reraise();
@@ -310,8 +348,6 @@ int CPyContextManager_ExitException(PyObject *gen, PyObject *type,
 
 original:
 #if PY_VERSION_HEX >= 0x030B0000
-    // contextlib removes throw() frames on these paths, but not on the
-    // same-StopIteration path above. Keep Python attribute semantics here.
     if (PyObject_SetAttrString(value, "__traceback__", traceback) < 0) {
         goto done;
     }
