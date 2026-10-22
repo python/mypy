@@ -1316,122 +1316,132 @@ import traceback
 
 @contextmanager
 def cm_no_yield() -> Iterator[None]:
+    print("enter cm_no_yield")
     if False:
+        print("UNREACHABLE")
         yield
     return
+
+def test_no_yield() -> None:
+    try:
+        with cm_no_yield():
+            print("UNREACHABLE")
+        print("UNREACHABLE")
+    except RuntimeError as e:
+        e_any = cast(Any, e)
+        print(
+            type(e).__name__,
+            str(e),
+            e_any.__cause__ is None,
+            e_any.__suppress_context__,
+        )
 
 @contextmanager
 def cm_no_stop() -> Iterator[str]:
     print("enter cm_no_stop")
     yield "first"
-    print("after first")
+    print("after first yield")
     yield "second"
+    print("UNREACHABLE")
+
+def test_no_stop() -> None:
+    try:
+        with cm_no_stop() as v:
+            print("entered body", v)
+        print("UNREACHABLE")
+    except RuntimeError as e:
+        print(type(e).__name__, str(e))
 
 @contextmanager
 def cm_value_error_suppress() -> Iterator[None]:
+    print("enter cm_value_error_suppress")
     try:
         yield
+        print("UNREACHABLE")
     except ValueError as e:
-        print("suppress", str(e))
+        print(type(e).__name__, str(e))
+
+def test_suppress_value_error() -> None:
+    with cm_value_error_suppress():
+        raise ValueError("boom")
+    print("after suppressing the ValueError")
 
 @contextmanager
 def cm_throw_twice() -> Iterator[None]:
+    print("enter cm_throw_twice")
     try:
         yield
+        print("UNREACHABLE")
     except ValueError:
         print("throw yield")
         yield
+        print("UNREACHABLE")
+
+def test_throw_twice() -> None:
+    try:
+        with cm_throw_twice():
+            raise ValueError("oops")
+        print("UNREACHABLE")
+    except RuntimeError as e:
+        print(type(e).__name__, str(e))
 
 @contextmanager
 def cm_stop_passthrough() -> Iterator[None]:
+    print("enter cm_stop_passthrough")
     yield
+    print("UNREACHABLE")
+
+def test_stop_iteration_passthrough() -> None:
+    try:
+        with cm_stop_passthrough():
+            raise StopIteration("stop")
+        print("UNREACHABLE")
+    except Exception as e:
+        print("stop passthrough", type(e).__name__, str(e))
 
 @contextmanager
 def cm_stop_suppress() -> Iterator[None]:
+    print("enter cm_stop_suppress")
     try:
         yield
+        print("UNREACHABLE")
     except StopIteration as e:
-        print("suppress stop", str(e))
+        print(type(e).__name__, str(e))
+
+def test_stop_iteration_suppress() -> None:
+    with cm_stop_suppress():
+        raise StopIteration("manual stop")
+    print("after suppressing the StopIteration")
 
 @contextmanager
 def cm_value() -> Iterator[int]:
     print("enter cm_value")
     try:
         yield 1
+        print("UNREACHABLE")
     finally:
         print("exit cm_value")
-
-@contextmanager
-def cm_gen() -> Iterator[int]:
-    print("cm enter")
-    try:
-        yield 1
-    finally:
-        print("cm exit")
-
-@contextmanager
-def cm_log(tag: str) -> Iterator[None]:
-    print(tag, "enter")
-    try:
-        yield
-    finally:
-        print(tag, "exit")
-
-def test_no_yield() -> None:
-    try:
-        with cm_no_yield():
-            print("body no yield")
-    except RuntimeError as e:
-        e_any = cast(Any, e)
-        print(
-            "no_yield",
-            str(e),
-            e_any.__cause__ is None,
-            e_any.__suppress_context__,
-        )
-
-def test_no_stop() -> None:
-    try:
-        with cm_no_stop() as v:
-            print("body", v)
-    except RuntimeError as e:
-        print("no_stop", str(e))
-
-def test_suppress_value_error() -> None:
-    with cm_value_error_suppress():
-        raise ValueError("boom")
-    print("after suppress value")
-
-def test_throw_twice() -> None:
-    try:
-        with cm_throw_twice():
-            raise ValueError("oops")
-    except RuntimeError as e:
-        print("throw_twice", str(e))
-
-def test_stop_iteration_passthrough() -> None:
-    try:
-        with cm_stop_passthrough():
-            raise StopIteration("stop")
-    except Exception as e:
-        print("stop passthrough", type(e).__name__, str(e))
-
-def test_stop_iteration_suppress() -> None:
-    with cm_stop_suppress():
-        raise StopIteration("stop2")
-    print("after suppress stop")
 
 def test_traceback() -> None:
     try:
         with cm_value():
             raise ValueError("trace")
+        print("UNREACHABLE")
     except Exception as e:
         e_any = cast(Any, e)
         tb = e_any.__traceback__
         assert tb is not None
         tb_mod = cast(Any, traceback)
         names = [frame.name for frame in tb_mod.extract_tb(tb)]
-        print("traceback_has_cm_value", "cm_value" in names)
+        print("traceback_has_cm_value", "test_traceback" in names, "cm_value" in names)
+
+@contextmanager
+def cm_gen() -> Iterator[int]:
+    print("enter cm_gen")
+    try:
+        yield 1
+    finally:
+        print("exit cm_gen")
 
 def test_generator_with_yield() -> None:
     def gen() -> Generator[int, None, None]:
@@ -1443,14 +1453,24 @@ def test_generator_with_yield() -> None:
     print(next(g))
     try:
         next(g)
+        print("UNREACHABLE")
     except StopIteration:
         print("gen done")
+
+@contextmanager
+def cm_log(tag: str) -> Iterator[None]:
+    print("enter cm_log", tag)
+    try:
+        yield
+    finally:
+        print("exit cm_log", tag)
 
 def test_return_in_with() -> None:
     def inner() -> int:
         with cm_log("ret"):
             print("ret body")
             return 5
+        print("UNREACHABLE")
         return 0
 
     print("ret result", inner())
@@ -1468,39 +1488,68 @@ from native import (
     test_return_in_with,
 )
 
-test_no_yield()
-test_no_stop()
-test_suppress_value_error()
-test_throw_twice()
-test_stop_iteration_passthrough()
-test_stop_iteration_suppress()
-test_traceback()
-test_generator_with_yield()
-test_return_in_with()
+fns = (
+    test_no_yield,
+    test_no_stop,
+    test_suppress_value_error,
+    test_throw_twice,
+    test_stop_iteration_passthrough,
+    test_stop_iteration_suppress,
+    test_traceback,
+    test_generator_with_yield,
+    test_return_in_with,
+)
+for i, fn in enumerate(fns):
+    if i:
+        print()
+    print(f"Running {fn.__name__}")
+    fn()
 [out]
-no_yield generator didn't yield True True
+Running test_no_yield
+enter cm_no_yield
+RuntimeError generator didn't yield True True
+
+Running test_no_stop
 enter cm_no_stop
-body first
-after first
-no_stop generator didn't stop
-suppress boom
-after suppress value
+entered body first
+after first yield
+RuntimeError generator didn't stop
+
+Running test_suppress_value_error
+enter cm_value_error_suppress
+ValueError boom
+after suppressing the ValueError
+
+Running test_throw_twice
+enter cm_throw_twice
 throw yield
-throw_twice generator didn't stop after throw()
+RuntimeError generator didn't stop after throw()
+
+Running test_stop_iteration_passthrough
+enter cm_stop_passthrough
 stop passthrough StopIteration stop
-suppress stop stop2
-after suppress stop
+
+Running test_stop_iteration_suppress
+enter cm_stop_suppress
+StopIteration manual stop
+after suppressing the StopIteration
+
+Running test_traceback
 enter cm_value
 exit cm_value
-traceback_has_cm_value False
-cm enter
+traceback_has_cm_value True False
+
+Running test_generator_with_yield
+enter cm_gen
 1
 after yield in with
-cm exit
+exit cm_gen
 gen done
-ret enter
+
+Running test_return_in_with
+enter cm_log ret
 ret body
-ret exit
+exit cm_log ret
 ret result 5
 
 [case testContextManagerRuntimePrimitives]
