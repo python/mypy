@@ -821,6 +821,13 @@ i: Optional[int] = 0 if condition() else None
 x: Optional[tuple[int, int]] = (i, (i := 1))  # E: Incompatible types in assignment (expression has type "tuple[int | None, int]", variable has type "tuple[int, int] | None")
 [builtins fixtures/tuple.pyi]
 
+[case testPartialTypeWalrusAssignment]
+def fn() -> int:
+    x = None
+    x = (x, (x := 1))  # E: Incompatible types in assignment (expression has type "tuple[None, int]", variable has type "int | None")
+    return x
+[builtins fixtures/tuple.pyi]
+
 [case testReturnTupleOptionalWalrus]
 from typing import Optional
 

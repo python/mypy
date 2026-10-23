@@ -3538,6 +3538,18 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                                 var.type = None
                             del partial_types[var]
                             lvalue_type = var.type
+                        elif var.type is not None:
+                            # 右值中的 walrus 可能已解析该变量的 partial type，
+                            # 因此仍需检查外层赋值。
+                            lvalue_type = var.type
+                            self.check_subtype(
+                                rvalue_type,
+                                lvalue_type,
+                                rvalue,
+                                message_registry.INCOMPATIBLE_TYPES_IN_ASSIGNMENT,
+                                "expression has type",
+                                "variable has type",
+                            )
                     else:
                         # Try to infer a partial type.
                         if not self.infer_partial_type(var, lvalue, rvalue_type):
