@@ -258,11 +258,12 @@ class Emitter:
         return f" /* {formatted} */"
 
     def emit_line(self, line: str = "", *, ann: object = None) -> None:
-        if line.startswith("}"):
+        stripped = line.strip()
+        if stripped.startswith("}"):
             self.dedent()
         comment = self.object_annotation(ann, line) if ann is not None else ""
         self.fragments.append(self._indent * " " + line + comment + "\n")
-        if line.endswith("{"):
+        if stripped.endswith("{"):
             self.indent()
 
     def emit_lines(self, *lines: str) -> None:
