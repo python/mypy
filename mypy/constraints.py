@@ -311,6 +311,8 @@ def infer_constraints(
         for (t, a) in reversed(type_state.inferring)
     ):
         return []
+    # This guard matches the one we use for subtyping, it is slightly more risky,
+    # but it is much faster than has_recursive_types().
     if (
         isinstance(template, TypeAliasType)
         and template.is_recursive

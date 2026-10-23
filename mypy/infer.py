@@ -81,5 +81,5 @@ def infer_type_arguments(
     constraints = infer_constraints(
         template, actual, SUPERTYPE_OF if is_supertype else SUBTYPE_OF, erase_types=erase_types
     )
-    solutions = solve_constraints(type_vars, constraints, skip_unsatisfied=skip_unsatisfied)[0]
+    solutions, _ = solve_constraints(type_vars, constraints, skip_unsatisfied=skip_unsatisfied)
     return solutions, constraints

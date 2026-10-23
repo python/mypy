@@ -1793,7 +1793,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                     callee = freshen_function_type_vars(callee)
                 self.freshen_cache[(context, original_callee)] = callee
 
-        fresh_callee = callee
+        initial_callee = callee
         constraints: list[Constraint] = []
         if callee.is_generic():
             callee, constraints = self.infer_function_type_arguments_using_context(callee, context)
@@ -1828,13 +1828,13 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                     )
                     callee = callee.copy_modified(arg_types=[new_arg_type])
 
-        if fresh_callee.is_generic():
+        if initial_callee.is_generic():
             need_refresh = any(
-                isinstance(v, (ParamSpecType, TypeVarTupleType)) for v in fresh_callee.variables
+                isinstance(v, (ParamSpecType, TypeVarTupleType)) for v in callee.variables
             )
             callee = self.infer_function_type_arguments(
                 callee,
-                fresh_callee,
+                initial_callee,
                 constraints,
                 args,
                 arg_kinds,
@@ -2211,7 +2211,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
     def infer_function_type_arguments(
         self,
         callee_type: CallableType,
-        fresh_callee: CallableType,
+        initial_callee_type: CallableType,
         ret_constraints: list[Constraint],
         args: list[Expression],
         arg_kinds: list[ArgKind],
@@ -2222,7 +2222,8 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
     ) -> CallableType:
         """Infer the type arguments for a generic callee type.
 
-        Infer based on the types of arguments.
+        Infer based on the types of arguments. The `initial_callee_type` is callee
+        type before applying arguments inferred from return type context.
 
         Return a derived callable type that has the arguments applied.
         """
@@ -2247,13 +2248,16 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                 else:
                     pass1_args.append(arg)
 
+            # First, try inferring callee type using both argument type and return
+            # constraints. Do not do this if special_sig is set or for type objects,
+            # those are special-cased elsewhere.
             if (
-                fresh_callee != callee_type
-                and fresh_callee.special_sig is None
-                and not fresh_callee.is_type_obj()
+                initial_callee_type != callee_type
+                and initial_callee_type.special_sig is None
+                and not initial_callee_type.is_type_obj()
             ):
                 inferred_args, _ = infer_function_type_arguments(
-                    fresh_callee,
+                    initial_callee_type,
                     pass1_args,
                     arg_kinds,
                     arg_names,
@@ -2262,6 +2266,8 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                     strict=self.chk.in_checked_function(),
                     extra_constraints=ret_constraints,
                 )
+                # Only use two-side inference if it is fully successful,
+                # otherwise, fallback to return type context as a tiebreaker.
                 if not any(
                     a is None
                     or isinstance(get_proper_type(a), UninhabitedType)
@@ -2269,9 +2275,12 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                     or set(get_type_vars(a)) & set(callee_type.variables)
                     for a in inferred_args
                 ):
-                    return self.apply_inferred_arguments(fresh_callee, inferred_args, context)
+                    return self.apply_inferred_arguments(
+                        initial_callee_type, inferred_args, context
+                    )
 
             if not callee_type.is_generic():
+                # Fast path: return context inferred all type arguments.
                 return callee_type
 
             inferred_args, _ = infer_function_type_arguments(
@@ -6330,6 +6339,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             elif (
                 (
                     isinstance(node, (CallExpr, ListExpr, TupleExpr, DictExpr, OpExpr))
+                    # Only cache non-static access, it may be slow, and may freshen type vars.
                     or isinstance(node, MemberExpr)
                     and node.node is None
                 )
