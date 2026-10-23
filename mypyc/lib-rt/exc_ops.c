@@ -163,6 +163,206 @@ tuple_T3OOO CPy_GetExcInfo(void) {
     return ret;
 }
 
+// Give a contextmanager's generator factory the same binding as its wrapper.
+// The returned callable is owned; static methods remain unbound.
+PyObject *CPyContextManager_Bind(PyObject *callable, PyObject *wrapped) {
+    if (PyMethod_Check(callable)) {
+        // Use the actual bound instance or class, not the attribute lookup's receiver.
+        return PyMethod_New(wrapped, PyMethod_GET_SELF(callable));
+    }
+    Py_INCREF(wrapped);
+    return wrapped;
+}
+
+// Implement contextlib's generator entry protocol. The returned value is owned.
+PyObject *CPyContextManager_Enter(PyObject *gen) {
+    if (!PyIter_Check(gen)) {
+        PyErr_Format(PyExc_TypeError, "'%.200s' object is not an iterator", Py_TYPE(gen)->tp_name);
+        return NULL;
+    }
+    PyObject *value = Py_TYPE(gen)->tp_iternext(gen);
+    if (value != NULL) {
+        return value;
+    }
+    if (!PyErr_Occurred()) {
+        // Iterators may signal exhaustion without setting StopIteration.
+        PyErr_SetNone(PyExc_StopIteration);
+    }
+    if (PyErr_ExceptionMatches(PyExc_StopIteration)) {
+        // raise RuntimeError(...) from None, retaining the suppressed context.
+        tuple_T3OOO old_exc = CPy_CatchError();
+        PyObject *error = PyObject_CallFunction(PyExc_RuntimeError, "s", "generator didn't yield");
+        if (error != NULL) {
+            CPy_RaiseFrom(error, Py_None);
+            Py_DECREF(error);
+        }
+        CPy_RestoreExcInfo(old_exc);
+        Py_DECREF(old_exc.f0);
+        Py_DECREF(old_exc.f1);
+        Py_DECREF(old_exc.f2);
+    }
+    return NULL;
+}
+
+// An extra yield is a protocol error. Always leave an exception pending.
+static void contextmanager_exit_error(PyObject *gen, const char *message) {
+    PyErr_SetString(PyExc_RuntimeError, message);
+#if PY_VERSION_HEX >= 0x030B0000
+    // Since Python 3.11, contextlib closes the generator in a finally block
+    tuple_T3OOO old_exc = CPy_CatchError();
+    PyObject *type, *value, *traceback;
+    PyErr_GetExcInfo(&type, &value, &traceback);
+    PyObject *closed = PyObject_CallMethod(gen, "close", NULL);
+    if (closed != NULL) {
+        Py_DECREF(closed);
+        // A native generator can change the handled exception during close()
+        // Reraise the saved protocol error, as a Python finally block does
+        PyErr_Restore(type, value, traceback);
+    } else {
+        Py_XDECREF(type);
+        Py_XDECREF(value);
+        Py_XDECREF(traceback);
+    }
+    CPy_RestoreExcInfo(old_exc);
+    Py_DECREF(old_exc.f0);
+    Py_DECREF(old_exc.f1);
+    Py_DECREF(old_exc.f2);
+#endif
+}
+
+// Finish a contextmanager whose body succeeded. Return false on error.
+bool CPyContextManager_ExitNormal(PyObject *gen) {
+    // try:
+    //     next(self.gen)
+    if (!PyIter_Check(gen)) {
+        PyErr_Format(PyExc_TypeError, "'%.200s' object is not an iterator", Py_TYPE(gen)->tp_name);
+        return false;
+    }
+    PyObject *value = Py_TYPE(gen)->tp_iternext(gen);
+
+    // except StopIteration:
+    //     return False
+    if (value == NULL) {
+        if (!PyErr_Occurred() || PyErr_ExceptionMatches(PyExc_StopIteration)) {
+            PyErr_Clear();
+            return true;
+        }
+        return false;
+    }
+
+    // else:
+    //     try:
+    //         raise RuntimeError("generator didn't stop")
+    //     finally:
+    //         self.gen.close()
+    Py_DECREF(value);
+    contextmanager_exit_error(gen, "generator didn't stop");
+    return false;
+}
+
+// Match contextlib._GeneratorContextManager.__exit__ for a failed with body.
+int CPyContextManager_ExitException(PyObject *gen, PyObject *type,
+                                    PyObject *value, PyObject *traceback) {
+
+    // Native generators can change the handled exception when throw() unwinds
+    // an except block. Preserve the caller's state before interpreting the result
+    PyObject *saved_type, *saved_value, *saved_traceback;
+    PyErr_GetExcInfo(&saved_type, &saved_value, &saved_traceback);
+
+    // try:
+    //     self.gen.throw(typ, value, traceback)
+#if PY_VERSION_HEX >= 0x030C0000
+    PyObject *yielded = PyObject_CallMethod(gen, "throw", "(O)", value);
+#else
+    PyObject *yielded = PyObject_CallMethod(gen, "throw", "(OOO)", type, value, traceback);
+#endif
+    PyErr_SetExcInfo(saved_type, saved_value, saved_traceback);
+
+    // ... if we didn't get an exception from throw, in particular, StopIteration ...
+    if (yielded != NULL) {
+        // try:
+        //     raise RuntimeError("generator didn't stop after throw()")
+        // finally:
+        //     self.gen.close()
+        Py_DECREF(yielded);
+        contextmanager_exit_error(gen, "generator didn't stop after throw()");
+        return -1;
+    }
+
+    tuple_T3OOO old_exc = CPy_CatchError();
+    PyObject *error = CPy_GetExcValue();
+    int result = -1;
+
+    // # Note the `return False` in the code comments is how contextlib tells Python to
+    // # propagate the exception being handled by __exit__
+
+    // except StopIteration as exc:
+    //     return exc is not value
+    if (CPy_ExceptionMatches(PyExc_StopIteration)) {
+        // A body StopIteration must not be mistaken for generator completion.
+        result = error != value;
+        goto done;
+    }
+    // except RuntimeError as exc:
+    //     if exc is value:
+    //         exc.__traceback__ = traceback
+    //         return False
+    //     if (
+    //         isinstance(value, StopIteration)
+    //         and exc.__cause__ is value
+    //     ):
+    //         value.__traceback__ = traceback
+    //         return False
+    //     raise
+    if (CPy_ExceptionMatches(PyExc_RuntimeError)) {
+        if (error == value) {
+            goto original;
+        }
+        // PEP 479 can wrap the original StopIteration (including subclasses).
+        int is_stop = PyObject_IsInstance(value, PyExc_StopIteration);
+        if (is_stop < 0) {
+            goto done;
+        }
+        if (is_stop) {
+            PyObject *cause = PyObject_GetAttrString(error, "__cause__");
+            if (cause == NULL) {
+                goto done;
+            }
+            bool is_original = cause == value;
+            Py_DECREF(cause);
+            if (is_original) {
+                goto original;
+            }
+        }
+    }
+    // except BaseException as exc:
+    //     if exc is not value:
+    //         raise
+    //     exc.__traceback__ = traceback
+    //     return False
+    else if (error == value) {
+        goto original;
+    }
+    CPy_Reraise();
+    goto done;
+
+original:
+#if PY_VERSION_HEX >= 0x030B0000
+    if (PyObject_SetAttrString(value, "__traceback__", traceback) < 0) {
+        goto done;
+    }
+#endif
+    result = 0;
+
+done:
+    Py_DECREF(error);
+    CPy_RestoreExcInfo(old_exc);
+    Py_DECREF(old_exc.f0);
+    Py_DECREF(old_exc.f1);
+    Py_DECREF(old_exc.f2);
+    return result;
+}
+
 void CPyError_OutOfMemory(void) {
     fprintf(stderr, "fatal: out of memory\n");
     fflush(stderr);

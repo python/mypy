@@ -49,6 +49,7 @@ from mypy.nodes import (
     YieldExpr,
     YieldFromExpr,
 )
+from mypy.types import Instance, get_proper_type
 from mypyc.common import (
     GENERATOR_HELPER_NAME,
     KEEP_ALIVE_SHORT_LIVED,
@@ -114,6 +115,10 @@ from mypyc.irbuild.targets import (
     AssignmentTargetTuple,
 )
 from mypyc.primitives.exc_ops import (
+    contextmanager_bind_op,
+    contextmanager_enter_op,
+    contextmanager_exit_exception_op,
+    contextmanager_exit_normal_op,
     error_catch_op,
     exc_matches_op,
     get_exc_info_op,
@@ -1132,10 +1137,36 @@ def transform_with(
     is_async: bool,
     line: int,
 ) -> None:
+
+    if isinstance(expr, mypy.nodes.CallExpr) and isinstance(expr.callee, mypy.nodes.RefExpr):
+        callee = expr.callee
+        ctm_def_node: mypy.nodes.SymbolNode | None = callee.node
+        self_expr: Expression | None = None
+        if isinstance(callee, mypy.nodes.MemberExpr) and not builder.is_module_member_expr(callee):
+            ctm_def_node = None
+            # Since we construct the call to the method ourselves in _transform_with_contextmanager,
+            # we're a little paranoid about doing things in the wrong order in weird cases
+            if not find_walrus_targets(expr) and not expr_has_suspend(expr):
+                self_type = get_proper_type(builder.types[callee.expr])
+                if isinstance(self_type, Instance):
+                    symbol = self_type.type.get(callee.name)
+                    if symbol is not None:
+                        ctm_def_node = symbol.node
+                        self_expr = callee.expr
+
+        if (
+            not is_async
+            and isinstance(dec := ctm_def_node, mypy.nodes.Decorator)
+            and not (self_expr is not None and (dec.func.is_static or dec.func.is_class))
+            and len(dec.decorators) == 1
+            and isinstance(dec1 := dec.decorators[0], mypy.nodes.RefExpr)
+            and dec1.node
+            and dec1.node.fullname == "contextlib.contextmanager"
+        ):
+            return _transform_with_contextmanager(builder, expr, target, body, line, self_expr)
+
     # This is basically a straight transcription of the Python code in PEP 343.
     # I don't actually understand why a bunch of it is the way it is.
-    # We could probably optimize the case where the manager is compiled by us,
-    # but that is not our common case at all, so.
 
     al = "a" if is_async else ""
 
@@ -1143,7 +1174,7 @@ def transform_with(
 
     if not is_async and mgr_v.type == lock_rprimitive:
         transform_with_lock(builder, mgr_v, target, body, line)
-        return
+        return None
     # The methods may be inherited from a non-native class, and then they can't be
     # called natively.
     is_native = (
@@ -1245,6 +1276,87 @@ def transform_with_lock(
         builder.primitive_op(lock_release_op, [builder.read(mgr, line)], line)
 
     transform_try_finally_stmt(builder, try_body, finally_body, line)
+
+
+def _transform_with_contextmanager(
+    builder: IRBuilder,
+    expr: mypy.nodes.CallExpr,
+    target: Lvalue | None,
+    with_body: GenFunc,
+    line: int,
+    receiver_expr: Expression | None,
+) -> None:
+
+    # wrapped_call = {expr.callee}.__wrapped__(*args, **kwargs)
+    # where {expr.callee} is either a function or a method
+
+    assert isinstance(expr.callee, mypy.nodes.RefExpr)
+    if receiver_expr is None:
+        wrapped_call = mypy.nodes.CallExpr(
+            mypy.nodes.MemberExpr(expr.callee, "__wrapped__"),
+            expr.args,
+            expr.arg_kinds,
+            expr.arg_names,
+        )
+        wrapped_call.line = line
+        gen = builder.accept(wrapped_call)
+    else:
+        assert isinstance(expr.callee, mypy.nodes.MemberExpr)
+        receiver = builder.accept(receiver_expr)
+        method = builder.py_get_attr(receiver, expr.callee.name, line)
+        wrapped = builder.py_get_attr(method, "__wrapped__", line)
+        wrapped = builder.call_c(contextmanager_bind_op, [method, wrapped], line)
+        args = [builder.accept(arg) for arg in expr.args]
+        gen = builder.py_call(wrapped, args, line, expr.arg_kinds, expr.arg_names)
+
+    # try:
+    #     mgr_target = next(gen)
+    # except StopIteration:
+    #     raise RuntimeError("generator didn't yield") from None
+    mgr_target = builder.call_c(contextmanager_enter_op, [gen], line)
+
+    # try:
+    #     {body}
+
+    def try_body() -> None:
+        if target:
+            builder.assign(builder.get_assignment_target(target), mgr_target, line)
+        with_body()
+
+    # except BaseException as e:
+    #     {contextmanager_exit_exception_op}
+    # finally:
+    #     {contextmanager_exit_normal_op}
+
+    exc = builder.ensure_register(builder.true())
+
+    def except_body() -> None:
+        builder.assign(exc, builder.false(), line)
+        suppressed = builder.call_c(
+            contextmanager_exit_exception_op, [builder.read(gen), *get_sys_exc_info(builder)], line
+        )
+        out_block, reraise_block = BasicBlock(), BasicBlock()
+        builder.add_bool_branch(suppressed, out_block, reraise_block)
+        builder.activate_block(reraise_block)
+        builder.call_c(reraise_exception_op, [], NO_TRACEBACK_LINE_NO)
+        builder.add(Unreachable())
+        builder.activate_block(out_block)
+
+    handlers = [(None, None, except_body)]
+
+    def finally_body() -> None:
+        out_block, exit_block = BasicBlock(), BasicBlock()
+        builder.add(Branch(builder.read(exc), exit_block, out_block, Branch.BOOL))
+        builder.activate_block(exit_block)
+        builder.call_c(contextmanager_exit_normal_op, [builder.read(gen)], line)
+        builder.goto_and_activate(out_block)
+
+    transform_try_finally_stmt(
+        builder,
+        lambda: transform_try_except(builder, try_body, handlers, None, line),
+        finally_body,
+        line,
+    )
 
 
 def transform_with_stmt(builder: IRBuilder, o: WithStmt) -> None:
