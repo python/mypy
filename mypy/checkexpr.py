@@ -4434,12 +4434,16 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                 recent_context.line = err.line
                 recent_context.column = err.column
                 if len(left_variants) >= 2 and len(right_variants) >= 2:
-                    self.msg.warn_both_operands_are_from_unions(recent_context)
+                    self.msg.warn_both_operands_are_from_unions(
+                        recent_context, parent_error=err
+                    )
                 elif len(left_variants) >= 2:
-                    self.msg.warn_operand_was_from_union("Left", base_type, context=recent_context)
+                    self.msg.warn_operand_was_from_union(
+                        "Left", base_type, context=recent_context, parent_error=err
+                    )
                 elif len(right_variants) >= 2:
                     self.msg.warn_operand_was_from_union(
-                        "Right", right_type, context=recent_context
+                        "Right", right_type, context=recent_context, parent_error=err
                     )
 
             # See the comment in 'check_overload_call' for more details on why
