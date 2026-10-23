@@ -4537,13 +4537,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
 
         Type inference is special-cased for this common construct.
         """
-        right_type = self.accept(e.right)
-        if is_subtype(right_type, self.named_type("builtins.int")):
-            # Special case: [...] * <int value>. Use the type context of the
-            # OpExpr, since the multiplication does not affect the type.
-            left_type = self.accept(e.left, type_context=self.type_context[-1])
-        else:
-            left_type = self.accept(e.left)
+        left_type = self.accept(e.left, type_context=self.type_context[-1])
         result, method_type = self.check_op("__mul__", left_type, e.right, e)
         e.method_type = method_type
         return result
