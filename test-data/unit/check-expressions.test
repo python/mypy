@@ -1232,6 +1232,20 @@ a[o:]
 a[:o]
 [builtins fixtures/slice.pyi]
 
+[case testSliceBoundErrorReportsBoundType]
+a: list[int]
+s: str
+
+a[1:]  # Valid integer bounds should remain accepted.
+a[:2]
+a[::3]
+
+# Invalid start, stop, and step bounds must each be reported at the bound.
+a[s:]   # E: Slice index must be an integer, SupportsIndex or None; got: "str"
+a[:s]   # E: Slice index must be an integer, SupportsIndex or None; got: "str"
+a[::s]  # E: Slice index must be an integer, SupportsIndex or None; got: "str"
+[builtins fixtures/slice.pyi]
+
 [case testSliceSupportsIndex]
 import typing_extensions
 class Index:
