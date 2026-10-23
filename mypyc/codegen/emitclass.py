@@ -17,6 +17,7 @@ from mypyc.codegen.emitwrapper import (
     generate_am_send_wrapper,
     generate_bin_op_wrapper,
     generate_bool_wrapper,
+    generate_constructor_wrapper_function,
     generate_contains_wrapper,
     generate_dunder_wrapper,
     generate_get_wrapper,
@@ -31,12 +32,12 @@ from mypyc.common import (
     BITMAP_TYPE,
     CPYFUNCTION_NAME,
     GENERATOR_HELPER_NAME,
-    IS_FREE_THREADED,
     MYPYC_DEFAULTS_SETUP,
     NATIVE_PREFIX,
     PREFIX,
     REG_PREFIX,
     RUNNING_FIELD,
+    UNDECORATED_PREFIX,
     short_id_from_name,
 )
 from mypyc.ir.class_ir import ClassIR, VTableEntries
@@ -47,12 +48,30 @@ from mypyc.ir.func_ir import (
     FuncIR,
     get_text_signature,
 )
-from mypyc.ir.rtypes import RTuple, RType, is_simple_refcounted_pointer, object_rprimitive
+from mypyc.ir.rtypes import (
+    RTuple,
+    RType,
+    is_int_rprimitive,
+    is_simple_refcounted_pointer,
+    object_rprimitive,
+)
 from mypyc.namegen import NameGenerator
 from mypyc.sametype import is_same_type
 
 
 def native_slot(cl: ClassIR, fn: FuncIR, emitter: Emitter) -> str:
+    """Use a native method directly as a slot that takes self and returns an object.
+
+    If the method returns an unboxed value, such as an int from __next__, a wrapper
+    that boxes the value fills the slot instead.
+    """
+    if fn.ret_type.is_unboxed:
+        return generate_dunder_wrapper(cl, fn, emitter)
+    return f"{NATIVE_PREFIX}{fn.cname(emitter.names)}"
+
+
+def wrapper_slot(cl: ClassIR, fn: FuncIR, emitter: Emitter) -> str:
+    """Use a generated wrapper function directly as a slot, without boxing its result."""
     return f"{NATIVE_PREFIX}{fn.cname(emitter.names)}"
 
 
@@ -79,7 +98,9 @@ SLOT_DEFS: SlotTable = {
     "__hash__": ("tp_hash", generate_hash_wrapper),
     "__get__": ("tp_descr_get", generate_get_wrapper),
     "__getattr__": ("tp_getattro", dunder_attr_slot),
-    "__setattr__": ("tp_setattro", dunder_attr_slot),
+    # The wrapper is also generated for a class that defines only __delattr__, so fill
+    # the slot based on the wrapper instead of __setattr__.
+    "__setattr____wrapper": ("tp_setattro", wrapper_slot),
 }
 
 AS_MAPPING_SLOT_DEFS: SlotTable = {
@@ -96,6 +117,7 @@ AS_NUMBER_SLOT_DEFS: SlotTable = {
     "__bool__": ("nb_bool", generate_bool_wrapper),
     "__int__": ("nb_int", generate_dunder_wrapper),
     "__float__": ("nb_float", generate_dunder_wrapper),
+    "__index__": ("nb_index", generate_dunder_wrapper),
     "__neg__": ("nb_negative", generate_dunder_wrapper),
     "__pos__": ("nb_positive", generate_dunder_wrapper),
     "__abs__": ("nb_absolute", generate_dunder_wrapper),
@@ -243,10 +265,40 @@ def generate_class_reuse(
     context.declarations[name] = HeaderDeclaration(f"CPyThreadLocal {struct_name} *{name};")
 
 
-def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
+def can_use_constructor_for_type_call(cl: ClassIR) -> bool:
+    """Can a call to the type object of cl go straight to the native constructor?
+
+    If so, the type object gets a tp_vectorcall that parses the arguments and calls
+    the native constructor. Otherwise a call goes through tp_new and tp_init.
+    """
+    init = cl.get_method_and_class("__init__")
+    if init is None or "__init__" not in init[1].method_decls:
+        # Without __init__ there are no arguments to parse, and tp_new accepts and
+        # ignores any that are passed. A decorated __init__ isn't called natively.
+        return False
+    if cl.has_method("__new__") or cl.has_non_native_new():
+        # If __new__ returns an instance of a subclass, type.__call__ calls __init__ of
+        # the subclass, but the native constructor doesn't. With a decorated __new__,
+        # the native constructor calls the type object.
+        return False
+    if cl.is_abstract:
+        # The only thing that stops an abstract class from being instantiated is the
+        # check of the self argument in the wrapper of __init__.
+        return False
+    # If __init__ isn't native, the constructor takes *args and **kwargs and calls
+    # tp_init. Building a tuple and a dict for it wouldn't be any faster.
+    return all(arg.kind not in (ARG_STAR, ARG_STAR2) for arg in cl.ctor.sig.args)
+
+
+def generate_class(
+    cl: ClassIR, module: str, emitter: Emitter, source_paths: dict[str, str]
+) -> None:
     """Generate C code for a class.
 
     This is the main entry point to the module.
+
+    Args:
+        source_paths: Map from module names to source file paths
     """
     name = cl.name
     name_prefix = cl.name_prefix(emitter.names)
@@ -291,7 +343,8 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
             fields["tp_traverse"] = f"(traverseproc){name_prefix}_traverse"
             fields["tp_clear"] = f"(inquiry){clear_name}"
     # Populate .tp_finalize and generate a finalize method only if __del__ is defined for this class.
-    del_method = next((e.method for e in cl.vtable_entries if e.name == "__del__"), None)
+    # A decorated __del__ has no vtable entry, so it's looked up in the methods.
+    del_method = cl.get_method("__del__")
     if del_method:
         fields["tp_finalize"] = f"(destructor){finalize_name}"
     if needs_getseters:
@@ -307,11 +360,22 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
     # values, we need to call it during initialization.
     defaults_fn = cl.get_method(MYPYC_DEFAULTS_SETUP)
 
-    # If there is a __init__ method, we'll use it in the native constructor.
-    init_fn = cl.get_method("__init__")
+    # If there is a native __init__ method, we'll use it in the native constructor.
+    init_fn = cl.get_native_init()
 
     # Fill out slots in the type object from dunder methods.
     fields.update(generate_slots(cl, SLOT_DEFS, emitter))
+
+    if cl.has_non_native_new():
+        # Leave tp_new unset. When a decorated __new__ is set as an attribute of the
+        # class that defines it, Python sets tp_new to a function that calls __new__
+        # from the type dict, and subclasses inherit that. A tp_new of our own would
+        # add a default __new__ to the type dict, which would hide the decorated one.
+        fields.pop("tp_new", None)
+        if init_fn is not None and "tp_init" not in fields:
+            # An inherited tp_init may do nothing, since tp_new of a class without
+            # __new__ calls __init__.
+            fields["tp_init"] = generate_init_for_class(cl, init_fn, emitter)
 
     # Fill out dunder methods that live in tables hanging off the side.
     for table_name, type, slot_defs in SIDE_TABLES:
@@ -402,9 +466,18 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
         emitter.emit_line(native_function_header(cl.ctor, emitter) + ";")
 
         emit_line()
-        init_fn = cl.get_method("__init__")
+        init_fn = cl.get_native_init()
         generate_new_for_class(cl, new_name, vtable_name, setup_name, init_fn, emitter)
         emit_line()
+
+        if init_fn is not None and can_use_constructor_for_type_call(cl):
+            vectorcall_name = f"{name_prefix}_vectorcall"
+            init_module = init_fn.decl.module_name
+            generate_constructor_wrapper_function(
+                cl, init_fn, vectorcall_name, emitter, source_paths[init_module], init_module
+            )
+            fields["tp_vectorcall"] = vectorcall_name
+            emit_line()
 
         if cl.allow_interpreted_subclasses:
             shadow_vtable_name: str | None = generate_vtables(
@@ -441,7 +514,7 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
             cl.struct_name(emitter.names)
         )
         flags.append("_Py_TPFLAGS_HAVE_VECTORCALL")
-        if not fields.get("tp_vectorcall"):
+        if not fields.get("tp_call"):
             # This is just a placeholder to please CPython. It will be
             # overridden during setup.
             fields["tp_call"] = "PyVectorcall_Call"
@@ -675,6 +748,10 @@ def generate_setup_for_class(
     struct_name = cl.struct_name(emitter.names)
     emitter.emit_line(f"{struct_name} *self;")
 
+    if cl.has_non_native_new() and not cl.allow_interpreted_subclasses:
+        # tp_new normally checks this, but this class doesn't have its own.
+        emit_interpreted_subclass_check(cl, emitter)
+
     prefix = cl.name_prefix(emitter.names)
     if cl.reuse_freed_instance:
         # Attempt to use a per-type free list first (a free "list" with up to one object only).
@@ -780,6 +857,31 @@ def emit_setup_or_dunder_new_call(
     emitter.emit_line("    return self;")
 
 
+def emit_interpreted_subclass_check(cl: ClassIR, emitter: Emitter) -> None:
+    """Emit C code to raise an exception unless the C variable "type" is the type object of cl."""
+    emitter.emit_line(f"if (type != {emitter.type_struct_name(cl)}) {{")
+    emitter.emit_line(
+        'PyErr_SetString(PyExc_TypeError, "interpreted classes cannot inherit from compiled");'
+    )
+    emitter.emit_line("return NULL;")
+    emitter.emit_line("}")
+
+
+def emit_type_object_call(cl: ClassIR, fn: FuncDecl, emitter: Emitter) -> None:
+    """Emit C code to return the result of calling the type object of cl.
+
+    The arguments are the arguments of fn, which is the constructor of cl.
+    """
+    type_arg = "(PyObject *)" + emitter.type_struct_name(cl)
+    if fn.sig.args:
+        # The constructor takes *args, **kwargs.
+        assert [arg.kind for arg in fn.sig.args] == [ARG_STAR, ARG_STAR2], fn.sig
+        args = ", ".join(REG_PREFIX + arg.name for arg in fn.sig.args)
+        emitter.emit_line(f"return PyObject_Call({type_arg}, {args});")
+    else:
+        emitter.emit_line(f"return PyObject_CallNoArgs({type_arg});")
+
+
 def generate_constructor_for_class(
     cl: ClassIR,
     fn: FuncDecl,
@@ -791,6 +893,12 @@ def generate_constructor_for_class(
     """Generate a native function that allocates and initializes an instance of a class."""
     emitter.emit_line(f"{native_function_header(fn, emitter)}")
     emitter.emit_line("{")
+
+    if cl.has_non_native_new():
+        # A decorated __new__ isn't called natively, so call the type object.
+        emit_type_object_call(cl, fn, emitter)
+        emitter.emit_line("}")
+        return
 
     fn_args = [REG_PREFIX + arg.name for arg in fn.sig.args]
     type_arg = "(PyObject *)" + emitter.type_struct_name(cl)
@@ -843,7 +951,14 @@ def generate_init_for_class(cl: ClassIR, init_fn: FuncIR, emitter: Emitter) -> s
     emitter.emit_line("static int")
     emitter.emit_line(f"{func_name}(PyObject *self, PyObject *args, PyObject *kwds)")
     emitter.emit_line("{")
-    if cl.allow_interpreted_subclasses or cl.builtin_base or cl.has_method("__new__"):
+    if (
+        cl.allow_interpreted_subclasses
+        or cl.builtin_base
+        or cl.has_method("__new__")
+        or cl.has_non_native_new()
+        # tp_new doesn't call a decorated __init__.
+        or cl.get_native_init() is None
+    ):
         emitter.emit_line(
             f"return {emitter.wrapper_function_call(init_fn.decl)}"
             "(self, args, kwds) != NULL ? 0 : -1;"
@@ -863,17 +978,15 @@ def generate_new_for_class(
     init_fn: FuncIR | None,
     emitter: Emitter,
 ) -> None:
+    if cl.has_non_native_new():
+        # The class doesn't have its own tp_new.
+        return
     emitter.emit_line("static PyObject *")
     emitter.emit_line(f"{func_name}(PyTypeObject *type, PyObject *args, PyObject *kwds)")
     emitter.emit_line("{")
     # TODO: Check and unbox arguments
     if not cl.allow_interpreted_subclasses:
-        emitter.emit_line(f"if (type != {emitter.type_struct_name(cl)}) {{")
-        emitter.emit_line(
-            'PyErr_SetString(PyExc_TypeError, "interpreted classes cannot inherit from compiled");'
-        )
-        emitter.emit_line("return NULL;")
-        emitter.emit_line("}")
+        emit_interpreted_subclass_check(cl, emitter)
 
     type_arg = "(PyObject*)type"
     new_args = "args, kwds"
@@ -1113,10 +1226,16 @@ def generate_methods_table(
     for fn in cl.methods.values():
         if fn.decl.is_prop_setter or fn.decl.is_prop_getter or fn.internal:
             continue
-        emitter.emit_line(f'{{"{fn.name}",')
+        emitter.emit_line(f'{{"{fn.name.removeprefix(UNDECORATED_PREFIX)}",')
         emitter.emit_line(f" (PyCFunction){PREFIX}{fn.cname(emitter.names)},")
         flags = ["METH_FASTCALL", "METH_KEYWORDS"]
-        if fn.decl.kind == FUNC_STATICMETHOD:
+        if fn.name == "__new__" and "__new__" not in cl.method_decls:
+            # A decorated __new__. Its decorators get the callable that is in the type
+            # dict. The wrapper takes the class as self, like a class method, and a
+            # class method descriptor that is called with a class as the first argument
+            # binds itself to that class.
+            flags = ["METH_VARARGS", "METH_KEYWORDS", "METH_CLASS"]
+        elif fn.decl.kind == FUNC_STATICMETHOD:
             flags.append("METH_STATIC")
         elif fn.decl.kind == FUNC_CLASSMETHOD:
             flags.append("METH_CLASS")
@@ -1255,7 +1374,7 @@ def generate_getter(cl: ClassIR, attr: str, rtype: RType, emitter: Emitter) -> N
     emitter.emit_line("{")
     attr_expr = f"self->{attr_field}"
 
-    if IS_FREE_THREADED and is_simple_refcounted_pointer(rtype):
+    if emitter.target_python.free_threaded and is_simple_refcounted_pointer(rtype):
         # In free-threaded builds, load the attribute and take a new reference with
         # an optimistic validated incref to avoid racing with a concurrent setter.
         # CPy_GetAttrRef returns NULL if the attribute is undefined (NULL field),
@@ -1282,19 +1401,53 @@ def generate_getter(cl: ClassIR, attr: str, rtype: RType, emitter: Emitter) -> N
         emitter.emit_line("}")
         return
 
+    if (
+        emitter.target_python.free_threaded
+        and is_int_rprimitive(rtype)
+        and attr not in cl.final_attributes
+    ):
+        # In free-threaded builds, CPyTagged_GetAttr takes a new reference to a long
+        # value without racing with a concurrent setter (see CPyTagged_SetAttr). It
+        # returns CPY_INT_TAG if the attribute is undefined.
+        emitter.emit_line(f"CPyTagged tmp = CPyTagged_GetAttr((PyObject *)self, &{attr_expr});")
+        emitter.emit_line("if (unlikely(tmp == CPY_INT_TAG)) {")
+        emitter.emit_line("PyErr_SetString(PyExc_AttributeError,")
+        emitter.emit_line(f'    "attribute {repr(attr)} of {repr(cl.name)} undefined");')
+        emitter.emit_line("return NULL;")
+        emitter.emit_line("}")
+        emitter.emit_line("return CPyTagged_StealAsObject(tmp);")
+        emitter.emit_line("}")
+        return
+
     # HACK: Don't consider refcounted values as always defined, since it's possible to
     #       access uninitialized values via 'gc.get_objects()'. Accessing non-refcounted
     #       values is benign.
     always_defined = cl.is_always_defined(attr) and not rtype.is_refcounted
 
+    tuple_snapshot = (
+        emitter.target_python.free_threaded
+        and isinstance(rtype, RTuple)
+        and attr not in cl.final_attributes
+    )
+    if tuple_snapshot:
+        assert isinstance(rtype, RTuple)
+        emitter.emit_line(f"{emitter.ctype(rtype)} tmp;")
+        undefined = emitter.emit_tuple_attr_load_locked("tmp", attr_expr, "self", rtype, cl, attr)
+        attr_expr = "tmp"
     if not always_defined:
-        emitter.emit_undefined_attr_check(rtype, attr_expr, "==", "self", attr, cl, unlikely=True)
+        if tuple_snapshot:
+            emitter.emit_line(f"if (unlikely({undefined})) {{")
+        else:
+            emitter.emit_undefined_attr_check(
+                rtype, attr_expr, "==", "self", attr, cl, unlikely=True
+            )
         emitter.emit_line("PyErr_SetString(PyExc_AttributeError,")
         emitter.emit_line(f'    "attribute {repr(attr)} of {repr(cl.name)} undefined");')
         emitter.emit_line("return NULL;")
         emitter.emit_line("}")
-    emitter.emit_inc_ref(f"self->{attr_field}", rtype)
-    emitter.emit_box(f"self->{attr_field}", "retval", rtype, declare_dest=True)
+    if not tuple_snapshot:
+        emitter.emit_inc_ref(attr_expr, rtype)
+    emitter.emit_box(attr_expr, "retval", rtype, declare_dest=True)
     emitter.emit_line("return retval;")
     emitter.emit_line("}")
 
@@ -1319,7 +1472,7 @@ def generate_setter(cl: ClassIR, attr: str, rtype: RType, emitter: Emitter) -> N
         emitter.emit_line("return -1;")
         emitter.emit_line("}")
 
-    if IS_FREE_THREADED and is_simple_refcounted_pointer(rtype):
+    if emitter.target_python.free_threaded and is_simple_refcounted_pointer(rtype):
         # In free-threaded builds, publish the new value via CPy_SetAttrRef, which
         # takes the owner's critical section so a concurrent reader (see
         # CPy_GetAttrRef) can always secure a reference to the value it observes,
@@ -1342,6 +1495,28 @@ def generate_setter(cl: ClassIR, attr: str, rtype: RType, emitter: Emitter) -> N
             emitter.emit_line("} else {")
             emitter.emit_line(
                 f"CPy_SetAttrRef((PyObject *)self, (PyObject **)&self->{attr_field}, NULL);"
+            )
+            emitter.emit_line("}")
+        emitter.emit_line("return 0;")
+        emitter.emit_line("}")
+        return
+
+    if emitter.target_python.free_threaded and is_int_rprimitive(rtype):
+        # In free-threaded builds, CPyTagged_SetAttr steals the new value and safely
+        # reclaims the old one (see CPyTagged_GetAttr). Unbox (borrowed) and take a
+        # new reference to hand over; a failed unbox leaves the attribute intact.
+        # CPY_INT_TAG deletes the attribute.
+        if deletable:
+            emitter.emit_line("if (value != NULL) {")
+        emitter.emit_unbox(
+            "value", "tmp", rtype, error=ReturnHandler("-1"), declare_dest=True, borrow=True
+        )
+        emitter.emit_inc_ref("tmp", rtype)
+        emitter.emit_line(f"CPyTagged_SetAttr((PyObject *)self, &self->{attr_field}, tmp);")
+        if deletable:
+            emitter.emit_line("} else {")
+            emitter.emit_line(
+                f"CPyTagged_SetAttr((PyObject *)self, &self->{attr_field}, CPY_INT_TAG);"
             )
             emitter.emit_line("}")
         emitter.emit_line("return 0;")
@@ -1383,17 +1558,25 @@ def generate_setter(cl: ClassIR, attr: str, rtype: RType, emitter: Emitter) -> N
     # Take ownership of the incoming value before releasing the old one. In
     # particular, a failed cast must leave the attribute and its reference intact.
     emitter.emit_inc_ref("tmp", rtype)
-    emit_decref_old_value()
-    emitter.emit_line(f"self->{attr_field} = tmp;")
-    if rtype.error_overlap and not always_defined:
-        emitter.emit_attr_bitmap_set("tmp", "self", rtype, cl, attr)
+    if emitter.target_python.free_threaded and isinstance(rtype, RTuple):
+        emitter.emit_tuple_attr_store_locked("tmp", f"self->{attr_field}", "self", rtype, cl, attr)
+    else:
+        emit_decref_old_value()
+        emitter.emit_line(f"self->{attr_field} = tmp;")
+        if rtype.error_overlap and not always_defined:
+            emitter.emit_attr_bitmap_set("tmp", "self", rtype, cl, attr)
 
     if deletable:
         emitter.emit_line("} else {")
-        emit_decref_old_value()
-        emitter.set_undefined_value(f"self->{attr_field}", rtype)
-        if rtype.error_overlap:
-            emitter.emit_attr_bitmap_clear("self", rtype, cl, attr)
+        if emitter.target_python.free_threaded and isinstance(rtype, RTuple):
+            emitter.emit_tuple_attr_store_locked(
+                "", f"self->{attr_field}", "self", rtype, cl, attr, delete=True
+            )
+        else:
+            emit_decref_old_value()
+            emitter.set_undefined_value(f"self->{attr_field}", rtype)
+            if rtype.error_overlap:
+                emitter.emit_attr_bitmap_clear("self", rtype, cl, attr)
         emitter.emit_line("}")
     emitter.emit_line("return 0;")
     emitter.emit_line("}")
@@ -1498,7 +1681,7 @@ def generate_coroutine_setup(
         wrapper_name = emit_instance(cl.methods["__call__"], cl.coroutine_name)
         struct_name = cl.struct_name(emitter.names)
         attr = emitter.attr(CPYFUNCTION_NAME)
-        if IS_FREE_THREADED:
+        if emitter.target_python.free_threaded:
             emitter.emit_line(
                 f"CPy_InitAttrRefIfNull(type, (PyObject **)&(({struct_name} *)type)->{attr}, "
                 f"{wrapper_name});"

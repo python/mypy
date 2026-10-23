@@ -1719,6 +1719,9 @@ def maybe_write_junit_xml(
     options: Options,
 ) -> None:
     if options.junit_xml:
+        if options.bazel:
+            # Elapsed time would make the output non-reproducible.
+            td = 0.0
         py_version = f"{options.python_version[0]}_{options.python_version[1]}"
         if options.junit_format == "global":
             util.write_junit_xml(

@@ -13,9 +13,13 @@ project, then, looks like:
 
 See the mypycify docs for additional arguments.
 
-mypycify can integrate with either distutils or setuptools, but needs
-to know at import-time whether it is using distutils or setuputils. We
-hackily decide based on whether setuptools has been imported already.
+mypycify requires setuptools.
+
+setuptools and distutils are only imported when they are needed to build
+extensions (such as in mypycify), since importing them is slow and
+generating C via mypyc_build doesn't need them. On Python versions before
+3.12, they are imported when this module is imported, since setuptools must
+be imported before distutils to override it.
 """
 
 from __future__ import annotations
@@ -28,7 +32,6 @@ import time
 from collections.abc import Iterable
 from typing import TYPE_CHECKING, Any, NamedTuple, NoReturn, cast
 
-import mypyc.build_setup  # noqa: F401
 from mypy.build import BuildSource
 from mypy.errors import CompileError
 from mypy.fscache import FileSystemCache
@@ -37,12 +40,12 @@ from mypy.options import Options
 from mypy.util import write_junit_xml
 from mypyc.annotate import generate_annotated_html
 from mypyc.codegen import emitmodule
-from mypyc.common import IS_FREE_THREADED, RUNTIME_C_FILES, shared_lib_name
+from mypyc.common import RUNTIME_C_FILES, shared_lib_name
 from mypyc.errors import Errors
 from mypyc.ir.deps import SourceDep
 from mypyc.ir.pprint import format_modules
 from mypyc.namegen import exported_name
-from mypyc.options import CompilerOptions
+from mypyc.options import CompilerOptions, TargetPython
 
 
 class ModDesc(NamedTuple):
@@ -135,12 +138,6 @@ LIBRT_MODULES = [
     ),
 ]
 
-try:
-    # Import setuptools so that it monkey-patch overrides distutils
-    import setuptools
-except ImportError:
-    pass
-
 if TYPE_CHECKING:
     if sys.version_info >= (3, 12):
         from setuptools import Extension
@@ -152,14 +149,39 @@ if TYPE_CHECKING:
 
         Extension: TypeAlias = _setuptools_Extension | _distutils_Extension
 
-if sys.version_info >= (3, 12):
-    # From setuptools' monkeypatch
-    from distutils import ccompiler, sysconfig  # type: ignore[import-not-found]
-else:
-    from distutils import ccompiler, sysconfig
+
+def import_distutils() -> tuple[Any, Any]:
+    """Import and return the distutils ccompiler and sysconfig modules.
+
+    This also imports setuptools (if available) first, so that it overrides distutils,
+    and patches the compiler to support per-file flags. These imports are slow, and
+    only needed when building C extensions, so this is done lazily (C generation in
+    mypyc_build doesn't need it).
+    """
+    try:
+        # Import setuptools so that it monkey-patch overrides distutils
+        import setuptools  # noqa: F401
+    except ImportError:
+        pass
+
+    import mypyc.build_setup  # noqa: F401
+
+    if sys.version_info >= (3, 12):
+        # From setuptools' monkeypatch
+        from distutils import ccompiler, sysconfig  # type: ignore[import-not-found]
+    else:
+        from distutils import ccompiler, sysconfig
+    return ccompiler, sysconfig
+
+
+if sys.version_info < (3, 12):
+    # Distutils is still in the stdlib, and setuptools must be imported before it to
+    # override it, so preserve the old behavior of importing these eagerly.
+    import_distutils()
 
 
 def get_extension() -> type[Extension]:
+    import_distutils()
     # We can work with either setuptools or distutils, and pick setuptools
     # if it has been imported.
     use_setuptools = "setuptools" in sys.modules
@@ -172,6 +194,8 @@ def get_extension() -> type[Extension]:
     else:
         if not use_setuptools:
             sys.exit("error: setuptools not installed")
+        import setuptools
+
         extension_class = setuptools.Extension
 
     return extension_class
@@ -182,6 +206,7 @@ def setup_mypycify_vars() -> None:
     # There has to be a better approach to this.
 
     # The vars can contain ints but we only work with str ones
+    _, sysconfig = import_distutils()
     vars = cast(dict[str, str], sysconfig.get_config_vars())
     if sys.platform == "darwin":
         # Disable building 32-bit binaries, since we generate too much code
@@ -199,6 +224,9 @@ def fail(message: str) -> NoReturn:
 def emit_messages(options: Options, messages: list[str], dt: float, serious: bool = False) -> None:
     # ... you know, just in case.
     if options.junit_xml:
+        if options.bazel:
+            # Elapsed time would make the output non-reproducible.
+            dt = 0.0
         py_version = f"{options.python_version[0]}_{options.python_version[1]}"
         write_junit_xml(
             dt,
@@ -233,8 +261,8 @@ def get_mypy_config(
         return mypyc_sources, all_sources, options
 
     # Override whatever python_version is inferred from the .ini file,
-    # and set the python_version to be the currently used version.
-    options.python_version = sys.version_info[:2]
+    # and set the python_version to be the target version.
+    options.python_version = compiler_options.target_python.version
 
     if options.python_version[0] == 2:
         fail("Python 2 not supported")
@@ -271,7 +299,7 @@ def generate_c_extension_shim(
     cname = "%s.c" % full_module_name.replace(".", os.sep)
     cpath = os.path.join(dir_name, cname)
 
-    if IS_FREE_THREADED:
+    if TargetPython.host().free_threaded:
         # We use multi-phase init in free-threaded builds to enable free threading.
         shim_name = "module_shim_no_gil_multiphase.tmpl"
     else:
@@ -805,6 +833,7 @@ def get_cflags(
         List of compiler flags.
     """
     if compiler_type is None:
+        ccompiler, sysconfig = import_distutils()
         compiler: Any = ccompiler.new_compiler()
         sysconfig.customize_compiler(compiler)
         compiler_type = compiler.compiler_type
@@ -952,6 +981,7 @@ def mypycify(
                                also needed if using experimental librt features). These
                                have no backward compatibility guarantees!
     """
+    ccompiler, sysconfig = import_distutils()
 
     # Skip redundant inplace .so copies on every build_ext invocation.
     _patch_setuptools_copy_extensions_to_source()

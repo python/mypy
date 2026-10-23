@@ -641,6 +641,7 @@ PyObject *CPyTagged_ToBytes(CPyTagged self, Py_ssize_t length, PyObject *byteord
     } else if (strcmp(order, "little") == 0) {
         little_endian = 1;
     } else {
+        Py_DECREF(pyint);
         PyErr_SetString(PyExc_ValueError, "byteorder must be either 'little' or 'big'");
         return NULL;
     }
@@ -712,4 +713,20 @@ CPyTagged CPyTagged_BitLength(CPyTagged self) {
         return CPY_INT_TAG;
     }
     return bits << 1;
+}
+
+// Look up o.real or o.imag, where o is an instance of an int subclass, and convert
+// it to a tagged int (see CPyTagged_Real)
+CPyTagged CPyTagged_GetPartSlow(PyObject *o, PyObject *name) {
+    PyObject *part = PyObject_GetAttr(o, name);
+    if (part == NULL) {
+        return CPY_INT_TAG;
+    }
+    if (!PyLong_Check(part)) {
+        // Same error as unboxing the attribute value would produce
+        CPy_TypeError("int", part);
+        Py_DECREF(part);
+        return CPY_INT_TAG;
+    }
+    return CPyTagged_StealFromObject(part);
 }

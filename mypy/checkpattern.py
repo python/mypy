@@ -211,8 +211,8 @@ class PatternChecker(PatternVisitor[PatternType]):
         ok_map, rest_map = self.chk.narrow_type_by_identity_equality(
             "==", [node, TempNode(typ)], [current_type, typ], [0, 1], {0}
         )
-        ok_type = ok_map.get(node, current_type) if ok_map is not None else UninhabitedType()
-        rest_type = rest_map.get(node, current_type) if rest_map is not None else UninhabitedType()
+        ok_type = ok_map.get(node, current_type)
+        rest_type = rest_map.get(node, current_type)
         return PatternType(ok_type, rest_type, {})
 
     def visit_singleton_pattern(self, o: SingletonPattern) -> PatternType:

@@ -6148,3 +6148,18 @@ def test(f: Callable[[object], object]) -> None: ...
 test(foo)  # E: Argument 1 to "test" has incompatible type overloaded function; expected "Callable[[object], object]"
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
+
+
+[case testTypeDictCallableUnpackExpansionNoCrash]
+from typing import TypeVar, Unpack, Generic
+from typing_extensions import TypedDict
+
+class TD(TypedDict, Generic[T]):
+    x: int
+    y: T
+
+T = TypeVar("T", int, str)
+def foo(t: T, **kwargs: Unpack[TD[T]]) -> None:
+    reveal_type(kwargs)  # N: Revealed type is "TypedDict('__main__.TD', {'x': builtins.int, 'y': builtins.int})" \
+                         # N: Revealed type is "TypedDict('__main__.TD', {'x': builtins.int, 'y': builtins.str})"
+[builtins fixtures/dict.pyi]

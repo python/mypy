@@ -2800,3 +2800,20 @@ def takes_paramspec(f: Callable[P, object]) -> bool:
 def run(callback: Callable[[Concatenate[int, ...]], None]) -> None:  # E: Concatenate is only valid as the first argument to Callable
     takes_paramspec(callback)
 [builtins fixtures/paramspec.pyi]
+
+[case testParamSpecApplyResultsFromUnionWithAnyNoCrash]
+from typing import Any, Callable, Generic, Union
+from typing_extensions import ParamSpec
+
+P = ParamSpec("P")
+class C(Generic[P]): ...
+
+def foo(c: Callable[P, None]) -> C[P]: ...
+
+x: Union[Any, C[[Any, Any]]]
+
+def test(x: int) -> None: ...
+
+x = foo(test)  # E: Argument 1 to "foo" has incompatible type "Callable[[int], None]"; expected "Callable[[Any, Any], None]"
+reveal_type(x)  # N: Revealed type is "__main__.C[[Any, Any]]"
+[builtins fixtures/paramspec.pyi]

@@ -35,6 +35,7 @@ from mypyc.ir.rtypes import (
 from mypyc.primitives.registry import (
     binary_op,
     custom_op,
+    custom_primitive_op,
     function_op,
     load_address_op,
     method_op,
@@ -314,7 +315,7 @@ uint8_overflow = custom_op(
 
 # translate isinstance(obj, int)
 isinstance_int = function_op(
-    name="builtints.isinstance",
+    name="builtins.isinstance",
     arg_types=[object_rprimitive],
     return_type=bit_rprimitive,
     c_function_name="PyLong_Check",
@@ -355,5 +356,23 @@ method_op(
     arg_types=[int_rprimitive],
     return_type=int_rprimitive,
     c_function_name="CPyTagged_BitLength",
+    error_kind=ERR_MAGIC,
+)
+
+# x.real, where x is an int
+int_real_op = custom_primitive_op(
+    name="int.real",
+    arg_types=[int_rprimitive],
+    return_type=int_rprimitive,
+    c_function_name="CPyTagged_Real",
+    error_kind=ERR_MAGIC,
+)
+
+# x.imag, where x is an int
+int_imag_op = custom_primitive_op(
+    name="int.imag",
+    arg_types=[int_rprimitive],
+    return_type=int_rprimitive,
+    c_function_name="CPyTagged_Imag",
     error_kind=ERR_MAGIC,
 )

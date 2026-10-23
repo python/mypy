@@ -1525,10 +1525,11 @@ def test(x: Union[str, Int]) -> None:
     reveal_type(y)  # N: Revealed type is "Any"
 
 [case testNewRedefineNarrowingForNestedUnionWithNone]
-# flags: --allow-redefinition
-from typing import Any, Union
+# flags: --allow-redefinition --ignore-missing-imports
+from typing import Union
+from somewhere import Unknown
 
-a: Any
+a: Unknown
 Int = Union[int, None]
 
 def test(x: Union[str, Int]) -> None:
@@ -1552,9 +1553,11 @@ def test(x: Union[str, Int]) -> None:
     reveal_type(y)  # N: Revealed type is "Any"
 
 [case testRegularNarrowingForNestedUnionWithNone]
-from typing import Any, Union
+# flags: --ignore-missing-imports
+from typing import Union
+from somewhere import Unknown
 
-a: Any
+a: Unknown
 Int = Union[int, None]
 
 def test(x: Union[str, Int]) -> None:

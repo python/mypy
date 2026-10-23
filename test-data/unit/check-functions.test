@@ -2197,21 +2197,16 @@ class A(Generic[t]):
 [out]
 main:6: error: Cannot use a covariant type variable as a parameter
 
-[case testRejectCovariantArgumentInLambda]
+[case testAllowCovariantArgumentInLambda]
 from typing import TypeVar, Generic, Callable
 
 t = TypeVar('t', covariant=True)
 class Thing(Generic[t]):
     def chain(self, func: Callable[[t], None]) -> None: pass
     def end(self) -> None:
-        return self.chain(  # Note that lambda args have no line numbers
+        return self.chain(
             lambda _: None)
 [builtins fixtures/bool.pyi]
-[out]
-main:8: error: Cannot use a covariant type variable as a parameter
-
-[case testRejectCovariantArgumentInLambdaSplitLine]
-from typing import TypeVar, Generic, Callable
 
 [case testRejectContravariantReturnType]
 # flags: --no-strict-optional
@@ -3948,3 +3943,17 @@ convert4("hello", 3.15)  # E: Missing positional arguments "third", "fourth" in 
 convert4(b'', "hello", 3.15)  # E: Missing positional argument "fourth" in call to "convert4" \
                               # E: Argument 1 to "convert4" has incompatible type "bytes"; expected "int"
 [builtins fixtures/primitives.pyi]
+
+[case testGenericContextLambdaNoError]
+from lib import takes_lambda
+takes_lambda(lambda x: 1)
+
+[file lib.py]
+from typing import Any, Callable, TypeVar
+
+# extra spaces
+
+Ex = TypeVar("Ex", covariant=True)
+
+def takes_lambda(func: Callable[[Ex], Any]) -> None:
+    pass

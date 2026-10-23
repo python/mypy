@@ -485,8 +485,10 @@ async def sleep(t: float) -> None: ...
 import asyncio
 import gc
 import platform
+import sys
+from typing import Any, cast
 
-from testutil import is_gil_disabled
+from testutil import assertRaises, is_gil_disabled
 
 def immediate_deallocation_checks_are_reliable() -> bool:
     # Free-threaded builds can defer deallocation, so weakref liveness is not deterministic.
@@ -696,6 +698,28 @@ async def test_completed_mixed_coroutine_releases_environment() -> None:
     c = {4}
     assert await coro == 1
     assert ref() is None
+
+async def iterate(x: Any) -> int:
+    n = 0
+    async for y in x:
+        n += 1
+    return n
+
+async def comprehension(x: Any) -> list[Any]:
+    return [y async for y in x]
+
+def test_async_for_over_sync_iterator() -> None:
+    getrefcount = getattr(sys, "getrefcount")
+    it = iter([1, 2])
+    rc = getrefcount(it)
+    msg = "'async for' requires an object with __aiter__ method, got list_iterator"
+    for i in range(10):
+        with assertRaises(TypeError, msg):
+            cast(Any, iterate(it)).send(None)
+        with assertRaises(TypeError, msg):
+            cast(Any, comprehension(it)).send(None)
+    assert getrefcount(it) == rc
+    assert list(it) == [1, 2]
 
 [file asyncio/__init__.pyi]
 async def sleep(t: float) -> None: ...

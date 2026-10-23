@@ -253,6 +253,8 @@ def expr_to_unanalyzed_type(
                 expr.expr, options, allow_new_syntax, lookup_qualified=lookup_qualified
             ),
             from_star_syntax=True,
+            line=expr.line,
+            column=expr.column,
         )
     elif isinstance(expr, DictExpr):
         if not expr.items:

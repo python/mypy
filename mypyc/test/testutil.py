@@ -10,6 +10,7 @@ import shutil
 from collections.abc import Callable, Iterator
 
 from mypy import build
+from mypy.defaults import PYTHON3_VERSION_MIN
 from mypy.errors import CompileError
 from mypy.main import process_options
 from mypy.nodes import Expression, MypyFile
@@ -17,6 +18,7 @@ from mypy.options import Options
 from mypy.test.config import test_temp_dir
 from mypy.test.data import DataDrivenTestCase, DataSuite
 from mypy.test.helpers import assert_string_arrays_equal
+from mypy.test.update_data import update_testcase_output
 from mypy.types import Type
 from mypyc.analysis.ircheck import assert_func_ir_valid
 from mypyc.common import IS_32_BIT_PLATFORM, PLATFORM_SIZE
@@ -25,7 +27,7 @@ from mypyc.ir.func_ir import FuncIR
 from mypyc.ir.module_ir import ModuleIR
 from mypyc.irbuild.main import build_ir
 from mypyc.irbuild.mapper import Mapper
-from mypyc.options import CompilerOptions
+from mypyc.options import CompilerOptions, TargetPython
 from mypyc.test.config import test_data_prefix
 
 # The builtins stub used during icode generation test cases.
@@ -107,7 +109,9 @@ def build_ir_for_single_file2(
 
     # By default, generate IR compatible with the earliest supported Python C API.
     # If a test needs more recent API features, this should be overridden.
-    compiler_options = compiler_options or CompilerOptions(capi_version=(3, 10))
+    compiler_options = compiler_options or CompilerOptions(
+        target_python=TargetPython(PYTHON3_VERSION_MIN)
+    )
     if flags:
         flag_list = flags.group(1).split()
         _, options = process_options(flag_list, require_targets=False)
@@ -117,7 +121,7 @@ def build_ir_for_single_file2(
     options.hide_error_codes = True
     options.use_builtins_fixtures = True
     options.strict_optional = True
-    options.python_version = compiler_options.python_version or (3, 10)
+    options.python_version = compiler_options.target_python.version
     options.export_types = True
     options.preserve_asts = True
     options.allow_empty_bodies = True
@@ -150,46 +154,20 @@ def build_ir_for_single_file2(
     return module, tree, result.types, mapper
 
 
-def update_testcase_output(testcase: DataDrivenTestCase, output: list[str]) -> None:
-    # TODO: backport this to mypy
-    assert testcase.old_cwd is not None, "test was not properly set up"
-    testcase_path = os.path.join(testcase.old_cwd, testcase.file)
-    with open(testcase_path) as f:
-        data_lines = f.read().splitlines()
-
-    # We can't rely on the test line numbers to *find* the test, since
-    # we might fix multiple tests in a run. So find it by the case
-    # header. Give up if there are multiple tests with the same name.
-    test_slug = f"[case {testcase.name}]"
-    if data_lines.count(test_slug) != 1:
-        return
-    start_idx = data_lines.index(test_slug)
-    stop_idx = start_idx + 11
-    while stop_idx < len(data_lines) and not data_lines[stop_idx].startswith("[case "):
-        stop_idx += 1
-
-    test = data_lines[start_idx:stop_idx]
-    out_start = test.index("[out]")
-    test[out_start + 1 :] = output
-    data_lines[start_idx:stop_idx] = test + [""]
-    data = "\n".join(data_lines)
-
-    with open(testcase_path, "w") as f:
-        print(data, file=f)
-
-
 def assert_test_output(
     testcase: DataDrivenTestCase,
     actual: list[str],
     message: str,
     expected: list[str] | None = None,
     formatted: list[str] | None = None,
+    *,
+    incremental_step: int = 1,
 ) -> None:
     __tracebackhide__ = True
 
     expected_output = expected if expected is not None else testcase.output
     if expected_output != actual and testcase.config.getoption("--update-data", False):
-        update_testcase_output(testcase, actual)
+        update_testcase_output(testcase, actual, incremental_step=incremental_step)
 
     assert_string_arrays_equal(
         expected_output, actual, f"{message} ({testcase.file}, line {testcase.line})"
@@ -281,6 +259,8 @@ def infer_ir_build_options_from_test_name(name: str) -> CompilerOptions | None:
           Run test caseonly on 32-bit platforms
       *_python3_10* (or for any Python version):
           Use Python 3.10+ C API features (default: lowest supported version)
+      *_nogil*:
+          Target a free-threaded build (default: build with the GIL)
       *StripAssert*:
           Don't generate code for assert statements
     """
@@ -290,20 +270,33 @@ def infer_ir_build_options_from_test_name(name: str) -> CompilerOptions | None:
     if "_32bit" in name and not IS_32_BIT_PLATFORM:
         return None
     options = CompilerOptions(
-        strip_asserts="StripAssert" in name, capi_version=(3, 10), strict_traceback_checks=True
+        strip_asserts="StripAssert" in name,
+        strict_traceback_checks=True,
+        target_python=infer_target_python_from_test_name(name),
     )
-    # A suffix like _python3_10 is used to set the target C API version.
-    m = re.search(r"_python([0-9]+)_([0-9]+)(_|\b)", name)
-    if m:
-        version = (int(m.group(1)), int(m.group(2)))
-        assert version >= (3, 10), f"Unsupported _python* suffix: {name}"
-        options.capi_version = version
-        options.python_version = options.capi_version
-    elif "_py" in name or "_Python" in name:
-        assert False, f"Invalid _py* suffix (should be _pythonX_Y): {name}"
     if has_test_name_tag(name, "experimental"):
         options.experimental_features = True
     return options
+
+
+def infer_target_python_from_test_name(name: str) -> TargetPython:
+    """Infer the target Python of a test case from magic substrings in its name.
+
+    A suffix like _python3_12 sets the version (default: lowest supported version).
+    A _nogil suffix targets a free-threaded build (default: build with the GIL),
+    and this defaults to Python 3.13, since free threading requires it.
+
+    The running interpreter doesn't matter, so test output is the same everywhere.
+    """
+    free_threaded = "_nogil" in name
+    m = re.search(r"_python([0-9]+)_([0-9]+)(_|\b)", name)
+    if m:
+        version = (int(m.group(1)), int(m.group(2)))
+    elif "_py" in name or "_Python" in name:
+        assert False, f"Invalid _py* suffix (should be _pythonX_Y): {name}"
+    else:
+        version = (3, 13) if free_threaded else PYTHON3_VERSION_MIN
+    return TargetPython(version, free_threaded)
 
 
 def has_test_name_tag(name: str, tag: str) -> bool:

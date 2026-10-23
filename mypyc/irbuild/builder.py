@@ -69,9 +69,7 @@ from mypy.util import module_prefix, split_target
 from mypy.visitor import ExpressionVisitor, StatementVisitor
 from mypyc.common import (
     BITMAP_BITS,
-    EXT_SUFFIX,
     GENERATOR_ATTRIBUTE_PREFIX,
-    IS_FREE_THREADED,
     KEEP_ALIVE_SHORT_LIVED,
     KEEP_ALIVE_WHOLE_EXPRESSION,
     SELF_NAME,
@@ -589,7 +587,7 @@ class IRBuilder:
                 shared_lib_file = self.py_get_attr(shared_lib_obj, "__file__", line)
             else:
                 shared_lib_file = self.none_object(line)
-            ext_suffix = self.load_str(EXT_SUFFIX, line)
+            ext_suffix = self.load_str(self.options.target_python.ext_suffix, line)
             is_pkg = self.is_package_module(module)
             value = self.call_c(
                 native_import_op,
@@ -929,11 +927,12 @@ class IRBuilder:
             self.add(Assign(target.register, rvalue_reg, line))
         elif isinstance(target, AssignmentTargetAttr):
             if isinstance(target.obj_type, RInstance):
-                setattr = target.obj_type.class_ir.get_method("__setattr__")
-                if setattr:
+                # Look at the method declarations, since the method bodies are added as
+                # they are compiled, and "__setattr__" may be compiled after this.
+                if target.obj_type.class_ir.has_method("__setattr__"):
                     key = self.load_str(target.attr, line)
                     boxed_reg = self.builder.box(rvalue_reg)
-                    call = MethodCall(target.obj, setattr.name, [key, boxed_reg], line)
+                    call = MethodCall(target.obj, "__setattr__", [key, boxed_reg], line)
                     self.add(call)
                 else:
                     rvalue_reg = self.coerce_rvalue(rvalue_reg, target.type, line)
@@ -993,7 +992,7 @@ class IRBuilder:
             index: Value
             if is_list_rprimitive(rvalue.type):
                 index = Integer(i, c_pyssize_t_rprimitive)
-                if not IS_FREE_THREADED:
+                if not self.options.target_python.free_threaded:
                     item_value = self.primitive_op(list_get_item_unsafe_op, [rvalue, index], line)
                 else:
                     item_value = self.primitive_op(list_get_item_int64_op, [rvalue, index], line)
@@ -1250,6 +1249,14 @@ class IRBuilder:
         """Is a type something other than just a class we've created?"""
         return typ.is_named_tuple or typ.is_newtype or typ.typeddict_type is not None
 
+    def is_decorated_class(self, typ: TypeInfo) -> bool:
+        """Might a class decorator have replaced the class with another object?
+
+        The name of the class then refers to the decorated object, not to the class.
+        """
+        ir = self.mapper.type_to_ir.get(typ)
+        return ir is not None and ir.is_decorated
+
     def get_final_ref(self, expr: MemberExpr) -> tuple[str, Var, bool] | None:
         """Check if `expr` is a final class, module or instance attribute.
 
@@ -1493,6 +1500,16 @@ class IRBuilder:
         self.fn_info = self.fn_infos[-1]
         return builder.args, runtime_args, builder.blocks, ret_type, fn_info
 
+    @property
+    def code_fn_info(self) -> FuncInfo:
+        """Return info about the function whose code is being generated.
+
+        This is fn_info, except in a comprehension scope, which is generated inline in the
+        enclosing function. Use this for state related to the generated code, such as the
+        generator class of a coroutine, and fn_info for name binding.
+        """
+        return next(info for info in reversed(self.fn_infos) if not info.is_comprehension_scope)
+
     @contextmanager
     def enter_scope(self, fn_info: FuncInfo) -> Iterator[None]:
         """Push a lightweight scope for comprehensions.
@@ -1510,8 +1527,9 @@ class IRBuilder:
         self.runtime_args.append([])
         self.fn_info = fn_info
         self.fn_infos.append(self.fn_info)
-        self.ret_types.append(none_rprimitive)
-        self.nonlocal_control.append(BaseNonlocalControl())
+        # Yields (from await) and nonlocal control flow belong to the enclosing function.
+        self.ret_types.append(self.ret_types[-1])
+        self.nonlocal_control.append(self.nonlocal_control[-1])
         try:
             yield
         finally:
@@ -1755,6 +1773,7 @@ class IRBuilder:
             self.is_native_module_ref_expr(expr)
             and isinstance(expr.node, TypeInfo)
             and not self.is_synthetic_type(expr.node)
+            and not self.is_decorated_class(expr.node)
         ):
             assert expr.fullname
             return self.load_native_type_object(expr.fullname)

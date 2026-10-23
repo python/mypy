@@ -184,6 +184,56 @@ def gen() -> Iterator[Any]:
         )
         assert environment is not frame
 
+    def test_nested_generator_private_helper_stays_on_frame(self) -> None:
+        module, _, _, _ = build_ir_for_single_file2("""\
+from typing import Iterator
+
+def outer() -> Iterator[int]:
+    def captured() -> Iterator[int]:
+        yield 1
+    def private() -> Iterator[int]:
+        yield from captured()
+    yield from private()
+""".splitlines())
+        outer_frame = next(cl for cl in module.classes if cl.name == "outer_gen")
+        environment_type = outer_frame.attributes[ENV_ATTR_NAME]
+        assert isinstance(environment_type, RInstance)
+        environment = environment_type.class_ir
+
+        assert GENERATOR_ATTRIBUTE_PREFIX + "captured" in environment.attributes
+        assert "private" in frame_variables(outer_frame)
+        assert GENERATOR_ATTRIBUTE_PREFIX + "private" not in environment.attributes
+
+        private_frame = next(cl for cl in module.classes if cl.name.startswith("private_gen___"))
+        private_helper = private_frame.env_user_function
+        assert private_helper is not None
+        assert not any(
+            isinstance(op, GetAttr) and op.attr == GENERATOR_ATTRIBUTE_PREFIX + "private"
+            for block in private_helper.blocks
+            for op in block.ops
+        )
+
+    def test_redefined_nested_helper_has_single_storage_location(self) -> None:
+        module, _, _, _ = build_ir_for_single_file2("""\
+from typing import Iterator
+
+def outer(flag: bool) -> Iterator[int]:
+    if flag:
+        def helper(n: int) -> int:
+            return 1
+    else:
+        def helper(n: int) -> int:
+            return helper(1) if not n else 2
+    yield helper(0)
+""".splitlines())
+        outer_frame = next(cl for cl in module.classes if cl.name == "outer_gen")
+        environment_type = outer_frame.attributes[ENV_ATTR_NAME]
+        assert isinstance(environment_type, RInstance)
+        environment = environment_type.class_ir
+
+        assert GENERATOR_ATTRIBUTE_PREFIX + "helper" in environment.attributes
+        assert "helper" not in frame_variables(outer_frame)
+
     def test_nested_finally_promotes_each_saved_exception(self) -> None:
         cl = generator_class(
             """\
