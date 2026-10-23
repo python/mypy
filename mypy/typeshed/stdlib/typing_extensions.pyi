@@ -30,7 +30,7 @@ from collections.abc import (
 from contextlib import AbstractAsyncContextManager as AsyncContextManager, AbstractContextManager as ContextManager
 from re import Match as Match, Pattern as Pattern
 from types import GenericAlias, ModuleType, UnionType
-from typing import (  # noqa: Y022,Y037,Y038,Y039,UP035
+from typing import (  # noqa: Y022,Y037,Y038,Y039  # ruff: ignore[deprecated-import]
     IO as IO,
     TYPE_CHECKING as TYPE_CHECKING,
     AbstractSet as AbstractSet,
@@ -541,7 +541,7 @@ else:
             self,
             name: str,
             *,
-            bound: None | AnnotationForm | str = None,
+            bound: AnnotationForm | str | None = None,
             contravariant: bool = False,
             covariant: bool = False,
             default: AnnotationForm = ...,
@@ -650,7 +650,10 @@ class _NoExtraItemsType: ...
 NoExtraItems: _NoExtraItemsType
 
 # PEP 747
-TypeForm: _SpecialForm
+if sys.version_info >= (3, 15):
+    from typing import TypeForm as TypeForm
+else:
+    TypeForm: _SpecialForm
 
 # PEP 649/749
 if sys.version_info >= (3, 14):
