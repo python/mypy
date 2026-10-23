@@ -1079,6 +1079,11 @@ void CPy_TypeErrorTraceback(const char *filename, const char *funcname, int line
 void CPy_AttributeError(const char *filename, const char *funcname, const char *classname,
                         const char *attrname, int line, PyObject *globals);
 
+// Issue a warning, like warnings.warn(message, category, stack_level).
+static inline int CPyErr_Warn(PyObject *category, PyObject *message, Py_ssize_t stack_level) {
+    return PyErr_WarnFormat(category, stack_level, "%U", message);
+}
+
 
 // Misc operations
 
@@ -1133,6 +1138,7 @@ PyObject *CPyType_FromTemplateWrapper(PyObject *template_,
                                       PyObject *orig_bases,
                                       PyObject *modname);
 bool CPy_InitSubclass(PyObject *type);
+PyObject *CPy_SuperInitSubclass(PyObject *type, PyObject *cls, PyObject *args, PyObject *kwds);
 int CPyDataclass_SleightOfHand(PyObject *dataclass_dec, PyObject *tp,
                                PyObject *dict, PyObject *annotations,
                                PyObject *dataclass_type);
