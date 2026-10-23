@@ -1048,6 +1048,13 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                     # Defer the validity check; the type checker will verify
                     # the inferred type. Provisionally treat the base as Any.
                     raise DeferredBaseClassVar(sym.node, defining_literal)
+                if t.args:
+                    # The base class subscripts the variable, e.g. `args[1]`
+                    # where `args` is a *args tuple. Whether the base is valid
+                    # depends on the type of the subscripted item, which the
+                    # type checker computes (the variable's type may itself be
+                    # inferred). Defer the validity check, as above.
+                    raise DeferredBaseClassVar(sym.node, defining_literal)
         # Option 2:
         # Unbound type variable. Currently these may be still valid,
         # for example when defining a generic type alias.

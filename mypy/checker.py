@@ -268,6 +268,7 @@ from mypy.types import (
     MYPYC_NATIVE_INT_NAMES,
     NOT_IMPLEMENTED_TYPE_NAMES,
     OVERLOAD_NAMES,
+    TUPLE_NAMES,
     AnyType,
     BoolTypeQuery,
     CallableType,
@@ -298,6 +299,7 @@ from mypy.types import (
     UnpackType,
     extend_args_for_prefix_and_suffix,
     find_unpack_in_list,
+    flatten_nested_tuples,
     flatten_nested_unions,
     get_proper_type,
     get_proper_types,
@@ -2866,6 +2868,10 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
         now that the type is known, accept it if it is ``Any`` (like an
         explicitly ``Any``-typed variable) and otherwise report the errors that
         semantic analysis deferred.
+
+        A base class may also subscript a variable directly, e.g.
+        ``class Sub(args[1])``. Then the item type at the subscript is what
+        gets validated, in the same way.
         """
         if not self.in_checked_function():
             # Semantic analysis silently drops these errors in unchecked
@@ -2879,8 +2885,11 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                 # Semantic analysis does not report "not valid as a type" for
                 # variables inside Literal[...]; do the same here.
                 continue
-            var_type = var.type
-            typ = get_proper_type(var_type) if var_type is not None else None
+            if isinstance(base_expr, IndexExpr):
+                typ = self.deferred_index_base_type(var, base_expr)
+            else:
+                var_type = var.type
+                typ = get_proper_type(var_type) if var_type is not None else None
             # Mirror the cases semantic analysis accepts for an explicitly
             # typed variable (see TypeAnalyser.analyze_unbound_type_without_type_info).
             # An inferred plain ``Any`` is only accepted if it comes from an
@@ -2903,6 +2912,8 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                 name_repr: str | None = base_expr.name
             elif isinstance(base_expr, MemberExpr):
                 name_repr = get_member_expr_fullname(base_expr)
+            elif isinstance(base_expr, IndexExpr):
+                name_repr = var.name
             else:
                 name_repr = None
             self.fail(
@@ -2920,6 +2931,109 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
             if name_repr:
                 msg += f' "{name_repr}"'
             self.fail(msg, base_expr)
+            if isinstance(base_expr, IndexExpr):
+                index_value = self.index_expr_int_value(base_expr.index)
+                if index_value is not None:
+                    # Mirror the hint semantic analysis reports for an
+                    # integer used as a type argument.
+                    self.fail(
+                        f"Invalid type: try using Literal[{index_value}] instead?",
+                        base_expr,
+                        code=codes.VALID_TYPE,
+                    )
+
+    @staticmethod
+    def index_expr_int_value(index: Expression) -> int | None:
+        """Value of a constant integer index expression, or None."""
+        if isinstance(index, IntExpr):
+            return index.value
+        if isinstance(index, UnaryExpr) and index.op == "-" and isinstance(index.expr, IntExpr):
+            return -index.expr.value
+        return None
+
+    def deferred_index_base_type(self, var: Var, base_expr: IndexExpr) -> ProperType | None:
+        """Type of a deferred subscripted base class, e.g. ``args[1]``.
+
+        ``var`` is the subscripted variable. Return the type of the item at
+        the subscript, or None if it cannot be determined statically; the
+        base class is then rejected, as it was before deferred validation.
+        Only a constant integer index is supported, and only into a tuple
+        or sequence type, mirroring what can be known about the item type.
+        """
+        if not isinstance(base_expr.base, NameExpr):
+            return None
+        index_value = self.index_expr_int_value(base_expr.index)
+        if index_value is None:
+            return None
+        var_type = get_proper_type(var.type) if var.type is not None else None
+        if isinstance(var_type, TupleType):
+            return self.tuple_item_at_index(var_type, index_value)
+        if isinstance(var_type, Instance):
+            if var_type.type.fullname in TUPLE_NAMES and var_type.args:
+                # Homogeneous tuple[T, ...]: every item has type T.
+                return get_proper_type(var_type.args[0])
+            sequence_info = var_type.type.get_base("typing.Sequence")
+            if sequence_info is not None:
+                mapped = map_instance_to_supertype(var_type, sequence_info)
+                if mapped.args:
+                    return get_proper_type(mapped.args[0])
+        return None
+
+    def tuple_item_at_index(self, tuple_type: TupleType, index: int) -> ProperType | None:
+        """Type of a tuple item at a constant index, or None if ambiguous.
+
+        If the tuple type has a variadic (unpacked) item, an index may land
+        on more than one item. The item type is only determined if the index
+        lands on a single fixed item, or if every item it may land on is
+        ``Any``; otherwise the index is ambiguous and None is returned.
+        """
+        items = [get_proper_type(item) for item in flatten_nested_tuples(tuple_type.items)]
+        unpack_index = find_unpack_in_list(items)
+        if unpack_index is None:
+            pos = index if index >= 0 else index + len(items)
+            if 0 <= pos < len(items):
+                return items[pos]
+            return None
+        unpack_item = items[unpack_index]
+        assert isinstance(unpack_item, UnpackType)
+        unpacked = get_proper_type(unpack_item.type)
+        if not (
+            isinstance(unpacked, Instance)
+            and unpacked.type.fullname in TUPLE_NAMES
+            and unpacked.args
+        ):
+            return None
+        variadic_item = get_proper_type(unpacked.args[0])
+        prefix = items[:unpack_index]
+        suffix = items[unpack_index + 1 :]
+        possible: list[ProperType]
+        if index >= 0:
+            if index < len(prefix):
+                possible = [prefix[index]]
+            else:
+                possible = [variadic_item]
+                # A suffix item sits at position len(prefix) + <variadic
+                # length> + k, and the variadic length is unknown, so it may
+                # also land on this index.
+                for k, item in enumerate(suffix):
+                    if len(prefix) + k <= index:
+                        possible.append(item)
+        else:
+            from_end = -index
+            if from_end <= len(suffix):
+                possible = [suffix[len(suffix) - from_end]]
+            else:
+                possible = [variadic_item]
+                # A prefix item sits at distance len(suffix) + <variadic
+                # length> + (len(prefix) - k) from the end.
+                for k, item in enumerate(prefix):
+                    if len(suffix) + (len(prefix) - k) <= from_end:
+                        possible.append(item)
+        if all(isinstance(item, AnyType) for item in possible):
+            return possible[0]
+        if len(possible) == 1:
+            return possible[0]
+        return None
 
     def visit_class_def(self, defn: ClassDef) -> None:
         """Type check a class definition."""
