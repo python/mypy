@@ -248,6 +248,7 @@ from mypy.typeops import (
     false_only,
     fixup_partial_type,
     function_type,
+    get_tuple_item_types,
     is_literal_type_like,
     is_singleton_equality_type,
     is_singleton_identity_type,
@@ -8458,13 +8459,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
             return TypeRange(item, is_upper_bound=True)
         if isinstance(typ, FunctionLike) and typ.is_type_obj():
             # If a type is generic, `isinstance` can only narrow its variables to Any.
-            any_parameterized = fill_typevars_with_any(typ.type_object())
-            # Tuples may have unattended type variables among their items
-            if isinstance(any_parameterized, TupleType):
-                erased_type = erase_typevars(any_parameterized)
-            else:
-                erased_type = any_parameterized
-            return TypeRange(erased_type, is_upper_bound=False)
+            return TypeRange(fill_typevars_with_any(typ.type_object()), is_upper_bound=False)
         if isinstance(typ, TypeType):
             # Type[A] means "any type that is a subtype of A" rather than "precisely type A"
             # we indicate this by setting is_upper_bound flag
@@ -9032,19 +9027,7 @@ def builtin_item_type(tp: Type) -> Type | None:
             if not isinstance(get_proper_type(tp.args[0]), AnyType):
                 return tp.args[0]
     elif isinstance(tp, TupleType):
-        normalized_items = []
-        for it in tp.items:
-            # This use case is probably rare, but not handling unpacks here can cause crashes.
-            if isinstance(it, UnpackType):
-                unpacked = get_proper_type(it.type)
-                if isinstance(unpacked, TypeVarTupleType):
-                    unpacked = get_proper_type(unpacked.upper_bound)
-                assert (
-                    isinstance(unpacked, Instance) and unpacked.type.fullname == "builtins.tuple"
-                )
-                normalized_items.append(unpacked.args[0])
-            else:
-                normalized_items.append(it)
+        normalized_items = get_tuple_item_types(tp)
         if all(not isinstance(it, AnyType) for it in get_proper_types(normalized_items)):
             return make_simplified_union(normalized_items)  # this type is not externally visible
     elif isinstance(tp, TypedDictType):

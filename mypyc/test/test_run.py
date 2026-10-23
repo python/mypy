@@ -440,7 +440,9 @@ class TestRun(MypycDataSuite):
                 outlines = [
                     fix_native_line_number(line, testcase.file, testcase.line) for line in outlines
                 ]
-            assert_test_output(testcase, outlines, msg, expected)
+            assert_test_output(
+                testcase, outlines, msg, expected, incremental_step=incremental_step
+            )
 
         if incremental_step > 1 and options.incremental:
             suffix = "" if incremental_step == 2 else str(incremental_step - 1)
