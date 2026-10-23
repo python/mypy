@@ -2005,6 +2005,17 @@ def h() -> int:
             reveal_type(other)  # E: Statement is unreachable
             return 2
 
+[case testBoolFinalFlagTruthinessNotNarrowedToKnownValue]
+# flags: --warn-unreachable
+from typing import Final
+
+DEBUG: Final = False
+
+def f() -> None:
+    if DEBUG:
+        x = 1
+[builtins fixtures/bool.pyi]
+
 [case testMatchMiscNonExhaustiveReturn]
 # flags: --strict-equality --warn-unreachable
 class C:
