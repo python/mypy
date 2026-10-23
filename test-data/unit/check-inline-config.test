@@ -323,6 +323,33 @@ class C:
     def f(self) -> None:
         self.x = 1
 
+[case testIgnoreErrorsMethodImportFollowed]
+# Regression test for mypy#22284: a module imported inside a method of a
+# module whose errors are ignored (via a config file) must still be
+# followed and type checked.
+# flags: --config-file tmp/mypy.ini --show-error-codes
+import pkg.a
+
+[file pkg/__init__.py]
+
+[file pkg/a.py]
+class A:
+    def f(self) -> None:
+        import pkg.b
+
+[file pkg/b.py]
+x: int = "moo"
+
+[file mypy.ini]
+\[mypy]
+show_error_codes = True
+
+\[mypy-pkg.a]
+ignore_errors = True
+
+[out]
+tmp/pkg/b.py:1: error: Incompatible types in assignment (expression has type "str", variable has type "int")  [assignment]
+
 [case testIgnoreErrorsWithLambda]
 # mypy: ignore-errors=True
 

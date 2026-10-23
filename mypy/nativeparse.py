@@ -19,7 +19,7 @@ Expected benefits over mypy.fastparse:
 from __future__ import annotations
 
 import os
-from typing import Final, cast
+from typing import Any, Final, cast
 
 import ast_serialize
 from librt.internal import (
@@ -394,6 +394,32 @@ def read_statements(state: State, data: ReadBuffer, n: int) -> list[Statement]:
     return defs
 
 
+def _ast_serialize_parse(
+    filename: str,
+    options: Options,
+    source: str | bytes | None,
+    skip_function_bodies: bool,
+    cache_version: int,
+) -> tuple[bytes, list[ParseError], TypeIgnores, bytes, dict[str, Any]]:
+    """Call the native parser and return its results for a single parse.
+
+    Raise CompileError if the file cannot be read or parsed at all.
+    """
+    return cast(
+        "tuple[bytes, list[ParseError], TypeIgnores, bytes, dict[str, Any]]",
+        ast_serialize.parse(
+            filename,
+            source,
+            skip_function_bodies=skip_function_bodies,
+            python_version=options.python_version,
+            platform=options.platform,
+            always_true=options.always_true,
+            always_false=options.always_false,
+            cache_version=cache_version,
+        ),
+    )
+
+
 def parse_to_binary_ast(
     filename: str,
     options: Options,
@@ -411,15 +437,8 @@ def parse_to_binary_ast(
     list[tuple[int, str]],
 ]:
     try:
-        ast_bytes, errors, ignores, import_bytes, ast_data = ast_serialize.parse(
-            filename,
-            source,
-            skip_function_bodies=skip_function_bodies,
-            python_version=options.python_version,
-            platform=options.platform,
-            always_true=options.always_true,
-            always_false=options.always_false,
-            cache_version=7,
+        ast_bytes, errors, ignores, import_bytes, ast_data = _ast_serialize_parse(
+            filename, options, source, skip_function_bodies, cache_version=7
         )
     except ValueError as exc:
         if source is None:
@@ -428,15 +447,8 @@ def parse_to_binary_ast(
             with open(filename, "rb") as f:
                 source_bytes = f.read()
                 source = decode_python_encoding(source_bytes)
-            ast_bytes, errors, ignores, import_bytes, ast_data = ast_serialize.parse(
-                filename,
-                source,
-                skip_function_bodies=skip_function_bodies,
-                python_version=options.python_version,
-                platform=options.platform,
-                always_true=options.always_true,
-                always_false=options.always_false,
-                cache_version=5,
+            ast_bytes, errors, ignores, import_bytes, ast_data = _ast_serialize_parse(
+                filename, options, source, skip_function_bodies, cache_version=5
             )
             # Compute hash using original non-UTF-8 bytes, so that
             # incremental mode works correctly.
@@ -444,6 +456,27 @@ def parse_to_binary_ast(
         else:
             # Convert everything unexpected to a standard-looking blocker.
             raise CompileError([f"{filename}: error: Cannot parse file: {exc}"]) from exc
+    if skip_function_bodies:
+        # Stripping function bodies also drops import statements inside those
+        # bodies from the serialized import metadata. A module imported only
+        # from within a skipped body (e.g. a lazy import inside a method of a
+        # module where errors are ignored) would then be missing from mypy's
+        # dependency graph and never get checked (see mypy#22284). The legacy
+        # parser visits statements before it drops stripped bodies, so it
+        # records these imports. To keep behavior consistent, parse the file
+        # again without stripping and use the complete serialized import
+        # metadata for the dependency graph.
+        try:
+            _, _, _, full_import_bytes, _ = _ast_serialize_parse(
+                filename, options, source, False, cache_version=7
+            )
+        except (ValueError, CompileError):
+            # Can't get the complete import metadata (e.g. the file changed or
+            # can't be read again); retain the imports collected during the
+            # stripped parse.
+            pass
+        else:
+            import_bytes = full_import_bytes
     return (
         ast_bytes,
         errors,
