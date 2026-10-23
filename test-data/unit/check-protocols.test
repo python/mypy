@@ -2920,7 +2920,6 @@ hs(None)
 
 
 [case testPartialTypeProtocol]
-# flags: --no-local-partial-types
 from typing import Protocol
 
 class Flapper(Protocol):
@@ -2941,25 +2940,7 @@ class Gleemer:
 
 
 [case testPartialTypeProtocolHashable]
-# flags: --no-strict-optional --no-local-partial-types
-from typing import Protocol
-
-class Hashable(Protocol):
-    def __hash__(self) -> int: ...
-
-class ObjectHashable:
-    def __hash__(self) -> int: ...
-
-class DataArray(ObjectHashable):
-    __hash__ = None
-
-    def f(self, x: Hashable) -> None:
-        reveal_type([self, x])  # N: Revealed type is "builtins.list[builtins.object]"
-[builtins fixtures/tuple.pyi]
-
-
-[case testPartialTypeProtocolHashableLocalPartialTypes]
-# flags: --no-strict-optional --local-partial-types
+# flags: --no-strict-optional
 from typing import Protocol
 
 class Hashable(Protocol):
@@ -2977,7 +2958,7 @@ class DataArray(ObjectHashable):
 
 
 [case testPartialAttributeNoneType]
-# flags: --no-strict-optional --no-local-partial-types
+# flags: --no-strict-optional
 from typing import Optional, Protocol, runtime_checkable
 
 @runtime_checkable
@@ -2995,7 +2976,6 @@ class MyClass:
 
 
 [case testPartialAttributeNoneTypeStrictOptional]
-# flags: --no-local-partial-types
 from typing import Optional, Protocol, runtime_checkable
 
 @runtime_checkable

@@ -1925,7 +1925,6 @@ reveal_type(C().a)  # N: Revealed type is "builtins.dict[Any, Any]"
 [builtins fixtures/dict.pyi]
 
 [case testInferAttributeInitializedToNoneAndAssignedClassBody]
-# flags: --no-local-partial-types
 class C:
     a = None
     def __init__(self) -> None:
@@ -2099,7 +2098,6 @@ x = 1
 [out]
 
 [case testPartiallyInitializedVariableDoesNotEscapeScope2]
-# flags: --no-local-partial-types
 x = None
 def f() -> None:
     x = None
@@ -2127,22 +2125,6 @@ main:6: error: Incompatible types in assignment (expression has type "int", vari
 main:7: error: "None" not callable
 
 [case testGlobalInitializedToNoneSetFromFunction]
-# flags: --no-local-partial-types
-a = None
-def f() -> None:
-    global a
-    a = 42
-    reveal_type(a)  # N: Revealed type is "builtins.int"
-reveal_type(a)  # N: Revealed type is "builtins.int | None"
-
-b = None
-def unchecked():
-    global b
-    b = 42
-reveal_type(b)  # N: Revealed type is "Any | None"
-
-[case testGlobalInitializedToNoneSetFromFunctionLocalPartialTypes]
-# flags: --local-partial-types
 a = None
 def f() -> None:
     global a
@@ -2157,23 +2139,6 @@ def unchecked():
 reveal_type(b)  # N: Revealed type is "Any | None"
 
 [case testGlobalInitializedToNoneSetFromMethod]
-# flags: --no-local-partial-types
-a = None
-class C:
-    def m(self) -> None:
-        global a
-        a = 42
-reveal_type(a)  # N: Revealed type is "builtins.int | None"
-
-b = None
-class CC:
-    def unchecked(self):
-        global b
-        b = 42
-reveal_type(b)  # N: Revealed type is "Any | None"
-
-[case testGlobalInitializedToNoneSetFromMethodLocalPartialTypes]
-# flags: --local-partial-types
 a = None
 class C:
     def m(self) -> None:
@@ -2189,7 +2154,6 @@ class CC:
 reveal_type(b)  # N: Revealed type is "Any | None"
 
 [case testPartialTypeErrorSpecialCase1]
-# flags: --no-local-partial-types
 # This used to crash.
 class A:
     x = None
@@ -2208,7 +2172,6 @@ class A:
 [builtins fixtures/for.pyi]
 
 [case testPartialTypeErrorSpecialCase3]
-# flags: --no-local-partial-types
 class A:
     x = None
     def f(self) -> None:
@@ -2561,7 +2524,6 @@ main:4: error: Unsupported target for indexed assignment ("type[C[T]]")
 main:4: error: Invalid type: try using Literal[0] instead?
 
 [case testNoCrashOnPartialMember]
-# flags: --no-local-partial-types
 class C:
     x = None
     def __init__(self) -> None:
@@ -2580,7 +2542,6 @@ reveal_type(x) # N: Revealed type is "builtins.str"
 [builtins fixtures/tuple.pyi]
 
 [case testNoCrashOnPartialVariable2]
-# flags: --no-local-partial-types
 from typing import Tuple, TypeVar
 T = TypeVar('T', bound=str)
 
@@ -2782,32 +2743,7 @@ x = ''  # E: Incompatible types in assignment (expression has type "str", variab
 def g() -> None:
     reveal_type(x) # N: Revealed type is "builtins.int | None"
 
--- TODO: combine 4 tests below back into 2 when possible.
-[case testLocalPartialTypesWithGlobalInitializedToNone4_no_parallel]
-# flags: --local-partial-types --no-strict-optional
-a = None
-
-def f() -> None:
-    reveal_type(a)  # N: Revealed type is "None"
-
-reveal_type(a)  # N: Revealed type is "None"
-a = ''
-reveal_type(a)  # N: Revealed type is "builtins.str"
-[builtins fixtures/list.pyi]
-
-[case testLocalPartialTypesWithGlobalInitializedToNone5_no_parallel]
-# flags: --local-partial-types
-a = None
-
-def f() -> None:
-    reveal_type(a)  # N: Revealed type is "None"
-
-reveal_type(a)  # N: Revealed type is "None"
-a = ''
-reveal_type(a)  # N: Revealed type is "builtins.str"
-[builtins fixtures/list.pyi]
-
-[case testLocalPartialTypesWithGlobalInitializedToNone4_parallel_only]
+[case testLocalPartialTypesWithGlobalInitializedToNone4]
 # flags: --local-partial-types --no-strict-optional
 a = None
 
@@ -2819,7 +2755,7 @@ a = ''
 reveal_type(a)  # N: Revealed type is "builtins.str"
 [builtins fixtures/list.pyi]
 
-[case testLocalPartialTypesWithGlobalInitializedToNone5_parallel_only]
+[case testLocalPartialTypesWithGlobalInitializedToNone5]
 # flags: --local-partial-types
 a = None
 
@@ -4388,3 +4324,26 @@ x = []  # E: Need type annotation for "x" (hint: "x: list[<type>] = ...")
 def f() -> None:
     global x
     x
+
+[case testPerFileNoLocalPartialTypesForcesSinglePhase_no_parallel]
+# mypy: no-local-partial-types
+
+x = []
+
+def func() -> None:
+    x.append(1)
+
+reveal_type(x)  # N: Revealed type is "builtins.list[builtins.int]"
+[builtins fixtures/list.pyi]
+
+[case testPerFileNoLocalPartialTypesForcesSinglePhase_parallel_only]
+# mypy: no-local-partial-types
+
+x = []
+
+def func() -> None:
+    x.append(1)
+[builtins fixtures/list.pyi]
+[out]
+main:1: error: --local-partial-types must be enabled in parallel mode
+main:3: error: Need type annotation for "x" (hint: "x: list[<type>] = ...")

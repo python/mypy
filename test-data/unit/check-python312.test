@@ -2332,3 +2332,44 @@ class N(NamedTuple):
 n = N((1, 2))
 reveal_type(n)  # N: Revealed type is "tuple[tuple[builtins.int, builtins.int], fallback=__main__.N]"
 [builtins fixtures/tuple.pyi]
+
+[case testAliasWithTypeVarDefaultPlaceholderInImportCycleNewSyntax]
+import a
+from a import Base
+reveal_type(Base().inst())  # N: Revealed type is "c.Inst"
+reveal_type(Base().group())  # N: Revealed type is "TypedDict('d.Group', {'params': builtins.tuple[a.Base[c.Inst] | (def ()), ...]})"
+[file a.py]
+from typing import Generic, TYPE_CHECKING, TypeVar
+
+if TYPE_CHECKING:
+    from c import Inst
+    from d import Group
+
+T = TypeVar("T", default="Inst")
+
+class Base(Generic[T]):
+    def group(self) -> "Group": ...
+    def inst(self) -> T: ...
+
+[file b.py]
+from typing import Callable, Union
+from a import Base
+
+type Alias = Union[Base, Callable[[], None]]
+
+[file c.py]
+from a import Base
+
+class Inst:
+    def make(self) -> Base: ...
+
+[file d.py]
+from typing import TYPE_CHECKING, Tuple
+from typing_extensions import TypedDict
+
+if TYPE_CHECKING:
+    from b import Alias
+
+class Group(TypedDict):
+    params: "Tuple[Alias, ...]"
+[builtins fixtures/tuple.pyi]

@@ -5,7 +5,7 @@ def test(x: list[list[int]], y: list[dict[str, int]]) -> None:
     reveal_type([*i for i in x])  # N: Revealed type is "builtins.list[builtins.int]"
     reveal_type({*i for i in x})  # N: Revealed type is "builtins.set[builtins.int]"
     reveal_type({**d for d in y})  # N: Revealed type is "builtins.dict[builtins.str, builtins.int]"
-[builtins fixtures/isinstancelist.pyi]
+[builtins fixtures/primitives.pyi]
 
 [case testStarUnpackInComprehensionBasicsOld]
 # flags: --no-native-parser
@@ -14,11 +14,23 @@ def test(x: list[list[int]], y: list[dict[str, int]]) -> None:
     reveal_type([*i for i in x])  # N: Revealed type is "builtins.list[builtins.int]"
     reveal_type({*i for i in x})  # N: Revealed type is "builtins.set[builtins.int]"
     reveal_type({**d for d in y})   # N: Revealed type is "builtins.dict[builtins.str, builtins.int]"
-[builtins fixtures/isinstancelist.pyi]
+[builtins fixtures/primitives.pyi]
 
 [case testStarUnpackInComprehensionUnion]
 def test(x: list[list[int]] | list[list[str]], y: list[dict[str, int]] | list[dict[str, str]]) -> None:
     reveal_type([*i for i in x])  # N: Revealed type is "builtins.list[builtins.int | builtins.str]"
     reveal_type({*i for i in x})  # N: Revealed type is "builtins.set[builtins.int | builtins.str]"
     reveal_type({**d for d in y})  # N: Revealed type is "builtins.dict[builtins.str | builtins.str, builtins.int | builtins.str]"
-[builtins fixtures/isinstancelist.pyi]
+[builtins fixtures/primitives.pyi]
+
+[case testDoubleStarUnpackInComprehensionStructuralMapping]
+class MappingLike:
+    def keys(self) -> list[str]:
+        return ["key"]
+    def __getitem__(self, key: str) -> int:
+        return 1
+
+def test(xs: list[MappingLike]) -> dict[str, int]:
+    reveal_type({**x for x in xs})  # N: Revealed type is "builtins.dict[builtins.str, builtins.int]"
+    return {**x for x in xs}
+[builtins fixtures/primitives.pyi]

@@ -863,6 +863,8 @@ def _verify_arg_default_value(
                 and type(runtime_arg.default) is not object
                 # And ellipsis
                 and runtime_arg.default is not ...
+                # And sentinels
+                and not is_sentinel(runtime_type)
                 and not is_subtype_helper(runtime_type, stub_type)
             ):
                 yield (
@@ -2088,6 +2090,19 @@ def is_subtype_helper(left: mypy.types.Type, right: mypy.types.Type) -> bool:
 
     with mypy.state.state.strict_optional_set(True):
         return mypy.subtypes.is_subtype(left, right)
+
+
+def is_sentinel(runtime: mypy.types.Type) -> bool:
+    """Checks whether ``runtime`` is the type of a ``sentinel()`` marker object."""
+    runtime = mypy.types.get_proper_type(runtime)
+    return isinstance(runtime, mypy.types.Instance) and runtime.type.fullname in (
+        "builtins.sentinel",
+        "typing_extensions.sentinel",
+        # typing_extensions 4.14.0-4.15.x defined the class as `Sentinel`, with
+        # no lowercase alias; the rename (and `Sentinel = sentinel` alias)
+        # landed in 4.16.0.
+        "typing_extensions.Sentinel",
+    )
 
 
 def get_mypy_node_for_name(module: str, type_name: str) -> mypy.nodes.SymbolNode | None:

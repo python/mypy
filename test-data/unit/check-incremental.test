@@ -6639,7 +6639,7 @@ class C: ...
 [out2]
 [out3]
 
-[case testNoCrashOnPartialLambdaInference]
+[case testNoCrashOnPartialLambdaInference_no_parallel]
 # flags: --no-local-partial-types
 import m
 [file m.py]
@@ -6665,6 +6665,37 @@ reveal_type(xs)
 [out]
 [out2]
 tmp/m.py:9: note: Revealed type is "builtins.list[builtins.int]"
+
+[case testNoCrashOnPartialLambdaInference_parallel_only]
+# flags: --local-partial-types
+import m
+[file m.py]
+from typing import TypeVar, Callable
+
+V = TypeVar("V")
+def apply(val: V, func: Callable[[V], None]) -> None:
+    return func(val)
+
+xs = []
+apply(0, lambda a: xs.append(a))
+[file m.py.2]
+from typing import TypeVar, Callable
+
+V = TypeVar("V")
+def apply(val: V, func: Callable[[V], None]) -> None:
+    return func(val)
+
+xs = []
+apply(0, lambda a: xs.append(a))
+reveal_type(xs)
+[builtins fixtures/list.pyi]
+[out]
+tmp/m.py:7: error: Need type annotation for "xs" (hint: "xs: list[<type>] = ...")
+tmp/m.py:8: error: Cannot determine type of "xs"
+[out2]
+tmp/m.py:7: error: Need type annotation for "xs" (hint: "xs: list[<type>] = ...")
+tmp/m.py:8: error: Cannot determine type of "xs"
+tmp/m.py:9: note: Revealed type is "builtins.list[Any]"
 
 [case testTypingSelfCoarse]
 import m
@@ -8220,3 +8251,27 @@ y = 2
 [stale]
 [out2]
 [out3]
+
+[case testNoLocalPartialTypesInlineRespectedIncremental_no_parallel]
+import a
+[file a.py]
+# mypy: no-local-partial-types
+import dep
+
+items = []
+
+def add() -> None:
+    items.append(1)
+
+reveal_type(items)
+[file dep.py]
+value: int = 1
+[file dep.py.2]
+value: str = "x"
+[builtins fixtures/list.pyi]
+[rechecked a, dep]
+[stale dep]
+[out]
+tmp/a.py:9: note: Revealed type is "builtins.list[builtins.int]"
+[out2]
+tmp/a.py:9: note: Revealed type is "builtins.list[builtins.int]"

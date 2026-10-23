@@ -9727,3 +9727,17 @@ def f() -> None:
     class X:
         ...
     undefined  # E: Name "undefined" is not defined
+
+[case testPartialNoneTypeClassMethod]
+# flags: --local-partial-types
+
+class C:
+    x = None
+
+    @classmethod
+    def foo(cls) -> None:
+        if not cls.x:
+            cls.x = 1
+
+reveal_type(C.x)  # N: Revealed type is "builtins.int | None"
+[builtins fixtures/classmethod.pyi]

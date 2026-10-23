@@ -291,10 +291,12 @@ from mypy.types import (
     UninhabitedType,
     UnionType,
     UnpackType,
+    extend_args_for_prefix_and_suffix,
     find_unpack_in_list,
     flatten_nested_unions,
     get_proper_type,
     get_proper_types,
+    get_variadic_item,
     instance_cache,
     is_literal_type,
     is_named_instance,
@@ -4389,6 +4391,36 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
             res.append(lv)
         return res
 
+    def adjust_rvalue_type_if_possible(
+        self, rvalue_type: TupleType, lvalues: list[Lvalue]
+    ) -> TupleType:
+        """Adjust type of rvalue to match the shape/structure of lvalues.
+
+        Currently, we only allow this if the rvalue type has contains *tuple[Any, ...].
+        """
+        right_variadic = get_variadic_item(rvalue_type)
+        if right_variadic is None:
+            return rvalue_type
+        right_unpack_index, right_item = right_variadic
+        if not isinstance(get_proper_type(right_item), AnyType):
+            return rvalue_type
+        left_star_index = next(
+            (i for i, lv in enumerate(lvalues) if isinstance(lv, StarExpr)), None
+        )
+        if left_star_index is None:
+            extra = len(lvalues) - len(rvalue_type.items) + 1
+            if extra < 0:
+                return rvalue_type
+            return rvalue_type.copy_modified(
+                items=rvalue_type.items[:right_unpack_index]
+                + [right_item] * extra
+                + rvalue_type.items[right_unpack_index + 1 :]
+            )
+        new_items = extend_args_for_prefix_and_suffix(
+            tuple(rvalue_type.items), left_star_index, len(lvalues) - left_star_index - 1
+        )
+        return rvalue_type.copy_modified(items=list(new_items))
+
     def check_multi_assignment_from_tuple(
         self,
         lvalues: list[Lvalue],
@@ -4399,6 +4431,9 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
         infer_lvalue_type: bool = True,
     ) -> None:
         rvalue_unpack = find_unpack_in_list(rvalue_type.items)
+        if rvalue_unpack is not None:
+            rvalue_type = self.adjust_rvalue_type_if_possible(rvalue_type, lvalues)
+            rvalue_unpack = find_unpack_in_list(rvalue_type.items)
         if self.check_rvalue_count_in_assignment(
             lvalues, len(rvalue_type.items), context, rvalue_unpack=rvalue_unpack
         ):
@@ -4440,7 +4475,13 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                 if isinstance(reinferred_rvalue_type, TupleType):
                     # This branch will usually be taken, but in some cases context can
                     # e.g. select a different overload
+                    # TODO: reinferred tuple may be of a different (invalid) shape.
                     rvalue_type = reinferred_rvalue_type
+
+            # Reinferring the type can undo the shape adjustment, so do it again.
+            rvalue_unpack = find_unpack_in_list(rvalue_type.items)
+            if rvalue_unpack is not None:
+                rvalue_type = self.adjust_rvalue_type_if_possible(rvalue_type, lvalues)
 
             left_rv_types, star_rv_types, right_rv_types = self.split_around_star(
                 rvalue_type.items, star_index, len(lvalues)

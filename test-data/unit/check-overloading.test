@@ -6856,3 +6856,48 @@ if isinstance(headers, dict):
 
 reveal_type(headers)  # N: Revealed type is "__main__.Headers | typing.Iterable[tuple[builtins.bytes, builtins.bytes]]"
 [builtins fixtures/isinstancelist.pyi]
+
+[case testOverloadUnionCallableSubtype]
+from typing import Callable, Union, overload
+
+def f(fn: Callable[[Union[int, str]], Union[int, str]]) -> None: pass
+def f1(fn: Callable[[Union[int, str, bytes]], Union[int, str]]) -> None: pass
+def f2(fn: Callable[[Union[int, str]], int]) -> None: pass
+
+@overload
+def g(x: int) -> int: ...
+@overload
+def g(x: str) -> str: ...
+def g(x): ...
+
+f(g)
+f1(g)  # E: Argument 1 to "f1" has incompatible type overloaded function; expected "Callable[[int | str | bytes], int | str]"
+f2(g)  # E: Argument 1 to "f2" has incompatible type overloaded function; expected "Callable[[int | str], int]"
+
+[case testOverloadOverridesUnionCallable]
+from typing import overload, Union
+
+class A:
+    def f(self, x: Union[int, str]) -> None: ...
+
+class B(A):
+    @overload
+    def f(self, x: int) -> None: ...
+    @overload
+    def f(self, x: str) -> None: ...
+    def f(self, x: Union[int, str]) -> None: ...
+
+[case testOverloadOverridesUnionCallableGeneric]
+from typing import overload, Optional, TypeVar
+
+T = TypeVar("T")
+
+class A:
+    def f(self, x: Optional[T]) -> Optional[T]: ...
+
+class B(A):
+    @overload
+    def f(self, x: None) -> None: ...
+    @overload
+    def f(self, x: T) -> T: ...
+    def f(self, x: Optional[T]) -> Optional[T]: ...
