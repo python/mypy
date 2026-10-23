@@ -418,3 +418,15 @@ y  # mypy: ignore[assignment]  # type: ignore
 [out]
 main:1: error: Unrecognized error code "whatever"
 main:1: note: Error code "misc" not covered by "type: ignore[whatever]" comment
+
+[case testIgnoreOperatorNoteWithDifferentErrorCode]
+# flags: --warn-unused-ignores
+class OnlyA:
+    def __call__(self, other: "A") -> bool:
+        return True
+
+class A:
+    __le__ = OnlyA()
+
+def f(x: A, y: A | int) -> None:
+    x <= y  # type: ignore[arg-type]
