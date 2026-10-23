@@ -30,6 +30,7 @@ class ErrorMessage:
 INVALID_TYPE_RAW_ENUM_VALUE: Final = ErrorMessage(
     "Invalid type: try using Literal[{}.{}] instead?", codes.VALID_TYPE
 )
+CANNOT_DECLARE_TYPE_OF_SPECIAL_FORM: Final = "Cannot declare the type of a {} declaration"
 
 # Type checker error message constants
 NO_RETURN_VALUE_EXPECTED: Final = ErrorMessage("No return value expected", codes.RETURN_VALUE)
@@ -310,6 +311,9 @@ TYPE_IGNORE_WITH_ERRCODE_ON_MODULE: Final = ErrorMessage(
     codes.SYNTAX,
 )
 INVALID_TYPE_IGNORE: Final = ErrorMessage('Invalid "type: ignore" comment', codes.SYNTAX)
+NO_PREFIX_IN_MYPY_IGNORE: Final = (
+    'Error codes in "mypy: ignore" should not be prefixed with "mypy:"'
+)
 TYPE_COMMENT_SYNTAX_ERROR_VALUE: Final = ErrorMessage(
     'Syntax error in type comment "{}"', codes.SYNTAX
 )

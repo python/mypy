@@ -288,12 +288,13 @@ class WorkerClient:
 
     def connect(self) -> None:
         end_time = time.time() + WORKER_START_TIMEOUT
-        last_exception: Exception | None = None
-        while time.time() < end_time:
+        while True:
             try:
                 data = read_status(self.status_file)
             except BadStatus as exc:
                 last_exception = exc
+                if time.time() >= end_time:
+                    break
                 time.sleep(WORKER_START_INTERVAL)
                 continue
             try:
@@ -384,7 +385,9 @@ def build(
     extra_plugins = extra_plugins or []
 
     # Create metastore before workers to avoid race conditions.
-    metastore = create_metastore(options, parallel_worker=False)
+    metastore = create_metastore(options, parallel_worker=False, flush_errors=flush_errors)
+    # In case we failed to initialize sqlite cache, pass this info to the parallel workers.
+    options.sqlite_cache = isinstance(metastore, SqliteMetadataStore)
     workers = []
     connect_threads = []
     # A quasi-unique ID for this specific mypy invocation.
@@ -1895,17 +1898,40 @@ def exclude_from_backups(target_dir: str) -> None:
         pass
 
 
-def create_metastore(options: Options, parallel_worker: bool) -> MetadataStore:
-    """Create the appropriate metadata store."""
+def create_metastore(
+    options: Options,
+    parallel_worker: bool,
+    flush_errors: Callable[[str | None, list[str], bool], None] | None = None,
+) -> MetadataStore:
+    """Create the appropriate metadata store.
+
+    Note: there are few scenarios where we may fail to initialize sqlite cache,
+    for example read-only FS, or a Python build without sqlite support. In such
+    cases we print a note and fall back to FS cache.
+    """
     if options.sqlite_cache:
-        mds: MetadataStore = SqliteMetadataStore(
-            _cache_dir_prefix(options),
-            set_journal_mode=not parallel_worker,
-            num_shards=options.sqlite_num_shards,
-        )
-    else:
-        mds = FilesystemMetadataStore(_cache_dir_prefix(options))
-    return mds
+        try:
+            import sqlite3
+
+            try:
+                return SqliteMetadataStore(
+                    _cache_dir_prefix(options),
+                    set_journal_mode=not parallel_worker,
+                    num_shards=options.sqlite_num_shards,
+                )
+            except (OSError, sqlite3.OperationalError) as os_error:
+                msg = f"Failed to initialize sqlite cache: {os_error}"
+        except ImportError as import_error:
+            msg = f"Cannot import sqlite: {import_error}"
+        if parallel_worker:
+            # If the sqlite cache fails *only* in the workers, this indicates something
+            # very wrong. It is tricky to fail gracefully, so we raise ValueError to make
+            # sure this exception is not swallowed in the worker top-level code.
+            raise ValueError(msg)
+        if flush_errors:
+            msg = f"mypy: note: {msg}"
+            flush_errors(None, [msg, "mypy: note: Using filesystem cache instead"], False)
+    return FilesystemMetadataStore(_cache_dir_prefix(options))
 
 
 def get_meta_ex_name(meta_name: str) -> str:
@@ -3190,31 +3216,10 @@ class State:
         with self.wrap_context():
             source = self.source
             if self.path and source is None:
-                try:
+                with self.handle_file_read_errors():
                     path = manager.maybe_swap_for_shadow_path(self.path)
                     source = decode_python_encoding(manager.fscache.read(path))
                     self.source_hash = manager.fscache.hash_digest(path)
-                except OSError as ioerr:
-                    # ioerr.strerror differs for os.stat failures between Windows and
-                    # other systems, but os.strerror(ioerr.errno) does not, so we use that.
-                    # (We want the error messages to be platform-independent so that the
-                    # tests have predictable output.)
-                    assert ioerr.errno is not None
-                    raise CompileError(
-                        [
-                            "mypy: error: Cannot read file '{}': {}".format(
-                                self.path.replace(os.getcwd() + os.sep, ""),
-                                os.strerror(ioerr.errno),
-                            )
-                        ],
-                        module_with_blocker=self.id,
-                    ) from ioerr
-                except (UnicodeDecodeError, DecodeError) as decodeerr:
-                    if self.path.endswith(".pyd"):
-                        err = f"{self.path}: error: Stubgen does not support .pyd files"
-                    else:
-                        err = f"{self.path}: error: Cannot decode file: {str(decodeerr)}"
-                    raise CompileError([err], module_with_blocker=self.id) from decodeerr
             elif self.path and manager.fscache.isdir(self.path):
                 source = ""
                 self.source_hash = ""
@@ -3228,11 +3233,37 @@ class State:
         self.time_spent_us += time_spent_us(t0)
         return source
 
+    @contextlib.contextmanager
+    def handle_file_read_errors(self) -> Iterator[None]:
+        try:
+            yield
+        except OSError as ioerr:
+            # ioerr.strerror differs for os.stat failures between Windows and
+            # other systems, but os.strerror(ioerr.errno) does not, so we use that.
+            # (We want the error messages to be platform-independent so that the
+            # tests have predictable output.)
+            assert ioerr.errno is not None
+            err_path = self.manager.errors.simplify_path(self.xpath)
+            raise CompileError(
+                [f"{err_path}: error: Cannot read file: {os.strerror(ioerr.errno)}"],
+                module_with_blocker=self.id,
+            ) from ioerr
+        except (UnicodeDecodeError, DecodeError) as decodeerr:
+            err_path = self.manager.errors.simplify_path(self.xpath)
+            if err_path.endswith(".pyd"):
+                err = f"{err_path}: error: Stubgen does not support .pyd files"
+            else:
+                err = f"{err_path}: error: Cannot decode file: {str(decodeerr)}"
+            raise CompileError([err], module_with_blocker=self.id) from decodeerr
+
     def parse_file_inner(self, source: str | None, raw_data: FileRawData | None = None) -> None:
         t0 = time_ref()
-        self.tree = self.manager.parse_file(
-            self.id, self.xpath, source, options=self.options, raw_data=raw_data
-        )
+        # Error handling here matches get_source(), since in case of an error in
+        # the new parser we fall back to reading the file manually ourselves.
+        with self.handle_file_read_errors():
+            self.tree = self.manager.parse_file(
+                self.id, self.xpath, source, options=self.options, raw_data=raw_data
+            )
         self.time_spent_us += time_spent_us(t0)
 
     def parse_file(self, *, temporary: bool = False, raw_data: FileRawData | None = None) -> None:
@@ -3438,7 +3469,7 @@ class State:
         # Every module implicitly depends on builtins.
         if self.id != "builtins":
             self.add_dependency("builtins")
-        if self.tree.uses_template_strings:
+        if self.tree.uses_template_strings and self.options.python_version >= (3, 14):
             self.add_dependency("string.templatelib")
 
         self.check_blockers()  # Can fail due to bogus relative imports

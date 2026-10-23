@@ -262,12 +262,28 @@ def test_pop_index() -> None:
     assert l.pop(-1) == 1002
     assert l == [1001]
 
+def test_pop_many_then_append() -> None:
+    l = [str(i) for i in range(100)]
+    for i in range(99, -1, -1):
+        assert l.pop() == str(i)
+    assert l == []
+    for i in range(100):
+        l.append(str(i))
+    assert l.pop(50) == "50"
+    assert l.pop(0) == "0"
+    assert l == [str(i) for i in range(1, 100) if i != 50]
+
 def test_pop_index_errors() -> None:
     l = [int() + 1000]
-    with assertRaises(IndexError):
+    with assertRaises(IndexError, "pop index out of range"):
         l.pop(1)
-    with assertRaises(IndexError):
+    with assertRaises(IndexError, "pop index out of range"):
         l.pop(-2)
+    l.pop()
+    with assertRaises(IndexError, "pop from empty list"):
+        l.pop()
+    with assertRaises(IndexError, "pop from empty list"):
+        l.pop(0)
     with assertRaises(OverflowError):
         l.pop(1 << 100)
     with assertRaises(OverflowError):
@@ -541,7 +557,7 @@ def test_in_operator_various_cases() -> None:
     assert list_in_mixed(type)
 
 [case testListBuiltFromGenerator]
-from typing import Final
+from typing import Final, Iterator
 abc: Final = "abc"
 def test_from_gen() -> None:
     source_a = ["a", "b", "c"]
@@ -566,6 +582,21 @@ def test_known_length() -> None:
     # not built from generator but doesnt need its own test either
     built = [str(x) for x in [*abc, *"def", *b"ghi", ("j", "k"), *("l", "m", "n")]]
     assert built == ['a', 'b', 'c', 'd', 'e', 'f', '103', '104', '105', "('j', 'k')", 'l', 'm', 'n']
+
+def gen(n: int) -> Iterator[int]:
+    for i in range(n):
+        yield i
+
+def test_from_gen_unknown_length() -> None:
+    n = 4
+    assert list(x + 1 for x in range(n)) == [1, 2, 3, 4]
+    assert list(x for x in range(n) if x % 2) == [1, 3]
+    assert list(x * y for x in range(3) for y in range(2)) == [0, 0, 0, 1, 0, 2]
+    assert list(k for k in {"a": 1, "b": 2}) == ["a", "b"]
+    assert list(x for x in gen(3)) == [0, 1, 2]
+    assert list(x for x in iter([5, 6])) == [5, 6]
+    empty: list[int] = []
+    assert list(x for x in empty) == []
 
 [case testNext]
 from typing import List
@@ -655,3 +686,48 @@ class subc(list[Any]):
 [file userdefinedlist.py]
 class list:
     pass
+
+[case testListSetErrorOwnership]
+from typing import Any, List
+def assign(items: List[Any], index: int, value: Any) -> None:
+    items[index] = value
+
+[file driver.py]
+import gc
+import weakref
+from native import assign
+from testutil import assertRaises
+
+class Sentinel:
+    pass
+
+for index in (1, -2, 2**100, -2**100):
+    value = Sentinel()
+    ref = weakref.ref(value)
+    try:
+        assign([None], index, value)
+    except (IndexError, OverflowError):
+        pass
+    else:
+        assert False, index
+    del value
+    gc.collect()
+    assert ref() is None, index
+with assertRaises(IndexError):
+    assign([], 0, None)
+items = [None]
+value = Sentinel()
+assign(items, -1, value)
+assert items[0] is value
+assign(items, 0, None)
+assert items == [None]
+
+# Replacing an element may run Python code that mutates the same list.
+class Reentrant:
+    def __del__(self):
+        items.clear()
+
+for index in (0, -1):
+    items = [Reentrant()]
+    assign(items, index, None)
+    assert items == []

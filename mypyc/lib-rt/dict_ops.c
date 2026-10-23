@@ -212,58 +212,35 @@ PyObject *CPyDict_ItemsView(PyObject *dict) {
     return PyObject_CallMethodNoArgs(dict, mypyc_interned_str.items);
 }
 
+static inline PyObject *dict_view_as_list(PyObject *dict, PyObject *method) {
+    PyObject *view = PyObject_CallMethodNoArgs(dict, method);
+    if (view == NULL) {
+        return NULL;
+    }
+    PyObject *list = PySequence_List(view);
+    Py_DECREF(view);
+    return list;
+}
+
 PyObject *CPyDict_Keys(PyObject *dict) {
     if (PyDict_CheckExact(dict)) {
         return PyDict_Keys(dict);
     }
-    // Inline generic fallback logic to also return a list.
-    PyObject *list = PyList_New(0);
-    PyObject *view = PyObject_CallMethodNoArgs(dict, mypyc_interned_str.keys);
-    if (view == NULL) {
-        return NULL;
-    }
-    int res = PyList_Extend(list, view);
-    Py_DECREF(view);
-    if (res < 0) {
-        return NULL;
-    }
-    return list;
+    return dict_view_as_list(dict, mypyc_interned_str.keys);
 }
 
 PyObject *CPyDict_Values(PyObject *dict) {
     if (PyDict_CheckExact(dict)) {
         return PyDict_Values(dict);
     }
-    // Inline generic fallback logic to also return a list.
-    PyObject *list = PyList_New(0);
-    PyObject *view = PyObject_CallMethodNoArgs(dict, mypyc_interned_str.values);
-    if (view == NULL) {
-        return NULL;
-    }
-    int res = PyList_Extend(list, view);
-    Py_DECREF(view);
-    if (res < 0) {
-        return NULL;
-    }
-    return list;
+    return dict_view_as_list(dict, mypyc_interned_str.values);
 }
 
 PyObject *CPyDict_Items(PyObject *dict) {
     if (PyDict_CheckExact(dict)) {
         return PyDict_Items(dict);
     }
-    // Inline generic fallback logic to also return a list.
-    PyObject *list = PyList_New(0);
-    PyObject *view = PyObject_CallMethodNoArgs(dict, mypyc_interned_str.items);
-    if (view == NULL) {
-        return NULL;
-    }
-    int res = PyList_Extend(list, view);
-    Py_DECREF(view);
-    if (res < 0) {
-        return NULL;
-    }
-    return list;
+    return dict_view_as_list(dict, mypyc_interned_str.items);
 }
 
 char CPyDict_Clear(PyObject *dict) {

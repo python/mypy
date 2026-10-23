@@ -21,6 +21,7 @@ from mypy.options import Options
 from mypy.subtypes import is_same_type, is_subtype
 from mypy.typeops import make_simplified_union
 from mypy.types import (
+    IMPRECISE_ANYS,
     AnyType,
     Instance,
     NoneType,
@@ -499,8 +500,7 @@ class ConditionalTypeBinder:
             return
 
         p_declared = get_proper_type(declared_type)
-        p_type = get_proper_type(type)
-        if isinstance(p_type, AnyType):
+        if is_imprecise_any(type):
             # Any type requires some special casing, for both historical reasons,
             # and to optimise user experience without sacrificing correctness too much.
             if isinstance(expr, RefExpr) and isinstance(expr.node, Var) and expr.node.is_inferred:
@@ -643,7 +643,7 @@ def get_declaration(expr: BindableExpression) -> Type | None:
     if isinstance(expr, RefExpr):
         if isinstance(expr.node, Var):
             type = expr.node.type
-            if not isinstance(get_proper_type(type), PartialType):
+            if not isinstance(type, PartialType):
                 return type
         elif isinstance(expr.node, TypeInfo):
             return TypeType(fill_typevars_with_any(expr.node))
@@ -708,3 +708,14 @@ def collapse_variadic_union(typ: UnionType) -> Type:
     else:
         simplified = TupleType(prefix + [unpack] + suffix, fallback=last.partial_fallback)
     return UnionType.make_union([simplified] + other_items)
+
+
+def is_imprecise_any(tp: Type) -> bool:
+    """Is this an imprecise Any type?"""
+    tp = get_proper_type(tp)
+    if not isinstance(tp, AnyType):
+        return False
+    if tp.type_of_any == TypeOfAny.from_another_any:
+        assert tp.source_any is not None
+        tp = tp.source_any
+    return tp.type_of_any in IMPRECISE_ANYS

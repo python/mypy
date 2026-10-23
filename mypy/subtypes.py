@@ -36,7 +36,9 @@ from mypy.nodes import (
 )
 from mypy.options import Options
 from mypy.state import state
+from mypy.type_visitor import ANY_STRATEGY, BoolTypeQuery
 from mypy.types import (
+    MAX_PROTOCOL_DEPTH,
     MYPYC_NATIVE_INT_NAMES,
     TUPLE_LIKE_INSTANCE_NAMES,
     TYPED_NAMEDTUPLE_NAMES,
@@ -740,17 +742,16 @@ class SubtypeVisitor(TypeVisitor[bool]):
                 # Similarly, if one function has `TypeIs` and the other does not,
                 # they are not compatible.
                 return False
+            strict_concatenate = False
+            if options := self.options:
+                strict_concatenate = options.extra_checks or options.strict_concatenate
             return is_callable_compatible(
                 left,
                 right,
                 is_compat=self._is_subtype,
                 is_proper_subtype=self.proper_subtype,
                 ignore_pos_arg_names=self.subtype_context.ignore_pos_arg_names,
-                strict_concatenate=(
-                    (self.options.extra_checks or self.options.strict_concatenate)
-                    if self.options
-                    else False
-                ),
+                strict_concatenate=strict_concatenate,
             )
         elif isinstance(right, Overloaded):
             return all(self._is_subtype(left, item) for item in right.items)
@@ -1309,6 +1310,8 @@ def is_protocol_implementation(
         if not members_right.issubset(members_left):
             return False
     assuming = right.type.assuming_proper if proper_subtype else right.type.assuming
+    if len(assuming) > MAX_PROTOCOL_DEPTH:
+        return True
     for l, r in reversed(assuming):
         if l == left and r == right:
             return True
@@ -1403,7 +1406,12 @@ def get_protocol_member(
         # if constructor signature didn't match, this can cause many false negatives.
         return None
 
-    subtype = find_member(member, left, original_left, class_obj=class_obj, is_lvalue=is_lvalue)
+    # We only reject attributes that give an error on subtype. This is not very principled,
+    # but this simplifies logic because we apply subtype as a self-type for supertype
+    # attribute access.
+    subtype = find_member(
+        member, left, original_left, class_obj=class_obj, is_lvalue=is_lvalue, strict_attrs=True
+    )
     if isinstance(subtype, PartialType):
         subtype = (
             NoneType()
@@ -1423,6 +1431,7 @@ def find_member(
     is_operator: bool = False,
     class_obj: bool = False,
     is_lvalue: bool = False,
+    strict_attrs: bool = False,
 ) -> Type | None:
     type_checker = checker_state.type_checker
     if type_checker is None:
@@ -1485,9 +1494,12 @@ def find_member(
     with type_checker.msg.filter_errors(filter_deprecated=True):
         if class_obj:
             fallback = itype.type.metaclass_type or mx.named_type("builtins.type")
-            return analyze_class_attribute_access(itype, name, mx, mcs_fallback=fallback)
+            result = analyze_class_attribute_access(itype, name, mx, mcs_fallback=fallback)
         else:
-            return analyze_instance_member_access(name, itype, mx, info)
+            result = analyze_instance_member_access(name, itype, mx, info)
+    if strict_attrs and mx.attribute_error:
+        return None
+    return result
 
 
 def find_member_simple(
@@ -2162,21 +2174,26 @@ def unify_generic_callable(
     if return_constraint_direction is None:
         return_constraint_direction = mypy.constraints.SUBTYPE_OF
 
-    constraints: list[mypy.constraints.Constraint] = []
-    # There is some special logic for inference in callables, so better use them
-    # as wholes instead of picking separate arguments.
-    cs = mypy.constraints.infer_constraints(
-        type.copy_modified(ret_type=UninhabitedType()),
-        target.copy_modified(ret_type=UninhabitedType()),
-        mypy.constraints.SUBTYPE_OF,
-        skip_neg_op=True,
-    )
-    constraints.extend(cs)
-    if not ignore_return:
-        c = mypy.constraints.infer_constraints(
-            type.ret_type, target.ret_type, return_constraint_direction
+    # This code is hot in numerical libraries, so we use a faster inference
+    #  algorithm (that may give slightly worse results in rare cases).
+    keep_unions_old = type_state.keep_unions
+    type_state.keep_unions = True
+    try:
+        # There is some special logic for inference in callables, so better use
+        # them as wholes instead of picking separate arguments.
+        constraints = mypy.constraints.infer_constraints(
+            type.copy_modified(ret_type=UninhabitedType()),
+            target.copy_modified(ret_type=UninhabitedType()),
+            mypy.constraints.SUBTYPE_OF,
+            skip_neg_op=True,
         )
-        constraints.extend(c)
+        if not ignore_return:
+            c = mypy.constraints.infer_constraints(
+                type.ret_type, target.ret_type, return_constraint_direction
+            )
+            constraints.extend(c)
+    finally:
+        type_state.keep_unions = keep_unions_old
     inferred_vars, _ = mypy.solve.solve_constraints(
         type.variables, constraints, allow_polymorphic=True
     )
@@ -2201,7 +2218,9 @@ def unify_generic_callable(
     return cast(NormalizedCallableType, applied)
 
 
-def union_function_signatures(callables: list[CallableType]) -> CallableType | None:
+def union_function_signatures(
+    callables: list[CallableType], *, simplify_unions: bool = False
+) -> CallableType | None:
     """Combine a list of functions by taking the union of all the arguments and return types."""
     if len(callables) == 1:
         return callables[0]
@@ -2219,15 +2238,27 @@ def union_function_signatures(callables: list[CallableType]) -> CallableType | N
     # confusing and ought to be re-written anyway.)
     callables, variables = merge_typevars_in_callables_by_name(callables)
 
-    new_args: list[list[Type]] = [[] for _ in callables[0].arg_types]
-    new_kinds = list(callables[0].arg_kinds)
+    new_callable = callables[0].with_unpacked_kwargs().with_normalized_var_args()
+    new_args: list[list[Type]] = [[] for _ in new_callable.arg_types]
+    new_kinds = list(new_callable.arg_kinds)
+    new_names = list(new_callable.arg_names)
     new_returns: list[Type] = []
 
     for target in callables:
+        target = target.with_unpacked_kwargs().with_normalized_var_args()
         # TODO: Enhance the merging logic to handle a wider variety of signatures.
+        # In particular, allow name-only arguments that appear in different order.
         if len(new_kinds) != len(target.arg_kinds):
             return None
         for i, (new_kind, target_kind) in enumerate(zip(new_kinds, target.arg_kinds)):
+            if target.arg_names[i] != new_callable.arg_names[i]:
+                if target_kind.is_named():
+                    return None
+                if target_kind.is_positional():
+                    new_names[i] = None
+            if isinstance(target.arg_types[i], (ParamSpecType, UnpackType)):
+                # It is risky to put these inside a union.
+                return None
             if new_kind == target_kind:
                 continue
             if new_kind.is_positional() and target_kind.is_positional():
@@ -2239,12 +2270,19 @@ def union_function_signatures(callables: list[CallableType]) -> CallableType | N
             new_args[i].append(arg)
         new_returns.append(target.ret_type)
 
-    return callables[0].copy_modified(
-        arg_types=[mypy.typeops.make_simplified_union(args) for args in new_args],
+    if simplify_unions:
+        arg_types = [mypy.typeops.make_simplified_union(args) for args in new_args]
+        ret_type = mypy.typeops.make_simplified_union(new_returns)
+    else:
+        arg_types = [UnionType.make_union(args) for args in new_args]
+        ret_type = UnionType.make_union(new_returns)
+
+    return new_callable.copy_modified(
+        arg_types=arg_types,
         arg_kinds=new_kinds,
-        ret_type=mypy.typeops.make_simplified_union(new_returns),
+        arg_names=new_names,
+        ret_type=ret_type,
         variables=variables,
-        implicit=True,
     )
 
 
@@ -2507,6 +2545,55 @@ def erase_return_self_types(typ: Type, self_type: Instance) -> Type:
             ]
         )
     return typ
+
+
+def common_type(types: list[Type]) -> Type | None:
+    """Return a type in the list that is both subtype and supertype of all other types.
+
+    If there are more than one such type, choose the one that has an Any component,
+    otherwise return None.
+    """
+    candidates = []
+    for candidate in types:
+        if all(is_equivalent(candidate, other) for other in types):
+            candidates.append(candidate)
+    if len(candidates) == 1:
+        return candidates[0]
+    candidates = [c for c in candidates if has_any_type(c)]
+    if len(candidates) == 1:
+        return candidates[0]
+    return None
+
+
+def has_any_type(t: Type, ignore_in_type_obj: bool = False) -> bool:
+    """Whether t contains an Any type"""
+    return t.accept(HasAnyType(ignore_in_type_obj))
+
+
+class HasAnyType(BoolTypeQuery):
+    def __init__(self, ignore_in_type_obj: bool) -> None:
+        super().__init__(ANY_STRATEGY)
+        self.ignore_in_type_obj = ignore_in_type_obj
+
+    def visit_any(self, t: AnyType) -> bool:
+        return t.type_of_any != TypeOfAny.special_form  # special forms are not real Any types
+
+    def visit_callable_type(self, t: CallableType) -> bool:
+        if self.ignore_in_type_obj and t.is_type_obj():
+            return False
+        return super().visit_callable_type(t)
+
+    def visit_type_var(self, t: TypeVarType) -> bool:
+        default = [t.default] if t.has_default() else []
+        return self.query_types([t.upper_bound, *default] + t.values)
+
+    def visit_param_spec(self, t: ParamSpecType) -> bool:
+        default = [t.default] if t.has_default() else []
+        return self.query_types([t.upper_bound, *default, t.prefix])
+
+    def visit_type_var_tuple(self, t: TypeVarTupleType) -> bool:
+        default = [t.default] if t.has_default() else []
+        return self.query_types([t.upper_bound, *default])
 
 
 def is_erased_instance(t: Instance) -> bool:

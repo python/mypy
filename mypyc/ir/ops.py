@@ -718,6 +718,7 @@ class PrimitiveDescription:
         experimental: bool,
         dependencies: list[Dependency] | None,
         type_params: list[RTypeVar] | None,
+        gil_only: bool = False,
     ) -> None:
         # Each primitive much have a distinct name, but otherwise they are arbitrary.
         self.name: Final = name
@@ -743,6 +744,9 @@ class PrimitiveDescription:
         # Experimental primitives are not used unless mypyc experimental features are
         # explicitly enabled
         self.experimental = experimental
+        # GIL-only primitives are not used when targeting a free-threaded build
+        # (e.g. because they return a borrowed reference that could be unsafe)
+        self.gil_only = gil_only
         # Dependencies for the primitive, such as a capsule that needs to imported
         # and configured to call the primitive.
         self.dependencies = dependencies
@@ -1812,13 +1816,16 @@ class LoadAddress(RegisterOp):
       type: Type of the loaded address(e.g. ptr/object_ptr)
       src: Source value (str for globals like 'PyList_Type',
            Register for temporary values or locals, LoadStatic
-           for statics.)
+           for statics, FuncDecl for the wrapper function of a
+           native function.)
     """
 
     error_kind = ERR_NEVER
     is_borrowed = True
 
-    def __init__(self, type: RType, src: str | Register | LoadStatic, line: int = -1) -> None:
+    def __init__(
+        self, type: RType, src: str | Register | LoadStatic | FuncDecl, line: int = -1
+    ) -> None:
         super().__init__(line)
         self.type = type
         self.src = src

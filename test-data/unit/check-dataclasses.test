@@ -670,6 +670,86 @@ reveal_type(x)  # N: Revealed type is "typing._SpecialForm"
 [builtins fixtures/dataclasses.pyi]
 [typing fixtures/typing-medium.pyi]
 
+[case testFunctionAliasDataclassNoCrash]
+from dataclasses import dataclass
+
+def fn(a: int) -> int:
+    return a
+
+@dataclass
+class Test:
+    foo = fn
+    foo: int = 42  # E: Name "foo" already defined on line 8
+
+reveal_type(Test.foo)  # N: Revealed type is "def (a: builtins.int) -> builtins.int"
+[builtins fixtures/dataclasses.pyi]
+[typing fixtures/typing-medium.pyi]
+
+[case testDataclassVariableBadRedefine]
+from dataclasses import dataclass
+
+@dataclass
+class Test:
+    foo = "test"
+    foo: int = 42  # E: Name "foo" already defined on line 5
+
+reveal_type(Test)  # N: Revealed type is "def () -> __main__.Test"
+reveal_type(Test.foo)  # N: Revealed type is "builtins.str"
+[builtins fixtures/dataclasses.pyi]
+[typing fixtures/typing-medium.pyi]
+
+[case testDataclassCallableAttrRegular]
+from dataclasses import dataclass
+from typing import Callable
+
+@dataclass
+class Defer(Parent):
+    b: int
+
+@dataclass
+class Parent:
+    key: Callable[[], str]
+    a: int
+
+reveal_type(Parent)  # N: Revealed type is "def (key: def () -> builtins.str, a: builtins.int) -> __main__.Parent"
+[builtins fixtures/dataclasses.pyi]
+[typing fixtures/typing-medium.pyi]
+
+[case testDataclassCallableAttrDefault]
+from dataclasses import dataclass
+from typing import Callable
+
+@dataclass
+class Defer(Parent):
+    b: int = 0
+
+@dataclass
+class Parent:
+    key: Callable[[], str] = lambda: "yes"
+    a: int = 0
+
+reveal_type(Parent)  # N: Revealed type is "def (key: def () -> builtins.str =, a: builtins.int =) -> __main__.Parent"
+reveal_type(Parent.key)  # N: Revealed type is "def () -> builtins.str"
+[builtins fixtures/dataclasses.pyi]
+[typing fixtures/typing-medium.pyi]
+
+[case testDataclassCallableAttrFrozen]
+from dataclasses import dataclass
+from typing import Callable
+
+@dataclass(frozen=True)
+class Defer(Parent):
+    b: int
+
+@dataclass(frozen=True)
+class Parent:
+    key: Callable[[], str]
+    a: int
+
+reveal_type(Parent)  # N: Revealed type is "def (key: def () -> builtins.str, a: builtins.int) -> __main__.Parent"
+[builtins fixtures/dataclasses.pyi]
+[typing fixtures/typing-medium.pyi]
+
 [case testDataclassOrdering]
 from dataclasses import dataclass
 
@@ -1700,6 +1780,34 @@ def func() -> None:
 reveal_type(A.a)  # N: Revealed type is "def (*Any, **Any)"
 A(a=func).a()
 A(a=func).a = func  # E: Property "a" defined in "A" is read-only
+[builtins fixtures/dataclasses.pyi]
+
+[case testDataclassesCallableFrozenOverride]
+from dataclasses import dataclass
+from typing import Callable
+@dataclass(frozen=True)
+class A:
+    a: Callable[[int], str] = lambda x: "yes"
+
+def foo(x: int) -> str:
+    return "no"
+
+@dataclass(frozen=True)
+class Sub(A):
+    # This is no-op for attribute access on instances,
+    # so we effectively check the subtyping as if accessed on class.
+    a = foo
+[builtins fixtures/dataclasses.pyi]
+
+[case testDataclassesCallableFrozenSelf]
+from dataclasses import dataclass
+from typing import Self, Callable
+@dataclass(frozen=True)
+class A:
+    a: Callable[[Self], str]
+
+a: A
+reveal_type(a.a)  # N: Revealed type is "def (__main__.A) -> builtins.str"
 [builtins fixtures/dataclasses.pyi]
 
 [case testDataclassInFunctionDoesNotCrash]
@@ -2842,4 +2950,41 @@ class Bad1:
 @dataclass
 class Bad2:
     x: InitVar[Final[int]]  # E: Final can be only used as an outermost qualifier in a variable annotation
+[builtins fixtures/dict.pyi]
+
+[case testNoCrashOnNestedSpecialFormsWithAnnotations]
+import dataclasses
+from typing import ClassVar, NamedTuple
+from typing_extensions import TypedDict
+
+@dataclasses.dataclass
+class X:
+    a: int
+    TD: ClassVar = TypedDict("TD", {"a": int})  # E: Cannot declare the type of a TypedDict declaration
+    NT: ClassVar = NamedTuple("NT", [("a", int)])  # E: Cannot declare the type of a NamedTuple declaration
+
+reveal_type(X)  # N: Revealed type is "def (a: builtins.int) -> __main__.X"
+reveal_type(X.TD)  # N: Revealed type is "def (*, a: builtins.int) -> TypedDict('__main__.X.TD', {'a': builtins.int})"
+reveal_type(X.NT)  # N: Revealed type is "def (a: builtins.int) -> tuple[builtins.int, fallback=__main__.X.NT]"
+
+tdx: X.TD
+ntx: X.NT
+reveal_type(tdx)  # N: Revealed type is "TypedDict('__main__.X.TD', {'a': builtins.int})"
+reveal_type(ntx)  # N: Revealed type is "tuple[builtins.int, fallback=__main__.X.NT]"
+
+@dataclasses.dataclass
+class XOK:
+    a: int
+    TD = TypedDict("TD", {"a": int})
+    NT = NamedTuple("NT", [("a", int)])
+
+reveal_type(XOK)  # N: Revealed type is "def (a: builtins.int) -> __main__.XOK"
+reveal_type(XOK.TD)  # N: Revealed type is "def (*, a: builtins.int) -> TypedDict('__main__.XOK.TD', {'a': builtins.int})"
+reveal_type(XOK.NT)  # N: Revealed type is "def (a: builtins.int) -> tuple[builtins.int, fallback=__main__.XOK.NT]"
+
+td: XOK.TD
+nt: XOK.NT
+
+reveal_type(td)  # N: Revealed type is "TypedDict('__main__.XOK.TD', {'a': builtins.int})"
+reveal_type(nt)  # N: Revealed type is "tuple[builtins.int, fallback=__main__.XOK.NT]"
 [builtins fixtures/dict.pyi]

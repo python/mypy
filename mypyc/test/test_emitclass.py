@@ -11,10 +11,16 @@ from mypyc.codegen.emitclass import (
     setter_name,
     slot_key,
 )
-from mypyc.common import IS_FREE_THREADED
 from mypyc.ir.class_ir import ClassIR
-from mypyc.ir.rtypes import int32_rprimitive, object_rprimitive
+from mypyc.ir.rtypes import (
+    RTuple,
+    float_rprimitive,
+    int32_rprimitive,
+    int_rprimitive,
+    object_rprimitive,
+)
 from mypyc.namegen import NameGenerator
+from mypyc.options import TargetPython
 
 
 class TestEmitClass(unittest.TestCase):
@@ -44,15 +50,16 @@ class TestEmitClass(unittest.TestCase):
 
         assert getter_name(cls, "down", generator) == "testing___SomeClass_get_down"
 
-    @unittest.skipUnless(IS_FREE_THREADED, "requires a free threaded build")
     def test_free_threaded_ref_attribute_getter_and_setter_use_owner(self) -> None:
-        # Note: We can't monkey patch IS_FREE_THREADED to test this on a build with
-        # the GIL enabled, since monkey patching doesn't work if mypyc is compiled.
         cl = ClassIR("A", "mod")
         cl.attributes = {"o": object_rprimitive}
         cl.deletable = ["o"]
         cl.mro = cl.base_mro = [cl]
-        emitter = Emitter(EmitterContext(NameGenerator([["mod"]]), True))
+        emitter = Emitter(
+            EmitterContext(
+                NameGenerator([["mod"]]), True, target_python=TargetPython((3, 14), True)
+            )
+        )
 
         generate_getter(cl, "o", object_rprimitive, emitter)
         generate_setter(cl, "o", object_rprimitive, emitter)
@@ -61,6 +68,109 @@ class TestEmitClass(unittest.TestCase):
         assert "CPy_GetAttrRef((PyObject *)self, (PyObject **)&self->_o)" in generated
         assert "CPy_SetAttrRef((PyObject *)self, (PyObject **)&self->_o, tmp)" in generated
         assert "CPy_SetAttrRef((PyObject *)self, (PyObject **)&self->_o, NULL)" in generated
+
+    def test_free_threaded_int_attribute_getter_and_setter(self) -> None:
+        cl = ClassIR("A", "mod")
+        cl.attributes = {"n": int_rprimitive}
+        cl.deletable = ["n"]
+        cl.mro = cl.base_mro = [cl]
+        emitter = Emitter(
+            EmitterContext(
+                NameGenerator([["mod"]]), True, target_python=TargetPython((3, 14), True)
+            )
+        )
+
+        generate_getter(cl, "n", int_rprimitive, emitter)
+        generate_setter(cl, "n", int_rprimitive, emitter)
+
+        generated = "".join(emitter.fragments)
+        assert "CPyTagged tmp = CPyTagged_GetAttr((PyObject *)self, &self->_n);" in generated
+        assert "return CPyTagged_StealAsObject(tmp);" in generated
+        assert "CPyTagged_SetAttr((PyObject *)self, &self->_n, tmp);" in generated
+        assert "CPyTagged_SetAttr((PyObject *)self, &self->_n, CPY_INT_TAG);" in generated
+        assert "CPyTagged_DECREF" not in generated
+
+    def test_tuple_attribute_getter_and_setter_lock(self) -> None:
+        cl = ClassIR("A", "mod")
+        rtype = RTuple([object_rprimitive, object_rprimitive])
+        cl.attributes = {"t": rtype}
+        cl.deletable = ["t"]
+        cl.mro = cl.base_mro = [cl]
+        emitter = Emitter(
+            EmitterContext(
+                NameGenerator([["mod"]]), True, target_python=TargetPython((3, 14), True)
+            )
+        )
+        generate_getter(cl, "t", rtype, emitter)
+        getter = "".join(emitter.fragments)
+        assert getter.index("Py_BEGIN_CRITICAL_SECTION(self)") < getter.index("tmp = self->_t;")
+        assert getter.index("CPy_INCREF(tmp.f1)") < getter.index("Py_END_CRITICAL_SECTION()")
+        assert getter.index("Py_END_CRITICAL_SECTION()") < getter.index("PyErr_SetString")
+        emitter.fragments.clear()
+        generate_setter(cl, "t", rtype, emitter)
+        setter = "".join(emitter.fragments)
+        assert setter.count("Py_BEGIN_CRITICAL_SECTION(self)") == 2
+        assert setter.count("Py_END_CRITICAL_SECTION()") == 2
+        assert setter.index("self->_t = tmp;") < setter.index("Py_END_CRITICAL_SECTION()")
+        assert setter.index("Py_END_CRITICAL_SECTION()") < setter.index("CPy_DECREF(")
+
+    def test_tuple_attribute_bitmap_is_locked(self) -> None:
+        cl = ClassIR("A", "mod")
+        rtype = RTuple([float_rprimitive, float_rprimitive])
+        cl.attributes = {"t": rtype}
+        cl.deletable = ["t"]
+        cl.bitmap_attrs = ["t"]
+        cl.mro = cl.base_mro = [cl]
+        emitter = Emitter(
+            EmitterContext(
+                NameGenerator([["mod"]]), True, target_python=TargetPython((3, 14), True)
+            )
+        )
+        generate_getter(cl, "t", rtype, emitter)
+        getter = "".join(emitter.fragments)
+        assert getter.index("Py_BEGIN_CRITICAL_SECTION(self)") < getter.index("->bitmap")
+        assert getter.index("->bitmap") < getter.index("Py_END_CRITICAL_SECTION()")
+        assert "_Py_atomic_load_uint32" in getter
+        emitter.fragments.clear()
+        generate_setter(cl, "t", rtype, emitter)
+        setter = "".join(emitter.fragments)
+        assert "_Py_atomic_or_uint32" in setter
+        assert "_Py_atomic_and_uint32" in setter
+        for section in setter.split("Py_BEGIN_CRITICAL_SECTION(self);")[1:]:
+            assert section.index("->bitmap") < section.index("Py_END_CRITICAL_SECTION()")
+
+    def test_scalar_attribute_bitmap_access_is_atomic(self) -> None:
+        cl = ClassIR("A", "mod")
+        cl.attributes = {"flag": float_rprimitive}
+        cl.deletable = ["flag"]
+        cl.bitmap_attrs = ["flag"]
+        cl.mro = cl.base_mro = [cl]
+        emitter = Emitter(
+            EmitterContext(
+                NameGenerator([["mod"]]), True, target_python=TargetPython((3, 14), True)
+            )
+        )
+        generate_getter(cl, "flag", float_rprimitive, emitter)
+        generate_setter(cl, "flag", float_rprimitive, emitter)
+        generated = "".join(emitter.fragments)
+        assert "_Py_atomic_load_uint32(&((mod___AObject *)self)->bitmap)" in generated
+        assert "_Py_atomic_or_uint32(&((mod___AObject *)self)->bitmap, 1)" in generated
+        assert "_Py_atomic_and_uint32(&((mod___AObject *)self)->bitmap, ~1U)" in generated
+        assert "->bitmap |=" not in generated
+        assert "->bitmap &=" not in generated
+
+    def test_final_tuple_attribute_getter_uses_plain_load(self) -> None:
+        cl = ClassIR("A", "mod")
+        rtype = RTuple([object_rprimitive, object_rprimitive])
+        cl.attributes = {"t": rtype}
+        cl.final_attributes = {"t"}
+        cl.mro = cl.base_mro = [cl]
+        emitter = Emitter(EmitterContext(NameGenerator([["mod"]]), True))
+        generate_getter(cl, "t", rtype, emitter)
+        getter = "".join(emitter.fragments)
+        assert "CRITICAL_SECTION" not in getter
+        assert "CPy_INCREF(self->_t.f0)" in getter
+        assert "CPy_INCREF(self->_t.f1)" in getter
 
     def test_bitmap_attrs_stable_across_repeat_analysis(self) -> None:
         # Regression: detect_undefined_bitmap used to mutate cl.bitmap_attrs

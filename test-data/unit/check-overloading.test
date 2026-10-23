@@ -233,6 +233,25 @@ reveal_type(f(A())) # N: Revealed type is "__main__.B"
 reveal_type(f(B())) # N: Revealed type is "__main__.A"
 [builtins fixtures/isinstance.pyi]
 
+[case testOverloadImplementationArgumentNames]
+from typing import overload
+
+@overload
+def f(x: int, y: int) -> None: ...
+@overload
+def f(x: str, y: int, /) -> None: ...
+def f(a: int | str, /, b: int) -> None:  # E: Overloaded function implementation does not accept all possible parameters of signature 1 \
+                                         # N: Consider marking "x", "y" positional-only in signature 1
+    pass
+
+@overload
+def h(x: int = 0, y: int = 0) -> None: ...
+@overload
+def h(x: str, /, y: int = 0) -> None: ...
+def h(a: int | str = 0, b: int = 0, /, *, y: int = 0) -> None:  # E: Overloaded function implementation does not accept all possible parameters of signature 1 \
+                                                                # N: Consider marking "x" positional-only in signature 1
+    pass
+
 [case testTypeCheckOverloadImplOverlapVarArgsAndKwargs]
 from __future__ import annotations
 from typing import overload
@@ -1905,6 +1924,81 @@ def f(x): pass
 a: Any
 reveal_type(f(a))     # N: Revealed type is "def (*Any, **Any) -> Any"
 reveal_type(f(a)(a))  # N: Revealed type is "Any"
+
+[case testOverloadWithOverlappingItemsAndAnyArgumentSelf1]
+from typing import Generic, TypeVar, overload, Any
+
+T = TypeVar("T")
+
+class Some(Generic[T]):
+    @overload
+    def method(self: Some[int]) -> bool: ...
+    @overload
+    def method(self: Some[str]) -> float: ...
+    def method(self): ...
+
+s: Some[Any]
+reveal_type(s.method())  # N: Revealed type is "Any"
+
+[case testOverloadWithOverlappingItemsAndAnyArgumentSelf2]
+from typing import Generic, TypeVar, overload, Any
+
+T = TypeVar("T")
+
+class Some(Generic[T]):
+    @overload
+    def method(self: Some[int]) -> bool: ...
+    @overload
+    def method(self: Some[str]) -> bool: ...
+    def method(self): ...
+
+s: Some[Any]
+reveal_type(s.method())  # N: Revealed type is "builtins.bool"
+
+[case testOverloadWithOverlappingItemsAndAnyArgumentSelf3]
+from typing import Generic, TypeVar, overload, Any
+
+T = TypeVar("T")
+
+class Some(Generic[T]):
+    @overload
+    def method(self: Some[int]) -> list[bool]: ...
+    @overload
+    def method(self: Some[str]) -> list[float]: ...
+    def method(self): ...
+
+s: Some[Any]
+reveal_type(s.method())  # N: Revealed type is "builtins.list[Any]"
+
+[case testOverloadWithOverlappingItemsAndAnyArgumentSelf4]
+from typing import Generic, TypeVar, overload, Any
+
+T = TypeVar("T")
+
+class Some(Generic[T]):
+    @overload
+    def method(self, x: int) -> bool: ...
+    @overload
+    def method(self, x: object) -> int: ...
+    def method(self): ...
+
+s: Some[Any]
+reveal_type(s.method(42))  # N: Revealed type is "builtins.bool"
+
+[case testOverloadWithOverlappingItemsAndAnyArgumentSelf5]
+from typing import Generic, TypeVar, overload, Any
+
+T = TypeVar("T")
+
+class Some(Generic[T]):
+    @overload
+    def method(self: Some[int], x: int) -> bool: ...
+    @overload
+    def method(self: Some[int], x: object) -> int: ...
+    def method(self): ...
+
+s: Some[Any]
+reveal_type(s.method(42))  # N: Revealed type is "builtins.bool"
 
 [case testOverloadOnOverloadWithType]
 from typing import Any, Type, TypeVar, overload
@@ -6901,3 +6995,54 @@ class B(A):
     @overload
     def f(self, x: T) -> T: ...
     def f(self, x: Optional[T]) -> Optional[T]: ...
+
+[case testOverloadSubtypingRespectPosArgNames]
+from typing import Protocol, overload, Union
+
+class P(Protocol):
+    def __call__(self, __x: Union[int, str]) -> Union[int, str]: ...
+
+class PBad(Protocol):
+    def __call__(self, x: Union[int, str]) -> Union[int, str]: ...
+
+@overload
+def f(x: int) -> int: ...
+@overload
+def f(y: str) -> str: ...
+def f(*args, **kwargs):
+    pass
+
+p: P = f
+pb: PBad = f  # E: Incompatible types in assignment (expression has type overloaded function, variable has type "PBad") \
+              # N: "PBad.__call__" has type "def __call__(self, x: int | str) -> int | str"
+
+class A:
+    def f(self, x: Union[int, str]) -> None: ...
+
+class B(A):
+    @overload
+    def f(self, x: int) -> None: ...
+    @overload
+    def f(self, y: str) -> None: ...  # This is currently allowed (note different name)
+    def f(self, *args, **kwargs) -> None: ...
+[builtins fixtures/tuple.pyi]
+
+[case testRespectPreciseOverloadFallbackIfPossible]
+from typing import overload, Any
+
+@overload
+def f(x: list[int]) -> list[tuple[int, ...]]: ...
+@overload
+def f(x: list[Any]) -> list[tuple[Any, ...]]: ...
+def f(x): pass
+
+a: Any
+la: list[Any]
+li: list[int]
+ls: list[str]
+
+reveal_type(f(a))  # N: Revealed type is "builtins.list[builtins.tuple[Any, ...]]"
+reveal_type(f(la))  # N: Revealed type is "builtins.list[builtins.tuple[Any, ...]]"
+reveal_type(f(li))  # N: Revealed type is "builtins.list[builtins.tuple[builtins.int, ...]]"
+reveal_type(f(ls))  # N: Revealed type is "builtins.list[builtins.tuple[Any, ...]]"
+[builtins fixtures/tuple.pyi]

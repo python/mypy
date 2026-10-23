@@ -1148,6 +1148,8 @@ def test_redefinition() -> None:
     assert i == b"foo"
 
 [case testWithNative]
+from base import Base, EnterBase
+
 class DummyContext:
     def __init__(self):
         self.c = 0
@@ -1161,6 +1163,50 @@ def test_dummy_context() -> None:
     with c:
         assert c.c == 1
     assert c.c == 0
+
+class InheritsEnter(EnterBase):
+    def __init__(self) -> None:
+        self.log: list[str] = []
+
+    def __exit__(self, exc_type: object, exc_value: object, traceback: object) -> None:
+        self.log.append("exit")
+
+class InheritsExit(Base):
+    def __enter__(self) -> str:
+        return "enter"
+
+class InheritsBoth(Base):
+    pass
+
+def test_inherited_enter() -> None:
+    c = InheritsEnter()
+    with c as x:
+        assert x is c
+        c.log.append("body")
+    assert c.log == ["body", "exit"]
+
+def test_inherited_exit() -> None:
+    with InheritsExit() as x:
+        assert x == "enter"
+    with InheritsExit():
+        # Base.__exit__ suppresses the exception
+        raise ValueError()
+
+def test_inherited_both() -> None:
+    with InheritsBoth() as x:
+        assert x == "base"
+
+[file base.py]
+class EnterBase:
+    def __enter__(self) -> "EnterBase":
+        return self
+
+class Base:
+    def __enter__(self) -> str:
+        return "base"
+
+    def __exit__(self, exc_type: object, exc_value: object, traceback: object) -> bool:
+        return True
 
 [case testWithNativeVarArgs]
 class DummyContext:
@@ -1199,3 +1245,203 @@ def test_isinstance_multi() -> None:
     assert isinstance_multi("a") is True
     assert isinstance_multi(1) is True
     assert isinstance_multi(None) is False
+
+[case testIsInstanceOtherBuiltinTypes]
+from typing import Any
+
+class Getter:
+    def __getitem__(self, key: Any) -> Any:
+        return key
+
+def is_complex(x: Any) -> bool:
+    return isinstance(x, complex)
+def is_type(x: Any) -> bool:
+    return isinstance(x, type)
+def is_range(x: Any) -> bool:
+    return isinstance(x, range)
+def is_slice(x: Any) -> bool:
+    return isinstance(x, slice)
+def is_memoryview(x: Any) -> bool:
+    return isinstance(x, memoryview)
+def type_is_complex(x: Any) -> bool:
+    return type(x) is complex
+def is_float_or_complex(x: Any) -> bool:
+    return isinstance(x, (float, complex))
+
+type_: Any = type
+MyComplex: Any = type_("MyComplex", (complex,), {})
+MyMeta: Any = type_("MyMeta", (type,), {})
+
+def test_complex() -> None:
+    assert is_complex(1j) is True
+    assert is_complex(complex(1, 2)) is True
+    assert is_complex(MyComplex(1j)) is True
+    assert is_complex(1.5) is False
+    assert is_complex(1) is False
+    assert is_complex(None) is False
+    assert type_is_complex(1j) is True
+    assert type_is_complex(MyComplex(1j)) is False
+    assert type_is_complex(1.5) is False
+    assert is_float_or_complex(1.5) is True
+    assert is_float_or_complex(1j) is True
+    assert is_float_or_complex(MyComplex(1j)) is True
+    assert is_float_or_complex(1) is False
+    assert is_float_or_complex(None) is False
+
+def test_type() -> None:
+    assert is_type(int) is True
+    assert is_type(Getter) is True
+    assert is_type(type) is True
+    assert is_type(MyMeta("C", (), {})) is True
+    assert is_type(1) is False
+    assert is_type(Getter()) is False
+
+def test_range_slice_memoryview() -> None:
+    assert is_range(range(3)) is True
+    assert is_range([0, 1, 2]) is False
+    assert is_slice(Getter()[1:2]) is True
+    assert is_slice(Getter()[1]) is False
+    assert is_memoryview(memoryview(b"x")) is True
+    assert is_memoryview(b"x") is False
+
+[case testIsInstanceMixedTuple]
+from typing import Any
+from mypy_extensions import mypyc_attr
+
+class Native: pass
+class NativeSub(Native): pass
+
+@mypyc_attr(native_class=False)
+class NonNative: pass
+
+@mypyc_attr(native_class=False)
+class AlwaysMeta(type):
+    def __instancecheck__(cls, inst: object) -> bool:
+        return True
+
+class Always(metaclass=AlwaysMeta): pass
+
+type_: Any = type
+InterpretedSub: Any = type_("InterpretedSub", (NonNative,), {})
+
+def float_or_complex(x: Any) -> bool:
+    return isinstance(x, (float, complex))
+def float_or_native(x: Any) -> bool:
+    return isinstance(x, (float, Native))
+def float_or_non_native(x: Any) -> bool:
+    return isinstance(x, (float, NonNative))
+def float_or_python_class(x: Any) -> bool:
+    return isinstance(x, (float, ValueError))
+def always_or_int(x: Any) -> bool:
+    return isinstance(x, (Always, int))
+def nested(x: Any) -> bool:
+    return isinstance(x, (int, (float, (complex, Native))))
+
+def test_primitives() -> None:
+    assert float_or_complex(1.5) is True
+    assert float_or_complex(1j) is True
+    assert float_or_complex(1) is False
+    assert float_or_complex("x") is False
+    assert float_or_complex(None) is False
+
+def test_native_class() -> None:
+    assert float_or_native(1.5) is True
+    assert float_or_native(Native()) is True
+    assert float_or_native(NativeSub()) is True
+    assert float_or_native(1j) is False
+    assert float_or_native(object()) is False
+
+def test_non_native_class() -> None:
+    assert float_or_non_native(1.5) is True
+    assert float_or_non_native(NonNative()) is True
+    assert float_or_non_native(InterpretedSub()) is True
+    assert float_or_non_native(Native()) is False
+
+def test_python_class() -> None:
+    assert float_or_python_class(1.5) is True
+    assert float_or_python_class(ValueError()) is True
+    assert float_or_python_class(KeyError()) is False
+    assert float_or_python_class(1) is False
+
+def test_metaclass_instancecheck() -> None:
+    assert always_or_int(1) is True
+    assert always_or_int("x") is True
+    assert always_or_int(None) is True
+
+def test_nested() -> None:
+    assert nested(1) is True
+    assert nested(1.5) is True
+    assert nested(1j) is True
+    assert nested(Native()) is True
+    assert nested(NativeSub()) is True
+    assert nested("x") is False
+
+[case testIsInstanceTupleEvaluation]
+from typing import Any
+from testutil import assertRaises
+
+calls: list[object] = []
+
+def get_class(cls: Any) -> Any:
+    calls.append(cls)
+    return cls
+
+def get_obj(x: Any) -> Any:
+    calls.append("obj")
+    return x
+
+def check(x: Any) -> bool:
+    return isinstance(get_obj(x), (int, get_class(str), float, get_class(bytes)))
+def check_empty(x: Any) -> bool:
+    return isinstance(get_obj(x), ())
+
+bad: Any = 5
+
+def check_bad(x: Any) -> bool:
+    return isinstance(x, (int, bad))
+
+def check_star(x: Any, classes: tuple[type, ...]) -> bool:
+    return isinstance(x, (int, *classes))
+def check_nested_star(x: Any, classes: tuple[type, ...]) -> bool:
+    return isinstance(x, (int, (bytes, *classes)))
+
+def check_walrus(x: Any) -> bool:
+    cls: type = int
+    return isinstance(x, (cls, (cls := str)))
+def check_nested_walrus(x: Any) -> bool:
+    cls: type = int
+    return isinstance(x, ((cls, float), get_class(cls := str)))
+
+def test_classes_evaluated_before_checks() -> None:
+    for x, expected in ((1, True), (b"x", True), (None, False)):
+        calls.clear()
+        assert check(x) is expected
+        assert calls == ["obj", str, bytes]
+
+def test_empty_tuple_evaluates_object() -> None:
+    calls.clear()
+    assert check_empty(1) is False
+    assert calls == ["obj"]
+
+def test_invalid_class() -> None:
+    assert check_bad(1) is True
+    with assertRaises(TypeError):
+        check_bad("x")
+
+def test_star() -> None:
+    assert check_star(1, ()) is True
+    assert check_star("x", (str,)) is True
+    assert check_star("x", (bytes, float)) is False
+    assert check_nested_star(b"x", ()) is True
+    assert check_nested_star("x", (float, str)) is True
+    assert check_nested_star(1.5, ()) is False
+
+def test_walrus() -> None:
+    # The first item is the value of cls from before the walrus reassigns it
+    assert check_walrus(1) is True
+    assert check_walrus("x") is True
+    assert check_walrus(1.5) is False
+    assert check_nested_walrus(1) is True
+    assert check_nested_walrus(1.5) is True
+    assert check_nested_walrus("x") is True
+    assert check_nested_walrus(b"x") is False

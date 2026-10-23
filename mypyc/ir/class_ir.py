@@ -105,6 +105,10 @@ class ClassIR:
         # An augmented class has additional methods separate from what mypyc generates.
         # Right now the only one is dataclasses.
         self.is_augmented = False
+        # Does this (non-extension) class have class decorators other than the ones native
+        # classes support? These can replace the class with an arbitrary object, such as a
+        # functools.cache wrapper, so the name of the class may not refer to the class.
+        self.is_decorated = False
         # Does this inherit from a Python class?
         self.inherits_python = False
         # Do instances of this class have __dict__?
@@ -369,12 +373,21 @@ class ClassIR:
         return True
 
     def is_method_final(self, name: str) -> bool:
+        method_decl: FuncDecl | None = None
+        try:
+            method_decl = self.method_decl(name)
+        except KeyError:
+            pass
+        # A declared @final method cannot be overridden in checked code. Trust
+        # this even when interpreted subclasses cannot be enumerated.
+        if method_decl is not None and method_decl.is_final:
+            return True
+
         subs = self.subclasses()
         if subs is None:
             return self.is_final_class
 
-        if self.has_method(name):
-            method_decl = self.method_decl(name)
+        if method_decl is not None:
             for subc in subs:
                 if subc.method_decl(name) != method_decl:
                     return False
@@ -422,8 +435,31 @@ class ClassIR:
         res = self.get_method_and_class(name, prefer_method=prefer_method)
         return res[0] if res else None
 
+    def get_native_init(self) -> FuncIR | None:
+        """Return the __init__ method that is called natively to initialize instances, if any.
+
+        A decorated __init__ isn't one. Like any decorated method it has no method
+        declaration, since only the decorated callable in the type dict can be called.
+        Instances are then initialized through tp_init, as if __init__ wasn't native.
+        """
+        res = self.get_method_and_class("__init__")
+        if res is None or "__init__" not in res[1].method_decls:
+            return None
+        return res[0]
+
     def has_method_decl(self, name: str) -> bool:
         return any(name in ir.method_decls for ir in self.mro)
+
+    def has_non_native_new(self) -> bool:
+        """Are instances created by a __new__ method that isn't called natively?
+
+        A decorated __new__ is one. Like any decorated method it has no method
+        declaration, since only the decorated callable in the type dict can be called.
+        Instances are then created like instances of a Python class: tp_new looks up
+        __new__ in the type dict, and tp_init calls __init__.
+        """
+        res = self.get_method_and_class("__new__")
+        return res is not None and "__new__" not in res[1].method_decls
 
     def has_no_subclasses(self) -> bool:
         return self.children == [] and not self.allow_interpreted_subclasses
@@ -471,6 +507,7 @@ class ClassIR:
             "is_abstract": self.is_abstract,
             "is_generated": self.is_generated,
             "is_augmented": self.is_augmented,
+            "is_decorated": self.is_decorated,
             "is_final_class": self.is_final_class,
             "inherits_python": self.inherits_python,
             "has_dict": self.has_dict,
@@ -541,6 +578,7 @@ class ClassIR:
         ir.is_abstract = data["is_abstract"]
         ir.is_ext_class = data["is_ext_class"]
         ir.is_augmented = data["is_augmented"]
+        ir.is_decorated = data["is_decorated"]
         ir.is_final_class = data["is_final_class"]
         ir.inherits_python = data["inherits_python"]
         ir.has_dict = data["has_dict"]
@@ -607,11 +645,20 @@ class NonExtClassInfo:
     the class annotations dictionary, and the metaclass.
     """
 
-    def __init__(self, dict: Value, bases: Value, anns: Value, metaclass: Value) -> None:
+    def __init__(
+        self,
+        dict: Value,
+        bases: Value,
+        anns: Value,
+        metaclass: Value,
+        orig_bases: Value | None = None,
+    ) -> None:
         self.dict = dict
         self.bases = bases
         self.anns = anns
         self.metaclass = metaclass
+        # Original expressions, before resolving __mro_entries__, if resolution was needed.
+        self.orig_bases = orig_bases
 
 
 def serialize_vtable_entry(entry: VTableMethod) -> JsonDict:

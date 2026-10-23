@@ -777,10 +777,8 @@ reveal_type(x)  # N: Revealed type is "__main__.B"
 [typing fixtures/typing-medium.pyi]
 
 [case testUnreachableWhenSuperclassIsAny]
-from typing import Any
+from somewhere import Parent  # type: ignore
 
-# This can happen if we're importing a class from a missing module
-Parent: Any
 class Child(Parent):
     def foo(self) -> int:
         reveal_type(self)       # N: Revealed type is "__main__.Child"
@@ -793,11 +791,11 @@ class Child(Parent):
     def bar(self) -> int:
         if 1:
             self = super(Child, self).something()
-            reveal_type(self)       # N: Revealed type is "__main__.Child"
+            reveal_type(self)       # N: Revealed type is "Any"
             if self is None:
-                reveal_type(self)
-                return None
-            reveal_type(self)       # N: Revealed type is "__main__.Child"
+                reveal_type(self)  # N: Revealed type is "None"
+                return None  # E: Incompatible return value type (got "None", expected "int")
+            reveal_type(self)       # N: Revealed type is "Any"
             return 3
 [builtins fixtures/isinstance.pyi]
 
