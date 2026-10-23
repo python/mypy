@@ -809,7 +809,7 @@ class Errors:
             self.report_hidden_errors(file, info)
         self._add_error_info(file, info)
         ignored_codes = self.ignored_lines.get(file, {}).get(info.line, [])
-        if ignored_codes and info.code:
+        if ignored_codes and info.code and info.severity == "error":
             # Something is ignored on the line, but not this error, so maybe the error
             # code is incorrect.
             msg = f"""Error code "{info.code.code}" not covered by "type: ignore[{', '.join(ignored_codes)}]" comment"""
