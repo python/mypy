@@ -3957,3 +3957,26 @@ Ex = TypeVar("Ex", covariant=True)
 
 def takes_lambda(func: Callable[[Ex], Any]) -> None:
     pass
+
+[case testTypeObjectJoinWithOverloadsCorrectFallback]
+from typing import Iterable, overload
+
+class M(type): ...
+class A(metaclass=M): ...
+class B: ...
+class C(metaclass=M):
+    @overload
+    def __init__(self, x: int) -> None: ...
+    @overload
+    def __init__(self, x: str) -> None: ...
+    def __init__(self, x):
+        pass
+
+
+def f(x: Iterable[object]) -> None: ...
+f([A, B, C])
+f([B, A, C])
+f([B, C, A])
+f([A, C, B])
+f([C, A, B])
+f([C, B, A])
