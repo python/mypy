@@ -5402,8 +5402,8 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             )
         # Silent mode (PEP 718 overload pre-filtering): a bound or constraint
         # violation means this item does not accept the subscription — e.g.
-        # `ser[int]` must skip an overload whose type parameter is bounded by
-        # str. Capture violations instead of reporting them.
+        # `serialize[int]` must skip an overload whose type parameter is bounded
+        # by `str`. Capture violations instead of reporting them.
         violations: list[str] = []
 
         def note_violation(
