@@ -2255,6 +2255,9 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                 initial_callee_type != callee_type
                 and initial_callee_type.special_sig is None
                 and not initial_callee_type.is_type_obj()
+                # This is not very principled, but also prefer outer context for
+                # recursive types (because values can never be recursive).
+                and not type_state.infer_unions
             ):
                 inferred_args, _ = infer_function_type_arguments(
                     initial_callee_type,

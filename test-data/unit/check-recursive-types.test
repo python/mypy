@@ -15,6 +15,15 @@ class Bad: ...
 x = ["foo", {"bar": [Bad()]}]  # E: List item 0 has incompatible type "Bad"; expected "str | list[JSON] | dict[str, JSON]"
 [builtins fixtures/isinstancelist.pyi]
 
+[case testRecursiveAliasNestedWithAny]
+from typing import Any, Dict, List, Union
+
+JSON = Union[str, List[JSON], Dict[str, JSON]]
+
+a: Any
+x: JSON = {"str": [{"bar": a}]}
+[builtins fixtures/isinstancelist.pyi]
+
 [case testRecursiveAliasBasicGenericSubtype]
 from typing import Union, TypeVar, Sequence, List
 
