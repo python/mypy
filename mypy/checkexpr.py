@@ -65,6 +65,7 @@ from mypy.nodes import (
     Expression,
     FloatExpr,
     FuncDef,
+    FuncItem,
     GeneratorExpr,
     IndexExpr,
     IntExpr,
@@ -2129,7 +2130,15 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             #        expects_literal(identity(3))  # Should type-check
             # TODO: we may want to add similar exception if all arguments are lambdas, since
             # in this case external context is almost everything we have.
-            if not is_generic_instance(ctx) and not is_literal_type_like(ctx):
+            return_only = (
+                SUBSCRIPTABLE_FUNCTIONS in self.chk.options.enable_incomplete_feature
+                and any(
+                    v in get_type_vars(ret_type)
+                    and not any(v in get_type_vars(a) for a in callable.arg_types)
+                    for v in callable.variables
+                )
+            )
+            if not return_only and not is_generic_instance(ctx) and not is_literal_type_like(ctx):
                 return callable.copy_modified()
         args = infer_type_arguments(
             callable.variables, ret_type, erased_ctx, skip_unsatisfied=True
@@ -2412,6 +2421,19 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         # case assume that all variables have type Any to avoid extra
         # bogus error messages.
         for inferred_type, tv in zip(inferred_args, callee_type.variables):
+            if (
+                SUBSCRIPTABLE_FUNCTIONS in self.chk.options.enable_incomplete_feature
+                and not tv.has_default()
+                and tv in get_type_vars(callee_type.ret_type)
+                and not any(tv in get_type_vars(a) for a in callee_type.arg_types)
+                and (inferred_type is None or has_ambiguous_uninhabited_component(inferred_type))
+            ):
+                self.msg.could_not_infer_type_arguments(callee_type, tv, context)
+                inferred_args = list(inferred_args)
+                inferred_args[list(callee_type.variables).index(tv)] = AnyType(
+                    TypeOfAny.from_error
+                )
+                continue
             if not inferred_type or has_erased_component(inferred_type):
                 # Could not infer a non-trivial type for a type variable.
                 self.msg.could_not_infer_type_arguments(callee_type, tv, context)
@@ -4571,6 +4593,19 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         self_type = self_type or left_type
         left_type = get_proper_type(left_type)
 
+        if (
+            isinstance(left_type, FunctionLike)
+            and not left_type.is_type_obj()
+            and SUBSCRIPTABLE_FUNCTIONS in self.chk.options.enable_incomplete_feature
+        ):
+            # PEP 718: subscription of a generic function-like value that was
+            # not recognized during semantic analysis (e.g. a bound method or
+            # a variable of Callable type). The index was analyzed as a value
+            # expression, so re-parse it as one or more type expressions.
+            type_args = self.parse_index_as_type_arguments(index)
+            if type_args is not None:
+                return self.apply_subscript_to_function(left_type, type_args, e)
+
         # Visit the index, just to make sure we have a type for it available
         self.accept(index)
 
@@ -4622,19 +4657,6 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                 or left_type.type_object().fullname == "builtins.type"
             ):
                 return self.named_type("types.GenericAlias")
-
-        if (
-            isinstance(left_type, FunctionLike)
-            and not left_type.is_type_obj()
-            and SUBSCRIPTABLE_FUNCTIONS in self.chk.options.enable_incomplete_feature
-        ):
-            # PEP 718: subscription of a generic function-like value that was
-            # not recognized during semantic analysis (e.g. a bound method or
-            # a variable of Callable type). The index was analyzed as a value
-            # expression, so re-parse it as one or more type expressions.
-            type_args = self.parse_index_as_type_arguments(index)
-            if type_args is not None:
-                return self.apply_subscript_to_function(left_type, type_args, e)
 
         if isinstance(left_type, TypeVarType):
             return self.visit_index_with_type(
@@ -5158,7 +5180,23 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         items = index.items if isinstance(index, TupleExpr) else [index]
         type_args: list[Type] = []
         for item in items:
-            typ = self.try_parse_as_type_expression(item)
+            if isinstance(item, ListExpr):
+                parameters: list[Type] = []
+                for parameter in item.items:
+                    typ = self.try_parse_as_type_expression(parameter, allow_bound_type_vars=True)
+                    if typ is None:
+                        return None
+                    parameters.append(typ)
+                typ = Parameters(parameters, [ARG_POS] * len(parameters), [None] * len(parameters))
+            elif isinstance(item, EllipsisExpr):
+                typ = AnyType(TypeOfAny.special_form)
+            elif isinstance(item, StarExpr):
+                unpacked = self.try_parse_as_type_expression(item.expr, allow_bound_type_vars=True)
+                if unpacked is None:
+                    return None
+                typ = UnpackType(unpacked)
+            else:
+                typ = self.try_parse_as_type_expression(item, allow_bound_type_vars=True)
             if typ is None:
                 return None
             type_args.append(typ)
@@ -5225,8 +5263,8 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                 if ns and ns != fullname and fullname.startswith(ns + "."):
                     break
                 own_suffix += 1
-            if 0 < own_suffix < len(tvars):
-                return len(tvars) - own_suffix, tvars[-own_suffix:]
+            if own_suffix < len(tvars):
+                return len(tvars) - own_suffix, tvars[-own_suffix:] if own_suffix else []
         return 0, tvars
 
     def apply_subscript_to_callable_item(
@@ -5237,11 +5275,39 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         None means this item does not accept this subscription; an error is
         reported only if report is True.
         """
-        n_skip, type_vars = self.subscriptable_own_type_vars(it)
+        alias_attrs = it.fallback.extra_attrs
+        alias_arguments: TupleType | None = None
+        alias_origin: Type = it
+        if alias_attrs and "__pep718_callable__" in alias_attrs.attrs:
+            template = get_proper_type(alias_attrs.attrs["__pep718_callable__"])
+            assert isinstance(template, CallableType)
+            stored_arguments = get_proper_type(alias_attrs.attrs["__pep718_arguments__"])
+            assert isinstance(stored_arguments, TupleType)
+            alias_arguments = stored_arguments
+            alias_origin = alias_attrs.attrs["__origin__"]
+            free: list[TypeVarLikeType] = []
+            for argument in alias_arguments.items:
+                for variable in get_all_type_vars(argument):
+                    if variable not in free:
+                        free.append(variable)
+            enclosing = [v for v in template.variables if v not in free]
+            it = template.copy_modified(variables=enclosing + free, definition=None)
+            n_skip, type_vars = len(enclosing), free
+        else:
+            n_skip, type_vars = self.subscriptable_own_type_vars(it)
         if not type_vars:
             if report:
                 self.chk.fail("Cannot subscript a function with no type parameters", ctx)
             return None
+        if sum(isinstance(v, TypeVarTupleType) for v in type_vars) > 1:
+            if report:
+                self.chk.fail("Cannot subscript a function with multiple TypeVarTuples", ctx)
+            return None
+        if len(type_vars) == 1 and isinstance(type_vars[0], ParamSpecType) and args:
+            if len(args) > 1 or not isinstance(
+                get_proper_type(args[0]), (Parameters, ParamSpecType, AnyType)
+            ):
+                args = [Parameters(list(args), [ARG_POS] * len(args), [None] * len(args))]
         min_arg_count = sum(not v.has_default() for v in type_vars)
         has_type_var_tuple = any(isinstance(v, TypeVarTupleType) for v in type_vars)
         if not (has_type_var_tuple or min_arg_count <= len(args) <= len(type_vars)):
@@ -5275,10 +5341,24 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                 d = expand_type(v.default, env)
                 padded.append(d)
                 env[v.id] = d
+        for variable, argument in zip(type_vars, padded):
+            if isinstance(variable, ParamSpecType) and not isinstance(
+                get_proper_type(argument), (Parameters, ParamSpecType, AnyType)
+            ):
+                if report:
+                    self.chk.fail(
+                        "Can only replace ParamSpec with a parameter types list or"
+                        f" another ParamSpec, got {format_type(argument, self.chk.options)}",
+                        ctx,
+                    )
+                return None
         full_args: list[Type | None] = [None] * n_skip
         full_args.extend(padded)
         if report:
-            return self.apply_generic_arguments(it, full_args, ctx)
+            applied = self.apply_generic_arguments(it, full_args, ctx)
+            return self.function_alias_type(
+                applied, alias_origin, args, alias_arguments, type_vars, padded
+            )
         # Silent mode (PEP 718 overload pre-filtering): a bound or constraint
         # violation means this item does not accept the subscription — e.g.
         # `ser[int]` must skip an overload whose type parameter is bounded by
@@ -5293,7 +5373,46 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         applied = applytype.apply_generic_arguments(it, full_args, note_violation, ctx)
         if violations:
             return None
-        return applied
+        return self.function_alias_type(
+            applied, alias_origin, args, alias_arguments, type_vars, padded
+        )
+
+    def function_alias_type(
+        self,
+        signature: CallableType,
+        origin: Type,
+        args: Sequence[Type],
+        previous_args: TupleType | None,
+        variables: Sequence[TypeVarLikeType],
+        replacements: Sequence[Type],
+    ) -> CallableType:
+        """Keep a precise call signature together with runtime alias attributes.
+
+        The fallback's extra attributes are serialized with the callable. The
+        private attributes retain free alias parameters for a later subscription;
+        they must not make an ordinary call infer enclosing-scope type variables.
+        """
+        tuple_type = self.chk.named_generic_type(
+            "builtins.tuple", [AnyType(TypeOfAny.special_form)]
+        )
+        if previous_args is not None:
+            env = {v.id: a for v, a in zip(variables, replacements)}
+            arguments = expand_type(previous_args, env)
+        else:
+            arguments = TupleType(list(args), tuple_type)
+        fallback = signature.fallback
+        types_module = self.chk.modules.get("types")
+        if types_module is not None and "FunctionGenericAlias" in types_module.names:
+            fallback = self.named_type("types.FunctionGenericAlias")
+        for name, typ in {
+            "__origin__": origin,
+            "__args__": tuple_type,
+            "__parameters__": tuple_type,
+            "__pep718_callable__": signature,
+            "__pep718_arguments__": arguments,
+        }.items():
+            fallback = fallback.copy_with_extra_attr(name, typ)
+        return signature.copy_modified(fallback=fallback)
 
     def apply_type_arguments_to_callable(
         self, tp: Type, args: Sequence[Type], ctx: Context
@@ -6721,7 +6840,9 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             and not self.chk.allow_abstract_call
         )
 
-    def try_parse_as_type_expression(self, maybe_type_expr: Expression) -> Type | None:
+    def try_parse_as_type_expression(
+        self, maybe_type_expr: Expression, *, allow_bound_type_vars: bool = False
+    ) -> Type | None:
         """Try to parse a value Expression as a type expression.
         If success then return the type that it spells.
         If fails then return None.
@@ -6767,18 +6888,22 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         }
 
         chk_sem = mypy.checker.TypeCheckerAsSemanticAnalyzer(self.chk, sym_for_name)
+        scope = TypeVarLikeScope()
+        if allow_bound_type_vars:
+            # Function subscription on a bound method/Callable value is
+            # recognized only here. Its arguments can reference enclosing
+            # type parameters that semantic analysis did not bind as types.
+            for enclosing in self.chk.scope.stack:
+                if isinstance(enclosing, TypeInfo):
+                    for variable in enclosing.defn.type_vars:
+                        scope.bind_existing(variable)
+                elif isinstance(enclosing, FuncItem):
+                    signature = enclosing.type
+                    if isinstance(signature, CallableType):
+                        for variable in signature.variables:
+                            scope.bind_existing(variable)
         tpan = TypeAnalyser(
-            chk_sem,
-            # NOTE: Will never need to lookup type vars in this scope because
-            #       SemanticAnalyzer.try_parse_as_type_expression() will have
-            #       already recognized any type var referenced in a NameExpr.
-            #       String annotations (which may also reference type vars)
-            #       can't be resolved in the TypeChecker pass anyway.
-            TypeVarLikeScope(),  # empty scope
-            self.plugin,
-            self.chk.options,
-            self.chk.tree,
-            self.chk.is_typeshed_stub,
+            chk_sem, scope, self.plugin, self.chk.options, self.chk.tree, self.chk.is_typeshed_stub
         )
 
         try:

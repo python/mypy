@@ -711,6 +711,19 @@ class GenericAlias:
     # GenericAlias delegates attr access to `__origin__`
     def __getattr__(self, name: str) -> Any: ...
 
+if sys.version_info >= (3, 16):
+    __all__ += ["FunctionGenericAlias"]
+
+    class FunctionGenericAlias(GenericAlias):
+        __name__: str
+        __qualname__: str
+        @property
+        def __origin__(self) -> Any: ...
+        def __new__(cls, origin: Callable[..., Any], args: Any, /) -> Self: ...
+        def __getitem__(self, typeargs: Any, /) -> FunctionGenericAlias: ...
+        def __call__(self, *args: Any, **kwargs: Any) -> Any: ...
+
+
 @final
 class NoneType:
     def __bool__(self) -> Literal[False]: ...
