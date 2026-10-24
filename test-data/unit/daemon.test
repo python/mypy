@@ -343,6 +343,32 @@ $ {python} -c "import sys; sys.stdout.write(open('log').read())"
 -- whether the source file got rehashed, which we don't want it to have been.
 $ {python} -c "x = open('.mypy_cache/3.11/bar.meta.ff', 'rb').read(); y = open('asdf.ff', 'rb').read(); assert x == y"
 
+[case testDaemonFineGrainedCacheNamespacePackage]
+$ mypy --cache-fine-grained --hide-error-codes src
+src/pkg/nspkg/mod.py:1: error: Incompatible types in assignment (expression has type "str", variable has type "int")
+Found 1 error in 1 file (checked 2 source files)
+== Return code: 1
+$ dmypy run -- --use-fine-grained-cache
+Daemon started
+Success: no issues found in 2 source files
+$ {python} -c "print('a: int = ' + repr('changed'))" >src/pkg/nspkg/mod.py
+$ dmypy run -- --use-fine-grained-cache
+src/pkg/nspkg/mod.py:1: error: Incompatible types in assignment (expression has type "str", variable has type "int")
+Found 1 error in 1 file (checked 2 source files)
+== Return code: 1
+$ dmypy run -- --use-fine-grained-cache
+src/pkg/nspkg/mod.py:1: error: Incompatible types in assignment (expression has type "str", variable has type "int")
+Found 1 error in 1 file (checked 2 source files)
+== Return code: 1
+$ dmypy stop
+Daemon stopped
+[file src/pkg/__init__.py]
+[file src/pkg/nspkg/mod.py]
+a: int = ""
+[file mypy.ini]
+\[mypy]
+files = src/
+
 [case testDaemonSuggest]
 $ dmypy start --log-file log.txt -- --follow-imports=error --no-error-summary
 Daemon started
