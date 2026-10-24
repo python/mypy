@@ -39,6 +39,9 @@ class GetDependenciesSuite(DataSuite):
         options.export_types = True
         options.preserve_asts = True
         options.allow_empty_bodies = True
+        if testcase.name.endswith("_old_parser"):
+            # This test is only for the old parser.
+            options.native_parser = False
         messages, files, type_map = self.build(src, options)
         a = messages
         if files is None or type_map is None:

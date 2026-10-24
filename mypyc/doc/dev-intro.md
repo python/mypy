@@ -368,7 +368,7 @@ def test_concat_empty_lists() -> None:
 
 There is one test case, `testConcatenateLists`. It has two sub-cases,
 `test_concat_lists` and `test_concat_empty_lists`. Note that you can
-use the pytest -k argument to only run `testConcetanateLists`, but you
+use the pytest -k argument to only run `testConcatenateLists`, but you
 can't filter tests at the sub-case level.
 
 It's recommended to have multiple sub-cases per test case, since each
@@ -450,7 +450,7 @@ $ make -s -j16
 $ ./python -m venv ~/<venv-location>  # Use ./python.exe -m venv ... on macOS
 $ source ~/<venv-location>/bin/activate
 $ cd <mypy-repo-dir>
-$ pip install -r test-requirements.txt
+$ pip install -r dev-requirements.txt
 ```
 
 ### IR Tests

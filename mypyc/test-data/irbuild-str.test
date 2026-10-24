@@ -1175,3 +1175,18 @@ L0:
     r1 = ''
     r2 = CPyStr_EqualLiteral(r0, r1, 0)
     return r2
+
+[case testUnicodeSurrogate]
+# flags: --native-parser
+
+def f() -> str:
+    return "\ud800"
+
+def test_surrogate() -> None:
+    assert ord(f()) == 0xd800
+    assert ord("\udfff") == 0xdfff
+    assert repr("foobar\x00\xab\ud912\U00012345") == r"'foobar\x00«\ud912𒍅'"
+[out]
+main:4: error: Surrogate codepoints in string literals not supported, use chr(...) instead
+main:8: error: Surrogate codepoints in string literals not supported, use chr(...) instead
+main:9: error: Surrogate codepoints in string literals not supported, use chr(...) instead

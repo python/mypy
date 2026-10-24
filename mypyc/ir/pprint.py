@@ -7,7 +7,7 @@ from collections.abc import Sequence
 from typing import Any, Final
 
 from mypyc.common import short_name
-from mypyc.ir.func_ir import FuncIR, all_values_full
+from mypyc.ir.func_ir import FuncDecl, FuncIR, all_values_full
 from mypyc.ir.module_ir import ModuleIRs
 from mypyc.ir.ops import (
     ERR_NEVER,
@@ -303,6 +303,8 @@ class IRPrettyPrintVisitor(OpVisitor[str]):
             if op.src.module_name is not None:
                 name = f"{op.src.module_name}.{name}"
             return self.format("%r = load_address %s :: %s", op, name, op.src.namespace)
+        elif isinstance(op.src, FuncDecl):
+            return self.format("%r = load_address %s :: wrapper", op, op.src.shortname)
         else:
             return self.format("%r = load_address %s", op, op.src)
 
@@ -432,7 +434,7 @@ def format_blocks(
             and not source_to_error.get(ops[-1], [])
         ):
             # Hide the last goto if it just goes to the next basic block,
-            # and there are no assocatiated errors with the op.
+            # and there are no associated errors with the op.
             ops = ops[:-1]
         for op in ops:
             line = "    " + op.accept(visitor)

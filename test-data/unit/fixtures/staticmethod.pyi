@@ -1,3 +1,4 @@
+import types
 import typing
 
 class object:
@@ -17,6 +18,5 @@ class int:
 
 class str: pass
 class bytes: pass
-class ellipsis: pass
 class dict: pass
 class tuple: pass

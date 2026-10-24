@@ -222,6 +222,7 @@ from mypy.sharedparse import BINARY_MAGIC_METHODS
 from mypy.state import state
 from mypy.subtypes import (
     find_member,
+    has_any_type,
     infer_class_variances,
     is_callable_compatible,
     is_equivalent,
@@ -237,6 +238,7 @@ from mypy.treetransform import TransformVisitor
 from mypy.typeanal import check_for_explicit_any, has_any_from_unimported_type, make_optional_type
 from mypy.typeops import (
     bind_self,
+    callable_corresponding_argument,
     can_have_shared_disjoint_base,
     coerce_to_literal,
     custom_special_method,
@@ -246,6 +248,7 @@ from mypy.typeops import (
     false_only,
     fixup_partial_type,
     function_type,
+    get_tuple_item_types,
     get_type_vars,
     is_literal_type_like,
     is_singleton_equality_type,
@@ -293,10 +296,12 @@ from mypy.types import (
     UninhabitedType,
     UnionType,
     UnpackType,
+    extend_args_for_prefix_and_suffix,
     find_unpack_in_list,
     flatten_nested_unions,
     get_proper_type,
     get_proper_types,
+    get_variadic_item,
     instance_cache,
     is_literal_type,
     is_named_instance,
@@ -1159,7 +1164,28 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                 if not is_callable_compatible(
                     impl, sig1, is_compat=is_subtype, is_proper_subtype=False, ignore_return=True
                 ):
-                    self.msg.overloaded_signatures_param_specific(i + 1, defn.impl)
+                    positional_only_args: list[str] = []
+                    if is_callable_compatible(
+                        impl,
+                        sig1,
+                        is_compat=is_subtype,
+                        is_proper_subtype=False,
+                        ignore_return=True,
+                        ignore_pos_arg_names=True,
+                    ):
+                        normalized_impl = impl.with_unpacked_kwargs().with_normalized_var_args()
+                        normalized_sig = sig1.with_unpacked_kwargs().with_normalized_var_args()
+                        for arg in normalized_sig.formal_arguments():
+                            impl_arg = callable_corresponding_argument(normalized_impl, arg)
+                            if (
+                                arg.name is not None
+                                and impl_arg is not None
+                                and arg.name != impl_arg.name
+                            ):
+                                positional_only_args.append(arg.name)
+                    self.msg.overloaded_signatures_param_specific(
+                        i + 1, defn.impl, positional_only_args
+                    )
 
                 # Is the overload alternative's return type a subtype of the implementation's?
                 if not (
@@ -1468,8 +1494,9 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
         self, defn: FuncItem, typ: CallableType, name: str | None, allow_empty: bool = False
     ) -> None:
         """Type check a function definition."""
+        if defn.type_args:
+            self.check_typevar_defaults(typ.variables, defn)
         # Expand type variables with value restrictions to ordinary types.
-        self.check_typevar_defaults(typ.variables)
         expanded = self.expand_typevars(defn, typ)
         original_typ = typ
         for item, typ in expanded:
@@ -1523,11 +1550,12 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                             not in {"__init__", "__new__", "__post_init__", "__replace__"}
                             and not is_private(defn.name)  # private methods are not inherited
                             and (i != 0 or not found_self)
+                            and not isinstance(defn, LambdaExpr)
                         ):
-                            ctx: Context = arg_type
-                            if ctx.line < 0:
-                                ctx = typ
-                            self.fail(message_registry.FUNCTION_PARAMETER_CANNOT_BE_COVARIANT, ctx)
+                            self.fail(
+                                message_registry.FUNCTION_PARAMETER_CANNOT_BE_COVARIANT,
+                                defn.arguments[i],
+                            )
                     # Need to store arguments again for the expanded item.
                     store_argument_type(item, i, typ, self.named_generic_type)
 
@@ -1739,23 +1767,24 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                 self.check_setattr_method(typ, defn)
 
         # Refuse contravariant return type variable
-        if isinstance(typ.ret_type, TypeVarType):
-            if typ.ret_type.variance == CONTRAVARIANT:
-                self.fail(message_registry.RETURN_TYPE_CANNOT_BE_CONTRAVARIANT, typ.ret_type)
-            self.check_unbound_return_typevar(typ)
-        elif isinstance(original_typ.ret_type, TypeVarType) and original_typ.ret_type.values:
-            # Since type vars with values are expanded, the return type is changed
-            # to a raw value. This is a hack to get it back.
-            self.check_unbound_return_typevar(original_typ)
+        if not isinstance(item, LambdaExpr):
+            if isinstance(typ.ret_type, TypeVarType):
+                if typ.ret_type.variance == CONTRAVARIANT:
+                    self.fail(message_registry.RETURN_TYPE_CANNOT_BE_CONTRAVARIANT, defn)
+                self.check_unbound_return_typevar(typ, defn)
+            elif isinstance(original_typ.ret_type, TypeVarType) and original_typ.ret_type.values:
+                # Since type vars with values are expanded, the return type is changed
+                # to a raw value. This is a hack to get it back.
+                self.check_unbound_return_typevar(original_typ, defn)
 
         # Check that Generator functions have the appropriate return type.
         if defn.is_generator:
             if defn.is_async_generator:
                 if not self.is_async_generator_return_type(typ.ret_type):
-                    self.fail(message_registry.INVALID_RETURN_TYPE_FOR_ASYNC_GENERATOR, typ)
+                    self.fail(message_registry.INVALID_RETURN_TYPE_FOR_ASYNC_GENERATOR, defn)
             else:
                 if not self.is_generator_return_type(typ.ret_type, defn.is_coroutine):
-                    self.fail(message_registry.INVALID_RETURN_TYPE_FOR_GENERATOR, typ)
+                    self.fail(message_registry.INVALID_RETURN_TYPE_FOR_GENERATOR, defn)
 
     def require_correct_self_argument(self, func: Type, defn: FuncDef) -> bool:
         func = get_proper_type(func)
@@ -1840,7 +1869,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                     return True
         return False
 
-    def check_unbound_return_typevar(self, typ: CallableType) -> None:
+    def check_unbound_return_typevar(self, typ: CallableType, context: Context) -> None:
         """Fails when the return typevar is not defined in arguments."""
         if SUBSCRIPTABLE_FUNCTIONS in self.options.enable_incomplete_feature:
             return
@@ -1850,7 +1879,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                 argtype.accept(arg_type_visitor)
 
             if typ.ret_type not in arg_type_visitor.arg_types:
-                self.fail(message_registry.UNBOUND_TYPEVAR, typ.ret_type, code=TYPE_VAR)
+                self.fail(message_registry.UNBOUND_TYPEVAR, context, code=TYPE_VAR)
                 upper_bound = get_proper_type(typ.ret_type.upper_bound)
                 if not (
                     isinstance(upper_bound, Instance)
@@ -1859,7 +1888,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                     self.note(
                         "Consider using the upper bound "
                         f"{format_type(typ.ret_type.upper_bound, self.options)} instead",
-                        context=typ.ret_type,
+                        context=context,
                         code=TYPE_VAR,
                     )
 
@@ -2312,7 +2341,12 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
             result: list[tuple[FuncItem, CallableType]] = []
             for substitutions in itertools.product(*subst):
                 mapping = dict(substitutions)
-                result.append((expand_func(defn, mapping), expand_type(typ, mapping)))
+                result.append(
+                    (
+                        expand_func(defn, mapping),
+                        expand_type(typ, mapping, normalize_callables=False),
+                    )
+                )
             return result
         else:
             return [(defn, typ)]
@@ -2873,7 +2907,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                     old_allow_abstract_call = self.allow_abstract_call
                     self.allow_abstract_call = True
                     sig, _ = self.expr_checker.check_call(
-                        dec, [temp], [nodes.ARG_POS], defn, callable_name=fullname
+                        dec, [temp], [nodes.ARG_POS], decorator, callable_name=fullname
                     )
                     self.allow_abstract_call = old_allow_abstract_call
                 # TODO: Apply the sig to the actual TypeInfo so we can handle decorators
@@ -2895,8 +2929,8 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                             context=defn,
                             code=codes.TYPE_VAR,
                         )
-        if typ.defn.type_vars:
-            self.check_typevar_defaults(typ.defn.type_vars)
+        if typ.defn.type_args:
+            self.check_typevar_defaults(typ.defn.type_vars, typ.defn)
 
         if typ.is_protocol and typ.defn.type_vars:
             self.check_protocol_variance(defn)
@@ -2960,14 +2994,14 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
             # all other bases have already been checked.
             break
 
-    def check_typevar_defaults(self, tvars: Sequence[TypeVarLikeType]) -> None:
+    def check_typevar_defaults(self, tvars: Sequence[TypeVarLikeType], context: Context) -> None:
         for tv in tvars:
             if not (isinstance(tv, TypeVarType) and tv.has_default()):
                 continue
             if not is_subtype(tv.default, tv.upper_bound):
-                self.fail("TypeVar default must be a subtype of the bound type", tv)
+                self.fail("TypeVar default must be a subtype of the bound type", context)
             if tv.values and not any(is_same_type(tv.default, value) for value in tv.values):
-                self.fail("TypeVar default must be one of the constraint types", tv)
+                self.fail("TypeVar default must be one of the constraint types", context)
 
     def check_enum(self, defn: ClassDef) -> None:
         assert defn.info.is_enum
@@ -3363,8 +3397,8 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                     continue
 
             self.accept(s)
-            # Clear expression cache after each statement to avoid unlimited growth.
-            self.expr_checker.expr_cache.clear()
+            # Clear expression caches after each statement to avoid unlimited growth.
+            self.expr_checker.reset()
 
     def should_report_unreachable_issues(self) -> bool:
         return (
@@ -3731,6 +3765,9 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
             if partial_types is None:
                 return
             rvalue_type = self.expr_checker.accept(rvalue)
+            if var not in partial_types:
+                # Partial type may have been inferred while visiting rvalue (e.g. by walrus).
+                return
             rvalue_type = get_proper_type(rvalue_type)
             if isinstance(rvalue_type, Instance):
                 if rvalue_type.type == typ.type and is_valid_inferred_type(
@@ -4409,6 +4446,36 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
             res.append(lv)
         return res
 
+    def adjust_rvalue_type_if_possible(
+        self, rvalue_type: TupleType, lvalues: list[Lvalue]
+    ) -> TupleType:
+        """Adjust type of rvalue to match the shape/structure of lvalues.
+
+        Currently, we only allow this if the rvalue type has contains *tuple[Any, ...].
+        """
+        right_variadic = get_variadic_item(rvalue_type)
+        if right_variadic is None:
+            return rvalue_type
+        right_unpack_index, right_item = right_variadic
+        if not isinstance(get_proper_type(right_item), AnyType):
+            return rvalue_type
+        left_star_index = next(
+            (i for i, lv in enumerate(lvalues) if isinstance(lv, StarExpr)), None
+        )
+        if left_star_index is None:
+            extra = len(lvalues) - len(rvalue_type.items) + 1
+            if extra < 0:
+                return rvalue_type
+            return rvalue_type.copy_modified(
+                items=rvalue_type.items[:right_unpack_index]
+                + [right_item] * extra
+                + rvalue_type.items[right_unpack_index + 1 :]
+            )
+        new_items = extend_args_for_prefix_and_suffix(
+            tuple(rvalue_type.items), left_star_index, len(lvalues) - left_star_index - 1
+        )
+        return rvalue_type.copy_modified(items=list(new_items))
+
     def check_multi_assignment_from_tuple(
         self,
         lvalues: list[Lvalue],
@@ -4419,6 +4486,9 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
         infer_lvalue_type: bool = True,
     ) -> None:
         rvalue_unpack = find_unpack_in_list(rvalue_type.items)
+        if rvalue_unpack is not None:
+            rvalue_type = self.adjust_rvalue_type_if_possible(rvalue_type, lvalues)
+            rvalue_unpack = find_unpack_in_list(rvalue_type.items)
         if self.check_rvalue_count_in_assignment(
             lvalues, len(rvalue_type.items), context, rvalue_unpack=rvalue_unpack
         ):
@@ -4460,7 +4530,13 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                 if isinstance(reinferred_rvalue_type, TupleType):
                     # This branch will usually be taken, but in some cases context can
                     # e.g. select a different overload
+                    # TODO: reinferred tuple may be of a different (invalid) shape.
                     rvalue_type = reinferred_rvalue_type
+
+            # Reinferring the type can undo the shape adjustment, so do it again.
+            rvalue_unpack = find_unpack_in_list(rvalue_type.items)
+            if rvalue_unpack is not None:
+                rvalue_type = self.adjust_rvalue_type_if_possible(rvalue_type, lvalues)
 
             left_rv_types, star_rv_types, right_rv_types = self.split_around_star(
                 rvalue_type.items, star_index, len(lvalues)
@@ -5200,6 +5276,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                     if (
                         is_valid_inferred_type(key_type, self.options)
                         and is_valid_inferred_type(value_type, self.options)
+                        and var in partial_types
                         and not self.current_node_deferred
                         and not (
                             typename == "collections.defaultdict"
@@ -5904,7 +5981,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                 fullname = self.expr_checker.method_fullname(object_type, d.name)
             self.check_for_untyped_decorator(e.func, dec, d)
             sig, t2 = self.expr_checker.check_call(
-                dec, [temp], [nodes.ARG_POS], e, callable_name=fullname, object_type=object_type
+                dec, [temp], [nodes.ARG_POS], d, callable_name=fullname, object_type=object_type
             )
             sig = get_proper_type(sig)
             if preserved and isinstance(sig, CallableType):
@@ -6020,7 +6097,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
         if not self.options.disallow_any_decorated or self.is_stub or self.current_node_deferred:
             return
 
-        if mypy.checkexpr.has_any_type(typ):
+        if has_any_type(typ):
             self.msg.untyped_decorated_function(typ, func)
 
     def check_async_with_item(
@@ -6174,6 +6251,12 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
         sub_patterns_map: dict[Expression, Type] = {}
         typ_ = get_proper_type(typ)
         if isinstance(expr, TupleExpr) and isinstance(typ_, TupleType):
+            if any(isinstance(item, StarExpr) for item in expr.items):
+                # For a starred item (e.g. `*bar`), there's no one-to-one correspondence
+                # between expr.items and typ_.items, we are returning early to avoid an
+                # assertion crash. See: https://github.com/python/mypy/issues/21468.
+                return sub_patterns_map
+
             # When matching a tuple expression with a sequence pattern, narrow individual tuple items
             assert len(expr.items) == len(typ_.items)
             for item_expr, item_typ in zip(expr.items, typ_.items):
@@ -6241,8 +6324,8 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                 del type_map[expr]
 
     def visit_type_alias_stmt(self, o: TypeAliasStmt) -> None:
-        if o.alias_node:
-            self.check_typevar_defaults(o.alias_node.alias_tvars)
+        if o.alias_node and o.type_args:
+            self.check_typevar_defaults(o.alias_node.alias_tvars, o)
 
         with self.msg.filter_errors():
             self.expr_checker.accept(o.value)
@@ -6834,12 +6917,11 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
 
         # Restrict the type of the variable to True-ish/False-ish in the if and else branches
         # respectively
-        original_vartype = self.lookup_type(node)
+        vartype = self.lookup_type(node)
         if in_boolean_context:
             # We don't check `:=` values in expressions like `(a := A())`,
             # because they produce two error messages.
-            self.check_for_truthy_type(original_vartype, node)
-        vartype = try_expanding_sum_type_to_union(original_vartype, "builtins.bool")
+            self.check_for_truthy_type(vartype, node)
 
         if_map = {node: true_only(vartype)}
         else_map = {node: false_only(vartype)}
@@ -6957,16 +7039,6 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                         all_if_maps = []
                         all_else_maps = []
                         for known_item in container_item_types:
-                            # Match the should_coerce_literals logic from narrow_type_by_identity_equality
-                            p_known_item = get_proper_type(known_item)
-                            if (
-                                is_literal_type_like(p_known_item)
-                                or (
-                                    isinstance(p_known_item, Instance)
-                                    and p_known_item.type.is_enum
-                                )
-                            ) and not has_custom_eq_checks(p_known_item):
-                                known_item = coerce_to_literal(known_item)
                             if_map, else_map = self.narrow_type_by_identity_equality(
                                 "==",
                                 operands=[operands[left_index], operands[right_index]],
@@ -6975,8 +7047,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                                 narrowable_indices={0},
                             )
                             all_if_maps.append(if_map)
-                            if is_singleton_equality_type(get_proper_type(known_item)):
-                                all_else_maps.append(else_map)
+                            all_else_maps.append(else_map)
                         if_map = reduce_or_conditional_type_maps(all_if_maps)
                         else_map = reduce_and_conditional_type_maps(all_else_maps, use_meet=True)
                     else:
@@ -7136,9 +7207,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                 if narrowable_expr_type is None:
                     if_type = else_type = ambiguous_expr_type
                 else:
-                    narrowable_expr_type = try_expanding_sum_type_to_union(
-                        coerce_to_literal(narrowable_expr_type), None
-                    )
+                    narrowable_expr_type = coerce_to_literal(narrowable_expr_type)
                     if_type, else_type = conditional_types(
                         narrowable_expr_type,
                         [TypeRange(target_type, is_upper_bound=False)],
@@ -7215,7 +7284,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                     # we narrow to in the if_map
                     or_if_maps.append({operands[i]: expr_type})
 
-                expr_type = coerce_to_literal(try_expanding_sum_type_to_union(expr_type, None))
+                expr_type = coerce_to_literal(expr_type)
                 for j in expr_indices:
                     if j in custom_eq_indices:
                         if i == j:
@@ -7241,9 +7310,6 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                     if narrowable_expr_type is None:
                         if_type = else_type = ambiguous_expr_type
                     else:
-                        narrowable_expr_type = coerce_to_literal(
-                            try_expanding_sum_type_to_union(narrowable_expr_type, None)
-                        )
                         if_type, else_type = conditional_types(
                             narrowable_expr_type,
                             [TypeRange(target_type, is_upper_bound=False)],
@@ -8431,13 +8497,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
             return TypeRange(item, is_upper_bound=True)
         if isinstance(typ, FunctionLike) and typ.is_type_obj():
             # If a type is generic, `isinstance` can only narrow its variables to Any.
-            any_parameterized = fill_typevars_with_any(typ.type_object())
-            # Tuples may have unattended type variables among their items
-            if isinstance(any_parameterized, TupleType):
-                erased_type = erase_typevars(any_parameterized)
-            else:
-                erased_type = any_parameterized
-            return TypeRange(erased_type, is_upper_bound=False)
+            return TypeRange(fill_typevars_with_any(typ.type_object()), is_upper_bound=False)
         if isinstance(typ, TypeType):
             # Type[A] means "any type that is a subtype of A" rather than "precisely type A"
             # we indicate this by setting is_upper_bound flag
@@ -9005,19 +9065,7 @@ def builtin_item_type(tp: Type) -> Type | None:
             if not isinstance(get_proper_type(tp.args[0]), AnyType):
                 return tp.args[0]
     elif isinstance(tp, TupleType):
-        normalized_items = []
-        for it in tp.items:
-            # This use case is probably rare, but not handling unpacks here can cause crashes.
-            if isinstance(it, UnpackType):
-                unpacked = get_proper_type(it.type)
-                if isinstance(unpacked, TypeVarTupleType):
-                    unpacked = get_proper_type(unpacked.upper_bound)
-                assert (
-                    isinstance(unpacked, Instance) and unpacked.type.fullname == "builtins.tuple"
-                )
-                normalized_items.append(unpacked.args[0])
-            else:
-                normalized_items.append(it)
+        normalized_items = get_tuple_item_types(tp)
         if all(not isinstance(it, AnyType) for it in get_proper_types(normalized_items)):
             return make_simplified_union(normalized_items)  # this type is not externally visible
     elif isinstance(tp, TypedDictType):
@@ -9049,7 +9097,10 @@ def and_conditional_maps(m1: TypeMap, m2: TypeMap, *, use_meet: bool = False) ->
             result[e1] = m1[e1]
             continue
 
-        if not use_meet:
+        if use_meet:
+            e2 = m2_exprs[e1_hash]
+            result[e1] = meet_types(m1[e1], m2[e2])
+        else:
             # If use_meet=False and the same expression's type is refined by both conditions,
             # we somewhat arbitrarily give precedence to m2, unless a) m1's value is Never, or
             # b) m2's value is Any and m1 isn't a union that could have been narrowed to Any.
@@ -9066,14 +9117,6 @@ def and_conditional_maps(m1: TypeMap, m2: TypeMap, *, use_meet: bool = False) ->
                 ):
                     result[e1] = t1
 
-    if use_meet:
-        # For now, meet common keys only if specifically requested.
-        # This is currently used for tuple types narrowing, where having
-        # a precise result is important.
-        for e1 in m1:
-            for e2 in m2:
-                if literal_hash(e1) == literal_hash(e2):
-                    result[e1] = meet_types(m1[e1], m2[e2])
     return result
 
 

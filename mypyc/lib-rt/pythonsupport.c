@@ -6,23 +6,78 @@
 #include "pythonsupport.h"
 
 #ifdef Py_GIL_DISABLED
-// Cold slow path of CPy_GetAttrRef (declared in pythonsupport.h). Reached only
-// when the inline fast-path try-incref fails: the value is owned by another
-// thread, so taking a reference requires an atomic shared-refcount operation.
-// Kept out-of-line so the inline fast path stays small.
+// Cold slow path of CPy_GetAttrRef (declared in pythonsupport.h). First try to
+// acquire a shared reference without locking, then validate that the field still
+// contains v. If validation fails, drop the provisional reference. If the shared
+// incref or validation fails, take the owner's critical section, reload the field,
+// and take a reference while the value cannot be replaced. _Py_XNewRefWithLock
+// also sets maybe-weakref lazily, so later cross-thread reads generally use the
+// lock-free shared-refcount path. Returns NULL if the field is NULL on reload.
 //
-// First try the lock-free shared-refcount CAS. If the value has not had
-// maybe-weakref set yet (for example, it was published by CPy_InitAttrRef), force
-// a cross-thread reference via _Py_NewRefWithLock, which cannot fail and sets
-// maybe-weakref so subsequent reads take the fast path. The value was already
-// observed in the field by CPy_GetAttrRef; CPy_SetAttrRef's QSBR-delayed decref
-// keeps any replaced value alive long enough for this reader.
+// The reload can be relaxed: acquiring the owner's critical section synchronizes
+// with the writer ending its critical section. A value stored by CPy_InitAttrRef is
+// ordered by the later publication of the owner itself (see CPy_InitAttrRef).
 CPy_NOINLINE
-PyObject *CPy_GetAttrRefSlow(PyObject *v) {
+CPy_COLD
+PyObject *CPy_GetAttrRefSlow(PyObject *v, PyObject *owner, PyObject **field) {
     if (_Py_TryIncRefShared(v)) {
+        if (v == (PyObject *)_Py_atomic_load_ptr(field)) {
+            return v;
+        }
+        Py_DECREF(v);
+    }
+    PyObject *result;
+    Py_BEGIN_CRITICAL_SECTION(owner);
+    result = _Py_XNewRefWithLock((PyObject *)_Py_atomic_load_ptr_relaxed(field));
+    Py_END_CRITICAL_SECTION();
+    return result;
+}
+
+// Cold slow path of CPyTagged_GetAttr, also used for undefined (CPY_INT_TAG) values.
+// Reload the field with acquire (rather than using an acquire fence after the relaxed
+// load, which TSan doesn't model), so that a long stored with release by
+// CPyTagged_SetAttrSlow is fully visible. Then secure a reference to the PyLong using
+// the CPy_GetAttrRef protocol.
+CPy_NOINLINE
+CPy_COLD
+CPyTagged CPyTagged_GetAttrSlow(PyObject *owner, CPyTagged *field) {
+    CPyTagged v = _Py_atomic_load_uintptr_acquire((uintptr_t *)field);
+    if (CPyTagged_IsPointerFree(v)) {
         return v;
     }
-    return _Py_NewRefWithLock(v);  // sets maybe-weakref; cannot fail
+    PyObject *p = (PyObject *)(v & ~CPY_INT_TAG);
+    if (_Py_TryIncrefFast(p)) {
+        return v;
+    }
+    if (_Py_TryIncRefShared(p)) {
+        if (v == _Py_atomic_load_uintptr((uintptr_t *)field)) {
+            return v;
+        }
+        Py_DECREF(p);
+    }
+    Py_BEGIN_CRITICAL_SECTION(owner);
+    v = _Py_atomic_load_uintptr_relaxed((uintptr_t *)field);
+    if (!CPyTagged_IsPointerFree(v)) {
+        _Py_NewRefWithLock((PyObject *)(v & ~CPY_INT_TAG));
+    }
+    Py_END_CRITICAL_SECTION();
+    return v;
+}
+
+// Cold slow path of CPyTagged_SetAttr, used when the new or the old value may be a
+// long. Like CPy_SetAttrRef: store the new value under the owner's critical section
+// and release the old value (if it's a long) after leaving it.
+CPy_NOINLINE
+CPy_COLD
+void CPyTagged_SetAttrSlow(PyObject *owner, CPyTagged *field, CPyTagged value) {
+    CPyTagged old;
+    Py_BEGIN_CRITICAL_SECTION(owner);
+    old = _Py_atomic_load_uintptr_relaxed((uintptr_t *)field);
+    _Py_atomic_store_uintptr_release((uintptr_t *)field, value);
+    Py_END_CRITICAL_SECTION();
+    if (!CPyTagged_IsPointerFree(old)) {
+        Py_DECREF((PyObject *)(old & ~CPY_INT_TAG));
+    }
 }
 #endif
 
@@ -75,6 +130,7 @@ update_bases(PyObject *bases)
             /* If this is a first successful replacement, create new_bases list and
                copy previously encountered bases. */
             if (!(new_bases = PyList_New(i))) {
+                Py_DECREF(new_base);
                 goto error;
             }
             for (j = 0; j < i; j++) {
@@ -85,6 +141,7 @@ update_bases(PyObject *bases)
         }
         j = PyList_GET_SIZE(new_bases);
         if (PyList_SetSlice(new_bases, j, j, new_base) < 0) {
+            Py_DECREF(new_base);
             goto error;
         }
         Py_DECREF(new_base);

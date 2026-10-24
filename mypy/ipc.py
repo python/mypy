@@ -66,6 +66,8 @@ class IPCBase:
     def __init__(self, name: str, timeout: float | None) -> None:
         self.name = name
         self.timeout = timeout
+        # Windows-specific I/O timeout overrides should be applied here.
+        self.win_io_timeout = timeout
         self.message_size: int | None = None
         self.buffer = bytearray()
 
@@ -101,7 +103,11 @@ class IPCBase:
                 ov, err = _winapi.ReadFile(self.connection, size, overlapped=True)
                 try:
                     if err == _winapi.ERROR_IO_PENDING:
-                        timeout = int(self.timeout * 1000) if self.timeout else _winapi.INFINITE
+                        timeout = (
+                            int(self.win_io_timeout * 1000)
+                            if self.win_io_timeout
+                            else _winapi.INFINITE
+                        )
                         res = _winapi.WaitForSingleObject(ov.event, timeout)
                         if res != _winapi.WAIT_OBJECT_0:
                             raise IPCException(f"Bad result from I/O wait: {res}")
@@ -158,7 +164,11 @@ class IPCBase:
                 ov, err = _winapi.WriteFile(self.connection, encoded_data, overlapped=True)
                 try:
                     if err == _winapi.ERROR_IO_PENDING:
-                        timeout = int(self.timeout * 1000) if self.timeout else _winapi.INFINITE
+                        timeout = (
+                            int(self.win_io_timeout * 1000)
+                            if self.win_io_timeout
+                            else _winapi.INFINITE
+                        )
                         res = _winapi.WaitForSingleObject(ov.event, timeout)
                         if res != _winapi.WAIT_OBJECT_0:
                             raise IPCException(f"Bad result from I/O wait: {res}")
@@ -248,6 +258,11 @@ class IPCServer(IPCBase):
             name = f"{name}.sock"
         super().__init__(name, timeout)
         if sys.platform == "win32":
+            # Unlike the client, a server applies its timeout only to accepting a
+            # connection, never to the traffic that follows: see __enter__() below.
+            # On POSIX this happens naturally after the sock.accept() call. On
+            # Windows we need to set this manually to ensure equivalent behavior.
+            self.win_io_timeout = None
             self.connection = _winapi.CreateNamedPipe(
                 self.name,
                 _winapi.PIPE_ACCESS_DUPLEX

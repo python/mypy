@@ -1190,8 +1190,8 @@ def f2() -> tuple[str, ...]:
 def f():
     r0 :: list
     r1 :: short_int
-    x :: int
     r2 :: bit
+    x :: int
     r3 :: str
     r4 :: i32
     r5 :: bit
@@ -1200,7 +1200,6 @@ def f():
 L0:
     r0 = PyList_New(0)
     r1 = 0
-    x = r1
 L1:
     r2 = int_lt r1, 10
     if r2 goto L2 else goto L4 :: bool
@@ -1219,8 +1218,8 @@ L4:
 def f2():
     r0 :: list
     r1 :: short_int
-    x :: int
     r2 :: bit
+    x :: int
     r3 :: str
     r4 :: i32
     r5 :: bit
@@ -1229,7 +1228,6 @@ def f2():
 L0:
     r0 = PyList_New(0)
     r1 = 0
-    x = r1
 L1:
     r2 = int_lt r1, 10
     if r2 goto L2 else goto L4 :: bool

@@ -1,4 +1,4 @@
-"""Transformation for inserting refrecence count inc/dec opcodes.
+"""Transformation for inserting reference count inc/dec opcodes.
 
 This transformation happens towards the end of compilation. Before this
 transformation, reference count management is not explicitly handled at all.

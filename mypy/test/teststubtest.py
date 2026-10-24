@@ -100,6 +100,7 @@ def final(func: _T) -> _T: ...
 """
 
 stubtest_builtins_stub = """
+import types
 from typing import Generic, Mapping, Sequence, TypeVar, overload
 
 T = TypeVar('T')
@@ -121,7 +122,11 @@ class dict(Mapping[KT, VT]): ...
 class frozenset(Generic[T]): ...
 
 class function: pass
-class ellipsis: pass
+
+class sentinel:
+    __name__: str
+    __module__: str
+    def __new__(cls, name: str, /, *, repr: str | None = None) -> sentinel: ...
 
 class int: ...
 class float: ...
@@ -682,6 +687,33 @@ class StubtestUnit(unittest.TestCase):
             """,
             error=None,
         )
+        # The first parameter of a classmethod can be called anything, see #16583
+        yield Case(
+            stub="""
+            class GoodOddClsName:
+                @classmethod
+                def f(GoodOddClsName, number: int) -> None: ...
+            """,
+            runtime="""
+            class GoodOddClsName:
+                @classmethod
+                def f(GoodOddClsName, number): pass
+            """,
+            error=None,
+        )
+        yield Case(
+            stub="""
+            class GoodStarArgsCls:
+                @classmethod
+                def f(*args: int) -> None: ...
+            """,
+            runtime="""
+            class GoodStarArgsCls:
+                @classmethod
+                def f(*args): pass
+            """,
+            error=None,
+        )
 
     @collect_cases
     def test_arg_mismatch(self) -> Iterator[Case]:
@@ -803,6 +835,28 @@ class StubtestUnit(unittest.TestCase):
             def f4(*, a=0): pass
             """,
             error="f3",
+        )
+        yield Case(
+            stub="""
+            from typing import overload
+
+            @overload
+            def f5(x: int, **kwargs: Unpack[_Args]) -> None: ...
+            @overload
+            def f5(x: str, **kwargs: Unpack[_Args]) -> None: ...
+            """,
+            runtime="def f5(x, *, a, b): pass",
+            error=None,
+        )
+        yield Case(
+            stub="""
+            @overload
+            def f6(x: int, **kwargs: Unpack[_Args]) -> None: ...
+            @overload
+            def f6(x: str, **kwargs: Unpack[_Args]) -> None: ...
+            """,
+            runtime="def f6(x, *, a, c): pass",
+            error="f6",
         )
 
     @collect_cases
@@ -3074,6 +3128,58 @@ assert annotations
             error=None,
         )
 
+    @collect_cases
+    def test_object_marker(self) -> Iterator[Case]:
+        yield Case(
+            stub="""
+            def f(x: int = ...) -> None: ...
+            """,
+            runtime="""
+            _MISSING = object()
+
+
+            def f(x=_MISSING):
+                pass
+            """,
+            error=None,
+        )
+
+    @collect_cases
+    def test_sentinel_object_like_marker(self) -> Iterator[Case]:
+        yield Case(
+            stub="""
+            def f(x: int = ...) -> None: ...
+            """,
+            runtime="""
+            from typing_extensions import sentinel
+
+            _MISSING = sentinel("_MISSING")
+
+
+            def f(x=_MISSING):
+                pass
+            """,
+            error=None,
+        )
+
+    @collect_cases
+    def test_legacy_sentinel_object_like_marker(self) -> Iterator[Case]:
+        yield Case(
+            stub="""
+            def f(x: int = ...) -> None: ...
+            """,
+            runtime="""
+            from typing_extensions import Sentinel
+
+            _MISSING = Sentinel("_MISSING")
+
+
+            def f(x=_MISSING):
+                pass
+            """,
+            error=None,
+        )
+
 
 def remove_color_code(s: str) -> str:
     return re.sub("\\x1b.*?m", "", s)  # this works!
@@ -3207,7 +3313,7 @@ class StubtestMiscUnit(unittest.TestCase):
         output = run_stubtest(stub="+", runtime="", options=[])
         assert output == (
             "error: not checking stubs due to failed mypy compile:\n{}.pyi:1: "
-            "error: Invalid syntax  [syntax]\n".format(TEST_MODULE_NAME)
+            "error: Expected an expression  [syntax]\n".format(TEST_MODULE_NAME)
         )
 
         output = run_stubtest(stub="def f(): ...\ndef f(): ...", runtime="", options=[])

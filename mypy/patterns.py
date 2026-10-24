@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TypeVar
+from typing import TypeAlias, TypeVar
 
 from mypy_extensions import trait
 
@@ -30,10 +30,10 @@ class AsPattern(Pattern):
     # If pattern is None this is a capture pattern. If name and pattern are both none this is a
     # wildcard pattern.
     # Only name being None should not happen but also won't break anything.
-    pattern: Pattern | None
+    pattern: ConcretePattern | None
     name: NameExpr | None
 
-    def __init__(self, pattern: Pattern | None, name: NameExpr | None) -> None:
+    def __init__(self, pattern: ConcretePattern | None, name: NameExpr | None) -> None:
         super().__init__()
         self.pattern = pattern
         self.name = name
@@ -45,9 +45,9 @@ class AsPattern(Pattern):
 class OrPattern(Pattern):
     """The pattern <pattern> | <pattern> | ..."""
 
-    patterns: list[Pattern]
+    patterns: list[ConcretePattern]
 
-    def __init__(self, patterns: list[Pattern]) -> None:
+    def __init__(self, patterns: list[ConcretePattern]) -> None:
         super().__init__()
         self.patterns = patterns
 
@@ -83,9 +83,9 @@ class SingletonPattern(Pattern):
 class SequencePattern(Pattern):
     """The pattern [<pattern>, ...]"""
 
-    patterns: list[Pattern]
+    patterns: list[ConcretePattern]
 
-    def __init__(self, patterns: list[Pattern]) -> None:
+    def __init__(self, patterns: list[ConcretePattern]) -> None:
         super().__init__()
         self.patterns = patterns
 
@@ -108,11 +108,11 @@ class StarredPattern(Pattern):
 
 class MappingPattern(Pattern):
     keys: list[Expression]
-    values: list[Pattern]
+    values: list[ConcretePattern]
     rest: NameExpr | None
 
     def __init__(
-        self, keys: list[Expression], values: list[Pattern], rest: NameExpr | None
+        self, keys: list[Expression], values: list[ConcretePattern], rest: NameExpr | None
     ) -> None:
         super().__init__()
         assert len(keys) == len(values)
@@ -128,16 +128,16 @@ class ClassPattern(Pattern):
     """The pattern Cls(...)"""
 
     class_ref: RefExpr
-    positionals: list[Pattern]
+    positionals: list[ConcretePattern]
     keyword_keys: list[str]
-    keyword_values: list[Pattern]
+    keyword_values: list[ConcretePattern]
 
     def __init__(
         self,
         class_ref: RefExpr,
-        positionals: list[Pattern],
+        positionals: list[ConcretePattern],
         keyword_keys: list[str],
-        keyword_values: list[Pattern],
+        keyword_values: list[ConcretePattern],
     ) -> None:
         super().__init__()
         assert len(keyword_keys) == len(keyword_values)
@@ -148,3 +148,15 @@ class ClassPattern(Pattern):
 
     def accept(self, visitor: PatternVisitor[T]) -> T:
         return visitor.visit_class_pattern(self)
+
+
+ConcretePattern: TypeAlias = (
+    AsPattern
+    | OrPattern
+    | ValuePattern
+    | SingletonPattern
+    | SequencePattern
+    | StarredPattern
+    | MappingPattern
+    | ClassPattern
+)

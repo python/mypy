@@ -151,3 +151,6 @@ Development status
 Mypyc is currently alpha software. It's only recommended for
 production use cases with careful testing, and if you are willing to
 contribute fixes or to work around issues you will encounter.
+
+Mypyc generated code is to be compiled for each major Python release;
+it uses functions beyond the stable ABI (a.k.a. ``abi3``).

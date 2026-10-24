@@ -1,4 +1,5 @@
 import _typeshed
+import types
 from typing import Sequence, Iterator, TypeVar, Mapping, Iterable, Optional, Union, overload, Tuple, Generic, List
 
 class object:
@@ -33,7 +34,6 @@ class bytes(Sequence[int]):
 class bytearray: pass
 class tuple(Generic[T]): pass
 class function: pass
-class ellipsis: pass
 
 # copy-pasted from list.pyi
 class list(Sequence[T]):

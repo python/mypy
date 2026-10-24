@@ -1549,6 +1549,24 @@ reveal_type(D.meth())  # N: Revealed type is "__main__.D"
 reveal_type(D.bad())  # N: Revealed type is "Never"
 [builtins fixtures/classmethod.pyi]
 
+[case testTypingSelfAnnotatedType]
+# See: https://github.com/python/mypy/issues/21917
+
+from typing import Self
+from typing_extensions import Annotated
+
+class C:
+    def foo(self: Annotated[Self, "some_metadata"], x: int) -> None:
+        ...
+
+    @classmethod
+    def bar(cls: Annotated[type[Self], "some_metadata"], x: int) -> None:
+        ...
+
+reveal_type(C.foo) # N: Revealed type is "def [Self <: __main__.C] (self: Self`2, x: builtins.int)"
+reveal_type(C.bar) # N: Revealed type is "def (x: builtins.int)"
+[builtins fixtures/tuple.pyi]
+
 [case testTypingSelfOverload]
 from typing import Self, overload, Union
 
@@ -2296,8 +2314,8 @@ class A:
 
     @classmethod
     def other_meth(cls) -> Self:
-        reveal_type(cls.meth)  # N: Revealed type is "def [Self <: __main__.A] (self: Self`1) -> Self`1"
-        reveal_type(A.meth)  # N: Revealed type is "def [Self <: __main__.A] (self: Self`2) -> Self`2"
+        reveal_type(cls.meth)  # N: Revealed type is "def [Self <: __main__.A] (self: Self`2) -> Self`2"
+        reveal_type(A.meth)  # N: Revealed type is "def [Self <: __main__.A] (self: Self`3) -> Self`3"
         return cls().meth()
 
 class B:

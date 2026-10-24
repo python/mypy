@@ -39,6 +39,12 @@ def compute_vtable(cls: ClassIR) -> None:
 
     for t in [cls] + [t for t in all_traits if t is not cls]:
         for fn in itertools.chain(t.methods.values()):
+            if fn.name not in t.method_decls:
+                # Decorated methods aren't declared as native methods, since they are only
+                # called through the Python API, so they don't need an entry. This includes
+                # the undecorated function of a decorated override, which only the
+                # decorators call.
+                continue
             # TODO: don't generate a new entry when we overload without changing the type
             if fn == cls.get_method(fn.name, prefer_method=True):
                 cls.vtable[fn.name] = len(entries)

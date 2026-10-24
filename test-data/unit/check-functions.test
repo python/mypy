@@ -774,7 +774,8 @@ class A:
 main:6: error: Incompatible types in assignment (expression has type "int", variable has type "A")
 main:8: error: Argument 1 to "g" has incompatible type "A"; expected "int"
 
-[case testNestedFunctionInMethodWithTooFewArgumentsInTypeComment_no_native_parse]
+-- Rejecting this is somewhat tricky in the new parser
+[case testNestedFunctionInMethodWithTooFewArgumentsInTypeComment_old_parser]
 class A:
     def f(self):
         # type: () -> None
@@ -795,7 +796,8 @@ class A:
             arg.B  # E: "object" has no attribute "B"
 [file mod.py]
 
-[case testDeepNestedFunctionWithTooFewArgumentsInTypeComment_no_native_parse]
+-- Rejecting this is somewhat tricky in the new parser
+[case testDeepNestedFunctionWithTooFewArgumentsInTypeComment_old_parser]
 class A:
     def f(self):
         # type: () -> None
@@ -2148,17 +2150,29 @@ class A:
         pass
 [builtins fixtures/staticmethod.pyi]
 
-[case testEllipsisWithSomethingAfterItFails_no_native_parse]
+[case testEllipsisWithSomethingAfterItFails]
 def f(x, y, z): # type: (..., int) -> None
     pass
 [out]
-main:1: error: Ellipses cannot accompany other parameter types in function type signature
+main:1: error: Type signature has too few parameters
 
-[case testEllipsisWithSomethingBeforeItFails_no_native_parse]
+[case testEllipsisWithSomethingBeforeItFails]
 def f(x, y, z): # type: (int, ...) -> None
     pass
 [out]
-main:1: error: Ellipses cannot accompany other parameter types in function type signature
+main:1: error: Type signature has too few parameters
+
+[case testEllipsisWithSomethingAfterItFails2]
+def f(x, y): # type: (..., int) -> None
+    pass
+[out]
+main:1: error: Unexpected "..."
+
+[case testEllipsisWithSomethingBeforeItFails2]
+def f(x, y): # type: (int, ...) -> None
+    pass
+[out]
+main:1: error: Unexpected "..."
 
 [case testRejectCovariantArgument]
 from typing import TypeVar, Generic
@@ -2183,21 +2197,16 @@ class A(Generic[t]):
 [out]
 main:6: error: Cannot use a covariant type variable as a parameter
 
-[case testRejectCovariantArgumentInLambda]
+[case testAllowCovariantArgumentInLambda]
 from typing import TypeVar, Generic, Callable
 
 t = TypeVar('t', covariant=True)
 class Thing(Generic[t]):
     def chain(self, func: Callable[[t], None]) -> None: pass
     def end(self) -> None:
-        return self.chain(  # Note that lambda args have no line numbers
+        return self.chain(
             lambda _: None)
 [builtins fixtures/bool.pyi]
-[out]
-main:8: error: Cannot use a covariant type variable as a parameter
-
-[case testRejectCovariantArgumentInLambdaSplitLine]
-from typing import TypeVar, Generic, Callable
 
 [case testRejectContravariantReturnType]
 # flags: --no-strict-optional
@@ -2650,7 +2659,7 @@ reveal_type(bar(None))  # N: Revealed type is "None"
 [out]
 
 [case testNoComplainInferredNone]
-# flags: --no-strict-optional --no-local-partial-types
+# flags: --no-strict-optional
 from typing import TypeVar, Optional
 T = TypeVar('T')
 def X(val: T) -> T: ...
@@ -3934,3 +3943,17 @@ convert4("hello", 3.15)  # E: Missing positional arguments "third", "fourth" in 
 convert4(b'', "hello", 3.15)  # E: Missing positional argument "fourth" in call to "convert4" \
                               # E: Argument 1 to "convert4" has incompatible type "bytes"; expected "int"
 [builtins fixtures/primitives.pyi]
+
+[case testGenericContextLambdaNoError]
+from lib import takes_lambda
+takes_lambda(lambda x: 1)
+
+[file lib.py]
+from typing import Any, Callable, TypeVar
+
+# extra spaces
+
+Ex = TypeVar("Ex", covariant=True)
+
+def takes_lambda(func: Callable[[Ex], Any]) -> None:
+    pass

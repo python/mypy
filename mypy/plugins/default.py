@@ -67,7 +67,6 @@ from mypy.types import (
     TPDICT_FB_NAMES,
     AnyType,
     CallableType,
-    FunctionLike,
     Instance,
     LiteralType,
     NoneType,
@@ -111,7 +110,7 @@ class DefaultPlugin(Plugin):
 
     def get_function_signature_hook(
         self, fullname: str
-    ) -> Callable[[FunctionSigContext], FunctionLike] | None:
+    ) -> Callable[[FunctionSigContext], CallableType] | None:
         if fullname in ("attr.evolve", "attrs.evolve", "attr.assoc", "attrs.assoc"):
             return evolve_function_sig_callback
         elif fullname in ("attr.fields", "attrs.fields"):
@@ -122,7 +121,7 @@ class DefaultPlugin(Plugin):
 
     def get_method_signature_hook(
         self, fullname: str
-    ) -> Callable[[MethodSigContext], FunctionLike] | None:
+    ) -> Callable[[MethodSigContext], CallableType] | None:
         if fullname == "typing.Mapping.get":
             return typed_dict_get_signature_callback
         elif fullname in TD_SETDEFAULT_NAMES:

@@ -1,3 +1,4 @@
+import types
 from typing import TypeVar, Generic, Iterable, Iterator, Mapping, Tuple, overload, Optional, Union, Any
 
 T = TypeVar('T')
@@ -20,7 +21,6 @@ class tuple(Generic[T]): pass
 class slice: pass
 class function: pass
 
-class ellipsis: pass
 
 class list(Iterable[T], Generic[T]):
     @overload

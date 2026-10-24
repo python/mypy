@@ -916,7 +916,9 @@ class Errors:
             if codes.UNUSED_IGNORE.code in ignored_codes:
                 continue
             used_ignored_codes = set(used_ignored_lines[line])
-            unused_ignored_codes = [c for c in ignored_codes if c not in used_ignored_codes]
+            unused_ignored_codes = [
+                c for c in ignored_codes if c not in used_ignored_codes and c in codes.error_codes
+            ]
             # `ignore` is used
             if not ignored_codes and used_ignored_codes:
                 continue

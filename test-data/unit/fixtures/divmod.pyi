@@ -1,3 +1,4 @@
+import types
 from typing import TypeVar, Tuple, SupportsInt
 class object:
     def __init__(self): pass
@@ -15,7 +16,6 @@ class tuple: pass
 class function: pass
 class str: pass
 class type: pass
-class ellipsis: pass
 
 _N = TypeVar('_N', int, float)
 def divmod(_x: _N, _y: _N) -> Tuple[_N, _N]: ...

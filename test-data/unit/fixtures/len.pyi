@@ -1,3 +1,4 @@
+import types
 from typing import Tuple, TypeVar, Generic, Union, Type, Sequence, Mapping
 from typing_extensions import Protocol
 
@@ -36,4 +37,3 @@ class int:
 class float: pass
 class bool(int): pass
 class str(Sequence[str]): pass
-class ellipsis: pass

@@ -8,7 +8,16 @@ even if the test was compiled.
 
 from __future__ import annotations
 
-from mypy.nodes import AssignmentStmt, CallExpr, Expression, IntExpr, NameExpr, Node, TypeVarExpr
+from mypy.nodes import (
+    AssignmentStmt,
+    CallExpr,
+    EllipsisExpr,
+    Expression,
+    IntExpr,
+    NameExpr,
+    Node,
+    TypeVarExpr,
+)
 from mypy.traverser import TraverserVisitor
 from mypy.treetransform import TransformVisitor
 from mypy.types import Type
@@ -36,6 +45,11 @@ class SkippedNodeSearcher(TraverserVisitor):
         if self.ignore_file:
             self.nodes.add(n)
         super().visit_int_expr(n)
+
+    def visit_ellipsis(self, n: EllipsisExpr) -> None:
+        if self.ignore_file:
+            self.nodes.add(n)
+        super().visit_ellipsis(n)
 
 
 def ignore_node(node: Expression) -> bool:

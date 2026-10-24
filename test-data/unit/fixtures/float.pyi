@@ -1,3 +1,4 @@
+import types
 from typing import Generic, TypeVar, Any
 T = TypeVar('T')
 
@@ -15,9 +16,6 @@ class bytes: pass
 
 class tuple(Generic[T]): pass
 class function: pass
-
-class ellipsis: pass
-
 
 class int:
     def __abs__(self) -> int: ...
