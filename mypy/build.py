@@ -4458,6 +4458,15 @@ def load_graph(
             if dep in graph:
                 st.add_dependency(dep)
                 manager.missing_modules.pop(dep, None)
+        # Suppressing a dependency and adding it back appends it to the end of
+        # the list, so a module whose dependency list order changed only due to
+        # that round trip would be considered stale by the order-sensitive
+        # freshness check (State.is_fresh), even though nothing actually
+        # changed.  Restore the cached order when the dependency set is
+        # unchanged; a genuine change keeps the new order and the module is
+        # (correctly) rechecked.
+        if st.meta is not None and st.dependencies_set == set(st.meta.dependencies):
+            st.dependencies = list(st.meta.dependencies)
     # Second, in the initial loop we skip indirect dependencies, so to make indirect dependencies
     # behave more consistently with regular ones, we suppress them manually here (when needed).
     for st in graph.values():
