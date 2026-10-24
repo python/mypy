@@ -2817,3 +2817,17 @@ def test(x: int) -> None: ...
 x = foo(test)
 reveal_type(x)  # N: Revealed type is "__main__.C[Any] | __main__.C[[Any, Any]]"
 [builtins fixtures/paramspec.pyi]
+
+[case testTwoSidedInferenceWithParamSpec]
+from typing import Callable, Generic, TypeVar
+from typing_extensions import ParamSpec
+
+P = ParamSpec("P")
+T = TypeVar("T")
+class C(Generic[P, T]): ...
+
+def thing(func: Callable[P, T], *args: P.args, **kwargs: P.kwargs) -> C[P, T]: ...
+
+def test(x: int = 0) -> None: ...
+f: C[[], None] = thing(test)
+[builtins fixtures/paramspec.pyi]

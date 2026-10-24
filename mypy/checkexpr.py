@@ -1830,7 +1830,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
 
         if initial_callee.is_generic():
             need_refresh = any(
-                isinstance(v, (ParamSpecType, TypeVarTupleType)) for v in callee.variables
+                isinstance(v, (ParamSpecType, TypeVarTupleType)) for v in initial_callee.variables
             )
             callee = self.infer_function_type_arguments(
                 callee,
