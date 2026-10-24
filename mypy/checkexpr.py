@@ -5175,6 +5175,9 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
           overload items where subscription may succeed (i.e. the number of
           type arguments fits the item's type parameters) are retained.
         """
+        if self.chk.options.python_version < (3, 16):
+            self.chk.fail("Function subscription requires Python 3.16 or newer", ctx)
+            return AnyType(TypeOfAny.from_error)
         tp = get_proper_type(tp)
         if isinstance(tp, CallableType):
             result = self.apply_subscript_to_callable_item(tp, args, ctx, report=True)
