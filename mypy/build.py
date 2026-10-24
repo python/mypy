@@ -3050,7 +3050,17 @@ class State:
         assert self.manager.parallel_worker
         assert self.path is not None
         new_meta_pair = find_cache_meta(self.id, self.path, self.manager, skip_validation=True)
-        assert new_meta_pair is not None
+        if new_meta_pair is None:
+            # The cache meta is missing. This can happen when a cache write was
+            # dropped, e.g. because the sqlite cache was locked by a concurrent
+            # mypy run (see #22241): the worker that processed this module
+            # reported it done, but its meta never reached the cache. Treat this
+            # as "no new information" and keep the interface hash we already
+            # have, so dependents revalidate against the cache. That is the safe
+            # direction when a write was dropped -- at worst a module gets
+            # rechecked. It must not become an assertion, since the same dropped
+            # write is already tolerated in sequential mode.
+            return
         new_meta, _ = new_meta_pair
         # Copy relevant information from new meta (which may be incomplete).
         self.interface_hash = new_meta.interface_hash
@@ -3153,6 +3163,13 @@ class State:
         else:
             data = _load_json_file(data_file, self.manager, "Load tree ", "Could not load tree: ")
         if data is None:
+            if self.manager.parallel_worker:
+                # A concurrent run can hold the sqlite cache lock, so write_cache
+                # drops this module's cache entry (see #22241). The data file is then
+                # missing even though this worker already reported the module done.
+                # A dropped cache write is a cache miss, not an internal error: parse
+                # the source so the rest of the pipeline has a tree to work with.
+                self.parse_file()
             return
 
         t0 = time.time()

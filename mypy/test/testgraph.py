@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import sys
 from collections.abc import Set as AbstractSet
+from unittest import mock
 
 from mypy.build import BuildManager, BuildSourceSet, State, order_ascc, sorted_components
 from mypy.errors import Errors
@@ -84,7 +85,7 @@ class GraphSuite(Suite):
         sccs = {frozenset(x) for x in strongly_connected_components(vertices, edges)}
         assert_equal(sccs, {frozenset({"A"}), frozenset({"B", "C"}), frozenset({"D"})})
 
-    def _make_manager(self) -> BuildManager:
+    def _make_manager(self, parallel_worker: bool = False) -> BuildManager:
         options = Options()
         options.use_builtins_fixtures = True
         errors = Errors(options)
@@ -105,6 +106,7 @@ class GraphSuite(Suite):
             fscache=fscache,
             stdout=sys.stdout,
             stderr=sys.stderr,
+            parallel_worker=parallel_worker,
         )
         return manager
 
@@ -136,3 +138,42 @@ class GraphSuite(Suite):
         ascc = res[1]
         scc = order_ascc(graph, ascc)
         assert_equal(scc, ["d", "c", "b", "a"])
+
+    def test_reload_meta_missing_cache_is_noop(self) -> None:
+        # Regression test for #22241: a parallel worker must not assert when the
+        # cache meta is missing (e.g. a cache write was dropped because the sqlite
+        # cache was locked by a concurrent mypy run). It should keep the interface
+        # hash it already has instead of crashing the worker.
+        manager = self._make_manager(parallel_worker=True)
+        state = State.new_state("a", "a.py", "pass", manager)
+        state.interface_hash = b"existing"
+        with mock.patch("mypy.build.find_cache_meta", return_value=None):
+            state.reload_meta()  # must not raise
+        assert_equal(state.interface_hash, b"existing")
+
+    def test_reload_meta_updates_interface_hash(self) -> None:
+        # The normal path: when the cache meta is present, reload_meta() copies the
+        # new interface hash.
+        manager = self._make_manager(parallel_worker=True)
+        state = State.new_state("a", "a.py", "pass", manager)
+        state.interface_hash = b"old"
+        new_meta = mock.Mock()
+        new_meta.interface_hash = b"new"
+        with mock.patch("mypy.build.find_cache_meta", return_value=(new_meta, None)):
+            state.reload_meta()
+        assert_equal(state.interface_hash, b"new")
+
+    def test_load_tree_parses_when_cache_data_is_missing(self) -> None:
+        # Regression test for #22241: when the sqlite cache write for a module is
+        # dropped (e.g. the cache was locked by a concurrent mypy run), the data
+        # file an already-cached module expects can be missing in a parallel
+        # worker. Leaving state.tree as None crashes later in fix_cross_refs, so
+        # load_tree() must treat it as a cache miss and parse the source.
+        manager = self._make_manager(parallel_worker=True)
+        state = State.new_state("a", "a.py", "pass", manager)
+        with (
+            mock.patch("mypy.build._load_json_file", return_value=None),
+            mock.patch.object(State, "parse_file") as parse_file,
+        ):
+            state.load_tree()
+        parse_file.assert_called_once()
