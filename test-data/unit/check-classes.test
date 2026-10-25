@@ -9819,3 +9819,12 @@ class A:
     def p(self, value: int) -> None:
         self.x = value
 [builtins fixtures/property.pyi]
+
+[case testJoinOfTypeObjects]
+class B:
+    def __init__(self, *, y=None) -> None: ...
+class C1(B):
+    def __init__(self, *, x) -> None: ...
+class C2(B): ...
+
+x = [C1, C2]
