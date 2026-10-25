@@ -9955,10 +9955,12 @@ def across_the_unpack(*args: *tuple[int, *tuple[Any, ...], int]) -> None:
 from typing import Any
 
 def before_the_unpack(*args: *tuple[Any, *tuple[int, ...], int]) -> None:
+    reveal_type(args[0]) # N: Revealed type is "Any"
     class Sub(args[0]):
         pass
 
 def after_the_unpack(*args: *tuple[int, *tuple[int, ...], Any]) -> None:
+    reveal_type(args[-1]) # N: Revealed type is "Any"
     class Sub(args[-1]):
         pass
 
