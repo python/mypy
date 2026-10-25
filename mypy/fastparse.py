@@ -492,6 +492,7 @@ class ASTConverter:
             and stack[0] == "F"
             and not is_coroutine
         ):
+            self._collect_imports_from_stmts(stmts)
             return []
 
         res: list[Statement] = []
@@ -527,6 +528,41 @@ class ASTConverter:
             if can_strip:
                 return []
         return res
+
+    def _collect_imports_from_stmts(self, stmts: list[ast3.stmt]) -> None:
+        """Collect import statements from raw AST when stripping function bodies.
+
+        When ``strip_function_bodies`` is True, the fast path returns an empty
+        body without visiting individual statements. This means ``Import`` /
+        ``ImportFrom`` nodes inside function bodies never get added to
+        ``self.imports``, and the imported modules are never tracked as
+        dependencies. This method scans the raw AST statements for imports and
+        registers them so dependency tracking still works for ignored modules.
+        """
+        for stmt in stmts:
+            if isinstance(stmt, ast3.Import):
+                names: list[tuple[str, str | None]] = []
+                for alias in stmt.names:
+                    name = self.translate_module_id(alias.name)
+                    asname = alias.asname
+                    if asname is None and name != alias.name:
+                        asname = alias.name
+                    names.append((name, asname))
+                self.imports.append(Import(names))
+            elif isinstance(stmt, ast3.ImportFrom):
+                if len(stmt.names) == 1 and stmt.names[0].name == "*":
+                    mod = stmt.module if stmt.module is not None else ""
+                    self.imports.append(ImportAll(mod, stmt.level))
+                else:
+                    self.imports.append(
+                        ImportFrom(
+                            self.translate_module_id(stmt.module)
+                            if stmt.module is not None
+                            else "",
+                            stmt.level,
+                            [(a.name, a.asname) for a in stmt.names],
+                        )
+                    )
 
     def translate_type_comment(
         self, n: ast3.stmt | ast3.arg, type_comment: str | None

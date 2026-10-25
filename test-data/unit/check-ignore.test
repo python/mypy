@@ -418,3 +418,35 @@ y  # mypy: ignore[assignment]  # type: ignore
 [out]
 main:1: error: Unrecognized error code "whatever"
 main:1: note: Error code "misc" not covered by "type: ignore[whatever]" comment
+
+[case testIgnoreErrorsFollowsImportInsideStrippedFunctionBody]
+# flags: --config-file tmp/mypy.ini
+import a
+[file mypy.ini]
+\[mypy]
+\[mypy-a]
+ignore_errors = True
+[file a.py]
+class A:
+    def f(self) -> None:
+        import b
+[file b.py]
+x: int = "moo"
+[out]
+tmp/b.py:1: error: Incompatible types in assignment (expression has type "str", variable has type "int")
+
+[case testIgnoreErrorsFollowsImportInsideStrippedFunctionBodyNativeParser]
+# flags: --no-native-parser --config-file tmp/mypy.ini
+import a
+[file mypy.ini]
+\[mypy]
+\[mypy-a]
+ignore_errors = True
+[file a.py]
+class A:
+    def f(self) -> None:
+        import b
+[file b.py]
+x: int = "moo"
+[out]
+tmp/b.py:1: error: Incompatible types in assignment (expression has type "str", variable has type "int")

@@ -164,7 +164,7 @@ from mypy.modulefinder import (
 from mypy.modules_state import modules_state
 from mypy.nodes import Expression
 from mypy.options import Options
-from mypy.parse import load_from_raw, parse
+from mypy.parse import _restore_stripped_body_imports, load_from_raw, parse
 from mypy.plugin import ChainedPlugin, Plugin, ReportConfigContext
 from mypy.plugins.default import DefaultPlugin
 from mypy.renaming import LimitedVariableRenameVisitor, VariableRenameVisitor
@@ -1071,6 +1071,13 @@ class BuildManager:
                             state.options,
                             imports_only=bool(self.workers),
                         )
+                        # When function bodies are stripped (ignore_errors mode), imports inside
+                        # those bodies are not serialized into tree.imports by the native parser.
+                        # Re-extract them from source so dependency tracking still works.
+                        ignore_errors = state.ignore_all or state.options.ignore_errors
+                        strip_function_bodies = ignore_errors and not state.options.preserve_asts
+                        if strip_function_bodies:
+                            _restore_stripped_body_imports(state.xpath, state.source, state.tree.imports)
                     if self.errors.is_blockers():
                         self.log("Bailing due to parse errors")
                         self.errors.raise_error()
@@ -3313,6 +3320,13 @@ class State:
                         self.options,
                         imports_only=bool(self.manager.workers),
                     )
+                    # When function bodies are stripped (ignore_errors mode), imports inside
+                    # those bodies are not serialized into tree.imports by the native parser.
+                    # Re-extract them from source so dependency tracking still works.
+                    ignore_errors = self.ignore_all or self.options.ignore_errors
+                    strip_function_bodies = ignore_errors and not self.options.preserve_asts
+                    if strip_function_bodies:
+                        _restore_stripped_body_imports(self.xpath, source, self.tree.imports)
                 if manager.errors.is_blockers():
                     manager.log("Bailing due to parse errors")
                     manager.errors.raise_error()
