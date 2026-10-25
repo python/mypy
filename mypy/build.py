@@ -1077,7 +1077,9 @@ class BuildManager:
                         ignore_errors = state.ignore_all or state.options.ignore_errors
                         strip_function_bodies = ignore_errors and not state.options.preserve_asts
                         if strip_function_bodies:
-                            _restore_stripped_body_imports(state.xpath, state.source, state.tree.imports)
+                            _restore_stripped_body_imports(
+                                state.xpath, state.source, state.tree.imports
+                            )
                     if self.errors.is_blockers():
                         self.log("Bailing due to parse errors")
                         self.errors.raise_error()

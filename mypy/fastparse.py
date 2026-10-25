@@ -556,9 +556,11 @@ class ASTConverter:
                 else:
                     self.imports.append(
                         ImportFrom(
-                            self.translate_module_id(stmt.module)
-                            if stmt.module is not None
-                            else "",
+                            (
+                                self.translate_module_id(stmt.module)
+                                if stmt.module is not None
+                                else ""
+                            ),
                             stmt.level,
                             [(a.name, a.asname) for a in stmt.names],
                         )
