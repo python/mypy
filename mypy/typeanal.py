@@ -1042,13 +1042,17 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                     return AnyType(TypeOfAny.special_form)
                 if isinstance(typ, TypeType) and isinstance(typ.item, AnyType):
                     return AnyType(TypeOfAny.from_another_any, source_any=typ.item)
-                if typ is None:
+                if typ is None and self.nesting_level == 0:
                     # The variable's type has not been inferred yet (inference
                     # happens in the type checker, after semantic analysis).
                     # Defer the validity check; the type checker will verify
                     # the inferred type. Provisionally treat the base as Any.
+                    # Only the base class itself may be deferred: a variable
+                    # nested inside another base type (e.g. a type argument,
+                    # as in `tuple[T]`) is not a base class, so it keeps the
+                    # normal "not valid as a type" error below.
                     raise DeferredBaseClassVar(sym.node, defining_literal)
-                if t.args:
+                if t.args and self.nesting_level == 0:
                     # The base class subscripts the variable, e.g. `args[1]`
                     # where `args` is a *args tuple. Whether the base is valid
                     # depends on the type of the subscripted item, which the

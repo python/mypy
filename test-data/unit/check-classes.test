@@ -10065,6 +10065,19 @@ x = 1
 class C(B["Literal[x]"]): pass  # E: Parameter 1 of Literal[...] is invalid
 [builtins fixtures/tuple.pyi]
 
+[case testSubclassVariableNestedInBaseClassArgs]
+# A variable nested inside a base class's type arguments is not itself a
+# base class, so it must not be deferred: it gets the normal "not valid as
+# a type" error. Regression test for the mypy_primer diff on prefect,
+# where `class BaseAnnotation(tuple[T])` gained an "Invalid base class"
+# error for the type argument.
+from typing import Any
+def f(v: Any) -> None:
+    x = v
+    class Sub(tuple[x]): pass  # E: Variable "x" is not valid as a type \
+                               # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
+[builtins fixtures/tuple.pyi]
+
 [case testTypeVarDefaultErrorLocation]
 from typing import Generic
 
