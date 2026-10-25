@@ -126,6 +126,7 @@ from mypy.subtypes import (
     covers_at_runtime,
     find_member,
     has_any_type,
+    is_proper_subtype,
     is_same_type,
     is_subtype,
     merge_typevars_in_callables_by_name,
@@ -6941,6 +6942,16 @@ def any_causes_overload_ambiguity(
                 for formal in formals:
                     matching_formals.append(matched_callable.arg_types[formal])
             if not all_same_types(matching_formals) and not all_same_types(matching_returns):
+                if (
+                    not arg_kinds[arg_idx].is_star()
+                    and not isinstance(get_proper_type(arg_type), FunctionLike)
+                    and all(is_proper_subtype(arg_type, formal) for formal in matching_formals)
+                ):
+                    # These matches do not depend on Any being compatible with arbitrary
+                    # types. For example, SubBox[Any] matches both SubBox[Any] and Box[Any].
+                    # Callable subtyping can still accept gradual parameter lists, so keep
+                    # the conservative ambiguity check for callable arguments.
+                    continue
                 # Any maps to multiple different types, and the return types of these items differ.
                 return True
 
