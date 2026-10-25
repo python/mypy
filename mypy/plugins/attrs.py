@@ -458,6 +458,13 @@ def _analyze_class(
             if isinstance(node, PlaceholderNode):
                 # This node is not ready yet.
                 continue
+            # The plugin hooks run once per applied decorator, so a class with
+            # stacked decorators (e.g. @attrs.define on @attrs.frozen) is
+            # analyzed twice. On the second run a synthesized ordering method
+            # from the first run still holds the name, and a class body
+            # attribute with the same name must not trip the assertion below.
+            if isinstance(node, FuncDef):
+                continue
             assert isinstance(node, Var), node
             node.is_initialized_in_class = False
 
