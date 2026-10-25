@@ -9932,11 +9932,8 @@ def from_unpacked_type_annotation(*args: *tuple[int, *tuple[int, ...], Any]) -> 
 # flags: --python-version 3.12
 from typing import Any
 
-def before_the_unpack(*args: *tuple[Any, *tuple[int, ...], int]) -> None:
-    class Sub(args[0]):
-        pass
-
 def inside_the_unpack(*args: *tuple[int, *tuple[Any, ...], int]) -> None:
+    reveal_type(args[1]) # N: Revealed type is "Any | builtins.int"
     class Sub(args[1]):  # E: Variable "args" is not valid as a type \
                          # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases \
                          # E: Invalid base class "args" \
@@ -9944,10 +9941,51 @@ def inside_the_unpack(*args: *tuple[int, *tuple[Any, ...], int]) -> None:
         pass
 
 def across_the_unpack(*args: *tuple[int, *tuple[Any, ...], int]) -> None:
+    reveal_type(args[-2]) # N: Revealed type is "builtins.int | Any"
     class Sub(args[-2]):  # E: Variable "args" is not valid as a type \
                           # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases \
                           # E: Invalid base class "args" \
                           # E: Invalid type: try using Literal[-2] instead?
+        pass
+[builtins fixtures/tuple.pyi]
+
+[case testSubclassAnyFromUnpackedStarArgsUnambiguousIndex]
+# https://github.com/python/mypy/issues/21998
+# flags: --python-version 3.12
+from typing import Any
+
+def before_the_unpack(*args: *tuple[Any, *tuple[int, ...], int]) -> None:
+    class Sub(args[0]):
+        pass
+
+def after_the_unpack(*args: *tuple[int, *tuple[int, ...], Any]) -> None:
+    class Sub(args[-1]):
+        pass
+
+def across_or_inside_the_unpack_one_or_more_any(*args: *tuple[int, *tuple[Any, ...], Any, int]) -> None:
+    reveal_type(args[1]) # N: Revealed type is "Any"
+    class Sub(args[1]):
+        pass
+
+def across_or_inside_the_unpack_one_or_more_any2(*args: *tuple[int, Any, *tuple[Any, ...], int]) -> None:
+    reveal_type(args[-2]) # N: Revealed type is "Any"
+    class Sub(args[-2]):
+        pass
+[builtins fixtures/tuple.pyi]
+
+[case testSubclassTypeOrAnyFromUnpackedStarArgsAmbiguousIndex]
+# https://github.com/python/mypy/issues/21998
+# flags: --python-version 3.12
+from typing import Any
+
+def across_the_unpack_ambiguous_with_type_should_be_fine(*args: *tuple[type, *tuple[Any, ...], int]) -> None:
+    reveal_type(args[-2]) # N: Revealed type is "builtins.type | Any"
+    class Sub(args[-2]):
+        pass
+
+def across_the_unpack_ambiguous_with_type_should_be_fine2(*args: *tuple[int, *tuple[Any, ...], type]) -> None:
+    reveal_type(args[1]) # N: Revealed type is "Any | builtins.type"
+    class Sub(args[1]):
         pass
 [builtins fixtures/tuple.pyi]
 
@@ -9970,6 +10008,8 @@ def from_unpacked2(*args: *tuple[*tuple[Any, ...]]) -> None:
     class Sub(args[0]):
         pass
     class Sub2(args[1]):
+        pass
+    class Sub3(args[-(-1)]):
         pass
 
 def from_unpacked_type_annotation(*args: *tuple[Any, ...]) -> None:

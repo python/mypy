@@ -89,6 +89,7 @@ from mypy.checkmember import (
     is_instance_var,
 )
 from mypy.checkpattern import PatternChecker
+from mypy.constant_fold import constant_fold_expr
 from mypy.constraints import SUPERTYPE_OF
 from mypy.erasetype import (
     erase_type,
@@ -2895,11 +2896,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
             # An inferred plain ``Any`` is only accepted if it comes from an
             # explicit annotation; ``Any`` leaking in from unannotated code is
             # still rejected, as before.
-            is_any = typ is not None and (
-                self.is_explicit_any(typ)
-                or (isinstance(typ, Instance) and typ.type.fullname == "builtins.type")
-                or (isinstance(typ, TypeType) and self.is_explicit_any(typ.item))
-            )
+            is_any = typ is not None and self.is_valid_deferred_base_type(typ)
             if is_any:
                 if self.options.disallow_subclassing_any:
                     if isinstance(base_expr, (NameExpr, MemberExpr)):
@@ -2942,13 +2939,31 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                         code=codes.VALID_TYPE,
                     )
 
+    def is_valid_deferred_base_type(self, typ: ProperType) -> bool:
+        """Can a deferred base class have this inferred type?
+
+        Mirror what semantic analysis accepts for an explicitly typed
+        variable: ``Any`` from an explicit annotation, a type object, or a
+        union of those (e.g. ``type | Any``, when an ambiguous tuple index
+        may land on either). Anything else is rejected.
+        """
+        if isinstance(typ, UnionType):
+            return all(
+                self.is_valid_deferred_base_type(get_proper_type(item))
+                for item in typ.items
+            )
+        return (
+            self.is_explicit_any(typ)
+            or (isinstance(typ, Instance) and typ.type.fullname == "builtins.type")
+            or (isinstance(typ, TypeType) and self.is_explicit_any(typ.item))
+        )
+
     @staticmethod
     def index_expr_int_value(index: Expression) -> int | None:
         """Value of a constant integer index expression, or None."""
-        if isinstance(index, IntExpr):
-            return index.value
-        if isinstance(index, UnaryExpr) and index.op == "-" and isinstance(index.expr, IntExpr):
-            return -index.expr.value
+        value = constant_fold_expr(index, "<unused>")
+        if isinstance(value, int) and not isinstance(value, bool):
+            return value
         return None
 
     def deferred_index_base_type(self, var: Var, base_expr: IndexExpr) -> ProperType | None:
@@ -2983,9 +2998,10 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
         """Type of a tuple item at a constant index, or None if ambiguous.
 
         If the tuple type has a variadic (unpacked) item, an index may land
-        on more than one item. The item type is only determined if the index
-        lands on a single fixed item, or if every item it may land on is
-        ``Any``; otherwise the index is ambiguous and None is returned.
+        on more than one item. Then the union of the items it may land on
+        is returned, and the caller decides whether that union is an
+        acceptable base class type. A single fixed item (or ``Any``, if
+        every candidate is ``Any``) is returned directly.
         """
         items = [get_proper_type(item) for item in flatten_nested_tuples(tuple_type.items)]
         unpack_index = find_unpack_in_list(items)
@@ -3033,7 +3049,9 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
             return possible[0]
         if len(possible) == 1:
             return possible[0]
-        return None
+        # The index may land on several items; return their union and let
+        # the caller decide whether it is an acceptable base class type.
+        return make_simplified_union(possible)
 
     def visit_class_def(self, defn: ClassDef) -> None:
         """Type check a class definition."""
