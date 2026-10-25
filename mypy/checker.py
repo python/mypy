@@ -2949,8 +2949,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
         """
         if isinstance(typ, UnionType):
             return all(
-                self.is_valid_deferred_base_type(get_proper_type(item))
-                for item in typ.items
+                self.is_valid_deferred_base_type(get_proper_type(item)) for item in typ.items
             )
         return (
             self.is_explicit_any(typ)
