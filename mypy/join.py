@@ -831,6 +831,7 @@ def join_similar_callables(t: CallableType, s: CallableType) -> CallableType:
         instance_type = join_types(t.instance_type, s.instance_type)
     return t.copy_modified(
         arg_types=arg_types,
+        arg_kinds=combine_arg_kinds(t, s),
         arg_names=combine_arg_names(t, s),
         ret_type=join_types(t.ret_type, s.ret_type),
         instance_type=instance_type,
