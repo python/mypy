@@ -818,7 +818,12 @@ def join_similar_callables(t: CallableType, s: CallableType) -> CallableType:
     t, s = match_generic_callables(t, s)
     arg_types: list[Type] = []
     for i in range(len(t.arg_types)):
-        arg_types.append(safe_meet(t.arg_types[i], s.arg_types[i]))
+        if isinstance(get_proper_type(t.arg_types[i]), AnyType):
+            arg_types.append(t.arg_types[i])
+        elif isinstance(get_proper_type(s.arg_types[i]), AnyType):
+            arg_types.append(s.arg_types[i])
+        else:
+            arg_types.append(safe_meet(t.arg_types[i], s.arg_types[i]))
     # TODO in combine_similar_callables also applies here (names and kinds; user metaclasses)
     # The fallback type can be either 'function', 'type', or some user-provided metaclass.
     # The result should always use 'function' as a fallback if either operands are using it.

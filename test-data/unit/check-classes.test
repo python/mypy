@@ -9841,4 +9841,10 @@ from typing import Union
 
 def f(x: Union[int, None] = None) -> int: ...
 fs = [f, lambda x: 1, f]
-reveal_type(fs)  # N: Revealed type is "builtins.list[def (x: builtins.int | None) -> builtins.int]"
+reveal_type(fs)  # N: Revealed type is "builtins.list[def (x: Any) -> builtins.int]"
+
+[case testLambdaInferredInCollection2]
+def f(x: int, y: int)-> int: ...
+
+fs = [lambda df, x: df.foo, f]
+reveal_type(fs)  # N: Revealed type is "builtins.list[def (Any, Any) -> Any]"
