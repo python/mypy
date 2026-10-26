@@ -1447,6 +1447,51 @@ MypyFile:1(
       Any)
     Literal?[-1, 0, 1]))
 
+[case testLiteralBigIntTypes]
+a: Literal[9223372036854775807, -9223372036854775808]
+b: Literal[9223372036854775808, -9223372036854775809]
+c: Literal[18_446_744_073_709_551_615, 0xCBF29CE484222325, 0o7777777777777777777777777]
+d: Literal[-0x_FFFF_FFFF_FFFF_FFFF_FFFF_FFFF_FFFF_FFFF, +0b1_0000000000000000000000000000000000000000000000000000000000000000]
+e: Literal[+5, -+5, --5, --18446744073709551616]
+f: "Literal[18446744073709551616]"
+g = 1  # type: Literal[-18446744073709551616]
+[out]
+MypyFile:1(
+  AssignmentStmt:1(
+    NameExpr(a)
+    TempNode:1(
+      Any)
+    Literal?[9223372036854775807, -9223372036854775808])
+  AssignmentStmt:2(
+    NameExpr(b)
+    TempNode:2(
+      Any)
+    Literal?[9223372036854775808, -9223372036854775809])
+  AssignmentStmt:3(
+    NameExpr(c)
+    TempNode:3(
+      Any)
+    Literal?[18446744073709551615, 14695981039346656037, 37778931862957161709567])
+  AssignmentStmt:4(
+    NameExpr(d)
+    TempNode:4(
+      Any)
+    Literal?[-340282366920938463463374607431768211455, 18446744073709551616])
+  AssignmentStmt:5(
+    NameExpr(e)
+    TempNode:5(
+      Any)
+    Literal?[5, -5, 5, 18446744073709551616])
+  AssignmentStmt:6(
+    NameExpr(f)
+    TempNode:6(
+      Any)
+    Literal?[18446744073709551616])
+  AssignmentStmt:7(
+    NameExpr(g)
+    IntExpr(1)
+    Literal?[-18446744073709551616]))
+
 [case testDelStmt]
 del x
 del x[0], y[1]

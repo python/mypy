@@ -5115,6 +5115,28 @@ main:2: note: Revealed type is "builtins.int"
 [out2]
 main:2: note: Revealed type is "Literal[2]"
 
+[case testLiteralIncrementalBigInts]
+import a
+[file a.py]
+import mod
+reveal_type(mod.x)
+[file a.py.2]
+import mod
+reveal_type(mod.x)
+reveal_type(mod.f)
+[file mod.py]
+from typing import Literal
+x: Literal[18446744073709551616, -9223372036854775809, 0xCBF29CE484222325]
+def f(x: Literal[-0x_FFFF_FFFF_FFFF_FFFF_FFFF]) -> None: ...
+[builtins fixtures/tuple.pyi]
+[rechecked a]
+[stale]
+[out]
+tmp/a.py:2: note: Revealed type is "Literal[18446744073709551616] | Literal[-9223372036854775809] | Literal[14695981039346656037]"
+[out2]
+tmp/a.py:2: note: Revealed type is "Literal[18446744073709551616] | Literal[-9223372036854775809] | Literal[14695981039346656037]"
+tmp/a.py:3: note: Revealed type is "def (x: Literal[-1208925819614629174706175])"
+
 [case testAddedSubStarImport]
 # cmd: mypy -m a pack pack.mod b
 # cmd2: mypy -m other
