@@ -248,6 +248,7 @@ from mypy.typeops import (
     false_only,
     fixup_partial_type,
     function_type,
+    get_all_type_vars,
     get_tuple_item_types,
     is_literal_type_like,
     is_singleton_equality_type,
@@ -2311,6 +2312,13 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
         if defn.info:
             # Class type variables
             tvars += defn.info.defn.type_vars or []
+        if is_trivial_body(defn.body):
+            # Only type variables that appear in the signature can make a difference
+            # for a trivial body. Skipping the other ones avoids a combinatorial explosion,
+            # e.g. for methods with an explicit self type in a class with many
+            # value-restricted type variables (this is common in generated stubs).
+            used_ids = get_type_var_ids_in_callable(typ)
+            tvars = [tv for tv in tvars if tv.id in used_ids]
         for tvar in tvars:
             if isinstance(tvar, TypeVarType) and tvar.values:
                 subst.append([(tvar.id, value) for value in tvar.values])
@@ -9246,8 +9254,14 @@ def expand_callable_variants(c: CallableType) -> list[CallableType]:
         # Fast path.
         return [c]
 
+    # Substituting a type variable that doesn't appear in the callable has no effect, but
+    # each such variable with values would still multiply the number of (identical) variants.
+    # Note that detach_callable() adds all class type variables, even if only few are used.
+    used_ids = get_type_var_ids_in_callable(c)
+    variables = [tv for tv in c.variables if tv.id in used_ids]
+
     tvar_values = []
-    for tvar in c.variables:
+    for tvar in variables:
         if isinstance(tvar, TypeVarType) and tvar.values:
             tvar_values.append(tvar.values)
         else:
@@ -9255,9 +9269,27 @@ def expand_callable_variants(c: CallableType) -> list[CallableType]:
 
     variants = []
     for combination in itertools.product(*tvar_values):
-        tvar_map = {tv.id: subst for (tv, subst) in zip(c.variables, combination)}
+        tvar_map = {tv.id: subst for (tv, subst) in zip(variables, combination)}
         variants.append(expand_type(c, tvar_map).copy_modified(variables=[]))
     return variants
+
+
+def get_type_var_ids_in_callable(c: CallableType) -> set[TypeVarId]:
+    """Find ids of all type variables used in a callable type.
+
+    This also includes type variables used in bounds or values of the callable's own
+    type variables (this is only relevant for self-types).
+    """
+    types: list[Type] = [c]
+    if c.type_guard is not None:
+        types.append(c.type_guard)
+    if c.type_is is not None:
+        types.append(c.type_is)
+    for tv in c.variables:
+        types.append(tv.upper_bound)
+        if isinstance(tv, TypeVarType):
+            types.extend(tv.values)
+    return {tv.id for t in types for tv in get_all_type_vars(t)}
 
 
 def is_unsafe_overlapping_overload_signatures(
