@@ -117,13 +117,6 @@ def solve_constraints(
             else:
                 candidate = AnyType(TypeOfAny.special_form)
             res.append(candidate)
-
-    if not free_vars and not skip_unsatisfied:
-        # Most of the validation for solutions is done in applytype.py, but here we can
-        # quickly test solutions w.r.t. to upper bounds, and use the latter (if possible),
-        # if solutions are actually not valid (due to poor inference context).
-        res = pre_validate_solutions(res, original_vars, constraints)
-
     return res, free_vars
 
 
@@ -560,39 +553,6 @@ def skip_reverse_union_constraints(cs: list[Constraint]) -> list[Constraint]:
 def get_vars(target: Type, vars: list[TypeVarId]) -> set[TypeVarId]:
     """Find type variables for which we are solving in a target type."""
     return {tv.id for tv in get_all_type_vars(target)} & set(vars)
-
-
-def pre_validate_solutions(
-    solutions: list[Type | None],
-    original_vars: Sequence[TypeVarLikeType],
-    constraints: list[Constraint],
-) -> list[Type | None]:
-    """Check is each solution satisfies the upper bound of the corresponding type variable.
-
-    If it doesn't satisfy the bound, check if bound itself satisfies all constraints, and
-    if yes, use it instead as a fallback solution.
-    """
-    new_solutions: list[Type | None] = []
-    for t, s in zip(original_vars, solutions):
-        if is_callable_protocol(t.upper_bound):
-            # This is really ad-hoc, but a proper fix would be much more complex,
-            # and otherwise this may cause crash in a relatively common scenario.
-            new_solutions.append(s)
-            continue
-        if s is not None and not is_subtype(s, t.upper_bound):
-            bound_satisfies_all = True
-            for c in constraints:
-                if c.op == SUBTYPE_OF and not is_subtype(t.upper_bound, c.target):
-                    bound_satisfies_all = False
-                    break
-                if c.op == SUPERTYPE_OF and not is_subtype(c.target, t.upper_bound):
-                    bound_satisfies_all = False
-                    break
-            if bound_satisfies_all:
-                new_solutions.append(t.upper_bound)
-                continue
-        new_solutions.append(s)
-    return new_solutions
 
 
 def is_callable_protocol(t: Type) -> bool:

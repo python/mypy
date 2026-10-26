@@ -67,7 +67,6 @@ jobs:
             --debug \
             --additional-flags="--debug-serialize" \
             --output concise \
-            --show-speed-regression \
             --mypy-install-librt \
             | tee diff_${{ matrix.shard-index }}.txt
           ) || [ $? -eq 1 ]
