@@ -3972,7 +3972,6 @@ class C(metaclass=M):
     def __init__(self, x):
         pass
 
-
 def f(x: Iterable[object]) -> None: ...
 f([A, B, C])
 f([B, A, C])
