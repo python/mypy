@@ -3048,7 +3048,7 @@ NoCmp(1) >= NoCmp(2)
 
 [file a.py]
 import attrs
-@attrs.frozen
+@attrs.frozen(order=True)
 class Frozen:
     x: int
 @attrs.define(init=False)
