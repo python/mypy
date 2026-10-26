@@ -9819,3 +9819,32 @@ class A:
     def p(self, value: int) -> None:
         self.x = value
 [builtins fixtures/property.pyi]
+
+[case testJoinOfTypeObjects]
+from typing import TypeVar
+
+class B:
+    def __init__(self, *, y=None) -> None: ...
+class C1(B):
+    def __init__(self, *, x) -> None: ...
+class C2(B): ...
+
+x = [C1, C2]
+reveal_type(x)  # N: Revealed type is "builtins.list[builtins.type]"
+
+T = TypeVar("T")
+def join(a: T, b: T) -> T: ...
+reveal_type(join(C1, C2))  # N: Revealed type is "builtins.type"
+
+[case testLambdaInferredInCollection]
+from typing import Union
+
+def f(x: Union[int, None] = None) -> int: ...
+fs = [f, lambda x: 1, f]
+reveal_type(fs)  # N: Revealed type is "builtins.list[def (x: Any) -> builtins.int]"
+
+[case testLambdaInferredInCollection2]
+def f(x: int, y: int)-> int: ...
+
+fs = [lambda df, x: df.foo, f]
+reveal_type(fs)  # N: Revealed type is "builtins.list[def (Any, Any) -> Any]"
