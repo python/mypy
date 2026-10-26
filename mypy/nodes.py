@@ -4057,14 +4057,14 @@ class TypeInfo(SymbolNode):
 
     def get_method(self, name: str) -> FuncBase | Decorator | None:
         for cls in self.mro:
-            if name in cls.names:
-                node = cls.names[name].node
-            elif possible_redefinitions := sorted(
-                [n for n in cls.names.keys() if n.startswith(f"{name}-redefinition")]
-            ):
-                node = cls.names[possible_redefinitions[-1]].node
-            else:
-                continue
+            sym = cls.names.get(name)
+            if sym is None:
+                # add_redefinition installs the unnumbered name before any numbered ones.
+                prefix = f"{name}-redefinition"
+                if prefix not in cls.names:
+                    continue
+                sym = cls.names[max(n for n in cls.names if n.startswith(prefix))]
+            node = sym.node
             if isinstance(node, SYMBOL_FUNCBASE_TYPES):
                 return node
             elif isinstance(node, Decorator):  # Two `if`s make `mypyc` happy
