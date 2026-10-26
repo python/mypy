@@ -1127,7 +1127,7 @@ def varargs4(a: int, b: int = 0,
     return (a, b, *args), {'x': x, 'y': y, **kwargs}
 
 class A:
-    def f(self, x: int) -> Tuple[int, ...]:
+    def f(self, x: int, /) -> Tuple[int, ...]:
         return (x,)
     def g(self, x: int) -> Tuple[Tuple[int, ...], Dict[str, int]]:
         return (x,), {}
