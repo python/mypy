@@ -529,7 +529,7 @@ class ASTConverter:
                 return []
         return res
 
-    def _collect_imports_from_stmts(self, stmts: list[ast3.stmt]) -> None:
+    def _collect_imports_from_stmts(self, stmts: Sequence[ast3.stmt]) -> None:
         """Collect import statements from raw AST when stripping function bodies.
 
         When ``strip_function_bodies`` is True, the fast path returns an empty
