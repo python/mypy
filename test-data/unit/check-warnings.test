@@ -261,6 +261,16 @@ class A:
     def __init__(self, x: int) -> None:
         self._x = x
 
+[case testReturnAnyGeneric]
+# flags: --warn-return-any
+from typing import Any, TypeVar
+
+T = TypeVar("T")
+def same(x: T) -> T: ...
+def test() -> list[int]:
+    a: Any
+    return same(a)  # E: Returning Any from function declared to return "list[int]"
+
 [case testRedundantCastGenericReturn]
 # flags: --warn-redundant-casts
 from typing import TypeVar, cast
