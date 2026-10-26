@@ -116,6 +116,39 @@ def load_from_raw(
     return tree
 
 
+class ImportCollector(ast.NodeVisitor):
+    def __init__(self) -> None:
+        self.collected: list[ImportBase] = []
+        self.in_function = 0
+
+    def visit_FunctionDef(self, node: ast.FunctionDef) -> None:
+        self.in_function += 1
+        self.generic_visit(node)
+        self.in_function -= 1
+
+    def visit_AsyncFunctionDef(self, node: ast.AsyncFunctionDef) -> None:
+        self.in_function += 1
+        self.generic_visit(node)
+        self.in_function -= 1
+
+    def visit_Import(self, node: ast.Import) -> None:
+        if self.in_function > 0:
+            names = [(alias.name, alias.asname) for alias in node.names]
+            self.collected.append(Import(names))
+        self.generic_visit(node)
+
+    def visit_ImportFrom(self, node: ast.ImportFrom) -> None:
+        if self.in_function > 0:
+            if len(node.names) == 1 and node.names[0].name == "*":
+                mod = node.module if node.module is not None else ""
+                self.collected.append(ImportAll(mod, node.level))
+            else:
+                names = [(a.name, a.asname) for a in node.names]
+                mod = node.module if node.module is not None else ""
+                self.collected.append(ImportFrom(mod, node.level, names))
+        self.generic_visit(node)
+
+
 def _restore_stripped_body_imports(
     fnam: str, source: str | bytes | None, imports: list[ImportBase]
 ) -> None:
@@ -138,38 +171,6 @@ def _restore_stripped_body_imports(
         src_tree = ast.parse(source)
     except SyntaxError:
         return
-
-    class ImportCollector(ast.NodeVisitor):
-        def __init__(self) -> None:
-            self.collected: list[ImportBase] = []
-            self.in_function = 0
-
-        def visit_FunctionDef(self, node: ast.FunctionDef) -> None:
-            self.in_function += 1
-            self.generic_visit(node)
-            self.in_function -= 1
-
-        def visit_AsyncFunctionDef(self, node: ast.AsyncFunctionDef) -> None:
-            self.in_function += 1
-            self.generic_visit(node)
-            self.in_function -= 1
-
-        def visit_Import(self, node: ast.Import) -> None:
-            if self.in_function > 0:
-                names = [(alias.name, alias.asname) for alias in node.names]
-                self.collected.append(Import(names))
-            self.generic_visit(node)
-
-        def visit_ImportFrom(self, node: ast.ImportFrom) -> None:
-            if self.in_function > 0:
-                if len(node.names) == 1 and node.names[0].name == "*":
-                    mod = node.module if node.module is not None else ""
-                    self.collected.append(ImportAll(mod, node.level))
-                else:
-                    names = [(a.name, a.asname) for a in node.names]
-                    mod = node.module if node.module is not None else ""
-                    self.collected.append(ImportFrom(mod, node.level, names))
-            self.generic_visit(node)
 
     collector = ImportCollector()
     collector.visit(src_tree)
