@@ -847,6 +847,12 @@ a: List[int]
 if int():
     a = [None] * 3  # E: List item 0 has incompatible type "None"; expected "int"
     a = [''] * 3  # E: List item 0 has incompatible type "str"; expected "int"
+
+def walrus(n: int | None) -> None:
+    a: List[int] = [n] * (n := 1)  # E: List item 0 has incompatible type "int | None"; expected "int"
+    n = None
+    b: List[object] = [(n := 1)] * n
+    reveal_type(n)  # N: Revealed type is "builtins.int"
 [builtins fixtures/list.pyi]
 
 [case testUnionTypeContext]
