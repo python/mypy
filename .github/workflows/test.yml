@@ -273,9 +273,9 @@ jobs:
             liblzma-dev:i386 \
             uuid-dev:i386
       - name: Compile, install, and activate 32-bit Python
-        uses: gabrielfalcao/pyenv-action@5668dcb49bd9d228bba29dd5e1fbb6e0aae55a71 # v13
+        uses: gabrielfalcao/pyenv-action@a1fc55906be92612782934c70e3985b940bd0165 # v18
         with:
-          default: 3.11.1
+          default: 3.11.11
           command: python -c "import platform; print(f'{platform.architecture()=} {platform.machine()=}');"
       - name: Install tox
         run: pip install tox==4.53.1
