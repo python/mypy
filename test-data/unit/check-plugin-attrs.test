@@ -942,6 +942,114 @@ class C:
 reveal_type(C)  # N: Revealed type is "def (x: Any, y: Any, z: Any) -> __main__.C"
 [builtins fixtures/list.pyi]
 
+[case testAttrsUsingClassmethodConverter]
+import attr
+
+class MyClass:
+    @classmethod
+    def my_class_method(cls, value: int) -> str:
+        return "..."
+
+@attr.s
+class Foo:
+    bar: str = attr.ib(converter=MyClass.my_class_method)
+
+# The classmethod's `cls` argument is dropped, so __init__ takes the int.
+reveal_type(Foo)  # N: Revealed type is "def (bar: builtins.int) -> __main__.Foo"
+reveal_type(Foo(1).bar)  # N: Revealed type is "builtins.str"
+[builtins fixtures/classmethod.pyi]
+
+[case testAttrsUsingStaticmethodConverter]
+import attr
+
+class MyClass:
+    @staticmethod
+    def my_static_method(value: bytes) -> str:
+        return "..."
+
+@attr.s
+class Foo:
+    bar: str = attr.ib(converter=MyClass.my_static_method)
+
+reveal_type(Foo)  # N: Revealed type is "def (bar: builtins.bytes) -> __main__.Foo"
+reveal_type(Foo(b"x").bar)  # N: Revealed type is "builtins.str"
+[builtins fixtures/classmethod.pyi]
+
+[case testAttrsUsingDecoratedClassmethodConverterIsUnsupported]
+# A classmethod/staticmethod wrapped in another decorator may have its signature
+# changed by that decorator, so we can't trust the underlying function type and
+# treat it as unsupported instead of inferring a wrong __init__ type.
+import attr
+from typing import Any, Callable, TypeVar
+
+F = TypeVar("F", bound=Callable[..., Any])
+
+def deco(f: F) -> F:
+    return f
+
+class MyClass:
+    @classmethod
+    @deco
+    def my_class_method(cls, value: int) -> str:
+        return "..."
+
+@attr.s
+class Foo:
+    bar: str = attr.ib(converter=MyClass.my_class_method)  # E: Unsupported converter, only named functions, types and lambdas are currently supported
+[builtins fixtures/classmethod.pyi]
+
+[case testAttrsUsingUnannotatedClassmethodConverter]
+import attr
+
+class MyClass:
+    @classmethod
+    def my_class_method(cls, value):
+        return value
+
+    @staticmethod
+    def my_static_method(value):
+        return value
+
+@attr.s
+class Foo:
+    a: str = attr.ib(converter=MyClass.my_class_method)
+    b: str = attr.ib(converter=MyClass.my_static_method)
+
+# Unannotated converters make the corresponding __init__ argument Any.
+reveal_type(Foo)  # N: Revealed type is "def (a: Any, b: Any) -> __main__.Foo"
+[builtins fixtures/classmethod.pyi]
+
+[case testAttrsUsingClassmethodPropertyConverterIsUnsupported]
+# The exotic @classmethod @property combo is stripped to an empty decorators list,
+# but yields a no-argument getter, so the converter type can't be determined.
+import attr
+
+class M:
+    @classmethod  # E: Only instance methods can be decorated with @property
+    @property
+    def cp(cls) -> str:
+        return "..."
+
+@attr.s
+class Foo:
+    x: str = attr.ib(converter=M.cp)  # E: Cannot determine __init__ type from converter \
+                                      # E: Argument "converter" has incompatible type "Callable[[], str]"; expected "Callable[[Any], Never] | None"
+[builtins fixtures/property.pyi]
+
+[case testAttrsUsingPropertyConverterIsUnsupported]
+# A property is stripped to an empty decorators list but is neither classmethod
+# nor staticmethod, so it must not be accepted as a converter.
+import attr
+
+class M:
+    @property
+    def p(self): ...
+
+@attr.s
+class Foo:
+    x: str = attr.ib(converter=M.p)  # E: Unsupported converter, only named functions, types and lambdas are currently supported
+[builtins fixtures/property.pyi]
+
 [case testAttrsUsingConverterAndSubclass]
 import attr
 
