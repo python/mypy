@@ -85,8 +85,9 @@ for full details, see :ref:`running-mypy`.
 
     This flag will add everything that matches ``.gitignore`` file(s) to :option:`--exclude`.
 
+.. _optional-arguments:
 
-Optional arguments
+Utility arguments
 ******************
 
 .. option:: -h, --help
