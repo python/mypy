@@ -2973,13 +2973,18 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
         base class is then rejected, as it was before deferred validation.
         Only a constant integer index is supported, and only into a tuple
         or sequence type, mirroring what can be known about the item type.
+        A subscript may itself be subscripted, e.g. ``args[1][0]``; then the
+        item type is computed inside out, one index at a time.
         """
-        if not isinstance(base_expr.base, NameExpr):
-            return None
         index_value = self.index_expr_int_value(base_expr.index)
         if index_value is None:
             return None
-        var_type = get_proper_type(var.type) if var.type is not None else None
+        if isinstance(base_expr.base, NameExpr):
+            var_type = get_proper_type(var.type) if var.type is not None else None
+        elif isinstance(base_expr.base, IndexExpr):
+            var_type = self.deferred_index_base_type(var, base_expr.base)
+        else:
+            return None
         if isinstance(var_type, TupleType):
             return self.tuple_item_at_index(var_type, index_value)
         if isinstance(var_type, Instance):
