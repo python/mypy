@@ -1,0 +1,187 @@
+-- These tests allow narrowing to retain only two alternatives.
+-- The coverage check keeps its normal budget.
+
+[case testPatternCoverageReturnAndAssignment]
+# flags: --enable-error-code exhaustive-match
+def returning(x: tuple[bool, bool, bool, bool]) -> int:
+    match x:
+        case True, True, _, _: return 1
+        case _, _, True, True: return 1
+        case _, _, False, _: return 0
+        case _, _, _, False: return 0
+
+def assigned(x: tuple[bool, bool, bool, bool]) -> int:
+    match x:
+        case True, True, _, _: result = 1
+        case _, _, True, True: result = 1
+        case _, _, False, _: result = 0
+        case _, _, _, False: result = 0
+    return result
+[builtins fixtures/tuple.pyi]
+
+[case testPatternCoverageBodyErrors]
+# flags: --enable-error-code exhaustive-match
+def fallthrough(x: tuple[bool, bool, bool, bool]) -> int: # E: Missing return statement
+    match x:
+        case True, True, _, _: pass
+        case _, _, True, True: pass
+        case _, _, False, _: pass
+        case _, _, _, False: pass
+
+def wrong_return(x: tuple[bool, bool, bool, bool]) -> int:
+    match x:
+        case True, True, _, _: return "wrong" # E: Incompatible return value type (got "str", expected "int")
+        case _, _, True, True: return 1
+        case _, _, False, _: return 0
+        case _, _, _, False: return 0
+[builtins fixtures/tuple.pyi]
+
+[case testPatternCoverageIncompleteAndGuarded]
+def missing(x: tuple[bool, bool, bool, bool]) -> int: # E: Missing return statement
+    match x:
+        case True, True, _, _: return 1
+        case _, _, True, True: return 1
+        case _, _, False, _: return 0
+
+def guarded(x: tuple[bool, bool, bool, bool], guard: bool) -> int: # E: Missing return statement
+    match x:
+        case True, True, _, _: return 1
+        case _, _, True, True: return 1
+        case _, _, False, _: return 0
+        case _, _, _, False if guard: return 0
+[builtins fixtures/tuple.pyi]
+
+[case testPatternCoverageNominalClasses]
+# flags: --enable-error-code exhaustive-match
+from typing import Generic, TypeVar
+T = TypeVar('T')
+class A(Generic[T]): pass
+class B(Generic[T]): pass
+class Both(A[int], B[int]): pass
+
+def f(x: tuple[A[int] | B[int], A[int] | B[int], A[int] | B[int], A[int] | B[int]]) -> int:
+    match x:
+        case A(), A(), _, _: return 1
+        case _, _, A(), A(): return 1
+        case _, _, B(), _: return 0
+        case _, _, _, B(): return 0
+[builtins fixtures/tuple.pyi]
+
+[case testPatternCoverageEnums]
+# flags: --enable-error-code exhaustive-match
+from enum import Enum
+class E(Enum):
+    A = 1
+    B = 2
+
+def f(x: tuple[E, E, E, E]) -> int:
+    match x:
+        case E.A, E.A, _, _: return 1
+        case _, _, E.A, E.A: return 1
+        case _, _, E.B, _: return 0
+        case _, _, _, E.B: return 0
+[builtins fixtures/tuple.pyi]
+
+[case testPatternCoverageMissingEnumAndFlags]
+from enum import Enum, Flag, IntFlag
+class E(Enum):
+    A = 1
+    B = 2
+    C = 3
+class F(Flag):
+    A = 1
+    B = 2
+class I(IntFlag):
+    A = 1
+    B = 2
+
+def missing(x: tuple[E, E, E, E]) -> int: # E: Missing return statement
+    match x:
+        case E.A, E.A, _, _: return 1
+        case _, _, E.A, E.A: return 1
+        case _, _, E.B, _: return 0
+        case _, _, _, E.B: return 0
+
+def flags(x: tuple[F, F, F, F]) -> int: # E: Missing return statement
+    match x:
+        case F.A, F.A, _, _: return 1
+        case _, _, F.A, F.A: return 1
+        case _, _, F.B, _: return 0
+        case _, _, _, F.B: return 0
+
+def intflags(x: tuple[I, I, I, I]) -> int: # E: Missing return statement
+    match x:
+        case I.A, I.A, _, _: return 1
+        case _, _, I.A, I.A: return 1
+        case _, _, I.B, _: return 0
+        case _, _, _, I.B: return 0
+[builtins fixtures/tuple.pyi]
+
+[case testPatternCoverageLiterals]
+# flags: --enable-error-code exhaustive-match
+from typing import Literal
+
+def integers(x: tuple[Literal[-1, 1], Literal[-1, 1], Literal[-1, 1], Literal[-1, 1]]) -> int:
+    match x:
+        case -1, -1, _, _: return 1
+        case _, _, -1, -1: return 1
+        case _, _, 1, _: return 0
+        case _, _, _, 1: return 0
+
+def strings(x: tuple[Literal["a", "b"], Literal["a", "b"], Literal[b"a", b"b"], Literal[b"a", b"b"]]) -> int:
+    match x:
+        case "a", "a", _, _: return 1
+        case _, _, b"a", b"a": return 1
+        case _, _, b"b", _: return 0
+        case _, _, _, b"b": return 0
+[builtins fixtures/tuple.pyi]
+
+[case testPatternCoverageOpaqueAndDistinctAtoms]
+from typing import Any, Literal
+
+def dynamic(x: tuple[Any, Any, Any, Any]) -> int: # E: Missing return statement
+    match x:
+        case True, True, _, _: return 1
+        case _, _, True, True: return 1
+        case _, _, False, _: return 0
+        case _, _, _, False: return 0
+
+def integers(x: tuple[Literal[0, 1], Literal[0, 1], Literal[0, 1], Literal[0, 1]]) -> int: # E: Missing return statement
+    match x:
+        case True, True, _, _: return 1
+        case _, _, True, True: return 1
+        case _, _, False, _: return 0
+        case _, _, _, False: return 0
+[builtins fixtures/tuple.pyi]
+
+[case testPatternCoverageNestedAndOr]
+# flags: --enable-error-code exhaustive-match
+def nested(x: tuple[tuple[bool, bool], tuple[bool, bool]]) -> int:
+    match x:
+        case (True, True), _: return 1
+        case _, (True, True): return 1
+        case _, (False, _): return 0
+        case _, (_, False): return 0
+
+def alternatives(x: tuple[bool, bool, bool, bool]) -> int:
+    match x:
+        case True, True, _, _: return 1
+        case _, _, True, True: return 1
+        case (_, _, False, _) | (_, _, _, False): return 0
+
+def captured(x: tuple[bool, bool, bool, bool]) -> int:
+    match x:
+        case True, True, _, _: return 1
+        case _, _, True, True: return 1
+        case (_, _, False as flag, _) | (_, _, _, False as flag):
+            reveal_type(flag) # N: Revealed type is "Literal[False]"
+            return 0
+[builtins fixtures/tuple.pyi]
+
+[case testPatternCoverageNestedMissing]
+def f(x: tuple[tuple[bool, bool], tuple[bool, bool]]) -> int: # E: Missing return statement
+    match x:
+        case (True, True), _: return 1
+        case _, (True, True): return 1
+        case _, (False, _): return 0
+[builtins fixtures/tuple.pyi]

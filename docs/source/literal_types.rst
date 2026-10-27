@@ -472,6 +472,29 @@ For match statements specifically, inexhaustive matches can be caught
 without needing to use ``assert_never`` by using
 :option:`--enable-error-code exhaustive-match <mypy --enable-error-code>`.
 
+This also applies to combinations of values in fixed-length tuples:
+
+.. code-block:: python
+
+  def choose_pair(first: Direction, second: Direction) -> int:
+      match first, second:
+          case Direction.up, Direction.up:
+              return 1
+          case Direction.up, Direction.down:
+              return 2
+          case Direction.down, Direction.up:
+              return 3
+          case Direction.down, Direction.down:
+              return 4
+
+Removing a case leaves an unhandled combination that mypy reports with
+``exhaustive-match`` enabled, without requiring ``assert_never``.
+A guarded case only covers the values for which its guard is known to succeed.
+To avoid excessive analysis time, mypy limits the number of remaining tuple
+alternatives it constructs.
+For sufficiently complex products, it may therefore be unable to prove that a
+match is exhaustive; nesting matches over individual components can help.
+
 
 Extra Enum checks
 *****************

@@ -233,12 +233,20 @@ class TypeCheckerSharedApi(CheckerPluginInterface):
         type_ranges: list[TypeRange] | None,
         ctx: Context,
         default: None = None,
+        *,
+        intersection_errors: list[tuple[str, str]] | None = None,
     ) -> tuple[Type | None, Type | None]: ...
 
     @overload
     @abstractmethod
     def conditional_types_with_intersection(
-        self, expr_type: Type, type_ranges: list[TypeRange] | None, ctx: Context, default: Type
+        self,
+        expr_type: Type,
+        type_ranges: list[TypeRange] | None,
+        ctx: Context,
+        default: Type,
+        *,
+        intersection_errors: list[tuple[str, str]] | None = None,
     ) -> tuple[Type, Type]: ...
 
     # Unfortunately, mypyc doesn't support abstract overloads yet.
@@ -249,6 +257,8 @@ class TypeCheckerSharedApi(CheckerPluginInterface):
         type_ranges: list[TypeRange] | None,
         ctx: Context,
         default: Type | None = None,
+        *,
+        intersection_errors: list[tuple[str, str]] | None = None,
     ) -> tuple[Type | None, Type | None]:
         raise NotImplementedError
 

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
+from collections.abc import Sequence
 from typing import Final, NamedTuple
 
 from mypy import message_registry
@@ -28,7 +29,8 @@ from mypy.patterns import (
     ValuePattern,
 )
 from mypy.plugin import Plugin
-from mypy.subtypes import is_subtype
+from mypy.subtypes import is_same_type, is_subtype
+from mypy.traverser import TraverserVisitor
 from mypy.typeops import (
     coerce_to_literal,
     make_simplified_union,
@@ -43,6 +45,7 @@ from mypy.types import (
     ProperType,
     TupleType,
     Type,
+    TypeAliasType,
     TypedDictType,
     TypeOfAny,
     TypeType,
@@ -74,6 +77,10 @@ self_match_type_names: Final = [
 ]
 
 non_sequence_match_type_names: Final = ["builtins.str", "builtins.bytes", "builtins.bytearray"]
+
+# Repeated subtraction of product patterns can create exponentially many alternatives.
+# Beyond this limit retain the original remainder, sacrificing precision, not soundness.
+MAX_TUPLE_PATTERN_REST_ITEMS: Final = 1024
 
 
 # For every Pattern a PatternType can be calculated. This requires recursively calculating
@@ -126,12 +133,41 @@ class PatternChecker(PatternVisitor[PatternType]):
             non_sequence_match_type_names
         )
         self.options = options
+        self.or_bindings: dict[OrPattern, dict[str, NameExpr]] = {}
+        self.reachable_patterns: set[Pattern] = set()
+        self.intersection_errors: dict[Pattern, list[tuple[str, str]]] = {}
+
+    def check_pattern(
+        self, pattern: Pattern, typ: Type, bindings: dict[OrPattern, dict[str, NameExpr]]
+    ) -> PatternType:
+        """Analyze one case, combining reachability before reporting intersections."""
+        self.or_bindings = bindings
+        self.reachable_patterns.clear()
+        self.intersection_errors.clear()
+        result = self.accept(pattern, typ)
+        for node, errors in self.intersection_errors.items():
+            if node not in self.reachable_patterns:
+                for types, reason in errors:
+                    self.msg.impossible_intersection(types, reason, node)
+        return result
 
     def accept(self, o: Pattern, type_context: Type) -> PatternType:
         self.type_context.append(type_context)
         result = o.accept(self)
         self.type_context.pop()
+        if not is_uninhabited(result.type):
+            self.reachable_patterns.add(o)
+        return result
 
+    def narrow_pattern(
+        self, typ: Type, ranges: list[TypeRange], pattern: Pattern, *, default: Type
+    ) -> tuple[Type, Type]:
+        errors: list[tuple[str, str]] = []
+        result = self.chk.conditional_types_with_intersection(
+            typ, ranges, pattern, default=default, intersection_errors=errors
+        )
+        if errors:
+            self.intersection_errors.setdefault(pattern, []).extend(errors)
         return result
 
     def visit_as_pattern(self, o: AsPattern) -> PatternType:
@@ -143,9 +179,15 @@ class PatternChecker(PatternVisitor[PatternType]):
             typ, rest_type, type_map = current_type, UninhabitedType(), {}
 
         if not is_uninhabited(typ) and o.name is not None:
-            typ, _ = self.chk.conditional_types_with_intersection(
-                current_type, [get_type_range(typ)], o, default=current_type
-            )
+            proper_type = get_proper_type(typ)
+            if typ is current_type and isinstance(proper_type, UnionType):
+                # This union already describes every captured value. Intersecting
+                # each member with the entire union again adds no information.
+                typ = make_simplified_union(proper_type.items)
+            else:
+                typ, _ = self.narrow_pattern(
+                    current_type, [get_type_range(typ)], o, default=current_type
+                )
             if not is_uninhabited(typ):
                 type_map[o.name] = typ
 
@@ -181,11 +223,10 @@ class PatternChecker(PatternVisitor[PatternType]):
             node = get_var(expr)
             capture_types[node].append((expr, typ))
 
-        # Check if other subpatterns capture the same names
-        for i, pattern_type in enumerate(pattern_types[1:]):
-            vars = {get_var(expr) for expr, _ in pattern_type.captures.items()}
-            if capture_types.keys() != vars:
-                self.msg.fail(message_registry.OR_PATTERN_ALTERNATIVE_NAMES, o.patterns[i])
+        # Syntax has already been validated. Reuse the same capture expressions
+        # regardless of which alternative can match the current subject type.
+        bindings = self.or_bindings[o]
+        for pattern_type in pattern_types[1:]:
             for expr, typ in pattern_type.captures.items():
                 node = get_var(expr)
                 capture_types[node].append((expr, typ))
@@ -196,7 +237,11 @@ class PatternChecker(PatternVisitor[PatternType]):
             for _, other in capture_list:
                 typ = make_simplified_union([typ, other])
 
-            captures[capture_list[0][0]] = typ
+            capture = capture_list[0][0]
+            assert isinstance(capture, NameExpr)
+            # Imported aliases can have a different Var.name. The binding map
+            # uses the name written in the pattern, not the declaration's name.
+            captures[bindings[capture.name]] = typ
 
         union_type = make_simplified_union(types)
         return PatternType(union_type, current_type, captures)
@@ -225,7 +270,7 @@ class PatternChecker(PatternVisitor[PatternType]):
         else:
             assert False
 
-        narrowed_type, rest_type = self.chk.conditional_types_with_intersection(
+        narrowed_type, rest_type = self.narrow_pattern(
             current_type, [get_type_range(typ)], o, default=current_type
         )
         return PatternType(narrowed_type, rest_type, {})
@@ -284,7 +329,7 @@ class PatternChecker(PatternVisitor[PatternType]):
 
             return PatternType(
                 make_simplified_union(match_types),
-                make_simplified_union(rest_types),
+                self.combine_tuple_remainders(rest_types, current_type),
                 {expr: make_simplified_union(types) for expr, types in captures_list.items()},
             )
 
@@ -359,26 +404,38 @@ class PatternChecker(PatternVisitor[PatternType]):
             else:
                 new_type = TupleType(new_inner_types, current_type.partial_fallback)
 
-            num_always_match = sum(is_uninhabited(typ) for typ in rest_inner_types)
-            if num_always_match == len(rest_inner_types):
-                # All subpatterns always match, so we can apply negative narrowing
-                rest_type = UninhabitedType()
-            elif num_always_match == len(rest_inner_types) - 1:
-                # Exactly one subpattern may conditionally match, the rest always match.
-                # We can apply negative narrowing to this one position.
-                rest_type = TupleType(
-                    [
-                        curr if is_uninhabited(rest) else rest
-                        for curr, rest in zip(inner_types, rest_inner_types)
-                    ],
-                    current_type.partial_fallback,
-                )
+                # A tuple fails to match at its first failing position. Preserve the
+                # matched prefix and the original suffix in each remaining alternative:
+                # (A, B) - (a, b) = (A - a, B) | (a, B - b).
+                # Irrefutable subpatterns (including starred captures) keep their types.
+                matched_types = [
+                    curr if is_uninhabited(rest) else new
+                    for curr, new, rest in zip(inner_types, new_inner_types, rest_inner_types)
+                ]
+                rest_items: list[Type] = []
+                for i, rest in enumerate(rest_inner_types):
+                    if is_uninhabited(rest):
+                        continue
+                    rest_item = TupleType(
+                        matched_types[:i] + [rest] + inner_types[i + 1 :],
+                        current_type.partial_fallback,
+                    )
+                    # Some complements cannot be expressed (e.g. int minus Literal[1]).
+                    # Avoid redundant expansion when one alternative is already the
+                    # entire original tuple, including when it contains Any.
+                    if is_same_type(rest_item, current_type):
+                        rest_items = [current_type]
+                        break
+                    rest_items.append(rest_item)
+                    if len(rest_items) > MAX_TUPLE_PATTERN_REST_ITEMS:
+                        break
+                rest_type = self.combine_tuple_remainders(rest_items, current_type)
         elif isinstance(current_type, TupleType):
             # For variadic tuples it is too tricky to match individual items like for fixed
             # tuples, so we instead try to narrow the entire type.
             # TODO: use more precise narrowing when possible (e.g. for identical shapes).
             new_tuple_type = TupleType(new_inner_types, current_type.partial_fallback)
-            new_type, _ = self.chk.conditional_types_with_intersection(
+            new_type, _ = self.narrow_pattern(
                 new_tuple_type, [get_type_range(current_type)], o, default=new_tuple_type
             )
             if (
@@ -392,7 +449,7 @@ class PatternChecker(PatternVisitor[PatternType]):
             for typ in new_inner_types:
                 new_inner_type = join_types(new_inner_type, typ)
             new_type = self.construct_sequence_child(current_type, new_inner_type)
-            new_type, possible_rest_type = self.chk.conditional_types_with_intersection(
+            new_type, possible_rest_type = self.narrow_pattern(
                 current_type, [get_type_range(new_type)], o, default=current_type
             )
             if star_position is not None and len(o.patterns) == 1:
@@ -400,6 +457,35 @@ class PatternChecker(PatternVisitor[PatternType]):
                 rest_type = possible_rest_type
 
         return PatternType(new_type, rest_type, captures)
+
+    def combine_tuple_remainders(self, items: list[Type], original: Type) -> Type:
+        proper_original = get_proper_type(original)
+        # Bound expansion, not narrowing of a union already supplied by the user.
+        limit = MAX_TUPLE_PATTERN_REST_ITEMS
+        if isinstance(proper_original, UnionType):
+            limit = max(limit, len(proper_original.items))
+        # Counting only top-level alternatives misses expansion inside nested products.
+        memo: dict[int, tuple[Type, int]] = {}
+        complexity_limit = max(
+            MAX_TUPLE_PATTERN_REST_ITEMS, tuple_pattern_complexity(original, memo)
+        )
+        complexity = 0
+        flattened: list[Type] = []
+        for item in items:
+            complexity += tuple_pattern_complexity(item, memo, complexity_limit - complexity)
+            if complexity > complexity_limit:
+                return original
+            proper_item = get_proper_type(item)
+            if isinstance(proper_item, UnionType):
+                flattened.extend(proper_item.items)
+            elif not is_uninhabited(proper_item):
+                flattened.append(item)
+            if len(flattened) > limit:
+                return original
+        result = make_simplified_union(flattened)
+        if tuple_pattern_complexity(result, memo, complexity_limit) > complexity_limit:
+            return original
+        return result
 
     def contract_starred_pattern_types(
         self, types: list[Type], star_pos: int | None, num_required_patterns: int
@@ -519,7 +605,7 @@ class PatternChecker(PatternVisitor[PatternType]):
             if not o.keys:
                 # Match cannot be refuted, so narrow the remaining type
                 mapping = self.chk.named_type("typing.Mapping")
-                if_type, else_type = self.chk.conditional_types_with_intersection(
+                if_type, else_type = self.narrow_pattern(
                     current_type,
                     [TypeRange(mapping, is_upper_bound=False)],
                     o,
@@ -579,7 +665,7 @@ class PatternChecker(PatternVisitor[PatternType]):
             return self.early_non_match()
         typ = UnionType.make_union([t.item for t in type_ranges])
 
-        new_type, rest_type = self.chk.conditional_types_with_intersection(
+        new_type, rest_type = self.narrow_pattern(
             current_type, type_ranges, o, default=current_type
         )
         if is_uninhabited(new_type):
@@ -844,6 +930,84 @@ class PatternChecker(PatternVisitor[PatternType]):
 
     def early_non_match(self) -> PatternType:
         return PatternType(UninhabitedType(), self.type_context[-1], {})
+
+
+class PatternBindingCollector(TraverserVisitor):
+    def __init__(
+        self, msg: MessageBuilder, or_bindings: dict[OrPattern, dict[str, NameExpr]]
+    ) -> None:
+        self.bindings: dict[str, NameExpr] = {}
+        self.msg = msg
+        self.or_bindings = or_bindings
+
+    def visit_or_pattern(self, o: OrPattern) -> None:
+        first: dict[str, NameExpr] | None = None
+        canonical: dict[str, NameExpr] = {}
+        for i, pattern in enumerate(o.patterns):
+            collector = PatternBindingCollector(self.msg, self.or_bindings)
+            pattern.accept(collector)
+            bindings = collector.bindings
+            if first is None:
+                first = bindings
+            elif first.keys() != bindings.keys():
+                # Invalid nested alternatives must be diagnosed even when type
+                # matching cannot reach them (e.g. inside a wrong-length tuple).
+                self.msg.fail(message_registry.OR_PATTERN_ALTERNATIVE_NAMES, o.patterns[i - 1])
+            for name, expr in bindings.items():
+                canonical.setdefault(name, expr)
+        self.or_bindings[o] = canonical
+        for name, expr in canonical.items():
+            self.bindings.setdefault(name, expr)
+
+    def visit_as_pattern(self, o: AsPattern) -> None:
+        if o.name is not None:
+            self.bindings.setdefault(o.name.name, o.name)
+        super().visit_as_pattern(o)
+
+    def visit_starred_pattern(self, o: StarredPattern) -> None:
+        if o.capture is not None:
+            self.bindings.setdefault(o.capture.name, o.capture)
+        super().visit_starred_pattern(o)
+
+    def visit_mapping_pattern(self, o: MappingPattern) -> None:
+        if o.rest is not None:
+            self.bindings.setdefault(o.rest.name, o.rest)
+        super().visit_mapping_pattern(o)
+
+
+def analyze_pattern_bindings(
+    patterns: Sequence[Pattern], msg: MessageBuilder
+) -> dict[OrPattern, dict[str, NameExpr]]:
+    """Validate OR bindings once, independently of type-based pattern reachability."""
+    bindings: dict[OrPattern, dict[str, NameExpr]] = {}
+    collector = PatternBindingCollector(msg, bindings)
+    for pattern in patterns:
+        pattern.accept(collector)
+    return bindings
+
+
+def tuple_pattern_complexity(
+    typ: Type, memo: dict[int, tuple[Type, int]], limit: int | None = None
+) -> int:
+    """Count represented tuple occurrences without unfolding recursive definitions."""
+    if cached := memo.get(id(typ)):
+        return cached[1]
+    if isinstance(typ, TypeAliasType) and typ.is_recursive:
+        children = typ.args
+        count = 0
+    else:
+        proper_type = get_proper_type(typ)
+        children = proper_type.items if isinstance(proper_type, (TupleType, UnionType)) else []
+        count = int(isinstance(proper_type, TupleType))
+    for child in children:
+        count += tuple_pattern_complexity(child, memo, None if limit is None else limit - count)
+        if limit is not None and count > limit:
+            return limit + 1
+    # Keep the object alive: expanding an alias may allocate temporary types, whose
+    # identities must not be reused while this memo is in use. Count each occurrence
+    # separately even when two positions refer to the same object.
+    memo[id(typ)] = (typ, count)
+    return count
 
 
 def get_match_arg_names(typ: TupleType) -> list[str | None]:

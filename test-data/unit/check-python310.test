@@ -2097,8 +2097,673 @@ match m6:
     case (1, "a"):
         reveal_type(m6)  # N: Revealed type is "tuple[Literal[1], Literal['a']]"
     case _:
-        reveal_type(m6)  # N: Revealed type is "tuple[Literal[1] | Literal[2], Literal['a'] | Literal['b']]"
+        reveal_type(m6)  # N: Revealed type is "tuple[Literal[2], Literal['a'] | Literal['b']] | tuple[Literal[1], Literal['b']]"
 
+[builtins fixtures/tuple.pyi]
+
+[case testMatchTupleProductBools]
+# flags: --enable-error-code exhaustive-match --warn-unreachable
+from typing import Literal
+
+def complete(a: bool, b: bool) -> int:
+    match a, b:
+        case True, True:
+            return 1
+        case True, False:
+            return 2
+        case False, True:
+            return 3
+        case False, False:
+            return 4
+
+def incomplete(a: bool, b: bool) -> None:
+    match a, b:  # E: Match statement has unhandled case for values of type "tuple[Literal[False], Literal[False]]" \
+                 # N: If match statement is intended to be non-exhaustive, add `case _: pass`
+        case True, True:
+            pass
+        case True, False:
+            pass
+        case False, True:
+            pass
+
+def captures(a: bool, b: bool) -> None:
+    match a, b:
+        case True, True:
+            pass
+        case True, False:
+            reveal_type(a)  # N: Revealed type is "Literal[True]"
+            reveal_type(b)  # N: Revealed type is "Literal[False]"
+        case False, _:
+            reveal_type(a)  # N: Revealed type is "Literal[False]"
+            reveal_type(b)  # N: Revealed type is "builtins.bool"
+        case _:
+            reveal_type(a)  # E: Statement is unreachable
+[builtins fixtures/tuple.pyi]
+
+[case testMatchTupleProductEnums]
+# flags: --enable-error-code exhaustive-match
+from enum import Enum
+from typing import NoReturn
+
+def assert_never(x: NoReturn) -> NoReturn: ...
+
+class A(Enum):
+    ONE = 1
+    TWO = 2
+class B(Enum):
+    ONE = 1
+    TWO = 2
+
+def f(pair: tuple[A, B]) -> int:
+    match pair:
+        case A.ONE, B.ONE:
+            return 1
+        case A.ONE, B.TWO:
+            return 2
+        case A.TWO, B.ONE:
+            return 3
+        case A.TWO, B.TWO:
+            return 4
+        case rest:
+            assert_never(rest)
+
+def g(a: A, b: B) -> int:
+    match a, b:
+        case A.ONE, B.ONE:
+            return 1
+        case A.ONE, B.TWO:
+            return 2
+        case A.TWO, B.ONE:
+            return 3
+        case A.TWO, B.TWO:
+            return 4
+[builtins fixtures/tuple.pyi]
+
+[case testMatchTupleProductResiduals]
+# flags: --strict-equality --warn-unreachable
+from typing import Literal
+
+def f(pair: tuple[Literal[1, 2], Literal["a", "b"]]) -> None:
+    match pair:
+        case 1, "a":
+            pass
+        case rest:
+            reveal_type(rest)  # N: Revealed type is "tuple[Literal[2], Literal['a'] | Literal['b']] | tuple[Literal[1], Literal['b']]"
+
+def g(triple: tuple[bool, int, bool]) -> None:
+    match triple:
+        case True, _, True:
+            pass
+        case rest:
+            reveal_type(rest)  # N: Revealed type is "tuple[Literal[False], builtins.int, builtins.bool] | tuple[Literal[True], builtins.int, Literal[False]]"
+
+def impossible(pair: tuple[Literal[1], Literal[2]]) -> None:
+    match pair:
+        case 1, 3:
+            reveal_type(pair)  # E: Statement is unreachable
+        case rest:
+            reveal_type(rest)  # N: Revealed type is "tuple[Literal[1], Literal[2]]"
+[builtins fixtures/tuple.pyi]
+
+[case testMatchTupleProductOrPatterns]
+# flags: --enable-error-code exhaustive-match --warn-unreachable
+def f(a: bool, b: bool) -> int:
+    match a, b:
+        case (True, True) | (False, False):
+            return 1
+        case (True, False) | (False, True):
+            return 2
+
+def g(a: bool, b: bool) -> None:
+    match a, b:
+        case (True, True) | (False, False):
+            pass
+        case (True, False) as pair:
+            reveal_type(pair)  # N: Revealed type is "tuple[Literal[True], Literal[False]]"
+        case (False, True) as pair:
+            reveal_type(pair)  # N: Revealed type is "tuple[Literal[False], Literal[True]]"
+[builtins fixtures/tuple.pyi]
+
+[case testMatchTupleProductUnionReachability]
+# flags: --warn-unreachable
+from typing import Literal
+
+V: tuple[Literal["a"], None] | tuple[Literal["b"], int] = ("a", None)
+match V:
+    case "a", None:
+        pass
+    case _:
+        pass
+
+def f(value: tuple[Literal["a"], None] | tuple[Literal["b"], int]) -> int:
+    match value:
+        case "a", None:
+            return 0
+        case "b", int(n):
+            return n
+[builtins fixtures/tuple.pyi]
+
+[case testMatchTupleProductClassReachability]
+# flags: --enable-error-code exhaustive-match --warn-unreachable
+class P:
+    def run(self, a: int) -> int: return a
+class Q:
+    def run(self, a: str) -> str: return a
+
+def same_kind(left: P | Q, right: P | Q) -> bool:
+    match left, right:
+        case P(), P():
+            return True
+        case Q(), Q():
+            return True
+        case _:
+            return False
+
+def complete(left: P | Q, right: P | Q) -> int:
+    match left, right:
+        case P(), P():
+            return 1
+        case P(), Q():
+            return 2
+        case Q(), P():
+            return 3
+        case Q(), Q():
+            return 4
+
+def diagonal(left: P | Q, right: P | Q) -> bool:
+    match left, right:
+        case (P(), P()) | (Q(), Q()):
+            return True
+        case _:
+            return False
+[builtins fixtures/tuple.pyi]
+
+[case testMatchTupleProductNestedAndStarred]
+# flags: --enable-error-code exhaustive-match --warn-unreachable
+from typing import NoReturn
+
+def assert_never(x: NoReturn) -> NoReturn: ...
+
+def nested(pair: tuple[bool, tuple[bool, bool]]) -> int:
+    match pair:
+        case True, (True, _):
+            return 1
+        case True, (False, _):
+            return 2
+        case False, (_, True):
+            return 3
+        case False, (_, False):
+            return 4
+
+def starred(value: tuple[bool, int, str, bool]) -> None:
+    match value:
+        case True, *middle, True:
+            reveal_type(middle)  # N: Revealed type is "builtins.list[builtins.int | builtins.str]"
+        case True, *_, False:
+            pass
+        case False, *_, True:
+            pass
+        case False, *_, False:
+            pass
+
+def empty(value: tuple[()]) -> None:
+    match value:
+        case ():
+            pass
+        case rest:
+            assert_never(rest)
+
+def singleton(value: tuple[bool]) -> int:
+    match value:
+        case (True,):
+            return 1
+        case (False,):
+            return 0
+
+def optional(value: tuple[int | None, str | None]) -> int:
+    match value:
+        case None, None:
+            return 0
+        case int(), None:
+            return 1
+        case None, str():
+            return 2
+        case int(), str():
+            return 3
+[builtins fixtures/tuple.pyi]
+
+[case testMatchTupleProductGuards]
+# flags: --enable-error-code exhaustive-match --warn-unreachable
+def guarded(a: bool, b: bool, guard: bool) -> None:
+    match a, b:  # E: Match statement has unhandled case for values of type "tuple[Literal[True], Literal[True]]" \
+                 # N: If match statement is intended to be non-exhaustive, add `case _: pass`
+        case True, True if guard:
+            pass
+        case True, False:
+            pass
+        case False, True:
+            pass
+        case False, False:
+            pass
+
+def fallback(a: bool, b: bool, guard: bool) -> int:
+    match a, b:
+        case True, True if guard:
+            return 1
+        case True, True:
+            return 2
+        case True, False:
+            return 3
+        case False, _:
+            return 4
+
+def always_true(a: bool, b: bool) -> int:
+    match a, b:
+        case True, True if True:
+            return 1
+        case True, False:
+            return 2
+        case False, _:
+            return 3
+
+def always_false(a: bool, b: bool) -> None:
+    match a, b:  # E: Match statement has unhandled case for values of type "tuple[Literal[True], Literal[True]]" \
+                 # N: If match statement is intended to be non-exhaustive, add `case _: pass`
+        case True, True if False:
+            pass  # E: Statement is unreachable
+        case True, False:
+            pass
+        case False, _:
+            pass
+
+def last_guarded(a: bool, b: bool, guard: bool) -> None:
+    match a, b:  # E: Match statement has unhandled case for values of type "tuple[Literal[False], bool] | tuple[Literal[True], Literal[True]]" \
+                 # N: If match statement is intended to be non-exhaustive, add `case _: pass`
+        case True, False:
+            pass
+        case _, False if guard:
+            pass
+
+def unreachable_tail(a: bool, b: bool) -> None:
+    match a, b:
+        case True, _:
+            pass
+        case False, _:
+            pass
+        case True, True:
+            pass  # E: Statement is unreachable
+
+def only_guarded(a: bool, b: bool, guard: bool) -> None:
+    match a, b:  # E: Match statement has unhandled case for values of type "tuple[bool, bool]" \
+                 # N: If match statement is intended to be non-exhaustive, add `case _: pass`
+        case True, True if guard:
+            pass
+
+def unreachable_guard(a: bool, b: bool, guard: bool) -> None:
+    match a, b:
+        case _, _:
+            pass
+        case True, True if guard:
+            pass  # E: Statement is unreachable
+[builtins fixtures/tuple.pyi]
+
+[case testMatchTupleProductConservativeRemainder]
+# flags: --enable-error-code exhaustive-match
+from typing import Any
+
+def unknown(value: tuple[Any, bool]) -> None:
+    match value:  # E: Match statement has unhandled case for values of type "tuple[Any, bool]" \
+                  # N: If match statement is intended to be non-exhaustive, add `case _: pass`
+        case True, True:
+            pass
+        case False, False:
+            pass
+
+def open_type(value: tuple[int, int]) -> None:
+    match value:  # E: Match statement has unhandled case for values of type "tuple[int, int]" \
+                  # N: If match statement is intended to be non-exhaustive, add `case _: pass`
+        case 1, 2:
+            pass
+        case 3, 4:
+            pass
+
+class A: pass
+class B: pass
+class Both(A, B): pass
+
+def overlapping(value: tuple[A | B, A | B]) -> None:
+    match value:
+        case A(), A():
+            pass
+        case A(), B():
+            pass
+        case B(), A():
+            pass
+        case B(), B():
+            pass
+
+def diagonal(value: tuple[A | B, A | B]) -> None:
+    match value:  # E: Match statement has unhandled case for values of type "tuple[B, A] | tuple[A, B]" \
+                  # N: If match statement is intended to be non-exhaustive, add `case _: pass`
+        case A(), A():
+            pass
+        case B(), B():
+            pass
+[builtins fixtures/tuple.pyi]
+
+[case testMatchTupleProductUnreachableAndInvalidPatterns]
+# flags: --warn-unreachable
+from typing import Literal
+
+def unreachable(value: tuple[Literal["a"], int] | tuple[Literal["b"], str]) -> None:
+    match value:
+        case _, None:  # E: Subclass of "int" and "NoneType" cannot exist: "NoneType" is final \
+                       # E: Subclass of "str" and "NoneType" cannot exist: "NoneType" is final
+            reveal_type(value)  # E: Statement is unreachable
+        case _:
+            pass
+
+class P:
+    __match_args__ = ("value",)
+    value: int
+    def run(self, x: int) -> int: return x
+class Q:
+    def run(self, x: str) -> str: return x
+
+def invalid(value: tuple[P, None] | tuple[Q, int]) -> None:
+    match value:
+        case P(first, second), None:  # E: Too many positional patterns for class pattern \
+                                     # E: Subclass of "Q" and "P" cannot exist: would have incompatible method signatures
+            pass  # E: Statement is unreachable
+        case P(missing=field), None:  # E: Class "__main__.P" has no attribute "missing"
+            pass
+        case _:
+            pass
+[builtins fixtures/tuple.pyi]
+
+[case testMatchTupleProductLengths]
+# flags: --enable-error-code exhaustive-match --warn-unreachable
+def f(value: tuple[()] | tuple[bool] | tuple[bool, bool]) -> int:
+    match value:
+        case ():
+            return 0
+        case (True,):
+            return 1
+        case (False,):
+            return 2
+        case True, True:
+            return 3
+        case True, False:
+            return 4
+        case False, True:
+            return 5
+        case False, False:
+            return 6
+[builtins fixtures/tuple.pyi]
+
+[case testMatchTupleProductExpansionLimit]
+# flags: --enable-error-code exhaustive-match --warn-unreachable
+# Each case splits every remaining alternative on a new pair of positions. The
+# all-False tuple still reaches the fallback even when narrowing hits its limit.
+def f(value: tuple[bool, bool, bool, bool, bool, bool, bool, bool, bool, bool, bool, bool, bool, bool, bool, bool, bool, bool, bool, bool, bool, bool]) -> bool:
+    match value:
+        case True, True, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _:
+            return True
+        case _, _, True, True, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _:
+            return True
+        case _, _, _, _, True, True, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _:
+            return True
+        case _, _, _, _, _, _, True, True, _, _, _, _, _, _, _, _, _, _, _, _, _, _:
+            return True
+        case _, _, _, _, _, _, _, _, True, True, _, _, _, _, _, _, _, _, _, _, _, _:
+            return True
+        case _, _, _, _, _, _, _, _, _, _, True, True, _, _, _, _, _, _, _, _, _, _:
+            return True
+        case _, _, _, _, _, _, _, _, _, _, _, _, True, True, _, _, _, _, _, _, _, _:
+            return True
+        case _, _, _, _, _, _, _, _, _, _, _, _, _, _, True, True, _, _, _, _, _, _:
+            return True
+        case _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, True, True, _, _, _, _:
+            return True
+        case _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, True, True, _, _:
+            return True
+        case _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, True, True:
+            return True
+        case rest:
+            reveal_type(rest[0])  # N: Revealed type is "Literal[False] | Literal[True]"
+            return False
+[builtins fixtures/tuple.pyi]
+
+[case testMatchTupleProductLargeExhaustive]
+# flags: --enable-error-code exhaustive-match --warn-unreachable
+# Narrowing exceeds its 1024-alternative limit here.
+# The coverage check should still prove the match exhaustive.
+def f(value: tuple[bool, bool, bool, bool, bool, bool, bool, bool, bool, bool, bool, bool, bool, bool, bool, bool, bool, bool, bool, bool, bool, bool]) -> int:
+    match value:
+        case True, True, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _:
+            return 1
+        case _, _, True, True, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _:
+            return 1
+        case _, _, _, _, True, True, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _:
+            return 1
+        case _, _, _, _, _, _, True, True, _, _, _, _, _, _, _, _, _, _, _, _, _, _:
+            return 1
+        case _, _, _, _, _, _, _, _, True, True, _, _, _, _, _, _, _, _, _, _, _, _:
+            return 1
+        case _, _, _, _, _, _, _, _, _, _, True, True, _, _, _, _, _, _, _, _, _, _:
+            return 1
+        case _, _, _, _, _, _, _, _, _, _, _, _, True, True, _, _, _, _, _, _, _, _:
+            return 1
+        case _, _, _, _, _, _, _, _, _, _, _, _, _, _, True, True, _, _, _, _, _, _:
+            return 1
+        case _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, True, True, _, _, _, _:
+            return 1
+        case _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, True, True, _, _:
+            return 1
+        case _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, True, True:
+            return 1
+        case _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, False, _:
+            return 0
+        case _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, False:
+            return 0
+[builtins fixtures/tuple.pyi]
+
+[case testMatchTupleProductOpenEnum]
+# flags: --enable-error-code exhaustive-match
+from enum import Enum
+
+class Open(Enum): pass
+class E(Open):
+    A = 1
+
+def base(x: tuple[Enum | bool, bool]) -> int: # E: Missing return statement
+    match x: # E: Match statement has unhandled case for values of type "tuple[Enum, bool]" \
+             # N: If match statement is intended to be non-exhaustive, add `case _: pass`
+        case True, _: return 1
+        case False, _: return 0
+
+def subclassable(x: tuple[Open | bool, bool]) -> int: # E: Missing return statement
+    match x: # E: Match statement has unhandled case for values of type "tuple[Open, bool]" \
+             # N: If match statement is intended to be non-exhaustive, add `case _: pass`
+        case True, _: return 1
+        case False, _: return 0
+
+base((E.A, True))
+subclassable((E.A, True))
+[builtins fixtures/tuple.pyi]
+
+[case testMatchUnchangedUnionCapture]
+from typing import Any, NewType
+
+class A: pass
+class B: pass
+Tagged = NewType("Tagged", int)
+Alias = A | B
+
+def aliased(value: Alias) -> None:
+    match value:
+        case captured:
+            reveal_type(captured)  # N: Revealed type is "__main__.A | __main__.B"
+
+def dynamic(value: Any | A) -> None:
+    match value:
+        case captured:
+            reveal_type(captured)  # N: Revealed type is "Any | __main__.A"
+
+def tagged(value: Tagged | str) -> None:
+    match value:
+        case captured:
+            reveal_type(captured)  # N: Revealed type is "__main__.Tagged | builtins.str"
+
+match True:
+    case captured_bool:
+        reveal_type(captured_bool)  # N: Revealed type is "Literal[True]"
+[builtins fixtures/tuple.pyi]
+
+[case testMatchTupleProductOrCaptureIdentity]
+# flags: --enable-error-code exhaustive-match --warn-unreachable
+def f(value: tuple[bool, bool]) -> bool:
+    match value:
+        case True, True:
+            return True
+        case ((True as flag) | (False as flag)), _:
+            reveal_type(flag)  # N: Revealed type is "builtins.bool"
+            return flag
+
+class A: pass
+class B: pass
+
+def g(value: tuple[A | B, bool]) -> A | B:
+    match value:
+        case A(), True:
+            return value[0]
+        case ((A() as item) | (B() as item)), _:
+            reveal_type(item)  # N: Revealed type is "__main__.A | __main__.B"
+            return item
+
+def invalid(value: tuple[bool, bool]) -> None:
+    match value:
+        case True, True:
+            pass
+        case ((True as flag) | False), _:  # E: Alternative patterns bind different names
+            pass
+
+def invalid_nested(value: tuple[bool]) -> None:
+    match value:
+        case [((True as x) | (False as y)), _] | [(True as x) as y]:  # E: Alternative patterns bind different names
+            pass
+        case _:
+            pass
+
+def invalid_unvisited(value: tuple[bool]) -> None:
+    match value:
+        case ((True as x) | (False as y)), _:  # E: Alternative patterns bind different names
+            pass  # E: Statement is unreachable
+        case _:
+            pass
+[builtins fixtures/tuple.pyi]
+
+[case testMatchTupleProductAliasedCaptureIdentity]
+# flags: --enable-error-code exhaustive-match --warn-unreachable
+from capture_source import exported as flag
+
+def f(value: tuple[bool, bool]) -> bool:
+    global flag
+    match value:
+        case True, True:
+            return True
+        case ((True as flag) | (False as flag)), _:
+            reveal_type(flag)  # N: Revealed type is "builtins.bool"
+            return flag
+[builtins fixtures/tuple.pyi]
+[file capture_source.py]
+exported: bool
+
+[case testMatchTupleProductImpossibleOrAlternative]
+# flags: --warn-unreachable
+def f(value: tuple[int] | tuple[str]) -> None:
+    match value:
+        case (None | int(),):  # E: Subclass of "int" and "NoneType" cannot exist: "NoneType" is final \
+                              # E: Subclass of "str" and "NoneType" cannot exist: "NoneType" is final
+            pass
+        case _:
+            pass
+
+def g(value: tuple[int] | tuple[str]) -> None:
+    match value:
+        case (int() | str(),):
+            pass
+
+def skipped_alternative(value: tuple[()] | tuple[int] | tuple[str]) -> None:
+    match value:
+        case (None | int(),):  # E: Subclass of "int" and "NoneType" cannot exist: "NoneType" is final \
+                              # E: Subclass of "str" and "NoneType" cannot exist: "NoneType" is final
+            pass
+        case _:
+            pass
+[builtins fixtures/tuple.pyi]
+
+[case testMatchTupleProductNestedMatchBindings]
+# flags: --enable-error-code exhaustive-match --warn-unreachable
+def f(outer: tuple[bool, bool], inner: tuple[int | str, bool]) -> None:
+    match outer:
+        case True, True:
+            match inner:
+                case ((int() as item) | (str() as item)), _:
+                    reveal_type(item)  # N: Revealed type is "builtins.int | builtins.str"
+        case ((True as flag) | (False as flag)), _:
+            reveal_type(flag)  # N: Revealed type is "builtins.bool"
+[builtins fixtures/tuple.pyi]
+
+[case testMatchTupleProductNestedExpansionLimit]
+# flags: --enable-error-code exhaustive-match --warn-unreachable
+Bools = tuple[bool, bool, bool, bool, bool, bool, bool, bool, bool, bool, bool, bool, bool, bool, bool, bool, bool, bool, bool, bool, bool, bool]
+
+def f(value: tuple[bool, Bools]) -> None:
+    match value:
+        case _, (True, True, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _):
+            pass
+        case _, (_, _, True, True, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _):
+            pass
+        case _, (_, _, _, _, True, True, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _):
+            pass
+        case _, (_, _, _, _, _, _, True, True, _, _, _, _, _, _, _, _, _, _, _, _, _, _):
+            pass
+        case _, (_, _, _, _, _, _, _, _, True, True, _, _, _, _, _, _, _, _, _, _, _, _):
+            pass
+        case _, (_, _, _, _, _, _, _, _, _, _, True, True, _, _, _, _, _, _, _, _, _, _):
+            pass
+        case _, (_, _, _, _, _, _, _, _, _, _, _, _, True, True, _, _, _, _, _, _, _, _):
+            pass
+        case _, (_, _, _, _, _, _, _, _, _, _, _, _, _, _, True, True, _, _, _, _, _, _):
+            pass
+        case _, (_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, True, True, _, _, _, _):
+            pass
+        case _, (_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, True, True, _, _):
+            pass
+        case _, (_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, True, True):
+            pass
+        case _, (False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False):
+            reveal_type(value[1][-1])  # N: Revealed type is "Literal[False]"
+        case rest:
+            reveal_type(rest[1][-2:])  # N: Revealed type is "tuple[builtins.bool, builtins.bool]"
+[builtins fixtures/tuple.pyi]
+
+[case testMatchTupleProductRecursiveAliasBudget]
+# flags: --enable-error-code exhaustive-match --warn-unreachable
+Tree = tuple["Tree", "Tree"] | None
+
+def f(value: tuple[bool, bool, Tree]) -> int:
+    match value:
+        case True, True, _:
+            return 1
+        case True, False, _:
+            return 2
+        case False, True, _:
+            return 3
+        case False, False, tree:
+            reveal_type(tree)  # N: Revealed type is "tuple[tuple[..., ...] | None, tuple[..., ...] | None] | None"
+            return 4
 [builtins fixtures/tuple.pyi]
 
 [case testMatchSequenceWildcardRefutability]
@@ -3769,13 +4434,36 @@ class B(TypedDict):
     num: int
 
 d: A | B
-match d["tag"]: # E: Match statement has unhandled case for values of type "B" \
-                # N: If match statement is intended to be non-exhaustive, add `case _: pass` \
-                # E: Match statement has unhandled case for values of type "Literal['b']"
+match d["tag"]: # E: Match statement has unhandled case for values of type "Literal['b']" \
+                # N: If match statement is intended to be non-exhaustive, add `case _: pass`
     case "a":
         reveal_type(d)  # N: Revealed type is "TypedDict('__main__.A', {'tag': Literal['a'], 'name': builtins.str})"
         reveal_type(d["name"])  # N: Revealed type is "builtins.str"
 [typing fixtures/typing-typeddict.pyi]
+
+[case testExhaustiveMatchFinalGuard]
+# flags: --enable-error-code exhaustive-match --warn-unreachable
+def f(value: bool, guard: bool) -> None:
+    match value:  # E: Match statement has unhandled case for values of type "Literal[False]" \
+                  # N: If match statement is intended to be non-exhaustive, add `case _: pass`
+        case True:
+            pass
+        case False if guard:
+            pass
+
+[case testExhaustiveMatchTrailingUnreachableCapture]
+# flags: --enable-error-code exhaustive-match --warn-unreachable
+class A: pass
+class B: pass
+
+def f(x: A | None) -> None:
+    match x:
+        case None:
+            pass
+        case A() as a:
+            pass
+        case B():
+            pass  # E: Statement is unreachable
 
 [case testEnumTypeObjectMember]
 # flags: --strict-equality --warn-unreachable

@@ -88,7 +88,11 @@ from mypy.checkmember import (
     analyze_member_access,
     is_instance_var,
 )
-from mypy.checkpattern import PatternChecker
+from mypy.checkpattern import (
+    MAX_TUPLE_PATTERN_REST_ITEMS,
+    PatternChecker,
+    analyze_pattern_bindings,
+)
 from mypy.constraints import SUPERTYPE_OF
 from mypy.erasetype import (
     erase_type,
@@ -211,6 +215,7 @@ from mypy.nodes import (
 )
 from mypy.operators import flip_ops, int_op_to_method, neg_ops
 from mypy.options import PRECISE_TUPLE_TYPES, Options
+from mypy.patterncoverage import is_product_exhaustive
 from mypy.patterns import AsPattern, StarredPattern
 from mypy.plugin import Plugin
 from mypy.plugins import dataclasses as dataclasses_plugin
@@ -6101,22 +6106,30 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
             if isinstance(subject_type, DeletedType):
                 self.msg.deleted_as_rvalue(subject_type, s)
 
+            # Syntax and capture identity are independent of the narrowed subject.
+            # Prepare them once for both inference passes and all union alternatives.
+            pattern_bindings = analyze_pattern_bindings(s.patterns, self.msg)
+
             # We infer types of patterns twice. The first pass is used
             # to infer the types of capture variables. The type of a
             # capture variable may depend on multiple patterns (it
             # will be a union of all capture types). This pass ignores
             # guard expressions.
-            pattern_types = [self.pattern_checker.accept(p, subject_type) for p in s.patterns]
+            pattern_types = [
+                self.pattern_checker.check_pattern(p, subject_type, pattern_bindings)
+                for p in s.patterns
+            ]
             type_maps: list[TypeMap] = [t.captures for t in pattern_types]
             inferred_types = self.infer_variable_types_from_type_maps(type_maps)
 
             # The second pass narrows down the types and type checks bodies.
-            unmatched_types: TypeMap = {s.subject: UninhabitedType()}
             for p, g, b in zip(s.patterns, s.guards, s.bodies):
                 current_subject_type = self.expr_checker.narrow_type_from_binder(
                     named_subject, subject_type
                 )
-                pattern_type = self.pattern_checker.accept(p, current_subject_type)
+                pattern_type = self.pattern_checker.check_pattern(
+                    p, current_subject_type, pattern_bindings
+                )
                 with self.binder.frame_context(can_skip=True, fall_through=2):
                     pattern_map, else_map = conditional_types_to_typemaps(
                         named_subject, pattern_type.type, pattern_type.rest_type
@@ -6166,11 +6179,25 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                     else:
                         self.accept(b)
                 self.push_type_map(else_map, from_assignment=False)
-                unmatched_types = else_map
 
-            if not is_unreachable_map(unmatched_types) and not self.current_node_deferred:
-                for typ in unmatched_types.values():
-                    self.msg.match_statement_inexhaustive_match(typ, s)
+            if not self.binder.is_unreachable() and not self.current_node_deferred:
+                # An opaque guard may leave an empty else_map (no new constraints),
+                # not an empty remainder. Consult the accumulated subject narrowing
+                # rather than the final case's map, which can also contain captures.
+                if all(g is None for g in s.guards) and is_product_exhaustive(
+                    subject_type,
+                    s.patterns,
+                    self.lookup_type_or_none,
+                    limit=MAX_TUPLE_PATTERN_REST_ITEMS,
+                ):
+                    # This is the path where no case matched.
+                    # The enclosing binder frame merges the exits from case bodies separately.
+                    self.binder.unreachable()
+                else:
+                    remaining_type = self.expr_checker.narrow_type_from_binder(
+                        named_subject, subject_type
+                    )
+                    self.msg.match_statement_inexhaustive_match(remaining_type, s)
 
             # This is needed due to a quirk in frame_context. Without it types will stay narrowed
             # after the match.
@@ -8311,6 +8338,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
         default: None = None,
         *,
         consider_runtime_isinstance: bool = True,
+        intersection_errors: list[tuple[str, str]] | None = None,
     ) -> tuple[Type | None, Type | None]: ...
 
     @overload
@@ -8322,6 +8350,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
         default: Type,
         *,
         consider_runtime_isinstance: bool = True,
+        intersection_errors: list[tuple[str, str]] | None = None,
     ) -> tuple[Type, Type]: ...
 
     def conditional_types_with_intersection(
@@ -8332,6 +8361,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
         default: Type | None = None,
         *,
         consider_runtime_isinstance: bool = True,
+        intersection_errors: list[tuple[str, str]] | None = None,
     ) -> tuple[Type | None, Type | None]:
         initial_types = conditional_types(
             expr_type,
@@ -8381,8 +8411,13 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
         if not out:
             # Only report errors if no element in the union worked.
             if self.should_report_unreachable_issues():
-                for types, reason in errors:
-                    self.msg.impossible_intersection(types, reason, ctx)
+                if intersection_errors is not None:
+                    # Pattern analysis decides reachability after combining all
+                    # alternatives. Return the reasons without emitting diagnostics.
+                    intersection_errors.extend(errors)
+                else:
+                    for types, reason in errors:
+                        self.msg.impossible_intersection(types, reason, ctx)
             return UninhabitedType(), expr_type
         new_yes_type = make_simplified_union(out)
         return new_yes_type, expr_type
