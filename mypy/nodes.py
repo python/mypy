@@ -176,6 +176,7 @@ implicit_module_attrs: Final = {
     "__file__": "__builtins__.str",
     "__package__": "__builtins__.str",
     "__annotations__": None,  # dict[str, Any] bounded in add_implicit_module_attrs()
+    "__loader__": None,  # _typeshed.importlib.LoaderProtocol | None, see semanal.py
     "__spec__": None,  # importlib.machinery.ModuleSpec bounded in add_implicit_module_attrs()
 }
 
