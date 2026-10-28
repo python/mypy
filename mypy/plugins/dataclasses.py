@@ -664,10 +664,7 @@ class DataclassTransformer:
             ):
                 # A final attribute can only be assigned in __init__(), so if it is
                 # excluded from __init__() and has no default value, it can never be set.
-                self._api.fail(
-                    "Final field must have a default value if init=False",
-                    stmt.rvalue,
-                )
+                self._api.fail("Final field must have a default value if init=False", stmt.rvalue)
 
             if not has_default and self._spec is _TRANSFORM_SPEC_FOR_DATACLASSES:
                 # Make all non-default dataclass attributes implicit because they are de-facto
