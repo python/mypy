@@ -6168,7 +6168,8 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                 self.push_type_map(else_map, from_assignment=False)
                 unmatched_types = else_map
 
-            if not is_unreachable_map(unmatched_types) and not self.current_node_deferred:
+            s.unreachable_else = is_unreachable_map(unmatched_types)
+            if not s.unreachable_else and not self.current_node_deferred:
                 for typ in unmatched_types.values():
                     self.msg.match_statement_inexhaustive_match(typ, s)
 
