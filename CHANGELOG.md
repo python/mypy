@@ -259,6 +259,11 @@ Related changes:
 
 Please see [git log](https://github.com/python/typeshed/commits/main?after=6d045a9fff15db83b49b89b14b8dd47ff382470c+0&branch=main&path=stdlib) for the full list of standard library typeshed stub changes.
 
+### Mypy 2.4.1
+
+- Process overloads as a whole in two-phase type checking (Ivan Levkivskyi, PR [22231](https://github.com/python/mypy/pull/22231))
+- Skip recursive setup for frame-private nested functions in mypyc (Piotr Sawicki, PR [22187](https://github.com/python/mypy/pull/22187))
+
 ### Acknowledgements
 
 Thanks to all mypy contributors who contributed to this release:
