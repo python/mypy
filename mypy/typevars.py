@@ -70,7 +70,7 @@ def fill_typevars_with_any(typ: TypeInfo) -> Instance | TupleType:
     erased_tuple_type = erase_typevars(typ.tuple_type, {tv.id for tv in typ.defn.type_vars})
     assert isinstance(erased_tuple_type, ProperType)
     if isinstance(erased_tuple_type, TupleType):
-        return typ.tuple_type.copy_modified(fallback=inst)
+        return erased_tuple_type.copy_modified(fallback=inst)
     return inst
 
 

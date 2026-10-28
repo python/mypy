@@ -155,6 +155,7 @@ from mypy.typeops import (
     fixup_partial_type,
     freeze_all_type_vars,
     get_all_type_vars,
+    get_tuple_item_types,
     get_type_vars,
     is_literal_type_like,
     make_simplified_union,
@@ -4536,13 +4537,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
 
         Type inference is special-cased for this common construct.
         """
-        right_type = self.accept(e.right)
-        if is_subtype(right_type, self.named_type("builtins.int")):
-            # Special case: [...] * <int value>. Use the type context of the
-            # OpExpr, since the multiplication does not affect the type.
-            left_type = self.accept(e.left, type_context=self.type_context[-1])
-        else:
-            left_type = self.accept(e.left)
+        left_type = self.accept(e.left, type_context=self.type_context[-1])
         result, method_type = self.check_op("__mul__", left_type, e.right, e)
         e.method_type = method_type
         return result
@@ -4832,29 +4827,10 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
     def nonliteral_tuple_index_helper(self, left_type: TupleType, index: Expression) -> Type:
         self.check_method_call_by_name("__getitem__", left_type, [index], [ARG_POS], context=index)
         # We could return the return type from above, but unions are often better than the join
-        union = self.union_tuple_fallback_item(left_type)
+        union = make_simplified_union(get_tuple_item_types(left_type))
         if isinstance(index, SliceExpr):
             return self.chk.named_generic_type("builtins.tuple", [union])
         return union
-
-    def union_tuple_fallback_item(self, left_type: TupleType) -> Type:
-        # TODO: this duplicates logic in typeops.tuple_fallback().
-        items = []
-        for item in left_type.items:
-            if isinstance(item, UnpackType):
-                unpacked_type = get_proper_type(item.type)
-                if isinstance(unpacked_type, TypeVarTupleType):
-                    unpacked_type = get_proper_type(unpacked_type.upper_bound)
-                if (
-                    isinstance(unpacked_type, Instance)
-                    and unpacked_type.type.fullname == "builtins.tuple"
-                ):
-                    items.append(unpacked_type.args[0])
-                else:
-                    raise NotImplementedError
-            else:
-                items.append(item)
-        return make_simplified_union(items)
 
     def visit_typeddict_index_expr(
         self, td_type: TypedDictType, index: Expression, setitem: bool = False
