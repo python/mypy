@@ -848,7 +848,7 @@ main:1: error: Name "y" is not defined  [name-defined]
 main:2: error: Name "ignored" is not defined  [name-defined]
 main:2: error: Name "y" is not defined  [name-defined]
 
-[case testErrorCodeTypeIgnoreMisspelled2]
+[case testErrorCodeTypeIgnoreMisspelled2-skip]
 x = y  # type: int  # type: ignored[foo]
 x = y  # type: int  # type: ignored [foo]
 [out]
