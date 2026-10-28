@@ -1646,8 +1646,6 @@ def find_node_type(
     """Find type of a variable or method 'node' (maybe also a decorated method).
     Apply type arguments from 'itype', and bind 'self' to 'subtype'.
     """
-    from mypy.typeops import bind_self, bind_self_fast
-
     if isinstance(node, FuncBase):
         typ: Type | None = mypy.typeops.function_type(
             node, fallback=Instance(itype.type.mro[-1], [])
@@ -1677,10 +1675,10 @@ def find_node_type(
         ):
             # Don't bind instance methods on class objects.
             signature = p_typ
-        elif isinstance(node, (FuncDef, OverloadedFuncDef)):
-            signature = bind_self_fast(p_typ, subtype)
+        elif isinstance(node, (FuncDef, OverloadedFuncDef)) and node.is_trivial_self:
+            signature = mypy.typeops.bind_self_fast(p_typ, subtype)
         else:
-            signature = bind_self(
+            signature = mypy.typeops.bind_self(
                 p_typ, subtype, is_classmethod=isinstance(node, Var) and node.is_classmethod
             )
         if node.is_property and not class_obj:
