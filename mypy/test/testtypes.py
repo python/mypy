@@ -31,11 +31,12 @@ from mypy.state import state
 from mypy.subtypes import is_more_precise, is_proper_subtype, is_same_type, is_subtype
 from mypy.test.helpers import Suite, assert_equal, assert_type, skip
 from mypy.test.typefixture import InterfaceTypeFixture, TypeFixture
-from mypy.typeops import false_only, make_simplified_union, true_only
+from mypy.typeops import _TupleUnionIndex, false_only, make_simplified_union, true_only
 from mypy.types import (
     LITERAL_TYPE,
     AnyType,
     CallableType,
+    ErasedType,
     Instance,
     LiteralType,
     NoneType,
@@ -656,6 +657,152 @@ class TypeOpsSuite(Suite):
             literals.append(LiteralType("v%d" % i, fx.str_type))
         # This shouldn't be very slow, even if the union is big.
         self.assert_simplified_union([*literals, fx.str_type], fx.str_type)
+
+    def test_simplified_union_large_tuple_product(self) -> None:
+        literals = [LiteralType(str(i), self.fx.str_type) for i in range(32)]
+        # Keep the correlation between positions: this is a diagonal, not the
+        # Cartesian product of the two columns.
+        rows = [self.tuple(item, item) for item in literals]
+        self.assert_simplified_union([*rows, *rows], UnionType(rows))
+
+    def test_simplified_union_large_tuple_product_subsumption(self) -> None:
+        rows = [self.tuple(LiteralType(str(i), self.fx.str_type), self.fx.b) for i in range(32)]
+        broad = self.tuple(self.fx.str_type, self.fx.a)
+        unrelated = self.tuple(self.fx.str_type, self.fx.d)
+        self.assert_simplified_union([*rows, broad, unrelated], UnionType([broad, unrelated]))
+
+    def test_simplified_union_large_tuple_product_arities(self) -> None:
+        rows: list[Type] = [self.tuple()]
+        rows.extend(
+            self.tuple(*[LiteralType(str(i), self.fx.str_type)] * (1 + i % 3)) for i in range(32)
+        )
+        self.assert_simplified_union(rows, UnionType(rows))
+        # A non-tuple member still participates in ordinary union simplification.
+        self.assert_simplified_union([*rows, self.fx.o], self.fx.o)
+
+    def test_simplified_union_large_nested_tuple_product(self) -> None:
+        rows = [
+            self.tuple(self.tuple(item, item), self.fx.b)
+            for item in (LiteralType(str(i), self.fx.str_type) for i in range(32))
+        ]
+        broad = self.tuple(self.tuple(self.fx.str_type, self.fx.str_type), self.fx.a)
+        self.assert_simplified_union([*rows, broad], broad)
+
+    def test_simplified_union_large_tuple_product_fallbacks(self) -> None:
+        literals = [LiteralType(str(i), self.fx.str_type) for i in range(8)]
+        rows: list[Type] = [
+            TupleType([item], fallback)
+            for item in literals
+            for fallback in (self.fx.a, self.fx.b, self.fx.d)
+        ]
+        # B inherits A, but D is unrelated. Equal items do not imply that two
+        # tuple types with distinct nominal fallbacks are interchangeable.
+        expected = [
+            TupleType([item], fallback) for item in literals for fallback in (self.fx.a, self.fx.d)
+        ]
+        self.assert_simplified_union(rows, UnionType(expected))
+
+    def test_simplified_union_large_tuple_product_any(self) -> None:
+        rows = [self.tuple(LiteralType(str(i), self.fx.str_type), self.fx.a) for i in range(32)]
+        broad = self.tuple(self.fx.str_type, self.fx.anyt)
+        # Proper subtyping must not erase precise alternatives in favor of Any.
+        self.assert_simplified_union([*rows, broad], UnionType([*rows, broad]))
+
+    def test_tuple_union_index_eligibility(self) -> None:
+        fixed = self.tuple(self.fx.a, self.fx.b)
+        assert _TupleUnionIndex.create([fixed], keep_erased=False) is None
+        assert _TupleUnionIndex.create([fixed] * 32, keep_erased=False) is not None
+        assert _TupleUnionIndex.create([fixed] * 32 + [self.fx.a], keep_erased=False) is None
+
+        variadic = self.tuple(UnpackType(self.fx.std_tuple))
+        assert _TupleUnionIndex.create([variadic] * 32, keep_erased=False) is None
+        recursive, _ = self.fx.def_alias_1(self.fx.a)
+        assert _TupleUnionIndex.create([self.tuple(recursive)] * 32, keep_erased=False) is None
+
+    def test_tuple_union_index_preserves_supertypes(self) -> None:
+        components = [
+            self.fx.a,
+            self.fx.b,
+            self.fx.c,
+            self.fx.o,
+            self.fx.anyt,
+            self.fx.nonet,
+            ErasedType(),
+            self.fx.lit1,
+        ]
+        rows = [self.tuple(left, right) for left in components for right in components[:3]]
+        rows.extend([self.tuple(), self.tuple(self.fx.a)])
+        queries = [*rows, self.tuple(self.fx.d, self.fx.d)]
+        queries.extend(
+            self.tuple(LiteralType(str(i), self.fx.str_type), self.fx.a) for i in range(100)
+        )
+
+        for strict_optional in (True, False):
+            with state.strict_optional_set(strict_optional):
+                for keep_erased in (True, False):
+                    index = _TupleUnionIndex.create(rows, keep_erased)
+                    assert index is not None
+                    for row, typ in enumerate(rows):
+                        expected_before_insert = {
+                            i
+                            for i, target in enumerate(rows[:row])
+                            if is_proper_subtype(
+                                typ, target, ignore_promotions=True, keep_erased_types=keep_erased
+                            )
+                        }
+                        assert expected_before_insert <= set(index.candidate_indices(typ))
+                        index.add(typ, row)
+                    for query in queries:
+                        candidates = index.candidate_indices(query)
+                        expected = {
+                            row
+                            for row, target in enumerate(rows)
+                            if is_proper_subtype(
+                                query,
+                                target,
+                                ignore_promotions=True,
+                                keep_erased_types=keep_erased,
+                            )
+                        }
+                        assert expected <= set(candidates)
+                        assert list(candidates) == sorted(set(candidates))
+                        assert all(0 <= row < len(rows) for row in candidates)
+                    assert not index.candidate_indices(self.tuple(self.fx.d, self.fx.d))
+                    # Queries remain correct after a stream of distinct types fills
+                    # the memo, and memoization storage stays bounded by input size.
+                    assert len(index._subtype_cache) <= len(rows)
+
+    def test_tuple_union_index_literal_columns(self) -> None:
+        literal = LiteralType("value", self.fx.a)
+        different_fallback = LiteralType("value", self.fx.d)
+        alias = self.fx.non_rec_alias(literal)
+        literal_union = UnionType([literal, self.fx.lit1])
+        targets = [
+            literal,
+            different_fallback,
+            alias,
+            self.fx.lit1,
+            self.fx.a,
+            self.fx.o,
+            self.fx.anyt,
+            literal_union,
+        ]
+        rows = [self.tuple(target, self.fx.a) for target in targets] * 4
+        index = _TupleUnionIndex.create(rows, keep_erased=False)
+        assert index is not None
+        for row, typ in enumerate(rows):
+            index.add(typ, row)
+
+        # Literal aliases must match both the value and the fallback type.
+        # Other sources still need normal subtype checks against literal targets.
+        for source in [*targets, self.fx.lit1_inst, ErasedType()]:
+            query = self.tuple(source, self.fx.a)
+            expected = [
+                row
+                for row, target in enumerate(rows)
+                if is_proper_subtype(query, target, ignore_promotions=True)
+            ]
+            assert list(index.candidate_indices(query)) == expected
 
     def test_simplified_union_with_str_instance_literals(self) -> None:
         fx = self.fx

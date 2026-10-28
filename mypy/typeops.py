@@ -66,9 +66,11 @@ from mypy.types import (
     UninhabitedType,
     UnionType,
     UnpackType,
+    find_unpack_in_list,
     flatten_nested_unions,
     get_proper_type,
     get_proper_types,
+    has_recursive_types,
     instance_cache,
     remove_dups,
 )
@@ -742,6 +744,7 @@ def _remove_redundant_union_items(items: list[Type], keep_erased: bool) -> list[
     # (by reversing the remaining items)
     for _direction in range(2):
         new_items: list[Type] = []
+        tuple_index = _TupleUnionIndex.create(items, keep_erased)
         # seen is a map from a type to its index in new_items
         seen: dict[ProperType, int] = {}
         unduplicated_literal_fallbacks: set[Instance] | None = None
@@ -770,7 +773,13 @@ def _remove_redundant_union_items(items: list[Type], keep_erased: bool) -> list[
                 pass
             else:
                 # If not, check if we've seen a supertype of this type
-                for j, tj in enumerate(new_items):
+                candidates = (
+                    tuple_index.candidate_indices(proper_ti)
+                    if tuple_index is not None
+                    else range(len(new_items))
+                )
+                for j in candidates:
+                    tj = new_items[j]
                     proper_tj = get_proper_type(tj)
                     # If tj is an Instance with a last_known_value, do not remove proper_ti
                     # (unless it's an instance with the same last_known_value)
@@ -799,6 +808,8 @@ def _remove_redundant_union_items(items: list[Type], keep_erased: bool) -> list[
             else:
                 # We have a non-duplicate item, add it to new_items
                 seen[proper_ti] = len(new_items)
+                if tuple_index is not None:
+                    tuple_index.add(proper_ti, len(new_items))
                 new_items.append(ti)
                 if isinstance(proper_ti, LiteralType):
                     if unduplicated_literal_fallbacks is None:
@@ -811,6 +822,109 @@ def _remove_redundant_union_items(items: list[Type], keep_erased: bool) -> list[
         items.reverse()
 
     return items
+
+
+class _TupleUnionColumn:
+    """Separate exact literal targets from targets requiring subtype checks."""
+
+    def __init__(self) -> None:
+        self.literal_rows: dict[LiteralType, set[int]] = {}
+        self.general_rows: dict[Type, set[int]] = {}
+
+
+class _TupleUnionIndex:
+    """Find possible tuple supertypes without repeating whole-tuple comparisons.
+
+    A fixed tuple subtype must have compatible items at every position. Each
+    column maps an item type to the retained rows containing it. Intersecting
+    compatible rows across columns leaves candidates for the ordinary subtype
+    check, which still verifies fallbacks and other tuple-level constraints.
+
+    An index belongs to one simplification pass. Row IDs are append-only positions
+    in the caller's retained-item list. Widening a retained tuple's truthiness is
+    safe because it does not change its items; removing or reordering rows requires
+    a new index. Subtype options and the ambient typing context stay fixed for the
+    lifetime of its bounded memo.
+    """
+
+    def __init__(self, keep_erased: bool, cache_size: int) -> None:
+        self._context = mypy.subtypes.SubtypeContext(
+            keep_erased_types=keep_erased, ignore_promotions=True
+        )
+        self._max_cache_entries = cache_size
+        self._rows: dict[int, set[int]] = {}
+        self._columns: dict[int, list[_TupleUnionColumn]] = {}
+        self._subtype_cache: dict[tuple[Type, Type], bool] = {}
+
+    @classmethod
+    def create(cls, items: Sequence[Type], keep_erased: bool) -> _TupleUnionIndex | None:
+        # Index setup only pays off for larger unions. Other unions retain the
+        # generic scan, including tuples requiring recursive or variadic subtyping.
+        if len(items) < 16:
+            return None
+        for item in items:
+            typ = get_proper_type(item)
+            if isinstance(typ, UninhabitedType):
+                continue
+            if not isinstance(typ, TupleType):
+                return None
+            if find_unpack_in_list(typ.items) is not None or has_recursive_types(typ):
+                return None
+        return cls(keep_erased, cache_size=len(items))
+
+    def add(self, typ: ProperType, row: int) -> None:
+        assert isinstance(typ, TupleType)
+        width = len(typ.items)
+        self._rows.setdefault(width, set()).add(row)
+        if width not in self._columns:
+            self._columns[width] = [_TupleUnionColumn() for _ in typ.items]
+        for item, column in zip(typ.items, self._columns[width]):
+            proper_item = get_proper_type(item)
+            if isinstance(proper_item, LiteralType):
+                column.literal_rows.setdefault(proper_item, set()).add(row)
+            else:
+                column.general_rows.setdefault(item, set()).add(row)
+
+    def candidate_indices(self, typ: ProperType) -> Sequence[int]:
+        """Return ordered retained-row IDs, including every possible supertype."""
+        assert isinstance(typ, TupleType)
+        width = len(typ.items)
+        if width not in self._rows:
+            return ()
+        candidates = self._rows[width].copy()
+        for item, column in zip(typ.items, self._columns[width]):
+            proper_item = get_proper_type(item)
+            compatible: set[int]
+            targets: Iterable[tuple[Type, set[int]]]
+            if isinstance(proper_item, LiteralType):
+                # Literal-to-literal subtyping is equality, including the fallback.
+                # General targets (e.g. str or a union of literals) still need checks.
+                compatible = candidates.intersection(column.literal_rows.get(proper_item, ()))
+                targets = column.general_rows.items()
+            else:
+                compatible = set()
+                targets = itertools.chain(column.literal_rows.items(), column.general_rows.items())
+            for target, rows in targets:
+                if candidates.isdisjoint(rows):
+                    continue
+                if self._is_subtype(item, target):
+                    # Earlier columns have already ruled out the other rows.
+                    compatible.update(candidates.intersection(rows))
+            candidates = compatible
+            if not candidates:
+                return ()
+        # Preserve the generic simplifier's choice of the first retained supertype.
+        return sorted(candidates)
+
+    def _is_subtype(self, item: Type, target: Type) -> bool:
+        key = (item, target)
+        if key in self._subtype_cache:
+            return self._subtype_cache[key]
+        result = mypy.subtypes.is_proper_subtype(item, target, subtype_context=self._context)
+        # High-cardinality columns must not turn memoization into a quadratic cache.
+        if len(self._subtype_cache) < self._max_cache_entries:
+            self._subtype_cache[key] = result
+        return result
 
 
 def _get_type_method_ret_type(t: ProperType, *, name: str) -> Type | None:
