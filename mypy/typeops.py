@@ -1153,6 +1153,12 @@ def try_expanding_sum_type_to_union(typ: Type, target_fullname: str | None) -> T
     if isinstance(typ, Instance) and (
         target_fullname is None or typ.type.fullname == target_fullname
     ):
+        if typ.last_known_value is not None:
+            # The expression is already known to hold this specific value, so keep it: expanding
+            # to all members of the sum type would forget it and break narrowing, e.g. matching a
+            # ``False`` literal subject against ``case False`` would not be exhaustive.
+            return typ.last_known_value
+
         if typ.type.fullname == "builtins.bool":
             return UnionType([LiteralType(True, typ), LiteralType(False, typ)])
 

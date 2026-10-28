@@ -50,6 +50,34 @@ def foo(m: bool, x: int):
             reveal_type(m)  # N: Revealed type is "builtins.bool"
 [builtins fixtures/primitives.pyi]
 
+[case testMatchBoolLiteralSubjectIsExhaustive]
+# flags: --strict-equality --warn-unreachable
+
+def f() -> int:
+    match False:
+        case True:
+            return 1  # E: Statement is unreachable
+        case False:
+            return 0
+
+def g(b: bool) -> int:
+    match b:
+        case True:
+            return 1
+        case False:
+            return 0
+
+def h() -> int:
+    match False:
+        case True:
+            return 1  # E: Statement is unreachable
+        case False:
+            return 0
+        case other:
+            reveal_type(other)  # E: Statement is unreachable
+            return 2
+[builtins fixtures/primitives.pyi]
+
 [case testMatchLiteralPatternUnreachable]
 # flags: --strict-equality --warn-unreachable
 m: int
