@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import itertools
 from collections.abc import Callable, Iterable, Sequence
-from typing import Any, Final, TypeVar, cast
+from typing import Any, TypeVar, cast
 
 import mypy.subtypes
 from mypy.checker_state import checker_state
@@ -72,14 +72,9 @@ from mypy.types import (
     instance_cache,
     remove_dups,
 )
+from mypy.typestate import BIND_SELF_CACHE_MAX_SIZE, type_state
 from mypy.typetraverser import TypeTraverserVisitor
 from mypy.typevars import fill_typevars
-
-BindSelfCacheKey = tuple[CallableType, Type, bool, bool]
-BindSelfCacheValue = tuple[CallableType, Sequence[TypeVarLikeType]]
-
-BIND_SELF_CACHE: Final[dict[BindSelfCacheKey, BindSelfCacheValue]] = {}
-BIND_SELF_CACHE_MAX_SIZE: Final = 10000
 
 
 def is_recursive_pair(s: Type, t: Type) -> bool:
@@ -562,8 +557,8 @@ def bind_self_inner(
             # Only use cache for something that in not freshened (e.g. protocol access),
             # otherwise it would be pointless as each fresh meta variable is unique.
             cache_key = (func, original_type, is_classmethod, ignore_instances)
-        if cache_key is not None and cache_key in BIND_SELF_CACHE:
-            return BIND_SELF_CACHE[cache_key]
+        if cache_key is not None and cache_key in type_state.bind_self_cache:
+            return type_state.bind_self_cache[cache_key]
 
         # Solve for these type arguments using the actual class or instance type.
         typeargs = infer_type_arguments(
@@ -589,9 +584,9 @@ def bind_self_inner(
         func = expand_type(func, {tv.id: arg for tv, arg in zip(self_vars, to_apply)})
         variables = [v for v in func.variables if v not in self_vars]
         if cache_key is not None:
-            if len(BIND_SELF_CACHE) > BIND_SELF_CACHE_MAX_SIZE:
-                BIND_SELF_CACHE.clear()
-            BIND_SELF_CACHE[cache_key] = func, variables
+            if len(type_state.bind_self_cache) > BIND_SELF_CACHE_MAX_SIZE:
+                type_state.bind_self_cache.clear()
+            type_state.bind_self_cache[cache_key] = func, variables
     else:
         variables = func.variables
     return func, variables
