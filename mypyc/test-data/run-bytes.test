@@ -579,7 +579,29 @@ class bytes_subclass(bytes):
         return b'spook'
 
 [case testBytesFormatting]
+import sys
+from typing import Any
 from testutil import assertRaises
+
+def format_int(n: int) -> bytes:
+    return b"%d" % n
+
+def test_bytes_formatting_error_propagation() -> None:
+    sys_module: Any = sys
+    if hasattr(sys_module, "set_int_max_str_digits"):
+        old_limit = sys_module.get_int_max_str_digits()
+        try:
+            sys_module.set_int_max_str_digits(640)
+            n = 10 ** 1000
+            before = sys_module.getrefcount(n)
+            for _ in range(3):
+                with assertRaises(ValueError):
+                    format_int(n)
+            assert sys_module.getrefcount(n) == before
+            assert n == 10 ** 1000  # Keep n alive across both refcount checks.
+        finally:
+            sys_module.set_int_max_str_digits(old_limit)
+    assert format_int(123) == b"123"
 
 # https://www.python.org/dev/peps/pep-0461/
 def test_bytes_formatting() -> None:
