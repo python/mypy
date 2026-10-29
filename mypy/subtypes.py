@@ -1591,11 +1591,7 @@ def get_member_flags(name: str, itype: Instance, class_obj: bool = False) -> set
             assert isinstance(method, OverloadedFuncDef)
             dec = method.items[0]
             assert isinstance(dec, Decorator)
-            if (
-                dec.var.is_settable_property
-                or (setattr_meth := info.get_method("__setattr__"))
-                and (setattr_meth.info.fullname != "builtins.object")
-            ):
+            if dec.var.is_settable_property or info.get_method("__setattr__"):
                 flags = {IS_VAR, IS_SETTABLE}
                 if dec.var.setter_type is not None:
                     flags.add(IS_EXPLICIT_SETTER)
@@ -1605,9 +1601,7 @@ def get_member_flags(name: str, itype: Instance, class_obj: bool = False) -> set
         return set()  # Just a regular method
     node = info.get(name)
     if not node:
-        if (setattr_meth := info.get_method("__setattr__")) and (
-            setattr_meth.info.fullname != "builtins.object"
-        ):
+        if info.get_method("__setattr__"):
             return {IS_SETTABLE}
         if itype.extra_attrs and name in itype.extra_attrs.attrs:
             flags = set()
