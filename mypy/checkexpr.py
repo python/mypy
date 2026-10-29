@@ -4433,13 +4433,18 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                 recent_context = TempNode(NoneType())
                 recent_context.line = err.line
                 recent_context.column = err.column
+                # Use the error code of the message these notes explain, so that an
+                # ignore comment for that code also silences the notes.
+                note_code = err.code or codes.OPERATOR
                 if len(left_variants) >= 2 and len(right_variants) >= 2:
-                    self.msg.warn_both_operands_are_from_unions(recent_context)
+                    self.msg.warn_both_operands_are_from_unions(recent_context, code=note_code)
                 elif len(left_variants) >= 2:
-                    self.msg.warn_operand_was_from_union("Left", base_type, context=recent_context)
+                    self.msg.warn_operand_was_from_union(
+                        "Left", base_type, context=recent_context, code=note_code
+                    )
                 elif len(right_variants) >= 2:
                     self.msg.warn_operand_was_from_union(
-                        "Right", right_type, context=recent_context
+                        "Right", right_type, context=recent_context, code=note_code
                     )
 
             # See the comment in 'check_overload_call' for more details on why
