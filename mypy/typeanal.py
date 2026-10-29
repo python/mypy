@@ -2806,6 +2806,13 @@ class FindTypeVarVisitor(SyntheticTypeVisitor[None]):
         self.type_var_likes: list[tuple[str, TypeVarLikeExpr]] = []
         self.has_self_type = False
         self.include_callables = True
+        # Only set when scanning base classes for type variables: an argument
+        # of a subscripted base may be a value, not a type name (e.g. the
+        # string key in `kwargs['some_any_field']`, converted to an
+        # UnboundType by parse_type_string), so an unknown name there is not
+        # an error. Undefined type names in bases are reported when the
+        # bases are analyzed.
+        self.suppress_name_errors = False
 
     def _seems_like_callable(self, type: UnboundType) -> bool:
         if not type.args:
@@ -2814,7 +2821,7 @@ class FindTypeVarVisitor(SyntheticTypeVisitor[None]):
 
     def visit_unbound_type(self, t: UnboundType) -> None:
         name = t.name
-        node = self.api.lookup_qualified(name, t)
+        node = self.api.lookup_qualified(name, t, suppress_errors=self.suppress_name_errors)
         if node and node.fullname in SELF_TYPE_NAMES:
             self.has_self_type = True
         if (

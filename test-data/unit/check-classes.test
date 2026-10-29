@@ -10117,6 +10117,46 @@ def f(v: Any) -> None:
                                # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
 [builtins fixtures/tuple.pyi]
 
+[case testSubclassAnyFromKwargsTypedDictEntry]
+# https://github.com/python/mypy/issues/22309
+from typing import Any, TypedDict
+from typing_extensions import Unpack
+
+class Person(TypedDict):
+    name: str
+    age: int
+    some_any_field: Any
+
+def foo(arg: bool, **kwargs: Unpack[Person]) -> None:
+    class Sub(kwargs["some_any_field"]): pass
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testSubclassAnyFromKwargsDict]
+# https://github.com/python/mypy/issues/22309
+from typing import Any
+
+def foo(**kwargs: Any) -> None:
+    class Sub(kwargs["some_any_field"]): pass
+[builtins fixtures/dict.pyi]
+
+[case testSubclassNonAnyFromKwargsTypedDictEntry]
+# https://github.com/python/mypy/issues/22309
+from typing import Any, TypedDict
+from typing_extensions import Unpack
+
+class Person(TypedDict):
+    name: str
+    age: int
+    some_any_field: Any
+
+def foo(arg: bool, **kwargs: Unpack[Person]) -> None:
+    class Sub(kwargs["name"]): pass  # E: Variable "kwargs" is not valid as a type \
+                                     # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases \
+                                     # E: Invalid base class "kwargs"
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
 [case testTypeVarDefaultErrorLocation]
 from typing import Generic
 

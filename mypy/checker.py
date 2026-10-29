@@ -2965,37 +2965,68 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
             return value
         return None
 
+    @staticmethod
+    def index_expr_str_value(index: Expression) -> str | None:
+        """Value of a constant string index expression, or None."""
+        value = constant_fold_expr(index, "<unused>")
+        if isinstance(value, str):
+            return value
+        return None
+
     def deferred_index_base_type(self, var: Var, base_expr: IndexExpr) -> ProperType | None:
         """Type of a deferred subscripted base class, e.g. ``args[1]``.
 
         ``var`` is the subscripted variable. Return the type of the item at
         the subscript, or None if it cannot be determined statically; the
         base class is then rejected, as it was before deferred validation.
-        Only a constant integer index is supported, and only into a tuple
-        or sequence type, mirroring what can be known about the item type.
+        Only a constant index is supported: an integer index into a tuple
+        or sequence type, or a string index into a TypedDict or mapping
+        type (e.g. ``kwargs['some_any_field']`` for ``**kwargs``), mirroring
+        what can be known about the item type.
         A subscript may itself be subscripted, e.g. ``args[1][0]``; then the
         item type is computed inside out, one index at a time.
         """
-        index_value = self.index_expr_int_value(base_expr.index)
-        if index_value is None:
-            return None
         if isinstance(base_expr.base, NameExpr):
             var_type = get_proper_type(var.type) if var.type is not None else None
         elif isinstance(base_expr.base, IndexExpr):
             var_type = self.deferred_index_base_type(var, base_expr.base)
         else:
             return None
-        if isinstance(var_type, TupleType):
-            return self.tuple_item_at_index(var_type, index_value)
-        if isinstance(var_type, Instance):
-            if var_type.type.fullname in TUPLE_NAMES and var_type.args:
-                # Homogeneous tuple[T, ...]: every item has type T.
-                return get_proper_type(var_type.args[0])
-            sequence_info = var_type.type.get_base("typing.Sequence")
-            if sequence_info is not None:
-                mapped = map_instance_to_supertype(var_type, sequence_info)
-                if mapped.args:
-                    return get_proper_type(mapped.args[0])
+        if var_type is None:
+            return None
+        index_value = self.index_expr_int_value(base_expr.index)
+        if index_value is not None:
+            if isinstance(var_type, TupleType):
+                return self.tuple_item_at_index(var_type, index_value)
+            if isinstance(var_type, Instance):
+                if var_type.type.fullname in TUPLE_NAMES and var_type.args:
+                    # Homogeneous tuple[T, ...]: every item has type T.
+                    return get_proper_type(var_type.args[0])
+                sequence_info = var_type.type.get_base("typing.Sequence")
+                if sequence_info is not None:
+                    mapped = map_instance_to_supertype(var_type, sequence_info)
+                    if mapped.args:
+                        return get_proper_type(mapped.args[0])
+            return None
+        key = self.index_expr_str_value(base_expr.index)
+        if key is not None:
+            if isinstance(var_type, TypedDictType):
+                item_type = var_type.items.get(key)
+                if item_type is not None:
+                    return get_proper_type(item_type)
+                return None
+            if isinstance(var_type, Instance):
+                # Look the base up in the MRO directly: get_base() asserts
+                # if it is missing, which can happen with partial stubs.
+                mapping_info = next(
+                    (base for base in var_type.type.mro if base.fullname == "typing.Mapping"),
+                    None,
+                )
+                if mapping_info is not None:
+                    mapped = map_instance_to_supertype(var_type, mapping_info)
+                    if len(mapped.args) >= 2:
+                        return get_proper_type(mapped.args[1])
+            return None
         return None
 
     def tuple_item_at_index(self, tuple_type: TupleType, index: int) -> ProperType | None:

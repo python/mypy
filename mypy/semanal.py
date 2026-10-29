@@ -2489,8 +2489,11 @@ class SemanticAnalyzer(
             assert isinstance(sym.node, TypeVarExpr)
             return t.name, sym.node
 
-    def find_type_var_likes(self, t: Type) -> TypeVarLikeList:
+    def find_type_var_likes(
+        self, t: Type, *, suppress_name_errors: bool = False
+    ) -> TypeVarLikeList:
         visitor = FindTypeVarVisitor(self, self.tvar_scope)
+        visitor.suppress_name_errors = suppress_name_errors
         t.accept(visitor)
         return visitor.type_var_likes
 
@@ -2506,7 +2509,7 @@ class SemanticAnalyzer(
                 except TypeTranslationError:
                     # This error will be caught later.
                     continue
-                base_tvars = self.find_type_var_likes(base)
+                base_tvars = self.find_type_var_likes(base, suppress_name_errors=True)
                 tvars.extend(base_tvars)
         return remove_dups(tvars)
 
