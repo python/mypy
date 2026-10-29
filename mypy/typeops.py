@@ -558,7 +558,7 @@ def bind_self_inner(
         self_vars = [tv for tv in func.variables if tv.id in self_ids]
 
         cache_key = None
-        if any(tv.id.is_meta_var() for tv in self_vars):
+        if not any(tv.id.is_meta_var() for tv in self_vars) and state.strict_optional:
             # Only use cache for something that in not freshened (e.g. protocol access),
             # otherwise it would be pointless as each fresh meta variable is unique.
             cache_key = (func, original_type, is_classmethod, ignore_instances)
