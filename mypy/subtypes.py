@@ -1490,6 +1490,7 @@ def find_member(
         # to avoid type variable id collisions, but for protocols this means we can't
         # use the assumption stack, that will grow indefinitely.
         # TODO: find a cleaner solution that doesn't involve massive perf impact.
+        # Note: bind_self() cache relies on this, update it if this is changed.
         preserve_type_var_ids=True,
     )
     with type_checker.msg.filter_errors(filter_deprecated=True):

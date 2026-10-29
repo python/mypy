@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import itertools
 from collections.abc import Callable, Iterable, Sequence
-from typing import Any, TypeVar, cast
+from typing import Any, Final, TypeVar, cast
 
 import mypy.subtypes
 from mypy.checker_state import checker_state
@@ -74,6 +74,12 @@ from mypy.types import (
 )
 from mypy.typetraverser import TypeTraverserVisitor
 from mypy.typevars import fill_typevars
+
+BindSelfCacheKey = tuple[CallableType, Type, bool, bool]
+BindSelfCacheValue = tuple[CallableType, Sequence[TypeVarLikeType]]
+
+BIND_SELF_CACHE: Final[dict[BindSelfCacheKey, BindSelfCacheValue]] = {}
+BIND_SELF_CACHE_MAX_SIZE: Final = 10000
 
 
 def is_recursive_pair(s: Type, t: Type) -> bool:
@@ -551,6 +557,14 @@ def bind_self_inner(
         self_ids = {tv.id for tv in get_all_type_vars(self_param_type)}
         self_vars = [tv for tv in func.variables if tv.id in self_ids]
 
+        cache_key = None
+        if any(tv.id.is_meta_var() for tv in self_vars):
+            # Only use cache for something that in not freshened (e.g. protocol access),
+            # otherwise it would be pointless as each fresh meta variable is unique.
+            cache_key = (func, original_type, is_classmethod, ignore_instances)
+        if cache_key is not None and cache_key in BIND_SELF_CACHE:
+            return BIND_SELF_CACHE[cache_key]
+
         # Solve for these type arguments using the actual class or instance type.
         typeargs = infer_type_arguments(
             self_vars, self_param_type, original_type, is_supertype=True, erase_types=False
@@ -574,6 +588,10 @@ def bind_self_inner(
         to_apply = [t if t is not None else UninhabitedType() for t in typeargs]
         func = expand_type(func, {tv.id: arg for tv, arg in zip(self_vars, to_apply)})
         variables = [v for v in func.variables if v not in self_vars]
+        if cache_key is not None:
+            if len(BIND_SELF_CACHE) > BIND_SELF_CACHE_MAX_SIZE:
+                BIND_SELF_CACHE.clear()
+            BIND_SELF_CACHE[cache_key] = func, variables
     else:
         variables = func.variables
     return func, variables
@@ -594,7 +612,7 @@ def bind_self_fast(method: F, original_type: Type | None = None) -> F:
         # Invalid method, return something.
         return method
     if method.arg_kinds[0] in (ARG_STAR, ARG_STAR2):
-        # See typeops.py for details.
+        # See bind_self() for details.
         return method
     return method.copy_modified(
         arg_types=method.arg_types[1:],
