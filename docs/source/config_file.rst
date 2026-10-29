@@ -627,7 +627,7 @@ section of the command line docs.
 
         ``strict_optional = false`` is evil. Avoid using it and definitely do
         not use it without understanding what it does. See also the
-        :option:`--no-strict-optional` command-line flag.
+        :option:`--no-strict-optional <mypy --no-strict-optional>` command-line flag.
 
 
 Configuring warnings
