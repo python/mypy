@@ -684,7 +684,7 @@ static inline PyObject *VecU8_BoxItem(uint8_t x) {
 
 static inline uint8_t VecU8_UnboxItem(PyObject *o) {
     if (Vec_CheckFloatError(o))
-        return -1;
+        return 239;
     unsigned long x = PyLong_AsUnsignedLong(o);
     if (x <= 255)
         return x;

@@ -185,6 +185,18 @@ def test_u8_construct_from_initializer() -> None:
     with assertRaises(TypeError):
         vec[u8]([None])
 
+def test_u8_float_failure() -> None:
+    for value in (1.5, 1.0, float("nan")):
+        with assertRaises(TypeError):
+            vec[u8]([value])
+        v = vec[u8]([1])
+        with assertRaises(TypeError):
+            v[0] = value
+        assert list(v) == [1]
+        with assertRaises(TypeError):
+            append(v, value)
+        assert list(v) == [1]
+
 def test_u8_append() -> None:
     v = vec[u8]()
     v = append(v, 5)
