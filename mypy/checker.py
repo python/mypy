@@ -3019,8 +3019,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                 # Look the base up in the MRO directly: get_base() asserts
                 # if it is missing, which can happen with partial stubs.
                 mapping_info = next(
-                    (base for base in var_type.type.mro if base.fullname == "typing.Mapping"),
-                    None,
+                    (base for base in var_type.type.mro if base.fullname == "typing.Mapping"), None
                 )
                 if mapping_info is not None:
                     mapped = map_instance_to_supertype(var_type, mapping_info)
