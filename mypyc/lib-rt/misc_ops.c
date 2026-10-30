@@ -122,15 +122,20 @@ PyObject *CPy_FetchStopIterationValue(void)
     return val;
 }
 
-static bool _CPy_IsSafeMetaClass(PyTypeObject *metaclass) {
+static int _CPy_IsSafeMetaClass(PyTypeObject *metaclass) {
     // mypyc classes can't work with metaclasses in
     // general. Through some various nasty hacks we *do*
     // manage to work with TypingMeta and its friends.
     if (metaclass == &PyType_Type)
         return true;
-    PyObject *module = PyObject_GetAttr((PyObject *)metaclass, mypyc_interned_str.__module__);
-    if (!module) {
-        PyErr_Clear();
+    PyObject *module;
+    int found = PyObject_GetOptionalAttr((PyObject *)metaclass,
+                                        mypyc_interned_str.__module__, &module);
+    if (found <= 0) {
+        return found;
+    }
+    if (!PyUnicode_Check(module)) {
+        Py_DECREF(module);
         return false;
     }
 
@@ -244,7 +249,11 @@ PyObject *CPyType_FromTemplate(PyObject *template,
         if (!metaclass)
             goto error;
 
-        if (!_CPy_IsSafeMetaClass(metaclass)) {
+        int is_safe = _CPy_IsSafeMetaClass(metaclass);
+        if (is_safe < 0) {
+            goto error;
+        }
+        if (!is_safe) {
             PyErr_SetString(PyExc_TypeError, "mypyc classes can't have a metaclass");
             goto error;
         }
@@ -321,8 +330,11 @@ PyObject *CPyType_FromTemplate(PyObject *template,
 
     // Reject anything that would give us a nontrivial __slots__,
     // because the layout will conflict
-    slots = PyObject_GetAttr((PyObject *)t, mypyc_interned_str.__slots__);
-    if (slots) {
+    int has_slots = PyObject_GetOptionalAttr((PyObject *)t, mypyc_interned_str.__slots__, &slots);
+    if (has_slots < 0) {
+        goto error;
+    }
+    if (has_slots) {
         // don't fail on an empty __slots__
         int is_true = PyObject_IsTrue(slots);
         Py_DECREF(slots);
@@ -330,8 +342,6 @@ PyObject *CPyType_FromTemplate(PyObject *template,
             PyErr_SetString(PyExc_TypeError, "mypyc classes can't have __slots__");
         if (is_true != 0)
             goto error;
-    } else {
-        PyErr_Clear();
     }
 
     if (PyObject_SetAttr((PyObject *)t, mypyc_interned_str.__module__, modname) < 0)
@@ -421,7 +431,8 @@ CPyDataclass_SleightOfHand(PyObject *dataclass_dec, PyObject *tp,
     PyObject *key;
     while (PyDict_Next(annotations, &pos, &key, NULL)) {
         // Check and delete key. Key may be absent from tp for InitVar variables.
-        if (PyObject_HasAttr(tp, key) == 1 && PyObject_DelAttr(tp, key) != 0) {
+        int has_attr = PyObject_HasAttrWithError(tp, key);
+        if (has_attr < 0 || (has_attr && PyObject_DelAttr(tp, key) != 0)) {
             goto fail;
         }
     }
@@ -448,10 +459,13 @@ CPyDataclass_SleightOfHand(PyObject *dataclass_dec, PyObject *tp,
             PyObject *value = NULL;
             int rv = PyObject_GetOptionalAttrString(res, *key_iter, &value);
             if (rv == 1) {
-                PyObject_SetAttrString(tp, *key_iter, value);
+                int status = PyObject_SetAttrString(tp, *key_iter, value);
                 Py_DECREF(value);
+                if (status < 0) {
+                    goto fail;
+                }
             } else if (rv == -1) {
-              goto fail;
+                goto fail;
             }
         }
     }
