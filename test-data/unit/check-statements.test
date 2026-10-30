@@ -356,6 +356,56 @@ a += '' # E: Argument 1 to "__iadd__" of "A" has incompatible type "str"; expect
 a *= 1  # E: Argument 1 to "__imul__" of "A" has incompatible type "int"; expected "str"
 a @= 1  # E: Argument 1 to "__imatmul__" of "A" has incompatible type "int"; expected "str"
 
+[case testInplaceOperatorAsymmetricProperty]
+from collections.abc import Iterable
+
+class P:
+    def __iadd__(self, x: int | Iterable[int]) -> 'P':
+        return self
+
+class N:
+    @property
+    def b(self) -> P:
+        return P()
+
+    @b.setter
+    def b(self, v: P | list[int]) -> None: ...
+
+n = N()
+n.b += 1
+[builtins fixtures/property.pyi]
+
+[case testInplaceOperatorAsymmetricPropertyBadResult]
+class S:
+    def __iadd__(self, x: int) -> int:
+        return x
+
+class M:
+    @property
+    def m(self) -> S:
+        return S()
+
+    @m.setter
+    def m(self, v: S) -> None: ...
+
+m = M()
+m.m += 1 # E: Result type of + incompatible in assignment
+[builtins fixtures/property.pyi]
+
+[case testInplaceOperatorReadOnlyProperty]
+class P:
+    def __iadd__(self, x: int) -> 'P':
+        return self
+
+class N:
+    @property
+    def ro(self) -> P:
+        return P()
+
+n = N()
+n.ro += 1 # E: Property "ro" defined in "N" is read-only
+[builtins fixtures/property.pyi]
+
 [case testInplaceSetitem]
 class A(object):
     def __init__(self) -> None:

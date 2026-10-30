@@ -5502,12 +5502,16 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
             # Special case, some additional errors may be given for
             # assignments to read-only or final attributes.
             lvalue_type = self.expr_checker.visit_member_expr(s.lvalue, True)
+            # The runtime reads the attribute (getter type) to resolve the
+            # operator; only the resulting value must satisfy the setter.
+            value_type = self.expr_checker.visit_member_expr(s.lvalue, False)
         else:
             lvalue_type = self.expr_checker.accept(s.lvalue)
-        inplace, method = infer_operator_assignment_method(lvalue_type, s.op)
+            value_type = lvalue_type
+        inplace, method = infer_operator_assignment_method(value_type, s.op)
         if inplace:
             # There is __ifoo__, treat as x = x.__ifoo__(y)
-            rvalue_type, _ = self.expr_checker.check_op(method, lvalue_type, s.rvalue, s)
+            rvalue_type, _ = self.expr_checker.check_op(method, value_type, s.rvalue, s)
             if not is_subtype(rvalue_type, lvalue_type):
                 self.msg.incompatible_operator_assignment(s.op, s)
         else:
