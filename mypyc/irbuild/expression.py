@@ -1271,53 +1271,42 @@ def try_specialize_in_expr(
 
     if items is not None:
         assert left is not None
-        n_items = len(items)
-        # x in y -> x == y[0] or ... or x == y[n]
-        # x not in y -> x != y[0] and ... and x != y[n]
-        if n_items > 1:
-            if op == "in":
-                cmp_op = "=="
-            else:
-                cmp_op = "!="
-            out = BasicBlock()
-            for item in items:
-                cmp = transform_basic_comparison(builder, cmp_op, left, item, line)
-                bool_val = builder.builder.bool_value(cmp)
+        if not items:
+            # x in []/() -> False
+            # x not in []/() -> True
+            return builder.false() if op == "in" else builder.true()
+        # x in y -> x is y[0] or x == y[0] or ... or x is y[n] or x == y[n]
+        # x not in y -> not (x in y)
+        found = BasicBlock()
+        for item in items:
+            if item is left:
+                # Same value (e.g. "x in (x,)"), so it's always found
+                builder.goto(found)
+                builder.activate_block(BasicBlock())
+                break
+            if not (
+                left.type.is_unboxed
+                or item.type.is_unboxed
+                # String equality checks also check identity
+                or (is_str_rprimitive(left.type) and is_str_rprimitive(item.type))
+            ):
                 next_block = BasicBlock()
-                if op == "in":
-                    builder.add_bool_branch(bool_val, out, next_block)
-                else:
-                    builder.add_bool_branch(bool_val, next_block, out)
+                is_same = builder.binary_op(left, item, "is", line)
+                builder.add_bool_branch(is_same, found, next_block)
                 builder.activate_block(next_block)
-            result_reg = Register(bool_rprimitive)
-            end = BasicBlock()
-            if op == "in":
-                values = builder.false(), builder.true()
-            else:
-                values = builder.true(), builder.false()
-            builder.assign(result_reg, values[0], line)
-            builder.goto(end)
-            builder.activate_block(out)
-            builder.assign(result_reg, values[1], line)
-            builder.goto(end)
-            builder.activate_block(end)
-            return result_reg
-        # x in [y]/(y) -> x == y
-        # x not in [y]/(y) -> x != y
-        elif n_items == 1:
-            if op == "in":
-                cmp_op = "=="
-            else:
-                cmp_op = "!="
-            right = items[0]
-            return transform_basic_comparison(builder, cmp_op, left, right, line)
-        # x in []/() -> False
-        # x not in []/() -> True
-        elif n_items == 0:
-            if op == "in":
-                return builder.false()
-            else:
-                return builder.true()
+            cmp = transform_basic_comparison(builder, "==", left, item, line)
+            next_block = BasicBlock()
+            builder.add_bool_branch(builder.builder.bool_value(cmp), found, next_block)
+            builder.activate_block(next_block)
+        result_reg = Register(bool_rprimitive)
+        end = BasicBlock()
+        builder.assign(result_reg, builder.false() if op == "in" else builder.true(), line)
+        builder.goto(end)
+        builder.activate_block(found)
+        builder.assign(result_reg, builder.true() if op == "in" else builder.false(), line)
+        builder.goto(end)
+        builder.activate_block(end)
+        return result_reg
 
     # x in {...}
     # x not in {...}
