@@ -1309,6 +1309,672 @@ def test_special_case() -> None:
     with f():
         a.pop()
 
+[case testContextManagerSpecialCaseSemantics]
+from contextlib import contextmanager
+from typing import Any, Generator, Iterator, cast
+import traceback
+
+@contextmanager
+def cm_no_yield() -> Iterator[None]:
+    print("enter cm_no_yield")
+    if False:
+        print("UNREACHABLE")
+        yield
+    return
+
+def test_no_yield() -> None:
+    try:
+        with cm_no_yield():
+            print("UNREACHABLE")
+        print("UNREACHABLE")
+    except RuntimeError as e:
+        e_any = cast(Any, e)
+        print(
+            type(e).__name__,
+            str(e),
+            e_any.__cause__ is None,
+            e_any.__suppress_context__,
+        )
+
+@contextmanager
+def cm_no_stop() -> Iterator[str]:
+    print("enter cm_no_stop")
+    yield "first"
+    print("after first yield")
+    yield "second"
+    print("UNREACHABLE")
+
+def test_no_stop() -> None:
+    try:
+        with cm_no_stop() as v:
+            print("entered body", v)
+        print("UNREACHABLE")
+    except RuntimeError as e:
+        print(type(e).__name__, str(e))
+
+@contextmanager
+def cm_value_error_suppress() -> Iterator[None]:
+    print("enter cm_value_error_suppress")
+    try:
+        yield
+        print("UNREACHABLE")
+    except ValueError as e:
+        print(type(e).__name__, str(e))
+
+def test_suppress_value_error() -> None:
+    with cm_value_error_suppress():
+        raise ValueError("boom")
+    print("after suppressing the ValueError")
+
+@contextmanager
+def cm_throw_twice() -> Iterator[None]:
+    print("enter cm_throw_twice")
+    try:
+        yield
+        print("UNREACHABLE")
+    except ValueError:
+        print("throw yield")
+        yield
+        print("UNREACHABLE")
+
+def test_throw_twice() -> None:
+    try:
+        with cm_throw_twice():
+            raise ValueError("oops")
+        print("UNREACHABLE")
+    except RuntimeError as e:
+        print(type(e).__name__, str(e))
+
+@contextmanager
+def cm_stop_passthrough() -> Iterator[None]:
+    print("enter cm_stop_passthrough")
+    yield
+    print("UNREACHABLE")
+
+def test_stop_iteration_passthrough() -> None:
+    try:
+        with cm_stop_passthrough():
+            raise StopIteration("stop")
+        print("UNREACHABLE")
+    except Exception as e:
+        print("stop passthrough", type(e).__name__, str(e))
+
+@contextmanager
+def cm_stop_suppress() -> Iterator[None]:
+    print("enter cm_stop_suppress")
+    try:
+        yield
+        print("UNREACHABLE")
+    except StopIteration as e:
+        print(type(e).__name__, str(e))
+
+def test_stop_iteration_suppress() -> None:
+    with cm_stop_suppress():
+        raise StopIteration("manual stop")
+    print("after suppressing the StopIteration")
+
+@contextmanager
+def cm_value() -> Iterator[int]:
+    print("enter cm_value")
+    try:
+        yield 1
+        print("UNREACHABLE")
+    finally:
+        print("exit cm_value")
+
+def test_traceback() -> None:
+    try:
+        with cm_value():
+            raise ValueError("trace")
+        print("UNREACHABLE")
+    except Exception as e:
+        e_any = cast(Any, e)
+        tb = e_any.__traceback__
+        assert tb is not None
+        tb_mod = cast(Any, traceback)
+        names = [frame.name for frame in tb_mod.extract_tb(tb)]
+        print("traceback_has_cm_value", "test_traceback" in names, "cm_value" in names)
+
+@contextmanager
+def cm_gen() -> Iterator[int]:
+    print("enter cm_gen")
+    try:
+        yield 1
+    finally:
+        print("exit cm_gen")
+
+def test_generator_with_yield() -> None:
+    def gen() -> Generator[int, None, None]:
+        with cm_gen() as v:
+            yield v
+            print("after yield in with")
+
+    g = gen()
+    print(next(g))
+    try:
+        next(g)
+        print("UNREACHABLE")
+    except StopIteration:
+        print("gen done")
+
+@contextmanager
+def cm_log(tag: str) -> Iterator[None]:
+    print("enter cm_log", tag)
+    try:
+        yield
+    finally:
+        print("exit cm_log", tag)
+
+def test_return_in_with() -> None:
+    def inner() -> int:
+        with cm_log("ret"):
+            print("ret body")
+            return 5
+        print("UNREACHABLE")
+        return 0
+
+    print("ret result", inner())
+
+[file driver.py]
+from native import (
+    test_no_yield,
+    test_no_stop,
+    test_suppress_value_error,
+    test_throw_twice,
+    test_stop_iteration_passthrough,
+    test_stop_iteration_suppress,
+    test_traceback,
+    test_generator_with_yield,
+    test_return_in_with,
+)
+
+fns = [
+    test_no_yield,
+    test_no_stop,
+    test_suppress_value_error,
+    test_throw_twice,
+    test_stop_iteration_passthrough,
+    test_stop_iteration_suppress,
+    test_traceback,
+    test_generator_with_yield,
+    test_return_in_with,
+]
+for i, fn in enumerate(fns):
+    if i:
+        print()
+    print(f"Running {fn.__name__}")
+    fn()
+[out]
+Running test_no_yield
+enter cm_no_yield
+RuntimeError generator didn't yield True True
+
+Running test_no_stop
+enter cm_no_stop
+entered body first
+after first yield
+RuntimeError generator didn't stop
+
+Running test_suppress_value_error
+enter cm_value_error_suppress
+ValueError boom
+after suppressing the ValueError
+
+Running test_throw_twice
+enter cm_throw_twice
+throw yield
+RuntimeError generator didn't stop after throw()
+
+Running test_stop_iteration_passthrough
+enter cm_stop_passthrough
+stop passthrough StopIteration stop
+
+Running test_stop_iteration_suppress
+enter cm_stop_suppress
+StopIteration manual stop
+after suppressing the StopIteration
+
+Running test_traceback
+enter cm_value
+exit cm_value
+traceback_has_cm_value True False
+
+Running test_generator_with_yield
+enter cm_gen
+1
+after yield in with
+exit cm_gen
+gen done
+
+Running test_return_in_with
+enter cm_log ret
+ret body
+exit cm_log ret
+ret result 5
+
+[case testContextManagerRuntimePrimitives]
+from contextlib import contextmanager
+from typing import Any, Iterator, cast
+import helper
+
+# C iterators can exhaust without setting StopIteration.
+@contextmanager
+def implicit(values: list[int]) -> Iterator[int]:
+    return iter(values)
+
+def test_empty_iterator() -> None:
+    try:
+        with implicit([]):
+            print("UNREACHABLE")
+        print("UNREACHABLE")
+    except RuntimeError as error:
+        print(str(error), type(error.__context__).__name__)
+
+@contextmanager
+def noniterator() -> Iterator[None]:
+    return cast(Any, 42)
+
+def test_noniterator() -> None:
+    try:
+        with noniterator():
+            print("UNREACHABLE")
+        print("UNREACHABLE")
+    except TypeError as error:
+        print(str(error))
+
+# Other exceptions from next() must propagate unchanged at either boundary.
+@contextmanager
+def fail_entry(error: ValueError) -> Iterator[None]:
+    raise error
+    print("UNREACHABLE")
+    yield
+
+def test_entry_failure_identity() -> None:
+    original = ValueError('original')
+    try:
+        with fail_entry(original):
+            print("UNREACHABLE")
+        print("UNREACHABLE")
+    except ValueError as error:
+        assert error is original
+        print('entry error')
+
+@contextmanager
+def fail_exit(error: ValueError) -> Iterator[None]:
+    yield
+    raise error
+
+def test_exit_failure_identity() -> None:
+    original = ValueError('original')
+    try:
+        with fail_exit(original):
+            print('exit body')
+        print("UNREACHABLE")
+    except ValueError as error:
+        assert error is original
+        print('exit error')
+
+# Protocol errors temporarily replace the handled exception. They must restore
+# it and release the saved references, even after repeated failures.
+@contextmanager
+def missing() -> Iterator[None]:
+    if False:
+        print("UNREACHABLE")
+        yield
+
+def failed_entry() -> None:
+    try:
+        with missing():
+            print("UNREACHABLE")
+            assert False
+        print("UNREACHABLE")
+    except RuntimeError as error:
+        assert isinstance(error.__context__, StopIteration)
+
+@contextmanager
+def twice() -> Iterator[int]:
+    yield 1
+    yield 2
+    print("UNREACHABLE")
+
+def failed_exit() -> None:
+    try:
+        with twice():
+            pass
+    except RuntimeError:
+        pass
+    else:
+        print("UNREACHABLE")
+        assert False
+
+def test_outer_exception() -> None:
+    outer = ValueError('outer')
+    try:
+        raise outer
+    except ValueError:
+        # Also exercise normal exit when a C iterator exhausts without an error.
+        with implicit([7]) as value:
+            assert value == 7
+            assert helper.exc_info()[1] is outer
+        assert helper.exc_info()[1] is outer
+        # Collect exception/traceback cycles before measuring retained references.
+        helper.collect()
+        before = helper.refcount(outer)
+        for i in range(9):
+            failed_entry()
+        helper.collect()
+        assert helper.refcount(outer) == before
+        assert helper.exc_info()[1] is outer
+        for i in range(9):
+            failed_exit()
+        helper.collect()
+        assert helper.refcount(outer) == before
+        assert helper.exc_info()[1] is outer
+    assert helper.exc_info()[1] is None
+    print('outer exception restored; saved references released')
+
+[file helper.py]
+from typing import Any
+import gc
+import sys
+
+def exc_info() -> Any:
+    return sys.exc_info()  # type: ignore
+
+def collect() -> None:
+    gc.collect()
+
+def refcount(value: Any) -> int:
+    return sys.getrefcount(value)  # type: ignore
+
+[file driver.py]
+from native import (
+    test_empty_iterator,
+    test_noniterator,
+    test_entry_failure_identity,
+    test_exit_failure_identity,
+    test_outer_exception,
+)
+
+fns = [
+    test_empty_iterator,
+    test_noniterator,
+    test_entry_failure_identity,
+    test_exit_failure_identity,
+    test_outer_exception,
+]
+for i, fn in enumerate(fns):
+    if i:
+        print()
+    print(f"Running {fn.__name__}")
+    fn()
+[out]
+Running test_empty_iterator
+generator didn't yield StopIteration
+
+Running test_noniterator
+'int' object is not an iterator
+
+Running test_entry_failure_identity
+entry error
+
+Running test_exit_failure_identity
+exit body
+exit error
+
+Running test_outer_exception
+outer exception restored; saved references released
+
+
+[case testContextManagerExceptionalExit]
+from contextlib import contextmanager
+from typing import Any, Iterator
+import helper
+
+@contextmanager
+def scope(generator: Iterator[None]) -> Iterator[None]:
+    return generator
+
+def invoke(generator: Iterator[None], error: BaseException,
+           captured: list[Any]) -> None:
+    with scope(generator):
+        helper.raise_body(error, captured)
+        print("UNREACHABLE")
+
+# Unwinding this handler during throw() can change the native caller's exception state.
+def native_handler() -> Iterator[None]:
+    try:
+        raise TypeError('earlier')
+    except BaseException:
+        yield
+        print("UNREACHABLE")
+
+[file helper.py]
+from typing import Any, Iterator, cast
+
+class Other(BaseException):
+    pass
+
+class StopSubclass(StopIteration):
+    pass
+
+def raise_body(error: BaseException, captured: list[Any]) -> None:
+    try:
+        raise error
+    except BaseException:
+        captured.append(cast(Any, error).__traceback__)
+        raise
+
+def passthrough() -> Iterator[None]:
+    yield
+    print("UNREACHABLE")
+
+def replace(error: BaseException) -> Iterator[None]:
+    try:
+        yield
+        print("UNREACHABLE")
+    except BaseException:
+        raise error
+
+def suppress() -> Iterator[None]:
+    try:
+        yield
+        print("UNREACHABLE")
+    except ValueError:
+        pass
+
+[file driver.py]
+import gc
+import sys
+import helper
+from native import invoke, native_handler
+
+
+def test_exception_identity_and_traceback():
+    # These take different branches in contextlib; all must propagate the same object.
+    for error_type in [RuntimeError, helper.Other, helper.StopSubclass]:
+        original = error_type('body')
+        captured = []
+        try:
+            invoke(helper.passthrough(), original, captured)
+        except BaseException as caught:
+            assert caught is original
+            tb = caught.__traceback__
+            while tb is not None and tb is not captured[0]:
+                tb = tb.tb_next
+            assert tb is captured[0]
+            print(error_type.__name__, 'identity and original traceback preserved')
+        else:
+            print("UNREACHABLE")
+            assert False, 'unexpected suppression'
+
+# The interpreted generator isolates the caller's handled-exception state.
+def propagate_from_handler():
+    original = ValueError('body')
+    try:
+        invoke(native_handler(), original, [])
+    except BaseException as caught:
+        yield caught is original
+    else:
+        print("UNREACHABLE")
+        yield False
+
+
+def test_native_handler_exception_state():
+    assert list(propagate_from_handler()) == [True]
+    assert sys.exc_info()[1] is None
+    try:
+        raise KeyError('outer')
+    except KeyError as outer:
+        assert list(propagate_from_handler()) == [True]
+        assert sys.exc_info()[1] is outer
+    assert sys.exc_info()[1] is None
+    print('native handler preserves body exception with and without an outer handler')
+
+
+def test_replacement_exception():
+    # A different exception from throw() must replace the body's exception.
+    for error_type in [RuntimeError, helper.Other]:
+        original = ValueError('body')
+        replacement = error_type('replacement')
+        try:
+            invoke(helper.replace(replacement), original, [])
+        except BaseException as caught:
+            assert caught is replacement
+            assert caught.__context__ is original
+            assert original.__context__ is None
+            print(f'{type(caught).__name__}({caught})')
+            print(f'{type(original).__name__}({original})')
+        else:
+            print("UNREACHABLE")
+            assert False, 'unexpected suppression'
+
+
+def test_suppression_exception_state_and_references():
+    # Suppression must restore the outer handled exception without retaining its refs.
+    outer = ValueError('outer')
+    try:
+        raise outer
+    except ValueError:
+        gc.collect()
+        before = sys.getrefcount(outer)
+        for i in range(9):
+            invoke(helper.suppress(), ValueError('body'), [])
+            assert sys.exc_info()[1] is outer
+        gc.collect()
+        assert sys.getrefcount(outer) == before
+        print('suppression restores outer exception and releases saved references')
+    assert sys.exc_info()[1] is None
+
+
+fns = [
+    test_exception_identity_and_traceback,
+    test_native_handler_exception_state,
+    test_replacement_exception,
+    test_suppression_exception_state_and_references,
+]
+for i, fn in enumerate(fns):
+    if i:
+        print()
+    print(f"Running {fn.__name__}")
+    fn()
+[out]
+Running test_exception_identity_and_traceback
+RuntimeError identity and original traceback preserved
+Other identity and original traceback preserved
+StopSubclass identity and original traceback preserved
+
+Running test_native_handler_exception_state
+native handler preserves body exception with and without an outer handler
+
+Running test_replacement_exception
+RuntimeError(replacement)
+ValueError(body)
+Other(replacement)
+ValueError(body)
+
+Running test_suppression_exception_state_and_references
+suppression restores outer exception and releases saved references
+
+[case testContextManagerRuntimeMethodBinding]
+from contextlib import contextmanager
+from typing import Callable, Iterator
+from mypy_extensions import mypyc_attr
+
+@mypyc_attr(allow_interpreted_subclasses=True)
+class Base:
+    @contextmanager
+    def cm(self, value: str) -> Iterator[str]:
+        yield 'base:' + value
+
+# The same Base-typed call must preserve the callable's actual binding.
+def invoke(receiver: Callable[[], Base], argument: Callable[[], str]) -> None:
+    with receiver().cm(value=argument()) as value:
+        print('body', value)
+
+[file driver.py]
+from contextlib import contextmanager
+from native import Base, invoke
+
+# A classmethod binds to the runtime class; a staticmethod has no implicit receiver.
+
+class ClassOverride(Base):
+    @classmethod
+    @contextmanager
+    def cm(cls, value):
+        yield cls.__name__ + ':' + value
+
+invoke(ClassOverride, lambda: 'value')
+
+class StaticOverride(Base):
+    @staticmethod
+    @contextmanager
+    def cm(value):
+        yield 'static:' + value
+
+invoke(StaticOverride, lambda: 'value')
+
+# A descriptor can bind to another object. Lookup and arguments run once, in order.
+class Target:
+    tag = 'target'
+
+    @contextmanager
+    def cm(self, value):
+        print('enter', self.tag)
+        yield value
+        print('exit')
+
+target = Target()
+
+class Descriptor:
+    def __get__(self, instance, owner):
+        print('lookup')
+        return target.cm
+
+class Child(Base):
+    cm = Descriptor()
+
+obj = Child()
+
+def receiver():
+    print('receiver')
+    return obj
+
+def argument():
+    print('argument')
+    return 'keyword'
+
+invoke(receiver, argument)
+[out]
+body ClassOverride:value
+body static:value
+receiver
+lookup
+argument
+enter target
+body keyword
+exit
+
 [case testUnpackKwargsCompiled]
 from typing import TypedDict
 from typing_extensions import Unpack

@@ -1071,6 +1071,11 @@ bool CPy_ExceptionMatches(PyObject *type);
 PyObject *CPy_GetExcValue(void);
 tuple_T3OOO CPy_GetExcInfo(void);
 void _CPy_GetExcInfo(PyObject **p_type, PyObject **p_value, PyObject **p_traceback);
+PyObject *CPyContextManager_Bind(PyObject *callable, PyObject *wrapped);
+PyObject *CPyContextManager_Enter(PyObject *gen);
+bool CPyContextManager_ExitNormal(PyObject *gen);
+int CPyContextManager_ExitException(PyObject *gen, PyObject *type,
+                                  PyObject *value, PyObject *traceback);
 void CPyError_OutOfMemory(void);
 void CPy_TypeError(const char *expected, PyObject *value);
 void CPy_AddTraceback(const char *filename, const char *funcname, int line, PyObject *globals);
