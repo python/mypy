@@ -250,7 +250,9 @@ class IRBuilder:
         self.classes: list[ClassIR] = []
         self.final_names: list[tuple[str, RType]] = []
         self.type_var_names: list[str] = []
-        self.callable_class_names: set[str] = set()
+        # Names of generated classes (callable and environment classes), used to
+        # keep the names unique within the module
+        self.generated_class_names: set[str] = set()
         self.options = options
 
         # Keep track of the number of lambdas instantiated so we avoid name conflicts.
@@ -317,6 +319,27 @@ class IRBuilder:
         self.globals_lookup_module: str | None = None
 
     # High-level control
+
+    def unique_class_name(self, base_name: str) -> str:
+        """Return a unique name for a generated class, based on base_name.
+
+        We allow multiple definitions of a nested function with the same name,
+        since this is valid in if-else blocks. Example:
+
+            if True:
+                def foo():          ---->    foo_obj()
+                    return True
+            else:
+                def foo():          ---->    foo_obj_0()
+                    return False
+        """
+        name = base_name
+        count = 0
+        while name in self.generated_class_names:
+            name = f"{base_name}_{count}"
+            count += 1
+        self.generated_class_names.add(name)
+        return name
 
     def set_module(self, module_name: str, module_path: str) -> None:
         """Set the name and path of the current module.
