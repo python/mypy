@@ -210,7 +210,7 @@ from mypy.nodes import (
     is_final_node,
 )
 from mypy.operators import flip_ops, int_op_to_method, neg_ops
-from mypy.options import PRECISE_TUPLE_TYPES, Options
+from mypy.options import PRECISE_TUPLE_TYPES, SUBSCRIPTABLE_FUNCTIONS, Options
 from mypy.patterns import AsPattern, StarredPattern
 from mypy.plugin import Plugin
 from mypy.plugins import dataclasses as dataclasses_plugin
@@ -249,6 +249,7 @@ from mypy.typeops import (
     fixup_partial_type,
     function_type,
     get_tuple_item_types,
+    get_type_vars,
     is_literal_type_like,
     is_singleton_equality_type,
     is_singleton_identity_type,
@@ -276,6 +277,7 @@ from mypy.types import (
     LiteralType,
     NoneType,
     Overloaded,
+    ParamSpecType,
     PartialType,
     ProperType,
     TupleType,
@@ -1053,6 +1055,16 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
             # decorator or if the implementation is untyped -- we gave up on the types.
             impl_type = self.extract_callable_type(inner_type, defn.impl)
 
+        if defn.impl and SUBSCRIPTABLE_FUNCTIONS in self.options.enable_incomplete_feature:
+            implementation = defn.impl.func if isinstance(defn.impl, Decorator) else defn.impl
+            if not implementation.type_args and any(
+                isinstance(item, Decorator) and item.func.type_args for item in defn.items
+            ):
+                self.fail(
+                    "Overload implementation must declare type parameters when its overloads do",
+                    implementation,
+                )
+
         is_descriptor_get = defn.info and defn.name == "__get__"
         for i, item in enumerate(defn.items):
             assert isinstance(item, Decorator)
@@ -1067,6 +1079,12 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                     continue
 
                 if not are_argument_counts_overlapping(sig1, sig2):
+                    continue
+
+                if (
+                    SUBSCRIPTABLE_FUNCTIONS in self.options.enable_incomplete_feature
+                    and overloads_differ_in_typevar_bounds(sig1, sig2)
+                ):
                     continue
 
                 if overload_can_never_match(sig1, sig2):
@@ -1853,6 +1871,8 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
 
     def check_unbound_return_typevar(self, typ: CallableType, context: Context) -> None:
         """Fails when the return typevar is not defined in arguments."""
+        if SUBSCRIPTABLE_FUNCTIONS in self.options.enable_incomplete_feature:
+            return
         if isinstance(typ.ret_type, TypeVarType) and typ.ret_type in typ.variables:
             arg_type_visitor = CollectArgTypeVarTypes()
             for argtype in typ.arg_types:
@@ -5930,6 +5950,25 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                 continue
             non_trivial_decorator = True
             dec = self.expr_checker.accept(d)
+            preserved: list[TypeVarLikeType] = []
+            original_variables: list[TypeVarLikeType] = []
+            sig = get_proper_type(sig)
+            dec_type = get_proper_type(dec)
+            if (
+                SUBSCRIPTABLE_FUNCTIONS in self.options.enable_incomplete_feature
+                and isinstance(sig, CallableType)
+                and isinstance(dec_type, CallableType)
+                and any(isinstance(v, ParamSpecType) for v in dec_type.variables)
+                and isinstance(get_proper_type(dec_type.ret_type), CallableType)
+            ):
+                original_variables = list(sig.variables)
+                preserved = [
+                    v
+                    for v in sig.variables
+                    if v in get_type_vars(sig.ret_type)
+                    and not any(v in get_type_vars(a) for a in sig.arg_types)
+                ]
+                sig = sig.copy_modified(variables=[v for v in sig.variables if v not in preserved])
             temp = self.temp_node(sig, context=d)
             fullname = None
             if isinstance(d, RefExpr):
@@ -5944,6 +5983,17 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
             sig, t2 = self.expr_checker.check_call(
                 dec, [temp], [nodes.ARG_POS], d, callable_name=fullname, object_type=object_type
             )
+            sig = get_proper_type(sig)
+            if preserved and isinstance(sig, CallableType):
+                remaining = get_type_vars(sig)
+                variables = list(sig.variables) + [
+                    v for v in preserved if v in remaining and v not in sig.variables
+                ]
+                # Inference may freshen the other variables. Their fullnames
+                # still identify their position in the original declaration.
+                order = {v.fullname: i for i, v in enumerate(original_variables)}
+                variables.sort(key=lambda v: order.get(v.fullname, len(order)))
+                sig = sig.copy_modified(variables=variables)
         if non_trivial_decorator:
             self.check_untyped_after_decorator(sig, e.func)
         self.require_correct_self_argument(sig, e.func)
@@ -9351,6 +9401,40 @@ def detach_callable(typ: CallableType, class_type_vars: list[TypeVarLikeType]) -
         # Fast path, nothing to update.
         return typ
     return typ.copy_modified(variables=list(typ.variables) + class_type_vars)
+
+
+def overloads_differ_in_typevar_bounds(first: CallableType, second: CallableType) -> bool:
+    """Can explicit type arguments distinguish otherwise identical parameter lists?"""
+    if not first.variables or len(first.variables) != len(second.variables):
+        return False
+    if first.arg_kinds != second.arg_kinds or first.arg_names != second.arg_names:
+        return False
+    if any(type(a) is not type(b) for a, b in zip(first.variables, second.variables)):
+        return False
+    substitutions = {b.id: a for a, b in zip(first.variables, second.variables)}
+    if any(
+        not is_same_type(a.default, expand_type(b.default, substitutions))
+        for a, b in zip(first.variables, second.variables)
+    ):
+        return False
+    if not all(
+        is_same_type(a, expand_type(b, substitutions))
+        for a, b in zip(first.arg_types, second.arg_types)
+    ):
+        return False
+    return any(
+        not is_same_type(a.upper_bound, expand_type(b.upper_bound, substitutions))
+        or isinstance(a, TypeVarType)
+        and isinstance(b, TypeVarType)
+        and (
+            len(a.values) != len(b.values)
+            or any(
+                not is_same_type(x, expand_type(y, substitutions))
+                for x, y in zip(a.values, b.values)
+            )
+        )
+        for a, b in zip(first.variables, second.variables)
+    )
 
 
 def overload_can_never_match(signature: CallableType, other: CallableType) -> bool:
