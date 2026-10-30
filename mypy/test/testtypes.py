@@ -840,21 +840,28 @@ class JoinSuite(Suite):
             self.assert_join(t, UnboundType("X"), self.fx.anyt)
 
     def test_any_type(self) -> None:
-        # Join against 'Any' type always results in 'Any'.
         with state.strict_optional_set(False):
             self.assert_join(NoneType(), self.fx.anyt, self.fx.anyt)
 
         for t in [
-            self.fx.anyt,
             self.fx.a,
-            self.fx.o,
-            NoneType(),
             UnboundType("x"),
             self.fx.t,
             self.tuple(),
             self.callable(self.fx.a, self.fx.b),
         ]:
-            self.assert_join(t, self.fx.anyt, self.fx.anyt)
+            self.assert_join(t, self.fx.anyt, UnionType([t, self.fx.anyt]))
+            self.assert_join(self.fx.anyt, t, UnionType([t, self.fx.anyt]))
+
+        self.assert_join(self.fx.anyt, self.fx.anyt, self.fx.anyt)
+
+        self.assert_join(self.fx.o, self.fx.anyt, self.fx.o)
+        self.assert_join(NoneType(), self.fx.anyt, UnionType([self.fx.anyt, NoneType()]))
+        self.assert_join(UninhabitedType(), self.fx.anyt, self.fx.anyt)
+
+        self.assert_join(self.fx.anyt, self.fx.o, self.fx.o)
+        self.assert_join(self.fx.anyt, NoneType(), UnionType([self.fx.anyt, NoneType()]))
+        self.assert_join(self.fx.anyt, UninhabitedType(), self.fx.anyt)
 
     def test_mixed_truth_restricted_type_simple(self) -> None:
         # make_simplified_union against differently restricted truthiness types drops restrictions.
@@ -885,7 +892,7 @@ class JoinSuite(Suite):
         with state.strict_optional_set(True):
             self.assert_join(self.fx.ga, self.fx.nonet, UnionType([self.fx.ga, NoneType()]))
 
-        self.assert_join(self.fx.ga, self.fx.anyt, self.fx.anyt)
+        self.assert_join(self.fx.ga, self.fx.anyt, UnionType([self.fx.ga, self.fx.anyt]))
 
         for t in [
             self.fx.a,
@@ -938,7 +945,9 @@ class JoinSuite(Suite):
         self.assert_join(
             self.callable(self.fx.a, self.fx.a, self.fx.anyt, self.fx.a),
             self.callable(self.fx.a, self.fx.anyt, self.fx.a, self.fx.anyt),
-            self.callable(self.fx.a, self.fx.anyt, self.fx.anyt, self.fx.anyt),
+            self.callable(
+                self.fx.a, self.fx.anyt, self.fx.anyt, UnionType([self.fx.a, self.fx.anyt])
+            ),
         )
 
     def test_overloaded(self) -> None:
@@ -1016,12 +1025,14 @@ class JoinSuite(Suite):
 
     def test_type_type(self) -> None:
         self.assert_join(self.fx.type_a, self.fx.type_b, self.fx.type_a)
-        self.assert_join(self.fx.type_b, self.fx.type_any, self.fx.type_any)
+        self.assert_join(
+            self.fx.type_b, self.fx.type_any, UnionType([self.fx.type_b, self.fx.type_any])
+        )
         self.assert_join(self.fx.type_b, self.fx.type_type, self.fx.type_type)
         self.assert_join(self.fx.type_b, self.fx.type_c, self.fx.type_a)
         self.assert_join(self.fx.type_c, self.fx.type_d, TypeType.make_normalized(self.fx.o))
         self.assert_join(self.fx.type_type, self.fx.type_any, self.fx.type_type)
-        self.assert_join(self.fx.type_b, self.fx.anyt, self.fx.anyt)
+        self.assert_join(self.fx.type_b, self.fx.anyt, UnionType([self.fx.type_b, self.fx.anyt]))
 
     def test_literal_type(self) -> None:
         a = self.fx.a
@@ -1035,7 +1046,7 @@ class JoinSuite(Suite):
         self.assert_join(lit1, d, self.fx.o)
         self.assert_join(lit1, lit2, a)
         self.assert_join(lit1, lit3, self.fx.o)
-        self.assert_join(lit1, self.fx.anyt, self.fx.anyt)
+        self.assert_join(lit1, self.fx.anyt, UnionType([lit1, self.fx.anyt]))
         self.assert_join(UnionType([lit1, lit2]), lit2, UnionType([lit1, lit2]))
         self.assert_join(UnionType([lit1, lit2]), a, a)
         self.assert_join(UnionType([lit1, lit3]), a, UnionType([a, lit3]))
@@ -1324,7 +1335,7 @@ class MeetSuite(Suite):
         self.assert_meet(
             self.callable(self.fx.a, self.fx.a, self.fx.anyt, self.fx.a),
             self.callable(self.fx.a, self.fx.anyt, self.fx.a, self.fx.anyt),
-            self.callable(self.fx.a, self.fx.anyt, self.fx.anyt, self.fx.anyt),
+            self.callable(self.fx.a, self.fx.anyt, self.fx.anyt, self.fx.a),
         )
 
     def test_meet_interface_types(self) -> None:

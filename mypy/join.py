@@ -286,13 +286,15 @@ class TypeJoinVisitor(TypeVisitor[ProperType]):
             return mypy.typeops.make_simplified_union([self.s, t])
 
     def visit_any(self, t: AnyType) -> ProperType:
+        if isinstance(self.s, Instance) and self.s.type.fullname == "builtins.object":
+            return self.s
         return UnionType([self.s, t])
 
     def visit_none_type(self, t: NoneType) -> ProperType:
         if state.strict_optional:
             if isinstance(self.s, (NoneType, UninhabitedType)):
                 return t
-            elif isinstance(self.s, (UnboundType, AnyType)):
+            elif isinstance(self.s, UnboundType):
                 return AnyType(TypeOfAny.special_form)
             else:
                 return mypy.typeops.make_simplified_union([self.s, t])
@@ -848,6 +850,10 @@ def join_similar_callables(t: CallableType, s: CallableType) -> CallableType:
 def safe_join(t: Type, s: Type) -> Type:
     # This is a temporary solution to prevent crashes in combine_similar_callables() etc.,
     # until relevant TODOs on handling arg_kinds will be addressed there.
+    if isinstance(get_proper_type(t), AnyType):
+        return t
+    if isinstance(get_proper_type(s), AnyType):
+        return s
     if not isinstance(t, UnpackType) and not isinstance(s, UnpackType):
         return join_types(t, s)
     if isinstance(t, UnpackType) and isinstance(s, UnpackType):
