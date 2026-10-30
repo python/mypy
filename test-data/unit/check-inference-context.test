@@ -1635,3 +1635,48 @@ def foo(args: Union[Iterable[Union[str, int]], str, int]) -> Iterable[str]:
     )
     return args
 [builtins fixtures/isinstancelist.pyi]
+
+[case testInferenceContextBothSidesInvariant]
+from typing import TypeVar, Generic
+
+T = TypeVar("T")
+
+class B(Generic[T]): ...
+class C(B[int]): ...
+
+def first(xs: list[T]) -> T: ...
+
+b: B[int]
+cs: list[C]
+b = first(cs)  # OK
+reveal_type(b)  # N: Revealed type is "__main__.C"
+
+[case testInferenceContextBothSidesNarrow]
+from typing import TypeVar, Generic
+
+T = TypeVar("T")
+
+class B(Generic[T]): ...
+class C(B[int]): ...
+
+def same(x: T) -> T: ...
+
+b: B[int]
+b = same(C())  # This should narrow
+reveal_type(b)  # N: Revealed type is "__main__.C"
+
+[case testInferenceContextBothSidesJoin]
+from typing import TypeVar, Generic, Callable, Union
+
+T = TypeVar("T")
+
+class A: ...
+class B: ...
+class C: ...
+
+def make(x: T) -> Callable[[T], None]: ...
+
+x: Union[B, C]
+fn: Callable[[Union[A, B]], None]
+fn = make(x)
+reveal_type(fn)  # N: Revealed type is "def (__main__.B | __main__.C | __main__.A)"
