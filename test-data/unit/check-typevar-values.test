@@ -758,3 +758,40 @@ def g(x: S = c):  # OK
     ...
 def h(x: S = b):  # E: Incompatible default for parameter "x" (default has type "B", parameter has type "S")
     ...
+
+[case testManyValueRestrictedClassTypeVarsTrivialBody]
+# This used to take time and memory exponential in the number of type variables.
+from typing import Generic, TypeVar
+
+T0 = TypeVar("T0", int, str)
+T1 = TypeVar("T1", int, str)
+T2 = TypeVar("T2", int, str)
+T3 = TypeVar("T3", int, str)
+T4 = TypeVar("T4", int, str)
+T5 = TypeVar("T5", int, str)
+T6 = TypeVar("T6", int, str)
+T7 = TypeVar("T7", int, str)
+T8 = TypeVar("T8", int, str)
+T9 = TypeVar("T9", int, str)
+T10 = TypeVar("T10", int, str)
+T11 = TypeVar("T11", int, str)
+T12 = TypeVar("T12", int, str)
+T13 = TypeVar("T13", int, str)
+T14 = TypeVar("T14", int, str)
+T15 = TypeVar("T15", int, str)
+T16 = TypeVar("T16", int, str)
+T17 = TypeVar("T17", int, str)
+T18 = TypeVar("T18", int, str)
+T19 = TypeVar("T19", int, str)
+
+class C(Generic[T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19]):
+    def f(self: C[int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int], x: int) -> None: ...
+    def g(self: C[int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int], x: int) -> None:
+        pass
+
+class D(Generic[T0, T1]):
+    def f(self: D[int, int]) -> None:
+        x: T0
+        reveal_type(x)  # N: Revealed type is "builtins.int" \
+                        # N: Revealed type is "builtins.str"
+[builtins fixtures/tuple.pyi]
