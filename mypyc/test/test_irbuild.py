@@ -4,8 +4,10 @@ from __future__ import annotations
 
 import os.path
 import sys
+import unittest
 
 from mypy.errors import CompileError
+from mypy.nodes import FuncDef
 from mypy.test.config import test_temp_dir
 from mypy.test.data import DataDrivenTestCase
 from mypyc.common import TOP_LEVEL_NAME
@@ -15,6 +17,7 @@ from mypyc.test.testutil import (
     MypycDataSuite,
     assert_test_output,
     build_ir_for_single_file,
+    build_ir_for_single_file2,
     infer_ir_build_options_from_test_name,
     remove_comment_lines,
     replace_word_size,
@@ -104,3 +107,30 @@ class TestGenOps(MypycDataSuite):
                     actual.extend(format_func(fn))
 
             assert_test_output(testcase, actual, "Invalid source code output", expected_output)
+
+
+class TestRedefinedParamSignature(unittest.TestCase):
+    def test_widens_native_signature(self) -> None:
+        """The native signature must use the (possibly widened) parameter variable type.
+
+        Under --allow-redefinition the variable's type is the join of the
+        declaration and every redefinition. The local argument register and any
+        closure environment attribute use that wider type, so a narrower
+        signature derived from the declared Callable type generates invalid C
+        when the argument is stored (https://github.com/python/mypy/issues/22221).
+        """
+        source = [
+            "# flags: --allow-redefinition",
+            "def f(n: int):",
+            "    def inner():",
+            "        nonlocal n",
+            "        n = n - 1",
+            "        return n",
+            "    return inner()",
+        ]
+        module, tree, _, mapper = build_ir_for_single_file2(source)
+        fdef = tree.defs[0]
+        assert isinstance(fdef, FuncDef)
+        sig = mapper.func_to_decl[fdef].sig
+        assert sig.args[0].name == "n"
+        assert str(sig.args[0].type) == "union[int, object]"
