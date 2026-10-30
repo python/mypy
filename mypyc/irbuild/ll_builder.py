@@ -2954,7 +2954,12 @@ class LowLevelIRBuilder:
                 true_block, false_block = BasicBlock(), BasicBlock()
                 self.add_bool_branch(op, true_block, false_block)
                 self.activate_block(true_block)
-            coerced = self.coerce(obj, item, line)
+            if is_subtype(obj.type, item):
+                # All union items are subclasses of this item, so coerce() would keep
+                # the union type and we'd recurse infinitely
+                coerced: Value = self.add(Cast(obj, item, line, unchecked=True))
+            else:
+                coerced = self.coerce(obj, item, line)
             temp = process_item(coerced)
             temp2 = self.coerce(temp, result_type, line)
             self.add(Assign(result, temp2, line))
