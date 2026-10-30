@@ -5760,7 +5760,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
             s.body,
             s.else_body,
             on_enter_body=lambda: self.analyze_index_variables(
-                s.index, item_type, s.index_type is None, s
+                s.index, item_type, s.index_type is None, s.index
             ),
         )
 
