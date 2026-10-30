@@ -2814,6 +2814,6 @@ x: Union[Any, C[[Any, Any]]]
 
 def test(x: int) -> None: ...
 
-x = foo(test)  # E: Argument 1 to "foo" has incompatible type "Callable[[int], None]"; expected "Callable[[Any, Any], None]"
-reveal_type(x)  # N: Revealed type is "__main__.C[[Any, Any]]"
+x = foo(test)
+reveal_type(x)  # N: Revealed type is "__main__.C[[x: builtins.int]]"
 [builtins fixtures/paramspec.pyi]
