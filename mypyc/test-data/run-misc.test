@@ -342,7 +342,9 @@ bar
 0
 
 [case testMultipleAssignment]
-from typing import Tuple, List, Any
+from typing import Tuple, List, Any, Iterator
+
+from testutil import assertRaises
 
 def from_tuple(t: Tuple[int, str]) -> List[Any]:
     x, y = t
@@ -369,40 +371,68 @@ def multiple_assignments(t: Tuple[int, str]) -> List[Any]:
     a, b = c, d = t
     e, f = g, h = 1, 2
     return [a, b, c, d, e, f, g, h]
-[file driver.py]
-from native import (
-    from_tuple, from_tuple_sequence, from_list, from_list_complex, from_any, multiple_assignments
-)
 
-assert from_tuple((1, 'x')) == ['x', 1]
+def test_from_tuple() -> None:
+    assert from_tuple((1, 'x')) == ['x', 1]
 
-assert from_tuple_sequence((1, 5, 4)) == [4, 5, 1]
-try:
-    from_tuple_sequence((1, 5))
-except ValueError as e:
-    assert 'not enough values to unpack (expected 3, got 2)' in str(e)
-else:
-    assert False
+def test_from_tuple_sequence() -> None:
+    assert from_tuple_sequence((1, 5, 4)) == [4, 5, 1]
+    with assertRaises(ValueError, "not enough values to unpack (expected 3, got 2)"):
+        from_tuple_sequence((1, 5))
 
-assert from_list([3, 4]) == [4, 3]
-try:
-    from_list([5, 4, 3])
-except ValueError as e:
-    assert 'too many values to unpack (expected 2)' in str(e)
-else:
-    assert False
+def test_from_list() -> None:
+    assert from_list([3, 4]) == [4, 3]
+    with assertRaises(ValueError, "too many values to unpack (expected 2)"):
+        from_list([5, 4, 3])
 
-assert from_list_complex([7, 6]) == [6, 7]
-try:
-    from_list_complex([5, 4, 3])
-except ValueError as e:
-    assert 'too many values to unpack (expected 2)' in str(e)
-else:
-    assert False
+def test_from_list_complex() -> None:
+    assert from_list_complex([7, 6]) == [6, 7]
+    with assertRaises(ValueError, "too many values to unpack (expected 2)"):
+        from_list_complex([5, 4, 3])
 
-assert from_any('xy') == ['y', 'x']
+def test_from_any() -> None:
+    assert from_any('xy') == ['y', 'x']
 
-assert multiple_assignments((4, 'x')) == [4, 'x', 4, 'x', 1, 2, 1, 2]
+def test_multiple_assignments() -> None:
+    assert multiple_assignments((4, 'x')) == [4, 'x', 4, 'x', 1, 2, 1, 2]
+
+log: list[str] = []
+
+def gen(n: int) -> Iterator[int]:
+    for i in range(n):
+        log.append(f"next {i}")
+        yield i
+    log.append("end")
+
+class C:
+    def __setattr__(self, name: str, value: object) -> None:
+        log.append(f"set {name}={value}")
+
+def test_unpack_iterator_order() -> None:
+    log.clear()
+    c: Any = C()
+    c.x, c.y = gen(2)
+    assert log == ["next 0", "next 1", "end", "set x=0", "set y=1"], log
+
+def test_unpack_iterator_star_order() -> None:
+    log.clear()
+    c: Any = C()
+    c.x, *c.y, c.z, c.w = gen(5)
+    assert log == [
+        "next 0", "next 1", "next 2", "next 3", "next 4", "end",
+        "set x=0", "set y=[1, 2]", "set z=3", "set w=4",
+    ], log
+
+def test_unpack_iterator_errors() -> None:
+    log.clear()
+    c: Any = C()
+    with assertRaises(ValueError, "too many values to unpack"):
+        c.x, c.y = gen(3)
+    with assertRaises(ValueError, "not enough values to unpack"):
+        c.x, c.y = gen(1)
+    with assertRaises(ValueError, "not enough values to unpack"):
+        c.x, *c.y, c.z = gen(1)
+    assert not any(s.startswith("set") for s in log), log
 
 [case testUnpack]
 from typing import List
