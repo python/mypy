@@ -24,6 +24,25 @@ L3:
     r2 = <error> :: int
     return r2
 
+[case testStrRemovePrefixSuffixError]
+def f(s: str, prefix: str, suffix: str) -> str:
+    return s.removeprefix(prefix).removesuffix(suffix)
+[out]
+def f(s, prefix, suffix):
+    s, prefix, suffix, r0, r1, r2 :: str
+L0:
+    r0 = CPyStr_Removeprefix(s, prefix)
+    if is_error(r0) goto L3 (error at f:2) else goto L1
+L1:
+    r1 = CPyStr_Removesuffix(r0, suffix)
+    dec_ref r0
+    if is_error(r1) goto L3 (error at f:2) else goto L2
+L2:
+    return r1
+L3:
+    r2 = <error> :: str
+    return r2
+
 [case testListAppendAndSetItemError]
 from typing import List
 def f(x: List[int], y: int, z: int) -> None:

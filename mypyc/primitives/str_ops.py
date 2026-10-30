@@ -265,7 +265,7 @@ method_op(
     arg_types=[str_rprimitive, str_rprimitive],
     return_type=str_rprimitive,
     c_function_name="CPyStr_Removeprefix",
-    error_kind=ERR_NEVER,
+    error_kind=ERR_MAGIC,
 )
 
 # str.removesuffix(str)
@@ -274,7 +274,7 @@ method_op(
     arg_types=[str_rprimitive, str_rprimitive],
     return_type=str_rprimitive,
     c_function_name="CPyStr_Removesuffix",
-    error_kind=ERR_NEVER,
+    error_kind=ERR_MAGIC,
 )
 
 # str.split(...) and str.rsplit(...)

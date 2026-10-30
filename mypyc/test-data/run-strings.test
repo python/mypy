@@ -91,6 +91,12 @@ assert match_tuple_literal_args('abc', 'z', 'c') == (False, True)
 assert remove_prefix_suffix('', '') == ('', '')
 assert remove_prefix_suffix('abc', 'a') == ('bc', 'abc')
 assert remove_prefix_suffix('abc', 'c') == ('abc', 'ab')
+assert remove_prefix_suffix('abc', '') == ('abc', 'abc')
+assert remove_prefix_suffix('abc', 'abc') == ('', '')
+assert remove_prefix_suffix('abc', 'abcd') == ('abc', 'abc')
+assert remove_prefix_suffix('abc', 'b') == ('abc', 'abc')
+assert remove_prefix_suffix('\u1234abc\U0001f600', '\u1234') == ('abc\U0001f600', '\u1234abc\U0001f600')
+assert remove_prefix_suffix('\u1234abc\U0001f600', '\U0001f600') == ('\u1234abc\U0001f600', '\u1234abc')
 
 [case testStringEquality]
 def eq(a: str, b: str) -> bool:
