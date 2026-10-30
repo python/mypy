@@ -225,6 +225,9 @@ bool CPyTagged_IsLt_(CPyTagged left, CPyTagged right) {
 
 PyObject *CPyLong_FromStrWithBase(PyObject *o, CPyTagged base) {
     Py_ssize_t base_size_t = CPyTagged_AsSsize_t(base);
+    if (base_size_t == -1 && PyErr_Occurred()) {
+        return NULL;
+    }
     return PyLong_FromUnicodeObject(o, base_size_t);
 }
 

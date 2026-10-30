@@ -586,7 +586,10 @@ PyObject *CPyTagged_Str(CPyTagged n) {
     if (CPyTagged_CheckShort(n)) {
         return CPyTagged_ShortToStr(CPyTagged_ShortAsSsize_t(n));
     } else {
-        return PyObject_Str(CPyTagged_AsObject(n));
+        PyObject *obj = CPyTagged_AsObject(n);
+        PyObject *str = PyObject_Str(obj);
+        Py_DECREF(obj);
+        return str;
     }
 }
 
@@ -602,7 +605,12 @@ PyObject *CPyTagged_AsciiBytes(CPyTagged n) {
     if (CPyTagged_CheckShort(n)) {
         return CPyTagged_ShortToAsciiBytes(CPyTagged_ShortAsSsize_t(n));
     }
-    PyObject *str = PyObject_Str(CPyTagged_AsObject(n));
+    PyObject *obj = CPyTagged_AsObject(n);
+    PyObject *str = PyObject_Str(obj);
+    Py_DECREF(obj);
+    if (str == NULL) {
+        return NULL;
+    }
     PyObject *bytes = PyUnicode_AsASCIIString(str);
     CPy_DECREF(str);
     return bytes;
