@@ -72,6 +72,7 @@ from mypy.types import (
     instance_cache,
     remove_dups,
 )
+from mypy.typestate import BIND_SELF_CACHE_MAX_SIZE, type_state
 from mypy.typetraverser import TypeTraverserVisitor
 from mypy.typevars import fill_typevars
 
@@ -551,6 +552,14 @@ def bind_self_inner(
         self_ids = {tv.id for tv in get_all_type_vars(self_param_type)}
         self_vars = [tv for tv in func.variables if tv.id in self_ids]
 
+        cache_key = None
+        if not any(tv.id.is_meta_var() for tv in self_vars) and state.strict_optional:
+            # Only use cache for something that in not freshened (e.g. protocol access),
+            # otherwise it would be pointless as each fresh meta variable is unique.
+            cache_key = (func, original_type, is_classmethod, ignore_instances)
+        if cache_key is not None and cache_key in type_state.bind_self_cache:
+            return type_state.bind_self_cache[cache_key]
+
         # Solve for these type arguments using the actual class or instance type.
         typeargs = infer_type_arguments(
             self_vars, self_param_type, original_type, is_supertype=True, erase_types=False
@@ -574,9 +583,38 @@ def bind_self_inner(
         to_apply = [t if t is not None else UninhabitedType() for t in typeargs]
         func = expand_type(func, {tv.id: arg for tv, arg in zip(self_vars, to_apply)})
         variables = [v for v in func.variables if v not in self_vars]
+        if cache_key is not None:
+            if len(type_state.bind_self_cache) > BIND_SELF_CACHE_MAX_SIZE:
+                type_state.bind_self_cache.clear()
+            type_state.bind_self_cache[cache_key] = func, variables
     else:
         variables = func.variables
     return func, variables
+
+
+def bind_self_fast(method: F, original_type: Type | None = None) -> F:
+    """Return a copy of `method`, with the type of its first parameter (usually
+    self or cls) bound to original_type.
+
+    This is a faster version of mypy.typeops.bind_self() that can be used for methods
+    with trivial self/cls annotations.
+    """
+    if isinstance(method, Overloaded):
+        items = [bind_self_fast(c, original_type) for c in method.items]
+        return cast(F, Overloaded(items))
+    assert isinstance(method, CallableType)
+    if not method.arg_types:
+        # Invalid method, return something.
+        return method
+    if method.arg_kinds[0] in (ARG_STAR, ARG_STAR2):
+        # See bind_self() for details.
+        return method
+    return method.copy_modified(
+        arg_types=method.arg_types[1:],
+        arg_kinds=method.arg_kinds[1:],
+        arg_names=method.arg_names[1:],
+        is_bound=True,
+    )
 
 
 def erase_to_bound(t: Type) -> Type:
