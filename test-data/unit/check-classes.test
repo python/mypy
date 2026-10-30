@@ -8833,6 +8833,24 @@ if object():
 if object():
     reveal_type(D())  # N: Revealed type is "Never"
 
+[case testNewNoReturnClassIsTypeObject]
+from typing import NoReturn, TypeVar
+
+T = TypeVar("T", bound=type[object])
+def deco(cls: T) -> T: return cls
+
+@deco
+class A:
+    def __new__(cls) -> NoReturn: ...
+
+a: type[A] = A
+def f(o: object) -> None:
+    if isinstance(o, A):
+        reveal_type(o)  # N: Revealed type is "__main__.A"
+if object():
+    reveal_type(A())  # N: Revealed type is "Never"
+[builtins fixtures/isinstance.pyi]
+
 [case testOverloadedNewAndInitNoReturn]
 from typing import NoReturn, overload
 

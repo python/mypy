@@ -2424,8 +2424,9 @@ class CallableType(ParametersBase, FunctionLike):
         return ARG_STAR2 in self.arg_kinds
 
     def is_type_obj(self) -> bool:
-        return self.fallback.type.is_metaclass() and not isinstance(
-            get_proper_type(self.ret_type), UninhabitedType
+        return self.fallback.type.is_metaclass() and (
+            self.instance_type is not None
+            or not isinstance(get_proper_type(self.ret_type), UninhabitedType)
         )
 
     def get_instance_type(self, *, force_fallback: bool = False) -> ProperType:
