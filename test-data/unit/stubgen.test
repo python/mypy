@@ -1604,6 +1604,17 @@ explicit_alias: TypeAlias = tuple[int, str]
 implicit_alias = list[int]
 
 
+[case testExplicitTypeAliasFromUnanalyzedModule_semanal]
+from compat import TypeAlias  # type: ignore
+
+explicit_alias: TypeAlias = tuple[int, str]
+
+[out]
+from compat import TypeAlias as TypeAlias
+
+explicit_alias: TypeAlias = tuple[int, str]
+
+
 [case testEllipsisAliasPreserved]
 
 alias = Tuple[int, ...]
