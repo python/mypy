@@ -2941,7 +2941,15 @@ class TupleType(ProperType):
             total = len(self.items)
             unpack_index = find_unpack_in_list(self.items)
             assert unpack_index is not None
-            if begin is None and end is None:
+            if (
+                begin is not None
+                and end is not None
+                and (begin >= 0) == (end >= 0)
+                and (begin >= end if stride is None or stride > 0 else begin <= end)
+            ):
+                # Start and end count from the same side, so the slice is empty for any length.
+                slice_items = []
+            elif begin is None and end is None:
                 # We special-case this to support reversing variadic tuples.
                 # General support for slicing is tricky, so we handle only simple cases.
                 if stride == -1:
