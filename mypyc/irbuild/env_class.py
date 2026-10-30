@@ -49,14 +49,7 @@ def setup_env_class(builder: IRBuilder) -> ClassIR:
     Return a ClassIR representing an environment for a function
     containing a nested function.
     """
-    # Make the name unique, since there may be multiple conditional definitions of a
-    # nested function with the same name
-    name = base_name = f"{builder.fn_info.namespaced_name()}_env"
-    count = 0
-    while name in builder.env_class_names:
-        name = f"{base_name}_{count}"
-        count += 1
-    builder.env_class_names.add(name)
+    name = builder.unique_class_name(f"{builder.fn_info.namespaced_name()}_env")
     env_class = ClassIR(name, builder.module_name, is_generated=True, is_final_class=True)
     env_class.reuse_freed_instance = True
     env_class.attributes[SELF_NAME] = RInstance(env_class)

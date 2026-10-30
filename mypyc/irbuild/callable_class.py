@@ -54,22 +54,7 @@ def setup_callable_class(builder: IRBuilder) -> None:
     Return a newly constructed ClassIR representing the callable
     class for the nested function.
     """
-    # Check to see that the name has not already been taken. If so,
-    # rename the class. We allow multiple uses of the same function
-    # name because this is valid in if-else blocks. Example:
-    #
-    #     if True:
-    #         def foo():          ---->    foo_obj()
-    #             return True
-    #     else:
-    #         def foo():          ---->    foo_obj_0()
-    #             return False
-    name = base_name = f"{builder.fn_info.namespaced_name()}_obj"
-    count = 0
-    while name in builder.callable_class_names:
-        name = base_name + "_" + str(count)
-        count += 1
-    builder.callable_class_names.add(name)
+    name = builder.unique_class_name(f"{builder.fn_info.namespaced_name()}_obj")
 
     # Define the actual callable class ClassIR, and set its
     # environment to point at the previously defined environment
