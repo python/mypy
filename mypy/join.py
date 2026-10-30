@@ -245,7 +245,9 @@ def join_types(s: Type, t: Type, instance_joiner: InstanceJoiner | None = None) 
         s, t = t, s
 
     if isinstance(s, AnyType):
-        return s
+        if isinstance(t, AnyType):
+            return s
+        s, t = t, s
 
     if isinstance(s, ErasedType):
         return t
@@ -284,7 +286,7 @@ class TypeJoinVisitor(TypeVisitor[ProperType]):
             return mypy.typeops.make_simplified_union([self.s, t])
 
     def visit_any(self, t: AnyType) -> ProperType:
-        return t
+        return UnionType([self.s, t])
 
     def visit_none_type(self, t: NoneType) -> ProperType:
         if state.strict_optional:
@@ -390,8 +392,6 @@ class TypeJoinVisitor(TypeVisitor[ProperType]):
     def visit_callable_type(self, t: CallableType) -> ProperType:
         if isinstance(self.s, CallableType):
             if is_similar_callables(t, self.s):
-                if is_equivalent(t, self.s):
-                    return combine_similar_callables(t, self.s)
                 result = join_similar_callables(t, self.s)
                 if any(
                     isinstance(tp, (NoneType, UninhabitedType))

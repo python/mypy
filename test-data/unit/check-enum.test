@@ -2303,9 +2303,9 @@ def f1(c: C) -> None:
 
 def f2(c: C, a: Any) -> None:
     x = {'x': c.value, 'y': a}
-    reveal_type(x)  # N: Revealed type is "builtins.dict[builtins.str, Any]"
+    reveal_type(x)  # N: Revealed type is "builtins.dict[builtins.str, builtins.int | Any]"
     y = {'y': a, 'x': c.value}
-    reveal_type(y)  # N: Revealed type is "builtins.dict[builtins.str, Any]"
+    reveal_type(y)  # N: Revealed type is "builtins.dict[builtins.str, builtins.int | Any]"
 [builtins fixtures/dict.pyi]
 
 [case testEnumIgnoreIsDeleted]

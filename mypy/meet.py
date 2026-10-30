@@ -961,8 +961,6 @@ class TypeMeetVisitor(TypeVisitor[ProperType]):
         if isinstance(self.s, CallableType) and join.is_similar_callables(
             t, self.s, for_meet=True
         ):
-            if is_equivalent(t, self.s):
-                return join.combine_similar_callables(t, self.s)
             result = meet_similar_callables(t, self.s)
             # We set the from_type_type flag to suppress error when a collection of
             # concrete class objects gets inferred as their common abstract superclass.
