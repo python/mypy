@@ -1,26 +1,26 @@
-From 83cf9b2dcc569149510c3a9118b9a7dc44144232 Mon Sep 17 00:00:00 2001
+From 2c74a0f55cf0314339a855f6a37297298d73e0e4 Mon Sep 17 00:00:00 2001
 From: Shantanu <12621235+hauntsaninja@users.noreply.github.com>
 Date: Mon, 26 Sep 2022 12:55:07 -0700
 Subject: [PATCH] Remove use of LiteralString in builtins (#13743)
 
 ---
- mypy/typeshed/stdlib/builtins.pyi | 127 +-----------------------------
- 1 file changed, 1 insertion(+), 126 deletions(-)
+ mypy/typeshed/stdlib/builtins.pyi | 130 +-----------------------------
+ 1 file changed, 2 insertions(+), 128 deletions(-)
 
 diff --git a/mypy/typeshed/stdlib/builtins.pyi b/mypy/typeshed/stdlib/builtins.pyi
-index 0fe6d9a69..1808e28e2 100644
+index 6feba7ea2..8e25d8aea 100644
 --- a/mypy/typeshed/stdlib/builtins.pyi
 +++ b/mypy/typeshed/stdlib/builtins.pyi
-@@ -65,7 +65,7 @@ from typing import (  # noqa: Y022,UP035
- )
+@@ -66,7 +66,7 @@ from typing import (  # noqa: Y022  # ruff: ignore[deprecated-import]
  
  # we can't import `Literal` from typing or mypy crashes: see #11247
--from typing_extensions import Literal, LiteralString, Self, TypeIs, TypeVarTuple, deprecated, disjoint_base  # noqa: Y023, UP035
-+from typing_extensions import Literal, Self, TypeIs, TypeVarTuple, deprecated, disjoint_base  # noqa: Y023, UP035
+ # ruff: ignore[deprecated-import]
+-from typing_extensions import Literal, LiteralString, Self, TypeIs, TypeVarTuple, deprecated, disjoint_base  # noqa: Y023
++from typing_extensions import Literal, Self, TypeIs, TypeVarTuple, deprecated, disjoint_base  # noqa: Y023
  
  if sys.version_info >= (3, 14):
      from _typeshed import AnnotateFunc
-@@ -489,20 +489,8 @@ class str(Sequence[str]):
+@@ -484,20 +484,8 @@ class str(Sequence[str]):
      def __new__(cls, object: object = "") -> Self: ...
      @overload
      def __new__(cls, object: ReadableBuffer, encoding: str = "utf-8", errors: str = "strict") -> Self: ...
@@ -41,7 +41,7 @@ index 0fe6d9a69..1808e28e2 100644
      def center(self, width: SupportsIndex, fillchar: str = " ", /) -> str: ...  # type: ignore[misc]
  
      def count(self, sub: str, start: SupportsIndex | None = None, end: SupportsIndex | None = None, /) -> int: ...
-@@ -510,17 +498,9 @@ class str(Sequence[str]):
+@@ -505,17 +493,9 @@ class str(Sequence[str]):
      def endswith(
          self, suffix: str | tuple[str, ...], start: SupportsIndex | None = None, end: SupportsIndex | None = None, /
      ) -> bool: ...
@@ -59,7 +59,7 @@ index 0fe6d9a69..1808e28e2 100644
      def format(self, *args: object, **kwargs: object) -> str: ...
  
      def format_map(self, mapping: _FormatMapMapping, /) -> str: ...
-@@ -537,119 +517,38 @@ class str(Sequence[str]):
+@@ -532,119 +512,38 @@ class str(Sequence[str]):
      def isspace(self) -> bool: ...
      def istitle(self) -> bool: ...
      def isupper(self) -> bool: ...
@@ -179,7 +179,7 @@ index 0fe6d9a69..1808e28e2 100644
      def zfill(self, width: SupportsIndex, /) -> str: ...  # type: ignore[misc]
  
      if sys.version_info >= (3, 15):
-@@ -677,49 +576,25 @@ class str(Sequence[str]):
+@@ -672,51 +571,26 @@ class str(Sequence[str]):
      @staticmethod
      @overload
      def maketrans(x: str, y: str, z: str, /) -> dict[int, int | None]: ...
@@ -214,7 +214,10 @@ index 0fe6d9a69..1808e28e2 100644
 -    @overload
 -    def __mod__(self: LiteralString, value: LiteralString | tuple[LiteralString, ...], /) -> LiteralString: ...
 -    @overload
-     def __mod__(self, value: Any, /) -> str: ...
+-    def __mod__(self, value: object, /) -> str: ...
+-
++    def __mod__(self, value: Any, /) -> str: ...
+     def __rmod__(self, value: str, /) -> str: ...
 -
 -    @overload
 -    def __mul__(self: LiteralString, value: SupportsIndex, /) -> LiteralString: ...
@@ -230,5 +233,5 @@ index 0fe6d9a69..1808e28e2 100644
  
      def __getnewargs__(self) -> tuple[str]: ...
 -- 
-2.54.0
+2.56.0
 
