@@ -540,6 +540,7 @@ class TypeOpsSuite(Suite):
         assert_type(Instance, to)
         # The original class still can be false
         assert self.fx.a.can_be_false
+        assert_equal(true_only(self.fx.bool_type), self.fx.lit_true)
 
     def test_true_only_of_union(self) -> None:
         tup_type = self.tuple(AnyType(TypeOfAny.special_form))
@@ -579,6 +580,7 @@ class TypeOpsSuite(Suite):
         assert_type(Instance, fo)
         # The original class still can be true
         assert self.fx.a.can_be_true
+        assert_equal(false_only(self.fx.bool_type), self.fx.lit_false)
 
     def test_false_only_of_union(self) -> None:
         with state.strict_optional_set(True):

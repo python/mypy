@@ -572,6 +572,48 @@ mod + 0  # E: Unsupported left operand type for + (Module)
 x = 0
 x += ""
 
+[case testFollowImportsSilentOverloadResolution]
+# flags: --follow-imports=silent
+from mod import x
+reveal_type(x)  # N: Revealed type is "builtins.str"
+[file mod.py]
+from typing import overload
+@overload
+def f(x: int) -> int: ...
+@overload
+def f(x: str) -> str: ...
+def f(x: int | str) -> int | str:
+    return x
+x = f("")
+
+[case testFollowImportsSilentReverseOperator]
+# flags: --follow-imports=silent
+from mod import x
+reveal_type(x)  # N: Revealed type is "builtins.str"
+[file mod.py]
+class A:
+    def __add__(self, other: int) -> int: ...
+class B:
+    def __radd__(self, other: A) -> str: ...
+x = A() + B()
+
+[case testFollowImportsSilentTypedDictUnion]
+# flags: --follow-imports=silent
+from mod import x
+reveal_type(x)  # N: Revealed type is "builtins.str"
+[file mod.py]
+from typing_extensions import TypedDict
+class A(TypedDict):
+    value: int
+class B(TypedDict):
+    value: str
+data: A | B
+data = {"value": ""}
+x = data["value"]
+[file typing_extensions.pyi]
+TypedDict = 0
+class _TypedDict: pass
+
 [case testFollowImportsSilentTypeIgnore]
 # flags: --warn-unused-ignores --follow-imports=silent
 import mod

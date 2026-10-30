@@ -6145,9 +6145,9 @@ a.py:1: error: "int" not callable
 [file a.py.2]
 1()
 [out]
-mypy: error: Cannot read file 'tmp/nonexistent.py': No such file or directory
+nonexistent.py: error: Cannot read file: No such file or directory
 ==
-mypy: error: Cannot read file 'tmp/nonexistent.py': No such file or directory
+nonexistent.py: error: Cannot read file: No such file or directory
 
 [case testNonExistentFileOnCommandLine2]
 # cmd: mypy a.py

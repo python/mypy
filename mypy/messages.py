@@ -1755,7 +1755,9 @@ class MessageBuilder:
             context,
         )
 
-    def overloaded_signatures_param_specific(self, index: int, context: Context) -> None:
+    def overloaded_signatures_param_specific(
+        self, index: int, context: Context, positional_only_args: list[str]
+    ) -> None:
         self.fail(
             (
                 f"Overloaded function implementation does not accept all possible parameters "
@@ -1763,6 +1765,9 @@ class MessageBuilder:
             ),
             context,
         )
+        if positional_only_args:
+            names = ", ".join(f'"{name}"' for name in positional_only_args)
+            self.note(f"Consider marking {names} positional-only in signature {index}", context)
 
     def overloaded_signatures_ret_specific(self, index: int, context: Context) -> None:
         self.fail(
@@ -2673,7 +2678,14 @@ def format_type_inner(
         return ", ".join(format(typ) for typ in types)
 
     def format_union_items(types: Sequence[Type]) -> list[str]:
-        formatted = [format(typ) for typ in types if format(typ) != "None"]
+        formatted = []
+        has_none = False
+        for typ in types:
+            item = format(typ)
+            if item == "None":
+                has_none = True
+            else:
+                formatted.append(item)
         if len(formatted) > MAX_UNION_ITEMS and verbosity == 0:
             more = len(formatted) - MAX_UNION_ITEMS // 2
             formatted = formatted[: MAX_UNION_ITEMS // 2]
@@ -2681,7 +2693,7 @@ def format_type_inner(
             more = 0
         if more:
             formatted.append(f"<{more} more items>")
-        if any(format(typ) == "None" for typ in types):
+        if has_none:
             formatted.append("None")
         return formatted
 

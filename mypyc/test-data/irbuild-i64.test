@@ -536,13 +536,13 @@ def g(a):
 L0:
     return 1
 def f(x):
-    x, r0, n :: i64
+    x, r0 :: i64
     r1 :: bit
+    n :: i64
     r2 :: None
     r3 :: i64
 L0:
     r0 = 0
-    n = r0
 L1:
     r1 = r0 < x :: signed
     if r1 goto L2 else goto L4 :: bool
@@ -1661,12 +1661,11 @@ def f() -> None:
         y = x
 [out]
 def f():
-    r0, x :: i64
+    r0 :: i64
     r1 :: bit
-    y, r2 :: i64
+    x, y, r2 :: i64
 L0:
     r0 = 0
-    x = r0
 L1:
     r1 = r0 < 4 :: signed
     if r1 goto L2 else goto L4 :: bool
@@ -1688,12 +1687,11 @@ def f() -> None:
         y = x
 [out]
 def f():
-    r0, x :: i64
+    r0 :: i64
     r1 :: bit
-    y, r2 :: i64
+    x, y, r2 :: i64
 L0:
     r0 = 0
-    x = r0
 L1:
     r1 = r0 < 4 :: signed
     if r1 goto L2 else goto L4 :: bool

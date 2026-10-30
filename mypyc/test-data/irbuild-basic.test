@@ -1883,6 +1883,43 @@ L0:
     r5 = a.f(12, 6, r4)
     return 1
 
+[case testWalrusInCallArguments]
+from typing import Callable
+
+def f(a: int, b: int, c: int) -> int:
+    return a
+
+def g(x: int, y: int) -> int:
+    return f(x, y, (x := 1))
+
+def h(func: Callable[[object], object], other: Callable[[object], object]) -> object:
+    return func((func := other))
+[out]
+def f(a, b, c):
+    a, b, c :: int
+L0:
+    return a
+def g(x, y):
+    x, y, r0, r1 :: int
+L0:
+    r0 = x
+    x = 2
+    r1 = f(r0, y, 2)
+    return r1
+def h(func, other):
+    func, other, r0 :: object
+    r1 :: object[1]
+    r2 :: object_ptr
+    r3 :: object
+L0:
+    r0 = func
+    func = other
+    r1 = [other]
+    r2 = load_address r1
+    r3 = PyObject_Vectorcall(r0, r2, 1, 0)
+    keep_alive other
+    return r3
+
 [case testListComprehension_withgil]
 from typing import List
 
@@ -2907,9 +2944,9 @@ def call_sum(l: Iterable[int], comparison: Callable[[int], bool]) -> int:
 
 [out]
 def call_sum(l, comparison):
-    l, comparison :: object
-    r0 :: int
-    r1, r2 :: object
+    l, comparison, r0 :: object
+    r1 :: int
+    r2 :: object
     r3, x :: int
     r4 :: object
     r5 :: object[1]
@@ -2919,10 +2956,10 @@ def call_sum(l, comparison):
     r10, r11 :: int
     r12 :: bit
 L0:
-    r0 = 0
-    r1 = PyObject_GetIter(l)
+    r0 = PyObject_GetIter(l)
+    r1 = 0
 L1:
-    r2 = PyIter_Next(r1)
+    r2 = PyIter_Next(r0)
     if is_error(r2) goto L4 else goto L2
 L2:
     r3 = unbox(int, r2)
@@ -2935,14 +2972,14 @@ L2:
     r8 = unbox(bool, r7)
     r9 = r8 << 1
     r10 = extend r9: builtins.bool to builtins.int
-    r11 = CPyTagged_Add(r0, r10)
-    r0 = r11
+    r11 = CPyTagged_Add(r1, r10)
+    r1 = r11
 L3:
     goto L1
 L4:
     r12 = CPy_NoErrOccurred()
 L5:
-    return r0
+    return r1
 
 [case testSetAttr1]
 from typing import Any, Dict, List
@@ -3475,14 +3512,12 @@ L5:
 def range_in_loop():
     sum :: int
     r0 :: short_int
-    i :: int
     r1 :: bit
-    r2 :: int
+    i, r2 :: int
     r3 :: short_int
 L0:
     sum = 0
     r0 = 8
-    i = r0
 L1:
     r1 = int_lt r0, 24
     if r1 goto L2 else goto L4 :: bool
@@ -3833,3 +3868,17 @@ def get_length():
 L0:
     r0 = 'https://w3id.org/cwl/salad#'
     return 54
+
+[case testAsyncGeneratorExprNotSupported]
+from typing import AsyncIterator
+
+async def h(x: int) -> int:
+    return x
+
+async def f(xs: list[int], a: AsyncIterator[int]) -> None:
+    g1 = (await h(x) for x in xs)  # E: Async generator expressions are not supported
+    g2 = (x async for x in a)  # E: Async generator expressions are not supported
+    g3 = (x for x in xs if [y async for y in a])  # E: Async generator expressions are not supported
+    # An 'await' in the first iterable is evaluated in the enclosing function.
+    g4 = (x for x in [await h(1)])  # W: Treating generator comprehension as list
+[typing fixtures/typing-full.pyi]

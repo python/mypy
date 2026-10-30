@@ -151,6 +151,15 @@ static bool _CPy_IsSafeMetaClass(PyTypeObject *metaclass) {
     return matches;
 }
 
+// Resolve __mro_entries__ in base class expressions, returning an owned reference.
+PyObject *CPyType_ResolveBases(PyObject *bases) {
+    PyObject *resolved = update_bases(bases);
+    if (resolved == bases) {
+        Py_INCREF(resolved);
+    }
+    return resolved;
+}
+
 #if CPY_3_13_FEATURES
 
 // Adapted from CPython 3.13.0b3
@@ -221,6 +230,8 @@ PyObject *CPyType_FromTemplate(PyObject *template,
 
     if (orig_bases) {
         bases = update_bases(orig_bases);
+        if (bases == NULL)
+            goto error;
         // update_bases doesn't increment the refcount if nothing changes,
         // so we do it to make sure we have distinct "references" to both
         if (bases == orig_bases)
@@ -243,17 +254,6 @@ PyObject *CPyType_FromTemplate(PyObject *template,
     if (!name)
         goto error;
 
-    if (template_->tp_doc) {
-        // cpython expects tp_doc to be heap-allocated so convert it here to
-        // avoid segfaults on deallocation.
-        Py_ssize_t size = strlen(template_->tp_doc) + 1;
-        char *doc = (char *)PyMem_Malloc(size);
-        if (!doc)
-            goto error;
-        memcpy(doc, template_->tp_doc, size);
-        template_->tp_doc = doc;
-    }
-
     // Allocate the type and then copy the main stuff in.
     t = (PyHeapTypeObject*)PyType_GenericAlloc(&PyType_Type, 0);
     if (!t)
@@ -261,6 +261,21 @@ PyObject *CPyType_FromTemplate(PyObject *template,
     memcpy((char *)t + sizeof(PyVarObject),
            (char *)template_ + sizeof(PyVarObject),
            sizeof(PyTypeObject) - sizeof(PyVarObject));
+
+    t->ht_type.tp_doc = NULL;
+    // Unlike the tp_doc slots of most other object, a heap type's tp_doc
+    // must be heap allocated.
+    if (template_->tp_doc) {
+        // Silently truncate the docstring if it contains a null byte
+        size_t size = strlen(template_->tp_doc) + 1;
+        char *doc = (char *)PyMem_Malloc(size);
+        if (doc == NULL) {
+            PyErr_NoMemory();
+            goto error;
+        }
+        memcpy(doc, template_->tp_doc, size);
+        t->ht_type.tp_doc = doc;
+    }
 
     if (bases != orig_bases) {
         if (PyObject_SetAttr((PyObject *)t, mypyc_interned_str.__orig_bases__, orig_bases) < 0)
@@ -323,21 +338,6 @@ PyObject *CPyType_FromTemplate(PyObject *template,
         goto error;
 
     Py_XDECREF(dummy_class);
-
-    // Unlike the tp_doc slots of most other object, a heap type's tp_doc
-    // must be heap allocated.
-    if (template_->tp_doc) {
-        // Silently truncate the docstring if it contains a null byte
-        Py_ssize_t size = strlen(template_->tp_doc) + 1;
-        char *tp_doc = (char *)PyMem_Malloc(size);
-        if (tp_doc == NULL) {
-            PyErr_NoMemory();
-            goto error;
-        }
-
-        memcpy(tp_doc, template_->tp_doc, size);
-        t->ht_type.tp_doc = tp_doc;
-    }
 
 #if PY_MINOR_VERSION == 11
     // This is a hack. Python 3.11 doesn't include good public APIs to work with managed
@@ -475,8 +475,15 @@ fail:
 PyObject *
 CPyPickle_SetState(PyObject *obj, PyObject *state)
 {
-    if (_CPy_UpdateObjFromDict(obj, state) != 0) {
-        return NULL;
+    // Set the attributes like object.__setattr__ does, without calling any __setattr__ of the
+    // class, since pickle and copy restore the state of a Python object by updating its
+    // __dict__ directly. The __setattr__ of a frozen dataclass always raises, for example.
+    Py_ssize_t pos = 0;
+    PyObject *key, *value;
+    while (PyDict_Next(state, &pos, &key, &value)) {
+        if (PyObject_GenericSetAttr(obj, key, value) != 0) {
+            return NULL;
+        }
     }
     Py_RETURN_NONE;
 }
@@ -926,38 +933,6 @@ PyObject *CPyImport_GetNativeAttrs(PyObject *mod, PyObject *names,
     return Py_NewRef(mod);
 }
 
-// From CPython
-static PyObject *
-CPy_BinopTypeError(PyObject *left, PyObject *right, const char *op) {
-    PyErr_Format(PyExc_TypeError,
-                 "unsupported operand type(s) for %.100s: "
-                 "'%.100s' and '%.100s'",
-                 op,
-                 Py_TYPE(left)->tp_name,
-                 Py_TYPE(right)->tp_name);
-    return NULL;
-}
-
-PyObject *
-CPy_CallReverseOpMethod(PyObject *left,
-                        PyObject *right,
-                        const char *op,
-                        PyObject *method) {
-    // Look up reverse method
-    PyObject *m = PyObject_GetAttr(right, method);
-    if (m == NULL) {
-        // If reverse method not defined, generate TypeError instead AttributeError
-        if (PyErr_ExceptionMatches(PyExc_AttributeError)) {
-            CPy_BinopTypeError(left, right, op);
-        }
-        return NULL;
-    }
-    // Call reverse method
-    PyObject *result = PyObject_CallOneArg(m, left);
-    Py_DECREF(m);
-    return result;
-}
-
 PyObject *CPySingledispatch_RegisterFunction(PyObject *singledispatch_func,
                                              PyObject *cls,
                                              PyObject *func) {
@@ -966,8 +941,9 @@ PyObject *CPySingledispatch_RegisterFunction(PyObject *singledispatch_func,
     PyObject *typing = NULL;
     PyObject *get_type_hints = NULL;
     PyObject *type_hints = NULL;
+    PyObject *result = NULL;
 
-    if (registry == NULL) goto fail;
+    if (registry == NULL) goto done;
     if (func == NULL) {
         // one argument case
         if (PyType_Check(cls)) {
@@ -975,8 +951,9 @@ PyObject *CPySingledispatch_RegisterFunction(PyObject *singledispatch_func,
             // bind cls to the first argument so that register gets called again with both the
             // class and the function
             register_func = PyObject_GetAttr(singledispatch_func, mypyc_interned_str.register_);
-            if (register_func == NULL) goto fail;
-            return PyMethod_New(register_func, cls);
+            if (register_func == NULL) goto done;
+            result = PyMethod_New(register_func, cls);
+            goto done;
         }
         // passed a function
         PyObject *annotations = PyFunction_GetAnnotations(cls);
@@ -987,49 +964,49 @@ PyObject *CPySingledispatch_RegisterFunction(PyObject *singledispatch_func,
 
         if (annotations == NULL) {
             PyErr_Format(PyExc_TypeError, invalid_first_arg_msg, cls);
-            goto fail;
+            goto done;
         }
-
-        Py_INCREF(annotations);
 
         func = cls;
         typing = PyImport_ImportModule("typing");
-        if (typing == NULL) goto fail;
+        if (typing == NULL) goto done;
         get_type_hints = PyObject_GetAttr(typing, mypyc_interned_str.get_type_hints);
 
+        if (get_type_hints == NULL) goto done;
         type_hints = PyObject_CallOneArg(get_type_hints, func);
+        if (type_hints == NULL) goto done;
         PyObject *argname;
         Py_ssize_t pos = 0;
         if (!PyDict_Next(type_hints, &pos, &argname, &cls)) {
             // the functools implementation raises the same type error if annotations is an empty dict
             PyErr_Format(PyExc_TypeError, invalid_first_arg_msg, cls);
-            goto fail;
+            goto done;
         }
         if (!PyType_Check(cls)) {
             const char *invalid_annotation_msg = "Invalid annotation for %R. %R is not a class.";
             PyErr_Format(PyExc_TypeError, invalid_annotation_msg, argname, cls);
-            goto fail;
+            goto done;
         }
     }
     if (PyDict_SetItem(registry, cls, func) == -1) {
-        goto fail;
+        goto done;
     }
 
     // clear the cache so we consider the newly added function when dispatching
     PyObject *dispatch_cache = PyObject_GetAttr(singledispatch_func, mypyc_interned_str.dispatch_cache);
-    if (dispatch_cache == NULL) goto fail;
+    if (dispatch_cache == NULL) goto done;
     PyDict_Clear(dispatch_cache);
+    Py_DECREF(dispatch_cache);
 
-    Py_INCREF(func);
-    return func;
+    result = Py_NewRef(func);
 
-fail:
+done:
     Py_XDECREF(registry);
     Py_XDECREF(register_func);
     Py_XDECREF(typing);
     Py_XDECREF(get_type_hints);
     Py_XDECREF(type_hints);
-    return NULL;
+    return result;
 
 }
 
@@ -1048,7 +1025,6 @@ PyObject *CPy_GetAIter(PyObject *obj)
                      "'async for' requires an object with "
                      "__aiter__ method, got %.100s",
                      type->tp_name);
-        Py_DECREF(obj);
         return NULL;
     }
 
@@ -1240,6 +1216,18 @@ static int CPyImport_InitSpecClasses(void) {
     return 0;
 }
 
+// Look up an attribute directly from the module dict. Unlike
+// PyObject_GetOptionalAttrString, this doesn't call a module-level __getattr__,
+// which isn't safe to call before the module has been initialized.
+static int CPyImport_GetModuleDictItem(PyObject *modobj, const char *name, PyObject **result) {
+    PyObject *dict = PyModule_GetDict(modobj);  // Borrowed
+    if (dict == NULL) {
+        *result = NULL;
+        return -1;
+    }
+    return PyDict_GetItemStringRef(dict, name, result);
+}
+
 // Set __package__ before executing the module body so it is available
 // during module initialization. For a package, __package__ is the module
 // name itself. For a non-package submodule "a.b.c", it is "a.b". For a
@@ -1247,7 +1235,7 @@ static int CPyImport_InitSpecClasses(void) {
 static int CPyImport_SetModulePackage(PyObject *modobj, PyObject *module_name,
                                       Py_ssize_t is_package) {
     PyObject *pkg = NULL;
-    int rc = PyObject_GetOptionalAttrString(modobj, "__package__", &pkg);
+    int rc = CPyImport_GetModuleDictItem(modobj, "__package__", &pkg);
     if (rc < 0) {
         return -1;
     }
@@ -1287,7 +1275,7 @@ static int CPyImport_SetModuleFile(PyObject *modobj, PyObject *module_name,
                                     PyObject *shared_lib_file, PyObject *ext_suffix,
                                     Py_ssize_t is_package) {
     PyObject *file = NULL;
-    int rc = PyObject_GetOptionalAttrString(modobj, "__file__", &file);
+    int rc = CPyImport_GetModuleDictItem(modobj, "__file__", &file);
     if (rc < 0) {
         return -1;
     }
@@ -1412,7 +1400,7 @@ static int CPyImport_SetModuleFile(PyObject *modobj, PyObject *module_name,
 // Returns 0 on success, -1 on error.
 static int CPyImport_SetModulePath(PyObject *modobj) {
     PyObject *existing_path = NULL;
-    int rc = PyObject_GetOptionalAttrString(modobj, "__path__", &existing_path);
+    int rc = CPyImport_GetModuleDictItem(modobj, "__path__", &existing_path);
     if (rc < 0) {
         return -1;
     }
@@ -1421,7 +1409,7 @@ static int CPyImport_SetModulePath(PyObject *modobj) {
         return 0;
     }
     PyObject *file = NULL;
-    rc = PyObject_GetOptionalAttrString(modobj, "__file__", &file);
+    rc = CPyImport_GetModuleDictItem(modobj, "__file__", &file);
     if (rc <= 0) {
         return rc;
     }
@@ -1451,7 +1439,7 @@ static int CPyImport_SetModulePath(PyObject *modobj) {
 static int CPyImport_SetModuleSpec(PyObject *modobj, PyObject *module_name,
                                     Py_ssize_t is_package) {
     PyObject *spec = NULL;
-    int rc = PyObject_GetOptionalAttrString(modobj, "__spec__", &spec);
+    int rc = CPyImport_GetModuleDictItem(modobj, "__spec__", &spec);
     if (rc < 0) {
         return -1;
     }
@@ -1465,7 +1453,7 @@ static int CPyImport_SetModuleSpec(PyObject *modobj, PyObject *module_name,
         return -1;
     }
     PyObject *file = NULL;
-    if (PyObject_GetOptionalAttrString(modobj, "__file__", &file) < 0) {
+    if (CPyImport_GetModuleDictItem(modobj, "__file__", &file) < 0) {
         return -1;
     }
     if (file == NULL) {
@@ -1495,7 +1483,7 @@ static int CPyImport_SetModuleSpec(PyObject *modobj, PyObject *module_name,
     if (is_package) {
         // Set submodule_search_locations from __path__
         PyObject *path = NULL;
-        if (PyObject_GetOptionalAttrString(modobj, "__path__", &path) < 0) {
+        if (CPyImport_GetModuleDictItem(modobj, "__path__", &path) < 0) {
             Py_DECREF(spec);
             Py_DECREF(loader);
             return -1;

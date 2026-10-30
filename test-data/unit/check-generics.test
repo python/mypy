@@ -3737,3 +3737,55 @@ def test(tp: type[T]) -> T: ...
 
 class C(Generic[T]): ...
 reveal_type(test(C))  # N: Revealed type is "__main__.C[Any]"
+
+[case testExpressionCacheWorksInNestedCallWithoutOuterTypeContextFunction]
+from typing import overload, TypeVar
+
+T = TypeVar("T")
+S = TypeVar("S")
+
+@overload
+def f(x: None) -> None: ...
+@overload
+def f(x: tuple[T, S]) -> tuple[S, T]: ...
+@overload
+def f(x: T) -> T: ...
+def f(x):
+    pass
+
+x = f(f(f(f(f(f(f(f(f(f(f(f(f(f(f(1)))))))))))))))
+reveal_type(x)  # N: Revealed type is "builtins.int"
+
+class C:
+    def meth(self, x: S) -> S: ...
+
+# The type variable id below must be small (few dozens at most).
+reveal_type(C().meth)  # N: Revealed type is "def [S] (x: S`46) -> S`46"
+[builtins fixtures/tuple.pyi]
+
+[case testExpressionCacheWorksInNestedCallWithoutOuterTypeContextMethod]
+from typing import overload, TypeVar
+
+T = TypeVar("T")
+S = TypeVar("S")
+
+class A:
+    @overload
+    def f(self, x: None) -> None: ...
+    @overload
+    def f(self, x: tuple[T, S]) -> tuple[S, T]: ...
+    @overload
+    def f(self, x: T) -> T: ...
+    def f(self, x):
+        pass
+
+a: A
+x = a.f(a.f(a.f(a.f(a.f(a.f(a.f(a.f(a.f(a.f(a.f(a.f(a.f(a.f(a.f(1)))))))))))))))
+reveal_type(x)  # N: Revealed type is "builtins.int"
+
+class C:
+    def meth(self, x: S) -> S: ...
+
+# The type variable id below must be small (say under a hundred).
+reveal_type(C().meth)  # N: Revealed type is "def [S] (x: S`91) -> S`91"
+[builtins fixtures/tuple.pyi]

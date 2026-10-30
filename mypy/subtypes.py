@@ -36,6 +36,7 @@ from mypy.nodes import (
 )
 from mypy.options import Options
 from mypy.state import state
+from mypy.type_visitor import ANY_STRATEGY, BoolTypeQuery
 from mypy.types import (
     MAX_PROTOCOL_DEPTH,
     MYPYC_NATIVE_INT_NAMES,
@@ -1405,7 +1406,12 @@ def get_protocol_member(
         # if constructor signature didn't match, this can cause many false negatives.
         return None
 
-    subtype = find_member(member, left, original_left, class_obj=class_obj, is_lvalue=is_lvalue)
+    # We only reject attributes that give an error on subtype. This is not very principled,
+    # but this simplifies logic because we apply subtype as a self-type for supertype
+    # attribute access.
+    subtype = find_member(
+        member, left, original_left, class_obj=class_obj, is_lvalue=is_lvalue, strict_attrs=True
+    )
     if isinstance(subtype, PartialType):
         subtype = (
             NoneType()
@@ -1425,6 +1431,7 @@ def find_member(
     is_operator: bool = False,
     class_obj: bool = False,
     is_lvalue: bool = False,
+    strict_attrs: bool = False,
 ) -> Type | None:
     type_checker = checker_state.type_checker
     if type_checker is None:
@@ -1487,9 +1494,12 @@ def find_member(
     with type_checker.msg.filter_errors(filter_deprecated=True):
         if class_obj:
             fallback = itype.type.metaclass_type or mx.named_type("builtins.type")
-            return analyze_class_attribute_access(itype, name, mx, mcs_fallback=fallback)
+            result = analyze_class_attribute_access(itype, name, mx, mcs_fallback=fallback)
         else:
-            return analyze_instance_member_access(name, itype, mx, info)
+            result = analyze_instance_member_access(name, itype, mx, info)
+    if strict_attrs and mx.attribute_error:
+        return None
+    return result
 
 
 def find_member_simple(
@@ -1571,7 +1581,6 @@ def get_member_flags(name: str, itype: Instance, class_obj: bool = False) -> set
     """
     info = itype.type
     method = info.get_method(name)
-    setattr_meth = info.get_method("__setattr__")
     if method:
         if isinstance(method, Decorator):
             if method.var.is_staticmethod or method.var.is_classmethod:
@@ -1582,7 +1591,7 @@ def get_member_flags(name: str, itype: Instance, class_obj: bool = False) -> set
             assert isinstance(method, OverloadedFuncDef)
             dec = method.items[0]
             assert isinstance(dec, Decorator)
-            if dec.var.is_settable_property or setattr_meth:
+            if dec.var.is_settable_property or info.get_method("__setattr__"):
                 flags = {IS_VAR, IS_SETTABLE}
                 if dec.var.setter_type is not None:
                     flags.add(IS_EXPLICIT_SETTER)
@@ -1592,7 +1601,7 @@ def get_member_flags(name: str, itype: Instance, class_obj: bool = False) -> set
         return set()  # Just a regular method
     node = info.get(name)
     if not node:
-        if setattr_meth:
+        if info.get_method("__setattr__"):
             return {IS_SETTABLE}
         if itype.extra_attrs and name in itype.extra_attrs.attrs:
             flags = set()
@@ -2535,6 +2544,55 @@ def erase_return_self_types(typ: Type, self_type: Instance) -> Type:
             ]
         )
     return typ
+
+
+def common_type(types: list[Type]) -> Type | None:
+    """Return a type in the list that is both subtype and supertype of all other types.
+
+    If there are more than one such type, choose the one that has an Any component,
+    otherwise return None.
+    """
+    candidates = []
+    for candidate in types:
+        if all(is_equivalent(candidate, other) for other in types):
+            candidates.append(candidate)
+    if len(candidates) == 1:
+        return candidates[0]
+    candidates = [c for c in candidates if has_any_type(c)]
+    if len(candidates) == 1:
+        return candidates[0]
+    return None
+
+
+def has_any_type(t: Type, ignore_in_type_obj: bool = False) -> bool:
+    """Whether t contains an Any type"""
+    return t.accept(HasAnyType(ignore_in_type_obj))
+
+
+class HasAnyType(BoolTypeQuery):
+    def __init__(self, ignore_in_type_obj: bool) -> None:
+        super().__init__(ANY_STRATEGY)
+        self.ignore_in_type_obj = ignore_in_type_obj
+
+    def visit_any(self, t: AnyType) -> bool:
+        return t.type_of_any != TypeOfAny.special_form  # special forms are not real Any types
+
+    def visit_callable_type(self, t: CallableType) -> bool:
+        if self.ignore_in_type_obj and t.is_type_obj():
+            return False
+        return super().visit_callable_type(t)
+
+    def visit_type_var(self, t: TypeVarType) -> bool:
+        default = [t.default] if t.has_default() else []
+        return self.query_types([t.upper_bound, *default] + t.values)
+
+    def visit_param_spec(self, t: ParamSpecType) -> bool:
+        default = [t.default] if t.has_default() else []
+        return self.query_types([t.upper_bound, *default, t.prefix])
+
+    def visit_type_var_tuple(self, t: TypeVarTupleType) -> bool:
+        default = [t.default] if t.has_default() else []
+        return self.query_types([t.upper_bound, *default])
 
 
 def is_erased_instance(t: Instance) -> bool:

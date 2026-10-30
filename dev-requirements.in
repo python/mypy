@@ -1,0 +1,7 @@
+# If you change this file (or {mypy,build,test}-requirements.txt), please install pip-tools and run:
+# pip-compile --output-file=dev-requirements.txt --strip-extras --allow-unsafe dev-requirements.in
+
+-r mypy-requirements.txt
+-r build-requirements.txt
+-r test-requirements.txt
+pre_commit>=3.5.0

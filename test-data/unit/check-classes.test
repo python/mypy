@@ -3957,6 +3957,23 @@ def f(a: Type[Tuple[int, int]]):
     a()  # E: Cannot instantiate type "type[tuple[int, int]]"
 [builtins fixtures/tuple.pyi]
 
+[case testTypeUsingTypeCNoneType]
+from typing_extensions import assert_type
+
+NoneType = type(None)
+assert_type(type(None)(), None)
+assert_type(NoneType(), None)
+
+def f(n: type[None]):
+    assert_type(n(), None)
+    n(1)  # E: Too many arguments
+def g(n: type[NoneType]):
+    assert_type(n(), None)
+
+f(NoneType)
+g(NoneType)
+[builtins fixtures/tuple.pyi]
+
 [case testTypeUsingTypeCNamedTuple]
 from typing import Type, NamedTuple
 N = NamedTuple('N', [('x', int), ('y', int)])
@@ -6151,15 +6168,15 @@ class A2: pass
 
 [case testClassDecoratorIncorrect]
 def not_a_class_decorator(x: int) -> int: ...
-@not_a_class_decorator(7)
-class A3: pass  # E: "int" not callable
+@not_a_class_decorator(7)  # E: "int" not callable
+class A3: pass
 
 not_a_function = 17
 @not_a_function()  # E: "int" not callable
 class B: pass
 
-@not_a_function
-class B2: pass    # E: "int" not callable
+@not_a_function  # E: "int" not callable
+class B2: pass
 
 b = object()
 @b.nothing         # E: "object" has no attribute "nothing"
@@ -7321,6 +7338,41 @@ class E(C):
         reveal_type(self.x) # N: Revealed type is "builtins.int"
 
 [targets __main__, __main__, __main__.C.__init__, __main__.D.g, __main__.D.f, __main__.E.g, __main__.E.f]
+
+[case testAttributeDefOrderNestedClass]
+class E(D):
+    def e(self) -> None:
+        self.x = ''  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+
+class D:
+    def d(self) -> None: pass
+    class N:
+        def n(self) -> None: pass
+    def d2(self) -> None:
+        self.x = 0
+
+[case testOrderBySubclassingMultipleLevels]
+class E(D):
+    def e(self) -> None: ...
+
+class D(B):
+    def d(self) -> None: ...
+    class N:
+        def n(self) -> None: ...
+    def d2(self) -> None: ...
+
+def f() -> None: ...
+
+class C(A):
+    def c(self) -> None: ...
+
+class B(A):
+    def b(self) -> None: ...
+
+class A:
+    def a(self) -> None: ...
+
+[targets __main__, __main__, __main__, __main__, __main__.D.N.n, __main__.f, __main__.A.a, __main__.C.c, __main__.B.b, __main__.D.d, __main__.D.d2, __main__.E.e]
 
 [case testNewReturnType1]
 class A:
@@ -9741,3 +9793,58 @@ class C:
 
 reveal_type(C.x)  # N: Revealed type is "builtins.int | None"
 [builtins fixtures/classmethod.pyi]
+
+[case testTypeVarDefaultErrorLocation]
+from typing import Generic
+
+from lib import T
+
+# some spaces
+
+class C(Generic[T]): ...
+
+[file lib.py]
+from typing import TypeVar
+T = TypeVar("T", default=int, bound=str)  # E: TypeVar default must be a subtype of the bound type
+
+[case testSettablePropertyGetterCheckedWhenPartOfInterface]
+class A:
+    @property
+    def p(self) -> str:
+        def nested() -> int:
+            return "no"  # E: Incompatible return value type (got "str", expected "int")
+        return 0  # E: Incompatible return value type (got "int", expected "str")
+
+    @p.setter
+    def p(self, value: int) -> None:
+        self.x = value
+[builtins fixtures/property.pyi]
+
+[case testJoinOfTypeObjects]
+from typing import TypeVar
+
+class B:
+    def __init__(self, *, y=None) -> None: ...
+class C1(B):
+    def __init__(self, *, x) -> None: ...
+class C2(B): ...
+
+x = [C1, C2]
+reveal_type(x)  # N: Revealed type is "builtins.list[builtins.type]"
+
+T = TypeVar("T")
+def join(a: T, b: T) -> T: ...
+reveal_type(join(C1, C2))  # N: Revealed type is "builtins.type"
+
+[case testLambdaInferredInCollection]
+from typing import Union
+
+def f(x: Union[int, None] = None) -> int: ...
+fs = [f, lambda x: 1, f]
+reveal_type(fs)  # N: Revealed type is "builtins.list[def (x: Any) -> builtins.int]"
+
+[case testLambdaInferredInCollection2]
+def f(x: int, y: int)-> int: ...
+
+fs = [lambda df, x: df.foo, f]
+reveal_type(fs)  # N: Revealed type is "builtins.list[def (Any, Any) -> Any]"

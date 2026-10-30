@@ -379,7 +379,7 @@ class DataDrivenTestCase(pytest.Item):
                 # Write the first incremental steps
                 dir = os.path.dirname(path)
                 os.makedirs(dir, exist_ok=True)
-                with open(path, "w", encoding="utf8") as f:
+                with open(path, "w", encoding=choose_file_encoding(path)) as f:
                     f.write(content)
 
         for num, paths in self.deleted_paths.items():
@@ -829,6 +829,14 @@ def has_stable_flags(testcase: DataDrivenTestCase) -> bool:
         if os.path.basename(filename).startswith("mypy.ini."):
             return False
     return True
+
+
+def choose_file_encoding(path: str) -> str:
+    base_name, _ = os.path.splitext(path)
+    if base_name.endswith("_latin1"):
+        return "latin-1"
+    else:
+        return "utf-8"
 
 
 class DataSuite:

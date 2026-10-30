@@ -181,3 +181,14 @@ class D:
     invalid_2: Wrap[1 + 2]  # E: Invalid type comment or annotation
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
+
+[case testAnnotationTurnsSpecialFormIntoVariable]
+from enum import Enum
+from typing import TypedDict, NamedTuple, NewType
+
+A: str = Enum("A", ["foo", "bar"])  # E: Cannot declare the type of a Enum declaration
+B: str = TypedDict("B", {"x": int, "y": int})  # E: Cannot declare the type of a TypedDict declaration
+C: str = NamedTuple("C", [("x", int), ("y", int)])  # E: Cannot declare the type of a NamedTuple declaration
+D: str = NewType("D", int)  # E: Cannot declare the type of a NewType declaration
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]

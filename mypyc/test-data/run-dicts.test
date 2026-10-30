@@ -513,3 +513,69 @@ test_sub_cyclic_dict_cleanup()
 test_cyclic_dict_cleanup_interpreted()
 test_sub_cyclic_dict_cleanup_interpreted()
 test_allow_interpreted_subclass_cyclic_dict_cleanup()
+
+[case testDictListErrorOwnership]
+from typing import Any, Dict, List
+
+def keys(d: Dict[Any, Any]) -> List[Any]:
+    return list(d.keys())
+def values(d: Dict[Any, Any]) -> List[Any]:
+    return list(d.values())
+def items(d: Dict[Any, Any]) -> List[Any]:
+    return list(d.items())
+
+[file driver.py]
+import gc
+import weakref
+from native import keys, values, items
+from testutil import assertRaises
+
+class Sentinel:
+    pass
+
+refs = []
+def failing_iterator():
+    value = Sentinel()
+    refs.append(weakref.ref(value))
+    yield value
+    raise RuntimeError("iteration failed")
+
+class BadDict(dict):
+    def keys(self):
+        return failing_iterator()
+    values = keys
+    items = keys
+
+class BadMethod(dict):
+    def keys(self):
+        raise RuntimeError("method failed")
+    values = keys
+    items = keys
+
+class BadIter:
+    def __iter__(self):
+        raise RuntimeError("iter failed")
+
+class BadLength:
+    def __iter__(self):
+        return self
+    def __next__(self):
+        return None
+    def __length_hint__(self):
+        raise RuntimeError("length failed")
+
+class CustomDict(dict):
+    def __init__(self, result):
+        self.result = result
+    def keys(self):
+        return self.result
+    values = keys
+    items = keys
+
+for convert in (keys, values, items):
+    for d in (BadDict(), BadMethod(), CustomDict(BadIter()), CustomDict(BadLength())):
+        with assertRaises(RuntimeError):
+            convert(d)
+        gc.collect()
+        assert all(ref() is None for ref in refs)
+    assert convert(CustomDict(iter([1, 2]))) == [1, 2]

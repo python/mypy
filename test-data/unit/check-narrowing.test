@@ -861,7 +861,7 @@ def f2(x: Union[Default, Literal[1], Literal[2]]):
 
 [case testNarrowingEqualityCustomEqualityEnum]
 # flags: --strict-equality --warn-unreachable
-from typing import Literal, Union
+from typing import Literal
 from enum import Enum
 
 class CustomEnum(Enum):
@@ -870,18 +870,24 @@ class CustomEnum(Enum):
 
     def __eq__(self, other: object) -> bool: return True
 
-x3: CustomEnum
-key: Literal[CustomEnum.A]
-if x3 == key:
-    reveal_type(x3)  # N: Revealed type is "__main__.CustomEnum"
-else:
-    reveal_type(x3)  # N: Revealed type is "Literal[__main__.CustomEnum.B]"
+def check_equality(x: CustomEnum, key: Literal[CustomEnum.A]) -> None:
+    if x == key:
+        reveal_type(x)  # N: Revealed type is "__main__.CustomEnum"
+    else:
+        reveal_type(x)  # N: Revealed type is "Literal[__main__.CustomEnum.B]"
 
 # For comparison, this narrows since we bypass __eq__
-if x3 is key:
-    reveal_type(x3)  # N: Revealed type is "Literal[__main__.CustomEnum.A]"
-else:
-    reveal_type(x3)  # N: Revealed type is "Literal[__main__.CustomEnum.B]"
+def check_identity(x: CustomEnum, key: Literal[CustomEnum.A]) -> None:
+    if x is key:
+        reveal_type(x)  # N: Revealed type is "Literal[__main__.CustomEnum.A]"
+    else:
+        reveal_type(x)  # N: Revealed type is "Literal[__main__.CustomEnum.B]"
+
+def check_optional_equality(x: CustomEnum | None, key: Literal[CustomEnum.A]) -> None:
+    if x == key:
+        reveal_type(x)  # N: Revealed type is "__main__.CustomEnum"
+    else:
+        reveal_type(x)  # N: Revealed type is "Literal[__main__.CustomEnum.B] | None"
 [builtins fixtures/primitives.pyi]
 
 [case testNarrowingEqualityCustomEqualityChainedComparison]
@@ -2670,6 +2676,7 @@ def f(x: str | int) -> None:
 
 [case testConsistentNarrowingEqAndInWithCustomEq]
 # flags: --strict-equality --warn-unreachable
+from typing import Literal
 
 # https://github.com/python/mypy/issues/17864
 class C:
@@ -2689,14 +2696,30 @@ class D(C):
 def f1(x: C) -> None:
     if x in [D(5)]:
         reveal_type(x)  # D  # N: Revealed type is "__main__.C"
+    else:
+        reveal_type(x)  # N: Revealed type is "__main__.C"
 
 f1(C(5))
 
 def f2(x: C) -> None:
     if x == D(5):
         reveal_type(x)  # D  # N: Revealed type is "__main__.C"
+    else:
+        reveal_type(x)  # N: Revealed type is "__main__.C"
 
 f2(C(5))
+
+def f3(x: C | Literal[1, 2, 3]) -> None:
+    if x not in (1, 2):
+        reveal_type(x)  # N: Revealed type is "__main__.C | Literal[3]"
+    else:
+        reveal_type(x)  # N: Revealed type is "__main__.C | Literal[1] | Literal[2]"
+
+def f4(x: Literal[1, 2], y: C | Literal[1]) -> None:
+    if x in [y]:
+        reveal_type(x)  # N: Revealed type is "Literal[1] | Literal[2]"
+    else:
+        reveal_type(x)  # N: Revealed type is "Literal[1] | Literal[2]"
 [builtins fixtures/primitives.pyi]
 
 [case testNarrowingTypeVarNone]
@@ -3251,14 +3274,13 @@ def narrow_tuple_exact(x: Literal['a', 'b', 'c'], t: tuple[Literal['a'], Literal
         reveal_type(x)  # N: Revealed type is "Literal['a'] | Literal['b']"
 
 def narrow_tuple_expression(x: Literal['a', 'b', 'c']):
-    # TODO: this should match narrow_tuple_exact
     if x in ('a', 'b'):
         reveal_type(x)  # N: Revealed type is "Literal['a'] | Literal['b']"
     else:
-        reveal_type(x)  # N: Revealed type is "Literal['a'] | Literal['b'] | Literal['c']"
+        reveal_type(x)  # N: Revealed type is "Literal['c']"
 
     if x not in ('a', 'b'):
-        reveal_type(x)  # N: Revealed type is "Literal['a'] | Literal['b'] | Literal['c']"
+        reveal_type(x)  # N: Revealed type is "Literal['c']"
     else:
         reveal_type(x)  # N: Revealed type is "Literal['a'] | Literal['b']"
 
@@ -3294,7 +3316,7 @@ def narrow_list(x: Literal['a', 'b', 'c'], t: list[Literal['a', 'b']]):
     if x in ['a', 'b']:
         reveal_type(x)  # N: Revealed type is "Literal['a'] | Literal['b']"
     else:
-        reveal_type(x)  # N: Revealed type is "Literal['a'] | Literal['b'] | Literal['c']"
+        reveal_type(x)  # N: Revealed type is "Literal['c']"
 
     if x in ['a', 'b', *[]]:
         reveal_type(x)  # N: Revealed type is "Literal['a'] | Literal['b'] | Literal['c']"
@@ -3310,7 +3332,7 @@ def narrow_set(x: Literal['a', 'b', 'c'], t: set[Literal['a', 'b']]):
     if x in {'a', 'b'}:
         reveal_type(x)  # N: Revealed type is "Literal['a'] | Literal['b']"
     else:
-        reveal_type(x)  # N: Revealed type is "Literal['a'] | Literal['b'] | Literal['c']"
+        reveal_type(x)  # N: Revealed type is "Literal['c']"
 
     if x in {'a', 'b', *[]}:
         reveal_type(x)  # N: Revealed type is "Literal['a'] | Literal['b'] | Literal['c']"
@@ -3326,7 +3348,7 @@ def narrow_dict(x: Literal['a', 'b', 'c'], t: dict[Literal['a', 'b'], int]):
     if x in {'a': 0, 'b': 1}:
         reveal_type(x)  # N: Revealed type is "Literal['a'] | Literal['b']"
     else:
-        reveal_type(x)  # N: Revealed type is "Literal['a'] | Literal['b'] | Literal['c']"
+        reveal_type(x)  # N: Revealed type is "Literal['c']"
 
     if x in {'a': 0, 'b': 1, **{}}:
         reveal_type(x)  # N: Revealed type is "Literal['a'] | Literal['b'] | Literal['c']"
@@ -3349,6 +3371,8 @@ class E(Enum):
 
 def f(x: int) -> None:
     if x in [E.foo, E.bar]:
+        reveal_type(x)  # N: Revealed type is "builtins.int"
+    else:
         reveal_type(x)  # N: Revealed type is "builtins.int"
 [builtins fixtures/list.pyi]
 

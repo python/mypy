@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from mypyc.common import PROPSET_PREFIX
 from mypyc.ir.ops import Register, Value
 from mypyc.ir.rtypes import RInstance, RType, object_rprimitive
 
@@ -49,6 +50,14 @@ class AssignmentTargetAttr(AssignmentTarget):
             # Native attribute reference
             self.obj_type: RType = obj.type
             self.type = obj.type.attr_type(attr)
+            # A property setter may accept a wider type than its getter returns,
+            # so values assigned through it are coerced to the setter's argument type
+            for ir in obj.type.class_ir.mro:
+                setter = ir.method_decls.get(PROPSET_PREFIX + attr)
+                if setter is not None:
+                    if not setter.implicit:
+                        self.type = setter.sig.args[1].type
+                    break
         else:
             # Python attribute reference
             self.obj_type = object_rprimitive

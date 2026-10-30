@@ -66,6 +66,12 @@ classes:
 * ``LookupError``
 * ``UserWarning``
 
+A native class can't inherit from a base class with type ``Any``, such
+as a class imported from a module that isn't type checked, even
+indirectly through other base classes, since mypyc needs to know the
+layout of all base classes. Use a
+:ref:`non-native class <non-native-classes>` instead.
+
 By default, a non-native class can't inherit a native class, and you
 can't inherit from a native class outside the compilation unit that
 defines the class. You can enable these through
@@ -230,6 +236,8 @@ efficient as pure native classes.
 
    If a class definition uses an unsupported class decorator, *mypyc
    compiles the class into a regular Python class* (non-native class).
+
+.. _non-native-classes:
 
 Defining non-native classes
 ---------------------------
