@@ -2952,6 +2952,27 @@ class Bad2:
     x: InitVar[Final[int]]  # E: Final can be only used as an outermost qualifier in a variable annotation
 [builtins fixtures/dict.pyi]
 
+[case testDataclassFinalFieldNotInInit]
+from dataclasses import dataclass, field
+from typing import Final
+
+@dataclass
+class Bad:
+    x: Final[int] = field(init=False)  # E: Final field must have a default value if init=False
+
+@dataclass
+class GoodDefault:
+    x: Final[int] = field(init=False, default=0)
+
+@dataclass
+class GoodFactory:
+    x: Final[int] = field(init=False, default_factory=int)
+
+@dataclass
+class GoodPlain:
+    x: Final[int] = 0
+[builtins fixtures/tuple.pyi]
+
 [case testNoCrashOnNestedSpecialFormsWithAnnotations]
 import dataclasses
 from typing import ClassVar, NamedTuple
