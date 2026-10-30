@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import ast
 import re
 
 from librt.internal import ReadBuffer
@@ -7,7 +8,16 @@ from librt.internal import ReadBuffer
 from mypy import errorcodes as codes
 from mypy.cache import read_int
 from mypy.errors import Errors
-from mypy.nodes import FileRawData, MypyFile, ParseError, StrExpr
+from mypy.nodes import (
+    FileRawData,
+    Import,
+    ImportAll,
+    ImportBase,
+    ImportFrom,
+    MypyFile,
+    ParseError,
+    StrExpr,
+)
 from mypy.options import Options
 from mypy.types import ProperType
 
@@ -104,6 +114,67 @@ def load_from_raw(
         # the parallel workers.
         tree.raw_data = raw_data
     return tree
+
+
+class ImportCollector(ast.NodeVisitor):
+    def __init__(self) -> None:
+        self.collected: list[ImportBase] = []
+        self.in_function = 0
+
+    def visit_FunctionDef(self, node: ast.FunctionDef) -> None:
+        self.in_function += 1
+        self.generic_visit(node)
+        self.in_function -= 1
+
+    def visit_AsyncFunctionDef(self, node: ast.AsyncFunctionDef) -> None:
+        self.in_function += 1
+        self.generic_visit(node)
+        self.in_function -= 1
+
+    def visit_Import(self, node: ast.Import) -> None:
+        if self.in_function > 0:
+            names = [(alias.name, alias.asname) for alias in node.names]
+            self.collected.append(Import(names))
+        self.generic_visit(node)
+
+    def visit_ImportFrom(self, node: ast.ImportFrom) -> None:
+        if self.in_function > 0:
+            if len(node.names) == 1 and node.names[0].name == "*":
+                mod = node.module if node.module is not None else ""
+                self.collected.append(ImportAll(mod, node.level))
+            else:
+                names = [(a.name, a.asname) for a in node.names]
+                mod = node.module if node.module is not None else ""
+                self.collected.append(ImportFrom(mod, node.level, names))
+        self.generic_visit(node)
+
+
+def _restore_stripped_body_imports(
+    fnam: str, source: str | bytes | None, imports: list[ImportBase]
+) -> None:
+    """Collect imports from inside function bodies when the native parser strips them.
+
+    When ``ignore_errors`` is set, the native parser skips function bodies to
+    speed up type checking. This means ``Import`` / ``ImportFrom`` nodes inside
+    function bodies never get serialized into ``tree.imports``, and the imported
+    modules are never tracked as dependencies. This function scans the source
+    with Python's ``ast`` module and adds any imports found inside function
+    bodies to the imports list.
+    """
+    if source is None:
+        try:
+            with open(fnam, encoding="utf-8") as f:
+                source = f.read()
+        except OSError:
+            return
+    try:
+        src_tree = ast.parse(source)
+    except SyntaxError:
+        return
+
+    collector = ImportCollector()
+    collector.visit(src_tree)
+    imports.extend(collector.collected)
 
 
 def report_parse_error(error: ParseError, errors: Errors) -> None:
