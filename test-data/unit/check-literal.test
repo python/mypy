@@ -441,6 +441,46 @@ reveal_type(f4)  # N: Revealed type is "def (x: Literal[8]) -> Literal[8]"
 [builtins fixtures/tuple.pyi]
 [out]
 
+[case testLiteralBigIntUsage]
+from typing import Final, Literal
+import mod
+
+a1: Literal[9223372036854775808]
+b1: Literal[-9223372036854775809]
+c1: Literal[18_446_744_073_709_551_615]
+d1: Literal[0xCBF29CE484222325]
+e1: "Literal[-18446744073709551616]"
+f1 = 18446744073709551616  # type: Literal[18446744073709551616]
+
+reveal_type(a1)  # N: Revealed type is "Literal[9223372036854775808]"
+reveal_type(b1)  # N: Revealed type is "Literal[-9223372036854775809]"
+reveal_type(c1)  # N: Revealed type is "Literal[18446744073709551615]"
+reveal_type(d1)  # N: Revealed type is "Literal[14695981039346656037]"
+reveal_type(e1)  # N: Revealed type is "Literal[-18446744073709551616]"
+reveal_type(f1)  # N: Revealed type is "Literal[18446744073709551616]"
+reveal_type(mod.FNV_OFFSET)  # N: Revealed type is "Literal[14695981039346656037]"
+
+a2t = Literal[9223372036854775808]
+b2t = Literal[-9223372036854775809]
+a2: a2t
+b2: b2t
+
+reveal_type(a2)  # N: Revealed type is "Literal[9223372036854775808]"
+reveal_type(b2)  # N: Revealed type is "Literal[-9223372036854775809]"
+
+def f(x: Literal[0xCBF29CE484222325]) -> Literal[-0xCBF29CE484222325]: pass
+reveal_type(f)  # N: Revealed type is "def (x: Literal[14695981039346656037]) -> Literal[-14695981039346656037]"
+
+FNV: Final = 0xCBF29CE484222325
+f(FNV)
+f(14695981039346656037)
+f(14695981039346656038)  # E: Argument 1 to "f" has incompatible type "Literal[14695981039346656038]"; expected "Literal[14695981039346656037]"
+[file mod.pyi]
+from typing import Literal
+FNV_OFFSET: Literal[0xCBF29CE484222325]
+[builtins fixtures/tuple.pyi]
+[out]
+
 [case testLiteralBasicBoolUsage]
 from typing import Literal
 
