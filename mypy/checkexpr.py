@@ -1794,8 +1794,16 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                 self.freshen_cache[(context, original_callee)] = callee
 
         initial_callee = callee
+        initial_formal_to_actual = None
         constraints: list[Constraint] = []
         if callee.is_generic():
+            initial_formal_to_actual = map_actuals_to_formals(
+                arg_kinds,
+                arg_names,
+                callee.arg_kinds,
+                callee.arg_names,
+                lambda i: self.accept(args[i]),
+            )
             callee, constraints = self.infer_function_type_arguments_using_context(callee, context)
 
         formal_to_actual = map_actuals_to_formals(
@@ -1832,6 +1840,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             need_refresh = any(
                 isinstance(v, (ParamSpecType, TypeVarTupleType)) for v in initial_callee.variables
             )
+            assert initial_formal_to_actual is not None
             callee = self.infer_function_type_arguments(
                 callee,
                 initial_callee,
@@ -1840,6 +1849,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                 arg_kinds,
                 arg_names,
                 formal_to_actual,
+                initial_formal_to_actual,
                 need_refresh,
                 context,
             )
@@ -2217,6 +2227,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         arg_kinds: list[ArgKind],
         arg_names: Sequence[str | None] | None,
         formal_to_actual: list[list[int]],
+        initial_formal_to_actual: list[list[int]],
         need_refresh: bool,
         context: Context,
     ) -> CallableType:
@@ -2264,7 +2275,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                     pass1_args,
                     arg_kinds,
                     arg_names,
-                    formal_to_actual,
+                    initial_formal_to_actual,
                     context=self.argument_infer_context(),
                     strict=self.chk.in_checked_function(),
                     extra_constraints=ret_constraints,
