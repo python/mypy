@@ -264,6 +264,7 @@ class IRBuilder:
         self.encapsulating_funcs = pbv.encapsulating_funcs
         self.nested_fitems = pbv.nested_funcs.keys()
         self.fdefs_to_decorators = pbv.funcs_to_decorators
+        self.fdefs_to_deprecations = pbv.funcs_to_deprecations
         self.module_import_groups = pbv.module_import_groups
         self.comprehension_to_fitem = pbv.comprehension_to_fitem
         self.deleted_vars = pbv.deleted_vars
