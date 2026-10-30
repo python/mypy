@@ -1,0 +1,93 @@
+name: Run mypyc_primer
+
+on:
+  # Inspect the entire PR diff ourselves: GitHub path filters examine at most
+  # 300 files, which could miss a compiler change in a large PR.
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  prepare:
+    name: Select mypyc projects
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    outputs:
+      eligible: ${{ steps.prepare.outputs.eligible }}
+      matrix: ${{ steps.prepare.outputs.matrix }}
+      base_sha: ${{ steps.prepare.outputs.base_sha }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: '3.14'
+      - name: Select projects and snapshot target branch
+        id: prepare
+        run: python misc/mypyc_primer.py prepare --output-dir primer
+      - name: Check PR reporter
+        if: steps.prepare.outputs.eligible == 'true'
+        run: node --check .github/scripts/mypyc_primer_comment.cjs
+      - name: Upload expected results
+        if: steps.prepare.outputs.eligible == 'true'
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        with:
+          name: mypyc-primer-manifest
+          path: primer/manifest.json
+          if-no-files-found: error
+          overwrite: true
+
+  check:
+    name: Compile and test
+    needs: prepare
+    if: needs.prepare.outputs.eligible == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.prepare.outputs.matrix) }}
+    env:
+      PROJECT: ${{ matrix.name }}
+      HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+      BASE_SHA: ${{ needs.prepare.outputs.base_sha }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: ${{ github.sha }}
+          # Keep both parents so local compiler fetches resolve HEAD_SHA and BASE_SHA.
+          fetch-depth: 2
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: ${{ matrix.python_version }}
+      - name: Compile and test with PR mypyc
+        id: pr
+        run: |
+          python misc/mypyc_primer.py check \
+            --project "$PROJECT" --attempt head \
+            --head-sha "$HEAD_SHA" --base-sha "$BASE_SHA" \
+            --output-dir primer --work-dir "$RUNNER_TEMP"
+      - name: Compile and test with target branch mypyc
+        id: base
+        if: steps.pr.outputs.compare_base == 'true'
+        run: |
+          python misc/mypyc_primer.py check \
+            --project "$PROJECT" --attempt base \
+            --head-sha "$HEAD_SHA" --base-sha "$BASE_SHA" \
+            --output-dir primer --work-dir "$RUNNER_TEMP"
+      - name: Upload project result
+        if: ${{ always() && steps.pr.outcome != 'skipped' }}
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        with:
+          name: mypyc-primer-result-${{ matrix.name }}
+          path: primer/${{ matrix.name }}.json
+          if-no-files-found: error
+          overwrite: true
