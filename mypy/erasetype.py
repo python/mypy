@@ -25,6 +25,7 @@ from mypy.types import (
     TypeTranslator,
     TypeType,
     TypeVarId,
+    TypeVarLikeType,
     TypeVarTupleType,
     TypeVarType,
     TypeVisitor,
@@ -154,6 +155,50 @@ def erase_typevars(t: Type, ids_to_erase: Container[TypeVarId] | None = None) ->
         return id in ids_to_erase
 
     return t.accept(TypeVarEraser(erase_id, AnyType(TypeOfAny.special_form)))
+
+
+def erase_typevars_with_defaults(t: Type) -> Type:
+    """Replace type variables with their defaults if they have one, else with Any.
+
+    This mirrors how a bare generic class reference is interpreted in an annotation:
+    ``type[Box]`` means ``type[Box[int | None]]`` when the type variable of ``Box``
+    defaults to ``int | None``. Defaults that reference earlier type variables are
+    expanded gradually, similar to typeanal.
+    """
+    return t.accept(TypeVarDefaultEraser())
+
+
+class TypeVarDefaultEraser(TypeTranslator):
+    """Replace each type variable by its default (or Any if it has none)."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.env: dict[TypeVarId, Type] = {}
+
+    def _default(self, t: TypeVarLikeType) -> Type:
+        if t.id in self.env:
+            return self.env[t.id]
+        # Seed with Any to avoid infinite recursion on recursive defaults.
+        self.env[t.id] = AnyType(TypeOfAny.special_form)
+        if t.has_default():
+            default = get_proper_type(t.default).accept(self)
+            self.env[t.id] = default
+            return default
+        return self.env[t.id]
+
+    def visit_type_var(self, t: TypeVarType) -> Type:
+        return self._default(t)
+
+    def visit_param_spec(self, t: ParamSpecType) -> Type:
+        return self._default(t)
+
+    def visit_type_var_tuple(self, t: TypeVarTupleType) -> Type:
+        return self._default(t)
+
+    def visit_type_alias_type(self, t: TypeAliasType) -> Type:
+        # A default may contain an unexpanded generic alias; erase its
+        # arguments the same way as everywhere else.
+        return t.copy_modified(args=[a.accept(self) for a in t.args])
 
 
 def erase_meta_id(id: TypeVarId) -> bool:
