@@ -5972,6 +5972,7 @@ class SemanticAnalyzer(
         ):
             self.fail(f'"{expr.name}" is a type variable and only valid in type context', expr)
         elif isinstance(sym.node, PlaceholderNode):
+            expr.fullname = sym.fullname or ""
             self.process_placeholder(expr.name, "name", expr)
         else:
             expr.kind = sym.kind
