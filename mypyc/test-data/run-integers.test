@@ -490,6 +490,15 @@ def test_true_divide() -> None:
         huge / -2
     assert 1 / huge == 0.0
 
+def from_base(s: str, base: int) -> int:
+    return int(s, base)
+
+def test_base_overflow() -> None:
+    for base in (2 ** 100, -(2 ** 100)):
+        with assertRaises(OverflowError):
+            from_base("10", base)
+    assert from_base("10", 10) == 10
+
 [case testIntMinMax]
 def test_int_min_max() -> None:
     x: int = 200

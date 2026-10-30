@@ -730,7 +730,9 @@ def test_named_tuple() -> None:
     assert not isinstance(tuple([1]), NT)
 
 [case testUnion]
-from typing import Union
+from typing import Any, Union
+from mypy_extensions import trait
+from testutil import assertRaises
 
 class A:
     def __init__(self, x: int) -> None:
@@ -762,22 +764,89 @@ def get(x: Union[A, B]) -> object:
 def call(x: Union[A, B]) -> object:
     return x.f(5)
 
-[file driver.py]
-from native import A, B, f, g, get, call
-assert f('a') == 'ax'
-assert f(A(4)) == 4
-assert isinstance(g(0), A)
-assert g(2) == 3
-assert get(A(5)) == 5
-assert get(B('x')) == 'x'
-assert call(A(4)) == 9
-assert call(B('x')) == 5
-try:
-    f(1)
-except TypeError:
+def test_union() -> None:
+    assert f('a') == 'ax'
+    assert f(A(4)) == 4
+    assert isinstance(g(0), A)
+    assert g(2) == 3
+    assert get(A(5)) == 5
+    assert get(B('x')) == 'x'
+    assert call(A(4)) == 9
+    assert call(B('x')) == 5
+    x: Any = 1
+    with assertRaises(TypeError):
+        f(x)
+
+class Base:
+    def __init__(self, x: int) -> None:
+        self.x = x
+    def m(self) -> str:
+        return 'Base'
+    def add(self, out: list[str]) -> None:
+        out.append('Base')
+    @property
+    def p(self) -> int:
+        return self.x * 10
+
+class Sub(Base):
+    def m(self) -> str:
+        return 'Sub'
+    def add(self, out: list[str]) -> None:
+        out.append('Sub')
+    @property
+    def p(self) -> int:
+        return self.x * 100
+
+class SubSub(Sub):
     pass
-else:
-    assert False
+
+@trait
+class T:
+    def t(self) -> int:
+        return 1
+
+class TImpl(T):
+    def t(self) -> int:
+        return 2
+
+def call_sub_first(o: Sub | Base) -> str:
+    return o.m()
+
+def call_base_first(o: Base | Sub) -> str:
+    return o.m()
+
+def call_all(objs: list[Base | Sub | SubSub]) -> list[str]:
+    return [o.m() for o in objs]
+
+def get_attr(o: SubSub | Sub | Base) -> int:
+    return o.x
+
+def get_prop(o: Sub | Base) -> int:
+    return o.p
+
+def get_bound(o: Sub | Base) -> str:
+    m = o.m
+    return m()
+
+def call_in_loop(objs: list[Base | Sub], out: list[str]) -> None:
+    for o in objs:
+        o.add(out)
+
+def call_trait(o: T | TImpl) -> int:
+    return o.t()
+
+def test_union_of_subclasses() -> None:
+    b, s, ss = Base(1), Sub(2), SubSub(3)
+    assert [call_sub_first(b), call_sub_first(s), call_sub_first(ss)] == ['Base', 'Sub', 'Sub']
+    assert [call_base_first(b), call_base_first(s)] == ['Base', 'Sub']
+    assert call_all([ss, s, b]) == ['Sub', 'Sub', 'Base']
+    assert [get_attr(b), get_attr(s), get_attr(ss)] == [1, 2, 3]
+    assert [get_prop(b), get_prop(s)] == [10, 200]
+    assert [get_bound(b), get_bound(s)] == ['Base', 'Sub']
+    assert call_trait(TImpl()) == 2
+    out: list[str] = []
+    call_in_loop([b, s, ss], out)
+    assert out == ['Base', 'Sub', 'Sub']
 
 [case testAnyAll]
 from typing import Iterable
