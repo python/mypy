@@ -850,6 +850,8 @@ def join_similar_callables(t: CallableType, s: CallableType) -> CallableType:
 def safe_join(t: Type, s: Type) -> Type:
     # This is a temporary solution to prevent crashes in combine_similar_callables() etc.,
     # until relevant TODOs on handling arg_kinds will be addressed there.
+    # Note: the Any-related logic is not strictly necessary, but preserves some
+    # historic behavior of join for callables/overloads.
     if isinstance(get_proper_type(t), AnyType):
         return t
     if isinstance(get_proper_type(s), AnyType):
