@@ -63,6 +63,15 @@ def test_decode_basic() -> None:
         with assertRaises(ValueError):
             b64decode(non_ascii)
 
+def test_invalid_input_length() -> None:
+    for decode in (b64decode, urlsafe_b64decode):
+        for data in (b"A===", b"AAAAA===", b"???A===!!!"):
+            with assertRaises(ValueError):
+                decode(data)
+            with assertRaises(ValueError):
+                decode(data.decode("ascii"))
+        assert decode(b"YQ==") == b"a"
+
 def check_decode(b: bytes, encoded: bool = False) -> None:
      if encoded:
          enc = b
