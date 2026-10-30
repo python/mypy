@@ -198,8 +198,12 @@ def type_object_type(
         type_type = lookup_stdlib_typeinfo("builtins.type", modules_state.modules)
         fallback = Instance(type_type, [])
 
-    if init_index < new_index:
-        method: FuncBase | Decorator = init_method.node
+    enum_new = enum_call_constructor(info, init_method.node, new_method.node)
+    if enum_new is not None:
+        method: FuncBase | Decorator = enum_new
+        is_new = True
+    elif init_index < new_index:
+        method = init_method.node
         is_new = False
     elif init_index > new_index:
         method = new_method.node
@@ -260,6 +264,34 @@ def type_object_type(
     if allow_cache and state.strict_optional:
         info.type_object_type = result
     return result
+
+
+def enum_call_constructor(
+    info: TypeInfo, init_node: FuncBase | Decorator, new_node: FuncBase | Decorator
+) -> FuncBase | Decorator | None:
+    """Return the constructor that determines the signature of calling an enum class.
+
+    Calling an enum class (as in Color(1)) performs a member lookup by value via
+    EnumMeta.__call__. A user-defined __init__ or __new__ only runs when the members are
+    created, so it must not affect the signature of the call. If the enum has such a
+    method, return Enum.__new__ instead. Otherwise, return None, meaning the regular
+    rules for picking a constructor apply.
+    """
+    if not info.is_enum:
+        return None
+    if not any(
+        node.info.is_enum and not node.info.fullname.startswith("enum.")
+        for node in (init_node, new_node)
+    ):
+        return None
+    enum_info = next((base for base in info.mro if base.fullname == "enum.Enum"), None)
+    if enum_info is None:
+        return None
+    sym = enum_info.get("__new__")
+    if sym is not None and is_valid_constructor(sym.node):
+        assert isinstance(sym.node, (SYMBOL_FUNCBASE_TYPES, Decorator))
+        return sym.node
+    return None
 
 
 def is_valid_constructor(n: SymbolNode | None) -> bool:
