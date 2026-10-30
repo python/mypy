@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Callable
+from collections.abc import Callable
 
 from mypy.nodes import (
     GDEF,
@@ -9,6 +9,7 @@ from mypy.nodes import (
     IndexExpr,
     MemberExpr,
     NameExpr,
+    PlaceholderNode,
     RefExpr,
     SymbolTable,
     SymbolTableNode,
@@ -31,19 +32,36 @@ class DynPlugin(Plugin):
 
 
 def add_info_hook(ctx: DynamicClassDefContext) -> None:
+    fullname = ctx.api.qualified_name(ctx.name)
+    current = ctx.api.lookup_fully_qualified_or_none(fullname)
+    if current is not None and isinstance(current.node, TypeInfo):
+        return
+    assert isinstance(ctx.call.args[0], RefExpr)
+    queryset_type_fullname = ctx.call.args[0].fullname
+    queryset_node = (
+        ctx.api.lookup_fully_qualified_or_none(queryset_type_fullname)
+        if queryset_type_fullname
+        else None
+    )
+    if (
+        queryset_node is None
+        or not isinstance(queryset_node.node, TypeInfo)
+        or not queryset_node.node.mro
+    ):
+        assert not ctx.api.final_iteration
+        if current is None or not isinstance(current.node, PlaceholderNode):
+            placeholder = PlaceholderNode(fullname, ctx.call, ctx.call.line, becomes_typeinfo=True)
+            ctx.api.add_symbol_table_node(ctx.name, SymbolTableNode(GDEF, placeholder))
+        ctx.api.defer()
+        return
+    queryset_info = queryset_node.node
+
     class_def = ClassDef(ctx.name, Block([]))
-    class_def.fullname = ctx.api.qualified_name(ctx.name)
+    class_def.fullname = fullname
 
     info = TypeInfo(SymbolTable(), class_def, ctx.api.cur_mod_id)
     class_def.info = info
-    assert isinstance(ctx.call.args[0], RefExpr)
-    queryset_type_fullname = ctx.call.args[0].fullname
-    queryset_node = ctx.api.lookup_fully_qualified_or_none(queryset_type_fullname)
-    assert queryset_node is not None
-    queryset_info = queryset_node.node
-    assert isinstance(queryset_info, TypeInfo)
-    obj = ctx.api.named_type("builtins.object")
-    info.mro = [info, queryset_info, obj.type]
+    info.mro = [info, *queryset_info.mro]
     info.bases = [Instance(queryset_info, [])]
     ctx.api.add_symbol_table_node(ctx.name, SymbolTableNode(GDEF, info))
 

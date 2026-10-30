@@ -723,6 +723,56 @@ class GenericQuerySet(Generic[T]):
 \[mypy]
 plugins=<ROOT>/test-data/unit/plugins/dyn_class_from_method.py
 
+[case testDynamicClassHookFromImportedPlaceholder]
+# flags: --config-file tmp/mypy.ini
+from models import Row
+
+reveal_type(Row.objects.base_value())  # N: Revealed type is "builtins.int"
+reveal_type(Row.objects.child_value())  # N: Revealed type is "builtins.str"
+Row.objects.missing()  # E: "ChildManager" has no attribute "missing"
+
+[file models.py]
+from managers import ChildManager
+
+class Row:
+    objects = ChildManager()
+
+[file managers.py]
+from base_managers import BaseManager, BaseQuerySet
+
+class ChildQuerySet(BaseQuerySet):
+    def child_value(self) -> str:
+        return "child"
+
+_ChildManager = BaseManager.from_queryset(ChildQuerySet)
+
+class ChildManager(_ChildManager):
+    pass
+
+[file base_managers.py]
+from typing import Any, Generic, TypeVar
+from models import Row
+
+T = TypeVar("T")
+
+class QuerySet(Generic[T]):
+    @classmethod
+    def from_queryset(cls, queryset_cls: Any) -> Any: ...
+
+class BaseQuerySet(QuerySet[Row]):
+    def base_value(self) -> int:
+        return 1
+
+_BaseManager = QuerySet.from_queryset(BaseQuerySet)
+
+class BaseManager(_BaseManager):
+    pass
+
+[builtins fixtures/classmethod.pyi]
+[file mypy.ini]
+\[mypy]
+plugins=<ROOT>/test-data/unit/plugins/dyn_class_from_method.py
+
 [case testBaseClassPluginHookWorksIncremental]
 # flags: --config-file tmp/mypy.ini
 import a
