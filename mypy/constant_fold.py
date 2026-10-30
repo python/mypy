@@ -112,6 +112,9 @@ def constant_fold_binary_op(
 
 
 def constant_fold_binary_int_op(op: str, left: int, right: int) -> int | float | None:
+    # Operands are unbounded ints, so some results do not fit into a float (`/`) or
+    # cannot be built at all (`<<` with a huge count). Folding is an optimization:
+    # when it cannot produce a value, return None and let the expression stand.
     if op == "+":
         return left + right
     if op == "-":
@@ -120,7 +123,10 @@ def constant_fold_binary_int_op(op: str, left: int, right: int) -> int | float |
         return left * right
     elif op == "/":
         if right != 0:
-            return left / right
+            try:
+                return left / right
+            except OverflowError:
+                return None
     elif op == "//":
         if right != 0:
             return left // right
@@ -135,7 +141,10 @@ def constant_fold_binary_int_op(op: str, left: int, right: int) -> int | float |
         return left ^ right
     elif op == "<<":
         if right >= 0:
-            return left << right
+            try:
+                return left << right
+            except (OverflowError, ValueError):
+                return None
     elif op == ">>":
         if right >= 0:
             return left >> right
@@ -149,22 +158,27 @@ def constant_fold_binary_int_op(op: str, left: int, right: int) -> int | float |
 
 def constant_fold_binary_float_op(op: str, left: int | float, right: int | float) -> float | None:
     assert not (isinstance(left, int) and isinstance(right, int)), (op, left, right)
-    if op == "+":
-        return left + right
-    elif op == "-":
-        return left - right
-    elif op == "*":
-        return left * right
-    elif op == "/":
-        if right != 0:
-            return left / right
-    elif op == "//":
-        if right != 0:
-            return left // right
-    elif op == "%":
-        if right != 0:
-            return left % right
-    elif op == "**":
+    # An int operand here is unbounded, so converting it to a float can overflow.
+    # `**` already guards against this; the other operations get the same treatment.
+    try:
+        if op == "+":
+            return left + right
+        elif op == "-":
+            return left - right
+        elif op == "*":
+            return left * right
+        elif op == "/":
+            if right != 0:
+                return left / right
+        elif op == "//":
+            if right != 0:
+                return left // right
+        elif op == "%":
+            if right != 0:
+                return left % right
+    except OverflowError:
+        return None
+    if op == "**":
         if (left < 0 and isinstance(right, int)) or left > 0:
             try:
                 ret = left**right
