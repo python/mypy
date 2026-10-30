@@ -1760,6 +1760,35 @@ class B(A):
 
 [builtins fixtures/plugin_attrs.pyi]
 
+[case testAttrsDefineNoOrderByDefault]
+import attrs
+
+@attrs.define
+class A:
+    x: int
+
+@attrs.frozen
+class B:
+    x: int
+
+@attrs.define(order=True)
+class C:
+    x: int
+
+A(1) < A(2)  # E: Unsupported left operand type for < ("A")
+B(1) < B(2)  # E: Unsupported left operand type for < ("B")
+C(1) < C(2)
+[builtins fixtures/plugin_attrs.pyi]
+
+[case testAttrsDefineFrozenAttributeNamedLikeOrderMethod]
+import attrs
+
+@attrs.define
+@attrs.frozen
+class C:
+    __lt__: int
+[builtins fixtures/plugin_attrs.pyi]
+
 [case testRuntimeSlotsAttr]
 from attr import dataclass
 
