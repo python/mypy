@@ -29,6 +29,7 @@ from mypy.types import (
     ParamSpecFlavor,
     ParamSpecType,
     Type,
+    TypedDictType,
     TypeOfAny,
     TypeVarType,
     UnboundType,
@@ -296,7 +297,15 @@ def handle_partial_with_callee(ctx: mypy.plugin.FunctionContext, callee: Type) -
                 continue
             # Add defaulted params for arguments passed via keyword
             kind = actual_arg_kinds[actuals[0]]
-            if kind == ArgKind.ARG_NAMED or kind == ArgKind.ARG_STAR2:
+            if fn_type.arg_kinds[i].is_positional() and all(
+                actual_arg_kinds[j] == ArgKind.ARG_STAR2
+                and not isinstance(get_proper_type(actual_types[j]), TypedDictType)
+                for j in actuals
+            ):
+                # A **mapping (unlike a TypedDict) may not contain this key, so the
+                # parameter can still be passed positionally, as in f(1, **kwargs).
+                kind = ArgKind.ARG_OPT
+            elif kind == ArgKind.ARG_NAMED or kind == ArgKind.ARG_STAR2:
                 kind = ArgKind.ARG_NAMED_OPT
             partial_kinds.append(kind)
             partial_types.append(arg_type)

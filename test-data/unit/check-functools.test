@@ -431,6 +431,36 @@ def foo(cls3: Type[B[T]]):
                                                # E: Argument 1 to "B" has incompatible type "int"; expected "T"
 [builtins fixtures/tuple.pyi]
 
+[case testFunctoolsPartialDictUnpackKeepsPositional]
+from typing import Any, Dict
+from functools import partial
+
+def fn(a: int, b: str, c: bytes = b"") -> None: ...
+def fn2(a: int, /, b: str, *args: int, c: bytes) -> None: ...
+def fn3(a: int, b: str) -> None: ...
+
+def main(d: Dict[str, Any], s: Dict[str, str]) -> None:
+    # A **dict argument may or may not provide a given key, so parameters it maps to
+    # can still be passed positionally later, as in the direct call fn(1, "x", **d).
+    p = partial(fn, **d)
+    p(1, "x")
+    p(1)
+    p()
+    p(a=1, b="x")
+    p("x")  # E: Argument 1 to "fn" has incompatible type "str"; expected "int"
+    p(1, "x", b"", 4)  # E: Too many arguments for "fn"
+
+    p2 = partial(fn2, **d)
+    p2(1, "x", 2, 3)
+    p2(1, "x", "y")  # E: Argument 3 to "fn2" has incompatible type "str"; expected "int"
+
+    partial(fn3, 1, **s)("x")
+    partial(fn3, 1, **s)(2)  # E: Argument 1 to "fn3" has incompatible type "int"; expected "str"
+
+    # An explicit keyword argument still makes the parameter keyword-only.
+    partial(fn, b="x", **d)(1, "y")  # E: Too many positional arguments for "fn"
+[builtins fixtures/dict.pyi]
+
 [case testFunctoolsPartialTypedDictUnpack]
 from typing import TypedDict
 from typing_extensions import Unpack
