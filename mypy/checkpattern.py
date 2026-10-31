@@ -89,7 +89,7 @@ MAX_TUPLE_PATTERN_REST_ITEMS: Final = 1024
 class PatternType(NamedTuple):
     type: Type  # The type the match subject can be narrowed to
     rest_type: Type  # The remaining type if the pattern didn't match
-    captures: dict[Expression, Type]  # The variables captured by the pattern
+    captures: dict[NameExpr, Type]  # The variables captured by the pattern
 
 
 class PatternChecker(PatternVisitor[PatternType]):
@@ -217,7 +217,7 @@ class PatternChecker(PatternVisitor[PatternType]):
         #
         # Check the capture types
         #
-        capture_types: dict[Var, list[tuple[Expression, Type]]] = defaultdict(list)
+        capture_types: dict[Var, list[tuple[NameExpr, Type]]] = defaultdict(list)
         # Collect captures from the first subpattern
         for expr, typ in pattern_types[0].captures.items():
             node = get_var(expr)
@@ -231,14 +231,13 @@ class PatternChecker(PatternVisitor[PatternType]):
                 node = get_var(expr)
                 capture_types[node].append((expr, typ))
 
-        captures: dict[Expression, Type] = {}
+        captures: dict[NameExpr, Type] = {}
         for capture_list in capture_types.values():
             typ = UninhabitedType()
             for _, other in capture_list:
                 typ = make_simplified_union([typ, other])
 
             capture = capture_list[0][0]
-            assert isinstance(capture, NameExpr)
             # Imported aliases can have a different Var.name. The binding map
             # uses the name written in the pattern, not the declaration's name.
             captures[bindings[capture.name]] = typ
@@ -299,7 +298,7 @@ class PatternChecker(PatternVisitor[PatternType]):
         if isinstance(current_type, UnionType):
             match_types: list[Type] = []
             rest_types: list[Type] = []
-            captures_list: dict[Expression, list[Type]] = {}
+            captures_list: dict[NameExpr, list[Type]] = {}
 
             if star_position is not None:
                 star_pattern = o.patterns[star_position]
@@ -374,7 +373,7 @@ class PatternChecker(PatternVisitor[PatternType]):
         #
         contracted_new_inner_types: list[Type] = []
         contracted_rest_inner_types: list[Type] = []
-        captures = {}  # dict[Expression, Type]
+        captures = {}
 
         contracted_inner_types = self.contract_starred_pattern_types(
             inner_types, star_position, required_patterns
@@ -563,7 +562,7 @@ class PatternChecker(PatternVisitor[PatternType]):
         return new_types
 
     def visit_starred_pattern(self, o: StarredPattern) -> PatternType:
-        captures: dict[Expression, Type] = {}
+        captures: dict[NameExpr, Type] = {}
         if o.capture is not None:
             list_type = self.chk.named_generic_type("builtins.list", [self.type_context[-1]])
             captures[o.capture] = list_type
@@ -572,7 +571,7 @@ class PatternChecker(PatternVisitor[PatternType]):
     def visit_mapping_pattern(self, o: MappingPattern) -> PatternType:
         current_type = get_proper_type(self.type_context[-1])
         can_match = True
-        captures: dict[Expression, Type] = {}
+        captures: dict[NameExpr, Type] = {}
         for key, value in zip(o.keys, o.values):
             inner_type = self.get_mapping_item_type(o, current_type, key)
             if inner_type is None:
@@ -679,7 +678,7 @@ class PatternChecker(PatternVisitor[PatternType]):
         keyword_pairs: list[tuple[str | None, Pattern]] = []
         match_arg_set: set[str] = set()
 
-        captures: dict[Expression, Type] = {}
+        captures: dict[NameExpr, Type] = {}
 
         if len(o.positionals) != 0:
             if self.should_self_match(typ):
@@ -878,7 +877,7 @@ class PatternChecker(PatternVisitor[PatternType]):
         return types
 
     def update_type_map(
-        self, original_type_map: dict[Expression, Type], extra_type_map: dict[Expression, Type]
+        self, original_type_map: dict[NameExpr, Type], extra_type_map: dict[NameExpr, Type]
     ) -> None:
         # Calculating this would not be needed if TypeMap directly used literal hashes instead of
         # expressions, as suggested in the TODO above it's definition
@@ -1021,12 +1020,11 @@ def get_match_arg_names(typ: TupleType) -> list[str | None]:
     return args
 
 
-def get_var(expr: Expression) -> Var:
+def get_var(expr: NameExpr) -> Var:
     """
     Warning: this in only true for expressions captured by a match statement.
     Don't call it from anywhere else
     """
-    assert isinstance(expr, NameExpr), expr
     node = expr.node
     assert isinstance(node, Var), node
     return node

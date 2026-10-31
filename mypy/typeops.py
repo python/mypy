@@ -775,7 +775,7 @@ def _remove_redundant_union_items(items: list[Type], keep_erased: bool) -> list[
                 # If not, check if we've seen a supertype of this type
                 candidates = (
                     tuple_index.candidate_indices(proper_ti)
-                    if tuple_index is not None
+                    if tuple_index is not None and isinstance(proper_ti, TupleType)
                     else range(len(new_items))
                 )
                 for j in candidates:
@@ -808,7 +808,7 @@ def _remove_redundant_union_items(items: list[Type], keep_erased: bool) -> list[
             else:
                 # We have a non-duplicate item, add it to new_items
                 seen[proper_ti] = len(new_items)
-                if tuple_index is not None:
+                if tuple_index is not None and isinstance(proper_ti, TupleType):
                     tuple_index.add(proper_ti, len(new_items))
                 new_items.append(ti)
                 if isinstance(proper_ti, LiteralType):
@@ -872,8 +872,7 @@ class _TupleUnionIndex:
                 return None
         return cls(keep_erased, cache_size=len(items))
 
-    def add(self, typ: ProperType, row: int) -> None:
-        assert isinstance(typ, TupleType)
+    def add(self, typ: TupleType, row: int) -> None:
         width = len(typ.items)
         self._rows.setdefault(width, set()).add(row)
         if width not in self._columns:
@@ -885,9 +884,8 @@ class _TupleUnionIndex:
             else:
                 column.general_rows.setdefault(item, set()).add(row)
 
-    def candidate_indices(self, typ: ProperType) -> Sequence[int]:
+    def candidate_indices(self, typ: TupleType) -> Sequence[int]:
         """Return ordered retained-row IDs, including every possible supertype."""
-        assert isinstance(typ, TupleType)
         width = len(typ.items)
         if width not in self._rows:
             return ()

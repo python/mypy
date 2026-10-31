@@ -6119,7 +6119,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                 self.pattern_checker.check_pattern(p, subject_type, pattern_bindings)
                 for p in s.patterns
             ]
-            type_maps: list[TypeMap] = [t.captures for t in pattern_types]
+            type_maps = [t.captures for t in pattern_types]
             inferred_types = self.infer_variable_types_from_type_maps(type_maps)
 
             # The second pass narrows down the types and type checks bodies.
@@ -6150,7 +6150,10 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                                 self._get_recursive_sub_patterns_map(expr, typ),
                                 from_assignment=False,
                             )
-                    self.push_type_map(pattern_type.captures, from_assignment=False)
+                    self.push_type_map(
+                        {expr: typ for expr, typ in pattern_type.captures.items()},
+                        from_assignment=False,
+                    )
                     if g is not None:
                         with self.binder.frame_context(can_skip=False, fall_through=3):
                             gt = get_proper_type(self.expr_checker.accept(g))
@@ -6243,18 +6246,16 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
         return sub_patterns_map
 
     def infer_variable_types_from_type_maps(
-        self, type_maps: list[TypeMap]
+        self, type_maps: list[dict[NameExpr, Type]]
     ) -> dict[SymbolNode, Type]:
         # Type maps may contain variables inherited from previous code which are not
         # necessary `Var`s (e.g. a function defined earlier with the same name).
         all_captures: dict[SymbolNode, list[tuple[NameExpr, Type]]] = defaultdict(list)
         for tm in type_maps:
-            if not is_unreachable_map(tm):
-                for expr, typ in tm.items():
-                    if isinstance(expr, NameExpr):
-                        node = expr.node
-                        assert node is not None
-                        all_captures[node].append((expr, typ))
+            for expr, typ in tm.items():
+                node = expr.node
+                assert node is not None
+                all_captures[node].append((expr, typ))
 
         inferred_types: dict[SymbolNode, Type] = {}
         for var, captures in all_captures.items():
@@ -6282,13 +6283,9 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
         return inferred_types
 
     def check_and_remove_capture_conflicts(
-        self, type_map: TypeMap, inferred_types: dict[SymbolNode, Type]
+        self, type_map: dict[NameExpr, Type], inferred_types: dict[SymbolNode, Type]
     ) -> None:
-        if is_unreachable_map(type_map):
-            return
         for expr, typ in list(type_map.items()):
-            if not isinstance(expr, NameExpr):
-                continue
             node = expr.node
             if node not in inferred_types or not self.check_subtype(
                 typ,

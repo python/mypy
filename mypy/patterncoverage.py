@@ -62,22 +62,31 @@ Row: TypeAlias = tuple[int, ...]
 Matrix: TypeAlias = tuple[Row, ...]
 
 
+@dataclass(frozen=True)
+class _VisitType:
+    typ: Type
+
+
+@dataclass(frozen=True)
+class _FinishTuple:
+    typ: TupleType
+
+
 def build_domain(subject: Type, *, work_limit: int) -> Domain | None:
     """Build a domain for the subject type.
 
     Return None if the type is unsupported or the budget runs out.
     """
     # Use a stack to handle deeply nested tuple aliases without Python recursion.
-    pending: list[tuple[Type, bool]] = [(subject, False)]
+    pending: list[_VisitType | _FinishTuple] = [_VisitType(subject)]
     built: list[Domain] = []
     while pending:
-        typ, expanded = pending.pop()
-        if expanded:
-            tuple_type = get_proper_type(typ)
-            assert isinstance(tuple_type, TupleType)
-            start = len(built) - len(tuple_type.items)
+        task = pending.pop()
+        if isinstance(task, _FinishTuple):
+            start = len(built) - len(task.typ.items)
             built[start:] = [TupleDomain(tuple(built[start:]))]
             continue
+        typ = task.typ
         work_limit -= 1
         if work_limit < 0:
             return None
@@ -94,8 +103,8 @@ def build_domain(subject: Type, *, work_limit: int) -> Domain | None:
                 work_limit -= len(items)
                 if work_limit < 0:
                     return None
-                pending.append((proper, True))
-                pending.extend((item, False) for item in reversed(items))
+                pending.append(_FinishTuple(proper))
+                pending.extend(_VisitType(item) for item in reversed(items))
                 continue
             case UnionType(items=variants):
                 pass
