@@ -6,17 +6,20 @@ import itertools
 import random
 from unittest import TestCase
 
-import pytest
-
-from mypy.patterncoverage import build_domain, compile_patterns, covers_product, full_row
+from mypy.options import Options
 from mypy.patterns import AsPattern, OrPattern, SequencePattern, SingletonPattern
 from mypy.test import testcheck
 from mypy.test.data import DataDrivenTestCase
 from mypy.test.typefixture import TypeFixture
 from mypy.types import TupleType
 
-# Importing checkpattern before testcheck causes a circular import.
-from mypy import checkpattern  # ruff: isort: skip
+# Import after testcheck to avoid a typeops import cycle.
+from mypy.patterncoverage import (  # ruff: isort: skip
+    build_domain,
+    compile_patterns,
+    covers_product,
+    full_row,
+)
 
 
 class PatternCoverageSuite(TestCase):
@@ -122,9 +125,8 @@ class PatternCoverageSuite(TestCase):
 class PatternCoverageCheckSuite(testcheck.TypeCheckSuite):
     files = ["patterncoverage.test"]
 
-    def run_case(self, testcase: DataDrivenTestCase) -> None:
-        # Lower the narrowing limit so these small examples reach the coverage fallback.
-        # Keep the coverage budget at its normal value.
-        with pytest.MonkeyPatch.context() as monkeypatch:
-            monkeypatch.setattr(checkpattern, "MAX_TUPLE_PATTERN_REST_ITEMS", 2)
-            super().run_case(testcase)
+    def get_options(self, testcase: DataDrivenTestCase, incremental_step: int) -> Options:
+        options = super().get_options(testcase, incremental_step)
+        # Force small examples through the coverage fallback, including in compiled builds.
+        options.tuple_pattern_narrowing_limit = 2
+        return options

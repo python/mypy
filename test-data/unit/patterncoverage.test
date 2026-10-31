@@ -1,5 +1,4 @@
--- These tests allow narrowing to retain only two alternatives.
--- The coverage check keeps its normal budget.
+-- Checker regressions use a narrowing limit of 2 and the production coverage budget.
 
 [case testPatternCoverageReturnAndAssignment]
 # flags: --enable-error-code exhaustive-match
@@ -49,6 +48,15 @@ def guarded(x: tuple[bool, bool, bool, bool], guard: bool) -> int: # E: Missing 
         case _, _, True, True: return 1
         case _, _, False, _: return 0
         case _, _, _, False if guard: return 0
+
+# A true guard disables coverage without changing the remainder. This fails only
+# with the lowered narrowing budget, verifying that the suite reaches the fallback.
+def narrowing_only(x: tuple[bool, bool, bool, bool]) -> int: # E: Missing return statement
+    match x:
+        case True, True, _, _: return 1
+        case _, _, True, True: return 1
+        case _, _, False, _: return 0
+        case _, _, _, False if True: return 0
 [builtins fixtures/tuple.pyi]
 
 [case testPatternCoverageNominalClasses]
@@ -184,4 +192,48 @@ def f(x: tuple[tuple[bool, bool], tuple[bool, bool]]) -> int: # E: Missing retur
         case (True, True), _: return 1
         case _, (True, True): return 1
         case _, (False, _): return 0
+[builtins fixtures/tuple.pyi]
+
+[case testPatternCoverageSingleMemberFlags]
+from enum import Flag, IntFlag
+F = Flag('F', 'A')
+class I(IntFlag):
+    A = 1
+
+# Zero remains possible even when there is only one named flag.
+def flags(x: tuple[F, bool]) -> int: # E: Missing return statement
+    match x:
+        case F.A, _: return 1
+
+def intflags(x: tuple[I, bool]) -> int: # E: Missing return statement
+    match x:
+        case I.A, _: return 1
+
+def identity(x: F) -> None:
+    if x is F.A:
+        reveal_type(x) # N: Revealed type is "Literal[__main__.F.A]"
+    else:
+        reveal_type(x) # N: Revealed type is "__main__.F"
+[builtins fixtures/tuple.pyi]
+
+[case testPatternCoverageFlagLiteralUnion]
+# flags: --enable-error-code exhaustive-match
+from enum import Flag
+from typing import Literal
+class F(Flag):
+    A = 1
+    B = 2
+
+# Explicit literal unions exclude unnamed combinations and can be exhaustive.
+def flags(x: tuple[Literal[F.A, F.B], bool]) -> int:
+    match x:
+        case F.A, _: return 1
+        case F.B, _: return 0
+
+def alternatives(x: F) -> None:
+    match x:
+        case F.A | F.B:
+            reveal_type(x) # N: Revealed type is "Literal[__main__.F.A] | Literal[__main__.F.B]"
+        case _:
+            reveal_type(x) # N: Revealed type is "__main__.F"
 [builtins fixtures/tuple.pyi]

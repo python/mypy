@@ -81,6 +81,7 @@ OPTIONS_AFFECTING_CACHE: Final = (
         "untyped_calls_exclude",
         "enable_incomplete_feature",
         "install_types",
+        "tuple_pattern_narrowing_limit",
     }
 ) - {"debug_cache"}
 
@@ -329,6 +330,10 @@ class Options:
         # running inspections (e.g. don't expand function definitions).
         # Not in the config file or command line.
         self.inspections = False
+
+        # Bound tuple-pattern remainder expansion, retaining the original type if exceeded.
+        # Internal only: tests can lower this independently of the coverage budget.
+        self.tuple_pattern_narrowing_limit = 1024
 
         # Disable the memory optimization of freeing ASTs when
         # possible. This isn't exposed as a command line option

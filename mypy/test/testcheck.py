@@ -12,6 +12,7 @@ from pathlib import Path
 from mypy import build
 from mypy.errors import CompileError
 from mypy.modulefinder import BuildSource, FindModuleCache, SearchPaths
+from mypy.options import Options
 from mypy.test.config import test_data_prefix, test_temp_dir
 from mypy.test.data import DataDrivenTestCase, DataSuite, FileOperation, module_from_path
 from mypy.test.helpers import (
@@ -107,6 +108,9 @@ class TypeCheckSuite(DataSuite):
             testcase.output[idx:], key=lambda msg: file_weights.get(_filename(msg), -1)
         )
 
+    def get_options(self, testcase: DataDrivenTestCase, incremental_step: int) -> Options:
+        return parse_options("\n".join(testcase.input), testcase, incremental_step)
+
     def run_case_once(
         self,
         testcase: DataDrivenTestCase,
@@ -136,7 +140,7 @@ class TypeCheckSuite(DataSuite):
             perform_file_operations(operations)
 
         # Parse options after moving files (in case mypy.ini is being moved).
-        options = parse_options(original_program_text, testcase, incremental_step)
+        options = self.get_options(testcase, incremental_step)
         options.use_builtins_fixtures = True
         options.show_traceback = True
         options.reveal_verbose_types = not testcase.name.endswith("_no_verbose_reveal")

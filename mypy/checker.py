@@ -88,11 +88,7 @@ from mypy.checkmember import (
     analyze_member_access,
     is_instance_var,
 )
-from mypy.checkpattern import (
-    MAX_TUPLE_PATTERN_REST_ITEMS,
-    PatternChecker,
-    analyze_pattern_bindings,
-)
+from mypy.checkpattern import PatternChecker, analyze_pattern_bindings
 from mypy.constraints import SUPERTYPE_OF
 from mypy.erasetype import (
     erase_type,
@@ -6188,10 +6184,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                 # not an empty remainder. Consult the accumulated subject narrowing
                 # rather than the final case's map, which can also contain captures.
                 if all(g is None for g in s.guards) and is_product_exhaustive(
-                    subject_type,
-                    s.patterns,
-                    self.lookup_type_or_none,
-                    limit=MAX_TUPLE_PATTERN_REST_ITEMS,
+                    subject_type, s.patterns, self.lookup_type_or_none
                 ):
                     # This is the path where no case matched.
                     # The enclosing binder frame merges the exits from case bodies separately.

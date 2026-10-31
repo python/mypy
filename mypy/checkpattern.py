@@ -78,10 +78,6 @@ self_match_type_names: Final = [
 
 non_sequence_match_type_names: Final = ["builtins.str", "builtins.bytes", "builtins.bytearray"]
 
-# Repeated subtraction of product patterns can create exponentially many alternatives.
-# Beyond this limit retain the original remainder, sacrificing precision, not soundness.
-MAX_TUPLE_PATTERN_REST_ITEMS: Final = 1024
-
 
 # For every Pattern a PatternType can be calculated. This requires recursively calculating
 # the PatternTypes of the sub-patterns first.
@@ -426,7 +422,7 @@ class PatternChecker(PatternVisitor[PatternType]):
                         rest_items = [current_type]
                         break
                     rest_items.append(rest_item)
-                    if len(rest_items) > MAX_TUPLE_PATTERN_REST_ITEMS:
+                    if len(rest_items) > self.options.tuple_pattern_narrowing_limit:
                         break
                 rest_type = self.combine_tuple_remainders(rest_items, current_type)
         elif isinstance(current_type, TupleType):
@@ -460,13 +456,13 @@ class PatternChecker(PatternVisitor[PatternType]):
     def combine_tuple_remainders(self, items: list[Type], original: Type) -> Type:
         proper_original = get_proper_type(original)
         # Bound expansion, not narrowing of a union already supplied by the user.
-        limit = MAX_TUPLE_PATTERN_REST_ITEMS
+        limit = self.options.tuple_pattern_narrowing_limit
         if isinstance(proper_original, UnionType):
             limit = max(limit, len(proper_original.items))
         # Counting only top-level alternatives misses expansion inside nested products.
         memo: dict[int, tuple[Type, int]] = {}
         complexity_limit = max(
-            MAX_TUPLE_PATTERN_REST_ITEMS, tuple_pattern_complexity(original, memo)
+            self.options.tuple_pattern_narrowing_limit, tuple_pattern_complexity(original, memo)
         )
         complexity = 0
         flattened: list[Type] = []

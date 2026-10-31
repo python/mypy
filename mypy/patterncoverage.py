@@ -29,6 +29,7 @@ from mypy.patterns import (
     SingletonPattern,
     ValuePattern,
 )
+from mypy.typeops import literal_values
 from mypy.types import (
     Instance,
     LiteralType,
@@ -123,20 +124,15 @@ def build_domain(subject: Type, *, work_limit: int) -> Domain | None:
             match value:
                 case Instance(last_known_value=LiteralType() as literal):
                     alternatives.append(literal)
-                case Instance(type=TypeInfo(fullname="builtins.bool")):
-                    alternatives.extend((LiteralType(False, value), LiteralType(True, value)))
-                case Instance(type=info) if info.is_enum and not info.has_base("enum.Flag"):
-                    members = info.enum_members
-                    work_limit -= len(members)
-                    if work_limit < 0:
-                        return None
-                    if members:
-                        alternatives.extend(LiteralType(name, value) for name in members)
+                case Instance():
+                    values = literal_values(value)
+                    if values is not None and len(values) <= work_limit:
+                        work_limit -= len(values)
+                        alternatives.extend(LiteralType(item, value) for item in values)
                     else:
-                        # An empty enum can be subclassed to add members.
+                        # Keep unavailable or oversized expansions opaque, never partial.
                         alternatives.append(value)
                 case _:
-                    # Flags can contain unnamed combinations of members.
                     alternatives.append(value)
         if not alternatives:
             return None
@@ -407,7 +403,7 @@ def is_product_exhaustive(
     patterns: Sequence[Pattern],
     lookup_type: Callable[[Expression], Type | None],
     *,
-    limit: int,
+    limit: int = 1024,
 ) -> bool:
     """Check whether an unguarded tuple match is exhaustive.
 

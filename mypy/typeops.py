@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import itertools
 from collections.abc import Callable, Iterable, Sequence
-from typing import Any, TypeVar, cast
+from typing import TypeVar, cast
 
 import mypy.subtypes
 from mypy.checker_state import checker_state
@@ -46,6 +46,7 @@ from mypy.types import (
     FunctionLike,
     Instance,
     LiteralType,
+    LiteralValue,
     NoneType,
     NormalizedCallableType,
     Overloaded,
@@ -1200,6 +1201,18 @@ def is_literal_type_like(t: Type | None) -> bool:
         return False
 
 
+def literal_values(typ: Instance) -> Sequence[LiteralValue] | None:
+    """Return all literal values for the class, or None if unknown.
+
+    Enum literals use member names. Ignores last_known_value.
+    """
+    if typ.type.fullname == "builtins.bool":
+        return (False, True)
+    if typ.type.is_enum and not typ.type.has_base("enum.Flag"):
+        return typ.type.enum_members or None
+    return None
+
+
 def is_singleton_identity_type(typ: ProperType) -> bool:
     """
     Returns True if every value of this type is identical to every other value of this type,
@@ -1210,9 +1223,11 @@ def is_singleton_identity_type(typ: ProperType) -> bool:
     if isinstance(typ, NoneType):
         return True
     if isinstance(typ, Instance):
+        match literal_values(typ):
+            case [value] if is_singleton_identity_type(LiteralType(value, typ)):
+                return True
         return (
-            (typ.type.is_enum and len(typ.type.enum_members) == 1)
-            or (typ.type.fullname in ELLIPSIS_TYPE_NAMES)
+            (typ.type.fullname in ELLIPSIS_TYPE_NAMES)
             or (typ.type.fullname in NOT_IMPLEMENTED_TYPE_NAMES)
             or (typ.type.fullname in SENTINEL_TYPE_NAMES)
         )
@@ -1265,14 +1280,9 @@ def try_expanding_sum_type_to_union(typ: Type, target_fullname: str | None) -> T
     if isinstance(typ, Instance) and (
         target_fullname is None or typ.type.fullname == target_fullname
     ):
-        if typ.type.fullname == "builtins.bool":
-            return UnionType([LiteralType(True, typ), LiteralType(False, typ)])
-
-        if typ.type.is_enum:
-            items = [LiteralType(name, typ) for name in typ.type.enum_members]
-            if not items:
-                return typ
-            return UnionType.make_union(items)
+        values = literal_values(typ)
+        if values is not None:
+            return UnionType.make_union([LiteralType(value, typ) for value in values])
 
     return typ
 
@@ -1291,28 +1301,23 @@ def try_contracting_literals_in_union(types: Sequence[Type]) -> list[ProperType]
     We also treat `Literal[True, False]` as `bool`.
     """
     proper_types = [get_proper_type(typ) for typ in types]
-    sum_types: dict[str, tuple[set[Any], list[int]]] = {}
+    sum_types: dict[str, tuple[set[LiteralValue], list[int]]] = {}
     marked_for_deletion = set()
     for idx, typ in enumerate(proper_types):
         if isinstance(typ, LiteralType):
             fullname = typ.fallback.type.fullname
-            if typ.fallback.type.is_enum or isinstance(typ.value, bool):
-                if fullname not in sum_types:
-                    sum_types[fullname] = (
-                        (
-                            set(typ.fallback.type.enum_members)
-                            if typ.fallback.type.is_enum
-                            else {True, False}
-                        ),
-                        [],
-                    )
-                literals, indexes = sum_types[fullname]
-                literals.discard(typ.value)
-                indexes.append(idx)
-                if not literals:
-                    first, *rest = indexes
-                    proper_types[first] = typ.fallback
-                    marked_for_deletion |= set(rest)
+            if fullname not in sum_types:
+                values = literal_values(typ.fallback)
+                if values is None:
+                    continue
+                sum_types[fullname] = (set(values), [])
+            literals, indexes = sum_types[fullname]
+            literals.discard(typ.value)
+            indexes.append(idx)
+            if not literals:
+                first, *rest = indexes
+                proper_types[first] = typ.fallback
+                marked_for_deletion |= set(rest)
     return list(
         itertools.compress(
             proper_types, [(i not in marked_for_deletion) for i in range(len(proper_types))]
@@ -1332,10 +1337,9 @@ def coerce_to_literal(typ: Type) -> Type:
     elif isinstance(typ, Instance):
         if typ.last_known_value:
             return typ.last_known_value
-        elif typ.type.is_enum:
-            enum_values = typ.type.enum_members
-            if len(enum_values) == 1:
-                return LiteralType(value=enum_values[0], fallback=typ)
+        match literal_values(typ):
+            case [value]:
+                return LiteralType(value, typ)
     return original_type
 
 
