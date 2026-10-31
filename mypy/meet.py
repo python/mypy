@@ -1245,7 +1245,7 @@ def meet_similar_callables(t: CallableType, s: CallableType) -> CallableType:
     arg_types: list[Type] = []
     for i in range(len(t.arg_types)):
         arg_types.append(safe_join(t.arg_types[i], s.arg_types[i]))
-    # TODO in combine_similar_callables also applies here (names and kinds)
+    # TODOs in join_similar_callables() also applies here.
     # The fallback type can be either 'function' or 'type'. The result should have 'function' as
     # fallback only if both operands have it as 'function'.
     if t.fallback.type.fullname != "builtins.function":

@@ -1335,7 +1335,12 @@ class MeetSuite(Suite):
         self.assert_meet(
             self.callable(self.fx.a, self.fx.a, self.fx.anyt, self.fx.a),
             self.callable(self.fx.a, self.fx.anyt, self.fx.a, self.fx.anyt),
-            self.callable(self.fx.a, self.fx.anyt, self.fx.anyt, self.fx.a),
+            self.callable(
+                self.fx.a,
+                UnionType([self.fx.a, self.fx.anyt]),
+                UnionType([self.fx.a, self.fx.anyt]),
+                self.fx.a,
+            ),
         )
 
     def test_meet_interface_types(self) -> None:
