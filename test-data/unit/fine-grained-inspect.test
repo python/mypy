@@ -122,10 +122,10 @@ None
 [builtins fixtures/args.pyi]
 [out]
 ==
-{"C": ["x"], "object": ["__eq__", "__init__", "__ne__"]}
+{"C": ["x"], "object": ["__eq__", "__hash__", "__init__", "__ne__"]}
 {"Iterable": ["__iter__"]}
 NameExpr -> {}
-NameExpr -> {"object": ["__eq__", "__init__", "__ne__"]}
+NameExpr -> {"object": ["__eq__", "__hash__", "__init__", "__ne__"]}
 
 [case testInspectTypeVarBoundAttrs]
 # inspect2: --show=attrs tmp/foo.py:8:13
