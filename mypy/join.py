@@ -245,7 +245,9 @@ def join_types(s: Type, t: Type, instance_joiner: InstanceJoiner | None = None) 
         s, t = t, s
 
     if isinstance(s, AnyType):
-        return s
+        if isinstance(t, AnyType):
+            return s
+        s, t = t, s
 
     if isinstance(s, ErasedType):
         return t
@@ -284,13 +286,15 @@ class TypeJoinVisitor(TypeVisitor[ProperType]):
             return mypy.typeops.make_simplified_union([self.s, t])
 
     def visit_any(self, t: AnyType) -> ProperType:
-        return t
+        if isinstance(self.s, Instance) and self.s.type.fullname == "builtins.object":
+            return self.s
+        return UnionType([self.s, t])
 
     def visit_none_type(self, t: NoneType) -> ProperType:
         if state.strict_optional:
             if isinstance(self.s, (NoneType, UninhabitedType)):
                 return t
-            elif isinstance(self.s, (UnboundType, AnyType)):
+            elif isinstance(self.s, UnboundType):
                 return AnyType(TypeOfAny.special_form)
             else:
                 return mypy.typeops.make_simplified_union([self.s, t])
@@ -390,8 +394,6 @@ class TypeJoinVisitor(TypeVisitor[ProperType]):
     def visit_callable_type(self, t: CallableType) -> ProperType:
         if isinstance(self.s, CallableType):
             if is_similar_callables(t, self.s):
-                if is_equivalent(t, self.s):
-                    return combine_similar_callables(t, self.s)
                 result = join_similar_callables(t, self.s)
                 if any(
                     isinstance(tp, (NoneType, UninhabitedType))
@@ -462,7 +464,7 @@ class TypeJoinVisitor(TypeVisitor[ProperType]):
                 for s_item in s.items:
                     if is_similar_callables(t_item, s_item):
                         if is_equivalent(t_item, s_item):
-                            result.append(combine_similar_callables(t_item, s_item))
+                            result.append(join_similar_callables(t_item, s_item))
                         elif is_subtype(t_item, s_item):
                             result.append(s_item)
             if result:
@@ -824,7 +826,8 @@ def join_similar_callables(t: CallableType, s: CallableType) -> CallableType:
             arg_types.append(s.arg_types[i])
         else:
             arg_types.append(safe_meet(t.arg_types[i], s.arg_types[i]))
-    # TODO in combine_similar_callables also applies here (names and kinds; user metaclasses)
+    # TODO Handle more kinds and different argument names.
+    # TODO what should happen if one fallback is 'type' and the other is a custom metaclass?
     # The fallback type can be either 'function', 'type', or some user-provided metaclass.
     # The result should always use 'function' as a fallback if either operands are using it.
     if t.fallback.type.fullname == "builtins.function":
@@ -846,7 +849,7 @@ def join_similar_callables(t: CallableType, s: CallableType) -> CallableType:
 
 
 def safe_join(t: Type, s: Type) -> Type:
-    # This is a temporary solution to prevent crashes in combine_similar_callables() etc.,
+    # This is a temporary solution to prevent crashes in join_similar_callables() etc.,
     # until relevant TODOs on handling arg_kinds will be addressed there.
     if not isinstance(t, UnpackType) and not isinstance(s, UnpackType):
         return join_types(t, s)
@@ -875,33 +878,6 @@ def safe_meet(t: Type, s: Type) -> Type:
             res = Instance(fallback_type, [res])
         return UnpackType(res)
     return UninhabitedType()
-
-
-def combine_similar_callables(t: CallableType, s: CallableType) -> CallableType:
-    t, s = match_generic_callables(t, s)
-    arg_types: list[Type] = []
-    for i in range(len(t.arg_types)):
-        arg_types.append(safe_join(t.arg_types[i], s.arg_types[i]))
-    # TODO kinds and argument names
-    # TODO what should happen if one fallback is 'type' and the other is a user-provided metaclass?
-    # The fallback type can be either 'function', 'type', or some user-provided metaclass.
-    # The result should always use 'function' as a fallback if either operands are using it.
-    if t.fallback.type.fullname == "builtins.function":
-        fallback = t.fallback
-    else:
-        fallback = s.fallback
-    instance_type = None
-    if t.instance_type is not None and s.instance_type is not None:
-        instance_type = join_types(t.instance_type, s.instance_type)
-    return t.copy_modified(
-        arg_types=arg_types,
-        arg_kinds=combine_arg_kinds(t, s),
-        arg_names=combine_arg_names(t, s),
-        ret_type=join_types(t.ret_type, s.ret_type),
-        instance_type=instance_type,
-        fallback=fallback,
-        name=None,
-    )
 
 
 def combine_arg_names(

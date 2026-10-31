@@ -4395,3 +4395,13 @@ def f(x: Union[A[T], B[Optional[T]]]) -> T: ...
 
 reveal_type(f(C()))  # N: Revealed type is "builtins.int | builtins.str"
 [builtins fixtures/list.pyi]
+
+[case testJoinWithAnyIsPrecise]
+from typing import Any
+
+a: Any
+y = [a, "no"]
+x: list[int] = y  # E: Incompatible types in assignment (expression has type "list[str | Any]", variable has type "list[int]")
+
+def test() -> list[int]:
+    return [a, "no"]  # E: List item 1 has incompatible type "str"; expected "int"
