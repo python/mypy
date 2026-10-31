@@ -8,13 +8,17 @@ from __future__ import annotations
 from typing import Final
 
 from mypy.nodes import (
+    CallExpr,
     ComplexExpr,
     Expression,
     FloatExpr,
     IntExpr,
+    ListExpr,
+    MemberExpr,
     NameExpr,
     OpExpr,
     StrExpr,
+    TupleExpr,
     UnaryExpr,
     Var,
 )
@@ -73,6 +77,34 @@ def constant_fold_expr(expr: Expression, cur_mod_id: str) -> ConstantValue | Non
         value = constant_fold_expr(expr.expr, cur_mod_id)
         if value is not None:
             return constant_fold_unary_op(expr.op, value)
+    # --- f-string requires partial support for both str.join and str.format ---
+    elif (
+        isinstance(expr, CallExpr)
+        and isinstance(callee := expr.callee, MemberExpr)
+        and isinstance(folded_callee := constant_fold_expr(callee.expr, cur_mod_id), str)
+    ):
+        # --- partial str.join constant folding ---
+        if (
+            callee.name == "join"
+            and len(args := expr.args) == 1
+            and isinstance(arg := args[0], (ListExpr, TupleExpr))
+        ):
+            folded_items: list[str] = []
+            for item in arg.items:
+                val = constant_fold_expr(item, cur_mod_id)
+                if not isinstance(val, str):
+                    return None
+                folded_items.append(val)
+            return folded_callee.join(folded_items)
+        # --- str.format constant folding
+        elif callee.name == "format":
+            folded_args: list[ConstantValue] = []
+            for arg in expr.args:
+                arg_val = constant_fold_expr(arg, cur_mod_id)
+                if arg_val is None:
+                    return None
+                folded_args.append(arg_val)
+            return folded_callee.format(*folded_args)
     return None
 
 
