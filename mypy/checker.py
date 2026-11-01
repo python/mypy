@@ -3012,7 +3012,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                 if item_type is None:
                     return None
                 items.append(item_type)
-            return get_proper_type(make_simplified_union(items))
+            return make_simplified_union(items)
         index_value = self.index_expr_int_value(index)
         if index_value is not None:
             if isinstance(var_type, TupleType):
