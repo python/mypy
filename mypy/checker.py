@@ -2994,7 +2994,26 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
             return None
         if var_type is None:
             return None
-        index_value = self.index_expr_int_value(base_expr.index)
+        return self.index_into_deferred_base_type(var_type, base_expr.index)
+
+    def index_into_deferred_base_type(
+        self, var_type: ProperType, index: Expression
+    ) -> ProperType | None:
+        """Type of an item of a deferred base class type at a constant index.
+
+        If the type is a union, the index is applied to each item in turn
+        (e.g. a string index into a union of TypedDicts): every item must
+        resolve, and the result is the union of the per-item results.
+        """
+        if isinstance(var_type, UnionType):
+            items: list[Type] = []
+            for item in var_type.items:
+                item_type = self.index_into_deferred_base_type(get_proper_type(item), index)
+                if item_type is None:
+                    return None
+                items.append(item_type)
+            return get_proper_type(make_simplified_union(items))
+        index_value = self.index_expr_int_value(index)
         if index_value is not None:
             if isinstance(var_type, TupleType):
                 return self.tuple_item_at_index(var_type, index_value)
@@ -3008,7 +3027,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                     if mapped.args:
                         return get_proper_type(mapped.args[0])
             return None
-        key = self.index_expr_str_value(base_expr.index)
+        key = self.index_expr_str_value(index)
         if key is not None:
             if isinstance(var_type, TypedDictType):
                 item_type = var_type.items.get(key)
