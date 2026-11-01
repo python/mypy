@@ -1063,3 +1063,13 @@ A = list[T]
 a: A
 reveal_type(a)  # N: Revealed type is "builtins.list[builtins.list[Any]]"
 [builtins fixtures/tuple.pyi]
+
+[case testTypeVarDefaultCallableReferringToItself]
+from typing import Callable
+from typing_extensions import TypeVar
+
+T = TypeVar("T", default=Callable[..., "T"])  # E: Cannot resolve name "T" (possible cyclic definition)
+
+def f(x: T) -> T: ...
+reveal_type(f)  # N: Revealed type is "def [T = Any] (x: T`-1 = Any) -> T`-1 = Any"
+[builtins fixtures/tuple.pyi]

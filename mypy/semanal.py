@@ -235,6 +235,7 @@ from mypy.semanal_shared import (
     calculate_tuple_fallback,
     find_dataclass_transform_spec,
     has_placeholder,
+    has_type_var_with_name,
     parse_bool,
     require_bool_literal_argument,
     set_callable_name as set_callable_name,
@@ -4910,6 +4911,18 @@ class SemanticAnalyzer(
         if res is None:
             return False
         variance, upper_bound, default = res
+
+        # A type variable can't be used in its own upper bound or default. Usually,
+        # such references are reported as cyclic definitions, but a Callable type
+        # can bind a type variable, e.g. TypeVar("T", bound=Callable[..., "T"]).
+        # Storing such a bound/default would create an infinitely recursive type.
+        fullname = self.qualified_name(name)
+        if has_type_var_with_name(upper_bound, fullname):
+            self.cannot_resolve_name(name, "name", s)
+            upper_bound = AnyType(TypeOfAny.from_error)
+        if has_type_var_with_name(default, fullname):
+            self.cannot_resolve_name(name, "name", s)
+            default = AnyType(TypeOfAny.from_error)
 
         existing = self.current_symbol_table().get(name)
         if existing and not (

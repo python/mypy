@@ -47,6 +47,7 @@ from mypy.types import (
     TypeVarId,
     TypeVarLikeType,
     TypeVarTupleType,
+    TypeVarType,
     UnpackType,
     flatten_nested_tuples,
     get_proper_type,
@@ -379,6 +380,22 @@ class HasPlaceholders(BoolTypeQuery):
 def has_placeholder(typ: Type) -> bool:
     """Check if a type contains any placeholder types (recursively)."""
     return typ.accept(HasPlaceholders())
+
+
+class HasTypeVarWithName(BoolTypeQuery):
+    def __init__(self, fullname: str) -> None:
+        super().__init__(ANY_STRATEGY)
+        self.fullname = fullname
+
+    def visit_type_var(self, t: TypeVarType) -> bool:
+        # Don't look into bounds/defaults of other type variables, these are
+        # complete types defined elsewhere (and may be recursive).
+        return t.fullname == self.fullname
+
+
+def has_type_var_with_name(typ: Type, fullname: str) -> bool:
+    """Check if a type refers to a (regular) type variable with given full name."""
+    return typ.accept(HasTypeVarWithName(fullname))
 
 
 def find_dataclass_transform_spec(node: Node | None) -> DataclassTransformSpec | None:
