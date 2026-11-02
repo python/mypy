@@ -130,10 +130,7 @@ PyObject *CPyStr_GetItem(PyObject *str, CPyTagged index) {
             return NULL;
         }
     } else {
-        PyObject *index_obj = CPyTagged_AsObject(index);
-        PyObject *result = PyObject_GetItem(str, index_obj);
-        Py_DECREF(index_obj);
-        return result;
+        return NULL;
     }
 }
 
@@ -218,7 +215,11 @@ PyObject *CPyStr_Build(Py_ssize_t len, ...) {
             Py_ssize_t itemlen = PyUnicode_GET_LENGTH(item);
             if (itemlen != 0) {
 #if CPY_3_13_FEATURES
-                PyUnicode_CopyCharacters(res, res_offset, item, 0, itemlen);
+                if (PyUnicode_CopyCharacters(res, res_offset, item, 0, itemlen) < 0) {
+                    va_end(args);
+                    Py_DECREF(res);
+                    return NULL;
+                }
 #else
                 _PyUnicode_FastCopyCharacters(res, res_offset, item, 0, itemlen);
 #endif
@@ -419,6 +420,9 @@ int CPyStr_Startswith(PyObject *self, PyObject *subobj) {
                 return 2;
             }
             int result = PyUnicode_Tailmatch(self, substring, start, end, -1);
+            if (result < 0) {
+                return 2;
+            }
             if (result) {
                 return 1;
             }
@@ -443,6 +447,9 @@ int CPyStr_Endswith(PyObject *self, PyObject *subobj) {
                 return 2;
             }
             int result = PyUnicode_Tailmatch(self, substring, start, end, 1);
+            if (result < 0) {
+                return 2;
+            }
             if (result) {
                 return 1;
             }
@@ -455,6 +462,9 @@ int CPyStr_Endswith(PyObject *self, PyObject *subobj) {
 PyObject *CPyStr_Removeprefix(PyObject *self, PyObject *prefix) {
     Py_ssize_t end = PyUnicode_GET_LENGTH(self);
     int match = PyUnicode_Tailmatch(self, prefix, 0, end, -1);
+    if (match < 0) {
+        return NULL;
+    }
     if (match) {
         Py_ssize_t prefix_end = PyUnicode_GET_LENGTH(prefix);
         return PyUnicode_Substring(self, prefix_end, end);
@@ -465,6 +475,9 @@ PyObject *CPyStr_Removeprefix(PyObject *self, PyObject *prefix) {
 PyObject *CPyStr_Removesuffix(PyObject *self, PyObject *suffix) {
     Py_ssize_t end = PyUnicode_GET_LENGTH(self);
     int match = PyUnicode_Tailmatch(self, suffix, 0, end, 1);
+    if (match < 0) {
+        return NULL;
+    }
     if (match) {
         Py_ssize_t suffix_end = PyUnicode_GET_LENGTH(suffix);
         return PyUnicode_Substring(self, 0, end - suffix_end);
