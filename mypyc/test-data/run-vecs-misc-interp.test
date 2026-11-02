@@ -35,6 +35,23 @@ ITEM_TYPES = [i64, u8, i16, i32, float, bool]
 
 # Common tests for all item types
 
+class BadArgs:
+    @property
+    def __args__(self) -> Any:
+        raise RuntimeError("optional lookup failed")
+
+class FakeOptional:
+    @property
+    def __args__(self) -> Any:
+        return (object(), type(None))
+
+def test_optional_lookup_error() -> None:
+    with assertRaises(RuntimeError, "optional lookup failed"):
+        vec[BadArgs()]
+
+    with assertRaises(TypeError, "type object expected"):
+        vec[FakeOptional()]
+
 def test_bare_vec_cannot_be_constructed() -> None:
     with assertRaises(TypeError):
         vec()
