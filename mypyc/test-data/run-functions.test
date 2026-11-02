@@ -1297,8 +1297,9 @@ def sub(s, f):
     return f(s)
 
 [case testContextManagerSpecialCase]
-from typing import Generator, Callable, Iterator
+from typing import Any, Generator, Callable, Iterator
 from contextlib import contextmanager
+from functools import wraps
 
 @contextmanager
 def f() -> Iterator[None]:
@@ -1308,6 +1309,42 @@ def test_special_case() -> None:
     a = ['']
     with f():
         a.pop()
+
+def decorate(func: Callable[..., Any]) -> Callable[..., Any]:
+    @wraps(func)
+    def wrapper(*args: Any, **kwargs: Any) -> Any:
+        print('decorator')
+        return func(*args, **kwargs)
+    return wrapper
+
+@decorate
+@contextmanager
+def outer() -> Iterator[int]:
+    print('enter outer')
+    yield 1
+    print('exit outer')
+
+@contextmanager
+@decorate
+def inner() -> Iterator[int]:
+    print('enter inner')
+    yield 2
+    print('exit inner')
+
+def test_other_decorators() -> None:
+    with outer() as value:
+        print('body', value)
+    with inner() as value:
+        print('body', value)
+[out]
+decorator
+enter outer
+body 1
+exit outer
+decorator
+enter inner
+body 2
+exit inner
 
 [case testContextManagerSpecialCaseSemantics]
 from contextlib import contextmanager
@@ -1898,7 +1935,8 @@ suppression restores outer exception and releases saved references
 
 [case testContextManagerRuntimeMethodBinding]
 from contextlib import contextmanager
-from typing import Callable, Iterator
+from typing import Callable, Generator, Iterator
+from testutil import async_val
 from mypy_extensions import mypyc_attr
 
 @mypyc_attr(allow_interpreted_subclasses=True)
@@ -1912,9 +1950,71 @@ def invoke(receiver: Callable[[], Base], argument: Callable[[], str]) -> None:
     with receiver().cm(value=argument()) as value:
         print('body', value)
 
+class WalrusContext:
+    def __init__(self, name: str) -> None:
+        self.name = name
+
+    @contextmanager
+    def cm(self, first: list[int], second: list[int]) -> Iterator[tuple[str, list[int], list[int]]]:
+        yield self.name, first, second
+
+def test_argument_reassignment() -> None:
+    receiver = WalrusContext('original')
+    value = [1]
+    # The first argument must retain the value from before the walrus assignment.
+    with receiver.cm(value, (value := [2])) as result:
+        assert result == ('original', [1], [2])
+        assert result[2] is value
+
+@mypyc_attr(allow_interpreted_subclasses=True)
+class SuspendingContext:
+    @contextmanager
+    def cm(self, first: list[int], second: list[int]) -> Iterator[tuple[list[int], list[int]]]:
+        yield first, second
+
+def with_yield(receiver: SuspendingContext) -> Generator[str, list[int], None]:
+    value = [1]
+    with receiver.cm(value, (yield 'argument')) as result:
+        assert result == ([1], [2])
+        assert result[0] is value
+
+def argument() -> Generator[str, list[int], list[int]]:
+    return (yield 'argument')
+
+def with_yield_from(receiver: SuspendingContext) -> Generator[str, list[int], None]:
+    value = [1]
+    with receiver.cm(value, (yield from argument())) as result:
+        assert result == ([1], [2])
+        assert result[0] is value
+
+async def with_await(receiver: SuspendingContext) -> None:
+    value = [1]
+    with receiver.cm(value, await async_val[str, list[int]]('argument')) as result:
+        assert result == ([1], [2])
+        assert result[0] is value
+
 [file driver.py]
 from contextlib import contextmanager
-from native import Base, invoke
+from native import (
+    Base, invoke, test_argument_reassignment, SuspendingContext,
+    with_yield, with_yield_from, with_await,
+)
+from testutil import run_generator
+
+test_argument_reassignment()
+
+class ForwardingContext(SuspendingContext):
+    # This ordinary method has no __wrapped__. Suspending calls must use the
+    # generic with path instead of assuming the base class's decorator applies.
+    def cm(self, first, second):
+        return super().cm(first, second)
+
+for context_type in [SuspendingContext, ForwardingContext]:
+    results = [
+        run_generator(fn(context_type()), [[2]])
+        for fn in [with_yield, with_yield_from, with_await]
+    ]
+    assert results == [(('argument',), None)] * 3, results
 
 # A classmethod binds to the runtime class; a staticmethod has no implicit receiver.
 
@@ -1965,6 +2065,7 @@ def argument():
     return 'keyword'
 
 invoke(receiver, argument)
+[typing fixtures/typing-full.pyi]
 [out]
 body ClassOverride:value
 body static:value
