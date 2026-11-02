@@ -898,25 +898,22 @@ static PyObject *CPyImport_ImportFrom(PyObject *module, PyObject *package_name,
             if (PyErr_Occurred()) {
                 return NULL;
             }
-            goto fail;
+            PyObject *package_path = PyModule_GetFilenameObject(module);
+            if (package_path == NULL) {
+                PyErr_Clear();
+            }
+            PyObject *path_for_msg = package_path != NULL ? package_path : Py_None;
+            PyObject *errmsg = PyUnicode_FromFormat("cannot import name %R from %R (%S)",
+                                                    import_name, package_name, path_for_msg);
+            if (errmsg != NULL) {
+                PyErr_SetImportError(errmsg, package_name, package_path);
+            }
+            Py_XDECREF(package_path);
+            Py_XDECREF(errmsg);
+            return NULL;
         }
     }
     return x;
-
-fail:;
-    PyObject *package_path = PyModule_GetFilenameObject(module);
-    if (package_path == NULL) {
-        PyErr_Clear();
-    }
-    PyObject *path_for_msg = package_path != NULL ? package_path : Py_None;
-    PyObject *errmsg = PyUnicode_FromFormat("cannot import name %R from %R (%S)",
-                                            import_name, package_name, path_for_msg);
-    if (errmsg != NULL) {
-        PyErr_SetImportError(errmsg, package_name, package_path);
-    }
-    Py_XDECREF(package_path);
-    Py_XDECREF(errmsg);
-    return NULL;
 }
 
 PyObject *CPyImport_ImportFromMany(PyObject *mod_id, PyObject *names, PyObject *as_names,
