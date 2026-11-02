@@ -30,6 +30,7 @@ from mypy.nodes import (
     Context,
     Decorator,
     FuncBase,
+    FuncDef,
     OverloadedFuncDef,
     TypeInfo,
     Var,
@@ -1489,6 +1490,7 @@ def find_member(
         # to avoid type variable id collisions, but for protocols this means we can't
         # use the assumption stack, that will grow indefinitely.
         # TODO: find a cleaner solution that doesn't involve massive perf impact.
+        # Note: bind_self() cache relies on this, update it if this is changed.
         preserve_type_var_ids=True,
     )
     with type_checker.msg.filter_errors(filter_deprecated=True):
@@ -1645,8 +1647,6 @@ def find_node_type(
     """Find type of a variable or method 'node' (maybe also a decorated method).
     Apply type arguments from 'itype', and bind 'self' to 'subtype'.
     """
-    from mypy.typeops import bind_self
-
     if isinstance(node, FuncBase):
         typ: Type | None = mypy.typeops.function_type(
             node, fallback=Instance(itype.type.mro[-1], [])
@@ -1676,8 +1676,10 @@ def find_node_type(
         ):
             # Don't bind instance methods on class objects.
             signature = p_typ
+        elif isinstance(node, (FuncDef, OverloadedFuncDef)) and node.is_trivial_self:
+            signature = mypy.typeops.bind_self_fast(p_typ, subtype)
         else:
-            signature = bind_self(
+            signature = mypy.typeops.bind_self(
                 p_typ, subtype, is_classmethod=isinstance(node, Var) and node.is_classmethod
             )
         if node.is_property and not class_obj:

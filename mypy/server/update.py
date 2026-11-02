@@ -887,6 +887,7 @@ def propagate_changes_using_dependencies(
         # unchanged, but was marked stale because its sub- (or super-) type changed.
         for info in stale_protos:
             type_state.reset_subtype_caches_for(info)
+        type_state.bind_self_cache.clear()
         # Then fully reprocess all targets.
         # TODO: Preserve order (set is not optimal)
         for id, nodes in sorted(todo.items(), key=lambda x: x[0]):

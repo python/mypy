@@ -5,14 +5,28 @@ and potentially other mutable TypeInfo state. This module contains mutable globa
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from typing import Final, TypeAlias as _TypeAlias
 
 from mypy.nodes import VARIANCE_NOT_READY, TypeInfo
 from mypy.server.trigger import make_trigger
-from mypy.types import Instance, Type, TypeVarId, TypeVarType, get_proper_type
+from mypy.types import (
+    CallableType,
+    Instance,
+    Type,
+    TypeVarId,
+    TypeVarLikeType,
+    TypeVarType,
+    get_proper_type,
+)
 
 MAX_NEGATIVE_CACHE_TYPES: Final = 1000
 MAX_NEGATIVE_CACHE_ENTRIES: Final = 10000
+
+BindSelfCacheKey = tuple[CallableType, Type, bool, bool]
+BindSelfCacheValue = tuple[CallableType, Sequence[TypeVarLikeType]]
+
+BIND_SELF_CACHE_MAX_SIZE: Final = 10000
 
 # Represents that the 'left' instance is a subtype of the 'right' instance
 SubtypeRelationship: _TypeAlias = tuple[Instance, Instance]
@@ -46,6 +60,10 @@ class TypeState:
 
     # Same as above but for negative subtyping results.
     _negative_subtype_caches: Final[SubtypeCache]
+
+    # A dedicated lightweight cache for bind_self(), which may be slow because of type
+    # inference in some scenarios involving protocols with non-trivial self-types.
+    bind_self_cache: Final[dict[BindSelfCacheKey, BindSelfCacheValue]]
 
     # This contains protocol dependencies generated after running a full build,
     # or after an update. These dependencies are special because:
@@ -119,6 +137,7 @@ class TypeState:
         self.infer_unions = False
         self.infer_polymorphic = False
         self.keep_unions = False
+        self.bind_self_cache = {}
 
     def is_assumed_subtype(self, left: Type, right: Type) -> bool:
         for l, r in reversed(self._assuming):
@@ -331,4 +350,5 @@ def reset_global_state() -> None:
     """
     type_state.reset_all_subtype_caches()
     type_state.reset_protocol_deps()
+    type_state.bind_self_cache.clear()
     TypeVarId.next_raw_id = 1

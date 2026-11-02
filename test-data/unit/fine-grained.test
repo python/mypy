@@ -11970,3 +11970,39 @@ class C: pass
 [out]
 ==
 main:3: error: Name "C" is not defined
+
+[case testProtocolGenericSelfTypeBaseChanged]
+import a
+[file a.py]
+from b import P
+from d import C
+def f(x: P) -> None: pass
+f(C())
+[file b.py]
+from typing import Protocol
+class P(Protocol):
+    def meth(self) -> int: ...
+[file c.py]
+from typing import Generic, TypeVar
+T = TypeVar("T")
+S = TypeVar("S")
+class Base(Generic[T]):
+    def meth(self: "Base[S]") -> S: ...
+[file d.py]
+from c import Base
+class C(Base[int]): pass
+[file d.py.2]
+from c import Base
+class C(Base[str]): pass
+[file d.py.3]
+from c import Base
+class C(Base[int]): pass
+[out]
+==
+a.py:4: error: Argument 1 to "f" has incompatible type "C"; expected "P"
+a.py:4: note: Following member(s) of "C" have conflicts:
+a.py:4: note:     Expected:
+a.py:4: note:         def meth(self) -> int
+a.py:4: note:     Got:
+a.py:4: note:         def meth(self) -> str
+==
