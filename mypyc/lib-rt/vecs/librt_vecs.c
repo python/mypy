@@ -252,8 +252,11 @@ PyTypeObject VecGenericAliasType = {
 // so isinstance(v, vec) returns True for any specialized vec instance.
 
 static PyObject *extract_optional_item(PyObject *item) {
-    PyObject *args;
-    if (PyObject_GetOptionalAttrString(item, "__args__", &args) <= 0) {
+    PyObject *args = PyObject_GetAttrString(item, "__args__");
+    if (args == NULL) {
+        if (PyErr_Occurred() && PyErr_ExceptionMatches(PyExc_AttributeError)) {
+            PyErr_Clear();
+        }
         return NULL;
     }
     if (!PyTuple_CheckExact(args))
