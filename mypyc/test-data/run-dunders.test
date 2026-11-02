@@ -1403,7 +1403,9 @@ def test_final() -> None:
     assert (a < A(5)) is False
     assert (b < A(5)) is True
 
-[case testDundersEq]
+[case testDundersEqAndHash]
+from testutil import assertRaises
+
 class Eq:
     def __init__(self, x: int) -> None:
         self.x = x
@@ -1424,6 +1426,56 @@ def test_equality_with_implicit_ne() -> None:
     assert not eq(Eq(1), Eq(2))
     assert ne(Eq(1), Eq(2))
     assert not ne(Eq(1), Eq(1))
+
+class Lt:
+    def __init__(self, n: int) -> None:
+        self.n = n
+
+    def __lt__(self, other: "Lt") -> bool:
+        return self.n < other.n
+
+class LtSub(Lt):
+    def __gt__(self, other: "Lt") -> bool:
+        return self.n > other.n
+
+class EqOnly:
+    def __eq__(self, other: object) -> bool:
+        return True
+
+class EqOnlySub(EqOnly):
+    def __lt__(self, other: "EqOnly") -> bool:
+        return True
+
+class EqHash:
+    def __eq__(self, other: object) -> bool:
+        return True
+
+    def __hash__(self) -> int:
+        return 5
+
+class EqHashSub(EqHash):
+    def __lt__(self, other: "EqHash") -> bool:
+        return True
+
+def test_ordering_comparisons_keep_class_hashable() -> None:
+    # Only defining __eq__ (without __hash__) makes a class unhashable
+    x = Lt(1)
+    assert hash(x) == hash(x)
+    assert x in {x}
+    y = LtSub(1)
+    assert y in {y}
+    assert Lt(1) < Lt(2)
+    assert LtSub(2) > Lt(1)
+
+def test_eq_makes_class_unhashable() -> None:
+    with assertRaises(TypeError, "unhashable type"):
+        hash(EqOnly())
+    with assertRaises(TypeError, "unhashable type"):
+        hash(EqOnlySub())
+
+def test_explicit_hash() -> None:
+    assert hash(EqHash()) == 5
+    assert hash(EqHashSub()) == 5
 
 [case testDundersImplicitNeWithNarrowRhs]
 class Accepted:
