@@ -795,8 +795,8 @@ int CPyStatics_Initialize(PyObject **statics,
             }
             for (int i = 0; i < num_items; i++) {
                 PyObject *item = statics[*frozensets++];
-                Py_INCREF(item);
                 if (PySet_Add(obj, item) == -1) {
+                    Py_DECREF(obj);
                     return -1;
                 }
             }
