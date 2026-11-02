@@ -4059,11 +4059,11 @@ class TypeInfo(SymbolNode):
         for cls in self.mro:
             sym = cls.names.get(name)
             if sym is None:
-                # add_redefinition installs the unnumbered name before any numbered ones.
-                prefix = f"{name}-redefinition"
-                if prefix not in cls.names:
+                # Plugins are allowed to meddle with redefinitions (first one wins).
+                if cls.metadata:
+                    sym = cls.names.get(f"{name}-redefinition")
+                if sym is None:
                     continue
-                sym = cls.names[max(n for n in cls.names if n.startswith(prefix))]
             node = sym.node
             if isinstance(node, SYMBOL_FUNCBASE_TYPES):
                 return node
