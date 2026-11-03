@@ -22,11 +22,9 @@ CPyTagged CPyObject_Hash(PyObject *o) {
 
 PyObject *CPyObject_GetAttr3(PyObject *v, PyObject *name, PyObject *defl)
 {
-    PyObject *result = PyObject_GetAttr(v, name);
-    if (!result && PyErr_ExceptionMatches(PyExc_AttributeError)) {
-        PyErr_Clear();
-        Py_INCREF(defl);
-        result = defl;
+    PyObject *result;
+    if (PyObject_GetOptionalAttr(v, name, &result) == 0) {
+        return Py_NewRef(defl);
     }
     return result;
 }
