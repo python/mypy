@@ -342,6 +342,9 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         ] = {}
         self.freshen_cache: dict[tuple[Context, CallableType], CallableType] = {}
         self.in_lambda_expr = False
+        # Classes whose "__call__" is currently being resolved in check_call(). used to
+        # detect a "__call__" attribute whose type leads back to the same class
+        self.resolving_call_types: set[TypeInfo] = set()
 
         self._literal_true: Instance | None = None
         self._literal_false: Instance | None = None
@@ -507,7 +510,13 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                 self.visit_call_expr_inner(e)
             # It's really a special form that only looks like a call.
             return self.accept(e.analyzed, self.type_context[-1])
-        return self.visit_call_expr_inner(e, allow_none_return=allow_none_return)
+        # Nested call expressions (e.g. in arguments) resolve "__call__" independently
+        outer_resolving_call_types = self.resolving_call_types
+        self.resolving_call_types = set()
+        try:
+            return self.visit_call_expr_inner(e, allow_none_return=allow_none_return)
+        finally:
+            self.resolving_call_types = outer_resolving_call_types
 
     def refers_to_typeddict(self, base: Expression) -> bool:
         if not isinstance(base, RefExpr):
@@ -1624,6 +1633,10 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         elif isinstance(callee, UnionType):
             return self.check_union_call(callee, args, arg_kinds, arg_names, context)
         elif isinstance(callee, Instance):
+            if callee.type in self.resolving_call_types:
+                # "__call__" is (transitivly) declared with the type of its own class
+                # e.g. "__call__: C" in class C. Following it would recurse forever
+                return self.msg.not_callable(callee, context), AnyType(TypeOfAny.from_error)
             call_function = analyze_member_access(
                 "__call__",
                 callee,
@@ -1640,16 +1653,20 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             call_function = self.transform_callee_type(
                 callable_name, call_function, args, arg_kinds, context, arg_names, callee
             )
-            result = self.check_call(
-                call_function,
-                args,
-                arg_kinds,
-                context,
-                arg_names,
-                callable_node,
-                callable_name,
-                callee,
-            )
+            self.resolving_call_types.add(callee.type)
+            try:
+                result = self.check_call(
+                    call_function,
+                    args,
+                    arg_kinds,
+                    context,
+                    arg_names,
+                    callable_node,
+                    callable_name,
+                    callee,
+                )
+            finally:
+                self.resolving_call_types.discard(callee.type)
             if callable_node:
                 # check_call() stored "call_function" as the type, which is incorrect.
                 # Override the type.
