@@ -243,6 +243,16 @@ def test_endswith() -> None:
     assert not test2.endswith(b'other')
 
 [case testBytesSlicing]
+from typing import Any, cast
+
+def test_reversed_slice_bounds() -> None:
+    bounds = (-100, -3, -1, 0, 1, 2, 3, 100, 2**100)
+    for value in (b"", b"a", b"abc"):
+        interpreted = cast(Any, value)
+        for start in bounds:
+            for end in bounds:
+                assert value[start:end] == interpreted[start:end]
+
 def test_bytes_slicing() -> None:
     b = b'abcdefg'
     zero = int()

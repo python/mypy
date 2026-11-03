@@ -1593,11 +1593,15 @@ def test_raise_non_native_exception_subclass_2() -> None:
         assert False
     assert x
 
-[case testSubclassUnknownPythonBase]
-# The base class is unknown during compilation, so it has type Any
+[case testSubclassExternalPythonBase]
+# Subclass Python classes defined outside the compiled module (some are unknown during
+# compilation and have type Any)
+import ctypes
 from mypy_extensions import mypyc_attr
 from typing import Any, Generic, TypeVar
 from unchecked import Base, MetaBase, SecondBase, StrBase  # type: ignore
+import pkg
+from pkg import FunctionImportedBase, Outer, ReExportedBase, StrEnum
 
 T = TypeVar("T")
 
@@ -1724,6 +1728,49 @@ def test_generic_bases() -> None:
     assert KnownGenericBase.__orig_bases__ == (Base, KnownGeneric[int])
     assert KnownGenericBase(7).y == 7
 
+# The bases are imported through re-exports (from modules other than where they are defined)
+class ReExportedStrEnum(StrEnum):
+    value = "testing-value"
+
+@mypyc_attr(native_class=False)
+class FromReExport(ReExportedBase):
+    pass
+
+@mypyc_attr(native_class=False)
+class FromReExportedError(pkg.Error, ValueError):
+    pass
+
+# ctypes.Structure is defined in _ctypes
+class CtypesStructure(ctypes.Structure):
+    pass
+
+def import_in_function() -> None:
+    # This doesn't run before the class below is created
+    import pkg.function_imported
+
+@mypyc_attr(native_class=False)
+class FromFunctionImportedModule(FunctionImportedBase):
+    pass
+
+@mypyc_attr(native_class=False)
+class FromNested(Outer.Inner):
+    pass
+
+@mypyc_attr(native_class=False)
+class FromNestedViaModule(pkg.Outer.Inner):
+    pass
+
+def test_re_exported_base() -> None:
+    assert list(ReExportedStrEnum) == [ReExportedStrEnum.value]
+    assert ReExportedStrEnum.value == "testing-value"
+    assert isinstance(FromReExport(), ReExportedBase)
+    assert isinstance(FromReExportedError(), pkg.Error)
+    assert isinstance(CtypesStructure(), ctypes.Structure)
+    assert isinstance(FromFunctionImportedModule(), FunctionImportedBase)
+    assert isinstance(FromNested(), Outer.Inner)
+    assert FromNested().inner() == "inner"
+    assert isinstance(FromNestedViaModule(), Outer.Inner)
+
 [file unchecked.py]
 StrBase = str
 
@@ -1747,6 +1794,33 @@ class Base:
 
     def marker(self):
         return "base"
+
+[file pkg/__init__.py]
+from pkg.strenum import StrEnum
+from pkg.base import ReExportedBase, Error, Outer
+from pkg.function_imported import FunctionImportedBase
+
+[file pkg/strenum.py]
+import enum
+
+class StrEnum(str, enum.Enum):
+    pass
+
+[file pkg/base.py]
+class ReExportedBase:
+    pass
+
+class Error(Exception):
+    pass
+
+class Outer:
+    class Inner:
+        def inner(self):
+            return "inner"
+
+[file pkg/function_imported.py]
+class FunctionImportedBase:
+    pass
 
 [case testSubclassPy]
 from b import B, V

@@ -780,6 +780,11 @@ static void CPy_LogGetAttr(const char *method, PyObject *obj, PyObject *attr) {
      PyObject_GetAttr((obj), (attr)))
 
 CPyTagged CPyObject_Hash(PyObject *o);
+
+// Default identity-based hash (same as object.__hash__), used as tp_hash
+static inline Py_hash_t CPy_DefaultHash(PyObject *o) {
+    return PyBaseObject_Type.tp_hash(o);
+}
 PyObject *CPyObject_GetAttr3(PyObject *v, PyObject *name, PyObject *defl);
 PyObject *CPyIter_Next(PyObject *iter);
 PyObject *CPyNumber_Power(PyObject *base, PyObject *index);

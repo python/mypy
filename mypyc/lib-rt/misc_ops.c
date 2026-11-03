@@ -122,15 +122,20 @@ PyObject *CPy_FetchStopIterationValue(void)
     return val;
 }
 
-static bool _CPy_IsSafeMetaClass(PyTypeObject *metaclass) {
+static int _CPy_IsSafeMetaClass(PyTypeObject *metaclass) {
     // mypyc classes can't work with metaclasses in
     // general. Through some various nasty hacks we *do*
     // manage to work with TypingMeta and its friends.
     if (metaclass == &PyType_Type)
         return true;
-    PyObject *module = PyObject_GetAttr((PyObject *)metaclass, mypyc_interned_str.__module__);
-    if (!module) {
-        PyErr_Clear();
+    PyObject *module;
+    int found = PyObject_GetOptionalAttr((PyObject *)metaclass,
+                                        mypyc_interned_str.__module__, &module);
+    if (found <= 0) {
+        return found;
+    }
+    if (!PyUnicode_Check(module)) {
+        Py_DECREF(module);
         return false;
     }
 
@@ -244,7 +249,11 @@ PyObject *CPyType_FromTemplate(PyObject *template,
         if (!metaclass)
             goto error;
 
-        if (!_CPy_IsSafeMetaClass(metaclass)) {
+        int is_safe = _CPy_IsSafeMetaClass(metaclass);
+        if (is_safe < 0) {
+            goto error;
+        }
+        if (!is_safe) {
             PyErr_SetString(PyExc_TypeError, "mypyc classes can't have a metaclass");
             goto error;
         }
@@ -321,8 +330,11 @@ PyObject *CPyType_FromTemplate(PyObject *template,
 
     // Reject anything that would give us a nontrivial __slots__,
     // because the layout will conflict
-    slots = PyObject_GetAttr((PyObject *)t, mypyc_interned_str.__slots__);
-    if (slots) {
+    int has_slots = PyObject_GetOptionalAttr((PyObject *)t, mypyc_interned_str.__slots__, &slots);
+    if (has_slots < 0) {
+        goto error;
+    }
+    if (has_slots) {
         // don't fail on an empty __slots__
         int is_true = PyObject_IsTrue(slots);
         Py_DECREF(slots);
@@ -330,8 +342,6 @@ PyObject *CPyType_FromTemplate(PyObject *template,
             PyErr_SetString(PyExc_TypeError, "mypyc classes can't have __slots__");
         if (is_true != 0)
             goto error;
-    } else {
-        PyErr_Clear();
     }
 
     if (PyObject_SetAttr((PyObject *)t, mypyc_interned_str.__module__, modname) < 0)
@@ -421,7 +431,8 @@ CPyDataclass_SleightOfHand(PyObject *dataclass_dec, PyObject *tp,
     PyObject *key;
     while (PyDict_Next(annotations, &pos, &key, NULL)) {
         // Check and delete key. Key may be absent from tp for InitVar variables.
-        if (PyObject_HasAttr(tp, key) == 1 && PyObject_DelAttr(tp, key) != 0) {
+        int has_attr = PyObject_HasAttrWithError(tp, key);
+        if (has_attr < 0 || (has_attr && PyObject_DelAttr(tp, key) != 0)) {
             goto fail;
         }
     }
@@ -448,10 +459,13 @@ CPyDataclass_SleightOfHand(PyObject *dataclass_dec, PyObject *tp,
             PyObject *value = NULL;
             int rv = PyObject_GetOptionalAttrString(res, *key_iter, &value);
             if (rv == 1) {
-                PyObject_SetAttrString(tp, *key_iter, value);
+                int status = PyObject_SetAttrString(tp, *key_iter, value);
                 Py_DECREF(value);
+                if (status < 0) {
+                    goto fail;
+                }
             } else if (rv == -1) {
-              goto fail;
+                goto fail;
             }
         }
     }
@@ -781,8 +795,8 @@ int CPyStatics_Initialize(PyObject **statics,
             }
             for (int i = 0; i < num_items; i++) {
                 PyObject *item = statics[*frozensets++];
-                Py_INCREF(item);
                 if (PySet_Add(obj, item) == -1) {
+                    Py_DECREF(obj);
                     return -1;
                 }
             }
@@ -866,34 +880,40 @@ bool CPyImport_ImportMany(PyObject *modules, CPyModuleCache *statics[], PyObject
 static PyObject *CPyImport_ImportFrom(PyObject *module, PyObject *package_name,
                                       PyObject *import_name, PyObject *as_name) {
     // check if the imported module has an attribute by that name
-    PyObject *x = PyObject_GetAttr(module, import_name);
-    if (x == NULL) {
+    PyObject *x;
+    int found = PyObject_GetOptionalAttr(module, import_name, &x);
+    if (found < 0) {
+        return NULL;
+    }
+    if (!found) {
         // Attribute lookup failed. The name may still be a submodule that's
         // been imported already; look it up directly in sys.modules.
         PyObject *fullmodname = PyUnicode_FromFormat("%U.%U", package_name, import_name);
         if (fullmodname == NULL) {
-            goto fail;
+            return NULL;
         }
-        PyErr_Clear();
         x = PyImport_GetModule(fullmodname);
         Py_DECREF(fullmodname);
         if (x == NULL) {
-            goto fail;
+            if (PyErr_Occurred()) {
+                return NULL;
+            }
+            PyObject *package_path = PyModule_GetFilenameObject(module);
+            if (package_path == NULL) {
+                PyErr_Clear();
+            }
+            PyObject *path_for_msg = package_path != NULL ? package_path : Py_None;
+            PyObject *errmsg = PyUnicode_FromFormat("cannot import name %R from %R (%S)",
+                                                    import_name, package_name, path_for_msg);
+            if (errmsg != NULL) {
+                PyErr_SetImportError(errmsg, package_name, package_path);
+            }
+            Py_XDECREF(package_path);
+            Py_XDECREF(errmsg);
+            return NULL;
         }
     }
     return x;
-
-fail:
-    PyErr_Clear();
-    PyObject *package_path = PyModule_GetFilenameObject(module);
-    PyObject *path_for_msg = package_path != NULL ? package_path : Py_None;
-    PyObject *errmsg = PyUnicode_FromFormat("cannot import name %R from %R (%S)",
-                                            import_name, package_name, path_for_msg);
-    // NULL checks for errmsg and package_name done by PyErr_SetImportError.
-    PyErr_SetImportError(errmsg, package_name, package_path);
-    Py_XDECREF(package_path);
-    Py_XDECREF(errmsg);
-    return NULL;
 }
 
 PyObject *CPyImport_ImportFromMany(PyObject *mod_id, PyObject *names, PyObject *as_names,
@@ -1203,6 +1223,10 @@ static int CPyImport_InitSpecClasses(void) {
         return -1;
     }
     CPyImport_ModuleSpecClass = PyObject_GetAttrString(machinery, "ModuleSpec");
+    if (CPyImport_ModuleSpecClass == NULL) {
+        Py_DECREF(machinery);
+        return -1;
+    }
     CPyImport_ExtFileLoaderClass = PyObject_GetAttrString(machinery, "ExtensionFileLoader");
     Py_DECREF(machinery);
     if (CPyImport_ModuleSpecClass == NULL || CPyImport_ExtFileLoaderClass == NULL) {
@@ -1348,6 +1372,11 @@ static int CPyImport_SetModuleFile(PyObject *modobj, PyObject *module_name,
         // Compare shared_lib_file basename against "<last_segment>__mypyc<ext>".
         PyObject *expected_basename = PyUnicode_FromFormat(
             "%U__mypyc%U", last_segment, ext_suffix);
+        if (expected_basename == NULL) {
+            Py_DECREF(last_segment);
+            Py_DECREF(module_path);
+            return -1;
+        }
         PyObject *actual_basename;
         if (sep >= 0) {
             actual_basename = PyUnicode_Substring(shared_lib_file, sep + 1, sf_len);
@@ -1355,13 +1384,21 @@ static int CPyImport_SetModuleFile(PyObject *modobj, PyObject *module_name,
             actual_basename = shared_lib_file;
             Py_INCREF(actual_basename);
         }
-        int is_per_module_lib = 0;
-        if (expected_basename != NULL && actual_basename != NULL) {
-            is_per_module_lib =
-                (PyUnicode_Compare(expected_basename, actual_basename) == 0);
+        if (actual_basename == NULL) {
+            Py_DECREF(expected_basename);
+            Py_DECREF(last_segment);
+            Py_DECREF(module_path);
+            return -1;
         }
-        Py_XDECREF(expected_basename);
-        Py_XDECREF(actual_basename);
+        int comparison = PyUnicode_Compare(expected_basename, actual_basename);
+        Py_DECREF(expected_basename);
+        Py_DECREF(actual_basename);
+        if (comparison == -1 && PyErr_Occurred()) {
+            Py_DECREF(last_segment);
+            Py_DECREF(module_path);
+            return -1;
+        }
+        int is_per_module_lib = comparison == 0;
 
         // For packages, __file__ should point to __init__<ext>,
         // e.g. "a/b/__init__.cpython-312-x86_64-linux-gnu.so".

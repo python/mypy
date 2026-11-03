@@ -387,6 +387,10 @@ def generate_class(
     richcompare_name = generate_richcompare_wrapper(cl, emitter)
     if richcompare_name:
         fields["tp_richcompare"] = richcompare_name
+        if "tp_hash" not in fields and not cl.has_method("__eq__") and not cl.inherits_python:
+            # CPython doesn't inherit tp_hash if tp_richcompare is defined, but only
+            # defining __eq__ should make the class unhashable (not __lt__, etc.)
+            fields["tp_hash"] = "CPy_DefaultHash"
 
     # If the class inherits from python, make space for a __dict__
     struct_name = cl.struct_name(emitter.names)
