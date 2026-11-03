@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from collections import defaultdict
 from collections.abc import Iterable, Mapping
-from dataclasses import dataclass
 from functools import reduce
 from typing import Final, Literal, cast
 
@@ -73,7 +72,6 @@ from mypy.types import (
     TypeOfAny,
     TypeType,
     TypeVarId,
-    TypeVarLikeType,
     TypeVarType,
     UninhabitedType,
     UnionType,
@@ -99,9 +97,11 @@ ATTRS_INIT_NAME: Final = "__attrs_init__"
 
 class Converter:
     """Holds information about a `converter=` argument"""
+
     def __init__(self, init_type: Type | None = None, ret_type: Type | None = None) -> None:
         self.init_type = init_type
         self.ret_type = ret_type
+
 
 def assign_to_getting_tvars(left: Type, right: Type) -> dict[TypeVarId, Type]:
     # ASSUME: right is assignable to left
@@ -118,7 +118,7 @@ def assign_to_getting_tvars(left: Type, right: Type) -> dict[TypeVarId, Type]:
         if len(left_p.args) == len(right_p.args):
             for lt, rt in zip(left_p.args, right_p.args, strict=True):
                 result.update(assign_to_getting_tvars(lt, rt))
-        
+
         return result
     else:
         # give up
@@ -156,7 +156,10 @@ class Attribute:
         init_type: Type | None = None
         if self.converter:
             if self.converter.init_type and self.init_type and self.converter.ret_type:
-                init_type = expand_type(self.converter.init_type, assign_to_getting_tvars(self.init_type, self.converter.ret_type))
+                init_type = expand_type(
+                    self.converter.init_type,
+                    assign_to_getting_tvars(self.init_type, self.converter.ret_type),
+                )
             elif self.converter.init_type:
                 init_type = self.converter.init_type
             else:
@@ -208,7 +211,11 @@ class Attribute:
                 if self.converter and self.converter.init_type
                 else None
             ),
-            "converter_ret_type": self.converter.ret_type.serialize() if self.converter and self.converter.ret_type else None,
+            "converter_ret_type": (
+                self.converter.ret_type.serialize()
+                if self.converter and self.converter.ret_type
+                else None
+            ),
             "context_line": self.context.line,
             "context_column": self.context.column,
             "init_type": self.init_type.serialize() if self.init_type else None,

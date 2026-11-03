@@ -2558,4 +2558,3 @@ reveal_type(C.__init__)  # N: Revealed type is "def (self: __main__.C, c: builti
 reveal_type(E.__init__)  # N: Revealed type is "def (self: __main__.E, c: builtins.int, e: builtins.int =)"
 E("x")  # E: Argument 1 to "E" has incompatible type "str"; expected "int"
 [builtins fixtures/plugin_attrs.pyi]
-
