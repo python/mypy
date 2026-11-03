@@ -3957,3 +3957,13 @@ Ex = TypeVar("Ex", covariant=True)
 
 def takes_lambda(func: Callable[[Ex], Any]) -> None:
     pass
+
+[case testDictWithUnionAnySpecialCaseInStar2]
+from typing import Any
+
+a: Any
+d = {"x": 1, "y": a}
+
+def test(x: int, y: str) -> None: ...
+test(**d)
+[builtins fixtures/dict.pyi]
