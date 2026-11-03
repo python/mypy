@@ -667,11 +667,17 @@ def populate_non_ext_bases(
             name = "_NamedTuple"
             base = builder.get_module_attr("typing", name, cdef.line)
         else:
-            cls_module = cls.fullname.rsplit(".", 1)[0]
-            if cls_module == builder.current_module:
-                base = builder.load_global_str(cls.name, cdef.line)
+            # The base may be a nested class such as "mod.Outer.Inner".
+            attrs = cls.fullname[len(cls.module_name) + 1 :].split(".")
+            if cls.module_name == builder.current_module:
+                base = builder.load_global_str(attrs[0], cdef.line)
             else:
-                base = builder.load_module_attr_by_fullname(cls.fullname, cdef.line)
+                # The module may not have been imported yet, for example if the base class
+                # was imported through a re-export, or if the module is only imported in
+                # a function body, so import it if needed.
+                base = builder.get_module_attr(cls.module_name, attrs[0], cdef.line)
+            for attr in attrs[1:]:
+                base = builder.py_get_attr(base, attr, cdef.line)
         bases.append(base)
         if cls.fullname in MAGIC_TYPED_DICT_CLASSES:
             # The remaining base classes are synthesized by mypy and should be ignored.
