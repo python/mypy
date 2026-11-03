@@ -9,7 +9,9 @@ from __future__ import annotations
 import os
 import os.path
 import re
+from unittest import mock
 
+import mypy
 from mypy import api
 from mypy.defaults import PYTHON3_VERSION
 from mypy.test.config import test_temp_dir
@@ -24,7 +26,7 @@ class OutputJSONsuite(DataSuite):
 
 
 def test_output_json(testcase: DataDrivenTestCase) -> None:
-    """Runs Mypy in a subprocess, and ensures that `--output=json` works as intended."""
+    """Run mypy through the API and check its JSON output."""
     program_text = "\n".join(testcase.input)
     flags_match = re.search("# flags: (.*)$", program_text, flags=re.MULTILINE)
     if flags_match is not None:
@@ -42,7 +44,11 @@ def test_output_json(testcase: DataDrivenTestCase) -> None:
 
     output = []
     # Type check the program.
-    out, err, returncode = api.run(mypy_cmdline)
+    # Workers run in the test's temporary directory, so make the same mypy
+    # installation as pytest available to their subprocesses.
+    mypy_path = os.path.dirname(os.path.abspath(mypy.__path__[0]))
+    with mock.patch.dict(os.environ, {"PYTHONPATH": mypy_path}):
+        out, err, returncode = api.run(mypy_cmdline)
     # split lines, remove newlines, and remove directory of test case
     for line in (out + err).rstrip("\n").splitlines():
         if line.startswith(test_temp_dir + os.sep):
