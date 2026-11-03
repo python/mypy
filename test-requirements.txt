@@ -20,7 +20,7 @@ librt==0.16.0 ; platform_python_implementation != "PyPy"
     # via -r mypy-requirements.txt
 lxml==6.1.2 ; python_version < "3.16"
     # via -r test-requirements.in
-mypy-extensions==1.1.0
+mypy-extensions==1.2.0
     # via -r mypy-requirements.txt
 packaging==26.3
     # via pytest
