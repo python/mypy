@@ -426,7 +426,7 @@ static inline PyObject* PyObject_CallOneArg(PyObject *func, PyObject *arg)
 
 
 // bpo-1635741 added PyModule_AddObjectRef() to Python 3.10.
-// The function was aded to the limited C API 3.10.
+// The function was added to the limited C API 3.10.
 #if (PY_VERSION_HEX < _Py_PACK_VERSION(3, 10) \
      || (defined(Py_LIMITED_API) && Py_LIMITED_API+0 < _Py_PACK_VERSION(3, 10)) \
          && !(_Py_PACK_VERSION(3, 10) <= PY_VERSION_HEX && PY_VERSION_HEX < _Py_PACK_VERSION(3, 11)))
