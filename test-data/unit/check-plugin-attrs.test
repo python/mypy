@@ -2523,10 +2523,39 @@ class GenericClass(Generic[T]):
     def __init__(self, x: T) -> None:
         self.x = x
 
+def f(x: T) -> T: ...
+
 @define
 class Test(object):
-    values: GenericClass[str] = field(converter=GenericClass)
+    a: GenericClass[str] = field(converter=GenericClass)
+    b: str = field(converter=f)
 
-Test(5)  # E: Argument 1 to "Test" has incompatible type "int"; expected "str"
-Test('5')
+reveal_type(Test)  # N: Revealed type is "def (a: builtins.str, b: builtins.str) -> __main__.Test"
+Test(5, '5')  # E: Argument 1 to "Test" has incompatible type "int"; expected "str"
+Test('5', 5)  # E: Argument 2 to "Test" has incompatible type "int"; expected "str"
+Test('5', '5')
 [builtins fixtures/plugin_attrs.pyi]
+
+[case testAttrsGenericConverterSubclassing]
+from typing import Generic, TypeVar
+
+from attrs import define, field
+
+T = TypeVar("T")
+
+class G(Generic[T]):
+    def __init__(self, x: T) -> None: ...
+
+@define
+class C:
+    c: G[int] = field(converter=G)
+
+@define
+class E(C):
+    e: int = 0
+
+reveal_type(C.__init__)  # N: Revealed type is "def (self: __main__.C, c: builtins.int)"
+reveal_type(E.__init__)  # N: Revealed type is "def (self: __main__.E, c: builtins.int, e: builtins.int =)"
+E("x")  # E: Argument 1 to "E" has incompatible type "str"; expected "int"
+[builtins fixtures/plugin_attrs.pyi]
+

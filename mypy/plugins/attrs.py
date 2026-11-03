@@ -73,6 +73,7 @@ from mypy.types import (
     TypeOfAny,
     TypeType,
     TypeVarId,
+    TypeVarLikeType,
     TypeVarType,
     UninhabitedType,
     UnionType,
@@ -96,12 +97,32 @@ MAGIC_ATTR_CLS_NAME_TEMPLATE: Final = "__{}_AttrsAttributes__"  # The tuple subc
 ATTRS_INIT_NAME: Final = "__attrs_init__"
 
 
-@dataclass
 class Converter:
     """Holds information about a `converter=` argument"""
+    def __init__(self, init_type: Type | None = None, ret_type: Type | None = None) -> None:
+        self.init_type = init_type
+        self.ret_type = ret_type
 
-    init_type: Type | None = None
-    ret_type: Type | None = None
+def assign_to_getting_tvars(left: Type, right: Type) -> dict[TypeVarId, Type]:
+    # ASSUME: right is assignable to left
+    # spit out the mapping of typevars to apply to right
+    left_p = get_proper_type(left)
+    right_p = get_proper_type(right)
+    if isinstance(right_p, TypeVarType):
+        return {right_p.id: left}
+    elif isinstance(right_p, Instance) and isinstance(left_p, Instance):
+        right_p = map_instance_to_supertype(right_p, left_p.type)
+        result = {}
+
+        # TODO: support TypeVarTuple
+        if len(left_p.args) == len(right_p.args):
+            for lt, rt in zip(left_p.args, right_p.args, strict=True):
+                result.update(assign_to_getting_tvars(lt, rt))
+        
+        return result
+    else:
+        # give up
+        return {}
 
 
 class Attribute:
@@ -134,22 +155,10 @@ class Attribute:
         assert self.init
         init_type: Type | None = None
         if self.converter:
-            if self.converter.init_type:
+            if self.converter.init_type and self.init_type and self.converter.ret_type:
+                init_type = expand_type(self.converter.init_type, assign_to_getting_tvars(self.init_type, self.converter.ret_type))
+            elif self.converter.init_type:
                 init_type = self.converter.init_type
-                left = get_proper_type(self.init_type)
-                right = get_proper_type(self.converter.ret_type)
-                if init_type and isinstance(left, Instance) and isinstance(right, Instance):
-                    # self.init_type must be a supertype of self.converter.ret_type
-                    right = map_instance_to_supertype(right, left.type)
-                    # now just map any top-level attributes 1-1
-                    # TODO: recurse into deeper things?
-                    if isinstance(right, Instance):
-                        variables = {}
-                        for lt, rt in zip(left.args, right.args, strict=True):
-                            # set the rt to the lt
-                            if isinstance(rt, TypeVarType):
-                                variables[rt.id] = lt
-                        init_type = expand_type(init_type, variables)
             else:
                 ctx.api.fail("Cannot determine __init__ type from converter", self.context)
                 init_type = AnyType(TypeOfAny.from_error)
@@ -199,6 +208,7 @@ class Attribute:
                 if self.converter and self.converter.init_type
                 else None
             ),
+            "converter_ret_type": self.converter.ret_type.serialize() if self.converter and self.converter.ret_type else None,
             "context_line": self.context.line,
             "context_column": self.context.column,
             "init_type": self.init_type.serialize() if self.init_type else None,
@@ -217,6 +227,12 @@ class Attribute:
             if raw_converter_init_type
             else None
         )
+        raw_converter_ret_type = data["converter_ret_type"]
+        converter_ret_type = (
+            deserialize_and_fixup_type(raw_converter_ret_type, api)
+            if raw_converter_ret_type
+            else None
+        )
 
         return Attribute(
             data["name"],
@@ -225,7 +241,7 @@ class Attribute:
             data["has_default"],
             data["init"],
             data["kw_only"],
-            Converter(converter_init_type) if data["has_converter"] else None,
+            Converter(converter_init_type, converter_ret_type) if data["has_converter"] else None,
             Context(line=data["context_line"], column=data["context_column"]),
             init_type,
         )
