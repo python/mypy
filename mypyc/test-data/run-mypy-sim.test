@@ -86,21 +86,21 @@ T = TypeVar('T')
 @trait
 class ExpressionVisitor(Generic[T]):
     @abstractmethod
-    def visit_lambda_expr(self, o: 'nodes.LambdaExpr') -> T:
+    def visit_lambda_expr(self, o: 'nodes.LambdaExpr', /) -> T:
         return cast(T, None)
 
 @trait
 class StatementVisitor(Generic[T]):
     @abstractmethod
-    def visit_block(self, o: 'nodes.Block') -> T:
+    def visit_block(self, o: 'nodes.Block', /) -> T:
         return cast(T, None)
 
     @abstractmethod
-    def visit_func_def(self, o: 'nodes.FuncDef') -> T:
+    def visit_func_def(self, o: 'nodes.FuncDef', /) -> T:
         return cast(T, None)
 
     @abstractmethod
-    def visit_expr_stmt(self, o: 'nodes.ExprStmt') -> T:
+    def visit_expr_stmt(self, o: 'nodes.ExprStmt', /) -> T:
         return cast(T, None)
 
 @trait
