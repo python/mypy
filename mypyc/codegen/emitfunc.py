@@ -79,6 +79,7 @@ from mypyc.ir.pprint import generate_names_for_ir
 from mypyc.ir.rtypes import (
     RArray,
     RInstance,
+    RPrimitive,
     RStruct,
     RTuple,
     RType,
@@ -940,6 +941,17 @@ class FunctionEmitterVisitor(OpVisitor[None]):
             # Signed right shift
             lhs = self.emit_signed_int_cast(op.lhs.type) + lhs
             rhs = self.emit_signed_int_cast(op.rhs.type) + rhs
+        elif (
+            op.op in (IntOp.MUL, IntOp.LEFT_SHIFT)
+            and isinstance(op.type, RPrimitive)
+            and op.type.is_native_int
+            and not op.type.is_signed
+            and op.type.size < 4
+        ):
+            # C promotes unsigned types narrower than int to (signed) int, so
+            # e.g. u16 * u16 could overflow int, which is undefined behavior.
+            # Do the arithmetic using unsigned int to get predictable wraparound.
+            lhs = f"(unsigned int){lhs}"
         self.emit_line(f"{dest} = {lhs} {op.op_str[op.op]} {rhs};")
 
     def visit_comparison_op(self, op: ComparisonOp) -> None:

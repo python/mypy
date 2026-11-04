@@ -49,6 +49,7 @@ for int_name in (
     "mypy_extensions.i64",
     "mypy_extensions.i32",
     "mypy_extensions.i16",
+    "mypy_extensions.u16",
     "mypy_extensions.u8",
 ):
     # These int constructors produce object_rprimitives that then need to be unboxed
@@ -312,6 +313,13 @@ int16_overflow = custom_op(
     arg_types=[],
     return_type=void_rtype,
     c_function_name="CPyInt16_Overflow",
+    error_kind=ERR_ALWAYS,
+)
+
+uint16_overflow = custom_op(
+    arg_types=[],
+    return_type=void_rtype,
+    c_function_name="CPyUInt16_Overflow",
     error_kind=ERR_ALWAYS,
 )
 

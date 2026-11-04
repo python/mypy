@@ -218,6 +218,8 @@ int16_t CPyLong_AsInt16_(PyObject *o);
 int16_t CPyInt16_Divide(int16_t x, int16_t y);
 int16_t CPyInt16_Remainder(int16_t x, int16_t y);
 void CPyInt16_Overflow(void);
+uint16_t CPyLong_AsUInt16_(PyObject *o);
+void CPyUInt16_Overflow(void);
 uint8_t CPyLong_AsUInt8_(PyObject *o);
 void CPyUInt8_Overflow(void);
 double CPyTagged_TrueDivide(CPyTagged x, CPyTagged y);
@@ -455,6 +457,36 @@ static inline int16_t CPyLong_AsInt16(PyObject *o) {
     }
     // Slow path
     return CPyLong_AsInt16_(o);
+}
+
+static inline uint16_t CPyLong_AsUInt16(PyObject *o) {
+    if (likely(PyLong_Check(o))) {
+    #if CPY_3_12_FEATURES
+        PyLongObject *lobj = (PyLongObject *)o;
+        size_t tag = CPY_LONG_TAG(lobj);
+        if (likely(tag == (1 << CPY_NON_SIZE_BITS))) {
+            // Fast path
+            digit x = CPY_LONG_DIGIT(lobj, 0);
+            if (x < 65536)
+                return x;
+        } else if (likely(tag == CPY_SIGN_ZERO)) {
+            return 0;
+        }
+    #else
+        PyLongObject *lobj = (PyLongObject *)o;
+        Py_ssize_t size = lobj->ob_base.ob_size;
+        if (likely(size == 1)) {
+            // Fast path
+            digit x = lobj->ob_digit[0];
+            if (x < 65536)
+                return x;
+        } else if (likely(size == 0)) {
+            return 0;
+        }
+    #endif
+    }
+    // Slow path
+    return CPyLong_AsUInt16_(o);
 }
 
 static inline uint8_t CPyLong_AsUInt8(PyObject *o) {

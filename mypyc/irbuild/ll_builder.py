@@ -122,6 +122,7 @@ from mypyc.ir.rtypes import (
     is_tagged,
     is_tuple_rprimitive,
     is_uint8_rprimitive,
+    is_uint16_rprimitive,
     none_rprimitive,
     object_pointer_rprimitive,
     object_rprimitive,
@@ -171,6 +172,7 @@ from mypyc.primitives.int_ops import (
     int_to_int64_op,
     ssize_t_to_int_op,
     uint8_overflow,
+    uint16_overflow,
 )
 from mypyc.primitives.list_ops import list_build_op, list_extend_op, list_items, new_list_op
 from mypyc.primitives.misc_ops import (
@@ -721,6 +723,8 @@ class LowLevelIRBuilder:
             self.call_c(int32_overflow, [], line)
         elif is_int16_rprimitive(target_type):
             self.call_c(int16_overflow, [], line)
+        elif is_uint16_rprimitive(target_type):
+            self.call_c(uint16_overflow, [], line)
         elif is_uint8_rprimitive(target_type):
             self.call_c(uint8_overflow, [], line)
         else:
@@ -758,6 +762,7 @@ class LowLevelIRBuilder:
         if (
             (is_int32_rprimitive(src.type) and PLATFORM_SIZE == 8)
             or is_int16_rprimitive(src.type)
+            or is_uint16_rprimitive(src.type)
             or is_uint8_rprimitive(src.type)
         ):
             # Simple case -- just sign extend and shift.
@@ -2726,6 +2731,9 @@ class LowLevelIRBuilder:
                 prim = int32_divide_op
             elif is_int16_rprimitive(type):
                 prim = int16_divide_op
+            elif is_uint16_rprimitive(type):
+                self.check_for_zero_division(rhs, type, line)
+                return self.int_op(type, lhs, rhs, op, line)
             elif is_uint8_rprimitive(type):
                 self.check_for_zero_division(rhs, type, line)
                 return self.int_op(type, lhs, rhs, op, line)
@@ -2746,6 +2754,9 @@ class LowLevelIRBuilder:
                 prim = int32_mod_op
             elif is_int16_rprimitive(type):
                 prim = int16_mod_op
+            elif is_uint16_rprimitive(type):
+                self.check_for_zero_division(rhs, type, line)
+                return self.int_op(type, lhs, rhs, op, line)
             elif is_uint8_rprimitive(type):
                 self.check_for_zero_division(rhs, type, line)
                 return self.int_op(type, lhs, rhs, op, line)
