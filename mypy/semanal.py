@@ -775,9 +775,9 @@ class SemanticAnalyzer(
                     "builtins.dict", [str_type, AnyType(TypeOfAny.special_form)]
                 )
                 if inst is None:
-                    assert not self.final_iteration, (
-                        "Cannot find builtins.dict to add __annotations__"
-                    )
+                    assert (
+                        not self.final_iteration
+                    ), "Cannot find builtins.dict to add __annotations__"
                     self.defer()
                     return
                 typ = inst
@@ -1881,9 +1881,9 @@ class SemanticAnalyzer(
             if self.get_defined_type_param(p.name):
                 self.fail(f'"{p.name}" already defined as a type parameter', context)
             else:
-                assert self.add_symbol(p.name, tv, context, no_progress=True, type_param=True), (
-                    "Type parameter should not be discarded"
-                )
+                assert self.add_symbol(
+                    p.name, tv, context, no_progress=True, type_param=True
+                ), "Type parameter should not be discarded"
 
         return tvs
 
@@ -7674,9 +7674,9 @@ class SemanticAnalyzer(
                             names = self.globals
                         else:
                             names_candidate = self.locals[-1 - i]
-                            assert names_candidate is not None, (
-                                "Escaping comprehension from invalid scope"
-                            )
+                            assert (
+                                names_candidate is not None
+                            ), "Escaping comprehension from invalid scope"
                             names = names_candidate
                         break
                 else:

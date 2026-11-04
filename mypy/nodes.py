@@ -5034,9 +5034,9 @@ class SymbolTableNode:
                     and fullname != prefix + "." + name
                     and not (isinstance(self.node, Var) and self.node.from_module_getattr)
                 ):
-                    assert not isinstance(self.node, PlaceholderNode), (
-                        f"Definition of {fullname} is unexpectedly incomplete"
-                    )
+                    assert not isinstance(
+                        self.node, PlaceholderNode
+                    ), f"Definition of {fullname} is unexpectedly incomplete"
                     data["cross_ref"] = fullname
                     return data
             data["node"] = self.node.serialize()
@@ -5087,9 +5087,9 @@ class SymbolTableNode:
                     and fullname != prefix + "." + name
                     and not (isinstance(self.node, Var) and self.node.from_module_getattr)
                 ):
-                    assert not isinstance(self.node, PlaceholderNode), (
-                        f"Definition of {fullname} is unexpectedly incomplete"
-                    )
+                    assert not isinstance(
+                        self.node, PlaceholderNode
+                    ), f"Definition of {fullname} is unexpectedly incomplete"
                     cross_ref = fullname
 
         write_str_opt(data, cross_ref)
