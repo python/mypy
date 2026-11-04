@@ -3789,3 +3789,23 @@ class C:
 # The type variable id below must be small (say under a hundred).
 reveal_type(C().meth)  # N: Revealed type is "def [S] (x: S`91) -> S`91"
 [builtins fixtures/tuple.pyi]
+
+[case testContravariantBaseReferringBackToSubclass]
+from typing import Generic, TypeVar
+
+Z = TypeVar("Z", contravariant=True)
+X = TypeVar("X")
+
+class N(Generic[Z]): ...
+
+class C(N[N["C"]]): ...
+
+def f(c: C) -> N[C]:
+    return c
+
+def g(c: C) -> N[int]:
+    return c  # E: Incompatible return value type (got "C", expected "N[int]")
+
+class D(Generic[X], N[N["D[X]"]]): ...
+
+d: N[D[int]] = D[int]()

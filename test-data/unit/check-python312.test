@@ -2469,3 +2469,12 @@ reveal_type(a[0])  # N: Revealed type is "tuple[builtins.int, builtins.str]"
 reveal_type(a[1])  # N: Revealed type is "tuple[builtins.int, builtins.str]"
 reveal_type(a[2])  # N: Revealed type is "builtins.tuple[Any, ...]"
 [builtins fixtures/tuple.pyi]
+
+[case testPEP695InferredContravariantBaseReferringBackToSubclass]
+class N[Z]:
+    def f(self, x: Z) -> None: ...
+
+class C(N[N[C]]): ...
+
+def f(c: C) -> N[C]:
+    return c

@@ -601,6 +601,17 @@ class SubtypeVisitor(TypeVisitor[bool]):
                     type_params = zip(left_args, right_args, right.type.defn.type_vars)
                 else:
                     type_params = zip(t.args, right.args, right.type.defn.type_vars)
+                # With a contravariant type argument the check flips direction, so a class
+                # whose base refers back to it, like class C(N[N[C]]), can bring us back to
+                # this same left <: right check. Assume it holds while checking the arguments.
+                may_cycle = left.type is not right.type and any(
+                    isinstance(tv, TypeVarType)
+                    and tv.variance in (CONTRAVARIANT, VARIANCE_NOT_READY)
+                    for tv in right.type.defn.type_vars
+                )
+                assumptions = type_state.get_assumptions(self.proper_subtype)
+                if may_cycle:
+                    assumptions.append((left, right))
                 if not self.subtype_context.ignore_type_params:
                     tried_infer = False
                     for lefta, righta, tvar in type_params:
@@ -625,6 +636,8 @@ class SubtypeVisitor(TypeVisitor[bool]):
                                 lefta, righta, COVARIANT, self.proper_subtype, self.subtype_context
                             ):
                                 nominal = False
+                if may_cycle:
+                    assumptions.pop()
                 if nominal:
                     type_state.record_subtype_cache_entry(self._subtype_kind, left, right)
                 else:
