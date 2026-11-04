@@ -66,6 +66,11 @@ static inline void CPyBytesWriter_SetItem(PyObject *obj, int64_t index, uint8_t 
 // BytesWriter: Write integer operations (little-endian)
 
 static inline char
+CPyBytesWriter_WriteI8(PyObject *obj, int8_t value) {
+    return CPyBytesWriter_Append(obj, (uint8_t)value);
+}
+
+static inline char
 CPyBytesWriter_WriteI16LE(PyObject *obj, int16_t value) {
     BytesWriterObject *self = (BytesWriterObject *)obj;
     if (!CPyBytesWriter_EnsureSize(self, 2))
@@ -119,6 +124,68 @@ CPyBytesWriter_WriteI64BE(PyObject *obj, int64_t value) {
     return CPY_NONE;
 }
 
+// BytesWriter: Write unsigned integer operations
+
+static inline char
+CPyBytesWriter_WriteU16LE(PyObject *obj, uint16_t value) {
+    BytesWriterObject *self = (BytesWriterObject *)obj;
+    if (!CPyBytesWriter_EnsureSize(self, 2))
+        return CPY_NONE_ERROR;
+    // Only the bit pattern matters, so reuse the signed implementation
+    BytesWriter_WriteI16LEUnsafe(self, (int16_t)value);
+    return CPY_NONE;
+}
+
+static inline char
+CPyBytesWriter_WriteU16BE(PyObject *obj, uint16_t value) {
+    BytesWriterObject *self = (BytesWriterObject *)obj;
+    if (!CPyBytesWriter_EnsureSize(self, 2))
+        return CPY_NONE_ERROR;
+    // Only the bit pattern matters, so reuse the signed implementation
+    BytesWriter_WriteI16BEUnsafe(self, (int16_t)value);
+    return CPY_NONE;
+}
+
+static inline char
+CPyBytesWriter_WriteU32LE(PyObject *obj, uint32_t value) {
+    BytesWriterObject *self = (BytesWriterObject *)obj;
+    if (!CPyBytesWriter_EnsureSize(self, 4))
+        return CPY_NONE_ERROR;
+    // Only the bit pattern matters, so reuse the signed implementation
+    BytesWriter_WriteI32LEUnsafe(self, (int32_t)value);
+    return CPY_NONE;
+}
+
+static inline char
+CPyBytesWriter_WriteU32BE(PyObject *obj, uint32_t value) {
+    BytesWriterObject *self = (BytesWriterObject *)obj;
+    if (!CPyBytesWriter_EnsureSize(self, 4))
+        return CPY_NONE_ERROR;
+    // Only the bit pattern matters, so reuse the signed implementation
+    BytesWriter_WriteI32BEUnsafe(self, (int32_t)value);
+    return CPY_NONE;
+}
+
+static inline char
+CPyBytesWriter_WriteU64LE(PyObject *obj, uint64_t value) {
+    BytesWriterObject *self = (BytesWriterObject *)obj;
+    if (!CPyBytesWriter_EnsureSize(self, 8))
+        return CPY_NONE_ERROR;
+    // Only the bit pattern matters, so reuse the signed implementation
+    BytesWriter_WriteI64LEUnsafe(self, (int64_t)value);
+    return CPY_NONE;
+}
+
+static inline char
+CPyBytesWriter_WriteU64BE(PyObject *obj, uint64_t value) {
+    BytesWriterObject *self = (BytesWriterObject *)obj;
+    if (!CPyBytesWriter_EnsureSize(self, 8))
+        return CPY_NONE_ERROR;
+    // Only the bit pattern matters, so reuse the signed implementation
+    BytesWriter_WriteI64BEUnsafe(self, (int64_t)value);
+    return CPY_NONE;
+}
+
 // BytesWriter: Write float operations
 
 static inline char
@@ -161,6 +228,17 @@ CPyBytesWriter_WriteF64BE(PyObject *obj, double value) {
 
 // Helper function for bytes read error handling (negative index or out of range)
 void CPyBytes_ReadError(int64_t index, Py_ssize_t size);
+
+static inline int8_t
+CPyBytes_ReadI8(PyObject *bytes_obj, int64_t index) {
+    // bytes_obj type is enforced by mypyc
+    Py_ssize_t size = PyBytes_GET_SIZE(bytes_obj);
+    if (unlikely(index < 0 || index >= size)) {
+        CPyBytes_ReadError(index, size);
+        return CPY_LL_INT_ERROR;
+    }
+    return (int8_t)((const unsigned char *)PyBytes_AS_STRING(bytes_obj))[index];
+}
 
 static inline int16_t
 CPyBytes_ReadI16LE(PyObject *bytes_obj, int64_t index) {
@@ -232,6 +310,80 @@ CPyBytes_ReadI64BE(PyObject *bytes_obj, int64_t index) {
     }
     const unsigned char *data = (const unsigned char *)PyBytes_AS_STRING(bytes_obj);
     return CPyBytes_ReadI64BEUnsafe(data + index);
+}
+
+// Bytes: Read unsigned integer operations
+
+static inline uint16_t
+CPyBytes_ReadU16LE(PyObject *bytes_obj, int64_t index) {
+    // bytes_obj type is enforced by mypyc
+    Py_ssize_t size = PyBytes_GET_SIZE(bytes_obj);
+    if (unlikely(index < 0 || index > size - 2)) {
+        CPyBytes_ReadError(index, size);
+        return CPY_LL_UINT_ERROR;
+    }
+    const unsigned char *data = (const unsigned char *)PyBytes_AS_STRING(bytes_obj);
+    return (uint16_t)CPyBytes_ReadI16LEUnsafe(data + index);
+}
+
+static inline uint16_t
+CPyBytes_ReadU16BE(PyObject *bytes_obj, int64_t index) {
+    // bytes_obj type is enforced by mypyc
+    Py_ssize_t size = PyBytes_GET_SIZE(bytes_obj);
+    if (unlikely(index < 0 || index > size - 2)) {
+        CPyBytes_ReadError(index, size);
+        return CPY_LL_UINT_ERROR;
+    }
+    const unsigned char *data = (const unsigned char *)PyBytes_AS_STRING(bytes_obj);
+    return (uint16_t)CPyBytes_ReadI16BEUnsafe(data + index);
+}
+
+static inline uint32_t
+CPyBytes_ReadU32LE(PyObject *bytes_obj, int64_t index) {
+    // bytes_obj type is enforced by mypyc
+    Py_ssize_t size = PyBytes_GET_SIZE(bytes_obj);
+    if (unlikely(index < 0 || index > size - 4)) {
+        CPyBytes_ReadError(index, size);
+        return CPY_LL_UINT_ERROR;
+    }
+    const unsigned char *data = (const unsigned char *)PyBytes_AS_STRING(bytes_obj);
+    return (uint32_t)CPyBytes_ReadI32LEUnsafe(data + index);
+}
+
+static inline uint32_t
+CPyBytes_ReadU32BE(PyObject *bytes_obj, int64_t index) {
+    // bytes_obj type is enforced by mypyc
+    Py_ssize_t size = PyBytes_GET_SIZE(bytes_obj);
+    if (unlikely(index < 0 || index > size - 4)) {
+        CPyBytes_ReadError(index, size);
+        return CPY_LL_UINT_ERROR;
+    }
+    const unsigned char *data = (const unsigned char *)PyBytes_AS_STRING(bytes_obj);
+    return (uint32_t)CPyBytes_ReadI32BEUnsafe(data + index);
+}
+
+static inline uint64_t
+CPyBytes_ReadU64LE(PyObject *bytes_obj, int64_t index) {
+    // bytes_obj type is enforced by mypyc
+    Py_ssize_t size = PyBytes_GET_SIZE(bytes_obj);
+    if (unlikely(index < 0 || index > size - 8)) {
+        CPyBytes_ReadError(index, size);
+        return CPY_LL_UINT_ERROR;
+    }
+    const unsigned char *data = (const unsigned char *)PyBytes_AS_STRING(bytes_obj);
+    return (uint64_t)CPyBytes_ReadI64LEUnsafe(data + index);
+}
+
+static inline uint64_t
+CPyBytes_ReadU64BE(PyObject *bytes_obj, int64_t index) {
+    // bytes_obj type is enforced by mypyc
+    Py_ssize_t size = PyBytes_GET_SIZE(bytes_obj);
+    if (unlikely(index < 0 || index > size - 8)) {
+        CPyBytes_ReadError(index, size);
+        return CPY_LL_UINT_ERROR;
+    }
+    const unsigned char *data = (const unsigned char *)PyBytes_AS_STRING(bytes_obj);
+    return (uint64_t)CPyBytes_ReadI64BEUnsafe(data + index);
 }
 
 // Bytes: Read float operations
