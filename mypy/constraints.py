@@ -311,7 +311,13 @@ def infer_constraints(
         for (t, a) in reversed(type_state.inferring)
     ):
         return []
-    if has_recursive_types(template) or isinstance(get_proper_type(template), Instance):
+    # This guard matches the one we use for subtyping, it is slightly more risky,
+    # but it is much faster than has_recursive_types().
+    if (
+        isinstance(template, TypeAliasType)
+        and template.is_recursive
+        or isinstance(get_proper_type(template), Instance)
+    ):
         # This case requires special care because it may cause infinite recursion.
         # Note that we include Instances because the may be recursive as str(Sequence[str]).
         if not has_type_vars(template):
@@ -529,6 +535,8 @@ def handle_recursive_union(template: UnionType, actual: Type, direction: int) ->
     # the union in two parts, and try inferring sequentially.
     non_type_var_items = [t for t in template.items if not isinstance(t, TypeVarType)]
     type_var_items = [t for t in template.items if isinstance(t, TypeVarType)]
+    if not type_var_items or not non_type_var_items:
+        return []
     return infer_constraints(
         UnionType.make_union(non_type_var_items), actual, direction
     ) or infer_constraints(UnionType.make_union(type_var_items), actual, direction)

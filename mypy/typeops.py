@@ -561,7 +561,7 @@ def bind_self_inner(
             return type_state.bind_self_cache[cache_key]
 
         # Solve for these type arguments using the actual class or instance type.
-        typeargs = infer_type_arguments(
+        typeargs, _ = infer_type_arguments(
             self_vars, self_param_type, original_type, is_supertype=True, erase_types=False
         )
         if (
@@ -570,7 +570,7 @@ def bind_self_inner(
             and isinstance(original_type, (Instance, TypeVarType, TupleType))
         ):
             # In case we call a classmethod through an instance x, fallback to type(x).
-            typeargs = infer_type_arguments(
+            typeargs, _ = infer_type_arguments(
                 self_vars,
                 self_param_type,
                 TypeType(original_type),
