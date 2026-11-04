@@ -5527,6 +5527,14 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         return typeddict_context.copy_modified()
 
     def visit_dict_expr(self, e: DictExpr) -> Type:
+        old_allow_any_join = type_state.allow_any_join
+        try:
+            type_state.allow_any_join = self.type_context[-1] is None
+            return self._visit_dict_expr(e)
+        finally:
+            type_state.allow_any_join = old_allow_any_join
+
+    def _visit_dict_expr(self, e: DictExpr) -> Type:
         """Type check a dict expression.
 
         Translate it into a call to dict(), with provisions for **expr.

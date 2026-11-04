@@ -62,6 +62,7 @@ from mypy.types import (
     get_proper_types,
     split_with_prefix_and_suffix,
 )
+from mypy.typestate import type_state
 
 
 class InstanceJoiner:
@@ -286,7 +287,14 @@ class TypeJoinVisitor(TypeVisitor[ProperType]):
             return mypy.typeops.make_simplified_union([self.s, t])
 
     def visit_any(self, t: AnyType) -> ProperType:
+        if type_state.allow_any_join:
+            return t
         if isinstance(self.s, Instance) and self.s.type.fullname == "builtins.object":
+            return self.s
+        if isinstance(self.s, UnionType) and any(
+            isinstance(get_proper_type(it), AnyType) for it in self.s.items
+        ):
+            # Avoid multiple Anys in a union type.
             return self.s
         return UnionType([self.s, t])
 

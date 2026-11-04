@@ -4405,3 +4405,6 @@ x: list[int] = y  # E: Incompatible types in assignment (expression has type "li
 
 def test() -> list[int]:
     return [a, "no"]  # E: List item 1 has incompatible type "str"; expected "int"
+
+d: dict[str, int] = {"hits": a, "misses": "42"}  # E: Dict entry 1 has incompatible type "str": "str"; expected "str": "int"
+[builtins fixtures/dict.pyi]

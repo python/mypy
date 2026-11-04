@@ -863,6 +863,23 @@ class JoinSuite(Suite):
         self.assert_join(self.fx.anyt, NoneType(), UnionType([self.fx.anyt, NoneType()]))
         self.assert_join(self.fx.anyt, UninhabitedType(), self.fx.anyt)
 
+    def test_any_type_with_union(self) -> None:
+        self.assert_join(
+            UnionType([self.fx.a, self.fx.anyt]),
+            self.fx.anyt,
+            UnionType([self.fx.a, self.fx.anyt]),
+        )
+        self.assert_join(
+            self.fx.anyt,
+            UnionType([self.fx.a, self.fx.anyt]),
+            UnionType([self.fx.a, self.fx.anyt]),
+        )
+        self.assert_join(
+            UnionType([self.fx.a, self.fx.anyt]),
+            UnionType([self.fx.a, self.fx.anyt]),
+            UnionType([self.fx.a, self.fx.anyt]),
+        )
+
     def test_mixed_truth_restricted_type_simple(self) -> None:
         # make_simplified_union against differently restricted truthiness types drops restrictions.
         true_a = true_only(self.fx.a)

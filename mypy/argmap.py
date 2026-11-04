@@ -16,7 +16,6 @@ from mypy.types import (
     TypedDictType,
     TypeOfAny,
     TypeVarTupleType,
-    UnionType,
     UnpackType,
     get_proper_type,
 )
@@ -257,18 +256,9 @@ class ArgTypeExpander:
             ):
                 # Only `Mapping` type can be unpacked with `**`.
                 # Other types will produce an error somewhere else.
-                value_type = map_instance_to_supertype(
-                    actual_type, self.context.mapping_type.type
-                ).args[1]
-                p_value_type = get_proper_type(value_type)
-                if isinstance(p_value_type, UnionType):
-                    # Although this is technically not safe in general, we allow this to
-                    # support common use case, see testDictWithUnionAnySpecialCaseInStar2.
-                    for item in p_value_type.items:
-                        if isinstance(get_proper_type(item), AnyType):
-                            value_type = item
-                            break
-                return value_type
+                return map_instance_to_supertype(actual_type, self.context.mapping_type.type).args[
+                    1
+                ]
             elif isinstance(actual_type, ParamSpecType):
                 # ParamSpec is valid in **kwargs, but it can't be unpacked.
                 return actual_type

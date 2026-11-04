@@ -3963,7 +3963,9 @@ from typing import Any
 
 a: Any
 d = {"x": 1, "y": a}
+d2 = dict(x=1, y=a)
 
 def test(x: int, y: str) -> None: ...
 test(**d)
+test(**d2)
 [builtins fixtures/dict.pyi]
