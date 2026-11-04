@@ -2661,12 +2661,9 @@ class SemanticAnalyzer(
                         deferred_member_bases.append((member, base_expr))
                         bases.append((AnyType(TypeOfAny.special_form), base_expr))
                         continue
-                    if (
-                        isinstance(member_type, AnyType)
-                        or (
-                            isinstance(member_type, Instance)
-                            and member_type.type.fullname == "builtins.type"
-                        )
+                    if isinstance(member_type, AnyType) or (
+                        isinstance(member_type, Instance)
+                        and member_type.type.fullname == "builtins.type"
                     ):
                         # The attribute is a type object. Treat it like a variable
                         # annotated with ``type``, which is accepted as a base class.
