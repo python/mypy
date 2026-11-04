@@ -3192,6 +3192,11 @@ def inlined() -> str:
 def local() -> str:
     const: Final[str] = inlined()
     return const
+
+def same_name_as_module() -> str:
+    # "types" is also a module name
+    types: Final = inlined()
+    return types
 [out]
 def inlined():
     r0, const, r1 :: str
@@ -3206,6 +3211,12 @@ L0:
     r0 = inlined()
     const = r0
     return const
+def same_name_as_module():
+    r0, types :: str
+L0:
+    r0 = inlined()
+    types = r0
+    return types
 
 [case testDirectlyCall__bool__]
 class A:

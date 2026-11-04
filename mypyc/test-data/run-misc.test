@@ -1544,3 +1544,21 @@ def test_walrus() -> None:
     assert check_nested_walrus(1.5) is True
     assert check_nested_walrus("x") is True
     assert check_nested_walrus(b"x") is False
+
+[case testFinal]
+from typing import Final
+
+def local_final_with_same_name_as_module(items: list[str]) -> dict[str, int]:
+    # "types" is also a module name
+    types: Final[dict[str, int]] = {i: len(i) for i in items}
+    return {k: v + 1 for k, v in types.items()}
+
+def local_final_literal() -> list[int]:
+    n: Final = 5
+    return [n + i for i in range(2)]
+
+def test_local_final_with_same_name_as_module() -> None:
+    assert local_final_with_same_name_as_module(["a", "bb"]) == {"a": 2, "bb": 3}
+
+def test_local_final_literal() -> None:
+    assert local_final_literal() == [5, 6]

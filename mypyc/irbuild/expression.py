@@ -204,7 +204,13 @@ def transform_name_expr(builder: IRBuilder, expr: NameExpr) -> Value:
         if final_type is None:
             final_type = AnyType(TypeOfAny.special_form)
         value = builder.emit_load_final(
-            expr.node, fullname, expr.name, builder.is_native_ref_expr(expr), final_type, expr.line
+            expr.node,
+            fullname,
+            expr.name,
+            final_type,
+            expr.line,
+            is_native=builder.is_native_ref_expr(expr),
+            is_local=expr.kind == LDEF,
         )
         if value is not None:
             return value
@@ -286,7 +292,13 @@ def transform_member_expr(builder: IRBuilder, expr: MemberExpr) -> Value:
         if final_type is None:
             final_type = AnyType(TypeOfAny.special_form)
         value = builder.emit_load_final(
-            final_var, fullname, final_var.name, native, final_type, expr.line
+            final_var,
+            fullname,
+            final_var.name,
+            final_type,
+            expr.line,
+            is_native=native,
+            is_local=False,
         )
         if value is not None:
             return value
