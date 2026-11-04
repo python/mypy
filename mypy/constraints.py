@@ -342,7 +342,9 @@ def _infer_constraints(
     # checkexpr.has_erased_component().
     if not type_state.keep_unions and isinstance(template, UnionType):
         template = mypy.typeops.make_simplified_union(template.items, keep_erased=True)
+    unsimplified_actual: UnionType | None = None
     if not type_state.keep_unions and isinstance(actual, UnionType):
+        unsimplified_actual = actual
         actual = mypy.typeops.make_simplified_union(actual.items, keep_erased=True)
 
     # Ignore Any types from the type suggestion engine to avoid them
@@ -428,13 +430,16 @@ def _infer_constraints(
         # We infer constraints eagerly -- try to find constraints for a type
         # variable if possible. This seems to help with some real-world
         # use cases.
-        return any_constraints(
-            [
-                infer_constraints_if_possible(template, a_item, direction)
-                for a_item in actual.items
-            ],
-            eager=True,
-        )
+        options = [
+            infer_constraints_if_possible(template, a_item, direction) for a_item in actual.items
+        ]
+        if unsimplified_actual is not None:
+            options.extend(
+                _options_lost_by_simplification(
+                    template, actual.items, options, unsimplified_actual.items
+                )
+            )
+        return any_constraints(options, eager=True)
     if direction == SUPERTYPE_OF and isinstance(template, UnionType):
         # When the template is a union, we are okay with leaving some
         # type variables indeterminate. This helps with some special
@@ -474,6 +479,39 @@ def _unwrap_type_type(tp: TypeType | UnionType) -> ProperType:
     if isinstance(tp, TypeType):
         return tp.item
     return UnionType.make_union([cast(TypeType, get_proper_type(o)).item for o in tp.items])
+
+
+def _options_lost_by_simplification(
+    template: ProperType,
+    simplified_items: Sequence[Type],
+    simplified_options: list[list[Constraint] | None],
+    original_items: Sequence[Type],
+) -> list[list[Constraint] | None]:
+    """Find constraint options for union items removed during simplification.
+
+    Simplification drops an item if it's a proper subtype of another item, but
+    subtyping isn't always transitive. For example, ``MutableSequence[str]`` is
+    a subtype of ``Hashable``, but ``list[str]`` is not, even though
+    ``list[str]`` is a subtype of ``MutableSequence[str]``. If the template only
+    matches the dropped item, add it back as an option.
+    """
+    simplified_ids = {id(get_proper_type(item)) for item in simplified_items}
+    extra: list[list[Constraint] | None] = []
+    for item in original_items:
+        proper_item = get_proper_type(item)
+        if id(proper_item) in simplified_ids or isinstance(proper_item, UnionType):
+            continue
+        absorbers = [
+            option
+            for simplified_item, option in zip(simplified_items, simplified_options)
+            if mypy.subtypes.is_proper_subtype(item, simplified_item, keep_erased_types=True)
+        ]
+        if not absorbers or any(option is not None for option in absorbers):
+            continue
+        option = infer_constraints_if_possible(template, item, SUBTYPE_OF)
+        if option is not None:
+            extra.append(option)
+    return extra
 
 
 def infer_constraints_if_possible(

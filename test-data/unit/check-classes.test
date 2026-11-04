@@ -9848,3 +9848,34 @@ def f(x: int, y: int)-> int: ...
 
 fs = [lambda df, x: df.foo, f]
 reveal_type(fs)  # N: Revealed type is "builtins.list[def (Any, Any) -> Any]"
+
+[case testSubclassMemberWithType]
+# https://github.com/python/mypy/issues/22337
+class Person:
+    def __init__(self, name: str, age: int, characteristics: type) -> None:
+        self.name = name
+        self.age = age
+        self.characteristics = characteristics
+
+def foo(person: Person) -> None:
+    class Sub(person.characteristics): pass
+    class Sub2(Person.characteristics): pass
+
+[case testSubclassMemberWithNonType]
+class Person:
+    def __init__(self, characteristics: int) -> None:
+        self.characteristics = characteristics
+
+def foo(person: Person) -> None:
+    class Sub(person.characteristics): pass  # E: Variable "__main__.Person.characteristics" is not valid as a type \
+                                             # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases \
+                                             # E: Invalid base class "person.characteristics"
+
+[case testSubclassMemberWithTypeDisallowAny]
+# flags: --disallow-subclassing-any
+class Person:
+    def __init__(self, characteristics: type) -> None:
+        self.characteristics = characteristics
+
+def foo(person: Person) -> None:
+    class Sub(person.characteristics): pass  # E: Class cannot subclass "characteristics" (has type "Any")

@@ -3690,6 +3690,7 @@ class TypeInfo(SymbolNode):
         "type_object_type",
         "default_depends",
         "typeddict_data",
+        "deferred_member_bases",
     )
 
     _fullname: str  # Fully qualified name
@@ -3927,6 +3928,10 @@ class TypeInfo(SymbolNode):
         self.type_object_type = None
         self.default_depends = {}
         self.typeddict_data = None
+        # Base class expressions like ``obj.attr`` whose attribute type is not
+        # known during semantic analysis. The type checker validates them once
+        # the attribute type has been inferred. This is not serialized.
+        self.deferred_member_bases: list[MemberExpr] = []
 
     def add_type_vars(self) -> None:
         self.has_type_var_tuple_type = False
@@ -5029,9 +5034,9 @@ class SymbolTableNode:
                     and fullname != prefix + "." + name
                     and not (isinstance(self.node, Var) and self.node.from_module_getattr)
                 ):
-                    assert not isinstance(
-                        self.node, PlaceholderNode
-                    ), f"Definition of {fullname} is unexpectedly incomplete"
+                    assert not isinstance(self.node, PlaceholderNode), (
+                        f"Definition of {fullname} is unexpectedly incomplete"
+                    )
                     data["cross_ref"] = fullname
                     return data
             data["node"] = self.node.serialize()
@@ -5082,9 +5087,9 @@ class SymbolTableNode:
                     and fullname != prefix + "." + name
                     and not (isinstance(self.node, Var) and self.node.from_module_getattr)
                 ):
-                    assert not isinstance(
-                        self.node, PlaceholderNode
-                    ), f"Definition of {fullname} is unexpectedly incomplete"
+                    assert not isinstance(self.node, PlaceholderNode), (
+                        f"Definition of {fullname} is unexpectedly incomplete"
+                    )
                     cross_ref = fullname
 
         write_str_opt(data, cross_ref)

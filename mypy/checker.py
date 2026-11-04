@@ -207,6 +207,7 @@ from mypy.nodes import (
     WithStmt,
     YieldExpr,
     get_func_def,
+    get_member_expr_fullname,
     is_final_node,
 )
 from mypy.operators import flip_ops, int_op_to_method, neg_ops
@@ -2839,9 +2840,48 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
         ):
             self.msg.incorrect__exit__return(defn)
 
+    def check_deferred_member_bases(self, defn: ClassDef) -> None:
+        """Validate base classes like ``obj.attr`` whose type was unknown in semanal."""
+        for member, base_expr in defn.info.deferred_member_bases:
+            if member.type is None:
+                continue
+            typ = get_proper_type(member.type)
+            if isinstance(typ, PartialType):
+                continue
+            is_any_base = (
+                isinstance(typ, AnyType)
+                or isinstance(typ, Instance)
+                and typ.type.fullname == "builtins.type"
+                or isinstance(typ, TypeType)
+                and isinstance(typ.item, AnyType)
+            )
+            if is_any_base:
+                if self.options.disallow_subclassing_any:
+                    self.fail(
+                        f'Class cannot subclass "{base_expr.name}" (has type "Any")', base_expr
+                    )
+                continue
+            self.fail(
+                f'Variable "{member.fullname}" is not valid as a type',
+                base_expr,
+                code=codes.VALID_TYPE,
+            )
+            self.note(
+                "See https://mypy.readthedocs.io/en/stable/common_issues.html"
+                "#variables-vs-type-aliases",
+                base_expr,
+                code=codes.VALID_TYPE,
+            )
+            msg = "Invalid base class"
+            name = get_member_expr_fullname(base_expr)
+            if name:
+                msg += f' "{name}"'
+            self.fail(msg, base_expr)
+
     def visit_class_def(self, defn: ClassDef) -> None:
         """Type check a class definition."""
         typ = defn.info
+        self.check_deferred_member_bases(defn)
         for base in typ.mro[1:]:
             if base.is_final:
                 self.fail(message_registry.CANNOT_INHERIT_FROM_FINAL.format(base.name), defn)

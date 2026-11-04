@@ -775,9 +775,9 @@ class SemanticAnalyzer(
                     "builtins.dict", [str_type, AnyType(TypeOfAny.special_form)]
                 )
                 if inst is None:
-                    assert (
-                        not self.final_iteration
-                    ), "Cannot find builtins.dict to add __annotations__"
+                    assert not self.final_iteration, (
+                        "Cannot find builtins.dict to add __annotations__"
+                    )
                     self.defer()
                     return
                 typ = inst
@@ -1881,9 +1881,9 @@ class SemanticAnalyzer(
             if self.get_defined_type_param(p.name):
                 self.fail(f'"{p.name}" already defined as a type parameter', context)
             else:
-                assert self.add_symbol(
-                    p.name, tv, context, no_progress=True, type_param=True
-                ), "Type parameter should not be discarded"
+                assert self.add_symbol(p.name, tv, context, no_progress=True, type_param=True), (
+                    "Type parameter should not be discarded"
+                )
 
         return tvs
 
@@ -2032,7 +2032,7 @@ class SemanticAnalyzer(
             self.mark_incomplete(defn.name, defn)
             return
 
-        base_types, base_error = bases_result
+        base_types, base_error, deferred_member_bases = bases_result  # type: ignore[misc]
         if any(isinstance(base, PlaceholderType) for base, _ in base_types):
             # We need to know the TypeInfo of each base to construct the MRO. Placeholder types
             # are okay in nested positions, since they can't affect the MRO.
@@ -2067,6 +2067,7 @@ class SemanticAnalyzer(
         self.prepare_class_def(defn)
         self.setup_type_vars(defn, tvar_defs)
         defn.info.default_depends = default_depends
+        defn.info.deferred_member_bases = deferred_member_bases
         if base_error:
             defn.info.fallback_to_any = True
         if any_meta:
@@ -2370,7 +2371,10 @@ class SemanticAnalyzer(
                         )
                 removed.append(i)
                 declared_tvars.extend(tvars)
-            if isinstance(base, UnboundType):
+            if isinstance(base, UnboundType) and not (
+                isinstance(base_expr, MemberExpr)
+                and self.get_member_base_var(base_expr) is not None
+            ):
                 sym = self.lookup_qualified(base.name, base)
                 if sym is not None and sym.node is not None:
                     if sym.node.fullname in PROTOCOL_NAMES and i not in removed:
@@ -2421,7 +2425,9 @@ class SemanticAnalyzer(
         if not isinstance(base, UnboundType):
             return None
         unbound = base
-        sym = self.lookup_qualified(unbound.name, unbound)
+        # This is only a speculative lookup for Generic/Protocol; undefined names
+        # are reported when the base classes are analyzed.
+        sym = self.lookup_qualified(unbound.name, unbound, suppress_errors=True)
         if sym is None or sym.node is None:
             return None
         if (
@@ -2497,6 +2503,12 @@ class SemanticAnalyzer(
         """Return all type variable references in bases."""
         tvars: TypeVarLikeList = []
         for i, base_expr in enumerate(base_type_exprs):
+            if (
+                isinstance(base_expr, MemberExpr)
+                and self.get_member_base_var(base_expr) is not None
+            ):
+                # A value attribute like obj.attr cannot contain type variables.
+                continue
             if i not in removed:
                 try:
                     base = self.expr_to_unanalyzed_type(base_expr)
@@ -2610,7 +2622,7 @@ class SemanticAnalyzer(
 
     def analyze_base_classes(
         self, cls_name: str, base_type_exprs: list[Expression]
-    ) -> tuple[list[tuple[ProperType, Expression]], bool] | None:
+    ) -> tuple[list[tuple[ProperType, Expression]], bool, list[tuple[Var, MemberExpr]]] | None:
         """Analyze base class types.
 
         Return None if some definition was incomplete. Otherwise, return a tuple
@@ -2618,9 +2630,12 @@ class SemanticAnalyzer(
 
          * List of (analyzed type, original expression) tuples
          * Boolean indicating whether one of the bases had a semantic analysis error
+         * List of member expression bases whose attribute type is not known yet;
+           these are checked by the type checker
         """
         is_error = False
-        bases = []
+        bases: list[tuple[ProperType, Expression]] = []
+        deferred_member_bases: list[tuple[Var, MemberExpr]] = []
         for i, base_expr in enumerate(base_type_exprs):
             if (
                 isinstance(base_expr, RefExpr)
@@ -2636,6 +2651,31 @@ class SemanticAnalyzer(
                 #  class Foo(NamedTuple): ...  # RefExpr
                 #  class Foo(TypedDict("Foo", {"a": int})): ...  # CallExpr
                 continue
+
+            if isinstance(base_expr, MemberExpr):
+                member = self.get_member_base_var(base_expr)
+                if member is not None:
+                    member_type = get_proper_type(member.type) if member.type is not None else None
+                    if member_type is None:
+                        # The attribute type is inferred by the type checker.
+                        deferred_member_bases.append((member, base_expr))
+                        bases.append((AnyType(TypeOfAny.special_form), base_expr))
+                        continue
+                    if (
+                        isinstance(member_type, AnyType)
+                        or (
+                            isinstance(member_type, Instance)
+                            and member_type.type.fullname == "builtins.type"
+                        )
+                        or (
+                            isinstance(member_type, TypeType)
+                            and isinstance(member_type.item, AnyType)
+                        )
+                    ):
+                        # The attribute is a type object. Treat it like a variable
+                        # annotated with ``type``, which is accepted as a base class.
+                        bases.append((AnyType(TypeOfAny.special_form), base_expr))
+                        continue
 
             try:
                 base = self.expr_to_analyzed_type(
@@ -2659,7 +2699,32 @@ class SemanticAnalyzer(
                 return None
             base = get_proper_type(base)
             bases.append((base, base_expr))
-        return bases, is_error
+        return bases, is_error, deferred_member_bases
+
+    def get_member_base_var(self, expr: MemberExpr) -> Var | None:
+        """Return the attribute accessed by a base class expression like ``obj.attr``.
+
+        Only attributes of statically known instances or class objects are
+        considered; these are the cases where the type of the base expression can
+        be determined by the type checker.
+        """
+        if not isinstance(expr.expr, RefExpr):
+            return None
+        node = expr.expr.node
+        if isinstance(node, TypeInfo):
+            sym = node.get(expr.name)
+        elif isinstance(node, Var) and node.type is not None:
+            typ = get_proper_type(node.type)
+            if isinstance(typ, TypeType):
+                typ = typ.item
+            if not isinstance(typ, Instance):
+                return None
+            sym = typ.type.get(expr.name)
+        else:
+            return None
+        if sym is None or not isinstance(sym.node, Var):
+            return None
+        return sym.node
 
     def configure_base_classes(
         self, defn: ClassDef, bases: list[tuple[ProperType, Expression]]
@@ -2682,7 +2747,11 @@ class SemanticAnalyzer(
                     self.fail('Cannot subclass "NewType"', defn)
                 base_types.append(base)
             elif isinstance(base, AnyType):
-                if self.options.disallow_subclassing_any:
+                is_deferred = any(
+                    deferred_expr is base_expr
+                    for _, deferred_expr in defn.info.deferred_member_bases
+                )
+                if self.options.disallow_subclassing_any and not is_deferred:
                     if isinstance(base_expr, (NameExpr, MemberExpr)):
                         msg = f'Class cannot subclass "{base_expr.name}" (has type "Any")'
                     else:
@@ -7605,9 +7674,9 @@ class SemanticAnalyzer(
                             names = self.globals
                         else:
                             names_candidate = self.locals[-1 - i]
-                            assert (
-                                names_candidate is not None
-                            ), "Escaping comprehension from invalid scope"
+                            assert names_candidate is not None, (
+                                "Escaping comprehension from invalid scope"
+                            )
                             names = names_candidate
                         break
                 else:
