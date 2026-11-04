@@ -185,6 +185,7 @@ void CPyTagged_XDecRef(CPyTagged x);
 bool CPyTagged_IsEq_(CPyTagged left, CPyTagged right);
 bool CPyTagged_IsLt_(CPyTagged left, CPyTagged right);
 CPyTagged CPyTagged_Negate_(CPyTagged num);
+CPyTagged CPyTagged_Absolute_(CPyTagged num);
 CPyTagged CPyTagged_Invert_(CPyTagged num);
 CPyTagged CPyTagged_Add_(CPyTagged left, CPyTagged right);
 CPyTagged CPyTagged_Subtract_(CPyTagged left, CPyTagged right);
@@ -494,6 +495,14 @@ static inline CPyTagged CPyTagged_Negate(CPyTagged num) {
         return -num;
     }
     return CPyTagged_Negate_(num);
+}
+
+static inline CPyTagged CPyTagged_Absolute(CPyTagged num) {
+    if (likely(CPyTagged_CheckShort(num)
+               && num != (CPyTagged) ((Py_ssize_t)1 << (CPY_INT_BITS - 1)))) {
+        return (Py_ssize_t)num < 0 ? -num : num;
+    }
+    return CPyTagged_Absolute_(num);
 }
 
 static inline CPyTagged CPyTagged_Add(CPyTagged left, CPyTagged right) {

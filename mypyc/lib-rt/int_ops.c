@@ -126,6 +126,17 @@ CPyTagged CPyTagged_Negate_(CPyTagged num) {
     return CPyTagged_StealFromObject(result);
 }
 
+// Tagged int absolute value slow path, where the result may be a long integer
+CPyTagged CPyTagged_Absolute_(CPyTagged num) {
+    PyObject *num_obj = CPyTagged_AsObject(num);
+    PyObject *result = PyNumber_Absolute(num_obj);
+    if (result == NULL) {
+        CPyError_OutOfMemory();
+    }
+    Py_DECREF(num_obj);
+    return CPyTagged_StealFromObject(result);
+}
+
 // Tagged int addition slow path, where the result may be a long integer
 CPyTagged CPyTagged_Add_(CPyTagged left, CPyTagged right) {
     PyObject *left_obj = CPyTagged_AsObject(left);

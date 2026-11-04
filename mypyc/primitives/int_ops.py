@@ -198,6 +198,15 @@ def int_unary_op(name: str, c_function_name: str) -> PrimitiveDescription:
 int_neg_op = int_unary_op("-", "CPyTagged_Negate")
 int_invert_op = int_unary_op("~", "CPyTagged_Invert")
 
+# abs(int)
+function_op(
+    name="builtins.abs",
+    arg_types=[int_rprimitive],
+    return_type=int_rprimitive,
+    c_function_name="CPyTagged_Absolute",
+    error_kind=ERR_NEVER,
+)
+
 
 # Primitives related to integer comparison operations:
 
