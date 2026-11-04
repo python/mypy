@@ -804,8 +804,12 @@ class Progressbar(Widget):
         self,
         master: tkinter.Misc | None = None,
         *,
+        anchor: Literal["nw", "n", "ne", "w", "center", "e", "sw", "s", "se"] = ...,  # new in Tcl/Tk 9.0
         class_: str = "",
         cursor: tkinter._Cursor = "",
+        font: _FontDescription = ...,  # new in Tcl/Tk 9.0
+        foreground: str = ...,  # new in Tcl/Tk 9.0
+        justify: Literal["left", "center", "right"] = ...,  # new in Tcl/Tk 9.0
         length: float | str = 100,
         maximum: float = 100,
         mode: Literal["determinate", "indeterminate"] = "determinate",
@@ -814,8 +818,10 @@ class Progressbar(Widget):
         phase: int = 0,  # docs say read-only but assigning int to this works
         style: str = "",
         takefocus: bool | Literal[0, 1, ""] | Callable[[str], bool | None] = "",
+        text: float | str = "",  # new in Tcl/Tk 9.0
         value: float = 0.0,
         variable: tkinter.IntVar | tkinter.DoubleVar = ...,
+        wraplength: float | str = ...,  # new in Tcl/Tk 9.0
     ) -> None: ...
 
     @overload
@@ -823,7 +829,11 @@ class Progressbar(Widget):
         self,
         cnf: dict[str, Any] | None = None,
         *,
+        anchor: Literal["nw", "n", "ne", "w", "center", "e", "sw", "s", "se"] = ...,  # new in Tcl/Tk 9.0
         cursor: tkinter._Cursor = ...,
+        font: _FontDescription = ...,  # new in Tcl/Tk 9.0
+        foreground: str = ...,  # new in Tcl/Tk 9.0
+        justify: Literal["left", "center", "right"] = ...,  # new in Tcl/Tk 9.0
         length: float | str = ...,
         maximum: float = ...,
         mode: Literal["determinate", "indeterminate"] = ...,
@@ -831,8 +841,10 @@ class Progressbar(Widget):
         phase: int = ...,
         style: str = ...,
         takefocus: bool | Literal[0, 1, ""] | Callable[[str], bool | None] = ...,
+        text: float | str = ...,  # new in Tcl/Tk 9.0
         value: float = ...,
         variable: tkinter.IntVar | tkinter.DoubleVar = ...,
+        wraplength: float | str = ...,  # new in Tcl/Tk 9.0
     ) -> dict[str, tuple[str, str, str, Any, Any]] | None: ...
     @overload
     def configure(self, cnf: str) -> tuple[str, str, str, Any, Any]: ...
@@ -1414,7 +1426,7 @@ class OptionMenu(Menubutton):
             # rest of these are keyword-only because *args syntax used above
             style: str = "",
             direction: Literal["above", "below", "left", "right", "flush"] = "below",
-            command: Callable[[tkinter.StringVar], object] | None = None,
+            command: Callable[[str], object] | None = None,
             name: str | None = None,
         ) -> None: ...
     else:
@@ -1427,7 +1439,7 @@ class OptionMenu(Menubutton):
             # rest of these are keyword-only because *args syntax used above
             style: str = "",
             direction: Literal["above", "below", "left", "right", "flush"] = "below",
-            command: Callable[[tkinter.StringVar], object] | None = None,
+            command: Callable[[str], object] | None = None,
         ) -> None: ...
     # configure, config, cget, destroy are inherited from Menubutton
     # destroy and __setitem__ are overridden, signature does not change

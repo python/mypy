@@ -1,15 +1,15 @@
 import sys
 from _typeshed import structseq
-from typing import Any, Final, Literal, Protocol, SupportsFloat, SupportsIndex, TypeAlias, Union, final, type_check_only
+from typing import Any, Final, Literal, Protocol, SupportsFloat, SupportsIndex, TypeAlias, final, type_check_only
 
 _TimeTuple: TypeAlias = tuple[int, int, int, int, int, int, int, int, int]
 
 if sys.version_info >= (3, 15):
     # anticipate on https://github.com/python/cpython/pull/139224
-    _SupportsFloatOrIndex: TypeAlias = Union[SupportsFloat, SupportsIndex]
+    _SupportsFloatOrIndex: TypeAlias = SupportsFloat | SupportsIndex
 else:
     # before, time functions only accept (subclass of) float, *not* SupportsFloat
-    _SupportsFloatOrIndex: TypeAlias = Union[float, SupportsIndex]
+    _SupportsFloatOrIndex: TypeAlias = float | SupportsIndex
 
 altzone: int
 daylight: int
