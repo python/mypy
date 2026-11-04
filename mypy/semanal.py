@@ -2032,7 +2032,7 @@ class SemanticAnalyzer(
             self.mark_incomplete(defn.name, defn)
             return
 
-        base_types, base_error, deferred_member_bases = bases_result  # type: ignore[misc]
+        base_types, base_error, deferred_member_bases = bases_result
         if any(isinstance(base, PlaceholderType) for base, _ in base_types):
             # We need to know the TypeInfo of each base to construct the MRO. Placeholder types
             # are okay in nested positions, since they can't affect the MRO.

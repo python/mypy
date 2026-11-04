@@ -3931,7 +3931,7 @@ class TypeInfo(SymbolNode):
         # Base class expressions like ``obj.attr`` whose attribute type is not
         # known during semantic analysis. The type checker validates them once
         # the attribute type has been inferred. This is not serialized.
-        self.deferred_member_bases: list[MemberExpr] = []
+        self.deferred_member_bases: list[tuple[Var, MemberExpr]] = []
 
     def add_type_vars(self) -> None:
         self.has_type_var_tuple_type = False
