@@ -238,7 +238,7 @@ class Attribute:
             self.init_type = None
 
 
-def _determine_eq_order(ctx: mypy.plugin.ClassDefContext) -> bool:
+def _determine_eq_order(ctx: mypy.plugin.ClassDefContext, order_default: bool | None) -> bool:
     """
     Validate the combination of *cmp*, *eq*, and *order*. Derive the effective
     value of order.
@@ -254,12 +254,13 @@ def _determine_eq_order(ctx: mypy.plugin.ClassDefContext) -> bool:
     if cmp is not None:
         return cmp
 
-    # If left None, equality is on and ordering mirrors equality.
+    # If left None, equality is on and ordering mirrors equality, unless the
+    # decorator has its own default (attrs.define and friends use order=False).
     if eq is None:
         eq = True
 
     if order is None:
-        order = eq
+        order = eq if order_default is None else order_default
 
     if eq is False and order is True:
         ctx.api.fail("eq must be True if order is True", ctx.reason)
@@ -310,6 +311,7 @@ def attr_class_maker_callback(
     auto_attribs_default: bool | None = False,
     frozen_default: bool = False,
     slots_default: bool = False,
+    order_default: bool | None = None,
 ) -> bool:
     """Add necessary dunder methods to classes decorated with attr.s.
 
@@ -331,7 +333,7 @@ def attr_class_maker_callback(
         # This hook is called during semantic analysis, but it uses a bunch of
         # type-checking ops, so it needs the strict optional set properly.
         return attr_class_maker_callback_impl(
-            ctx, auto_attribs_default, frozen_default, slots_default
+            ctx, auto_attribs_default, frozen_default, slots_default, order_default
         )
 
 
@@ -340,12 +342,13 @@ def attr_class_maker_callback_impl(
     auto_attribs_default: bool | None,
     frozen_default: bool,
     slots_default: bool,
+    order_default: bool | None,
 ) -> bool:
     info = ctx.cls.info
 
     init = _get_decorator_bool_argument(ctx, "init", True)
     frozen = _get_frozen(ctx, frozen_default)
-    order = _determine_eq_order(ctx)
+    order = _determine_eq_order(ctx, order_default)
     slots = _get_decorator_bool_argument(ctx, "slots", slots_default)
 
     auto_attribs = _get_decorator_optional_bool_argument(ctx, "auto_attribs", auto_attribs_default)
@@ -458,8 +461,8 @@ def _analyze_class(
             if isinstance(node, PlaceholderNode):
                 # This node is not ready yet.
                 continue
-            assert isinstance(node, Var), node
-            node.is_initialized_in_class = False
+            if isinstance(node, Var):
+                node.is_initialized_in_class = False
 
     # Traverse the MRO and collect attributes from the parents.
     taken_attr_names = set(own_attrs)

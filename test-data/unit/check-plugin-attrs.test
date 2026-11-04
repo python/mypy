@@ -373,6 +373,57 @@ a = A(5)
 a.a = 16  # E: Property "a" defined in "A" is read-only
 [builtins fixtures/plugin_attrs.pyi]
 
+[case testAttrsNextGenOrderDefaultsToFalse]
+import attr
+import attrs
+
+@attrs.define
+class A:
+    x: int
+
+@attrs.frozen
+class B:
+    x: int
+
+@attrs.mutable
+class C:
+    x: int
+
+@attr.define
+class D:
+    x: int
+
+@attrs.define(order=True)
+class E:
+    x: int
+
+@attr.s(auto_attribs=True)
+class F:
+    x: int
+
+A(1) < A(2)  # E: Unsupported left operand type for < ("A")
+B(1) <= B(2)  # E: Unsupported left operand type for <= ("B")
+C(1) > C(2)  # E: Unsupported left operand type for > ("C")
+D(1) >= D(2)  # E: Unsupported left operand type for >= ("D")
+E(1) < E(2)
+F(1) < F(2)
+[builtins fixtures/plugin_attrs.pyi]
+
+[case testAttrsReprocessedClassWithComparisonMethodAttribute]
+import attr
+import attrs
+
+@attrs.define
+@attrs.frozen
+class A:
+    __lt__: int
+
+@attr.s(auto_attribs=True, order=True)
+@attr.s(auto_attribs=True, order=True)
+class B:
+    __lt__: int
+[builtins fixtures/plugin_attrs.pyi]
+
 [case testAttrsNextGenDetect]
 from attr import define, field
 

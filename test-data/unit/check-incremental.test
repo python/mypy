@@ -3063,6 +3063,10 @@ class NoCmp:
 [stale]
 [out1]
 main:3: error: Property "x" defined in "Frozen" is read-only
+main:7: error: Unsupported left operand type for < ("Frozen")
+main:8: error: Unsupported left operand type for <= ("Frozen")
+main:9: error: Unsupported left operand type for > ("Frozen")
+main:10: error: Unsupported left operand type for >= ("Frozen")
 main:12: error: Unsupported left operand type for < ("NoCmp")
 main:13: error: Unsupported left operand type for <= ("NoCmp")
 main:14: error: Unsupported left operand type for > ("NoCmp")
@@ -3070,6 +3074,10 @@ main:15: error: Unsupported left operand type for >= ("NoCmp")
 
 [out2]
 main:3: error: Property "x" defined in "Frozen" is read-only
+main:7: error: Unsupported left operand type for < ("Frozen")
+main:8: error: Unsupported left operand type for <= ("Frozen")
+main:9: error: Unsupported left operand type for > ("Frozen")
+main:10: error: Unsupported left operand type for >= ("Frozen")
 main:12: error: Unsupported left operand type for < ("NoCmp")
 main:13: error: Unsupported left operand type for <= ("NoCmp")
 main:14: error: Unsupported left operand type for > ("NoCmp")

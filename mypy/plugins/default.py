@@ -205,11 +205,17 @@ class DefaultPlugin(Plugin):
             return partial(attr_class_maker_callback, auto_attribs_default=True)
         elif fullname in attr_frozen_makers:
             return partial(
-                attr_class_maker_callback, auto_attribs_default=None, frozen_default=True
+                attr_class_maker_callback,
+                auto_attribs_default=None,
+                frozen_default=True,
+                order_default=False,
             )
         elif fullname in attr_define_makers:
             return partial(
-                attr_class_maker_callback, auto_attribs_default=None, slots_default=True
+                attr_class_maker_callback,
+                auto_attribs_default=None,
+                slots_default=True,
+                order_default=False,
             )
         return None
 
