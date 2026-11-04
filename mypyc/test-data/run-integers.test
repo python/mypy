@@ -163,6 +163,22 @@ assert neg(-9223372036854775807) == 9223372036854775807
 assert neg(9223372036854775808) == -9223372036854775808
 assert neg(-9223372036854775808) == 9223372036854775808
 
+[case testAbs]
+def int_abs(x: int) -> int:
+    return abs(x)
+
+def bool_abs(x: bool) -> int:
+    return abs(x)
+[file driver.py]
+from native import int_abs, bool_abs
+for n in (0, 1, 5, 1073741823, 1073741824, 2147483648, 4611686018427387903,
+          4611686018427387904, 4611686018427387905, 9223372036854775807,
+          9223372036854775808, 10**30):
+    assert int_abs(n) == n
+    assert int_abs(-n) == n
+assert bool_abs(True) == 1
+assert bool_abs(False) == 0
+
 [case testIsinstanceIntAndNotBool]
 def test_isinstance_int_and_not_bool(value: object) -> bool:
     return isinstance(value, int) and not isinstance(value, bool)
