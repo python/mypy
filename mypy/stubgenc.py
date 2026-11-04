@@ -150,6 +150,7 @@ def generate_stub_for_c_module(
     known_modules: list[str],
     doc_dir: str = "",
     *,
+    load_doc_sigs: Callable[[str], ExternalSignatureGenerator] | None = None,
     include_private: bool = False,
     export_less: bool = False,
     include_docstrings: bool = False,
@@ -174,6 +175,7 @@ def generate_stub_for_c_module(
         module_name,
         known_modules,
         doc_dir,
+        load_doc_sigs=load_doc_sigs,
         include_private=include_private,
         export_less=export_less,
         include_docstrings=include_docstrings,
@@ -243,8 +245,11 @@ class InspectionStubGenerator(BaseStubGenerator):
         export_less: bool = False,
         include_docstrings: bool = False,
         module: ModuleType | None = None,
+        *,
+        load_doc_sigs: Callable[[str], ExternalSignatureGenerator] | None = None,
     ) -> None:
         self.doc_dir = doc_dir
+        self._load_doc_sigs = load_doc_sigs or ExternalSignatureGenerator.from_doc_dir
         if module is None:
             self.module = importlib.import_module(module_name)
         else:
@@ -397,7 +402,7 @@ class InspectionStubGenerator(BaseStubGenerator):
             sig_generators: list[SignatureGenerator] = [DocstringSignatureGenerator()]
             if self.doc_dir:
                 # Collect info from docs (if given). Always check these first.
-                sig_generators.insert(0, ExternalSignatureGenerator.from_doc_dir(self.doc_dir))
+                sig_generators.insert(0, self._load_doc_sigs(self.doc_dir))
             return sig_generators
 
     def strip_or_import(self, type_name: str) -> str:
