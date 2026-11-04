@@ -238,7 +238,7 @@ def urljoin(base: AnyStr, url: AnyStr | None, allow_fragments: bool = True) -> A
 def urlparse(url: str, scheme: str = "", allow_fragments: bool = True) -> ParseResult: ...
 @overload
 def urlparse(
-    url: bytes | bytearray | None, scheme: bytes | bytearray | None | Literal[""] = "", allow_fragments: bool = True
+    url: bytes | bytearray | None, scheme: bytes | bytearray | Literal[""] | None = "", allow_fragments: bool = True
 ) -> ParseResultBytes: ...
 if sys.version_info >= (3, 15):
     @overload
@@ -252,7 +252,7 @@ if sys.version_info >= (3, 15):
     @overload
     def urlparse(
         url: bytes | bytearray | None,
-        scheme: bytes | bytearray | None | Literal[""] = "",
+        scheme: bytes | bytearray | Literal[""] | None = "",
         allow_fragments: bool = True,
         *,
         missing_as_none: Literal[True],
@@ -260,7 +260,7 @@ if sys.version_info >= (3, 15):
     @overload
     def urlparse(
         url: bytes | bytearray | None,
-        scheme: bytes | bytearray | None | Literal[""] = "",
+        scheme: bytes | bytearray | Literal[""] | None = "",
         allow_fragments: bool = True,
         *,
         missing_as_none: Literal[False] = False,
@@ -272,7 +272,7 @@ if sys.version_info >= (3, 15):
     @overload
     def urlparse(
         url: bytes | bytearray | None,
-        scheme: bytes | bytearray | None | Literal[""] = "",
+        scheme: bytes | bytearray | Literal[""] | None = "",
         allow_fragments: bool = True,
         *,
         missing_as_none: bool,
@@ -284,12 +284,12 @@ def urlsplit(url: str, scheme: str = "", allow_fragments: bool = True) -> SplitR
 if sys.version_info >= (3, 11):
     @overload
     def urlsplit(
-        url: bytes | None, scheme: bytes | None | Literal[""] = "", allow_fragments: bool = True
+        url: bytes | None, scheme: bytes | Literal[""] | None = "", allow_fragments: bool = True
     ) -> SplitResultBytes: ...
 else:
     @overload
     def urlsplit(
-        url: bytes | bytearray | None, scheme: bytes | bytearray | None | Literal[""] = "", allow_fragments: bool = True
+        url: bytes | bytearray | None, scheme: bytes | bytearray | Literal[""] | None = "", allow_fragments: bool = True
     ) -> SplitResultBytes: ...
 if sys.version_info >= (3, 15):
     @overload
@@ -303,7 +303,7 @@ if sys.version_info >= (3, 15):
     @overload
     def urlsplit(
         url: bytes | None,
-        scheme: bytes | None | Literal[""] = "",
+        scheme: bytes | Literal[""] | None = "",
         allow_fragments: bool = True,
         *,
         missing_as_none: Literal[True],
@@ -311,7 +311,7 @@ if sys.version_info >= (3, 15):
     @overload
     def urlsplit(
         url: bytes | None,
-        scheme: bytes | None | Literal[""] = "",
+        scheme: bytes | Literal[""] | None = "",
         allow_fragments: bool = True,
         *,
         missing_as_none: Literal[False] = False,
@@ -322,7 +322,7 @@ if sys.version_info >= (3, 15):
     ) -> SplitResult[str | None]: ...
     @overload
     def urlsplit(
-        url: bytes | None, scheme: bytes | None | Literal[""] = "", allow_fragments: bool = True, *, missing_as_none: bool
+        url: bytes | None, scheme: bytes | Literal[""] | None = "", allow_fragments: bool = True, *, missing_as_none: bool
     ) -> SplitResultBytes[bytes | None]: ...
 
 if sys.version_info >= (3, 15):

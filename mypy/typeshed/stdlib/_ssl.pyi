@@ -79,7 +79,7 @@ class _SSLContext:
     post_handshake_auth: bool
     protocol: int
     security_level: int
-    sni_callback: Callable[[SSLObject, str, SSLContext], None | int] | None
+    sni_callback: Callable[[SSLObject, str, SSLContext], int | None] | None
     verify_flags: int
     verify_mode: int
     def __new__(cls, protocol: int, /) -> Self: ...
