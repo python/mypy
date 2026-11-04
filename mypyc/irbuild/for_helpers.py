@@ -39,11 +39,12 @@ from mypy.nodes import (
 from mypy.patterns import AsPattern, MappingPattern, StarredPattern
 from mypy.traverser import TraverserVisitor
 from mypy.types import LiteralType, TupleType, get_proper_type, get_proper_types
-from mypyc.common import GENERATOR_HELPER_NAME
+from mypyc.common import GENERATOR_HELPER_NAME, MAX_SHORT_INT, MIN_SHORT_INT
 from mypyc.ir.ops import (
     ERR_NEVER,
     BasicBlock,
     Branch,
+    ComparisonOp,
     Integer,
     IntOp,
     LoadAddress,
@@ -59,6 +60,7 @@ from mypyc.ir.ops import (
 )
 from mypyc.ir.rtypes import (
     RInstance,
+    RPrimitive,
     RTuple,
     RType,
     RVec,
@@ -76,6 +78,7 @@ from mypyc.ir.rtypes import (
     is_str_rprimitive,
     is_tagged,
     is_tuple_rprimitive,
+    native_int_bounds,
     object_pointer_rprimitive,
     object_rprimitive,
     short_int_rprimitive,
@@ -1466,7 +1469,11 @@ class ForRange(ForGenerator):
         self.end_reg = end_reg
         self.step = step
         self.end_target = end_reg
-        if is_short_int_rprimitive(start_reg.type) and is_short_int_rprimitive(end_reg.type):
+        if (
+            is_short_int_rprimitive(start_reg.type)
+            and is_short_int_rprimitive(end_reg.type)
+            and not short_int_range_step_may_overflow(end_reg, step)
+        ):
             index_type: RType = short_int_rprimitive
         elif is_fixed_width_rtype(end_reg.type):
             index_type = end_reg.type
@@ -1519,25 +1526,83 @@ class ForRange(ForGenerator):
     def gen_step(self) -> None:
         builder = self.builder
         line = self.line
+        index_type = self.index_reg.type
+        index = builder.read(self.index_reg, line)
 
         # Increment index register. If the range is known to fit in short ints, use
-        # short ints.
-        if is_short_int_rprimitive(self.start_reg.type) and is_short_int_rprimitive(
-            self.end_reg.type
-        ):
+        # short ints (init() has checked that the step can't overflow).
+        if is_short_int_rprimitive(index_type):
             new_val = builder.int_op(
-                short_int_rprimitive,
-                builder.read(self.index_reg, line),
-                Integer(self.step),
-                IntOp.ADD,
-                line,
+                short_int_rprimitive, index, Integer(self.step), IntOp.ADD, line
             )
-
+        elif is_fixed_width_rtype(index_type):
+            self.gen_fixed_width_overflow_check(index)
+            new_val = builder.binary_op(index, Integer(self.step), "+", line)
         else:
-            new_val = builder.binary_op(
-                builder.read(self.index_reg, line), Integer(self.step), "+", line
-            )
+            # Tagged int arithmetic can't overflow. The step may not fit in a short int.
+            new_val = builder.binary_op(index, builder.load_int(self.step, line), "+", line)
         builder.assign(self.index_reg, new_val, line)
+
+    def gen_fixed_width_overflow_check(self, index: Value) -> None:
+        """Exit the loop if adding the step to a native int index would overflow.
+
+        If index + step doesn't fit in the index type, it's past the end of the range,
+        so the loop is done. A step of 1 or -1 can't overflow, since index < end (or
+        index > end) holds here.
+        """
+        step = self.step
+        if step in (1, -1):
+            return
+        index_type = self.index_reg.type
+        assert isinstance(index_type, RPrimitive), index_type
+        lo, hi = native_int_bounds(index_type)
+        end = self.end_target
+        if step > 0:
+            # Overflow if index > hi - step
+            limit = hi - step
+            if isinstance(end, Integer) and end.numeric_value() - 1 <= limit:
+                # The largest possible index is end - 1, so overflow is impossible
+                return
+            op = ComparisonOp.SGT if index_type.is_signed else ComparisonOp.UGT
+        else:
+            # Overflow if index < lo - step
+            limit = lo - step
+            if isinstance(end, Integer) and end.numeric_value() + 1 >= limit:
+                return
+            op = ComparisonOp.SLT if index_type.is_signed else ComparisonOp.ULT
+        if not lo <= limit <= hi:
+            # The step doesn't fit in the index type. This is reported as an error elsewhere.
+            return
+        builder = self.builder
+        line = self.line
+        overflow = builder.add(ComparisonOp(index, Integer(limit, index_type, line), op, line))
+        ok = BasicBlock()
+        builder.add(Branch(overflow, self.loop_exit, ok, Branch.BOOL, rare=True))
+        builder.activate_block(ok)
+
+
+def short_int_range_step_may_overflow(end: Value, step: int) -> bool:
+    """Could index + step overflow a short int in a short_int range loop?
+
+    The step is only taken when index < end (or index > end, if the step is negative).
+
+    Apart from literals, short_int values are lengths, counts and similar values, which
+    are far from the short int limits. Assume that the magnitude of a non-literal end
+    value is at most MAX_SHORT_INT // 2. The check is exact for a literal end.
+    """
+    max_short: int = MAX_SHORT_INT
+    min_short: int = MIN_SHORT_INT
+    if not min_short <= step <= max_short:
+        return True
+    if isinstance(end, Integer):
+        lo = hi = end.numeric_value()
+    else:
+        hi = max_short // 2
+        lo = -hi
+    if step > 0:
+        return hi - 1 + step > max_short
+    else:
+        return lo + 1 + step < min_short
 
 
 class ForInfiniteCounter(ForGenerator):
