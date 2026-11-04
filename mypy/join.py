@@ -829,8 +829,11 @@ def join_similar_callables(t: CallableType, s: CallableType) -> CallableType:
     # The result should always use 'function' as a fallback if either operands are using it.
     if t.fallback.type.fullname == "builtins.function":
         fallback = t.fallback
-    else:
+    elif s.fallback.type.fullname == "builtins.function":
         fallback = s.fallback
+    else:
+        fallback = InstanceJoiner().join_instances(t.fallback, s.fallback)
+        assert isinstance(fallback, Instance)
     instance_type = None
     if t.instance_type is not None and s.instance_type is not None:
         instance_type = join_types(t.instance_type, s.instance_type)
@@ -888,8 +891,11 @@ def combine_similar_callables(t: CallableType, s: CallableType) -> CallableType:
     # The result should always use 'function' as a fallback if either operands are using it.
     if t.fallback.type.fullname == "builtins.function":
         fallback = t.fallback
-    else:
+    elif s.fallback.type.fullname == "builtins.function":
         fallback = s.fallback
+    else:
+        fallback = InstanceJoiner().join_instances(t.fallback, s.fallback)
+        assert isinstance(fallback, Instance)
     instance_type = None
     if t.instance_type is not None and s.instance_type is not None:
         instance_type = join_types(t.instance_type, s.instance_type)

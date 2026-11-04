@@ -480,3 +480,26 @@ reveal_type(x)  # N: Revealed type is "builtins.list[tuple[()]]"
 reveal_type(y)  # N: Revealed type is "builtins.list[tuple[()]]"
 reveal_type(z)  # N: Revealed type is "builtins.list[tuple[()]]"
 [builtins fixtures/tuple.pyi]
+
+[case testInferenceContextBothSidesSlack]
+from typing import Never
+
+class Vec[T]:  # invariant in T
+    def _items(self) -> list[T]: ...
+    def _append(self, item: T) -> None: ...
+
+def concat_vecs[T1, T2, T_slack=Never](
+    left: Vec[T1],
+    right: Vec[T2],
+) -> Vec[T1 | T2 | T_slack]:
+    return Vec()
+
+class A: ...
+class B: ...
+class C: ...
+
+def test_vec_concat(left: Vec[A], right: Vec[B]) -> None:
+    reveal_type(concat_vecs(left, right))  # N: Revealed type is "__main__.Vec[__main__.A | __main__.B]"
+    _0: Vec[A | B]     = concat_vecs(left, right)  # OK
+    _1: Vec[A | B | C] = concat_vecs(left, right)  # OK
+    _2: Vec[object]    = concat_vecs(left, right)  # OK

@@ -8,6 +8,7 @@ from typing import Final
 from mypy.constraints import (
     SUBTYPE_OF,
     SUPERTYPE_OF,
+    Constraint,
     infer_constraints,
     infer_constraints_for_callable,
 )
@@ -40,6 +41,7 @@ def infer_function_type_arguments(
     context: ArgumentInferContext,
     strict: bool = True,
     allow_polymorphic: bool = False,
+    extra_constraints: list[Constraint] | None = None,
 ) -> tuple[list[Type | None], list[TypeVarLikeType]]:
     """Infer the type arguments of a generic function.
 
@@ -58,6 +60,8 @@ def infer_function_type_arguments(
     constraints = infer_constraints_for_callable(
         callee_type, arg_types, arg_kinds, arg_names, formal_to_actual, context
     )
+    if extra_constraints:
+        constraints += extra_constraints
 
     # Solve constraints.
     type_vars = callee_type.variables
@@ -71,10 +75,11 @@ def infer_type_arguments(
     is_supertype: bool = False,
     skip_unsatisfied: bool = False,
     erase_types: bool = True,
-) -> list[Type | None]:
+) -> tuple[list[Type | None], list[Constraint]]:
     # Like infer_function_type_arguments, but only match a single type
     # against a generic type.
     constraints = infer_constraints(
         template, actual, SUPERTYPE_OF if is_supertype else SUBTYPE_OF, erase_types=erase_types
     )
-    return solve_constraints(type_vars, constraints, skip_unsatisfied=skip_unsatisfied)[0]
+    solutions, _ = solve_constraints(type_vars, constraints, skip_unsatisfied=skip_unsatisfied)
+    return solutions, constraints
