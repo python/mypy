@@ -24,6 +24,9 @@ graft docs
 prune docs/build
 prune docs/source/_build
 
+# skills
+prune skills
+
 # assorted mypyc requirements
 graft mypyc/external
 graft mypyc/lib-rt
@@ -35,6 +38,8 @@ prune mypyc/doc/build
 # files necessary for testing sdist
 include mypy-requirements.txt
 include build-requirements.txt
+include dev-requirements.in
+include dev-requirements.txt
 include test-requirements.in
 include test-requirements.txt
 include mypy_self_check.ini

@@ -1,35 +1,35 @@
 exclude: '^(mypyc/external/)|(mypy/typeshed/)|misc/typeshed_patches'  # Exclude all vendored code from lints
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v5.0.0
+    rev: cef0300fd0fc4d2a87a85fa2093c6b283ea36f4b  # frozen: v5.0.0
     hooks:
       - id: trailing-whitespace
       - id: end-of-file-fixer
   - repo: https://github.com/psf/black-pre-commit-mirror
-    rev: 26.1.0
+    rev: ea488cebbfd88a5f50b8bd95d5c829d0bb76feb8  # frozen: 26.1.0
     hooks:
       - id: black
         exclude: '^(test-data/)'
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.14.3
+    rev: aad66557af3b56ba6d4d69cd1b6cba87cef50cbb  # frozen: v0.14.3
     hooks:
       - id: ruff-check
         args: [--exit-non-zero-on-fix]
   - repo: https://github.com/python-jsonschema/check-jsonschema
-    rev: 0.32.1
+    rev: b6230f5861248507c2f7d7fc002ce66bd8dfa742  # frozen: 0.32.1
     hooks:
       - id: check-github-workflows
       - id: check-github-actions
       - id: check-readthedocs
   - repo: https://github.com/codespell-project/codespell
-    rev: v2.4.1
+    rev: 63c8f8312b7559622c0d82815639671ae42132ac  # frozen: v2.4.1
     hooks:
       - id: codespell
         args:
-          - --ignore-words-list=HAX,Nam,ccompiler,ot,statics,whet,zar
+          - --ignore-words-list=HAX,Nam,ccompiler,keep-alives,ot,statics,whet,zar
         exclude: ^(mypy/test/|mypy/typeshed/|mypyc/test-data/|test-data/).+$
   - repo: https://github.com/rhysd/actionlint
-    rev: v1.7.7
+    rev: 03d0035246f3e81f36aed592ffb4bebf33a03106  # frozen: v1.7.7
     hooks:
       - id: actionlint
         args: [
@@ -43,7 +43,7 @@ repos:
           # but the integration only works if shellcheck is installed
           - "github.com/wasilibs/go-shellcheck/cmd/shellcheck@v0.11.1"
   - repo: https://github.com/woodruffw/zizmor-pre-commit
-    rev: v1.5.2
+    rev: eceb361ada9e95f78db843bf214d5691568f5c36  # frozen: v1.5.2
     hooks:
       - id: zizmor
   - repo: local

@@ -3,8 +3,8 @@ import types
 import unittest
 from _typeshed import ExcInfo
 from collections.abc import Callable
-from typing import Any, Final, NamedTuple, type_check_only
-from typing_extensions import Self, TypeAlias
+from typing import Any, Final, NamedTuple, TypeAlias, type_check_only
+from typing_extensions import Self
 
 __all__ = [
     "register_optionflag",
@@ -150,6 +150,9 @@ class DocTestRunner:
         skips: int
     test: DocTest
     def __init__(self, checker: OutputChecker | None = None, verbose: bool | None = None, optionflags: int = 0) -> None: ...
+    if sys.version_info >= (3, 15):
+        def report_skip(self, out: _Out, test: DocTest, example: Example) -> None: ...
+
     def report_start(self, out: _Out, test: DocTest, example: Example) -> None: ...
     def report_success(self, out: _Out, test: DocTest, example: Example, got: str) -> None: ...
     def report_failure(self, out: _Out, test: DocTest, example: Example, got: str) -> None: ...

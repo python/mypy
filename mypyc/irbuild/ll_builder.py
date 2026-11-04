@@ -6,8 +6,8 @@ See the docstring of class LowLevelIRBuilder for more information.
 
 from __future__ import annotations
 
-import sys
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Iterator, Sequence
+from contextlib import contextmanager
 from typing import Final, TypeGuard, cast
 
 from mypy.argmap import map_actuals_to_formals
@@ -18,7 +18,7 @@ from mypyc.common import (
     BITMAP_BITS,
     FAST_ISINSTANCE_MAX_SUBCLASSES,
     FAST_PREFIX,
-    IS_FREE_THREADED,
+    KEEP_ALIVE_SHORT_LIVED,
     MAX_LITERAL_SHORT_INT,
     MAX_SHORT_INT,
     MIN_LITERAL_SHORT_INT,
@@ -27,7 +27,7 @@ from mypyc.common import (
 )
 from mypyc.errors import Errors
 from mypyc.ir.class_ir import ClassIR, all_concrete_classes
-from mypyc.ir.func_ir import FuncDecl, FuncSignature
+from mypyc.ir.func_ir import FUNC_STATICMETHOD, FuncDecl, FuncSignature, is_fastcall_supported
 from mypyc.ir.ops import (
     ERR_FALSE,
     ERR_NEVER,
@@ -145,6 +145,8 @@ from mypyc.primitives.dict_ops import (
 from mypyc.primitives.exc_ops import err_occurred_op, keep_propagating_op
 from mypyc.primitives.float_ops import copysign_op, int_to_float_op
 from mypyc.primitives.generic_ops import (
+    call_fastcall_wrapper_op,
+    call_legacy_wrapper_op,
     generic_len_op,
     generic_ssize_t_len_op,
     py_call_op,
@@ -185,7 +187,9 @@ from mypyc.primitives.registry import (
     ERR_NEG_INT,
     CFunctionDescription,
     binary_ops,
+    builtin_names,
     function_ops,
+    global_names,
     method_call_ops,
     unary_ops,
 )
@@ -204,6 +208,7 @@ from mypyc.primitives.tuple_ops import (
     new_tuple_with_length_op,
     sequence_tuple_op,
 )
+from mypyc.rt_expandtype import expand_rtype
 from mypyc.rt_subtype import is_runtime_subtype
 from mypyc.sametype import is_same_type
 from mypyc.subtype import is_subtype
@@ -247,6 +252,15 @@ FIXED_WIDTH_INT_BINARY_OPS: Final = {
 BOOL_BINARY_OPS: Final = {"&", "&=", "|", "|=", "^", "^=", "==", "!=", "<", "<=", ">", ">="}
 
 
+class PendingKeepAlive:
+    __slots__ = ("value", "scope", "seq")
+
+    def __init__(self, value: Value, scope: int, seq: int) -> None:
+        self.value = value
+        self.scope = scope
+        self.seq = seq
+
+
 class LowLevelIRBuilder:
     """A "low-level" IR builder class.
 
@@ -273,7 +287,10 @@ class LowLevelIRBuilder:
         self.error_handlers: list[BasicBlock | None] = [None]
         # Values that we need to keep alive as long as we have borrowed
         # temporaries. Use flush_keep_alives() to mark the end of the live range.
-        self.keep_alives: list[Value] = []
+        # The second value is the scope/duration of keep alive (KEEP_ALIVE_* constant).
+        # Different values must be kept alive for different durations.
+        self.keep_alives: list[PendingKeepAlive] = []
+        self.next_keep_alive_seq = 0
 
     def set_module(self, module_name: str, module_path: str) -> None:
         """Set the name and path of the current module."""
@@ -323,8 +340,18 @@ class LowLevelIRBuilder:
     def get_element(self, reg: Value, field: str) -> Value:
         return self.add(GetElement(reg, field))
 
-    def load_address(self, name: str, rtype: RType) -> Value:
-        return self.add(LoadAddress(rtype, name))
+    def load_address(self, name: str, rtype: RType, line: int = -1) -> Value:
+        return self.add(LoadAddress(rtype, name, line))
+
+    def load_global(self, name: str, rtype: RType, line: int) -> Value:
+        return self.add(LoadGlobal(rtype, name, line))
+
+    def load_builtin(self, name: str, line: int) -> Value | None:
+        if builtin := builtin_names.get(name):
+            return self.load_address(builtin[1], builtin[0], line)
+        if glob := global_names.get(name):
+            return self.load_global(glob[1], glob[0], line)
+        return None
 
     def load_struct_field(
         self, ptr: Value, struct: RStruct, field: str, *, borrow: bool = False
@@ -354,10 +381,55 @@ class LowLevelIRBuilder:
         """
         return self.args[0]
 
-    def flush_keep_alives(self, line: int) -> None:
-        if self.keep_alives:
-            self.add(KeepAlive(self.keep_alives.copy(), line))
-            self.keep_alives = []
+    def flush_keep_alives(self, line: int, *, scope: int = KEEP_ALIVE_SHORT_LIVED) -> None:
+        if any(entry.scope == scope for entry in self.keep_alives):
+            self.add(
+                KeepAlive(
+                    [entry.value for entry in self.keep_alives if entry.scope == scope], line
+                )
+            )
+            self.keep_alives = [entry for entry in self.keep_alives if entry.scope != scope]
+
+    def keep_alive_checkpoint(self) -> int:
+        return self.next_keep_alive_seq
+
+    def flush_keep_alives_since(self, line: int, checkpoint: int) -> None:
+        """Flush keep-alives added after 'checkpoint' without touching earlier ones."""
+        new_keep_alives = [entry for entry in self.keep_alives if entry.seq >= checkpoint]
+        if new_keep_alives:
+            self.add(KeepAlive([entry.value for entry in new_keep_alives], line))
+        self.keep_alives = [entry for entry in self.keep_alives if entry.seq < checkpoint]
+
+    @contextmanager
+    def borrow_region(self, line: int) -> Iterator[None]:
+        """Confine borrows created in this region: flush them when leaving it.
+
+        Keep-alives added inside the region (regardless of their duration scope)
+        are flushed on exit, so borrows can't leak past a lexical boundary such as
+        a conditional branch, an 'and'/'or' branch or a comprehension iteration.
+        """
+        checkpoint = self.keep_alive_checkpoint()
+        yield
+        self.flush_keep_alives_since(line, checkpoint)
+
+    def add_keep_alive(self, value: Value, scope: int) -> None:
+        self.keep_alives.append(PendingKeepAlive(value, scope, self.next_keep_alive_seq))
+        self.next_keep_alive_seq += 1
+
+    def keep_borrow_source_alive(self, value: Value, borrow_scope: int) -> None:
+        """Ensure the source of borrowed value will be alive for given borrow scope.
+
+        A borrow keeps reading from 'value', so 'value' must stay valid for the
+        borrow's whole scope. When 'value' is itself a borrowed cast it holds no
+        reference of its own (and coerce() only kept its source alive short-term),
+        so we follow the cast to the underlying owned value and keep *that* alive
+        for the requested scope too. Otherwise, a longer-lived borrow through a cast
+        (e.g. a Final attribute read via cast(T, make())) could read freed memory.
+        """
+        self.add_keep_alive(value, borrow_scope)
+        while isinstance(value, Cast) and value.is_borrowed:
+            value = value.src
+            self.add_keep_alive(value, borrow_scope)
 
     def debug_print(self, toprint: str | Value) -> None:
         if isinstance(toprint, str):
@@ -387,7 +459,7 @@ class LowLevelIRBuilder:
             return self.add(Unbox(src, target_type, line))
         else:
             if can_borrow:
-                self.keep_alives.append(src)
+                self.add_keep_alive(src, KEEP_ALIVE_SHORT_LIVED)
             return self.add(Cast(src, target_type, line, borrow=can_borrow, unchecked=unchecked))
 
     def coerce(
@@ -792,19 +864,32 @@ class LowLevelIRBuilder:
     # Attribute access
 
     def get_attr(
-        self, obj: Value, attr: str, result_type: RType, line: int, *, borrow: bool = False
+        self,
+        obj: Value,
+        attr: str,
+        result_type: RType,
+        line: int,
+        *,
+        borrow: bool = False,
+        borrow_scope: int = KEEP_ALIVE_SHORT_LIVED,
     ) -> Value:
-        """Get a native or Python attribute of an object."""
+        """Get a native or Python attribute of an object.
+
+        If the result is borrowed, borrow_scope controls how long it stays valid
+        (a KEEP_ALIVE_* constant). The caller is responsible for choosing a scope
+        that is actually safe (e.g. downgrading to short-lived if the borrow root
+        may be rebound during the borrow's live range).
+        """
         if (
             isinstance(obj.type, RInstance)
             and obj.type.class_ir.is_ext_class
             and obj.type.class_ir.has_attr(attr)
         ):
-            op = GetAttr(obj, attr, line, borrow=borrow)
+            op = GetAttr(obj, attr, line, borrow=borrow, borrow_scope=borrow_scope)
             # For non-refcounted attribute types, the borrow might be
             # disabled even if requested, so don't check 'borrow'.
             if op.is_borrowed:
-                self.keep_alives.append(obj)
+                self.keep_borrow_source_alive(obj, borrow_scope)
             return self.add(op)
         elif isinstance(obj.type, RUnion):
             return self.union_get_attr(obj, obj.type, attr, result_type, line)
@@ -1280,11 +1365,48 @@ class LowLevelIRBuilder:
         arguments used to track the presence of values for certain arguments. By
         default, the values of the bitmap arguments are inferred from args.
         """
+        if not decl.internal and not self.can_pass_args_natively(arg_kinds, arg_names, decl.sig):
+            return self.call_wrapper(decl, args, arg_kinds, arg_names, line)
         # Normalize args to positionals.
         args = self.native_args_to_positional(
             args, arg_kinds, arg_names, decl.sig, line, bitmap_args=bitmap_args
         )
         return self.add(Call(decl, args, line))
+
+    def call_wrapper(
+        self,
+        decl: FuncDecl,
+        args: Sequence[Value],
+        arg_kinds: list[ArgKind],
+        arg_names: Sequence[str | None],
+        line: int,
+    ) -> Value:
+        """Call a native function through its wrapper function, which unpacks the arguments.
+
+        This is much slower than a native call, but it can unpack *args and **kwargs into
+        ordinary arguments. Like a native call, it calls the given function without a
+        lookup. A lookup could find an override, or the __init__ slot wrapper of a native
+        class, which usually does nothing (__init__ is called when the object is created).
+        """
+        pos_args, kw_args = self._construct_varargs(
+            list(zip(args, arg_kinds, arg_names)), line, has_star=True, has_star2=True
+        )
+        assert pos_args is not None
+        wrapper = self.add(LoadAddress(c_pointer_rprimitive, decl, line))
+        if kw_args is None:
+            kw_args = Integer(0, object_rprimitive)
+        if is_fastcall_supported(decl):
+            # The wrapper of a function or a static method doesn't take self.
+            takes_self = decl.class_name is not None and decl.kind != FUNC_STATICMETHOD
+            result = self.call_c(
+                call_fastcall_wrapper_op,
+                [wrapper, Integer(int(takes_self), c_int_rprimitive), pos_args, kw_args],
+                line,
+            )
+        else:
+            # The wrappers of __init__ and __new__ take the first argument as self.
+            result = self.call_c(call_legacy_wrapper_op, [wrapper, pos_args, kw_args], line)
+        return self.coerce(result, decl.sig.ret_type, line)
 
     def native_args_to_positional(
         self,
@@ -1305,22 +1427,9 @@ class LowLevelIRBuilder:
         and coerce arguments to the appropriate type.
         """
 
-        sig_args = sig.args
+        sig_args = sig.real_args()
         n = sig.num_bitmap_args
-        if n:
-            sig_args = sig_args[:-n]
-
-        sig_arg_kinds = [arg.kind for arg in sig_args]
-        sig_arg_names = [arg.name for arg in sig_args]
-
-        concrete_kinds = [concrete_arg_kind(arg_kind) for arg_kind in arg_kinds]
-        formal_to_actual = map_actuals_to_formals(
-            concrete_kinds,
-            arg_names,
-            sig_arg_kinds,
-            sig_arg_names,
-            lambda n: AnyType(TypeOfAny.special_form),
-        )
+        formal_to_actual = self.map_native_call_args(arg_kinds, arg_names, sig)
 
         # First scan for */** and construct those
         has_star = has_star2 = False
@@ -1380,6 +1489,41 @@ class LowLevelIRBuilder:
 
         return output_args
 
+    def map_native_call_args(
+        self, arg_kinds: list[ArgKind], arg_names: Sequence[str | None], sig: FuncSignature
+    ) -> list[list[int]]:
+        """Map the arguments of a call to the arguments of a native function.
+
+        Return the indexes of the call arguments that each argument of the function
+        (excluding bitmap arguments) may get its value from.
+        """
+        sig_args = sig.real_args()
+        return map_actuals_to_formals(
+            [concrete_arg_kind(arg_kind) for arg_kind in arg_kinds],
+            arg_names,
+            [arg.kind for arg in sig_args],
+            [arg.name for arg in sig_args],
+            lambda n: AnyType(TypeOfAny.special_form),
+        )
+
+    def can_pass_args_natively(
+        self, arg_kinds: list[ArgKind], arg_names: Sequence[str | None], sig: FuncSignature
+    ) -> bool:
+        """Can native_args_to_positional() prepare the arguments of a call?
+
+        It can't unpack a *args or **kwargs argument, since we don't know at compile
+        time which arguments of the function the items are for. It can only pass one
+        on as a whole to the *args or **kwargs argument of the function.
+        """
+        if not any(kind.is_star() for kind in arg_kinds):
+            return True
+        formal_to_actual = self.map_native_call_args(arg_kinds, arg_names, sig)
+        for formal, actuals in zip(sig.real_args(), formal_to_actual):
+            for actual in actuals:
+                if arg_kinds[actual].is_star() and arg_kinds[actual] != formal.kind:
+                    return False
+        return True
+
     def gen_method_call(
         self,
         base: Value,
@@ -1404,8 +1548,15 @@ class LowLevelIRBuilder:
             and not base.type.class_ir.builtin_base
         ):
             name = name if base.type.class_ir.is_ext_class else fast_name
-            if base.type.class_ir.has_method(name):
+            # Property getters are also stored as methods, but obj.prop(...) calls the
+            # property's value, so handle properties like attributes below.
+            if (
+                base.type.class_ir.has_method(name)
+                and not base.type.class_ir.method_decl(name).is_prop_getter
+            ):
                 decl = base.type.class_ir.method_decl(name)
+                if decl.is_decorated_override:
+                    return self.py_method_call(base, name, arg_values, line, arg_kinds, arg_names)
                 if arg_kinds is None:
                     assert arg_names is None, "arg_kinds not present but arg_names is"
                     arg_kinds = [ARG_POS for _ in arg_values]
@@ -2099,18 +2250,20 @@ class LowLevelIRBuilder:
         # it is the right side if the left is false.
         true_body, false_body = (right_body, left_body) if op == "and" else (left_body, right_body)
 
-        left_value = left()
-        self.add_bool_branch(left_value, true_body, false_body)
+        with self.borrow_region(line):
+            left_value = left()
+            self.add_bool_branch(left_value, true_body, false_body)
 
-        self.activate_block(left_body)
-        left_coerced = self.coerce(left_value, expr_type, line)
-        self.add(Assign(target, left_coerced, line))
+            self.activate_block(left_body)
+            left_coerced = self.coerce(left_value, expr_type, line)
+            self.add(Assign(target, left_coerced, line))
         self.goto(next_block)
 
         self.activate_block(right_body)
-        right_value = right()
-        right_coerced = self.coerce(right_value, expr_type, line)
-        self.add(Assign(target, right_coerced, line))
+        with self.borrow_region(line):
+            right_value = right()
+            right_coerced = self.coerce(right_value, expr_type, line)
+            self.add(Assign(target, right_coerced, line))
         self.goto(next_block)
 
         self.activate_block(next_block)
@@ -2268,7 +2421,7 @@ class LowLevelIRBuilder:
             # immediately freed, at the risk of a dangling pointer.
             for arg in coerced:
                 if not isinstance(arg, (Integer, LoadLiteral)):
-                    self.keep_alives.append(arg)
+                    self.add_keep_alive(arg, KEEP_ALIVE_SHORT_LIVED)
         if desc.error_kind == ERR_NEG_INT:
             comp = ComparisonOp(target, Integer(0, desc.return_type, line), ComparisonOp.SGE, line)
             comp.error_kind = ERR_FALSE
@@ -2322,6 +2475,7 @@ class LowLevelIRBuilder:
         args: list[Value],
         line: int,
         result_type: RType | None = None,
+        type_args: list[RType] | None = None,
     ) -> Value:
         """Add a primitive op."""
         # Does this primitive map into calling a Python C API
@@ -2351,10 +2505,20 @@ class LowLevelIRBuilder:
         # This primitive gets transformed in a lowering pass to
         # lower-level IR ops using a custom transform function.
 
+        # Evaluate argument and return types for generic primitives
+        return_type = None
+        if desc.type_params is not None:
+            assert type_args is not None, "Generic primitive op requires explicit type arguments"
+            assert len(type_args) == len(desc.type_params)
+            arg_types = [expand_rtype(arg_type, type_args) for arg_type in desc.arg_types]
+            return_type = expand_rtype(desc.return_type, type_args)
+        else:
+            arg_types = desc.arg_types
+
         coerced = []
         # Coerce fixed number arguments
-        for i in range(min(len(args), len(desc.arg_types))):
-            formal_type = desc.arg_types[i]
+        for i in range(min(len(args), len(arg_types))):
+            formal_type = arg_types[i]
             arg = args[i]
             assert formal_type is not None  # TODO
             arg = self.coerce(arg, formal_type, line)
@@ -2362,14 +2526,23 @@ class LowLevelIRBuilder:
         assert desc.ordering is None
         assert desc.var_arg_type is None
         assert not desc.extra_int_constants
-        target = self.add(PrimitiveOp(coerced, desc, line=line))
+        target = self.add(
+            PrimitiveOp(
+                coerced,
+                desc,
+                line=line,
+                arg_types=arg_types,
+                return_type=return_type,
+                type_args=type_args,
+            )
+        )
         if desc.is_borrowed:
             # If the result is borrowed, force the arguments to be
             # kept alive afterwards, as otherwise the result might be
             # immediately freed, at the risk of a dangling pointer.
             for arg in coerced:
                 if not isinstance(arg, (Integer, LoadLiteral)):
-                    self.keep_alives.append(arg)
+                    self.add_keep_alive(arg, KEEP_ALIVE_SHORT_LIVED)
         if desc.error_kind == ERR_NEG_INT:
             comp = ComparisonOp(target, Integer(0, desc.return_type, line), ComparisonOp.SGE, line)
             comp.error_kind = ERR_FALSE
@@ -2405,6 +2578,8 @@ class LowLevelIRBuilder:
             if len(desc.arg_types) != len(args):
                 continue
             if desc.experimental and not self.options.experimental_features:
+                continue
+            if desc.gil_only and self.options.target_python.free_threaded:
                 continue
             if all(
                 # formal is not None and # TODO
@@ -2728,7 +2903,8 @@ class LowLevelIRBuilder:
 
     def set_immortal_if_free_threaded(self, v: Value, line: int) -> None:
         """Make an object immortal on free-threaded builds (to avoid contention)."""
-        if IS_FREE_THREADED and sys.version_info >= (3, 14):
+        target = self.options.target_python
+        if target.free_threaded and target.version >= (3, 14):
             self.primitive_op(set_immortal_op, [v], line)
 
     # Internal helpers
@@ -2778,7 +2954,12 @@ class LowLevelIRBuilder:
                 true_block, false_block = BasicBlock(), BasicBlock()
                 self.add_bool_branch(op, true_block, false_block)
                 self.activate_block(true_block)
-            coerced = self.coerce(obj, item, line)
+            if is_subtype(obj.type, item):
+                # All union items are subclasses of this item, so coerce() would keep
+                # the union type and we'd recurse infinitely
+                coerced: Value = self.add(Cast(obj, item, line, unchecked=True))
+            else:
+                coerced = self.coerce(obj, item, line)
             temp = process_item(coerced)
             temp2 = self.coerce(temp, result_type, line)
             self.add(Assign(result, temp2, line))

@@ -28,7 +28,7 @@ from mypyc.transform.uninit import insert_uninit_checks
 
 
 class TestLowering(MypycDataSuite):
-    files = ["lowering-int.test", "lowering-list.test"]
+    files = ["lowering-int.test", "lowering-list.test", "lowering-vec.test"]
     base_path = test_temp_dir
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:

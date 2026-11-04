@@ -7,8 +7,8 @@ from _typeshed import MaybeNone, ReadableBuffer, StrOrBytesPath, SupportsRead, S
 from collections.abc import Callable, Iterable, Iterator, Mapping
 from email._policybase import _MessageT
 from socket import socket
-from typing import BinaryIO, Final, TypeVar, overload
-from typing_extensions import Self, TypeAlias, deprecated
+from typing import BinaryIO, Final, TypeAlias, TypeVar, overload
+from typing_extensions import Self, deprecated
 
 __all__ = [
     "HTTPResponse",
@@ -149,10 +149,12 @@ class HTTPResponse(io.BufferedIOBase, BinaryIO):  # type: ignore[misc]  # incomp
     def read1(self, n: int = -1) -> bytes: ...
     def readinto(self, b: WriteableBuffer) -> int: ...
     def readline(self, limit: int = -1) -> bytes: ...  # type: ignore[override]
+
     @overload
     def getheader(self, name: str) -> str | None: ...
     @overload
     def getheader(self, name: str, default: _T) -> str | _T: ...
+
     def getheaders(self) -> list[tuple[str, str]]: ...
     def isclosed(self) -> bool: ...
     def __iter__(self) -> Iterator[bytes]: ...
@@ -178,14 +180,27 @@ class HTTPConnection:
     host: str
     port: int
     sock: socket | MaybeNone  # can be `None` if `.connect()` was not called
-    def __init__(
-        self,
-        host: str,
-        port: int | None = None,
-        timeout: float | None = ...,
-        source_address: tuple[str, int] | None = None,
-        blocksize: int = 8192,
-    ) -> None: ...
+    if sys.version_info >= (3, 15):
+        def __init__(
+            self,
+            host: str,
+            port: int | None = None,
+            timeout: float | None = ...,
+            source_address: tuple[str, int] | None = None,
+            blocksize: int = 8192,
+            *,
+            max_response_headers: int | None = None,
+        ) -> None: ...
+    else:
+        def __init__(
+            self,
+            host: str,
+            port: int | None = None,
+            timeout: float | None = ...,
+            source_address: tuple[str, int] | None = None,
+            blocksize: int = 8192,
+        ) -> None: ...
+
     def request(
         self,
         method: str,
@@ -211,7 +226,19 @@ class HTTPConnection:
 class HTTPSConnection(HTTPConnection):
     # Can be `None` if `.connect()` was not called:
     sock: ssl.SSLSocket | MaybeNone
-    if sys.version_info >= (3, 12):
+    if sys.version_info >= (3, 15):
+        def __init__(
+            self,
+            host: str,
+            port: int | None = None,
+            *,
+            timeout: float | None = ...,
+            source_address: tuple[str, int] | None = None,
+            context: ssl.SSLContext | None = None,
+            blocksize: int = 8192,
+            max_response_headers: int | None = None,
+        ) -> None: ...
+    elif sys.version_info >= (3, 12):
         def __init__(
             self,
             host: str,
@@ -255,6 +282,7 @@ class HTTPSConnection(HTTPConnection):
             check_hostname: bool | None = None,
             blocksize: int = 8192,
         ) -> None: ...
+
         key_file: StrOrBytesPath | None
         cert_file: StrOrBytesPath | None
 

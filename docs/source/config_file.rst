@@ -876,7 +876,7 @@ section of the command line docs.
    :type: boolean
    :default: False
 
-   Enable all optional error checking flags.  You can see the list of
+   Enable several optional error checking flags.  You can see the list of
    flags enabled by strict mode in the full :option:`mypy --help`
    output.
 
@@ -1006,6 +1006,23 @@ These options may only be set in the global section (``[mypy]``).
     Skip cache internal consistency checks based on mtime.
 
 
+Parallel type-checking configuration
+************************************
+
+These options may only be set in the global section (``[mypy]``).
+
+.. confval:: num_workers
+
+    :type: integer or string
+    :default: 0
+
+    Use a specific number of parallel worker processes for type-checking or
+    the value ``auto`` to select the number based on the CPUs available to mypy.
+    See :ref:`parallel type-checking <parallel>` for more details.
+    The ``MYPY_NUM_WORKERS`` environment variable accepts the same values and
+    overrides this setting.
+
+
 Advanced options
 ****************
 
@@ -1066,6 +1083,16 @@ These options may only be set in the global section (``[mypy]``).
 
     Warns about missing type annotations in typeshed.  This is only relevant
     in combination with :confval:`disallow_untyped_defs` or :confval:`disallow_incomplete_defs`.
+
+.. confval:: native_parser
+
+    :type: boolean
+    :default: True
+
+    Use the fast Rust-based native parser that parses directly to mypy AST.
+    Set this to ``False`` to use the legacy parser based on the stdlib
+    :py:mod:`ast` module instead. See :option:`--no-native-parser <mypy --no-native-parser>`
+    for more details.
 
 
 Report generation
@@ -1187,7 +1214,6 @@ These options may only be set in the global section (``[mypy]``).
 
     Warns about per-module sections in the config file that do not
     match any files processed when invoking mypy.
-    (This requires turning off incremental mode using :confval:`incremental = False <incremental>`.)
 
 .. confval:: verbosity
 

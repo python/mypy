@@ -74,8 +74,6 @@
 #include <Python.h>
 #include "librt_vecs.h"
 
-#ifdef MYPYC_EXPERIMENTAL
-
 PyTypeObject *LibRTVecs_I64TypeObj;
 PyTypeObject *LibRTVecs_I32TypeObj;
 PyTypeObject *LibRTVecs_I16TypeObj;
@@ -114,7 +112,10 @@ static PyObject *vec_generic_alias_call(PyObject *self, PyObject *args, PyObject
                 return NULL;
             return VecT_Box(vec, p->item_type);
         } else {
-            return VecT_FromIterable(p->item_type, init, cap);
+            VecT vec = VecT_FromIterable(p->item_type, init, cap);
+            if (VEC_IS_ERROR(vec))
+                return NULL;
+            return VecT_Box(vec, p->item_type);
         }
     } else {
         if (init == NULL) {
@@ -139,6 +140,7 @@ VecGenericAlias_traverse(VecGenericAlias *self, visitproc visit, void *arg)
 static void
 VecGenericAlias_dealloc(VecGenericAlias *self)
 {
+    PyObject_GC_UnTrack(self);
     if (self->item_type && !Vec_IsMagicItemType(self->item_type)) {
         Py_DECREF((PyObject *)(self->item_type & ~1));
         self->item_type = 0;
@@ -252,7 +254,9 @@ PyTypeObject VecGenericAliasType = {
 static PyObject *extract_optional_item(PyObject *item) {
     PyObject *args = PyObject_GetAttrString(item, "__args__");
     if (args == NULL) {
-        PyErr_Clear();
+        if (PyErr_Occurred() && PyErr_ExceptionMatches(PyExc_AttributeError)) {
+            PyErr_Clear();
+        }
         return NULL;
     }
     if (!PyTuple_CheckExact(args))
@@ -262,9 +266,11 @@ static PyObject *extract_optional_item(PyObject *item) {
     PyObject *item0 = PyTuple_GET_ITEM(args, 0);
     PyObject *item1 = PyTuple_GET_ITEM(args, 1);
     if (item0 == (PyObject *)Py_None->ob_type) {
+        Py_INCREF(item1);
         Py_DECREF(args);
         return item1;
     } else if (item1 == (PyObject *)Py_None->ob_type) {
+        Py_INCREF(item0);
         Py_DECREF(args);
         return item0;
     }
@@ -298,9 +304,14 @@ static PyObject *vec_class_getitem(PyObject *type, PyObject *item)
         size_t depth = 0;
         size_t item_type;
         int optional = 0;
+        PyObject *optional_item = NULL;
         if (!PyObject_TypeCheck(item, &PyType_Type)) {
             PyObject *it = extract_optional_item(item);
+            if (it == NULL && PyErr_Occurred()) {
+                return NULL;
+            }
             if (it != NULL) {
+                optional_item = it;
                 optional = 1;
                 item = it;
                 // Check if this is a specialized value type that doesn't support None
@@ -312,20 +323,20 @@ static PyObject *vec_class_getitem(PyObject *type, PyObject *item)
                     item == (PyObject *)&PyBool_Type) {
                     PyErr_SetString(PyExc_TypeError,
                         "vec does not support optional value types (use vec[object] instead)");
-                    return NULL;
+                    goto error;
                 }
             }
             if (item->ob_type == &VecGenericAliasType) {
                 if (optional) {
                     PyErr_SetString(PyExc_TypeError, "optional type not expected in vec[...]");
-                    return NULL;
+                    goto error;
                 }
                 VecGenericAlias *p = (VecGenericAlias *)item;
                 item_type = p->item_type;
                 depth = p->depth + 1;
             } else if (!PyObject_TypeCheck(item, &PyType_Type)) {
                 PyErr_SetString(PyExc_TypeError, "type object expected in vec[...]");
-                return NULL;
+                goto error;
             } else {
                 item_type = (size_t)item | optional;
             }
@@ -355,17 +366,21 @@ static PyObject *vec_class_getitem(PyObject *type, PyObject *item)
         if (item == (PyObject *)&PyLong_Type) {
             PyErr_Format(PyExc_ValueError, "unsupported type in vec[%s] (use i64, i32, i16, or u8)",
                          ((PyTypeObject *)item)->tp_name);
-            return NULL;
+            goto error;
         }
         VecGenericAlias *p;
         p = PyObject_GC_New(VecGenericAlias, &VecGenericAliasType);
         if (p == NULL)
-            return NULL;
+            goto error;
         Py_INCREF(item);
         p->item_type = item_type;
         p->depth = depth;
         PyObject_GC_Track(p);
+        Py_XDECREF(optional_item);
         return (PyObject *)p;
+    error:
+        Py_XDECREF(optional_item);
+        return NULL;
     }
 }
 
@@ -562,7 +577,7 @@ static PyObject *vec_append(PyObject *self, PyObject *args)
             return NULL;
         }
         VecI64 v = ((VecI64Object *)vec)->vec;
-        VEC_INCREF(v);
+        VEC_I64_INCREF(v);
         v = VecI64_Append(v, x);
         if (VEC_IS_ERROR(v))
             return NULL;
@@ -573,7 +588,7 @@ static PyObject *vec_append(PyObject *self, PyObject *args)
             return NULL;
         }
         VecU8 v = ((VecU8Object *)vec)->vec;
-        VEC_INCREF(v);
+        VEC_U8_INCREF(v);
         v = VecU8_Append(v, x);
         if (VEC_IS_ERROR(v))
             return NULL;
@@ -584,7 +599,7 @@ static PyObject *vec_append(PyObject *self, PyObject *args)
             return NULL;
         }
         VecFloat v = ((VecFloatObject *)vec)->vec;
-        VEC_INCREF(v);
+        VEC_FLOAT_INCREF(v);
         v = VecFloat_Append(v, x);
         if (VEC_IS_ERROR(v))
             return NULL;
@@ -595,7 +610,7 @@ static PyObject *vec_append(PyObject *self, PyObject *args)
             return NULL;
         }
         VecI32 v = ((VecI32Object *)vec)->vec;
-        VEC_INCREF(v);
+        VEC_I32_INCREF(v);
         v = VecI32_Append(v, x);
         if (VEC_IS_ERROR(v))
             return NULL;
@@ -606,7 +621,7 @@ static PyObject *vec_append(PyObject *self, PyObject *args)
             return NULL;
         }
         VecI16 v = ((VecI16Object *)vec)->vec;
-        VEC_INCREF(v);
+        VEC_I16_INCREF(v);
         v = VecI16_Append(v, x);
         if (VEC_IS_ERROR(v))
             return NULL;
@@ -617,27 +632,27 @@ static PyObject *vec_append(PyObject *self, PyObject *args)
             return NULL;
         }
         VecBool v = ((VecBoolObject *)vec)->vec;
-        VEC_INCREF(v);
+        VEC_BOOL_INCREF(v);
         v = VecBool_Append(v, x);
         if (VEC_IS_ERROR(v))
             return NULL;
         return VecBool_Box(v);
     } else if (VecT_Check(vec)) {
         VecT v = ((VecTObject *)vec)->vec;
-        if (!VecT_ItemCheck(v, item, v.buf->item_type)) {
+        if (!VecT_ItemCheck(v, item, VEC_T_BUF(v)->item_type)) {
             return NULL;
         }
-        VEC_INCREF(v);
-        v = VecT_Append(v, item, v.buf->item_type);
+        VEC_T_INCREF(v);
+        v = VecT_Append(v, item, VEC_T_BUF(v)->item_type);
         if (VEC_IS_ERROR(v))
             return NULL;
-        return VecT_Box(v, v.buf->item_type);
+        return VecT_Box(v, VEC_T_BUF(v)->item_type);
     } else if (VecNested_Check(vec)) {
         VecNested v = ((VecNestedObject *)vec)->vec;
         VecNestedBufItem vecitem;
         if (VecNested_UnboxItem(v, item, &vecitem) < 0)
             return NULL;
-        VEC_INCREF(v);
+        VEC_NESTED_INCREF(v);
         v = VecNested_Append(v, vecitem);
         if (VEC_IS_ERROR(v))
             return NULL;
@@ -663,7 +678,7 @@ static PyObject *vec_remove(PyObject *self, PyObject *args)
             return NULL;
         }
         VecI64 v = ((VecI64Object *)vec)->vec;
-        VEC_INCREF(v);
+        VEC_I64_INCREF(v);
         v = VecI64_Remove(v, x);
         if (VEC_IS_ERROR(v))
             return NULL;
@@ -674,7 +689,7 @@ static PyObject *vec_remove(PyObject *self, PyObject *args)
             return NULL;
         }
         VecU8 v = ((VecU8Object *)vec)->vec;
-        VEC_INCREF(v);
+        VEC_U8_INCREF(v);
         v = VecU8_Remove(v, x);
         if (VEC_IS_ERROR(v))
             return NULL;
@@ -685,7 +700,7 @@ static PyObject *vec_remove(PyObject *self, PyObject *args)
             return NULL;
         }
         VecFloat v = ((VecFloatObject *)vec)->vec;
-        VEC_INCREF(v);
+        VEC_FLOAT_INCREF(v);
         v = VecFloat_Remove(v, x);
         if (VEC_IS_ERROR(v))
             return NULL;
@@ -696,7 +711,7 @@ static PyObject *vec_remove(PyObject *self, PyObject *args)
             return NULL;
         }
         VecI32 v = ((VecI32Object *)vec)->vec;
-        VEC_INCREF(v);
+        VEC_I32_INCREF(v);
         v = VecI32_Remove(v, x);
         if (VEC_IS_ERROR(v))
             return NULL;
@@ -707,7 +722,7 @@ static PyObject *vec_remove(PyObject *self, PyObject *args)
             return NULL;
         }
         VecI16 v = ((VecI16Object *)vec)->vec;
-        VEC_INCREF(v);
+        VEC_I16_INCREF(v);
         v = VecI16_Remove(v, x);
         if (VEC_IS_ERROR(v))
             return NULL;
@@ -718,27 +733,27 @@ static PyObject *vec_remove(PyObject *self, PyObject *args)
             return NULL;
         }
         VecBool v = ((VecBoolObject *)vec)->vec;
-        VEC_INCREF(v);
+        VEC_BOOL_INCREF(v);
         v = VecBool_Remove(v, x);
         if (VEC_IS_ERROR(v))
             return NULL;
         return VecBool_Box(v);
     } else if (VecT_Check(vec)) {
         VecT v = ((VecTObject *)vec)->vec;
-        if (!VecT_ItemCheck(v, item, v.buf->item_type)) {
+        if (!VecT_ItemCheck(v, item, VEC_T_BUF(v)->item_type)) {
             return NULL;
         }
-        VEC_INCREF(v);
+        VEC_T_INCREF(v);
         v = VecT_Remove(v, item);
         if (VEC_IS_ERROR(v))
             return NULL;
-        return VecT_Box(v, v.buf->item_type);
+        return VecT_Box(v, VEC_T_BUF(v)->item_type);
     } else if (VecNested_Check(vec)) {
         VecNested v = ((VecNestedObject *)vec)->vec;
         VecNestedBufItem vecitem;
         if (VecNested_UnboxItem(v, item, &vecitem) < 0)
             return NULL;
-        VEC_INCREF(v);
+        VEC_NESTED_INCREF(v);
         v = VecNested_Remove(v, vecitem);
         if (VEC_IS_ERROR(v))
             return NULL;
@@ -763,7 +778,7 @@ static PyObject *vec_pop(PyObject *self, PyObject *args)
 
     if (VecI64_Check(vec)) {
         VecI64 v = ((VecI64Object *)vec)->vec;
-        VEC_INCREF(v);
+        VEC_I64_INCREF(v);
         VecI64PopResult r;
         r = VecI64_Pop(v, index);
         if (VEC_IS_ERROR(r.f0))
@@ -773,7 +788,7 @@ static PyObject *vec_pop(PyObject *self, PyObject *args)
         result_item1 = VecI64_BoxItem(r.f1);
     } else if (VecU8_Check(vec)) {
         VecU8 v = ((VecU8Object *)vec)->vec;
-        VEC_INCREF(v);
+        VEC_U8_INCREF(v);
         VecU8PopResult r;
         r = VecU8_Pop(v, index);
         if (VEC_IS_ERROR(r.f0))
@@ -783,7 +798,7 @@ static PyObject *vec_pop(PyObject *self, PyObject *args)
         result_item1 = VecU8_BoxItem(r.f1);
     } else if (VecFloat_Check(vec)) {
         VecFloat v = ((VecFloatObject *)vec)->vec;
-        VEC_INCREF(v);
+        VEC_FLOAT_INCREF(v);
         VecFloatPopResult r;
         r = VecFloat_Pop(v, index);
         if (VEC_IS_ERROR(r.f0))
@@ -793,7 +808,7 @@ static PyObject *vec_pop(PyObject *self, PyObject *args)
         result_item1 = VecFloat_BoxItem(r.f1);
     } else if (VecI32_Check(vec)) {
         VecI32 v = ((VecI32Object *)vec)->vec;
-        VEC_INCREF(v);
+        VEC_I32_INCREF(v);
         VecI32PopResult r;
         r = VecI32_Pop(v, index);
         if (VEC_IS_ERROR(r.f0))
@@ -803,7 +818,7 @@ static PyObject *vec_pop(PyObject *self, PyObject *args)
         result_item1 = VecI32_BoxItem(r.f1);
     } else if (VecI16_Check(vec)) {
         VecI16 v = ((VecI16Object *)vec)->vec;
-        VEC_INCREF(v);
+        VEC_I16_INCREF(v);
         VecI16PopResult r;
         r = VecI16_Pop(v, index);
         if (VEC_IS_ERROR(r.f0))
@@ -813,7 +828,7 @@ static PyObject *vec_pop(PyObject *self, PyObject *args)
         result_item1 = VecI16_BoxItem(r.f1);
     } else if (VecBool_Check(vec)) {
         VecBool v = ((VecBoolObject *)vec)->vec;
-        VEC_INCREF(v);
+        VEC_BOOL_INCREF(v);
         VecBoolPopResult r;
         r = VecBool_Pop(v, index);
         if (VEC_IS_ERROR(r.f0))
@@ -823,12 +838,12 @@ static PyObject *vec_pop(PyObject *self, PyObject *args)
         result_item1 = VecBool_BoxItem(r.f1);
     } else if (VecT_Check(vec)) {
         VecT v = ((VecTObject *)vec)->vec;
-        VEC_INCREF(v);
+        VEC_T_INCREF(v);
         VecTPopResult r;
         r = VecT_Pop(v, index);
         if (VEC_IS_ERROR(r.f0))
             return NULL;
-        result_item0 = VecT_Box(r.f0, v.buf->item_type);
+        result_item0 = VecT_Box(r.f0, VEC_T_BUF(v)->item_type);
         if (result_item0 == NULL) {
             Py_DECREF(r.f1);
             return NULL;
@@ -836,23 +851,24 @@ static PyObject *vec_pop(PyObject *self, PyObject *args)
         result_item1 = r.f1;
     } else if (VecNested_Check(vec)) {
         VecNested v = ((VecNestedObject *)vec)->vec;
-        VEC_INCREF(v);
+        VEC_NESTED_INCREF(v);
         VecNestedPopResult r;
         r = VecNested_Pop(v, index);
         if (VEC_IS_ERROR(r.f0))
             return NULL;
+        PyObject *popped_buf = VecNested_ItemBuf(VEC_NESTED_BUF(r.f0), r.f1);
         result_item0 = VecNested_Box(r.f0);
         if (result_item0 == NULL) {
-            Py_DECREF(r.f0.buf);
-            Py_DECREF(r.f1.buf);
+            Py_XDECREF(popped_buf);
             return NULL;
         }
         result_item1 = VecNested_BoxItem(r.f0, r.f1);
         if (result_item1 == NULL) {
             Py_DECREF(result_item0);
-            Py_DECREF(r.f1.buf);
+            Py_XDECREF(popped_buf);
             return NULL;
         }
+        Py_XDECREF(popped_buf);
     } else {
         PyErr_Format(PyExc_TypeError, "vec argument expected, got %.100s",
                      Py_TYPE(vec)->tp_name);
@@ -876,12 +892,96 @@ static PyObject *vec_pop(PyObject *self, PyObject *args)
     return res;
 }
 
+static PyObject *vec_extend(PyObject *self, PyObject *args)
+{
+    PyObject *vec;
+    PyObject *iterable;
+
+    if (!PyArg_ParseTuple(args, "OO:extend", &vec, &iterable))
+        return NULL;
+
+    if (VecI64_Check(vec)) {
+        VecI64 v = ((VecI64Object *)vec)->vec;
+        VEC_I64_INCREF(v);
+        v = VecI64_Extend(v, iterable);
+        if (VEC_IS_ERROR(v))
+            return NULL;
+        return VecI64_Box(v);
+    } else if (VecU8_Check(vec)) {
+        VecU8 v = ((VecU8Object *)vec)->vec;
+        VEC_U8_INCREF(v);
+        v = VecU8_Extend(v, iterable);
+        if (VEC_IS_ERROR(v))
+            return NULL;
+        return VecU8_Box(v);
+    } else if (VecFloat_Check(vec)) {
+        VecFloat v = ((VecFloatObject *)vec)->vec;
+        VEC_FLOAT_INCREF(v);
+        v = VecFloat_Extend(v, iterable);
+        if (VEC_IS_ERROR(v))
+            return NULL;
+        return VecFloat_Box(v);
+    } else if (VecI32_Check(vec)) {
+        VecI32 v = ((VecI32Object *)vec)->vec;
+        VEC_I32_INCREF(v);
+        v = VecI32_Extend(v, iterable);
+        if (VEC_IS_ERROR(v))
+            return NULL;
+        return VecI32_Box(v);
+    } else if (VecI16_Check(vec)) {
+        VecI16 v = ((VecI16Object *)vec)->vec;
+        VEC_I16_INCREF(v);
+        v = VecI16_Extend(v, iterable);
+        if (VEC_IS_ERROR(v))
+            return NULL;
+        return VecI16_Box(v);
+    } else if (VecBool_Check(vec)) {
+        VecBool v = ((VecBoolObject *)vec)->vec;
+        VEC_BOOL_INCREF(v);
+        v = VecBool_Extend(v, iterable);
+        if (VEC_IS_ERROR(v))
+            return NULL;
+        return VecBool_Box(v);
+    } else if (VecT_Check(vec)) {
+        VecT v = ((VecTObject *)vec)->vec;
+        size_t item_type = VEC_T_BUF(v)->item_type;
+        VEC_T_INCREF(v);
+        v = VecT_Extend(v, iterable, item_type);
+        if (VEC_IS_ERROR(v))
+            return NULL;
+        return VecT_Box(v, item_type);
+    } else if (VecNested_Check(vec)) {
+        VecNested v = ((VecNestedObject *)vec)->vec;
+        VEC_NESTED_INCREF(v);
+        v = VecNested_Extend(v, iterable);
+        if (VEC_IS_ERROR(v))
+            return NULL;
+        return VecNested_Box(v);
+    } else {
+        PyErr_Format(PyExc_TypeError, "vec argument expected, got %.100s",
+                     Py_TYPE(vec)->tp_name);
+        return NULL;
+    }
+}
+
 // Return the base VecType for isinstance checks
 static PyTypeObject *get_vec_type(void) {
     return &VecType;
 }
 
+static int
+vecs_abi_version(void) {
+    return LIBRT_VECS_ABI_VERSION;
+}
+
+static int
+vecs_api_version(void) {
+    return LIBRT_VECS_API_VERSION;
+}
+
 static VecCapsule Capsule = {
+    vecs_abi_version,
+    vecs_api_version,
     &Vec_TAPI,
     &Vec_NestedAPI,
     &Vec_I64API,
@@ -893,134 +993,142 @@ static VecCapsule Capsule = {
     get_vec_type,
 };
 
-#endif  // MYPYC_EXPERIMENTAL
-
 static PyMethodDef VecsMethods[] = {
-#ifdef MYPYC_EXPERIMENTAL
     {"append",  vec_append, METH_VARARGS, "Append a value to the end of a vec"},
     {"remove",  vec_remove, METH_VARARGS, "Remove first occurrence of value from a vec"},
     {"pop",  vec_pop, METH_VARARGS, "Remove and return vec item at index (default last)"},
-#endif
+    {"extend",  vec_extend, METH_VARARGS, "Extend a vec with items from an iterable"},
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };
 
 static int
 librt_vecs_module_exec(PyObject *m)
 {
-#ifdef MYPYC_EXPERIMENTAL
     PyObject *ext = PyImport_ImportModule("mypy_extensions");
     if (ext == NULL) {
         return -1;
     }
 
-    LibRTVecs_I64TypeObj = (PyTypeObject *)PyObject_GetAttrString(ext, "i64");
-    if (LibRTVecs_I64TypeObj == NULL) {
-        return -1;
+    PyTypeObject *i64 = NULL, *i32 = NULL, *i16 = NULL, *u8 = NULL;
+
+    i64 = (PyTypeObject *)PyObject_GetAttrString(ext, "i64");
+    if (i64 == NULL) {
+        goto error;
     }
-    if (!PyType_Check(LibRTVecs_I64TypeObj)) {
+    if (!PyType_Check(i64)) {
         PyErr_SetString(PyExc_TypeError, "mypy_extensions.i64 is not a type");
-        return -1;
+        goto error;
     }
-    LibRTVecs_I32TypeObj = (PyTypeObject *)PyObject_GetAttrString(ext, "i32");
-    if (LibRTVecs_I32TypeObj == NULL) {
-        return -1;
+    i32 = (PyTypeObject *)PyObject_GetAttrString(ext, "i32");
+    if (i32 == NULL) {
+        goto error;
     }
-    if (!PyType_Check(LibRTVecs_I32TypeObj)) {
+    if (!PyType_Check(i32)) {
         PyErr_SetString(PyExc_TypeError, "mypy_extensions.i32 is not a type");
-        return -1;
+        goto error;
     }
-    LibRTVecs_I16TypeObj = (PyTypeObject *)PyObject_GetAttrString(ext, "i16");
-    if (LibRTVecs_I16TypeObj == NULL) {
-        return -1;
+    i16 = (PyTypeObject *)PyObject_GetAttrString(ext, "i16");
+    if (i16 == NULL) {
+        goto error;
     }
-    if (!PyType_Check(LibRTVecs_I16TypeObj)) {
+    if (!PyType_Check(i16)) {
         PyErr_SetString(PyExc_TypeError, "mypy_extensions.i16 is not a type");
-        return -1;
+        goto error;
     }
-    LibRTVecs_U8TypeObj = (PyTypeObject *)PyObject_GetAttrString(ext, "u8");
-    if (LibRTVecs_U8TypeObj == NULL) {
-        return -1;
+    u8 = (PyTypeObject *)PyObject_GetAttrString(ext, "u8");
+    if (u8 == NULL) {
+        goto error;
     }
-    if (!PyType_Check(LibRTVecs_U8TypeObj)) {
+    if (!PyType_Check(u8)) {
         PyErr_SetString(PyExc_TypeError, "mypy_extensions.u8 is not a type");
-        return -1;
+        goto error;
     }
 
     if (PyType_Ready(&VecType) < 0)
-        return -1;
+        goto error;
     if (PyType_Ready(&VecGenericAliasType) < 0)
-        return -1;
+        goto error;
 
     if (PyType_Ready(&VecTType) < 0)
-        return -1;
+        goto error;
     if (PyType_Ready(&VecTBufType) < 0)
-        return -1;
+        goto error;
     if (PyType_Ready(&VecTIterType) < 0)
-        return -1;
+        goto error;
 
     if (PyType_Ready(&VecNestedType) < 0)
-        return -1;
+        goto error;
     if (PyType_Ready(&VecNestedBufType) < 0)
-        return -1;
+        goto error;
     if (PyType_Ready(&VecNestedIterType) < 0)
-        return -1;
+        goto error;
 
     if (PyType_Ready(&VecI64Type) < 0)
-        return -1;
+        goto error;
     if (PyType_Ready(&VecI64BufType) < 0)
-        return -1;
+        goto error;
     if (PyType_Ready(&VecI64IterType) < 0)
-        return -1;
+        goto error;
     if (PyType_Ready(&VecI32Type) < 0)
-        return -1;
+        goto error;
     if (PyType_Ready(&VecI32BufType) < 0)
-        return -1;
+        goto error;
     if (PyType_Ready(&VecI32IterType) < 0)
-        return -1;
+        goto error;
     if (PyType_Ready(&VecI16Type) < 0)
-        return -1;
+        goto error;
     if (PyType_Ready(&VecI16BufType) < 0)
-        return -1;
+        goto error;
     if (PyType_Ready(&VecI16IterType) < 0)
-        return -1;
+        goto error;
     if (PyType_Ready(&VecU8Type) < 0)
-        return -1;
+        goto error;
     if (PyType_Ready(&VecU8BufType) < 0)
-        return -1;
+        goto error;
     if (PyType_Ready(&VecU8IterType) < 0)
-        return -1;
+        goto error;
     if (PyType_Ready(&VecFloatType) < 0)
-        return -1;
+        goto error;
     if (PyType_Ready(&VecFloatBufType) < 0)
-        return -1;
+        goto error;
     if (PyType_Ready(&VecFloatIterType) < 0)
-        return -1;
+        goto error;
     if (PyType_Ready(&VecBoolType) < 0)
-        return -1;
+        goto error;
     if (PyType_Ready(&VecBoolBufType) < 0)
-        return -1;
+        goto error;
     if (PyType_Ready(&VecBoolIterType) < 0)
-        return -1;
+        goto error;
 
     Py_INCREF(&VecType);
     if (PyModule_AddObject(m, "vec", (PyObject *)&VecType) < 0) {
         Py_DECREF(&VecType);
-        return -1;
+        goto error;
     }
 
     PyObject *c_api = PyCapsule_New(&Capsule, "librt.vecs._C_API", NULL);
     if (c_api == NULL)
-        return -1;
+        goto error;
 
     if (PyModule_AddObject(m, "_C_API", c_api) < 0) {
-        Py_XDECREF(c_api);
-        Py_DECREF(&VecType);
-        return -1;
+        Py_DECREF(c_api);
+        goto error;
     }
 
+    Py_XSETREF(LibRTVecs_I64TypeObj, i64);
+    Py_XSETREF(LibRTVecs_I32TypeObj, i32);
+    Py_XSETREF(LibRTVecs_I16TypeObj, i16);
+    Py_XSETREF(LibRTVecs_U8TypeObj, u8);
     Py_DECREF(ext);
-#endif
     return 0;
+
+error:
+    Py_XDECREF(i64);
+    Py_XDECREF(i32);
+    Py_XDECREF(i16);
+    Py_XDECREF(u8);
+    Py_DECREF(ext);
+    return -1;
 }
 
 static PyModuleDef_Slot librt_vecs_module_slots[] = {

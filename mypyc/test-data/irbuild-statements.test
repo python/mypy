@@ -7,14 +7,12 @@ def f() -> None:
 def f():
     x :: int
     r0 :: short_int
-    i :: int
     r1 :: bit
-    r2 :: int
+    i, r2 :: int
     r3 :: short_int
 L0:
     x = 0
     r0 = 0
-    i = r0
 L1:
     r1 = int_lt r0, 10
     if r1 goto L2 else goto L4 :: bool
@@ -35,12 +33,11 @@ def f(a: int) -> None:
         pass
 [out]
 def f(a):
-    a, r0, i :: int
+    a, r0 :: int
     r1 :: bit
-    r2 :: int
+    i, r2 :: int
 L0:
     r0 = 0
-    i = r0
 L1:
     r1 = int_lt r0, a
     if r1 goto L2 else goto L4 :: bool
@@ -60,12 +57,11 @@ def f() -> None:
 [out]
 def f():
     r0 :: short_int
-    i :: int
     r1 :: bit
+    i :: int
     r2 :: short_int
 L0:
     r0 = 20
-    i = r0
 L1:
     r1 = int_gt r0, 0
     if r1 goto L2 else goto L4 :: bool
@@ -74,6 +70,71 @@ L2:
 L3:
     r2 = r0 + -2
     r0 = r2
+    goto L1
+L4:
+    return 1
+
+[case testForInRangeAnyArgs]
+from typing import Any
+
+def f(a: Any, b: Any) -> None:
+    for i in range(a, b):
+        pass
+[out]
+def f(a, b):
+    a, b, r0 :: object
+    r1 :: int
+    r2 :: object
+    r3, r4 :: int
+    r5 :: bit
+    i, r6 :: int
+L0:
+    r0 = PyNumber_Index(a)
+    r1 = unbox(int, r0)
+    r2 = PyNumber_Index(b)
+    r3 = unbox(int, r2)
+    r4 = r1
+L1:
+    r5 = int_lt r4, r3
+    if r5 goto L2 else goto L4 :: bool
+L2:
+    i = r4
+L3:
+    r6 = CPyTagged_Add(r4, 2)
+    r4 = r6
+    goto L1
+L4:
+    return 1
+
+[case testForInRangeNativeIndexArg]
+class C:
+    def __index__(self) -> int:
+        return 2
+
+def f(c: C) -> None:
+    for i in range(c):  # type: ignore[arg-type]
+        pass
+[out]
+def C.__index__(self):
+    self :: __main__.C
+L0:
+    return 4
+def f(c):
+    c :: __main__.C
+    r0, r1 :: int
+    r2 :: bit
+    i, r3 :: int
+L0:
+    r0 = c.__index__()
+    r1 = 0
+L1:
+    r2 = int_lt r1, r0
+    if r2 goto L2 else goto L4 :: bool
+L2:
+    i = r1
+L3:
+    r3 = CPyTagged_Add(r1, 2)
+    r1 = r3
     goto L1
 L4:
     return 1
@@ -103,12 +164,11 @@ def f() -> None:
 [out]
 def f():
     r0 :: short_int
-    n :: int
     r1 :: bit
+    n :: int
     r2 :: short_int
 L0:
     r0 = 0
-    n = r0
 L1:
     r1 = int_lt r0, 10
     if r1 goto L2 else goto L4 :: bool
@@ -173,12 +233,11 @@ def f() -> None:
 [out]
 def f():
     r0 :: short_int
-    n :: int
     r1 :: bit
+    n :: int
     r2 :: short_int
 L0:
     r0 = 0
-    n = r0
 L1:
     r1 = int_lt r0, 10
     if r1 goto L2 else goto L4 :: bool
@@ -218,7 +277,7 @@ L5:
 L6:
     return 1
 
-[case testForList]
+[case testForList_withgil]
 from typing import List
 
 def f(ls: List[int]) -> int:
@@ -244,6 +303,43 @@ L1:
     if r2 goto L2 else goto L4 :: bool
 L2:
     r3 = list_get_item_unsafe ls, r0
+    r4 = unbox(int, r3)
+    x = r4
+    r5 = CPyTagged_Add(y, x)
+    y = r5
+L3:
+    r6 = r0 + 1
+    r0 = r6
+    goto L1
+L4:
+    return y
+
+[case testForList_nogil_64bit]
+from typing import List
+
+def f(ls: List[int]) -> int:
+    y = 0
+    for x in ls:
+        y = y + x
+    return y
+[out]
+def f(ls):
+    ls :: list
+    y :: int
+    r0, r1 :: native_int
+    r2 :: bit
+    r3 :: object
+    r4, x, r5 :: int
+    r6 :: native_int
+L0:
+    y = 0
+    r0 = 0
+L1:
+    r1 = var_object_size ls
+    r2 = r0 < r1 :: signed
+    if r2 goto L2 else goto L4 :: bool
+L2:
+    r3 = CPyList_GetItemInt64(ls, r0)
     r4 = unbox(int, r3)
     x = r4
     r5 = CPyTagged_Add(y, x)
@@ -452,10 +548,11 @@ L0:
 def from_any(a):
     a, r0, r1 :: object
     r2 :: bool
-    x, r3 :: object
+    r3 :: object
     r4 :: bool
-    y, r5 :: object
+    r5 :: object
     r6 :: bool
+    x, y :: object
 L0:
     r0 = PyObject_GetIter(a)
     r1 = PyIter_Next(r0)
@@ -464,20 +561,20 @@ L1:
     r2 = raise ValueError('not enough values to unpack')
     unreachable
 L2:
-    x = r1
     r3 = PyIter_Next(r0)
     if is_error(r3) goto L3 else goto L4
 L3:
     r4 = raise ValueError('not enough values to unpack')
     unreachable
 L4:
-    y = r3
     r5 = PyIter_Next(r0)
     if is_error(r5) goto L6 else goto L5
 L5:
     r6 = raise ValueError('too many values to unpack')
     unreachable
 L6:
+    x = r1
+    y = r3
     return 1
 
 [case testMultiAssignmentCoercions]
@@ -513,11 +610,12 @@ L0:
 def from_any(a):
     a, r0, r1 :: object
     r2 :: bool
-    r3, x :: int
-    r4 :: object
-    r5 :: bool
-    y, r6 :: object
-    r7 :: bool
+    r3 :: object
+    r4 :: bool
+    r5 :: object
+    r6 :: bool
+    r7, x :: int
+    y :: object
 L0:
     r0 = PyObject_GetIter(a)
     r1 = PyIter_Next(r0)
@@ -526,21 +624,21 @@ L1:
     r2 = raise ValueError('not enough values to unpack')
     unreachable
 L2:
-    r3 = unbox(int, r1)
-    x = r3
-    r4 = PyIter_Next(r0)
-    if is_error(r4) goto L3 else goto L4
+    r3 = PyIter_Next(r0)
+    if is_error(r3) goto L3 else goto L4
 L3:
-    r5 = raise ValueError('not enough values to unpack')
+    r4 = raise ValueError('not enough values to unpack')
     unreachable
 L4:
-    y = r4
-    r6 = PyIter_Next(r0)
-    if is_error(r6) goto L6 else goto L5
+    r5 = PyIter_Next(r0)
+    if is_error(r5) goto L6 else goto L5
 L5:
-    r7 = raise ValueError('too many values to unpack')
+    r6 = raise ValueError('too many values to unpack')
     unreachable
 L6:
+    r7 = unbox(int, r1)
+    x = r7
+    y = r3
     return 1
 
 [case testMultiAssignmentNested]
@@ -575,7 +673,7 @@ L0:
     z = r6
     return 1
 
-[case testMultipleAssignmentUnpackFromSequence]
+[case testMultipleAssignmentUnpackFromSequence_withgil]
 from typing import List, Tuple
 
 def f(l: List[int], t: Tuple[int, ...]) -> None:
@@ -600,6 +698,43 @@ L0:
     r1 = r0 >= 0 :: signed
     r2 = list_get_item_unsafe l, 0
     r3 = list_get_item_unsafe l, 1
+    x = r2
+    r4 = unbox(int, r3)
+    y = r4
+    r5 = CPySequence_CheckUnpackCount(t, 2)
+    r6 = r5 >= 0 :: signed
+    r7 = CPySequenceTuple_GetItemUnsafe(t, 0)
+    r8 = CPySequenceTuple_GetItemUnsafe(t, 1)
+    x = r7
+    r9 = unbox(int, r8)
+    y = r9
+    return 1
+
+[case testMultipleAssignmentUnpackFromSequence_nogil_64bit]
+from typing import List, Tuple
+
+def f(l: List[int], t: Tuple[int, ...]) -> None:
+    x: object
+    y: int
+    x, y = l
+    x, y = t
+[out]
+def f(l, t):
+    l :: list
+    t :: tuple
+    r0 :: i32
+    r1 :: bit
+    r2, r3, x :: object
+    r4, y :: int
+    r5 :: i32
+    r6 :: bit
+    r7, r8 :: object
+    r9 :: int
+L0:
+    r0 = CPySequence_CheckUnpackCount(l, 2)
+    r1 = r0 >= 0 :: signed
+    r2 = CPyList_GetItemInt64(l, 0)
+    r3 = CPyList_GetItemInt64(l, 1)
     x = r2
     r4 = unbox(int, r3)
     y = r4
@@ -862,7 +997,7 @@ L0:
     r6 = r5 >= 0 :: signed
     return 1
 
-[case testForEnumerate]
+[case testForEnumerate_withgil]
 from typing import List, Iterable
 
 def f(a: List[int]) -> None:
@@ -877,9 +1012,8 @@ def f(a):
     r0 :: short_int
     r1, r2 :: native_int
     r3 :: bit
-    i :: int
     r4 :: object
-    r5, x, r6 :: int
+    i, r5, x, r6 :: int
     r7 :: short_int
     r8 :: native_int
 L0:
@@ -888,21 +1022,22 @@ L0:
 L1:
     r2 = var_object_size a
     r3 = r1 < r2 :: signed
-    if r3 goto L2 else goto L4 :: bool
+    if r3 goto L2 else goto L5 :: bool
 L2:
-    i = r0
     r4 = list_get_item_unsafe a, r1
+L3:
+    i = r0
     r5 = unbox(int, r4)
     x = r5
     r6 = CPyTagged_Add(i, x)
-L3:
+L4:
     r7 = r0 + 2
     r0 = r7
     r8 = r1 + 1
     r1 = r8
     goto L1
-L4:
 L5:
+L6:
     return 1
 def g(x):
     x :: object
@@ -930,7 +1065,7 @@ L4:
 L5:
     return 1
 
-[case testForZip]
+[case testForZip_withgil]
 from typing import List, Iterable, Sequence
 
 def f(a: List[int], b: Sequence[bool]) -> None:
@@ -963,30 +1098,31 @@ L0:
 L1:
     r2 = var_object_size a
     r3 = r0 < r2 :: signed
-    if r3 goto L2 else goto L7 :: bool
+    if r3 goto L2 else goto L8 :: bool
 L2:
-    r4 = PyIter_Next(r1)
-    if is_error(r4) goto L7 else goto L3
+    r4 = list_get_item_unsafe a, r0
 L3:
-    r5 = list_get_item_unsafe a, r0
-    r6 = unbox(int, r5)
+    r5 = PyIter_Next(r1)
+    if is_error(r5) goto L8 else goto L4
+L4:
+    r6 = unbox(int, r4)
     x = r6
-    r7 = unbox(bool, r4)
+    r7 = unbox(bool, r5)
     y = r7
     r8 = PyObject_IsTrue(b)
     r9 = r8 >= 0 :: signed
     r10 = truncate r8: i32 to builtins.bool
-    if r10 goto L4 else goto L5 :: bool
-L4:
-    x = 2
+    if r10 goto L5 else goto L6 :: bool
 L5:
+    x = 2
 L6:
+L7:
     r11 = r0 + 1
     r0 = r11
     goto L1
-L7:
-    r12 = CPy_NoErrOccurred()
 L8:
+    r12 = CPy_NoErrOccurred()
+L9:
     return 1
 def g(a, b):
     a :: object
@@ -994,13 +1130,13 @@ def g(a, b):
     r0 :: object
     r1 :: native_int
     r2 :: short_int
-    z :: int
     r3 :: object
     r4 :: native_int
-    r5, r6 :: bit
-    r7, x :: bool
-    r8 :: object
-    r9, y :: int
+    r5 :: bit
+    r6 :: object
+    r7 :: bit
+    r8, x :: bool
+    r9, y, z :: int
     r10 :: native_int
     r11 :: short_int
     r12 :: bit
@@ -1008,34 +1144,65 @@ L0:
     r0 = PyObject_GetIter(a)
     r1 = 0
     r2 = 0
-    z = r2
 L1:
     r3 = PyIter_Next(r0)
-    if is_error(r3) goto L6 else goto L2
+    if is_error(r3) goto L7 else goto L2
 L2:
     r4 = var_object_size b
     r5 = r1 < r4 :: signed
-    if r5 goto L3 else goto L6 :: bool
+    if r5 goto L3 else goto L7 :: bool
 L3:
-    r6 = int_lt r2, 10
-    if r6 goto L4 else goto L6 :: bool
+    r6 = list_get_item_unsafe b, r1
 L4:
-    r7 = unbox(bool, r3)
-    x = r7
-    r8 = list_get_item_unsafe b, r1
-    r9 = unbox(int, r8)
+    r7 = int_lt r2, 10
+    if r7 goto L5 else goto L7 :: bool
+L5:
+    r8 = unbox(bool, r3)
+    x = r8
+    r9 = unbox(int, r6)
     y = r9
     z = r2
     x = 0
-L5:
+L6:
     r10 = r1 + 1
     r1 = r10
     r11 = r2 + 2
     r2 = r11
     goto L1
-L6:
-    r12 = CPy_NoErrOccurred()
 L7:
+    r12 = CPy_NoErrOccurred()
+L8:
+    return 1
+
+[case testForLoopReassignIterable]
+def f(a: tuple[int, ...], b: tuple[int, ...]) -> None:
+    for x in a:
+        a = b
+[out]
+def f(a, b):
+    a, b, r0 :: tuple
+    r1, r2 :: native_int
+    r3 :: bit
+    r4 :: object
+    r5, x :: int
+    r6 :: native_int
+L0:
+    r0 = a
+    r1 = var_object_size r0
+    r2 = 0
+L1:
+    r3 = r2 < r1 :: signed
+    if r3 goto L2 else goto L4 :: bool
+L2:
+    r4 = CPySequenceTuple_GetItemUnsafe(r0, r2)
+    r5 = unbox(int, r4)
+    x = r5
+    a = b
+L3:
+    r6 = r2 + 1
+    r2 = r6
+    goto L1
+L4:
     return 1
 
 [case testConditionalFunctionDefinition]

@@ -15,13 +15,10 @@
 // some indirections.
 PyObject *CPyDict_GetItem(PyObject *dict, PyObject *key) {
     if (PyDict_CheckExact(dict)) {
-        PyObject *res = PyDict_GetItemWithError(dict, key);
-        if (!res) {
-            if (!PyErr_Occurred()) {
-                PyErr_SetObject(PyExc_KeyError, key);
-            }
-        } else {
-            Py_INCREF(res);
+        PyObject *res;
+        int found = PyDict_GetItemRef(dict, key, &res);
+        if (found == 0) {
+            PyErr_SetObject(PyExc_KeyError, key);
         }
         return res;
     } else {
@@ -44,6 +41,7 @@ PyObject *CPyDict_Build(Py_ssize_t size, ...) {
         PyObject *key = va_arg(args, PyObject *);
         PyObject *value = va_arg(args, PyObject *);
         if (PyDict_SetItem(res, key, value)) {
+            va_end(args);
             Py_DECREF(res);
             return NULL;
         }
@@ -56,14 +54,15 @@ PyObject *CPyDict_Build(Py_ssize_t size, ...) {
 PyObject *CPyDict_Get(PyObject *dict, PyObject *key, PyObject *fallback) {
     // We are dodgily assuming that get on a subclass doesn't have
     // different behavior.
-    PyObject *res = PyDict_GetItemWithError(dict, key);
-    if (!res) {
-        if (PyErr_Occurred()) {
-            return NULL;
-        }
-        res = fallback;
+    PyObject *res;
+    int found = PyDict_GetItemRef(dict, key, &res);
+    if (found < 0) {
+        return NULL;
     }
-    Py_INCREF(res);
+    if (found == 0) {
+        Py_INCREF(fallback);
+        return fallback;
+    }
     return res;
 }
 
@@ -86,12 +85,22 @@ PyObject *CPyDict_SetDefaultWithNone(PyObject *dict, PyObject *key) {
 
 PyObject *CPyDict_SetDefaultWithEmptyDatatype(PyObject *dict, PyObject *key,
                                               int data_type) {
-    PyObject *res = CPyDict_GetItem(dict, key);
+    PyObject *res;
+    if (PyDict_CheckExact(dict)) {
+        int found = PyDict_GetItemRef(dict, key, &res);
+        if (found < 0) {
+            return NULL;
+        }
+    } else {
+        res = PyObject_GetItem(dict, key);
+        if (!res) {
+            if (!PyErr_ExceptionMatches(PyExc_KeyError)) {
+                return NULL;
+            }
+            PyErr_Clear();
+        }
+    }
     if (!res) {
-        // CPyDict_GetItem() would generates a PyExc_KeyError
-        // when key is not found.
-        PyErr_Clear();
-
         PyObject *new_obj;
         if (data_type == 1) {
             new_obj = PyList_New(0);
@@ -100,17 +109,19 @@ PyObject *CPyDict_SetDefaultWithEmptyDatatype(PyObject *dict, PyObject *key,
         } else if (data_type == 3) {
             new_obj = PySet_New(NULL);
         } else {
-            return NULL;
+            new_obj = NULL;
         }
 
-        if (CPyDict_SetItem(dict, key, new_obj) == -1) {
-            return NULL;
+        if (new_obj == NULL) {
+            res = NULL;
+        } else if (CPyDict_SetItem(dict, key, new_obj) == -1) {
+            Py_DECREF(new_obj);
+            res = NULL;
         } else {
-            return new_obj;
+            res = new_obj;
         }
-    } else {
-        return res;
     }
+    return res;
 }
 
 int CPyDict_SetItem(PyObject *dict, PyObject *key, PyObject *value) {
@@ -159,7 +170,12 @@ int CPyDict_Update(PyObject *dict, PyObject *stuff) {
 int CPyDict_UpdateFromAny(PyObject *dict, PyObject *stuff) {
     if (PyDict_CheckExact(dict)) {
         // Argh this sucks
-        if (PyDict_Check(stuff) || PyObject_HasAttrWithError(stuff, mypyc_interned_str.keys) > 0) {
+        int has_keys = PyDict_Check(stuff) ? 1 :
+            PyObject_HasAttrWithError(stuff, mypyc_interned_str.keys);
+        if (has_keys < 0) {
+            return -1;
+        }
+        if (has_keys) {
             return PyDict_Update(dict, stuff);
         } else {
             return PyDict_MergeFromSeq2(dict, stuff, 1);
@@ -178,7 +194,12 @@ PyObject *CPyDict_FromAny(PyObject *obj) {
         if (!dict) {
             return NULL;
         }
-        if (PyObject_HasAttrWithError(obj, mypyc_interned_str.keys) > 0) {
+        int has_keys = PyObject_HasAttrWithError(obj, mypyc_interned_str.keys);
+        if (has_keys < 0) {
+            Py_DECREF(dict);
+            return NULL;
+        }
+        if (has_keys) {
             res = PyDict_Update(dict, obj);
         } else {
             res = PyDict_MergeFromSeq2(dict, obj, 1);
@@ -212,58 +233,35 @@ PyObject *CPyDict_ItemsView(PyObject *dict) {
     return PyObject_CallMethodNoArgs(dict, mypyc_interned_str.items);
 }
 
+static inline PyObject *dict_view_as_list(PyObject *dict, PyObject *method) {
+    PyObject *view = PyObject_CallMethodNoArgs(dict, method);
+    if (view == NULL) {
+        return NULL;
+    }
+    PyObject *list = PySequence_List(view);
+    Py_DECREF(view);
+    return list;
+}
+
 PyObject *CPyDict_Keys(PyObject *dict) {
     if (PyDict_CheckExact(dict)) {
         return PyDict_Keys(dict);
     }
-    // Inline generic fallback logic to also return a list.
-    PyObject *list = PyList_New(0);
-    PyObject *view = PyObject_CallMethodNoArgs(dict, mypyc_interned_str.keys);
-    if (view == NULL) {
-        return NULL;
-    }
-    int res = PyList_Extend(list, view);
-    Py_DECREF(view);
-    if (res < 0) {
-        return NULL;
-    }
-    return list;
+    return dict_view_as_list(dict, mypyc_interned_str.keys);
 }
 
 PyObject *CPyDict_Values(PyObject *dict) {
     if (PyDict_CheckExact(dict)) {
         return PyDict_Values(dict);
     }
-    // Inline generic fallback logic to also return a list.
-    PyObject *list = PyList_New(0);
-    PyObject *view = PyObject_CallMethodNoArgs(dict, mypyc_interned_str.values);
-    if (view == NULL) {
-        return NULL;
-    }
-    int res = PyList_Extend(list, view);
-    Py_DECREF(view);
-    if (res < 0) {
-        return NULL;
-    }
-    return list;
+    return dict_view_as_list(dict, mypyc_interned_str.values);
 }
 
 PyObject *CPyDict_Items(PyObject *dict) {
     if (PyDict_CheckExact(dict)) {
         return PyDict_Items(dict);
     }
-    // Inline generic fallback logic to also return a list.
-    PyObject *list = PyList_New(0);
-    PyObject *view = PyObject_CallMethodNoArgs(dict, mypyc_interned_str.items);
-    if (view == NULL) {
-        return NULL;
-    }
-    int res = PyList_Extend(list, view);
-    Py_DECREF(view);
-    if (res < 0) {
-        return NULL;
-    }
-    return list;
+    return dict_view_as_list(dict, mypyc_interned_str.items);
 }
 
 char CPyDict_Clear(PyObject *dict) {
@@ -346,16 +344,24 @@ tuple_T3CIO CPyDict_NextKey(PyObject *dict_or_iter, CPyTagged offset) {
     PyObject *dummy;
 
     if (PyDict_CheckExact(dict_or_iter)) {
-        ret.f0 = PyDict_Next(dict_or_iter, &py_offset, &ret.f2, &dummy);
+        PyObject *key;
+        // PyDict_Next() returns a borrowed reference. On free-threaded builds,
+        // hold the dict lock until we have converted it to a strong reference.
+        Py_BEGIN_CRITICAL_SECTION(dict_or_iter);
+        ret.f0 = PyDict_Next(dict_or_iter, &py_offset, &key, &dummy);
+        if (ret.f0) {
+            ret.f2 = Py_NewRef(key);
+        }
+        Py_END_CRITICAL_SECTION();
+
         if (ret.f0) {
             ret.f1 = CPyTagged_FromSsize_t(py_offset);
         } else {
             // Set key to None, so mypyc can manage refcounts.
             ret.f1 = 0;
             ret.f2 = Py_None;
+            Py_INCREF(ret.f2);
         }
-        // PyDict_Next() returns borrowed references.
-        Py_INCREF(ret.f2);
     } else {
         // offset is dummy in this case, just use the old value.
         ret.f1 = offset;
@@ -370,16 +376,24 @@ tuple_T3CIO CPyDict_NextValue(PyObject *dict_or_iter, CPyTagged offset) {
     PyObject *dummy;
 
     if (PyDict_CheckExact(dict_or_iter)) {
-        ret.f0 = PyDict_Next(dict_or_iter, &py_offset, &dummy, &ret.f2);
+        PyObject *value;
+        // PyDict_Next() returns a borrowed reference. On free-threaded builds,
+        // hold the dict lock until we have converted it to a strong reference.
+        Py_BEGIN_CRITICAL_SECTION(dict_or_iter);
+        ret.f0 = PyDict_Next(dict_or_iter, &py_offset, &dummy, &value);
+        if (ret.f0) {
+            ret.f2 = Py_NewRef(value);
+        }
+        Py_END_CRITICAL_SECTION();
+
         if (ret.f0) {
             ret.f1 = CPyTagged_FromSsize_t(py_offset);
         } else {
             // Set value to None, so mypyc can manage refcounts.
             ret.f1 = 0;
             ret.f2 = Py_None;
+            Py_INCREF(ret.f2);
         }
-        // PyDict_Next() returns borrowed references.
-        Py_INCREF(ret.f2);
     } else {
         // offset is dummy in this case, just use the old value.
         ret.f1 = offset;
@@ -393,7 +407,18 @@ tuple_T4CIOO CPyDict_NextItem(PyObject *dict_or_iter, CPyTagged offset) {
     Py_ssize_t py_offset = CPyTagged_AsSsize_t(offset);
 
     if (PyDict_CheckExact(dict_or_iter)) {
-        ret.f0 = PyDict_Next(dict_or_iter, &py_offset, &ret.f2, &ret.f3);
+        PyObject *key;
+        PyObject *value;
+        // PyDict_Next() returns borrowed references. On free-threaded builds,
+        // hold the dict lock until we have converted them to strong references.
+        Py_BEGIN_CRITICAL_SECTION(dict_or_iter);
+        ret.f0 = PyDict_Next(dict_or_iter, &py_offset, &key, &value);
+        if (ret.f0) {
+            ret.f2 = Py_NewRef(key);
+            ret.f3 = Py_NewRef(value);
+        }
+        Py_END_CRITICAL_SECTION();
+
         if (ret.f0) {
             ret.f1 = CPyTagged_FromSsize_t(py_offset);
         } else {
@@ -401,6 +426,8 @@ tuple_T4CIOO CPyDict_NextItem(PyObject *dict_or_iter, CPyTagged offset) {
             ret.f1 = 0;
             ret.f2 = Py_None;
             ret.f3 = Py_None;
+            Py_INCREF(ret.f2);
+            Py_INCREF(ret.f3);
         }
     } else {
         ret.f1 = offset;
@@ -413,6 +440,8 @@ tuple_T4CIOO CPyDict_NextItem(PyObject *dict_or_iter, CPyTagged offset) {
             ret.f0 = 0;
             ret.f2 = Py_None;
             ret.f3 = Py_None;
+            Py_INCREF(ret.f2);
+            Py_INCREF(ret.f3);
         } else {
             ret.f0 = 1;
             ret.f2 = PyTuple_GET_ITEM(item, 0);
@@ -423,9 +452,6 @@ tuple_T4CIOO CPyDict_NextItem(PyObject *dict_or_iter, CPyTagged offset) {
             return ret;
         }
     }
-    // PyDict_Next() returns borrowed references.
-    Py_INCREF(ret.f2);
-    Py_INCREF(ret.f3);
     return ret;
 }
 

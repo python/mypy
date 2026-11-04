@@ -26,6 +26,15 @@ Operators
 * Comparisons (``==``, ``!=``, ``<``, etc.)
 * Augmented assignment (``x += y``, etc.)
 
+Attributes
+----------
+
+* ``f.real``
+* ``f.imag``
+
+These are fast both for ``complex`` values and for unions such as
+``int | float | complex``.
+
 Functions
 ---------
 

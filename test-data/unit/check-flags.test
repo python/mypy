@@ -59,7 +59,7 @@ async def f():  # E: Function is missing a return type annotation \
                 # N: Use "-> None" if function does not return a value
     pass
 [builtins fixtures/async_await.pyi]
-[typing fixtures/typing-medium.pyi]
+[typing fixtures/typing-async.pyi]
 
 [case testAsyncUnannotatedArgument]
 # flags: --disallow-untyped-defs
@@ -552,8 +552,8 @@ x + ""  # E: Unsupported operand types for + ("int" and "str")
 import mod
 mod.x + 0
 mod.x + ""  # E: Unsupported operand types for + ("int" and "str")
-mod.y  # E: "object" has no attribute "y"
-mod + 0  # E: Unsupported left operand type for + ("object")
+mod.y  # E: Module has no attribute "y"
+mod + 0  # E: Unsupported left operand type for + (Module)
 [file mod.py]
 1 + ""  # E: Unsupported operand types for + ("int" and "str")
 x = 0
@@ -565,12 +565,54 @@ from mod import x
 x + ""  # E: Unsupported operand types for + ("int" and "str")
 import mod
 mod.x + ""  # E: Unsupported operand types for + ("int" and "str")
-mod.y  # E: "object" has no attribute "y"
-mod + 0  # E: Unsupported left operand type for + ("object")
+mod.y  # E: Module has no attribute "y"
+mod + 0  # E: Unsupported left operand type for + (Module)
 [file mod.py]
 1 + ""
 x = 0
 x += ""
+
+[case testFollowImportsSilentOverloadResolution]
+# flags: --follow-imports=silent
+from mod import x
+reveal_type(x)  # N: Revealed type is "builtins.str"
+[file mod.py]
+from typing import overload
+@overload
+def f(x: int) -> int: ...
+@overload
+def f(x: str) -> str: ...
+def f(x: int | str) -> int | str:
+    return x
+x = f("")
+
+[case testFollowImportsSilentReverseOperator]
+# flags: --follow-imports=silent
+from mod import x
+reveal_type(x)  # N: Revealed type is "builtins.str"
+[file mod.py]
+class A:
+    def __add__(self, other: int) -> int: ...
+class B:
+    def __radd__(self, other: A) -> str: ...
+x = A() + B()
+
+[case testFollowImportsSilentTypedDictUnion]
+# flags: --follow-imports=silent
+from mod import x
+reveal_type(x)  # N: Revealed type is "builtins.str"
+[file mod.py]
+from typing_extensions import TypedDict
+class A(TypedDict):
+    value: int
+class B(TypedDict):
+    value: str
+data: A | B
+data = {"value": ""}
+x = data["value"]
+[file typing_extensions.pyi]
+TypedDict = 0
+class _TypedDict: pass
 
 [case testFollowImportsSilentTypeIgnore]
 # flags: --warn-unused-ignores --follow-imports=silent
@@ -2705,3 +2747,46 @@ reveal_type(fx)  # N: Revealed type is "def [Ts] (int, *args: *tuple[*Ts, int]) 
 x = 1
 [out]
 main:1: error: --allow-redefinition-old and --allow-redefinition should not be used together
+
+[case testRedundantExpressionMultiline]
+# mypy: enable-error-code="redundant-expr"
+x: int
+y: int
+z: int
+if (
+    x is None  # E: Left operand of "or" is always false
+    or y is None  # E: Left operand of "or" is always false
+    or z is None
+):
+    pass
+
+[case testRecursiveTypeVarDefaultMutualDisallow]
+# flags: --disallow-any-generic
+from typing import TypeVar, Generic
+
+class C(Generic["T"]):
+    pass
+
+class D(Generic["S"]):
+    pass
+
+T = TypeVar("T", default=D)  # E: Missing type arguments for generic type "D" \
+                             # N: Cyclic type variable defaults are not supported
+S = TypeVar("S", default=C)  # E: Missing type arguments for generic type "C" \
+                             # N: Cyclic type variable defaults are not supported
+
+c: C
+d: D
+reveal_type(c)  # N: Revealed type is "__main__.C[__main__.D[Any]]"
+reveal_type(d)  # N: Revealed type is "__main__.D[__main__.C[Any]]"
+
+[case testRecursiveTypeVarDefaultOnlyAliasDisallow]
+# flags: --disallow-any-generic
+from typing import TypeVar
+
+T = TypeVar("T", default="A")  # E: Missing type arguments for generic type "A" \
+                               # N: Cyclic type variable defaults are not supported
+A = list[T]
+a: A
+reveal_type(a)  # N: Revealed type is "builtins.list[builtins.list[Any]]"
+[builtins fixtures/tuple.pyi]

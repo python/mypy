@@ -4,8 +4,8 @@
 int
 import_librt_strings(void);
 
-#include <stdbool.h>
 #include <Python.h>
+#include <stdbool.h>
 #include "librt_strings.h"
 
 extern void *LibRTStrings_API[LIBRT_STRINGS_API_LEN];

@@ -973,6 +973,15 @@ def json_loads(data: bytes) -> Any:
 _AVAILABLE_THREADS: int | None = None
 
 
+def can_start_threads() -> bool:
+    """Can we start new threads?
+
+    WebAssembly builds are typically single-threaded, and starting a thread
+    fails with RuntimeError there, so we must not even try.
+    """
+    return sys.platform not in ("emscripten", "wasi")
+
+
 def get_available_threads() -> int:
     """Determine number of physical cores that current process can use (best effort)."""
     global _AVAILABLE_THREADS
@@ -1000,8 +1009,13 @@ def get_available_threads() -> int:
     # Not available on old Python versions on some platforms.
     if sys.platform == "linux":
         affinity = os.sched_getaffinity(0)
-    if PSUTIL_AVAILABLE and sys.platform != "darwin":
-        # Currently not supported on macOS.
+    if (
+        PSUTIL_AVAILABLE
+        # This matches platform availability in psutil docs.
+        and (psutil.LINUX or psutil.WINDOWS or psutil.FREEBSD)
+        # This is redundant, but needed for self-check.
+        and sys.platform != "darwin"
+    ):
         affinity = psutil.Process().cpu_affinity()
 
     assert cpu_count is not None

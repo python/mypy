@@ -340,6 +340,8 @@ class NodeReplaceVisitor(TraverserVisitor):
         super().visit_var(node)
 
     def visit_type_alias(self, node: TypeAlias) -> None:
+        # Updating alias target can invalidate its recursive status.
+        node._is_recursive = None
         self.fixup_type(node.target)
         for v in node.alias_tvars:
             self.fixup_type(v)
@@ -452,6 +454,12 @@ class TypeReplaceVisitor(SyntheticTypeVisitor[None]):
         # Fallback can be None for callable types that haven't been semantically analyzed.
         if typ.fallback is not None:
             typ.fallback.accept(self)
+        if typ.type_guard is not None:
+            typ.type_guard.accept(self)
+        if typ.type_is is not None:
+            typ.type_is.accept(self)
+        if typ.instance_type is not None:
+            typ.instance_type.accept(self)
         for tv in typ.variables:
             if isinstance(tv, TypeVarType):
                 tv.upper_bound.accept(self)

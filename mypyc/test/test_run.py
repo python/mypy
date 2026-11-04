@@ -66,6 +66,7 @@ files = [
     "run-classes.test",
     "run-traits.test",
     "run-generators.test",
+    "run-generator-exprs.test",
     "run-generics.test",
     "run-multimodule.test",
     "run-bench.test",
@@ -81,6 +82,8 @@ files = [
     "run-librt-strings.test",
     "run-base64.test",
     "run-librt-time.test",
+    "run-librt-random.test",
+    "run-threading.test",
     "run-match.test",
     "run-vecs-i64-interp.test",
     "run-vecs-misc-interp.test",
@@ -233,6 +236,10 @@ class TestRun(MypycDataSuite):
         # Avoid checking modules/packages named 'unchecked', to provide a way
         # to test interacting with code we don't have types for.
         options.per_module_options["unchecked.*"] = {"follow_imports": "error"}
+        # Avoid checking modules/packages named 'skipped', to provide a way
+        # to test interacting with code ignored by follow_imports=skip.
+        options.per_module_options["skipped"] = {"follow_imports": "skip"}
+        options.per_module_options["skipped.*"] = {"follow_imports": "skip"}
 
         source = build.BuildSource("native.py", "native", None)
         sources = [source]
@@ -433,7 +440,9 @@ class TestRun(MypycDataSuite):
                 outlines = [
                     fix_native_line_number(line, testcase.file, testcase.line) for line in outlines
                 ]
-            assert_test_output(testcase, outlines, msg, expected)
+            assert_test_output(
+                testcase, outlines, msg, expected, incremental_step=incremental_step
+            )
 
         if incremental_step > 1 and options.incremental:
             suffix = "" if incremental_step == 2 else str(incremental_step - 1)

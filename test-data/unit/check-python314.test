@@ -14,6 +14,10 @@ a = t"foobar"
 a = t"{'foobar'}"
 [builtins fixtures/f_string.pyi]
 
+[case testTemplateStringBelowTargetDoesNotImportTemplatelib]
+# flags: --python-version=3.13 --native-parser
+t"hello {1}"  # E: T-strings: requires Python 3.14 or newer (current target: Python 3.13)
+
 [case testTemplateStringWithoutExplicitImport]
 reveal_type(t"implicit import works")  # N: Revealed type is "string.templatelib.Template"
 [builtins fixtures/f_string.pyi]

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Final, NamedTuple
+from typing import Final
 
 import mypy.checker
 import mypy.plugin
@@ -43,9 +43,10 @@ _ORDERING_METHODS: Final = {"__lt__", "__le__", "__gt__", "__ge__"}
 PARTIAL: Final = "functools.partial"
 
 
-class _MethodInfo(NamedTuple):
-    is_static: bool
-    type: CallableType
+class _MethodInfo:
+    def __init__(self, is_static: bool, type: CallableType) -> None:
+        self.is_static: Final = is_static
+        self.type: Final = type
 
 
 def functools_total_ordering_maker_callback(

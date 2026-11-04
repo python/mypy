@@ -158,8 +158,10 @@ def parse_test_case(case: DataDrivenTestCase) -> None:
             for arg in args:
                 if arg.startswith("version"):
                     compare_op = arg[7:9]
-                    if compare_op not in {">=", "=="}:
-                        _item_fail("Only >= and == version checks are currently supported")
+                    if compare_op not in {">=", "==", "< "}:
+                        _item_fail(
+                            "Only `>=', `==', and `< ' version checks are currently supported"
+                        )
                     version_str = arg[9:]
                     try:
                         version = tuple(int(x) for x in version_str.split("."))
@@ -181,6 +183,12 @@ def parse_test_case(case: DataDrivenTestCase) -> None:
                                 f'Only minor or patch version checks are currently supported with "==": {version_str!r}'
                             )
                         version_check = sys.version_info[: len(version)] == version
+                    elif compare_op == "< ":
+                        if version < defaults.PYTHON3_VERSION:
+                            _item_fail(
+                                f"{arg} always false since minimum runtime version is {defaults.PYTHON3_VERSION}"
+                            )
+                        version_check = sys.version_info < version
             if version_check:
                 tmp_output = [expand_variables(line) for line in item.data]
                 if os.path.sep == "\\" and case.normalize_output:
@@ -371,7 +379,7 @@ class DataDrivenTestCase(pytest.Item):
                 # Write the first incremental steps
                 dir = os.path.dirname(path)
                 os.makedirs(dir, exist_ok=True)
-                with open(path, "w", encoding="utf8") as f:
+                with open(path, "w", encoding=choose_file_encoding(path)) as f:
                     f.write(content)
 
         for num, paths in self.deleted_paths.items():
@@ -418,7 +426,7 @@ class DataDrivenTestCase(pytest.Item):
         second step, etc. Each operation can either be a file modification/creation (UpdateFile)
         or deletion (DeleteFile).
 
-        Defaults to having two steps if there aern't any operations.
+        Defaults to having two steps if there aren't any operations.
         """
         return self.steps
 
@@ -821,6 +829,14 @@ def has_stable_flags(testcase: DataDrivenTestCase) -> bool:
         if os.path.basename(filename).startswith("mypy.ini."):
             return False
     return True
+
+
+def choose_file_encoding(path: str) -> str:
+    base_name, _ = os.path.splitext(path)
+    if base_name.endswith("_latin1"):
+        return "latin-1"
+    else:
+        return "utf-8"
 
 
 class DataSuite:

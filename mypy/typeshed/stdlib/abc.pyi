@@ -2,8 +2,8 @@ import _typeshed
 import sys
 from _typeshed import SupportsWrite
 from collections.abc import Callable
-from typing import Any, Literal, TypeVar
-from typing_extensions import Concatenate, ParamSpec, deprecated
+from typing import Any, Concatenate, Literal, ParamSpec, TypeVar
+from typing_extensions import deprecated
 
 _T = TypeVar("_T")
 _R_co = TypeVar("_R_co", covariant=True)
@@ -28,6 +28,7 @@ class ABCMeta(type):
     def register(cls: ABCMeta, subclass: type[_T]) -> type[_T]: ...
 
 def abstractmethod(funcobj: _FuncT) -> _FuncT: ...
+
 @deprecated("Deprecated since Python 3.3. Use `@classmethod` stacked on top of `@abstractmethod` instead.")
 class abstractclassmethod(classmethod[_T, _P, _R_co]):
     __isabstractmethod__: Literal[True]
@@ -46,6 +47,4 @@ class ABC(metaclass=ABCMeta):
     __slots__ = ()
 
 def get_cache_token() -> object: ...
-
-if sys.version_info >= (3, 10):
-    def update_abstractmethods(cls: type[_T]) -> type[_T]: ...
+def update_abstractmethods(cls: type[_T]) -> type[_T]: ...

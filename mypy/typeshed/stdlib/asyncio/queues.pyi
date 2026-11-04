@@ -1,13 +1,9 @@
 import sys
 from _typeshed import SupportsRichComparisonT
-from asyncio.events import AbstractEventLoop
 from types import GenericAlias
 from typing import Any, Generic, TypeVar
 
-if sys.version_info >= (3, 10):
-    from .mixins import _LoopBoundMixin
-else:
-    _LoopBoundMixin = object
+from .mixins import _LoopBoundMixin
 
 class QueueEmpty(Exception): ...
 class QueueFull(Exception): ...
@@ -24,14 +20,8 @@ _T = TypeVar("_T")
 if sys.version_info >= (3, 13):
     class QueueShutDown(Exception): ...
 
-# If Generic[_T] is last and _LoopBoundMixin is object, pyright is unhappy.
-# We can remove the noqa pragma when dropping 3.9 support.
-class Queue(Generic[_T], _LoopBoundMixin):  # noqa: Y059
-    if sys.version_info >= (3, 10):
-        def __init__(self, maxsize: int = 0) -> None: ...
-    else:
-        def __init__(self, maxsize: int = 0, *, loop: AbstractEventLoop | None = None) -> None: ...
-
+class Queue(_LoopBoundMixin, Generic[_T]):
+    def __init__(self, maxsize: int = 0) -> None: ...
     def _init(self, maxsize: int) -> None: ...
     def _get(self) -> _T: ...
     def _put(self, item: _T) -> None: ...

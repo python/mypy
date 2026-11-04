@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Sequence
-from typing import TypeVar, cast
+from typing import cast
 
 from mypy import message_registry, state
 from mypy.checker_shared import TypeCheckerSharedApi
@@ -21,7 +21,6 @@ from mypy.modules_state import modules_state
 from mypy.nodes import (
     ARG_POS,
     ARG_STAR,
-    ARG_STAR2,
     EXCLUDED_ENUM_ATTRIBUTES,
     SYMBOL_FUNCBASE_TYPES,
     Context,
@@ -45,9 +44,9 @@ from mypy.plugin import AttributeContext
 from mypy.subtypes import is_subtype
 from mypy.typeops import (
     bind_self,
+    bind_self_fast,
     erase_to_bound,
     freeze_all_type_vars,
-    function_type,
     get_all_type_vars,
     make_simplified_union,
     supported_self_type,
@@ -102,6 +101,7 @@ class MemberContext:
         rvalue: Expression | None = None,
         suppress_errors: bool = False,
         preserve_type_var_ids: bool = False,
+        attribute_error: bool = False,
     ) -> None:
         self.is_lvalue = is_lvalue
         self.is_super = is_super
@@ -122,6 +122,13 @@ class MemberContext:
         # It is needed to avoid infinite recursion in cases involving self-referential
         # generic methods, see find_member() for details. Do not use for other purposes!
         self.preserve_type_var_ids = preserve_type_var_ids
+        # This is again used for protocol subtype checks. Normally protocol checks first
+        # quickly reject an attribute access by checking if there is a relevant symbol.
+        # This doesn't work in case of restricted self-types. We cannot rely on error
+        # messages, as those may be emitted in cases where an attribute access is valid
+        # for the purposes of structural subtyping. So instead we use this mutable attribute
+        # to indicate such failures reliably.
+        self.attribute_error = attribute_error
 
     def named_type(self, name: str) -> Instance:
         return self.chk.named_type(name)
@@ -153,6 +160,7 @@ class MemberContext:
             rvalue=self.rvalue,
             suppress_errors=self.suppress_errors,
             preserve_type_var_ids=self.preserve_type_var_ids,
+            attribute_error=self.attribute_error,
         )
         if self_type is not None:
             mx.self_type = self_type
@@ -360,7 +368,7 @@ def analyze_instance_member_access(
         if mx.is_lvalue and not mx.suppress_errors:
             mx.msg.cant_assign_to_method(mx.context)
         if not isinstance(method, OverloadedFuncDef):
-            signature = function_type(method, mx.named_type("builtins.function"))
+            signature = mx.chk.function_type(method)
         else:
             if method.type is None:
                 # Overloads may be not ready if they are decorated. Handle this in same
@@ -376,9 +384,7 @@ def analyze_instance_member_access(
             if isinstance(method, (FuncDef, OverloadedFuncDef)) and method.is_trivial_self:
                 signature = bind_self_fast(signature, mx.self_type)
             else:
-                signature = check_self_arg(
-                    signature, mx.self_type, method.is_class, mx.context, name, mx.msg
-                )
+                signature = check_self_arg(signature, method.is_class, name, mx)
                 signature = bind_self(signature, mx.self_type, is_classmethod=method.is_class)
         typ = map_instance_to_supertype(typ, method.info)
         member_type = expand_type_by_instance(signature, typ)
@@ -407,15 +413,8 @@ def validate_super_call(node: FuncBase, mx: MemberContext) -> None:
 def analyze_type_callable_member_access(name: str, typ: FunctionLike, mx: MemberContext) -> Type:
     # Class attribute.
     # TODO super?
-    ret_type = typ.items[0].ret_type
-    assert isinstance(ret_type, ProperType)
-    if isinstance(ret_type, TupleType):
-        ret_type = tuple_fallback(ret_type)
-    if isinstance(ret_type, TypedDictType):
-        ret_type = ret_type.fallback
-    if isinstance(ret_type, LiteralType):
-        ret_type = ret_type.fallback
-    if isinstance(ret_type, Instance):
+    instance_type = typ.items[0].get_instance_type(force_fallback=True)
+    if isinstance(instance_type, Instance):
         if not mx.is_operator:
             # When Python sees an operator (eg `3 == 4`), it automatically translates that
             # into something like `int.__eq__(3, 4)` instead of `(3).__eq__(4)` as an
@@ -432,14 +431,18 @@ def analyze_type_callable_member_access(name: str, typ: FunctionLike, mx: Member
             # See https://github.com/python/mypy/pull/1787 for more info.
             # TODO: do not rely on same type variables being present in all constructor overloads.
             result = analyze_class_attribute_access(
-                ret_type, name, mx, original_vars=typ.items[0].variables, mcs_fallback=typ.fallback
+                instance_type,
+                name,
+                mx,
+                original_vars=typ.items[0].variables,
+                mcs_fallback=typ.fallback,
             )
             if result:
                 return result
         # Look up from the 'type' type.
         return _analyze_member_access(name, typ.fallback, mx)
     else:
-        assert False, f"Unexpected type {ret_type!r}"
+        assert False, f"Unexpected type {instance_type!r}"
 
 
 def analyze_type_type_member_access(
@@ -505,6 +508,9 @@ def analyze_union_member_access(name: str, typ: UnionType, mx: MemberContext) ->
             # Self types should be bound to every individual item of a union.
             item_mx = mx.copy_modified(self_type=subtype)
             results.append(_analyze_member_access(name, subtype, item_mx))
+            if item_mx.attribute_error:
+                # Record an error if there is an error on at least one union item.
+                mx.attribute_error = True
     return make_simplified_union(results)
 
 
@@ -721,7 +727,7 @@ def analyze_descriptor_access(descriptor_type: Type, mx: MemberContext) -> Type:
     dunder_get_type = expand_type_by_instance(bound_method, typ)
 
     if isinstance(instance_type, FunctionLike) and instance_type.is_type_obj():
-        owner_type = instance_type.items[0].ret_type
+        owner_type = instance_type.items[0].get_instance_type()
         instance_type = NoneType()
     elif isinstance(instance_type, TypeType):
         owner_type = instance_type.item
@@ -977,7 +983,7 @@ def expand_and_bind_callable(
     if is_trivial_self:
         typ = bind_self_fast(typ, mx.self_type)
     else:
-        typ = check_self_arg(typ, mx.self_type, var.is_classmethod, mx.context, name, mx.msg)
+        typ = check_self_arg(typ, var.is_classmethod, name, mx)
         typ = bind_self(typ, mx.self_type, var.is_classmethod)
     expanded = expand_type_by_instance(typ, itype)
     freeze_all_type_vars(expanded)
@@ -1054,12 +1060,7 @@ def expand_self_type_if_needed(
 
 
 def check_self_arg(
-    functype: FunctionLike,
-    dispatched_arg_type: Type,
-    is_classmethod: bool,
-    context: Context,
-    name: str,
-    msg: MessageBuilder,
+    functype: FunctionLike, is_classmethod: bool, name: str, mx: MemberContext
 ) -> FunctionLike:
     """Check that an instance has a valid type for a method with annotated 'self'.
 
@@ -1074,6 +1075,7 @@ def check_self_arg(
     if not items:
         return functype
     new_items = []
+    dispatched_arg_type = mx.self_type
     if is_classmethod:
         dispatched_arg_type = TypeType.make_normalized(dispatched_arg_type)
     p_dispatched_arg_type = get_proper_type(dispatched_arg_type)
@@ -1081,7 +1083,7 @@ def check_self_arg(
     for item in items:
         if not item.arg_types or item.arg_kinds[0] not in (ARG_POS, ARG_STAR):
             # No positional first (self) argument (*args is okay).
-            msg.no_formal_self(name, item, context)
+            mx.msg.no_formal_self(name, item, mx.context)
             # This is pretty bad, so just return the original signature if
             # there is at least one such error.
             return functype
@@ -1123,9 +1125,10 @@ def check_self_arg(
             raise NotImplementedError
     if not new_items:
         # Choose first item for the message (it may be not very helpful for overloads).
-        msg.incompatible_self_argument(
-            name, dispatched_arg_type, items[0], is_classmethod, context
+        mx.msg.incompatible_self_argument(
+            name, dispatched_arg_type, items[0], is_classmethod, mx.context
         )
+        mx.attribute_error = True
         return functype
     if len(new_items) == 1:
         return new_items[0]
@@ -1291,7 +1294,7 @@ def analyze_class_attribute_access(
             and not is_trivial_self
             and not t.bound()
         ):
-            t = check_self_arg(t, mx.self_type, False, mx.context, name, mx.msg)
+            t = check_self_arg(t, False, name, mx)
         t = add_class_tvars(
             t,
             isuper,
@@ -1328,7 +1331,7 @@ def analyze_class_attribute_access(
             return AnyType(TypeOfAny.from_error)
     else:
         assert isinstance(node.node, SYMBOL_FUNCBASE_TYPES)
-        typ = function_type(node.node, mx.named_type("builtins.function"))
+        typ = mx.chk.function_type(node.node)
         # Note: if we are accessing class method on class object, the cls argument is bound.
         # Annotated and/or explicit class methods go through other code paths above, for
         # unannotated implicit class methods we do this here.
@@ -1493,39 +1496,11 @@ def analyze_decorator_or_funcbase_access(
     """
     if isinstance(defn, Decorator):
         return analyze_var(name, defn.var, itype, mx)
-    typ = function_type(defn, mx.chk.named_type("builtins.function"))
+    typ = mx.chk.function_type(defn)
     if isinstance(defn, (FuncDef, OverloadedFuncDef)) and defn.is_trivial_self:
         return bind_self_fast(typ, mx.self_type)
-    typ = check_self_arg(typ, mx.self_type, defn.is_class, mx.context, name, mx.msg)
+    typ = check_self_arg(typ, defn.is_class, name, mx)
     return bind_self(typ, original_type=mx.self_type, is_classmethod=defn.is_class)
-
-
-F = TypeVar("F", bound=FunctionLike)
-
-
-def bind_self_fast(method: F, original_type: Type | None = None) -> F:
-    """Return a copy of `method`, with the type of its first parameter (usually
-    self or cls) bound to original_type.
-
-    This is a faster version of mypy.typeops.bind_self() that can be used for methods
-    with trivial self/cls annotations.
-    """
-    if isinstance(method, Overloaded):
-        items = [bind_self_fast(c, original_type) for c in method.items]
-        return cast(F, Overloaded(items))
-    assert isinstance(method, CallableType)
-    if not method.arg_types:
-        # Invalid method, return something.
-        return method
-    if method.arg_kinds[0] in (ARG_STAR, ARG_STAR2):
-        # See typeops.py for details.
-        return method
-    return method.copy_modified(
-        arg_types=method.arg_types[1:],
-        arg_kinds=method.arg_kinds[1:],
-        arg_names=method.arg_names[1:],
-        is_bound=True,
-    )
 
 
 def has_operator(typ: Type, op_method: str) -> bool:

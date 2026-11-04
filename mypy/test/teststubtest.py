@@ -81,6 +81,7 @@ class Coroutine(Generic[_T_co, _S, _R]): ...
 class Iterable(Generic[_T_co]): ...
 class Iterator(Iterable[_T_co]): ...
 class Mapping(Generic[_K, _V]): ...
+class MutableMapping(Mapping[_K, _V]): ...
 class Match(Generic[AnyStr]): ...
 class Sequence(Iterable[_T_co]): ...
 class Tuple(Sequence[_T_co]): ...
@@ -99,6 +100,7 @@ def final(func: _T) -> _T: ...
 """
 
 stubtest_builtins_stub = """
+import types
 from typing import Generic, Mapping, Sequence, TypeVar, overload
 
 T = TypeVar('T')
@@ -120,7 +122,11 @@ class dict(Mapping[KT, VT]): ...
 class frozenset(Generic[T]): ...
 
 class function: pass
-class ellipsis: pass
+
+class sentinel:
+    __name__: str
+    __module__: str
+    def __new__(cls, name: str, /, *, repr: str | None = None) -> sentinel: ...
 
 class int: ...
 class float: ...
@@ -681,6 +687,33 @@ class StubtestUnit(unittest.TestCase):
             """,
             error=None,
         )
+        # The first parameter of a classmethod can be called anything, see #16583
+        yield Case(
+            stub="""
+            class GoodOddClsName:
+                @classmethod
+                def f(GoodOddClsName, number: int) -> None: ...
+            """,
+            runtime="""
+            class GoodOddClsName:
+                @classmethod
+                def f(GoodOddClsName, number): pass
+            """,
+            error=None,
+        )
+        yield Case(
+            stub="""
+            class GoodStarArgsCls:
+                @classmethod
+                def f(*args: int) -> None: ...
+            """,
+            runtime="""
+            class GoodStarArgsCls:
+                @classmethod
+                def f(*args): pass
+            """,
+            error=None,
+        )
 
     @collect_cases
     def test_arg_mismatch(self) -> Iterator[Case]:
@@ -802,6 +835,28 @@ class StubtestUnit(unittest.TestCase):
             def f4(*, a=0): pass
             """,
             error="f3",
+        )
+        yield Case(
+            stub="""
+            from typing import overload
+
+            @overload
+            def f5(x: int, **kwargs: Unpack[_Args]) -> None: ...
+            @overload
+            def f5(x: str, **kwargs: Unpack[_Args]) -> None: ...
+            """,
+            runtime="def f5(x, *, a, b): pass",
+            error=None,
+        )
+        yield Case(
+            stub="""
+            @overload
+            def f6(x: int, **kwargs: Unpack[_Args]) -> None: ...
+            @overload
+            def f6(x: str, **kwargs: Unpack[_Args]) -> None: ...
+            """,
+            runtime="def f6(x, *, a, c): pass",
+            error="f6",
         )
 
     @collect_cases
@@ -1894,6 +1949,115 @@ assert annotations
         )
 
     @collect_cases
+    def test_missing_wrapper_descriptors(self) -> Iterator[Case]:
+        """
+        Dunders present at runtime but missing in the stub are usually ignored
+        if the runtime dunder is an instance of `WrapperDescriptorType` -- these
+        are often not actually callable at runtime. However, in certain specific
+        situations we still report a diagnostic when the stub is missing a dunder
+        that is present as a `WrapperDescriptorType` at runtime.
+        """
+
+        # If the stub has `__add__` and `__radd__` exists at runtime,
+        # it's likely that the missing `__radd__` is a true positive,
+        # so we report it.
+        yield Case(
+            stub="""
+            class Forward:
+                def __add__(self, other: object) -> object: ...
+            """,
+            runtime="""
+            class Forward:
+                def __add__(self, other): pass
+                __radd__ = int.__radd__
+            """,
+            error="Forward.__radd__",
+        )
+        yield Case(
+            stub="""
+            class Reflected:
+                def __radd__(self, other: object) -> object: ...
+            """,
+            runtime="""
+            class Reflected:
+                def __radd__(self, other): pass
+                __add__ = int.__add__
+            """,
+            error="Reflected.__add__",
+        )
+        yield Case(
+            stub="""
+            class Ordering:
+                def __lt__(self, other: object) -> bool: ...
+            """,
+            runtime="""
+            class Ordering:
+                def __lt__(self, other): pass
+                __gt__ = int.__gt__
+            """,
+            error="Ordering.__gt__",
+        )
+        yield Case(
+            stub="""
+            class ContextManager:
+                def __enter__(self) -> object: ...
+            """,
+            runtime="""
+            class ContextManager:
+                def __enter__(self): pass
+                __exit__ = int.__add__
+            """,
+            error="ContextManager.__exit__",
+        )
+        yield Case(
+            stub="""
+            class LessThanOrEqual:
+                def __lt__(self, other: object) -> bool: ...
+                def __eq__(self, other: object) -> bool: ...
+            """,
+            runtime="""
+            class LessThanOrEqual:
+                def __lt__(self, other): pass
+                def __eq__(self, other): pass
+                __le__ = int.__le__
+            """,
+            error="LessThanOrEqual.__le__",
+        )
+        yield Case(
+            stub="""
+            from typing import Mapping
+            class MappingOr(Mapping[str, int]): ...
+            """,
+            runtime="""
+            class MappingOr:
+                __or__ = dict.__or__
+            """,
+            error="MappingOr.__or__",
+        )
+        yield Case(
+            stub="""
+            from typing import MutableMapping
+            class MutableMappingIor(MutableMapping[str, int]): ...
+            """,
+            runtime="""
+            class MutableMappingIor:
+                __ior__ = dict.__ior__
+            """,
+            error="MutableMappingIor.__ior__",
+        )
+        yield Case(
+            stub="""
+            from typing import Sequence
+            class SequenceRmul(Sequence[int]): ...
+            """,
+            runtime="""
+            class SequenceRmul:
+                __rmul__ = list.__rmul__
+            """,
+            error="SequenceRmul.__rmul__",
+        )
+
+    @collect_cases
     def test_not_subclassable(self) -> Iterator[Case]:
         yield Case(
             stub="class CanBeSubclassed: ...", runtime="class CanBeSubclassed: ...", error=None
@@ -2964,6 +3128,58 @@ assert annotations
             error=None,
         )
 
+    @collect_cases
+    def test_object_marker(self) -> Iterator[Case]:
+        yield Case(
+            stub="""
+            def f(x: int = ...) -> None: ...
+            """,
+            runtime="""
+            _MISSING = object()
+
+
+            def f(x=_MISSING):
+                pass
+            """,
+            error=None,
+        )
+
+    @collect_cases
+    def test_sentinel_object_like_marker(self) -> Iterator[Case]:
+        yield Case(
+            stub="""
+            def f(x: int = ...) -> None: ...
+            """,
+            runtime="""
+            from typing_extensions import sentinel
+
+            _MISSING = sentinel("_MISSING")
+
+
+            def f(x=_MISSING):
+                pass
+            """,
+            error=None,
+        )
+
+    @collect_cases
+    def test_legacy_sentinel_object_like_marker(self) -> Iterator[Case]:
+        yield Case(
+            stub="""
+            def f(x: int = ...) -> None: ...
+            """,
+            runtime="""
+            from typing_extensions import Sentinel
+
+            _MISSING = Sentinel("_MISSING")
+
+
+            def f(x=_MISSING):
+                pass
+            """,
+            error=None,
+        )
+
 
 def remove_color_code(s: str) -> str:
     return re.sub("\\x1b.*?m", "", s)  # this works!
@@ -3097,7 +3313,7 @@ class StubtestMiscUnit(unittest.TestCase):
         output = run_stubtest(stub="+", runtime="", options=[])
         assert output == (
             "error: not checking stubs due to failed mypy compile:\n{}.pyi:1: "
-            "error: Invalid syntax  [syntax]\n".format(TEST_MODULE_NAME)
+            "error: Expected an expression  [syntax]\n".format(TEST_MODULE_NAME)
         )
 
         output = run_stubtest(stub="def f(): ...\ndef f(): ...", runtime="", options=[])
@@ -3135,7 +3351,6 @@ class StubtestMiscUnit(unittest.TestCase):
         assert "os.path" in stdlib
         assert "asyncio" in stdlib
         assert "graphlib" not in stdlib
-        assert "formatter" in stdlib
         assert "contextvars" in stdlib  # 3.7+
         assert "importlib.metadata" not in stdlib
 

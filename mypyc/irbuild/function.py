@@ -29,7 +29,7 @@ from mypy.nodes import (
     Var,
 )
 from mypy.types import CallableType, Type, UnboundType, get_proper_type
-from mypyc.common import FAST_PREFIX, LAMBDA_NAME, PROPSET_PREFIX, SELF_NAME
+from mypyc.common import FAST_PREFIX, LAMBDA_NAME, PROPSET_PREFIX, SELF_NAME, UNDECORATED_PREFIX
 from mypyc.ir.class_ir import ClassIR, NonExtClassInfo
 from mypyc.ir.func_ir import (
     FUNC_CLASSMETHOD,
@@ -45,7 +45,7 @@ from mypyc.ir.ops import (
     ComparisonOp,
     GetAttr,
     Integer,
-    LoadAddress,
+    LoadErrorValue,
     LoadLiteral,
     Register,
     Return,
@@ -78,14 +78,19 @@ from mypyc.irbuild.env_class import (
 )
 from mypyc.irbuild.generator import gen_generator_func, gen_generator_func_body
 from mypyc.irbuild.targets import AssignmentTarget
+from mypyc.irbuild.util import get_func_target_symbol
 from mypyc.primitives.dict_ops import (
     dict_get_method_with_none,
     dict_new_op,
     exact_dict_set_item_op,
 )
-from mypyc.primitives.generic_ops import generic_getattr, generic_setattr, py_setattr_op
+from mypyc.primitives.generic_ops import (
+    generic_getattr,
+    generic_setattr,
+    py_get_item_op,
+    py_setattr_op,
+)
 from mypyc.primitives.misc_ops import register_function
-from mypyc.primitives.registry import builtin_names
 from mypyc.sametype import is_same_method_signature, is_same_type
 
 # Top-level transform functions
@@ -252,10 +257,9 @@ def gen_func_item(
         generator_class_ir = builder.mapper.fdef_to_generator[fitem]
         builder.fn_info.generator_class = GeneratorClass(generator_class_ir)
 
-    # Functions that contain nested functions need an environment class to store variables that
-    # are free in their nested functions. Generator functions need an environment class to
-    # store a variable denoting the next instruction to be executed when the __next__ function
-    # is called, along with all the variables inside the function itself.
+    # Functions that contain nested functions need an environment class to store captured
+    # variables. A generator also needs a separate environment class when it is nested or its
+    # generated class is non-final.
     if contains_nested or (
         is_generator and not builder.fn_info.can_merge_generator_and_env_classes()
     ):
@@ -367,6 +371,7 @@ def gen_func_ir(
                 is_prop_setter=func_decl.is_prop_setter,
                 is_generator=func_decl.is_generator,
                 is_coroutine=func_decl.is_coroutine,
+                is_final=func_decl.is_final,
                 implicit=func_decl.implicit,
                 internal=func_decl.internal,
             )
@@ -426,7 +431,7 @@ def generate_getattr_wrapper(builder: IRBuilder, cdef: ClassDef, getattr: FuncDe
         builder.add(Return(getattr_result, line))
 
 
-def generate_setattr_wrapper(builder: IRBuilder, cdef: ClassDef, setattr: FuncDef) -> None:
+def generate_setattr_wrapper(builder: IRBuilder, cdef: ClassDef, fdef: FuncDef) -> None:
     """
     Generate a wrapper function for __setattr__ that can be put into the tp_setattro slot.
     The wrapper takes two arguments besides self - attribute name and the new value.
@@ -437,16 +442,21 @@ def generate_setattr_wrapper(builder: IRBuilder, cdef: ClassDef, setattr: FuncDe
     When it's NULL, this means that the call to tp_setattro comes from a del statement,
     so it calls __delattr__ instead. If __delattr__ is not overridden in the native class,
     this will call the base implementation in object which doesn't work without __dict__.
-    """
-    name = setattr.name + "__wrapper"
-    ir = builder.mapper.type_to_ir[cdef.info]
-    line = setattr.line
 
-    error_base = f'"__setattr__" not supported in class "{cdef.name}" because '
-    if ir.allow_interpreted_subclasses:
-        builder.error(error_base + "it allows interpreted subclasses", line)
-    if ir.inherits_python:
-        builder.error(error_base + "it inherits from a non-native class", line)
+    The wrapper is generated for a class that defines __setattr__, and for a class that
+    defines only __delattr__ and inherits __setattr__ from a native class. The argument
+    fdef is the definition of __setattr__ in the first case and of __delattr__ in the second.
+    """
+    name = "__setattr____wrapper"
+    ir = builder.mapper.type_to_ir[cdef.info]
+    line = fdef.line
+
+    if fdef.name == "__setattr__":
+        error_base = f'"__setattr__" not supported in class "{cdef.name}" because '
+        if ir.allow_interpreted_subclasses:
+            builder.error(error_base + "it allows interpreted subclasses", line)
+        if ir.inherits_python:
+            builder.error(error_base + "it inherits from a non-native class", line)
 
     with builder.enter_method(ir, name, c_int_rprimitive, internal=True):
         attr_arg = builder.add_argument("attr", object_rprimitive)
@@ -473,7 +483,7 @@ def generate_setattr_wrapper(builder: IRBuilder, cdef: ClassDef, setattr: FuncDe
         builder.add(Return(Integer(0, c_int_rprimitive), line))
 
         builder.activate_block(call_setattr)
-        builder.gen_method_call(builder.self(), setattr.name, [attr_arg, value_arg], None, line)
+        builder.gen_method_call(builder.self(), "__setattr__", [attr_arg, value_arg], None, line)
         builder.add(Return(Integer(0, c_int_rprimitive), line))
 
 
@@ -486,15 +496,41 @@ def handle_ext_method(builder: IRBuilder, cdef: ClassDef, fdef: FuncDef) -> None
     builder.functions.append(func_ir)
 
     if is_decorated(builder, fdef):
+        if name == "__new__" and class_ir.is_trait:
+            # A decorated __new__ is called by an inherited tp_new, and a class only
+            # inherits tp_new from its first base class.
+            builder.error('Decorated "__new__" not supported in traits', fdef.line)
         # Obtain the function name in order to construct the name of the helper function.
         _, _, name = fdef.fullname.rpartition(".")
-        # Read the PyTypeObject representing the class, get the callable object
-        # representing the non-decorated method
+        # Get the callable representing the non-decorated method directly from the type
+        # dictionary. Attribute access would bind a class method before its decorators are
+        # applied, but the decorators need to receive the unbound function.
         typ = builder.load_native_type_object(cdef.fullname)
-        orig_func = builder.py_get_attr(typ, name, fdef.line)
+        type_dict = builder.py_get_attr(typ, "__dict__", fdef.line)
+        orig_func = builder.primitive_op(
+            py_get_item_op, [type_dict, builder.load_str(name)], fdef.line
+        )
 
         # Decorate the non-decorated method
         decorated_func = load_decorated_func(builder, fdef, orig_func)
+
+        # @classmethod and @staticmethod aren't included in fdefs_to_decorators, since
+        # mypy represents them using the function kind. Reapply the outer descriptor
+        # after the other decorators, matching Python's decorator evaluation order.
+        # TODO: Handle cases where @classmethod/@staticmethod are the inner decorator.
+        # See mypyc#1208 for reference.
+        if func_ir.decl.kind == FUNC_CLASSMETHOD:
+            cls_meth = builder.load_module_attr_by_fullname("builtins.classmethod", fdef.line)
+            decorated_func = builder.py_call(cls_meth, [decorated_func], fdef.line)
+        elif func_ir.decl.kind == FUNC_STATICMETHOD:
+            stat_meth = builder.load_module_attr_by_fullname("builtins.staticmethod", fdef.line)
+            decorated_func = builder.py_call(stat_meth, [decorated_func], fdef.line)
+        elif fdef.is_property:
+            # Mypy also removes @property, and only accepts other decorators below it.
+            # The decorated getter can't be called natively, so this becomes a regular
+            # Python property instead of a native one.
+            prop = builder.load_module_attr_by_fullname("builtins.property", fdef.line)
+            decorated_func = builder.py_call(prop, [decorated_func], fdef.line)
 
         # Set the callable object representing the decorated method as an attribute of the
         # extension class.
@@ -502,7 +538,7 @@ def handle_ext_method(builder: IRBuilder, cdef: ClassDef, fdef: FuncDef) -> None
             py_setattr_op, [typ, builder.load_str(name), decorated_func], fdef.line
         )
 
-    if fdef.is_property:
+    elif fdef.is_property:
         # If there is a property setter, it will be processed after the getter,
         # We populate the optional setter field with none for now.
         assert name not in class_ir.properties
@@ -510,11 +546,34 @@ def handle_ext_method(builder: IRBuilder, cdef: ClassDef, fdef: FuncDef) -> None
 
     elif fdef in builder.prop_setters:
         # The respective property getter must have been processed already
-        assert name in class_ir.properties
-        getter_ir, _ = class_ir.properties[name]
-        class_ir.properties[name] = (getter_ir, func_ir)
+        if name in class_ir.properties:
+            getter_ir, _ = class_ir.properties[name]
+            class_ir.properties[name] = (getter_ir, func_ir)
+        else:
+            # A getter with other decorators isn't a native property (see above).
+            builder.error(
+                "Property setter not supported when the getter has other decorators", fdef.line
+            )
 
     class_ir.methods[func_ir.decl.name] = func_ir
+
+    # A decorated method that overrides a native method isn't a native method itself,
+    # so native calls to it go through a glue method that calls the decorated attribute
+    # using the Python API. The undecorated method stays in the type dict, since the
+    # decorators are applied to it at runtime.
+    decorated_override = (
+        is_decorated(builder, fdef)
+        and not fdef.is_property
+        and fdef not in builder.prop_setters
+        and name in class_ir.method_decls
+    )
+    if decorated_override:
+        glue = gen_glue_method(builder, func_ir.sig, func_ir, class_ir, class_ir, fdef.line, True)
+        # Native calls are compiled against the method's declaration, so the glue method
+        # takes it over from the undecorated method, which is renamed
+        glue = FuncIR(class_ir.method_decls[name], glue.arg_regs, glue.blocks, fdef.line)
+        builder.functions.append(glue)
+        class_ir.methods[name] = glue
 
     # If this overrides a parent class method with a different type, we need
     # to generate a glue method to mediate between them.
@@ -530,7 +589,15 @@ def handle_ext_method(builder: IRBuilder, cdef: ClassDef, fdef: FuncDef) -> None
             # property setters. Need to make a special glue method for handling this,
             # similar to gen_glue_property.
 
-            f = gen_glue(builder, base.method_decls[name].sig, func_ir, class_ir, base, fdef)
+            f = gen_glue(
+                builder,
+                base.method_decls[name].sig,
+                func_ir,
+                class_ir,
+                base,
+                fdef,
+                do_py_ops=decorated_override,
+            )
             class_ir.glue_methods[(base, name)] = f
             builder.functions.append(f)
 
@@ -547,6 +614,12 @@ def handle_ext_method(builder: IRBuilder, cdef: ClassDef, fdef: FuncDef) -> None
         class_ir.glue_methods[(class_ir, func_ir.decl.name)] = f
         builder.functions.append(f)
 
+    # Rename the undecorated method only after all glue methods calling it by name exist
+    if decorated_override:
+        func_ir.decl.name = UNDECORATED_PREFIX + name
+        func_ir.decl.internal = False
+        class_ir.methods[func_ir.decl.name] = func_ir
+
     if fdef.name == "__getattr__":
         generate_getattr_wrapper(builder, cdef, fdef)
     elif fdef.name == "__setattr__":
@@ -559,6 +632,15 @@ def handle_ext_method(builder: IRBuilder, cdef: ClassDef, fdef: FuncDef) -> None
                 + "or inherit from a native class that overrides it.",
                 fdef.line,
             )
+        elif "__setattr__" not in class_ir.method_decls:
+            # The class inherits __setattr__. If that comes from a native class, the class
+            # would also inherit its tp_setattro wrapper, which was generated without this
+            # __delattr__ and may not call it. So generate a wrapper for this class as well.
+            setattr_cls = next(
+                (base for base in class_ir.mro if "__setattr__" in base.method_decls), None
+            )
+            if setattr_cls is not None and setattr_cls.is_ext_class:
+                generate_setattr_wrapper(builder, cdef, fdef)
 
 
 def handle_non_ext_method(
@@ -744,6 +826,23 @@ def gen_glue_method(
         do_pycall = True
 
     if do_pycall:
+        if bitmap_args:
+            # Optional arguments whose type has no reserved error value are missing if their
+            # bit in the bitmap is unset. Box them and use NULL for missing arguments, since
+            # NULL optional arguments are omitted from the Python call.
+            index = 0
+            for i, arg in enumerate(rt_args[: len(args)]):
+                if arg.kind.is_optional() and arg.type.error_overlap:
+                    boxed = Register(object_rprimitive)
+                    builder.assign(boxed, args[i], line)
+                    builder.assign_if_bitmap_unset(
+                        boxed,
+                        lambda: builder.add(LoadErrorValue(object_rprimitive, undefines=True)),
+                        index,
+                        line,
+                    )
+                    args[i] = boxed
+                    index += 1
         if target.decl.kind == FUNC_STATICMETHOD:
             # FIXME: this won't work if we can do interpreted subclasses
             first = builder.builder.get_native_type(cls)
@@ -907,11 +1006,10 @@ def get_func_target(builder: IRBuilder, fdef: FuncDef) -> AssignmentTarget:
     If the function was not already defined somewhere, then define it
     and add it to the current environment.
     """
-    if orig := fdef.original_def:
-        if isinstance(orig, Decorator):
-            orig = orig.func
+    target_symbol = get_func_target_symbol(fdef)
+    if target_symbol is not fdef:
         # Get the target associated with the previously defined FuncDef.
-        return builder.lookup(orig)
+        return builder.lookup(target_symbol)
 
     if builder.fn_info.is_generator or builder.fn_info.add_nested_funcs_to_env:
         return builder.lookup(fdef)
@@ -935,9 +1033,8 @@ def load_type(builder: IRBuilder, typ: TypeInfo, unbounded_type: Type | None, li
     if typ in builder.mapper.type_to_ir:
         class_ir = builder.mapper.type_to_ir[typ]
         class_obj = builder.builder.get_native_type(class_ir)
-    elif typ.fullname in builtin_names:
-        builtin_addr_type, src = builtin_names[typ.fullname]
-        class_obj = builder.add(LoadAddress(builtin_addr_type, src, line))
+    elif builtin := builder.load_builtin(typ.fullname, line):
+        class_obj = builtin
     elif isinstance(unbounded_type, UnboundType):
         path_parts = unbounded_type.name.split(".")
         class_obj = builder.load_global_str(path_parts[0], line)
@@ -1013,8 +1110,8 @@ def gen_calls_to_correct_impl(
         coerced = builder.coerce(ret_val, current_func_decl.sig.ret_type, line)
         builder.add(Return(coerced))
 
-    typ, src = builtin_names["builtins.int"]
-    int_type_obj = builder.add(LoadAddress(typ, src, line))
+    int_type_obj = builder.load_builtin("builtins.int", line)
+    assert int_type_obj
     is_int = builder.builder.type_is_op(impl_to_use, int_type_obj, line)
 
     native_call, non_native_call = BasicBlock(), BasicBlock()

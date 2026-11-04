@@ -1,0 +1,119 @@
+[case testLibrtRandomConstructor_64bit]
+from librt.random import Random
+
+def make_random() -> Random:
+    return Random()
+[out]
+def make_random():
+    r0 :: librt.random.Random
+L0:
+    r0 = LibRTRandom_Random_internal()
+    return r0
+
+[case testLibrtRandomConstructorWithSeed_64bit]
+from librt.random import Random
+from mypy_extensions import i64
+
+def make_random_seeded(n: i64) -> Random:
+    return Random(n)
+[out]
+def make_random_seeded(n):
+    n :: i64
+    r0 :: librt.random.Random
+L0:
+    r0 = LibRTRandom_Random_from_seed_internal(n)
+    return r0
+
+[case testLibrtRandomRandrange_64bit]
+from librt.random import Random
+from mypy_extensions import i64
+
+def randrange1(r: Random, stop: i64) -> i64:
+    return r.randrange(stop)
+def randrange2(r: Random, start: i64, stop: i64) -> i64:
+    return r.randrange(start, stop)
+[out]
+def randrange1(r, stop):
+    r :: librt.random.Random
+    stop, r0 :: i64
+L0:
+    r0 = LibRTRandom_Random_randrange1_internal(r, stop)
+    return r0
+def randrange2(r, start, stop):
+    r :: librt.random.Random
+    start, stop, r0 :: i64
+L0:
+    r0 = LibRTRandom_Random_randrange2_internal(r, start, stop)
+    return r0
+
+[case testLibrtRandomRandint_64bit]
+from librt.random import Random
+from mypy_extensions import i64
+
+def randint(r: Random, a: i64, b: i64) -> i64:
+    return r.randint(a, b)
+[out]
+def randint(r, a, b):
+    r :: librt.random.Random
+    a, b, r0 :: i64
+L0:
+    r0 = LibRTRandom_Random_randint_internal(r, a, b)
+    return r0
+
+[case testLibrtRandomRandom_64bit]
+from librt.random import Random
+
+def rand(r: Random) -> float:
+    return r.random()
+[out]
+def rand(r):
+    r :: librt.random.Random
+    r0 :: float
+L0:
+    r0 = LibRTRandom_Random_random_internal(r)
+    return r0
+
+[case testLibrtRandomModuleRandom_64bit]
+from librt.random import random
+
+def module_random() -> float:
+    return random()
+[out]
+def module_random():
+    r0 :: float
+L0:
+    r0 = LibRTRandom_module_random_internal()
+    return r0
+
+[case testLibrtRandomModuleRandint_64bit]
+from librt.random import randint
+from mypy_extensions import i64
+
+def module_randint(a: i64, b: i64) -> i64:
+    return randint(a, b)
+[out]
+def module_randint(a, b):
+    a, b, r0 :: i64
+L0:
+    r0 = LibRTRandom_module_randint_internal(a, b)
+    return r0
+
+[case testLibrtRandomModuleRandrange_64bit]
+from librt.random import randrange
+from mypy_extensions import i64
+
+def module_randrange1(stop: i64) -> i64:
+    return randrange(stop)
+def module_randrange2(start: i64, stop: i64) -> i64:
+    return randrange(start, stop)
+[out]
+def module_randrange1(stop):
+    stop, r0 :: i64
+L0:
+    r0 = LibRTRandom_module_randrange1_internal(stop)
+    return r0
+def module_randrange2(start, stop):
+    start, stop, r0 :: i64
+L0:
+    r0 = LibRTRandom_module_randrange2_internal(start, stop)
+    return r0

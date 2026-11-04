@@ -657,7 +657,7 @@ def f3(x) -> None:
         reveal_type(x) # N: Revealed type is "builtins.int"
     reveal_type(x) # N: Revealed type is "Any | builtins.int"
 
-[case tetNewRedefineDel]
+[case testNewRedefineDel]
 # flags: --allow-redefinition
 def f1() -> None:
     x = ""
@@ -1160,7 +1160,7 @@ else:
     x = "" # E: Incompatible types in assignment (expression has type "str", variable has type "int")
 reveal_type(x) # N: Revealed type is "builtins.int"
 
-[case testNewRedefineWithoutLocalPartialTypes]
+[case testNewRedefineWithoutLocalPartialTypes_no_parallel]
 import a
 import b
 
@@ -1178,6 +1178,26 @@ if int():
 
 [out]
 tmp/b.py:1: error: --local-partial-types must be enabled if using --allow-redefinition
+
+[case testNewRedefineWithoutLocalPartialTypes_parallel_only]
+import a
+import b
+
+[file a.py]
+# mypy: local-partial-types, allow-redefinition
+x = 0
+if int():
+    x = ""
+
+[file b.py]
+# mypy: local-partial-types=false, allow-redefinition
+x = 0
+if int():
+    x = ""
+
+[out]
+tmp/b.py:1: error: --local-partial-types must be enabled if using --allow-redefinition
+tmp/b.py:1: error: --local-partial-types must be enabled in parallel mode
 
 [case testNewRedefineNestedLoopInfiniteExpansion]
 # flags: --allow-redefinition
@@ -1505,10 +1525,11 @@ def test(x: Union[str, Int]) -> None:
     reveal_type(y)  # N: Revealed type is "Any"
 
 [case testNewRedefineNarrowingForNestedUnionWithNone]
-# flags: --allow-redefinition
-from typing import Any, Union
+# flags: --allow-redefinition --ignore-missing-imports
+from typing import Union
+from somewhere import Unknown
 
-a: Any
+a: Unknown
 Int = Union[int, None]
 
 def test(x: Union[str, Int]) -> None:
@@ -1532,9 +1553,11 @@ def test(x: Union[str, Int]) -> None:
     reveal_type(y)  # N: Revealed type is "Any"
 
 [case testRegularNarrowingForNestedUnionWithNone]
-from typing import Any, Union
+# flags: --ignore-missing-imports
+from typing import Union
+from somewhere import Unknown
 
-a: Any
+a: Unknown
 Int = Union[int, None]
 
 def test(x: Union[str, Int]) -> None:

@@ -52,6 +52,7 @@ def compress(
 def decompress(
     data: ReadableBuffer, zstd_dict: ZstdDict | tuple[ZstdDict, int] | None = None, options: Mapping[int, int] | None = None
 ) -> bytes: ...
+
 @final
 class CompressionParameter(enum.IntEnum):
     compression_level = _zstd.ZSTD_c_compressionLevel

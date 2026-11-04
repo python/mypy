@@ -5,9 +5,16 @@ import unittest
 from mypy.test.helpers import assert_string_arrays_equal
 from mypyc.codegen.emit import Emitter, EmitterContext
 from mypyc.codegen.emitfunc import FunctionEmitterVisitor, generate_native_function
-from mypyc.common import HAVE_IMMORTAL, PLATFORM_SIZE
+from mypyc.common import PLATFORM_SIZE
 from mypyc.ir.class_ir import ClassIR
-from mypyc.ir.func_ir import FuncDecl, FuncIR, FuncSignature, RuntimeArg
+from mypyc.ir.func_ir import (
+    FUNC_CLASSMETHOD,
+    FUNC_STATICMETHOD,
+    FuncDecl,
+    FuncIR,
+    FuncSignature,
+    RuntimeArg,
+)
 from mypyc.ir.ops import (
     ERR_NEVER,
     Assign,
@@ -21,6 +28,7 @@ from mypyc.ir.ops import (
     ComparisonOp,
     CString,
     DecRef,
+    DeserMaps,
     Extend,
     GetAttr,
     GetElementPtr,
@@ -31,6 +39,7 @@ from mypyc.ir.ops import (
     LoadAddress,
     LoadLiteral,
     LoadMem,
+    MethodCall,
     Op,
     Register,
     Return,
@@ -54,6 +63,7 @@ from mypyc.ir.rtypes import (
     RVec,
     bool_rprimitive,
     c_int_rprimitive,
+    c_pointer_rprimitive,
     cstring_rprimitive,
     dict_rprimitive,
     int32_rprimitive,
@@ -68,6 +78,7 @@ from mypyc.ir.rtypes import (
 )
 from mypyc.irbuild.vtable import compute_vtable
 from mypyc.namegen import NameGenerator
+from mypyc.options import TargetPython
 from mypyc.primitives.dict_ops import (
     dict_get_item_op,
     dict_new_op,
@@ -121,6 +132,7 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
         ir.attributes = {
             "x": bool_rprimitive,
             "y": int_rprimitive,
+            "o": object_rprimitive,
             "i1": int64_rprimitive,
             "i2": int32_rprimitive,
             "t": RTuple([object_rprimitive, object_rprimitive]),
@@ -137,6 +149,16 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
         self.st = add_local("st", self.struct_type)
 
         self.context = EmitterContext(NameGenerator([["mod"]]), True)
+
+    def use_free_threaded_target(self) -> None:
+        self.context = EmitterContext(
+            NameGenerator([["mod"]]), True, target_python=TargetPython((3, 14), True)
+        )
+
+    def use_gil_target(self) -> None:
+        self.context = EmitterContext(
+            NameGenerator([["mod"]]), True, target_python=TargetPython((3, 14), False)
+        )
 
     def test_goto(self) -> None:
         self.assert_emit(Goto(BasicBlock(2)), "goto CPyL2;")
@@ -297,6 +319,48 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
         )
         self.assert_emit(
             Call(decl, [self.m, self.k], 55), "cpy_r_r0 = CPyDef_myfn(cpy_r_m, cpy_r_k);"
+        )
+
+    def test_final_method_calls_bypass_vtable(self) -> None:
+        assert isinstance(self.r.type, RInstance)
+        cl = self.r.type.class_ir
+        cl.allow_interpreted_subclasses = True
+        sig = FuncSignature(
+            [RuntimeArg("self", self.r.type), RuntimeArg("n", int_rprimitive)], int_rprimitive
+        )
+        final_decl = FuncDecl("final_method", "A", "mod", sig, is_final=True)
+        cl.method_decls["final_method"] = final_decl
+        assert FuncDecl.deserialize(final_decl.serialize(), DeserMaps({"mod.A": cl}, {})).is_final
+        assert cl.is_method_final("final_method")
+        self.assert_emit(
+            MethodCall(self.r, "final_method", [self.n]),
+            "cpy_r_r0 = CPyDef_A___final_method(cpy_r_r, cpy_r_n);",
+        )
+
+        cl.method_decls["final_class_method"] = FuncDecl(
+            "final_class_method", "A", "mod", sig, FUNC_CLASSMETHOD, is_final=True
+        )
+        self.assert_emit(
+            MethodCall(self.r, "final_class_method", [self.n]),
+            "cpy_r_r0 = CPyDef_A___final_class_method((PyObject *)Py_TYPE(cpy_r_r), cpy_r_n);",
+        )
+
+        static_sig = FuncSignature([RuntimeArg("n", int_rprimitive)], int_rprimitive)
+        cl.method_decls["final_static_method"] = FuncDecl(
+            "final_static_method", "A", "mod", static_sig, FUNC_STATICMETHOD, is_final=True
+        )
+        self.assert_emit(
+            MethodCall(self.r, "final_static_method", [self.n]),
+            "cpy_r_r0 = CPyDef_A___final_static_method(cpy_r_n);",
+        )
+
+        cl.method_decls["virtual_method"] = FuncDecl("virtual_method", "A", "mod", sig)
+        cl.vtable = {"virtual_method": 0}
+        assert not cl.is_method_final("virtual_method")
+        self.assert_emit(
+            MethodCall(self.r, "virtual_method", [self.n]),
+            "cpy_r_r0 = CPY_GET_METHOD(cpy_r_r, CPyType_A, 0, mod___AObject, "
+            "CPyTagged (*)(PyObject *, CPyTagged))(cpy_r_r, cpy_r_n); /* virtual_method */",
         )
 
     def test_inc_ref(self) -> None:
@@ -466,6 +530,7 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
         )
 
     def test_get_attr(self) -> None:
+        self.use_gil_target()
         self.assert_emit(
             GetAttr(self.r, "y", 1),
             """cpy_r_r0 = ((mod___AObject *)cpy_r_r)->_y;
@@ -475,6 +540,37 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
                    CPyTagged_INCREF(cpy_r_r0);
                }
             """,
+        )
+
+    def test_get_attr_int_free_threaded(self) -> None:
+        self.use_free_threaded_target()
+        self.assert_emit(
+            GetAttr(self.r, "y", 1),
+            """\
+            cpy_r_r0 = CPyTagged_GetAttr((PyObject *)cpy_r_r, &((mod___AObject *)cpy_r_r)->_y);
+            if (unlikely(cpy_r_r0 == CPY_INT_TAG)) {
+                PyErr_SetString(PyExc_AttributeError, "attribute 'y' of 'A' undefined");
+            }
+            """,
+        )
+
+    def test_get_attr_int_merged_free_threaded(self) -> None:
+        self.use_free_threaded_target()
+        op = GetAttr(self.r, "y", 1)
+        branch = Branch(op, BasicBlock(8), BasicBlock(9), Branch.IS_ERROR)
+        branch.traceback_entry = ("foobar", 123)
+        self.assert_emit(
+            op,
+            """\
+            cpy_r_r0 = CPyTagged_GetAttr((PyObject *)cpy_r_r, &((mod___AObject *)cpy_r_r)->_y);
+            if (unlikely(cpy_r_r0 == CPY_INT_TAG)) {
+                CPy_AttributeError("prog.py", "foobar", "A", "y", 123, CPyStatic_prog___globals);
+                goto CPyL8;
+            }
+            goto CPyL9;
+            """,
+            next_branch=branch,
+            skip_next=True,
         )
 
     def test_get_attr_non_refcounted(self) -> None:
@@ -487,7 +583,20 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
             """,
         )
 
+    def test_get_attr_ref_free_threaded(self) -> None:
+        self.use_free_threaded_target()
+        self.assert_emit(
+            GetAttr(self.r, "o", 1),
+            """\
+            cpy_r_r0 = CPy_GetAttrRef((PyObject *)cpy_r_r, (PyObject **)&((mod___AObject *)cpy_r_r)->_o);
+            if (unlikely(cpy_r_r0 == NULL)) {
+                PyErr_SetString(PyExc_AttributeError, "attribute 'o' of 'A' undefined");
+            }
+            """,
+        )
+
     def test_get_attr_merged(self) -> None:
+        self.use_gil_target()
         op = GetAttr(self.r, "y", 1)
         branch = Branch(op, BasicBlock(8), BasicBlock(9), Branch.IS_ERROR)
         branch.traceback_entry = ("foobar", 123)
@@ -506,7 +615,8 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
             skip_next=True,
         )
 
-    def test_get_attr_with_bitmap(self) -> None:
+    def test_get_attr_with_bitmap_gil(self) -> None:
+        self.use_gil_target()
         self.assert_emit(
             GetAttr(self.r, "i1", 1),
             """cpy_r_r0 = ((mod___AObject *)cpy_r_r)->_i1;
@@ -516,18 +626,123 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
             """,
         )
 
-    def test_get_attr_nullable_with_tuple(self) -> None:
+    def test_get_attr_with_bitmap_free_threaded(self) -> None:
+        self.use_free_threaded_target()
+        bitmap = "_Py_atomic_load_uint32(&((mod___AObject *)cpy_r_r)->bitmap)"
         self.assert_emit(
-            GetAttr(self.r, "t", 1, allow_error_value=True),
+            GetAttr(self.r, "i1", 1),
+            f"""cpy_r_r0 = ((mod___AObject *)cpy_r_r)->_i1;
+               if (unlikely(cpy_r_r0 == -113) && !({bitmap} & 1)) {{
+                   PyErr_SetString(PyExc_AttributeError, "attribute 'i1' of 'A' undefined");
+               }}
+            """,
+        )
+
+    def test_get_attr_nullable_with_tuple_free_threaded(self) -> None:
+        self.use_free_threaded_target()
+        expected = """char __tmp1 = 0;
+            Py_BEGIN_CRITICAL_SECTION(cpy_r_r);
+            cpy_r_r0 = ((mod___AObject *)cpy_r_r)->_t;
+            if (cpy_r_r0.f0 == NULL) {
+                __tmp1 = 1;
+            }
+            if (!__tmp1) {
+                CPy_INCREF(cpy_r_r0.f0);
+                CPy_INCREF(cpy_r_r0.f1);
+            }
+            Py_END_CRITICAL_SECTION();
+        """
+        self.assert_emit(GetAttr(self.r, "t", 1, allow_error_value=True), expected)
+
+    def test_get_tuple_attr_free_threaded(self) -> None:
+        self.use_free_threaded_target()
+        self.assert_emit(
+            GetAttr(self.r, "t", 1),
+            """char __tmp1 = 0;
+                Py_BEGIN_CRITICAL_SECTION(cpy_r_r);
+                cpy_r_r0 = ((mod___AObject *)cpy_r_r)->_t;
+                if (cpy_r_r0.f0 == NULL) {
+                    __tmp1 = 1;
+                }
+                if (!__tmp1) {
+                    CPy_INCREF(cpy_r_r0.f0);
+                    CPy_INCREF(cpy_r_r0.f1);
+                }
+                Py_END_CRITICAL_SECTION();
+                if (unlikely(__tmp1)) {
+                    PyErr_SetString(PyExc_AttributeError, "attribute 't' of 'A' undefined");
+                }
+            """,
+        )
+
+    def test_get_tuple_attr_final_free_threaded(self) -> None:
+        self.use_free_threaded_target()
+        assert isinstance(self.r.type, RInstance)
+        self.r.type.class_ir.final_attributes.add("t")
+        self.assert_emit(
+            GetAttr(self.r, "t", 1),
             """cpy_r_r0 = ((mod___AObject *)cpy_r_r)->_t;
-               if (cpy_r_r0.f0 != NULL) {
-                   CPy_INCREF(cpy_r_r0.f0);
-                   CPy_INCREF(cpy_r_r0.f1);
-               }
+                if (unlikely(cpy_r_r0.f0 == NULL)) {
+                    PyErr_SetString(PyExc_AttributeError, "attribute 't' of 'A' undefined");
+                } else {
+                    CPy_INCREF(cpy_r_r0.f0);
+                    CPy_INCREF(cpy_r_r0.f1);
+                }
+            """,
+        )
+
+    def test_set_tuple_attr_free_threaded(self) -> None:
+        self.use_free_threaded_target()
+        assert isinstance(self.r.type, RInstance)
+        src = Register(self.r.type.class_ir.attributes["t"], "tuple")
+        self.registers.append(src)
+        self.assert_emit(
+            SetAttr(self.r, "t", src, 1),
+            """tuple_T2OO __tmp1;
+                Py_BEGIN_CRITICAL_SECTION(cpy_r_r);
+                __tmp1 = ((mod___AObject *)cpy_r_r)->_t;
+                ((mod___AObject *)cpy_r_r)->_t = cpy_r_tuple;
+                Py_END_CRITICAL_SECTION();
+                if (__tmp1.f0 != NULL) {
+                    CPy_DECREF(__tmp1.f0);
+                    CPy_DECREF(__tmp1.f1);
+                }
+                cpy_r_r0 = 1;
+            """,
+        )
+
+    def test_tuple_attr_initializer_store_free_threaded(self) -> None:
+        self.use_free_threaded_target()
+        assert isinstance(self.r.type, RInstance)
+        src = Register(self.r.type.class_ir.attributes["t"], "tuple")
+        self.registers.append(src)
+        op = SetAttr(self.r, "t", src, 1)
+        op.is_init = True
+        # Lock even an initializer store, but preserve its ownership transfer:
+        # no incref of the source and no decref of a previous field value.
+        self.assert_emit(
+            op,
+            """Py_BEGIN_CRITICAL_SECTION(cpy_r_r);
+                ((mod___AObject *)cpy_r_r)->_t = cpy_r_tuple;
+                Py_END_CRITICAL_SECTION();
+                cpy_r_r0 = 1;
+            """,
+        )
+        cl = self.r.type.class_ir
+        cl.has_private_generator_frame = True
+        cl.has_running_flag = True
+        cl.needs_getseters = False
+        cl.is_generated = True
+        # Private generator frames remain protected by their running flag.
+        self.assert_emit(
+            op,
+            """((mod___AObject *)cpy_r_r)->_t = cpy_r_tuple;
+                cpy_r_r0 = 1;
             """,
         )
 
     def test_set_attr(self) -> None:
+        self.use_gil_target()
         self.assert_emit(
             SetAttr(self.r, "y", self.m, 1),
             """if (((mod___AObject *)cpy_r_r)->_y != CPY_INT_TAG) {
@@ -538,6 +753,32 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
             """,
         )
 
+    def test_set_attr_ref_free_threaded(self) -> None:
+        self.use_free_threaded_target()
+        self.assert_emit(
+            SetAttr(self.r, "o", self.o, 1),
+            """\
+            CPy_SetAttrRef((PyObject *)cpy_r_r, (PyObject **)&((mod___AObject *)cpy_r_r)->_o, cpy_r_o);
+            cpy_r_r0 = 1;
+            """,
+        )
+
+    def test_set_attr_int_free_threaded(self) -> None:
+        self.use_free_threaded_target()
+        self.assert_emit(
+            SetAttr(self.r, "y", self.m, 1),
+            """\
+            CPyTagged_SetAttr((PyObject *)cpy_r_r, &((mod___AObject *)cpy_r_r)->_y, cpy_r_m);
+            cpy_r_r0 = 1;
+            """,
+        )
+
+    def test_set_attr_int_init_free_threaded(self) -> None:
+        self.use_free_threaded_target()
+        op = SetAttr(self.r, "y", self.m, 1)
+        op.mark_as_initializer()
+        self.assert_emit(op, "CPyTagged_InitAttr(&((mod___AObject *)cpy_r_r)->_y, cpy_r_m);")
+
     def test_set_attr_non_refcounted(self) -> None:
         self.assert_emit(
             SetAttr(self.r, "x", self.b, 1),
@@ -547,6 +788,7 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
         )
 
     def test_set_attr_no_error(self) -> None:
+        self.use_gil_target()
         op = SetAttr(self.r, "y", self.m, 1)
         op.error_kind = ERR_NEVER
         self.assert_emit(
@@ -567,7 +809,8 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
             """,
         )
 
-    def test_set_attr_with_bitmap(self) -> None:
+    def test_set_attr_with_bitmap_gil(self) -> None:
+        self.use_gil_target()
         # For some rtypes the error value overlaps a valid value, so we need
         # to use a separate bitmap to track defined attributes.
         self.assert_emit(
@@ -589,13 +832,51 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
             """,
         )
 
-    def test_set_attr_init_with_bitmap(self) -> None:
+    def test_set_attr_with_bitmap_free_threaded(self) -> None:
+        self.use_free_threaded_target()
+        # For some rtypes the error value overlaps a valid value, so we need
+        # to use a separate bitmap to track defined attributes.
+        self.assert_emit(
+            SetAttr(self.r, "i1", self.i64, 1),
+            """if (unlikely(cpy_r_i64 == -113)) {
+                   _Py_atomic_or_uint32(&((mod___AObject *)cpy_r_r)->bitmap, 1);
+               }
+               ((mod___AObject *)cpy_r_r)->_i1 = cpy_r_i64;
+               cpy_r_r0 = 1;
+            """,
+        )
+        self.assert_emit(
+            SetAttr(self.r, "i2", self.i32, 1),
+            """if (unlikely(cpy_r_i32 == -113)) {
+                   _Py_atomic_or_uint32(&((mod___AObject *)cpy_r_r)->bitmap, 2);
+               }
+               ((mod___AObject *)cpy_r_r)->_i2 = cpy_r_i32;
+               cpy_r_r0 = 1;
+            """,
+        )
+
+    def test_set_attr_init_with_bitmap_gil(self) -> None:
+        self.use_gil_target()
         op = SetAttr(self.r, "i1", self.i64, 1)
         op.is_init = True
         self.assert_emit(
             op,
             """if (unlikely(cpy_r_i64 == -113)) {
                    ((mod___AObject *)cpy_r_r)->bitmap |= 1;
+               }
+               ((mod___AObject *)cpy_r_r)->_i1 = cpy_r_i64;
+               cpy_r_r0 = 1;
+            """,
+        )
+
+    def test_set_attr_init_with_bitmap_free_threaded(self) -> None:
+        self.use_free_threaded_target()
+        op = SetAttr(self.r, "i1", self.i64, 1)
+        op.is_init = True
+        self.assert_emit(
+            op,
+            """if (unlikely(cpy_r_i64 == -113)) {
+                   _Py_atomic_or_uint32(&((mod___AObject *)cpy_r_r)->bitmap, 1);
                }
                ((mod___AObject *)cpy_r_r)->_i1 = cpy_r_i64;
                cpy_r_r0 = 1;
@@ -789,6 +1070,12 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
             """cpy_r_r0 = (PyObject *)&PyDict_Type;""",
         )
 
+    def test_load_address_of_wrapper(self) -> None:
+        decl = FuncDecl("myfn", None, "mod", FuncSignature([], int_rprimitive))
+        self.assert_emit(
+            LoadAddress(c_pointer_rprimitive, decl), """cpy_r_r0 = (void *)CPyPy_myfn;"""
+        )
+
     def test_assign_multi(self) -> None:
         t = RArray(object_rprimitive, 2)
         a = Register(t, "a")
@@ -933,16 +1220,23 @@ else {
 
     def test_inc_ref_none(self) -> None:
         b = Box(self.none)
-        self.assert_emit([b, IncRef(b)], "" if HAVE_IMMORTAL else "CPy_INCREF(cpy_r_r0);")
+        self.assert_emit(
+            [b, IncRef(b)], "" if TargetPython.host().have_immortal else "CPy_INCREF(cpy_r_r0);"
+        )
 
     def test_inc_ref_bool(self) -> None:
         b = Box(self.b)
-        self.assert_emit([b, IncRef(b)], "" if HAVE_IMMORTAL else "CPy_INCREF(cpy_r_r0);")
+        self.assert_emit(
+            [b, IncRef(b)], "" if TargetPython.host().have_immortal else "CPy_INCREF(cpy_r_r0);"
+        )
 
     def test_inc_ref_int_literal(self) -> None:
         for x in -5, 0, 1, 5, 255, 256:
             b = LoadLiteral(x, object_rprimitive)
-            self.assert_emit([b, IncRef(b)], "" if HAVE_IMMORTAL else "CPy_INCREF(cpy_r_r0);")
+            self.assert_emit(
+                [b, IncRef(b)],
+                "" if TargetPython.host().have_immortal else "CPy_INCREF(cpy_r_r0);",
+            )
         for x in -1123355, -6, 257, 123235345:
             b = LoadLiteral(x, object_rprimitive)
             self.assert_emit([b, IncRef(b)], "CPy_INCREF(cpy_r_r0);")

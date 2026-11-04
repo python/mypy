@@ -604,8 +604,9 @@ V = Enum('U', **{'a': 1})  # E: Unexpected arguments to Enum()
 W = Enum('W', 'a b')
 W.c  # E: "type[W]" has no attribute "c"
 X = Enum('Something', 'a b')  # E: String argument 1 "Something" to enum.Enum(...) does not match variable name "X"
-reveal_type(X.a)  # N: Revealed type is "Literal[__main__.Something@23.a]?"
-X.asdf  # E: "type[Something@23]" has no attribute "asdf"
+reveal_type(X.a)  # N: Revealed type is "Literal[__main__.X.a]?"
+X.asdf  # E: "type[X]" has no attribute "asdf"
+
 
 [builtins fixtures/tuple.pyi]
 [typing fixtures/typing-medium.pyi]
@@ -633,7 +634,7 @@ a = A()
 reveal_type(a.x)
 [builtins fixtures/enum.pyi]
 [out]
-main:7: note: Revealed type is "__main__.A.E@4"
+main:7: note: Revealed type is "__main__.E@4"
 
 [case testFunctionalEnumInClassBody]
 from enum import Enum
@@ -2557,7 +2558,7 @@ class Pet(Enum):
     CAT = ...
     DOG: str = ...  # E: Enum members must be left unannotated \
                     # N: See https://typing.readthedocs.io/en/latest/spec/enums.html#defining-members \
-                    # E: Incompatible types in assignment (expression has type "ellipsis", variable has type "str")
+                    # E: Incompatible types in assignment (expression has type "EllipsisType", variable has type "str")
 [builtins fixtures/enum.pyi]
 
 [case testEnumValueWithPlaceholderNodeType]
@@ -2735,23 +2736,23 @@ class FromStub(Enum):
     FOO = ...
 
 reveal_type(FromStub.FOO)  # N: Revealed type is "Literal[__main__.FromStub.FOO]?"
-reveal_type(FromStub.FOO.value)  # N: Revealed type is "builtins.ellipsis"
+reveal_type(FromStub.FOO.value)  # N: Revealed type is "types.EllipsisType"
 reveal_type(FromStub.FOO._value_)  # N: Revealed type is "builtins.int"
 
 class InheritedStr(StrEnum):
     FOO = ...
 
 reveal_type(InheritedStr.FOO)  # N: Revealed type is "Literal[__main__.InheritedStr.FOO]?"
-reveal_type(InheritedStr.FOO.value)  # N: Revealed type is "builtins.ellipsis"
-reveal_type(InheritedStr.FOO._value_)  # N: Revealed type is "builtins.ellipsis"
+reveal_type(InheritedStr.FOO.value)  # N: Revealed type is "types.EllipsisType"
+reveal_type(InheritedStr.FOO._value_)  # N: Revealed type is "types.EllipsisType"
 
 class Wrapper:
     class Nested(StrEnum):
         FOO = ...
 
 reveal_type(Wrapper.Nested.FOO)  # N: Revealed type is "Literal[__main__.Wrapper.Nested.FOO]?"
-reveal_type(Wrapper.Nested.FOO.value)  # N: Revealed type is "builtins.ellipsis"
-reveal_type(Wrapper.Nested.FOO._value_)  # N: Revealed type is "builtins.ellipsis"
+reveal_type(Wrapper.Nested.FOO.value)  # N: Revealed type is "types.EllipsisType"
+reveal_type(Wrapper.Nested.FOO._value_)  # N: Revealed type is "types.EllipsisType"
 [builtins fixtures/enum.pyi]
 
 [case testStrEnumEqualityReachability]
@@ -2981,4 +2982,28 @@ def f(x: SE | None) -> None:
         reveal_type(x)  # N: Revealed type is "__main__.SE"
     else:
         reveal_type(x)  # N: Revealed type is "__main__.SE | None"
+[builtins fixtures/primitives.pyi]
+
+
+[case testCallableEnumNarrowing]
+# See: https://github.com/python/mypy/issues/17222
+
+import enum
+
+class Foo(enum.Enum):
+     FOO1 = enum.auto()
+     FOO2 = enum.auto()
+
+     def __call__(self) -> str:
+         return self.name
+
+foo = Foo.FOO1
+
+match foo:
+     case Foo.FOO1:
+        foo()
+        reveal_type(foo) # N: Revealed type is "Literal[__main__.Foo.FOO1]"
+     case _:
+        foo()
+        reveal_type(foo) # N: Revealed type is "Literal[__main__.Foo.FOO2]"
 [builtins fixtures/primitives.pyi]

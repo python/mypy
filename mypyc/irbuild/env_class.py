@@ -31,6 +31,7 @@ from mypyc.ir.rtypes import RInstance, bitmap_rprimitive, object_rprimitive
 from mypyc.irbuild.builder import IRBuilder, SymbolTarget
 from mypyc.irbuild.context import FuncInfo, GeneratorClass, ImplicitClass
 from mypyc.irbuild.targets import AssignmentTargetAttr
+from mypyc.irbuild.util import get_func_target_symbol
 
 
 def setup_env_class(builder: IRBuilder) -> ClassIR:
@@ -48,39 +49,40 @@ def setup_env_class(builder: IRBuilder) -> ClassIR:
     Return a ClassIR representing an environment for a function
     containing a nested function.
     """
-    env_class = ClassIR(
-        f"{builder.fn_info.namespaced_name()}_env",
-        builder.module_name,
-        is_generated=True,
-        is_final_class=True,
-    )
+    name = builder.unique_class_name(f"{builder.fn_info.namespaced_name()}_env")
+    env_class = ClassIR(name, builder.module_name, is_generated=True, is_final_class=True)
     env_class.reuse_freed_instance = True
     env_class.attributes[SELF_NAME] = RInstance(env_class)
     if builder.fn_info.is_nested and builder.fn_infos[-2]._env_class is not None:
         # If the function is nested, its environment class must contain an environment
         # attribute pointing to its encapsulating functions' environment class.
         env_class.attributes[ENV_ATTR_NAME] = RInstance(builder.fn_infos[-2].env_class)
+        if builder.fn_info.contains_nested:
+            env_class.attrs_to_keep_alive_on_completion.add(ENV_ATTR_NAME)
     env_class.mro = [env_class]
     builder.fn_info.env_class = env_class
     builder.classes.append(env_class)
     return env_class
 
 
-def finalize_env_class(builder: IRBuilder, prefix: str = "") -> None:
+def finalize_env_class(builder: IRBuilder, prefix: str = "", *, add_args: bool = True) -> Value:
     """Generate, instantiate, and set up the environment of an environment class."""
     if not builder.fn_info.can_merge_generator_and_env_classes():
-        instantiate_env_class(builder)
+        env_reg = instantiate_env_class(builder)
+    else:
+        env_reg = builder.fn_info.curr_env_reg
 
     # Iterate through the function arguments and replace local definitions (using registers)
     # that were previously added to the environment with references to the function's
     # environment class. Comprehension scopes have no arguments to add.
-    if not builder.fn_info.is_comprehension_scope:
+    if add_args and not builder.fn_info.is_comprehension_scope:
         if builder.fn_info.is_nested:
             add_args_to_env(
                 builder, local=False, base=builder.fn_info.callable_class, prefix=prefix
             )
         else:
             add_args_to_env(builder, local=False, base=builder.fn_info, prefix=prefix)
+    return env_reg
 
 
 def instantiate_env_class(builder: IRBuilder) -> Value:
@@ -100,24 +102,34 @@ def instantiate_env_class(builder: IRBuilder) -> Value:
             )
         )
     else:
+        if builder.fn_info.is_comprehension_scope and builder.code_fn_info.is_generator:
+            # The comprehension may contain an await, and only registers can be kept
+            # alive across one.
+            curr_env_reg = builder.ensure_register(curr_env_reg)
         # Top-level functions and comprehension scopes store env reg directly.
         builder.fn_info._curr_env_reg = curr_env_reg
         # Comprehension scopes link to parent env if it exists.
-        if (
-            builder.fn_info.is_nested
-            and builder.fn_infos[-2]._env_class is not None
-            and builder.fn_infos[-2]._curr_env_reg is not None
-        ):
+        parent = builder.fn_infos[-2] if builder.fn_info.is_nested else None
+        if parent is not None and parent._env_class is not None:
+            parent_env_reg = get_curr_env_reg(parent)
+        else:
+            parent_env_reg = None
+        if parent_env_reg is not None:
             builder.add(
-                SetAttr(
-                    curr_env_reg,
-                    ENV_ATTR_NAME,
-                    builder.fn_infos[-2].curr_env_reg,
-                    builder.fn_info.fitem.line,
-                )
+                SetAttr(curr_env_reg, ENV_ATTR_NAME, parent_env_reg, builder.fn_info.fitem.line)
             )
 
     return curr_env_reg
+
+
+def get_curr_env_reg(fn_info: FuncInfo) -> Value | None:
+    """Return the register holding the current environment of a function, if any."""
+    if fn_info.is_generator:
+        return fn_info.generator_class.curr_env_reg
+    elif fn_info.is_nested and not fn_info.is_comprehension_scope:
+        # Nested functions store their environment on the callable class.
+        return fn_info.callable_class._curr_env_reg
+    return fn_info._curr_env_reg
 
 
 def load_env_registers(builder: IRBuilder, prefix: str = "") -> None:
@@ -137,30 +149,40 @@ def load_env_registers(builder: IRBuilder, prefix: str = "") -> None:
         # If this is a FuncDef, then make sure to load the FuncDef into its own environment
         # class so that the function can be called recursively.
         if isinstance(fitem, FuncDef) and fn_info.add_nested_funcs_to_env:
-            setup_func_for_recursive_call(builder, fitem, fn_info.callable_class, prefix=prefix)
+            setup_func_for_recursive_call(builder, fitem, fn_info.callable_class)
 
 
 def load_outer_env(
-    builder: IRBuilder, base: Value, outer_env: dict[SymbolNode, SymbolTarget]
+    builder: IRBuilder,
+    base: Value,
+    outer_env: dict[SymbolNode, SymbolTarget],
+    *,
+    borrow: bool = False,
 ) -> Value:
-    """Load the environment class for a given base into a register.
+    """Load the environment referenced by "base" and bind its symbols.
 
-    Additionally, iterates through all of the SymbolNode and
-    AssignmentTarget instances of the environment at the given index's
-    symtable, and adds those instances to the environment of the
-    current environment. This is done so that the current environment
-    can access outer environment variables without having to reload
-    all of the environment registers.
+    "outer_env" may contain registers and attributes from multiple environment levels.
+    Bind only attributes stored directly on the loaded environment, since the other targets
+    cannot be accessed through it.
 
-    Returns the register where the environment class was loaded.
+    If "borrow" is true, return a borrowed reference. In that case the environment link on
+    "base" must be final so that the reference remains valid.
     """
-    env = builder.add(GetAttr(base, ENV_ATTR_NAME, builder.fn_info.fitem.line))
+    if borrow:
+        assert isinstance(base.type, RInstance)
+        assert base.type.class_ir.is_final_attr(ENV_ATTR_NAME)
+    env = builder.add(GetAttr(base, ENV_ATTR_NAME, builder.fn_info.fitem.line, borrow=borrow))
     assert isinstance(env.type, RInstance), f"{env} must be of type RInstance"
 
     for symbol, target in outer_env.items():
-        attr_name = symbol.name
-        if isinstance(target, AssignmentTargetAttr):
-            attr_name = target.attr
+        # Only targets actually stored in this environment are visible through it.
+        if (
+            not isinstance(target, AssignmentTargetAttr)
+            or not isinstance(target.obj.type, RInstance)
+            or target.obj.type.class_ir is not env.type.class_ir
+        ):
+            continue
+        attr_name = target.attr
         env.type.class_ir.attributes[attr_name] = target.type
         symbol_target = AssignmentTargetAttr(env, attr_name)
         builder.add_target(symbol, symbol_target)
@@ -180,7 +202,9 @@ def load_outer_envs(builder: IRBuilder, base: ImplicitClass) -> None:
         if isinstance(base, GeneratorClass):
             base.prev_env_reg = load_outer_env(builder, base.curr_env_reg, outer_env)
         else:
-            base.prev_env_reg = load_outer_env(builder, base.self_reg, outer_env)
+            # The callable stays alive throughout __call__, and its environment link is Final,
+            # so the environment can be borrowed for the duration of the call.
+            base.prev_env_reg = load_outer_env(builder, base.self_reg, outer_env, borrow=True)
         env_reg = base.prev_env_reg
         index -= 1
 
@@ -212,8 +236,8 @@ def add_args_to_env(
 ) -> None:
     fn_info = builder.fn_info
     args = fn_info.fitem.arguments
-    nb = num_bitmap_args(builder, args)
     if local:
+        nb = num_bitmap_args(builder, args)
         for arg in args:
             rtype = builder.type_to_rtype(arg.variable.type)
             builder.add_local_reg(arg.variable, rtype, is_arg=True)
@@ -221,62 +245,103 @@ def add_args_to_env(
             builder.add_local_reg(Var(bitmap_name(i)), bitmap_rprimitive, is_arg=True)
     else:
         for arg in args:
-            if (
-                is_free_variable(builder, arg.variable)
-                or fn_info.is_generator
-                or fn_info.is_coroutine
-            ):
+            if is_free_variable(builder, arg.variable):
                 rtype = builder.type_to_rtype(arg.variable.type)
                 assert base is not None, "base cannot be None for adding nonlocal args"
                 builder.add_var_to_env_class(
-                    arg.variable, rtype, base, reassign=reassign, prefix=prefix
+                    arg.variable,
+                    rtype,
+                    base,
+                    reassign=reassign,
+                    keep_alive_on_completion=builder.is_captured_by_nested_func(arg.variable),
+                    prefix=prefix,
                 )
+
+
+def add_generator_args(
+    builder: IRBuilder, frame_reg: Value, env_reg: Value, reassign: bool
+) -> None:
+    """Put generator arguments on either the closure environment or private frame."""
+    for arg in builder.fn_info.fitem.arguments:
+        rtype = builder.type_to_rtype(arg.variable.type)
+        if builder.is_captured_by_nested_func(arg.variable):
+            builder.add_var_to_class(
+                arg.variable,
+                rtype,
+                builder.fn_info.env_class,
+                env_reg,
+                reassign=reassign,
+                keep_alive_on_completion=True,
+                prefix=GENERATOR_ATTRIBUTE_PREFIX,
+            )
+        else:
+            builder.add_var_to_generator_frame(arg.variable, rtype, frame_reg, reassign=reassign)
 
 
 def add_vars_to_env(builder: IRBuilder, prefix: str = "") -> None:
-    """Add relevant local variables and nested functions to the environment class.
+    """Add relevant local variables and nested functions to persistent storage.
 
-    Add all variables and functions that are declared/defined within current
-    function and are referenced in functions nested within this one to this
-    function's environment class so the nested functions can reference
-    them even if they are declared after the nested function's definition.
-    Note that this is done before visiting the body of the function.
+    Captured bindings go in the environment class. Generator-owned bindings that aren't
+    captured go on the private generator frame. This is done before visiting the function body
+    so nested functions can reference declarations that occur later in the body.
     """
-    env_for_func: FuncInfo | ImplicitClass = builder.fn_info
-    if builder.fn_info.is_generator:
-        env_for_func = builder.fn_info.generator_class
-    elif (
-        builder.fn_info.is_nested or builder.fn_info.in_non_ext
-    ) and not builder.fn_info.is_comprehension_scope:
-        env_for_func = builder.fn_info.callable_class
+    fn_info = builder.fn_info
+    env_for_func: FuncInfo | ImplicitClass = fn_info
+    if fn_info.is_generator:
+        env_for_func = fn_info.generator_class
+    elif fn_info.is_nested and not fn_info.is_comprehension_scope:
+        env_for_func = fn_info.callable_class
 
-    if builder.fn_info.fitem in builder.free_variables:
+    if fn_info.fitem in builder.free_variables:
         # Sort the variables to keep things deterministic
-        for var in sorted(builder.free_variables[builder.fn_info.fitem], key=lambda x: x.name):
+        for var in sorted(builder.free_variables[fn_info.fitem], key=lambda x: x.name):
             if isinstance(var, Var):
-                rtype = builder.type_to_rtype(var.type)
                 builder.add_var_to_env_class(
-                    var, rtype, env_for_func, reassign=False, prefix=prefix
+                    var,
+                    builder.type_to_rtype(var.type),
+                    env_for_func,
+                    reassign=False,
+                    keep_alive_on_completion=True,
+                    prefix=prefix,
                 )
 
-    if builder.fn_info.fitem in builder.encapsulating_funcs:
-        for nested_fn in builder.encapsulating_funcs[builder.fn_info.fitem]:
+    if fn_info.fitem in builder.encapsulating_funcs:
+        added: set[SymbolNode] = set()
+        for nested_fn in builder.encapsulating_funcs[fn_info.fitem]:
             if isinstance(nested_fn, FuncDef):
+                target_symbol = get_func_target_symbol(nested_fn)
+                if target_symbol in added:
+                    continue
+                added.add(target_symbol)
                 # The return type is 'object' instead of an RInstance of the
                 # callable class because differently defined functions with
                 # the same name and signature across conditional blocks
                 # will generate different callable classes, so the callable
                 # class that gets instantiated must be generic.
+                nested_prefix = prefix
                 if nested_fn.is_generator or nested_fn.is_coroutine:
-                    prefix = GENERATOR_ATTRIBUTE_PREFIX
-                builder.add_var_to_env_class(
-                    nested_fn, object_rprimitive, env_for_func, reassign=False, prefix=prefix
-                )
+                    nested_prefix = GENERATOR_ATTRIBUTE_PREFIX
+                keep_alive = is_free_variable(builder, target_symbol)
+                if fn_info.is_generator and not builder.is_captured_by_nested_func(target_symbol):
+                    builder.add_var_to_generator_frame(
+                        target_symbol,
+                        object_rprimitive,
+                        fn_info.generator_class.self_reg,
+                        reassign=False,
+                        keep_alive_on_completion=keep_alive,
+                    )
+                else:
+                    builder.add_var_to_env_class(
+                        target_symbol,
+                        object_rprimitive,
+                        env_for_func,
+                        reassign=False,
+                        keep_alive_on_completion=keep_alive,
+                        prefix=nested_prefix,
+                    )
 
 
-def setup_func_for_recursive_call(
-    builder: IRBuilder, fdef: FuncDef, base: ImplicitClass, prefix: str = ""
-) -> None:
+def setup_func_for_recursive_call(builder: IRBuilder, fdef: FuncDef, base: ImplicitClass) -> None:
     """Enable calling a nested function (with a callable class) recursively.
 
     Adds the instance of the callable class representing the given
@@ -284,10 +349,18 @@ def setup_func_for_recursive_call(
     be called recursively. Note that this needs to be done only for
     nested functions.
     """
-    # First, set the attribute of the environment class so that GetAttr can be called on it.
     prev_env = builder.fn_infos[-2].env_class
-    attr_name = prefix + fdef.name
-    prev_env.attributes[attr_name] = builder.type_to_rtype(fdef.type)
+    target_symbol = get_func_target_symbol(fdef)
+    target = builder.symtables[-2].get(target_symbol)
+    if (
+        not isinstance(target_symbol, FuncDef)
+        or not isinstance(target, AssignmentTargetAttr)
+        or not isinstance(target.obj.type, RInstance)
+        or target.obj.type.class_ir is not prev_env
+    ):
+        return
+
+    attr_name = target.attr
     line = fdef.line
 
     if isinstance(base, GeneratorClass):
@@ -301,7 +374,7 @@ def setup_func_for_recursive_call(
     # Obtain the instance of the callable class representing the FuncDef, and add it to the
     # current environment.
     val = builder.add(GetAttr(prev_env_reg, attr_name, line))
-    target = builder.add_local_reg(fdef, object_rprimitive)
+    target = builder.add_local_reg(target_symbol, object_rprimitive)
     builder.assign(target, val, line)
 
 

@@ -1,4 +1,3 @@
-#ifdef MYPYC_EXPERIMENTAL
 #define VEC VecI32
 #define VEC_TYPE VecI32Type
 #define VEC_OBJECT VecI32Object
@@ -14,7 +13,7 @@
 #define BOX_ITEM VecI32_BoxItem
 #define UNBOX_ITEM VecI32_UnboxItem
 #define IS_UNBOX_ERROR VecI32_IsUnboxError
+#define BUFFER_FORMAT_CHAR_OK(c) ((c) == 'i' || ((c) == 'l' && sizeof(long) == 4))
+#define BUFFER_FORMAT "i"
 
 #include "vec_template.c"
-
-#endif  // MYPYC_EXPERIMENTAL

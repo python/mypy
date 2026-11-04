@@ -23,7 +23,7 @@ import os
 import platform
 import sys
 import time
-from typing import NamedTuple
+from typing import Final
 
 from librt.internal import ReadBuffer, read_tag
 
@@ -47,7 +47,13 @@ from mypy.build import (
     process_stale_scc_interface,
 )
 from mypy.cache import Tag, read_int_list, read_json
-from mypy.defaults import RECURSION_LIMIT, WORKER_CONNECTION_TIMEOUT, WORKER_IDLE_TIMEOUT
+from mypy.defaults import (
+    RECURSION_LIMIT,
+    WORKER_CONNECTION_TIMEOUT,
+    WORKER_IDLE_TIMEOUT,
+    WORKER_START_INTERVAL,
+    WORKER_START_TIMEOUT,
+)
 from mypy.error_formatter import OUTPUT_CHOICES
 from mypy.errors import CompileError, ErrorInfo, Errors, report_internal_error
 from mypy.fscache import FileSystemCache
@@ -65,12 +71,20 @@ parser.add_argument("--options-data", help="file with serialized mypy options")
 CONNECTION_NAME = "build_worker"
 
 
-class ServerContext(NamedTuple):
-    options: Options
-    disable_error_code: list[str]
-    enable_error_code: list[str]
-    errors: Errors
-    fscache: FileSystemCache
+class ServerContext:
+    def __init__(
+        self,
+        options: Options,
+        disable_error_code: list[str],
+        enable_error_code: list[str],
+        errors: Errors,
+        fscache: FileSystemCache,
+    ) -> None:
+        self.options: Final = options
+        self.disable_error_code: Final = disable_error_code
+        self.enable_error_code: Final = enable_error_code
+        self.errors: Final = errors
+        self.fscache: Final = fscache
 
 
 def main(argv: list[str]) -> None:
@@ -84,8 +98,20 @@ def main(argv: list[str]) -> None:
     # This mimics how daemon receives the options. Note we need to postpone
     # processing error codes after plugins are loaded, because plugins can add
     # custom error codes.
-    with open(args.options_data, "rb") as f:
-        buf = ReadBuffer(f.read())
+    end_time = time.time() + WORKER_START_TIMEOUT
+    last_exception: Exception | None = None
+    while time.time() < end_time:
+        try:
+            with open(args.options_data, "rb") as f:
+                buf = ReadBuffer(f.read())
+        except OSError as exc:
+            last_exception = exc
+            time.sleep(WORKER_START_INTERVAL)
+            continue
+        break
+    else:
+        raise TimeoutError(f"Failed to read {args.options_data}: {last_exception}")
+
     options_dict = read_json(buf)
     disable_error_code = options_dict.pop("disable_error_code", [])
     enable_error_code = options_dict.pop("enable_error_code", [])
@@ -103,8 +129,14 @@ def main(argv: list[str]) -> None:
         raise
 
     fscache = FileSystemCache()
+    fscache.set_package_root(options.package_root)
     cached_read = fscache.read
-    errors = Errors(options, read_source=lambda path: read_py_file(path, cached_read))
+    error_formatter = None if options.output is None else OUTPUT_CHOICES.get(options.output)
+    errors = Errors(
+        options,
+        read_source=lambda path: read_py_file(path, cached_read),
+        error_formatter=error_formatter,
+    )
 
     ctx = ServerContext(options, disable_error_code, enable_error_code, errors, fscache)
     try:

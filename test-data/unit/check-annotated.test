@@ -41,6 +41,11 @@ x: Annotated[int]  # E: Annotated[...] must have exactly one type argument and a
 reveal_type(x)  # N: Revealed type is "Any"
 [builtins fixtures/tuple.pyi]
 
+[case testAnnotatedBadEmptyTupleIndexInTypeApplication]
+from typing_extensions import Annotated
+list[Annotated[()]]  # E: Annotated[...] must have exactly one type argument and at least one annotation
+[builtins fixtures/list.pyi]
+
 [case testAnnotatedNested0]
 from typing_extensions import Annotated
 x: Annotated[Annotated[int, ...], ...]

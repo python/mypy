@@ -1,4 +1,3 @@
-#ifdef MYPYC_EXPERIMENTAL
 #define VEC VecFloat
 #define VEC_TYPE VecFloatType
 #define VEC_OBJECT VecFloatObject
@@ -14,7 +13,7 @@
 #define BOX_ITEM VecFloat_BoxItem
 #define UNBOX_ITEM VecFloat_UnboxItem
 #define IS_UNBOX_ERROR VecFloat_IsUnboxError
+#define BUFFER_FORMAT_CHAR_OK(c) ((c) == 'd')
+#define BUFFER_FORMAT "d"
 
 #include "vec_template.c"
-
-#endif  // MYPYC_EXPERIMENTAL

@@ -229,11 +229,6 @@ class C:
 def f() -> None:
     a = C.X + 1
 [out]
-def C.__mypyc_defaults_setup(__mypyc_self__):
-    __mypyc_self__ :: __main__.C
-L0:
-    __mypyc_self__.X = 10
-    return 1
 def f():
     a :: int
 L0:

@@ -970,8 +970,9 @@ class MessageBuilder:
             msg = "Too many positional arguments"
         else:
             msg = "Too many positional arguments" + for_function(callee)
-        self.fail(msg, context)
+        self.fail(msg, context, code=codes.CALL_ARG_MISC)
         self.maybe_note_about_special_args(callee, context)
+        self.note_defined_here(callee, context, code=codes.CALL_ARG_MISC)
 
     def maybe_note_about_special_args(self, callee: CallableType, context: Context) -> None:
         if self.prefer_simple_messages():
@@ -1018,7 +1019,9 @@ class MessageBuilder:
         )
         self.note_defined_here(callee, context)
 
-    def note_defined_here(self, callee: CallableType, context: Context) -> None:
+    def note_defined_here(
+        self, callee: CallableType, context: Context, code: ErrorCode = codes.CALL_ARG
+    ) -> None:
         module = find_defining_module(self.modules, callee)
         if (
             module
@@ -1031,7 +1034,7 @@ class MessageBuilder:
                 fname = "Called function"
             else:
                 fname = fname.split(" of ")[0]  # use short method names in the note
-            self.note(f'{fname} defined in "{module.fullname}"', context, code=codes.CALL_ARG)
+            self.note(f'{fname} defined in "{module.fullname}"', context, code=code)
 
     def duplicate_argument_value(self, callee: CallableType, index: int, context: Context) -> None:
         self.fail(
@@ -1752,7 +1755,9 @@ class MessageBuilder:
             context,
         )
 
-    def overloaded_signatures_param_specific(self, index: int, context: Context) -> None:
+    def overloaded_signatures_param_specific(
+        self, index: int, context: Context, positional_only_args: list[str]
+    ) -> None:
         self.fail(
             (
                 f"Overloaded function implementation does not accept all possible parameters "
@@ -1760,6 +1765,9 @@ class MessageBuilder:
             ),
             context,
         )
+        if positional_only_args:
+            names = ", ".join(f'"{name}"' for name in positional_only_args)
+            self.note(f"Consider marking {names} positional-only in signature {index}", context)
 
     def overloaded_signatures_ret_specific(self, index: int, context: Context) -> None:
         self.fail(
@@ -2220,8 +2228,9 @@ class MessageBuilder:
         class_obj = False
         is_module = False
         skip = []
+        original_subtype = subtype
         if isinstance(subtype, TupleType):
-            subtype = subtype.partial_fallback
+            subtype = mypy.typeops.tuple_fallback(subtype)
         elif isinstance(subtype, TypedDictType):
             subtype = subtype.fallback
         elif isinstance(subtype, TypeType):
@@ -2231,18 +2240,20 @@ class MessageBuilder:
             subtype = subtype.item
         elif isinstance(subtype, CallableType):
             if subtype.is_type_obj():
-                ret_type = get_proper_type(subtype.ret_type)
-                if isinstance(ret_type, TupleType):
-                    ret_type = ret_type.partial_fallback
-                if not isinstance(ret_type, Instance):
+                instance_type = subtype.get_instance_type(force_fallback=True)
+                if not isinstance(instance_type, Instance):
                     return
                 class_obj = True
-                subtype = ret_type
+                subtype = instance_type
             else:
                 subtype = subtype.fallback
                 skip = ["__call__"]
         if subtype.extra_attrs and subtype.extra_attrs.mod_name:
             is_module = True
+        if not isinstance(original_subtype, TupleType):
+            # Apart from instances, only tuples are supported by
+            # is_protocol_implementation() for now.
+            original_subtype = subtype
 
         # Report missing members
         missing = get_missing_protocol_members(subtype, supertype, skip=skip)
@@ -2274,7 +2285,7 @@ class MessageBuilder:
 
         # Report member type conflicts
         conflict_types = get_conflict_protocol_types(
-            subtype, supertype, class_obj=class_obj, options=self.options
+            subtype, original_subtype, supertype, class_obj=class_obj, options=self.options
         )
         if conflict_types and (
             not is_subtype(subtype, erase_type(supertype), options=self.options)
@@ -2667,7 +2678,14 @@ def format_type_inner(
         return ", ".join(format(typ) for typ in types)
 
     def format_union_items(types: Sequence[Type]) -> list[str]:
-        formatted = [format(typ) for typ in types if format(typ) != "None"]
+        formatted = []
+        has_none = False
+        for typ in types:
+            item = format(typ)
+            if item == "None":
+                has_none = True
+            else:
+                formatted.append(item)
         if len(formatted) > MAX_UNION_ITEMS and verbosity == 0:
             more = len(formatted) - MAX_UNION_ITEMS // 2
             formatted = formatted[: MAX_UNION_ITEMS // 2]
@@ -2675,7 +2693,7 @@ def format_type_inner(
             more = 0
         if more:
             formatted.append(f"<{more} more items>")
-        if any(format(typ) == "None" for typ in types):
+        if has_none:
             formatted.append("None")
         return formatted
 
@@ -2777,6 +2795,8 @@ def format_type_inner(
                 modifier += "="
             items.append(f"{item_name!r}{modifier}: {format(item_type)}")
         return f"TypedDict({{{', '.join(items)}}})"
+    elif isinstance(typ, LiteralType) and typ.is_sentinel_literal():
+        return format_literal_value(typ)
     elif isinstance(typ, LiteralType):
         return f"Literal[{format_literal_value(typ)}]"
     elif isinstance(typ, UnionType):
@@ -2784,6 +2804,9 @@ def format_type_inner(
         if not isinstance(typ, UnionType):
             return format(typ)
         literal_items, union_items = separate_union_literals(typ)
+        sentinel_items = [item for item in literal_items if item.is_sentinel_literal()]
+        literal_items = [item for item in literal_items if not item.is_sentinel_literal()]
+        union_items = [*sentinel_items, *union_items]
 
         # Coalesce multiple Literal[] members. This also changes output order.
         # If there's just one Literal item, retain the original ordering.
@@ -2827,9 +2850,7 @@ def format_type_inner(
     elif isinstance(typ, FunctionLike):
         func = typ
         if func.is_type_obj():
-            # The type of a type object type can be derived from the
-            # return type (this always works).
-            return format(TypeType.make_normalized(func.items[0].ret_type))
+            return format(TypeType.make_normalized(func.items[0].get_instance_type()))
         elif isinstance(func, CallableType):
             if func.type_guard is not None:
                 return_type = f"TypeGuard[{format(func.type_guard)}]"
@@ -3115,7 +3136,7 @@ def pretty_callable(tp: CallableType, options: Options, skip_self: bool = False)
         # TODO: avoid different logic for incremental runs.
         first_arg = get_first_arg(tp)
 
-    if tp.is_type_obj():
+    if tp.is_type_obj() or not tp.is_bound:
         skip_self = True
     if first_arg and not skip_self:
         if s:
@@ -3191,7 +3212,11 @@ def get_missing_protocol_members(left: Instance, right: Instance, skip: list[str
 
 
 def get_conflict_protocol_types(
-    left: Instance, right: Instance, class_obj: bool = False, options: Options | None = None
+    left: Instance,
+    original_left: Type,
+    right: Instance,
+    class_obj: bool = False,
+    options: Options | None = None,
 ) -> list[tuple[str, Type, Type, bool]]:
     """Find members that are defined in 'left' but have incompatible types.
     Return them as a list of ('member', 'got', 'expected', 'is_lvalue').
@@ -3203,7 +3228,7 @@ def get_conflict_protocol_types(
             continue
         supertype = find_member(member, right, left)
         assert supertype is not None
-        subtype = get_protocol_member(left, member, class_obj)
+        subtype = get_protocol_member(left, original_left, member, class_obj)
         if not subtype:
             continue
         is_compat = is_subtype(subtype, supertype, ignore_pos_arg_names=True, options=options)
@@ -3219,7 +3244,9 @@ def get_conflict_protocol_types(
                 different_setter = True
             supertype = set_supertype
         if IS_EXPLICIT_SETTER in get_member_flags(member, left):
-            set_subtype = get_protocol_member(left, member, class_obj, is_lvalue=True)
+            set_subtype = get_protocol_member(
+                left, original_left, member, class_obj, is_lvalue=True
+            )
             if set_subtype and not is_same_type(set_subtype, subtype):
                 different_setter = True
             subtype = set_subtype

@@ -3,8 +3,8 @@
 #ifndef CPY_CPY_H
 #define CPY_CPY_H
 
-#include <stdbool.h>
 #include <Python.h>
+#include <stdbool.h>
 #include <frameobject.h>
 #include <structmember.h>
 #include <assert.h>
@@ -20,6 +20,52 @@ extern "C" {
 #endif
 
 #define CPYTHON_LARGE_INT_ERRMSG "Python int too large to convert to C ssize_t"
+
+
+// Native module import synchronization
+
+typedef struct CPyModuleLockAPI CPyModuleLockAPI;
+
+typedef struct {
+    int32_t initialized;
+    int32_t executed;
+} CPyImportState;
+
+enum {
+    CPY_LOCK_ERROR = -1,
+    CPY_LOCK_ACQUIRED = 0,
+    CPY_LOCK_DEADLOCK = 1,
+};
+
+CPyModuleLockAPI *CPyModuleLockAPI_Alloc(void);
+void CPyModuleLockAPI_Free(CPyModuleLockAPI *api);
+int CPyImport_AcquireLock(CPyModuleLockAPI *api, PyObject *module_name,
+                          PyObject **module_lock);
+int CPyImport_ReleaseLock(PyObject *module_lock);
+bool CPyImport_IsModuleInitializing(PyObject *module);
+bool CPyImport_IsInitialized(const CPyImportState *state);
+void CPyImport_SetInitialized(CPyImportState *state, bool initialized);
+bool CPyImport_IsExecuted(const CPyImportState *state);
+void CPyImport_SetExecuted(CPyImportState *state);
+
+#define CPY_MODULE_CACHE_UNVERIFIED ((CPyModuleCache)1)
+
+static inline CPyModuleCache CPyImport_LoadModuleCache(CPyModuleCache *cache) {
+#if PY_VERSION_HEX >= 0x030D0000
+    return _Py_atomic_load_uintptr_acquire(cache);
+#else
+    return *cache;
+#endif
+}
+
+static inline PyObject *CPyImport_GetModuleCache(CPyModuleCache *cache) {
+    return (PyObject *)(CPyImport_LoadModuleCache(cache) & ~CPY_MODULE_CACHE_UNVERIFIED);
+}
+
+PyObject *CPyImport_GetModuleCacheForImport(CPyModuleCache *cache, PyObject *module_name);
+void CPyImport_ReplaceModuleCache(CPyModuleCache *cache, PyObject *module);
+void CPyImport_ReplaceModuleCacheUnverified(CPyModuleCache *cache, PyObject *module);
+void CPyImport_ReplaceModuleCacheForImport(CPyModuleCache *cache, PyObject *module);
 
 
 // Naming conventions:
@@ -107,13 +153,13 @@ static inline size_t CPy_FindAttrOffset(PyTypeObject *trait, CPyVTableItem *vtab
 #define CPY_GET_ATTR_TRAIT(obj, trait, vtable_index, object_type, attr_type)   \
     ((attr_type (*)(object_type *))(CPy_FindTraitVtable(trait, ((object_type *)obj)->vtable))[vtable_index])((object_type *)obj)
 
-// Set attribute value using vtable
-#define CPY_SET_ATTR(obj, type, vtable_index, value, object_type, attr_type) \
-    ((bool (*)(object_type *, attr_type))((object_type *)obj)->vtable[vtable_index])( \
+// Set attribute value using vtable.
+#define CPY_SET_ATTR(obj, type, vtable_index, value, object_type, attr_type, ret_type) \
+    ((ret_type (*)(object_type *, attr_type))((object_type *)obj)->vtable[vtable_index])( \
         (object_type *)obj, value)
 
-#define CPY_SET_ATTR_TRAIT(obj, trait, vtable_index, value, object_type, attr_type) \
-    ((bool (*)(object_type *, attr_type))(CPy_FindTraitVtable(trait, ((object_type *)obj)->vtable))[vtable_index])( \
+#define CPY_SET_ATTR_TRAIT(obj, trait, vtable_index, value, object_type, attr_type, ret_type) \
+    ((ret_type (*)(object_type *, attr_type))(CPy_FindTraitVtable(trait, ((object_type *)obj)->vtable))[vtable_index])( \
         (object_type *)obj, value)
 
 #define CPY_GET_METHOD(obj, type, vtable_index, object_type, method_type) \
@@ -139,6 +185,7 @@ void CPyTagged_XDecRef(CPyTagged x);
 bool CPyTagged_IsEq_(CPyTagged left, CPyTagged right);
 bool CPyTagged_IsLt_(CPyTagged left, CPyTagged right);
 CPyTagged CPyTagged_Negate_(CPyTagged num);
+CPyTagged CPyTagged_Absolute_(CPyTagged num);
 CPyTagged CPyTagged_Invert_(CPyTagged num);
 CPyTagged CPyTagged_Add_(CPyTagged left, CPyTagged right);
 CPyTagged CPyTagged_Subtract_(CPyTagged left, CPyTagged right);
@@ -149,6 +196,7 @@ CPyTagged CPyTagged_BitwiseLongOp_(CPyTagged a, CPyTagged b, char op);
 CPyTagged CPyTagged_Rshift_(CPyTagged left, CPyTagged right);
 CPyTagged CPyTagged_Lshift_(CPyTagged left, CPyTagged right);
 CPyTagged CPyTagged_BitLength(CPyTagged self);
+CPyTagged CPyTagged_GetPartSlow(PyObject *o, PyObject *name);
 PyObject *CPyTagged_ToBytes(CPyTagged self, Py_ssize_t length, PyObject *byteorder, int signed_flag);
 PyObject *CPyTagged_ToBigEndianBytes(CPyTagged self, Py_ssize_t length, int signed_flag);
 PyObject *CPyTagged_ToLittleEndianBytes(CPyTagged self, Py_ssize_t length, int signed_flag);
@@ -449,6 +497,14 @@ static inline CPyTagged CPyTagged_Negate(CPyTagged num) {
     return CPyTagged_Negate_(num);
 }
 
+static inline CPyTagged CPyTagged_Absolute(CPyTagged num) {
+    if (likely(CPyTagged_CheckShort(num)
+               && num != (CPyTagged) ((Py_ssize_t)1 << (CPY_INT_BITS - 1)))) {
+        return (Py_ssize_t)num < 0 ? -num : num;
+    }
+    return CPyTagged_Absolute_(num);
+}
+
 static inline CPyTagged CPyTagged_Add(CPyTagged left, CPyTagged right) {
     // TODO: Use clang/gcc extension __builtin_saddll_overflow instead.
     if (likely(CPyTagged_CheckShort(left) && CPyTagged_CheckShort(right))) {
@@ -577,6 +633,33 @@ static inline CPyTagged CPyTagged_Lshift(CPyTagged left, CPyTagged right) {
     return CPyTagged_Lshift_(left, right);
 }
 
+// x.real, where x is an int. An int too large for a short int is stored as an object,
+// which could be an instance of an int subclass that overrides the property, so
+// subclass instances use getattr.
+static inline CPyTagged CPyTagged_Real(CPyTagged x) {
+    if (likely(CPyTagged_CheckShort(x))) {
+        return x;
+    }
+    PyObject *o = CPyTagged_LongAsObject(x);
+    if (likely(PyLong_CheckExact(o))) {
+        Py_INCREF(o);
+        return x;
+    }
+    return CPyTagged_GetPartSlow(o, mypyc_interned_str.real);
+}
+
+// x.imag, where x is an int (see CPyTagged_Real)
+static inline CPyTagged CPyTagged_Imag(CPyTagged x) {
+    if (likely(CPyTagged_CheckShort(x))) {
+        return 0;
+    }
+    PyObject *o = CPyTagged_LongAsObject(x);
+    if (likely(PyLong_CheckExact(o))) {
+        return 0;
+    }
+    return CPyTagged_GetPartSlow(o, mypyc_interned_str.imag);
+}
+
 
 // Float operations
 
@@ -594,6 +677,58 @@ CPyTagged CPyFloat_Ceil(double x);
 double CPyFloat_FromTagged(CPyTagged x);
 bool CPyFloat_IsInf(double x);
 bool CPyFloat_IsNaN(double x);
+double CPyComplex_GetPartSlow(PyObject *o, PyObject *name);
+double CPyLong_AsDouble(PyObject *o);
+
+// o.real, where the static type of o is float or complex. Other types,
+// including subclasses that might override the property, use getattr.
+static inline double CPyComplex_Real(PyObject *o) {
+    if (PyComplex_CheckExact(o)) {
+        return ((PyComplexObject *)o)->cval.real;
+    } else if (PyFloat_CheckExact(o)) {
+        return PyFloat_AS_DOUBLE(o);
+    } else if (PyLong_CheckExact(o)) {
+        // An int can be used where a float or complex is expected. It's converted
+        // to a float, as when unboxing an int to a float.
+        return CPyLong_AsDouble(o);
+    }
+    return CPyComplex_GetPartSlow(o, mypyc_interned_str.real);
+}
+
+// o.imag, where the static type of o is float or complex
+static inline double CPyComplex_Imag(PyObject *o) {
+    if (PyComplex_CheckExact(o)) {
+        return ((PyComplexObject *)o)->cval.imag;
+    } else if (PyFloat_CheckExact(o) || PyLong_CheckExact(o)) {
+        return 0.0;
+    }
+    return CPyComplex_GetPartSlow(o, mypyc_interned_str.imag);
+}
+
+// o.real, where the static type of o is a union such as int | float | complex,
+// so the result can be an int or a float. Other types use getattr.
+static inline PyObject *CPyNumber_Real(PyObject *o) {
+    if (PyLong_CheckExact(o) || PyFloat_CheckExact(o)) {
+        // int.real and float.real return the object itself
+        Py_INCREF(o);
+        return o;
+    } else if (PyComplex_CheckExact(o)) {
+        return PyFloat_FromDouble(((PyComplexObject *)o)->cval.real);
+    }
+    return PyObject_GetAttr(o, mypyc_interned_str.real);
+}
+
+// o.imag, where the static type of o is a union such as int | float | complex
+static inline PyObject *CPyNumber_Imag(PyObject *o) {
+    if (PyLong_CheckExact(o)) {
+        return PyLong_FromLong(0);
+    } else if (PyFloat_CheckExact(o)) {
+        return PyFloat_FromDouble(0.0);
+    } else if (PyComplex_CheckExact(o)) {
+        return PyFloat_FromDouble(((PyComplexObject *)o)->cval.imag);
+    }
+    return PyObject_GetAttr(o, mypyc_interned_str.imag);
+}
 
 
 // Generic operations (that work with arbitrary types)
@@ -654,26 +789,87 @@ static void CPy_LogGetAttr(const char *method, PyObject *obj, PyObject *attr) {
      PyObject_GetAttr((obj), (attr)))
 
 CPyTagged CPyObject_Hash(PyObject *o);
+
+// Default identity-based hash (same as object.__hash__), used as tp_hash
+static inline Py_hash_t CPy_DefaultHash(PyObject *o) {
+    return PyBaseObject_Type.tp_hash(o);
+}
 PyObject *CPyObject_GetAttr3(PyObject *v, PyObject *name, PyObject *defl);
 PyObject *CPyIter_Next(PyObject *iter);
 PyObject *CPyNumber_Power(PyObject *base, PyObject *index);
 PyObject *CPyNumber_InPlacePower(PyObject *base, PyObject *index);
+// An omitted slice bound is represented by CPY_INT_TAG.
 PyObject *CPyObject_GetSlice(PyObject *obj, CPyTagged start, CPyTagged end);
+PyObject *CPy_CallFastcallWrapper(void *wrapper, int takes_self, PyObject *args,
+                                  PyObject *kwargs);
+PyObject *CPy_CallLegacyWrapper(void *wrapper, PyObject *args, PyObject *kwargs);
 
 
 // List operations
 
 
-PyObject *CPyList_Build(Py_ssize_t len, ...);
+#ifndef Py_GIL_DISABLED
+
 PyObject *CPyList_GetItem(PyObject *list, CPyTagged index);
 PyObject *CPyList_GetItemShort(PyObject *list, CPyTagged index);
+PyObject *CPyList_GetItemInt64(PyObject *list, int64_t index);
+bool CPyList_SetItem(PyObject *list, CPyTagged index, PyObject *value);
+bool CPyList_SetItemInt64(PyObject *list, int64_t index, PyObject *value);
+
+#else
+
+PyObject *CPyList_GetItem_(PyObject *list, CPyTagged index);
+bool CPyList_SetItem_(PyObject *list, CPyTagged index, PyObject *value);
+
+static inline PyObject *CPyList_GetItem(PyObject *list, CPyTagged index) {
+    if (likely(CPyTagged_CheckShort(index) && !CPyTagged_IsNegative(index))) {
+        // Inlined fast path
+        Py_ssize_t n = CPyTagged_ShortAsSsize_t(index);
+        return PyList_GetItemRef(list, n);
+    } else {
+        return CPyList_GetItem_(list, index);
+    }
+}
+
+static inline PyObject *CPyList_GetItemShort(PyObject *list, CPyTagged index) {
+    Py_ssize_t n = CPyTagged_ShortAsSsize_t(index);
+    if (n < 0) {
+        n += PyList_GET_SIZE(list);
+    }
+    return PyList_GetItemRef(list, n);
+}
+
+static inline PyObject *CPyList_GetItemInt64(PyObject *list, int64_t index) {
+    if (index < 0) {
+        index += PyList_GET_SIZE(list);
+    }
+    return PyList_GetItemRef(list, index);
+}
+
+static inline bool CPyList_SetItem(PyObject *list, CPyTagged index, PyObject *value) {
+    if (likely(CPyTagged_CheckShort(index) && !CPyTagged_IsNegative(index))) {
+        // Inlined fast path
+        Py_ssize_t n = CPyTagged_ShortAsSsize_t(index);
+        return PyList_SetItem(list, n, value) >= 0;
+    } else {
+        return CPyList_SetItem_(list, index, value);
+    }
+}
+
+static inline bool CPyList_SetItemInt64(PyObject *list, int64_t index, PyObject *value) {
+    if (index < 0) {
+        index += PyList_GET_SIZE(list);
+    }
+    return PyList_SetItem(list, index, value) >= 0;
+}
+
+#endif
+
 PyObject *CPyList_GetItemBorrow(PyObject *list, CPyTagged index);
 PyObject *CPyList_GetItemShortBorrow(PyObject *list, CPyTagged index);
-PyObject *CPyList_GetItemInt64(PyObject *list, int64_t index);
 PyObject *CPyList_GetItemInt64Borrow(PyObject *list, int64_t index);
-bool CPyList_SetItem(PyObject *list, CPyTagged index, PyObject *value);
 void CPyList_SetItemUnsafe(PyObject *list, Py_ssize_t index, PyObject *value);
-bool CPyList_SetItemInt64(PyObject *list, int64_t index, PyObject *value);
+PyObject *CPyList_Build(Py_ssize_t len, ...);
 PyObject *CPyList_PopLast(PyObject *obj);
 PyObject *CPyList_Pop(PyObject *obj, CPyTagged index);
 CPyTagged CPyList_Count(PyObject *obj, PyObject *value);
@@ -810,11 +1006,37 @@ bool CPySet_Remove(PyObject *set, PyObject *key);
 
 // Tuple operations
 
-
-PyObject *CPySequenceTuple_GetItem(PyObject *tuple, CPyTagged index);
 PyObject *CPySequenceTuple_GetSlice(PyObject *obj, CPyTagged start, CPyTagged end);
-PyObject *CPySequenceTuple_GetItemUnsafe(PyObject *tuple, Py_ssize_t index);
-void CPySequenceTuple_SetItemUnsafe(PyObject *tuple, Py_ssize_t index, PyObject *value);
+PyObject *CPySequenceTuple_GetItem_(PyObject *tuple, CPyTagged index);
+
+static inline PyObject *CPySequenceTuple_GetItem(PyObject *tuple, CPyTagged index)
+{
+    if (likely(CPyTagged_CheckShort(index) && !CPyTagged_IsNegative(index))) {
+        Py_ssize_t n = CPyTagged_ShortAsSsize_t(index);
+        Py_ssize_t size = PyTuple_GET_SIZE(tuple);
+        if (unlikely(n >= size)) {
+            PyErr_SetString(PyExc_IndexError, "tuple index out of range");
+            return NULL;
+        }
+        PyObject *result = PyTuple_GET_ITEM(tuple, n);
+        Py_INCREF(result);
+        return result;
+    } else {
+        return CPySequenceTuple_GetItem_(tuple, index);
+    }
+}
+
+static inline PyObject *CPySequenceTuple_GetItemUnsafe(PyObject *tuple, Py_ssize_t index)
+{
+    PyObject *result = PyTuple_GET_ITEM(tuple, index);
+    Py_INCREF(result);
+    return result;
+}
+
+static inline void CPySequenceTuple_SetItemUnsafe(PyObject *tuple, Py_ssize_t index, PyObject *value)
+{
+    PyTuple_SET_ITEM(tuple, index, value);
+}
 
 
 // Exception operations
@@ -854,6 +1076,7 @@ static inline bool CPy_KeepPropagating(void) {
 #define CPy_ExcState() PyThreadState_GET()->exc_info
 
 void CPy_Raise(PyObject *exc);
+void CPy_RaiseFrom(PyObject *exc, PyObject *cause);
 void CPy_Reraise(void);
 void CPyErr_SetObjectAndTraceback(PyObject *type, PyObject *value, PyObject *traceback);
 tuple_T3OOO CPy_CatchError(void);
@@ -911,8 +1134,10 @@ static inline PyObject *CPy_TYPE(PyObject *obj) {
 }
 
 PyObject *CPy_CalculateMetaclass(PyObject *type, PyObject *o);
+PyObject *CPyType_ResolveBases(PyObject *bases);
 PyObject *CPy_GetCoro(PyObject *obj);
-PyObject *CPyIter_Send(PyObject *iter, PyObject *val);
+PyObject *CPyGen_AlreadyExecutingError(int is_coroutine);
+PyObject *CPyIter_Send(PyObject *iter, PyObject *val, PyObject **stop_iter_value);
 int CPy_YieldFromErrorHandle(PyObject *iter, PyObject **outp);
 PyObject *CPy_FetchStopIterationValue(void);
 PyObject *CPyType_FromTemplate(PyObject *template_,
@@ -952,21 +1177,25 @@ int CPyStatics_Initialize(PyObject **statics,
                           const int *tuples,
                           const int *frozensets);
 PyObject *CPy_Super(PyObject *builtins, PyObject *self);
-PyObject *CPy_CallReverseOpMethod(PyObject *left, PyObject *right, const char *op,
-                                  PyObject *method);
 
-bool CPyImport_ImportMany(PyObject *modules, CPyModule **statics[], PyObject *globals,
+bool CPyImport_ImportMany(PyObject *modules, CPyModuleCache *statics[], PyObject *globals,
                           PyObject *tb_path, PyObject *tb_function, Py_ssize_t *tb_lines);
 PyObject *CPyImport_ImportFromMany(PyObject *mod_id, PyObject *names, PyObject *as_names,
                                    PyObject *globals);
-PyObject *CPyImport_GetNativeAttrs(PyObject *mod_id, PyObject *names, PyObject *as_names,
+PyObject *CPyImport_GetNativeAttrs(PyObject *mod, PyObject *names, PyObject *as_names,
                                    PyObject *globals);
 PyObject *CPyImport_ImportNative(PyObject *module_name,
                                  PyObject *(*init_only_fn)(void),
                                  int (*exec_fn)(PyObject *),
                                  CPyModule **module_static,
+                                 CPyModuleCache *module_cache,
+                                 CPyImportState *state, CPyModuleLockAPI *lock_api,
                                  PyObject *shared_lib_file, PyObject *ext_suffix,
                                  Py_ssize_t is_package);
+int CPyImport_Exec(PyObject *module, int (*exec_fn)(PyObject *), CPyImportState *state,
+                   CPyModuleCache *module_cache);
+PyObject *CPyImport_BeginInitializing(PyObject *module);
+int CPyImport_EndInitializing(PyObject *spec);
 int CPyImport_SetDunderAttrs(PyObject *module, PyObject *module_name, PyObject *shared_lib_file,
                              PyObject *ext_suffix, Py_ssize_t is_package);
 

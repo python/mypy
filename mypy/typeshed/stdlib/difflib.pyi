@@ -39,6 +39,7 @@ class SequenceMatcher(Generic[_T]):
         b: Sequence[str] = "",
         autojunk: bool = True,
     ) -> None: ...
+
     def set_seqs(self, a: Sequence[_T], b: Sequence[_T]) -> None: ...
     def set_seq1(self, a: Sequence[_T]) -> None: ...
     def set_seq2(self, b: Sequence[_T]) -> None: ...
@@ -69,16 +70,33 @@ else:
     def IS_LINE_JUNK(line: str, pat: Callable[[str], re.Match[str] | None] = ...) -> bool: ...
 
 def IS_CHARACTER_JUNK(ch: str, ws: str = " \t") -> bool: ...  # ws is undocumented
-def unified_diff(
-    a: Sequence[str],
-    b: Sequence[str],
-    fromfile: str = "",
-    tofile: str = "",
-    fromfiledate: str = "",
-    tofiledate: str = "",
-    n: int = 3,
-    lineterm: str = "\n",
-) -> Iterator[str]: ...
+
+if sys.version_info >= (3, 15):
+    def unified_diff(
+        a: Sequence[str],
+        b: Sequence[str],
+        fromfile: str = "",
+        tofile: str = "",
+        fromfiledate: str = "",
+        tofiledate: str = "",
+        n: int = 3,
+        lineterm: str = "\n",
+        *,
+        color: bool = False,
+    ) -> Iterator[str]: ...
+
+else:
+    def unified_diff(
+        a: Sequence[str],
+        b: Sequence[str],
+        fromfile: str = "",
+        tofile: str = "",
+        fromfiledate: str = "",
+        tofiledate: str = "",
+        n: int = 3,
+        lineterm: str = "\n",
+    ) -> Iterator[str]: ...
+
 def context_diff(
     a: Sequence[str],
     b: Sequence[str],

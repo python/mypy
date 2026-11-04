@@ -143,6 +143,17 @@ and the ``int`` operand is coerced to the native integer type::
       b = 1 - x
       # Similarly, type of "b" is "i64"
 
+Functions
+---------
+
+* ``abs(n)``
+
+Attributes
+----------
+
+* ``n.real`` (``int`` only)
+* ``n.imag`` (``int`` only)
+
 Methods
 -------
 

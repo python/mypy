@@ -127,7 +127,6 @@ Config file
 
     This flag makes mypy warn about unused ``[mypy-<pattern>]`` config
     file sections.
-    (This requires turning off incremental mode using :option:`--no-incremental`.)
 
 
 .. _import-discovery:
@@ -1032,6 +1031,47 @@ beyond what incremental mode can offer, try running mypy in
     Skip cache internal consistency checks based on mtime.
 
 
+.. _parallel:
+
+Parallel type-checking
+**********************
+
+By default, mypy checks all modules in the same Python process. This can be slow
+for large code bases. Mypy offers parallel type-checking mode using
+multiple worker processes. In parallel mode, modules that do not depend on each
+other are type-checked in parallel. :ref:`Incremental cache <incremental>` is
+used to manage most of the shared state. Parallel type-checking also requires
+:option:`--local-partial-types <mypy --no-local-partial-types>`, which is
+enabled by default starting from mypy 2.0.
+
+.. option:: -n VALUE, --num-workers VALUE
+
+    Use the specified amount of parallel worker processes (in addition to the
+    coordinator process) to perform type-checking. Specifying ``--num-workers 0``
+    (default) disables parallel checking. Specifying ``--num-workers auto``
+    selects the number based on the CPU resources available to mypy.
+
+    Automatic selection uses at most 8 workers because each worker adds roughly
+    10% memory overhead. This cap does not apply when an explicit value is specified.
+
+    This setting will override the ``MYPY_NUM_WORKERS`` environment
+    variable if it is set.
+
+Notes:
+
+* An import cycle is always processed as a whole by a worker process. Thus,
+  avoiding large import cycles in your code will *significantly* improve
+  type-checking speed.
+
+* Specifying a number of workers that is larger than the number of *physical*
+  CPU cores is not beneficial, since mypy is usually CPU bound. Best way to
+  tune the number of workers on a given machine is to start from 3-4 workers
+  and increase the number while you see a performance improvement.
+
+* Parallel mode requires the native parser, which is enabled by default since
+  mypy 2.4 (see :option:`--no-native-parser <mypy --no-native-parser>`).
+
+
 Advanced options
 ****************
 
@@ -1105,6 +1145,15 @@ in developing or debugging mypy internals.
     cause mypy to type check the contents of ``temp.py`` instead of  ``original.py``,
     but error messages will still reference ``original.py``.
 
+.. option:: --no-native-parser
+
+    This disables the fast Rust-based native parser that parses directly
+    to mypy AST, and uses the legacy parser based on the stdlib :py:mod:`ast`
+    module instead. The native parser is the default since mypy 2.4.
+
+    The legacy parser can only parse syntax supported by the Python version
+    used to run mypy. The legacy parser will be removed in a future mypy release.
+
 
 Report generation
 *****************
@@ -1169,7 +1218,7 @@ format into the specified directory.
 Enabling incomplete/experimental features
 *****************************************
 
-.. option:: --enable-incomplete-feature {PreciseTupleTypes,InlineTypedDict,TypeForm}
+.. option:: --enable-incomplete-feature {PreciseTupleTypes,InlineTypedDict}
 
     Some features may require several mypy releases to implement, for example
     due to their complexity, potential for backwards incompatibility, or
@@ -1224,8 +1273,6 @@ List of currently incomplete/experimental features:
      def test_values() -> {"width": int, "description": str}:
          return {"width": 42, "description": "test"}
 
-* ``TypeForm``: this feature enables ``TypeForm``, as described in
-  `PEP 747 – Annotating Type Forms <https://peps.python.org/pep-0747/>_`.
 
 
 Miscellaneous

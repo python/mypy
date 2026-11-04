@@ -6,7 +6,7 @@ from abc import ABCMeta
 from builtins import type as Type  # alias to avoid name clash
 from collections.abc import Callable
 from copyreg import _DispatchTableType
-from multiprocessing import connection
+from multiprocessing import connection, popen_forkserver, popen_spawn_posix, resource_sharer
 from socket import socket
 from typing import Any, Final
 
@@ -57,7 +57,7 @@ else:
     def send_handle(conn: HasFileno, handle: int, destination_pid: Unused) -> None: ...
     def recv_handle(conn: HasFileno) -> int: ...
     def sendfds(sock: socket, fds: list[int]) -> None: ...
-    def DupFd(fd: int) -> Any: ...  # Return type is really hard to get right
+    def DupFd(fd: int) -> popen_forkserver._DupFd | popen_spawn_posix._DupFd | resource_sharer.DupFd: ...
 
 # These aliases are to work around pyright complaints.
 # Pyright doesn't like it when a class object is defined as an alias

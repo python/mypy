@@ -12,13 +12,8 @@ from mypy.nodes import (
     TypeVarTupleExpr,
 )
 from mypy.types import (
-    AnyType,
     ParamSpecFlavor,
     ParamSpecType,
-    TrivialSyntheticTypeTranslator,
-    Type,
-    TypeAliasType,
-    TypeOfAny,
     TypeVarId,
     TypeVarLikeType,
     TypeVarTupleType,
@@ -26,54 +21,6 @@ from mypy.types import (
 )
 
 FailFunc: _TypeAlias = Callable[[str, Context], None]
-
-
-class TypeVarLikeDefaultFixer(TrivialSyntheticTypeTranslator):
-    """Set namespace for all TypeVarLikeTypes types."""
-
-    def __init__(
-        self,
-        scope: TypeVarLikeScope,
-        fail_func: FailFunc,
-        source_tv: TypeVarLikeExpr,
-        context: Context,
-    ) -> None:
-        self.scope = scope
-        self.fail_func = fail_func
-        self.source_tv = source_tv
-        self.context = context
-        super().__init__()
-
-    def visit_type_var(self, t: TypeVarType) -> Type:
-        existing = self.scope.get_binding(t.fullname)
-        if existing is None:
-            self._report_unbound_tvar(t)
-            return AnyType(TypeOfAny.from_error)
-        return existing
-
-    def visit_param_spec(self, t: ParamSpecType) -> Type:
-        existing = self.scope.get_binding(t.fullname)
-        if existing is None:
-            self._report_unbound_tvar(t)
-            return AnyType(TypeOfAny.from_error)
-        return existing
-
-    def visit_type_var_tuple(self, t: TypeVarTupleType) -> Type:
-        existing = self.scope.get_binding(t.fullname)
-        if existing is None:
-            self._report_unbound_tvar(t)
-            return AnyType(TypeOfAny.from_error)
-        return existing
-
-    def visit_type_alias_type(self, t: TypeAliasType) -> Type:
-        return t
-
-    def _report_unbound_tvar(self, tvar: TypeVarLikeType) -> None:
-        self.fail_func(
-            f"Type variable {tvar.name} referenced in the default"
-            f" of {self.source_tv.name} is unbound",
-            self.context,
-        )
 
 
 class TypeVarLikeScope:
@@ -148,15 +95,6 @@ class TypeVarLikeScope:
             i = self.func_id
         namespace = self.namespace
 
-        # Defaults may reference other type variables. That is only valid when the
-        # referenced variable is already in scope (textually precedes the definition we're
-        # processing now).
-        default = tvar_expr.default.accept(
-            TypeVarLikeDefaultFixer(
-                self, fail_func=fail_func, source_tv=tvar_expr, context=context
-            )
-        )
-
         if isinstance(tvar_expr, TypeVarExpr):
             tvar_def: TypeVarLikeType = TypeVarType(
                 name=name,
@@ -164,7 +102,7 @@ class TypeVarLikeScope:
                 id=TypeVarId(i, namespace=namespace),
                 values=tvar_expr.values,
                 upper_bound=tvar_expr.upper_bound,
-                default=default,
+                default=tvar_expr.default,
                 variance=tvar_expr.variance,
                 line=tvar_expr.line,
                 column=tvar_expr.column,
@@ -176,7 +114,7 @@ class TypeVarLikeScope:
                 id=TypeVarId(i, namespace=namespace),
                 flavor=ParamSpecFlavor.BARE,
                 upper_bound=tvar_expr.upper_bound,
-                default=default,
+                default=tvar_expr.default,
                 line=tvar_expr.line,
                 column=tvar_expr.column,
             )
@@ -187,7 +125,7 @@ class TypeVarLikeScope:
                 id=TypeVarId(i, namespace=namespace),
                 upper_bound=tvar_expr.upper_bound,
                 tuple_fallback=tvar_expr.tuple_fallback,
-                default=default,
+                default=tvar_expr.default,
                 line=tvar_expr.line,
                 column=tvar_expr.column,
             )

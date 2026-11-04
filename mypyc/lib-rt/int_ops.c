@@ -126,6 +126,17 @@ CPyTagged CPyTagged_Negate_(CPyTagged num) {
     return CPyTagged_StealFromObject(result);
 }
 
+// Tagged int absolute value slow path, where the result may be a long integer
+CPyTagged CPyTagged_Absolute_(CPyTagged num) {
+    PyObject *num_obj = CPyTagged_AsObject(num);
+    PyObject *result = PyNumber_Absolute(num_obj);
+    if (result == NULL) {
+        CPyError_OutOfMemory();
+    }
+    Py_DECREF(num_obj);
+    return CPyTagged_StealFromObject(result);
+}
+
 // Tagged int addition slow path, where the result may be a long integer
 CPyTagged CPyTagged_Add_(CPyTagged left, CPyTagged right) {
     PyObject *left_obj = CPyTagged_AsObject(left);
@@ -225,6 +236,9 @@ bool CPyTagged_IsLt_(CPyTagged left, CPyTagged right) {
 
 PyObject *CPyLong_FromStrWithBase(PyObject *o, CPyTagged base) {
     Py_ssize_t base_size_t = CPyTagged_AsSsize_t(base);
+    if (base_size_t == -1 && PyErr_Occurred()) {
+        return NULL;
+    }
     return PyLong_FromUnicodeObject(o, base_size_t);
 }
 
@@ -641,6 +655,7 @@ PyObject *CPyTagged_ToBytes(CPyTagged self, Py_ssize_t length, PyObject *byteord
     } else if (strcmp(order, "little") == 0) {
         little_endian = 1;
     } else {
+        Py_DECREF(pyint);
         PyErr_SetString(PyExc_ValueError, "byteorder must be either 'little' or 'big'");
         return NULL;
     }
@@ -712,4 +727,20 @@ CPyTagged CPyTagged_BitLength(CPyTagged self) {
         return CPY_INT_TAG;
     }
     return bits << 1;
+}
+
+// Look up o.real or o.imag, where o is an instance of an int subclass, and convert
+// it to a tagged int (see CPyTagged_Real)
+CPyTagged CPyTagged_GetPartSlow(PyObject *o, PyObject *name) {
+    PyObject *part = PyObject_GetAttr(o, name);
+    if (part == NULL) {
+        return CPY_INT_TAG;
+    }
+    if (!PyLong_Check(part)) {
+        // Same error as unboxing the attribute value would produce
+        CPy_TypeError("int", part);
+        Py_DECREF(part);
+        return CPY_INT_TAG;
+    }
+    return CPyTagged_StealFromObject(part);
 }
