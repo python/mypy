@@ -1,4 +1,3 @@
-import builtins
 import sys
 import types
 from _typeshed import ReadableBuffer, SupportsRead, SupportsWrite
@@ -10,7 +9,7 @@ _Marshallable: TypeAlias = (
     # handled in w_object() in marshal.c
     None
     | type[StopIteration]
-    | builtins.ellipsis
+    | types.EllipsisType
     | bool
     # handled in w_complex_object() in marshal.c
     | int

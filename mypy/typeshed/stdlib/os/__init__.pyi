@@ -1557,7 +1557,6 @@ else:
     @deprecated("Soft deprecated. Use the subprocess module instead.")
     def spawnve(mode: int, path: StrOrBytesPath, argv: _ExecVArgs, env: _ExecEnv, /) -> int: ...
 
-@deprecated("Soft deprecated. Use the subprocess module instead.")
 def system(command: StrOrBytesPath) -> int: ...
 
 @final

@@ -120,7 +120,7 @@ class TypeShallowCopier(TypeVisitor[ProperType]):
         return self.copy_common(t, UnionType(t.items))
 
     def visit_overloaded(self, t: Overloaded) -> ProperType:
-        return self.copy_common(t, Overloaded(items=t.items))
+        return self.copy_common(t, Overloaded(items=t.items, bound_args=t.bound_args))
 
     def visit_type_type(self, t: TypeType) -> ProperType:
         # Use cast since the type annotations in TypeType are imprecise.

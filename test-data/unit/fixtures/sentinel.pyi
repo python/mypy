@@ -1,5 +1,6 @@
 # Builtins stub used in sentinel-related test cases.
 
+import types
 from typing import Self
 
 class object:
@@ -9,7 +10,6 @@ class object:
 class type: pass
 class function:
     __name__: str
-class ellipsis: pass
 
 class int: pass
 class bool(int): pass

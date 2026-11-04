@@ -250,3 +250,127 @@ L0:
     r3 = 'a'
     r4 = PyUnicode_Concat(r2, r3)
     return r4
+
+[case testClassBodyFinalConstantFoldedThroughInstance]
+from typing import Final
+
+class C:
+    X: Final = 23
+
+    def get(self) -> int:
+        return self.X
+
+class D(C):
+    def get_inherited(self) -> int:
+        return self.X
+
+def f(c: C) -> int:
+    return c.X
+[out]
+def C.get(self):
+    self :: __main__.C
+L0:
+    return 46
+def D.get_inherited(self):
+    self :: __main__.D
+L0:
+    return 46
+def f(c):
+    c :: __main__.C
+L0:
+    return 46
+
+[case testClassBodyFinalReadFromStaticThroughInstance]
+from typing import Final
+
+def make() -> int:
+    return 3
+
+class C:
+    X: Final = make()
+
+    def get(self) -> int:
+        return self.X
+[out]
+def make():
+L0:
+    return 6
+def C.get(self):
+    self :: __main__.C
+    r0 :: int
+    r1 :: bool
+L0:
+    r0 = __main__.C.X :: static
+    if is_error(r0) goto L1 else goto L2
+L1:
+    r1 = raise NameError('value for final name "X" was not set')
+    unreachable
+L2:
+    return r0
+
+[case testInstanceFinalStillUsesAttribute]
+from typing import Final
+
+class C:
+    def __init__(self, x: int) -> None:
+        self.x: Final = x
+
+    def get(self) -> int:
+        return self.x
+[out]
+def C.__init__(self, x):
+    self :: __main__.C
+    x :: int
+L0:
+    self.x = x
+    return 1
+def C.get(self):
+    self :: __main__.C
+    r0 :: int
+L0:
+    r0 = self.x
+    return r0
+
+[case testClassBodyFinalNotOptimizedInBuiltinBaseSubclass]
+from typing import Final
+
+class MyError(Exception):
+    # Deliberately not turned into a class-level Final, since an interpreted subclass
+    # can shadow it. See is_class_body_final() in mypyc/irbuild/util.py.
+    CODE: Final = 5
+
+    def get(self) -> int:
+        return self.CODE
+[out]
+def MyError.get(self):
+    self :: __main__.MyError
+    r0 :: str
+    r1 :: object
+    r2 :: int
+L0:
+    r0 = 'CODE'
+    r1 = CPyObject_GetAttr(self, r0)
+    r2 = unbox(int, r1)
+    return r2
+
+[case testClassBodyFinalThroughUnion]
+from typing import Final, Union
+
+class C:
+    X: Final = 23
+
+class E1(C):
+    pass
+
+class E2(C):
+    pass
+
+def same_decl(x: Union[E1, E2]) -> int:
+    # Neither item is the declaring class itself, but both inherit the same
+    # declaration, so this can still be folded.
+    return x.X
+[out]
+def same_decl(x):
+    x :: union[__main__.E1, __main__.E2]
+L0:
+    return 46

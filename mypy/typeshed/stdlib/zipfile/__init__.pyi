@@ -1,6 +1,6 @@
 import io
 import sys
-from _typeshed import SizedBuffer, StrOrBytesPath, StrPath
+from _typeshed import FileDescriptorOrPath, SizedBuffer, StrPath
 from collections.abc import Callable, Iterable, Iterator
 from io import TextIOWrapper
 from os import PathLike
@@ -389,7 +389,7 @@ else:
         def joinpath(self, *other: StrPath) -> Path: ...
         def __truediv__(self, add: StrPath) -> Path: ...
 
-def is_zipfile(filename: StrOrBytesPath | _SupportsReadSeekTell) -> bool: ...
+def is_zipfile(filename: FileDescriptorOrPath | _SupportsReadSeekTell) -> bool: ...
 
 ZIP64_LIMIT: Final[int]
 ZIP_FILECOUNT_LIMIT: Final[int]

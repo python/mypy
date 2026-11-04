@@ -1060,13 +1060,10 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
 
         if isinstance(sym.node, Var) and sym.node.is_sentinel:
             typ = get_proper_type(sym.node.type)
-            if isinstance(typ, Instance) and typ.last_known_value is not None:
-                return LiteralType(
-                    value=typ.last_known_value.value,
-                    fallback=typ.last_known_value.fallback,
-                    line=t.line,
-                    column=t.column,
-                )
+            assert isinstance(typ, LiteralType)
+            return LiteralType(
+                value=typ.value, fallback=typ.fallback, line=t.line, column=t.column
+            )
 
         # None of the above options worked. We parse the args (if there are any)
         # to make sure there are no remaining semanal-only types, then give up.
@@ -1183,7 +1180,12 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             self.fail(message_registry.INVALID_UNPACK_POSITION, t.type, code=codes.VALID_TYPE)
             return AnyType(TypeOfAny.from_error)
         self.allow_type_var_tuple = self.nesting_level + 1
-        result = UnpackType(self.anal_type(t.type), from_star_syntax=t.from_star_syntax)
+        result = UnpackType(
+            self.anal_type(t.type),
+            from_star_syntax=t.from_star_syntax,
+            line=t.line,
+            column=t.column,
+        )
         self.allow_type_var_tuple = -1
         return result
 
@@ -1220,6 +1222,15 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                             "Arguments not allowed after ParamSpec.args", t, code=codes.VALID_TYPE
                         )
                     at = self.anal_type(ut, nested=nested, allow_unpack=False)
+                    if isinstance(at, Parameters):
+                        # A Parameters here comes from a misplaced Concatenate ending in
+                        # an explicit ellipsis, e.g. Callable[[Concatenate[int, ...]], None].
+                        self.fail(
+                            "Concatenate is only valid as the first argument to Callable",
+                            ut,
+                            code=codes.VALID_TYPE,
+                        )
+                        at = AnyType(TypeOfAny.from_error)
                 arg_types.append(at)
 
             if nested and arg_types:
@@ -2072,7 +2083,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
 
         if num_unpacks > 1:
             assert final_unpack is not None
-            self.fail("More than one variadic Unpack in a type is not allowed", final_unpack.type)
+            self.fail("More than one variadic Unpack in a type is not allowed", final_unpack)
         return new_items
 
     def tuple_type(self, items: list[Type], line: int, column: int) -> TupleType:

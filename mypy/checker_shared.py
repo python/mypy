@@ -260,7 +260,7 @@ class TypeCheckerSharedApi(CheckerPluginInterface):
         operand_types: list[Type],
         expr_indices: list[int],
         narrowable_indices: AbstractSet[int],
-    ) -> tuple[dict[Expression, Type] | None, dict[Expression, Type] | None]:
+    ) -> tuple[dict[Expression, Type], dict[Expression, Type]]:
         raise NotImplementedError
 
     @abstractmethod

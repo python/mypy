@@ -97,9 +97,9 @@ from mypy.nodes import (
 from mypy.patterns import (
     AsPattern,
     ClassPattern,
+    ConcretePattern,
     MappingPattern,
     OrPattern,
-    Pattern,
     SequencePattern,
     SingletonPattern,
     StarredPattern,
@@ -628,7 +628,7 @@ class TransformVisitor(NodeVisitor[Node]):
         self, node: DictionaryComprehension
     ) -> DictionaryComprehension:
         return DictionaryComprehension(
-            self.expr(node.key),
+            self.optional_expr(node.key),
             self.expr(node.value),
             [self.expr(index) for index in node.indices],
             [self.expr(s) for s in node.sequences],
@@ -735,9 +735,9 @@ class TransformVisitor(NodeVisitor[Node]):
         new.set_line(stmt)
         return new
 
-    def pattern(self, pattern: Pattern) -> Pattern:
+    def pattern(self, pattern: ConcretePattern) -> ConcretePattern:
         new = pattern.accept(self)
-        assert isinstance(new, Pattern)
+        assert isinstance(new, ConcretePattern)
         new.set_line(pattern)
         return new
 

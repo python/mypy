@@ -156,7 +156,7 @@ class CodeType:
     def co_firstlineno(self) -> int: ...
     if sys.version_info < (3, 15):
         @property
-        @deprecated("Deprecated since Python 3.10; will be removed in Python 3.15. Use `CodeType.co_lines()` instead.")
+        @deprecated("Deprecated since Python 3.10; removed in Python 3.15. Use `CodeType.co_lines()` instead.")
         def co_lnotab(self) -> bytes: ...
 
     @property
@@ -610,8 +610,6 @@ if sys.version_info >= (3, 15):
 
     @final
     class LazyImportType:
-        @property
-        def __name__(self) -> str: ...
         def resolve(self) -> Any: ...
 
 @final

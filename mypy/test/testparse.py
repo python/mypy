@@ -13,6 +13,7 @@ from mypy.options import Options
 from mypy.parse import parse
 from mypy.test.data import DataDrivenTestCase, DataSuite
 from mypy.test.helpers import assert_string_arrays_equal, find_test_files, parse_options
+from mypy.test.update_data import update_testcase_output
 from mypy.util import get_mypy_comments
 
 
@@ -48,8 +49,6 @@ def test_parser(testcase: DataDrivenTestCase) -> None:
         options.python_version = (3, 13)
     elif testcase.file.endswith("python314.test"):
         options.python_version = (3, 14)
-    else:
-        options.python_version = defaults.PYTHON3_VERSION
 
     source = "\n".join(testcase.input)
 
@@ -99,6 +98,9 @@ def test_parse_error(testcase: DataDrivenTestCase) -> None:
             options.python_version = defaults.PYTHON3_VERSION
         if options.python_version != sys.version_info[:2]:
             skip()
+        if testcase.name.endswith("_old_parser"):
+            # This test is only for the old parser.
+            options.native_parser = False
         # Compile temporary file. The test file contains non-ASCII characters.
         errors = Errors(options)
         parse(
@@ -115,6 +117,11 @@ def test_parse_error(testcase: DataDrivenTestCase) -> None:
     except CompileError as e:
         if e.module_with_blocker is not None:
             assert e.module_with_blocker == "__main__"
+
+        # This may not work perfectly, since it was designed for testcheck.py, use with care.
+        if testcase.output != e.messages and testcase.config.getoption("--update-data", False):
+            update_testcase_output(testcase, e.messages, incremental_step=1)
+
         # Verify that there was a compile error and that the error messages
         # are equivalent.
         assert_string_arrays_equal(

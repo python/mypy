@@ -2659,17 +2659,19 @@ L0:
     self.s = s
     return 1
 def f(c, d):
-    c, d :: __main__.C
-    r0, r1, r2 :: str
+    c, d, r0 :: __main__.C
+    r1, r2, r3 :: str
 L0:
-    r0 = c.s
+    inc_ref c
+    r0 = c
+    r1 = borrow r0.s
     inc_ref d
     c = d
     dec_ref c
-    r1 = borrow d.s
-    r2 = PyUnicode_Concat(r0, r1)
+    r2 = borrow d.s
+    r3 = PyUnicode_Concat(r1, r2)
     dec_ref r0
-    return r2
+    return r3
 
 [case testBorrowedFinalAttributeConditionalMerge]
 from typing import Final

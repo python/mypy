@@ -1,8 +1,8 @@
 import sys
-from _typeshed import SupportsGetItem
+from _typeshed import ReadableBuffer, SupportsGetItem
 from collections.abc import Callable, Container, Iterable, MutableMapping, MutableSequence, Sequence
 from operator import attrgetter as attrgetter, itemgetter as itemgetter, methodcaller as methodcaller
-from typing import Any, AnyStr, ParamSpec, Protocol, SupportsAbs, SupportsIndex, TypeAlias, TypeVar, overload, type_check_only
+from typing import Any, ParamSpec, Protocol, SupportsAbs, SupportsIndex, TypeAlias, TypeVar, overload, type_check_only
 from typing_extensions import TypeIs
 
 _R = TypeVar("_R")
@@ -120,7 +120,10 @@ def ixor(a, b, /): ...
 if sys.version_info >= (3, 11):
     def call(obj: Callable[_P, _R], /, *args: _P.args, **kwargs: _P.kwargs) -> _R: ...
 
-def _compare_digest(a: AnyStr, b: AnyStr, /) -> bool: ...
+@overload
+def _compare_digest(a: ReadableBuffer, b: ReadableBuffer, /) -> bool: ...
+@overload
+def _compare_digest(a: str, b: str, /) -> bool: ...
 
 if sys.version_info >= (3, 14):
     def is_none(a: object, /) -> TypeIs[None]: ...

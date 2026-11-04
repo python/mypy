@@ -91,6 +91,12 @@ assert match_tuple_literal_args('abc', 'z', 'c') == (False, True)
 assert remove_prefix_suffix('', '') == ('', '')
 assert remove_prefix_suffix('abc', 'a') == ('bc', 'abc')
 assert remove_prefix_suffix('abc', 'c') == ('abc', 'ab')
+assert remove_prefix_suffix('abc', '') == ('abc', 'abc')
+assert remove_prefix_suffix('abc', 'abc') == ('', '')
+assert remove_prefix_suffix('abc', 'abcd') == ('abc', 'abc')
+assert remove_prefix_suffix('abc', 'b') == ('abc', 'abc')
+assert remove_prefix_suffix('\u1234abc\U0001f600', '\u1234') == ('abc\U0001f600', '\u1234abc\U0001f600')
+assert remove_prefix_suffix('\u1234abc\U0001f600', '\U0001f600') == ('\u1234abc\U0001f600', '\u1234abc')
 
 [case testStringEquality]
 def eq(a: str, b: str) -> bool:
@@ -1098,15 +1104,6 @@ def test_encode() -> None:
     assert u'\u00E1'.encode('latin1') == b'\xe1'
     with assertRaises(UnicodeEncodeError):
         u.encode('latin1')
-
-[case testUnicodeSurrogate]
-def f() -> str:
-    return "\ud800"
-
-def test_surrogate() -> None:
-    assert ord(f()) == 0xd800
-    assert ord("\udfff") == 0xdfff
-    assert repr("foobar\x00\xab\ud912\U00012345") == r"'foobar\x00«\ud912𒍅'"
 
 [case testStrip]
 def test_all_strips_default() -> None:

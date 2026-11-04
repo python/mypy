@@ -490,6 +490,15 @@ def test_true_divide() -> None:
         huge / -2
     assert 1 / huge == 0.0
 
+def from_base(s: str, base: int) -> int:
+    return int(s, base)
+
+def test_base_overflow() -> None:
+    for base in (2 ** 100, -(2 ** 100)):
+        with assertRaises(OverflowError):
+            from_base("10", base)
+    assert from_base("10", 10) == 10
+
 [case testIntMinMax]
 def test_int_min_max() -> None:
     x: int = 200
@@ -574,6 +583,7 @@ class int:
     pass
 
 [case testIntToBytes]
+import sys
 from testutil import assertRaises
 def to_bytes(n: int, length: int, byteorder: str, signed: bool = False) -> bytes:
     return n.to_bytes(length, byteorder, signed=signed)
@@ -593,6 +603,19 @@ def test_to_bytes() -> None:
     # signed, too large for 1 byte
     with assertRaises(OverflowError):
         to_bytes(128, 1, "big", True)
+
+def test_invalid_byteorder_refcount() -> None:
+    n = int("123456789012345678901234567890")
+    before = sys.getrefcount(n)
+    for _ in range(10):
+        with assertRaises(ValueError):
+            to_bytes(n, 16, "invalid")
+    assert sys.getrefcount(n) == before
+    # Keep n alive across both refcount checks.
+    assert n == int("123456789012345678901234567890")
+
+[file sys/__init__.pyi]
+def getrefcount(n: object) -> int: ...
 
 [case testBitLength]
 def bit_length(n: int) -> int:

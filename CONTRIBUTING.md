@@ -45,14 +45,14 @@ python -m venv venv
 #### (4) Install the test requirements and the project
 
 ```bash
-python -m pip install -r test-requirements.txt
+python -m pip install -r dev-requirements.txt
 python -m pip install -e .
 hash -r  # This resets shell PATH cache, not necessary on Windows
 ```
 
 > **Note**
 > You'll need Python 3.10 or higher to install all requirements listed in
-> test-requirements.txt
+> dev-requirements.txt
 
 ### Running tests
 

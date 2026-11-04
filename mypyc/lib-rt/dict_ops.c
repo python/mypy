@@ -41,6 +41,7 @@ PyObject *CPyDict_Build(Py_ssize_t size, ...) {
         PyObject *key = va_arg(args, PyObject *);
         PyObject *value = va_arg(args, PyObject *);
         if (PyDict_SetItem(res, key, value)) {
+            va_end(args);
             Py_DECREF(res);
             return NULL;
         }
@@ -84,12 +85,22 @@ PyObject *CPyDict_SetDefaultWithNone(PyObject *dict, PyObject *key) {
 
 PyObject *CPyDict_SetDefaultWithEmptyDatatype(PyObject *dict, PyObject *key,
                                               int data_type) {
-    PyObject *res = CPyDict_GetItem(dict, key);
+    PyObject *res;
+    if (PyDict_CheckExact(dict)) {
+        int found = PyDict_GetItemRef(dict, key, &res);
+        if (found < 0) {
+            return NULL;
+        }
+    } else {
+        res = PyObject_GetItem(dict, key);
+        if (!res) {
+            if (!PyErr_ExceptionMatches(PyExc_KeyError)) {
+                return NULL;
+            }
+            PyErr_Clear();
+        }
+    }
     if (!res) {
-        // CPyDict_GetItem() would generates a PyExc_KeyError
-        // when key is not found.
-        PyErr_Clear();
-
         PyObject *new_obj;
         if (data_type == 1) {
             new_obj = PyList_New(0);
@@ -159,7 +170,12 @@ int CPyDict_Update(PyObject *dict, PyObject *stuff) {
 int CPyDict_UpdateFromAny(PyObject *dict, PyObject *stuff) {
     if (PyDict_CheckExact(dict)) {
         // Argh this sucks
-        if (PyDict_Check(stuff) || PyObject_HasAttrWithError(stuff, mypyc_interned_str.keys) > 0) {
+        int has_keys = PyDict_Check(stuff) ? 1 :
+            PyObject_HasAttrWithError(stuff, mypyc_interned_str.keys);
+        if (has_keys < 0) {
+            return -1;
+        }
+        if (has_keys) {
             return PyDict_Update(dict, stuff);
         } else {
             return PyDict_MergeFromSeq2(dict, stuff, 1);
@@ -178,7 +194,12 @@ PyObject *CPyDict_FromAny(PyObject *obj) {
         if (!dict) {
             return NULL;
         }
-        if (PyObject_HasAttrWithError(obj, mypyc_interned_str.keys) > 0) {
+        int has_keys = PyObject_HasAttrWithError(obj, mypyc_interned_str.keys);
+        if (has_keys < 0) {
+            Py_DECREF(dict);
+            return NULL;
+        }
+        if (has_keys) {
             res = PyDict_Update(dict, obj);
         } else {
             res = PyDict_MergeFromSeq2(dict, obj, 1);
@@ -212,58 +233,35 @@ PyObject *CPyDict_ItemsView(PyObject *dict) {
     return PyObject_CallMethodNoArgs(dict, mypyc_interned_str.items);
 }
 
+static inline PyObject *dict_view_as_list(PyObject *dict, PyObject *method) {
+    PyObject *view = PyObject_CallMethodNoArgs(dict, method);
+    if (view == NULL) {
+        return NULL;
+    }
+    PyObject *list = PySequence_List(view);
+    Py_DECREF(view);
+    return list;
+}
+
 PyObject *CPyDict_Keys(PyObject *dict) {
     if (PyDict_CheckExact(dict)) {
         return PyDict_Keys(dict);
     }
-    // Inline generic fallback logic to also return a list.
-    PyObject *list = PyList_New(0);
-    PyObject *view = PyObject_CallMethodNoArgs(dict, mypyc_interned_str.keys);
-    if (view == NULL) {
-        return NULL;
-    }
-    int res = PyList_Extend(list, view);
-    Py_DECREF(view);
-    if (res < 0) {
-        return NULL;
-    }
-    return list;
+    return dict_view_as_list(dict, mypyc_interned_str.keys);
 }
 
 PyObject *CPyDict_Values(PyObject *dict) {
     if (PyDict_CheckExact(dict)) {
         return PyDict_Values(dict);
     }
-    // Inline generic fallback logic to also return a list.
-    PyObject *list = PyList_New(0);
-    PyObject *view = PyObject_CallMethodNoArgs(dict, mypyc_interned_str.values);
-    if (view == NULL) {
-        return NULL;
-    }
-    int res = PyList_Extend(list, view);
-    Py_DECREF(view);
-    if (res < 0) {
-        return NULL;
-    }
-    return list;
+    return dict_view_as_list(dict, mypyc_interned_str.values);
 }
 
 PyObject *CPyDict_Items(PyObject *dict) {
     if (PyDict_CheckExact(dict)) {
         return PyDict_Items(dict);
     }
-    // Inline generic fallback logic to also return a list.
-    PyObject *list = PyList_New(0);
-    PyObject *view = PyObject_CallMethodNoArgs(dict, mypyc_interned_str.items);
-    if (view == NULL) {
-        return NULL;
-    }
-    int res = PyList_Extend(list, view);
-    Py_DECREF(view);
-    if (res < 0) {
-        return NULL;
-    }
-    return list;
+    return dict_view_as_list(dict, mypyc_interned_str.items);
 }
 
 char CPyDict_Clear(PyObject *dict) {

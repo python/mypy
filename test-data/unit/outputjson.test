@@ -56,7 +56,7 @@ foo(1)
 # flags: --output=json
 klass foo
 [out]
-{"file": "main", "line": 2, "column": 7, "end_line": 2, "end_column": 8, "message": "Invalid syntax", "hint": null, "code": "syntax", "severity": "error"}
+{"file": "main", "line": 2, "column": 7, "end_line": 2, "end_column": 8, "message": "Simple statements must be separated by newlines or semicolons", "hint": null, "code": "syntax", "severity": "error"}
 !!! Mypy crashed !!!
 
 [case testOutputJsonSyntaxErrorParallel]

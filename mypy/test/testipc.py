@@ -34,6 +34,20 @@ def server_multi_message_echo(q: Queue[str]) -> None:
     server.cleanup()
 
 
+def server_with_short_timeout(msg: str, q: Queue[str]) -> None:
+    """Serve a client that takes longer to speak than the connection timeout.
+
+    The timeout bounds accepting a connection, not the traffic after it, so the
+    read below must wait however long the client needs.
+    """
+    server = IPCServer(CONNECTION_NAME, timeout=1)
+    q.put(server.connection_name)
+    with server:
+        data = server.read()
+        server.write(data + msg)
+    server.cleanup()
+
+
 class IPCTests(TestCase):
     def setUp(self) -> None:
         if sys.platform == "linux":
@@ -93,6 +107,27 @@ class IPCTests(TestCase):
 
             client.write("quit")
             assert client.read() == "quit"
+        queue.close()
+        queue.join_thread()
+        p.join()
+        assert p.exitcode == 0
+
+    def test_server_timeout_does_not_apply_after_connecting(self) -> None:
+        # A server's timeout bounds accepting a connection only. A client that is
+        # merely slow to speak must not be mistaken for one that has hung up: that
+        # is what killed build workers waiting on the coordinator to load the graph
+        # (see #21484). POSIX gets this for free because accept() hands back a
+        # blocking socket, so this mainly guards the Windows path.
+        queue: Queue[str] = self.ctx.Queue()
+        msg = " -- echoed"
+        p = self.ctx.Process(target=server_with_short_timeout, args=(msg, queue), daemon=True)
+        p.start()
+        connection_name = queue.get()
+        with IPCClient(connection_name, timeout=1) as client:
+            # Stay quiet for well past the server's 1s connection timeout.
+            time.sleep(2.5)
+            client.write("hello")
+            assert client.read() == "hello" + msg
         queue.close()
         queue.join_thread()
         p.join()

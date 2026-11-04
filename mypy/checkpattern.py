@@ -211,8 +211,8 @@ class PatternChecker(PatternVisitor[PatternType]):
         ok_map, rest_map = self.chk.narrow_type_by_identity_equality(
             "==", [node, TempNode(typ)], [current_type, typ], [0, 1], {0}
         )
-        ok_type = ok_map.get(node, current_type) if ok_map is not None else UninhabitedType()
-        rest_type = rest_map.get(node, current_type) if rest_map is not None else UninhabitedType()
+        ok_type = ok_map.get(node, current_type)
+        rest_type = rest_map.get(node, current_type)
         return PatternType(ok_type, rest_type, {})
 
     def visit_singleton_pattern(self, o: SingletonPattern) -> PatternType:
@@ -402,7 +402,7 @@ class PatternChecker(PatternVisitor[PatternType]):
         return PatternType(new_type, rest_type, captures)
 
     def contract_starred_pattern_types(
-        self, types: list[Type], star_pos: int | None, num_patterns: int
+        self, types: list[Type], star_pos: int | None, num_required_patterns: int
     ) -> list[Type]:
         """
         Contracts a list of types in a sequence pattern depending on the position of a starred
@@ -422,15 +422,13 @@ class PatternChecker(PatternVisitor[PatternType]):
             # This should be guaranteed by the normalization in the caller.
             assert isinstance(unpacked, Instance) and unpacked.type.fullname == "builtins.tuple"
             if star_pos is None:
-                missing = num_patterns - len(types) + 1
+                missing = num_required_patterns - len(types) + 1
                 new_types = types[:unpack_index]
                 new_types += [unpacked.args[0]] * missing
                 new_types += types[unpack_index + 1 :]
                 return new_types
             prefix, middle, suffix = split_with_prefix_and_suffix(
-                tuple([UnpackType(unpacked) if isinstance(t, UnpackType) else t for t in types]),
-                star_pos,
-                num_patterns - star_pos,
+                tuple(types), star_pos, num_required_patterns - star_pos
             )
             new_middle = []
             for m in middle:
@@ -445,7 +443,7 @@ class PatternChecker(PatternVisitor[PatternType]):
             if star_pos is None:
                 return types
             new_types = types[:star_pos]
-            star_length = len(types) - num_patterns
+            star_length = len(types) - num_required_patterns
             new_types.append(make_simplified_union(types[star_pos : star_pos + star_length]))
             new_types += types[star_pos + star_length :]
             return new_types
@@ -605,7 +603,7 @@ class PatternChecker(PatternVisitor[PatternType]):
                 if not is_uninhabited(pattern_type.type):
                     return PatternType(
                         pattern_type.type,
-                        join_types(rest_type, pattern_type.rest_type),
+                        make_simplified_union([rest_type, pattern_type.rest_type]),
                         pattern_type.captures,
                     )
                 captures = pattern_type.captures

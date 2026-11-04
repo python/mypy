@@ -600,7 +600,19 @@ class DataclassTransformer:
                 # We will issue an error later.
                 continue
 
+            if isinstance(node, TypeInfo):
+                # A special form declaration (like a TypedDict or NamedTuple)
+                # with an (erroneous) annotation.
+                continue
+
             assert isinstance(node, Var), node
+
+            if node is not lhs.node:
+                # We create new Vars in _propertize_callables(), so it is OK.
+                if not isinstance(get_proper_type(node.type), CallableType):
+                    # There is an invalid redefinition. Avoid temptation to guess,
+                    # and skip both, see testDataclassVariableBadRedefine.
+                    continue
 
             # x: ClassVar[int] is ignored by dataclasses.
             if node.is_classvar:

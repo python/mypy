@@ -7,8 +7,9 @@ from librt.internal import ReadBuffer
 from mypy import errorcodes as codes
 from mypy.cache import read_int
 from mypy.errors import Errors
-from mypy.nodes import FileRawData, MypyFile, ParseError
+from mypy.nodes import FileRawData, MypyFile, ParseError, StrExpr
 from mypy.options import Options
+from mypy.types import ProperType
 
 
 def parse(
@@ -31,12 +32,14 @@ def parse(
     parse contents from path `fnam` if `source` is `None`.
     """
     if options.native_parser:
-        import mypy.nativeparse
+        # Use import from as workaround for cpython#149728 - accessing mypy.nativeparse
+        # after importing it may fail when this function is called concurrently.
+        from mypy import nativeparse
 
         ignore_errors = options.ignore_errors or fnam in errors.ignored_files
         # If errors are ignored, we can drop many function bodies to speed up type checking.
         strip_function_bodies = ignore_errors and not options.preserve_asts
-        tree, _, _ = mypy.nativeparse.native_parse(
+        tree, _, _ = nativeparse.native_parse(
             fnam, options, source, skip_function_bodies=strip_function_bodies
         )
         # Set is_stub based on file extension
@@ -92,6 +95,7 @@ def load_from_raw(
     # Report parse errors, this replicates the logic in parse().
     all_errors = raw_data.raw_errors + state.errors
     errors.set_file(fnam, module, options=options)
+    errors.set_file_ignored_lines(fnam, tree.ignored_lines, options.ignore_errors)
     for error in all_errors:
         # Note we never raise in this function, so it should not be called in coordinator.
         report_parse_error(error, errors)
@@ -115,3 +119,22 @@ def report_parse_error(error: ParseError, errors: Errors) -> None:
         # Fallback to [syntax] for backwards compatibility.
         error_code = codes.error_codes.get(error_code) or codes.SYNTAX
     errors.report(error["line"], error["column"], message, blocker=is_blocker, code=error_code)
+
+
+def parse_type_string(expr: StrExpr, options: Options) -> ProperType:
+    if options.native_parser:
+        # Use a import from as workaround for cpython#149728 - accessing mypy.nativeparse
+        # after importing it may fail when this function is called concurrently.
+        from mypy import nativeparse
+
+        return nativeparse.native_parse_type_string(
+            expr.value,
+            expr.line,
+            expr.column,
+            expr.end_line or expr.line,
+            expr.end_column or expr.column,
+            options,
+        )
+    import mypy.fastparse
+
+    return mypy.fastparse.parse_type_string(expr.value, "builtins.str", expr.line, expr.column)

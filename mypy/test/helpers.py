@@ -27,7 +27,13 @@ from mypy import defaults
 from mypy.main import process_options
 from mypy.options import Options
 from mypy.test.config import test_data_prefix, test_temp_dir
-from mypy.test.data import DataDrivenTestCase, DeleteFile, UpdateFile, fix_cobertura_filename
+from mypy.test.data import (
+    DataDrivenTestCase,
+    DeleteFile,
+    UpdateFile,
+    choose_file_encoding,
+    fix_cobertura_filename,
+)
 
 skip = pytest.mark.skip
 
@@ -440,7 +446,7 @@ def write_and_fudge_mtime(content: str, target_path: str) -> None:
 
     dir = os.path.dirname(target_path)
     os.makedirs(dir, exist_ok=True)
-    with open(target_path, "w", encoding="utf-8") as target:
+    with open(target_path, "w", encoding=choose_file_encoding(target_path)) as target:
         target.write(content)
 
     if new_time:

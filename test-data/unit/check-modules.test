@@ -474,13 +474,13 @@ x = ... # type: int
 
 [case testEllipsisInitializerInStubFileWithoutType]
 import m
-m.x = '' # E: Incompatible types in assignment (expression has type "str", variable has type "ellipsis")
+m.x = '' # E: Incompatible types in assignment (expression has type "str", variable has type "EllipsisType")
 [file m.pyi]
 # Ellipsis is only special with a # type: comment (not sure though if this is great)
 x = ...
 
 [case testEllipsisInitializerInModule]
-x = ... # type: int # E: Incompatible types in assignment (expression has type "ellipsis", variable has type "int")
+x = ... # type: int # E: Incompatible types in assignment (expression has type "EllipsisType", variable has type "int")
 
 [case testEllipsisDefaultArgValueInStub]
 import m
@@ -491,7 +491,7 @@ def f(x: int = ...) -> None: pass
 
 [case testEllipsisDefaultParamValueInStub2]
 import m
-def f1(x: int = ...) -> int: return 1  # E: Incompatible default for parameter "x" (default has type "ellipsis", parameter has type "int")
+def f1(x: int = ...) -> int: return 1  # E: Incompatible default for parameter "x" (default has type "EllipsisType", parameter has type "int")
 def f2(x: int = '') -> int: return 1  # E: Incompatible default for parameter "x" (default has type "str", parameter has type "int")
 [file m.pyi]
 def g1(x: int = ...) -> int: pass
@@ -506,11 +506,11 @@ def ok_5(x: int = ...) -> None:
     """Docstring here"""
     pass
 
-def bad_1(x: int = ...) -> None: 1   # E: Incompatible default for parameter "x" (default has type "ellipsis", parameter has type "int")
-def bad_2(x: int = ...) -> None:     # E: Incompatible default for parameter "x" (default has type "ellipsis", parameter has type "int")
+def bad_1(x: int = ...) -> None: 1   # E: Incompatible default for parameter "x" (default has type "EllipsisType", parameter has type "int")
+def bad_2(x: int = ...) -> None:     # E: Incompatible default for parameter "x" (default has type "EllipsisType", parameter has type "int")
     """Docstring here"""
     ok_1()
-def bad_3(x: int = ...) -> None:     # E: Incompatible default for parameter "x" (default has type "ellipsis", parameter has type "int")
+def bad_3(x: int = ...) -> None:     # E: Incompatible default for parameter "x" (default has type "EllipsisType", parameter has type "int")
     raise Exception("Some other exception")
 [builtins fixtures/exception.pyi]
 
@@ -523,7 +523,7 @@ Both = Union[int, str]
 def foo(x: int, y: int = ...) -> int: ...
 @overload
 def foo(x: str, y: str = ...) -> str: ...
-def foo(x: Both, y: Both = ...) -> Both:  # E: Incompatible default for parameter "y" (default has type "ellipsis", parameter has type "int | str")
+def foo(x: Both, y: Both = ...) -> Both:  # E: Incompatible default for parameter "y" (default has type "EllipsisType", parameter has type "int | str")
     return x
 
 @overload
@@ -543,14 +543,14 @@ class Wrap(Generic[T]): ...
 
 class MyProtocol(Protocol):
     def no_impl(self, x: Wrap[int] = ...) -> int: ...
-    def default_impl(self, x: Wrap[int] = ...) -> int: return 3  # E: Incompatible default for parameter "x" (default has type "ellipsis", parameter has type "Wrap[int]")
+    def default_impl(self, x: Wrap[int] = ...) -> int: return 3  # E: Incompatible default for parameter "x" (default has type "EllipsisType", parameter has type "Wrap[int]")
 
 class MyAbstractClass:
     @abstractmethod
     def no_impl(self, x: Wrap[int] = ...) -> int: raise NotImplementedError
 
     @abstractmethod
-    def default_impl(self, x: Wrap[int] = ...) -> int: return 3  # E: Incompatible default for parameter "x" (default has type "ellipsis", parameter has type "Wrap[int]")
+    def default_impl(self, x: Wrap[int] = ...) -> int: return 3  # E: Incompatible default for parameter "x" (default has type "EllipsisType", parameter has type "Wrap[int]")
 [builtins fixtures/exception.pyi]
 
 [case testStarImportOverlapping]
@@ -687,7 +687,7 @@ try:
 except:
     pass
 
-import m as f  # E: Incompatible import of "f" (imported name has type "object", local name has type "Callable[[Any], Any]")
+import m as f  # E: Incompatible import of "f" (imported name has type Module, local name has type "Callable[[Any], Any]")
 
 [file m.py]
 def f(x): pass
@@ -702,7 +702,7 @@ Y: Type[mod.B]
 from mod import B as X
 from mod import A as Y  # E: Incompatible import of "Y" (imported name has type "type[A]", local name has type "type[B]")
 
-import mod as X  # E: Incompatible import of "X" (imported name has type "object", local name has type "type[A]")
+import mod as X  # E: Incompatible import of "X" (imported name has type Module, local name has type "type[A]")
 
 [file mod.py]
 class A: ...
@@ -2904,7 +2904,7 @@ from mystery import a, b as b, c as d  # E: Cannot find implementation or librar
 [case testPackagePath]
 import p
 reveal_type(p.__path__)  # N: Revealed type is "builtins.list[builtins.str]"
-p.m.__path__  # E: "object" has no attribute "__path__"
+p.m.__path__  # E: Module has no attribute "__path__"
 
 [file p/__init__.py]
 from . import m as m

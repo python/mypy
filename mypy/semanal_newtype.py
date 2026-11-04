@@ -8,6 +8,7 @@ from __future__ import annotations
 from mypy import errorcodes as codes
 from mypy.errorcodes import ErrorCode
 from mypy.exprtotype import TypeTranslationError, expr_to_unanalyzed_type
+from mypy.message_registry import CANNOT_DECLARE_TYPE_OF_SPECIAL_FORM
 from mypy.messages import MessageBuilder, format_type
 from mypy.nodes import (
     ARG_POS,
@@ -149,7 +150,7 @@ class NewTypeAnalyzer:
             name = s.lvalues[0].name
 
             if s.type:
-                self.fail("Cannot declare the type of a NewType declaration", s)
+                self.fail(CANNOT_DECLARE_TYPE_OF_SPECIAL_FORM.format("NewType"), s)
 
             names = self.api.current_symbol_table()
             existing = names.get(name)

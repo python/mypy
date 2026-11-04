@@ -59,6 +59,7 @@ class TypeExportSuite(DataSuite):
                     "typing_extensions",
                     "sys",
                     "collections",
+                    "types",
                 ):
                     continue
                 fnam = os.path.join(cache_dir, f"{module}.data.ff")

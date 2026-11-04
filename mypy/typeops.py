@@ -11,6 +11,7 @@ import itertools
 from collections.abc import Callable, Iterable, Sequence
 from typing import Any, TypeVar, cast
 
+import mypy.subtypes
 from mypy.checker_state import checker_state
 from mypy.copytype import copy_type
 from mypy.expandtype import expand_type, expand_type_by_instance
@@ -71,6 +72,7 @@ from mypy.types import (
     instance_cache,
     remove_dups,
 )
+from mypy.typestate import BIND_SELF_CACHE_MAX_SIZE, type_state
 from mypy.typetraverser import TypeTraverserVisitor
 from mypy.typevars import fill_typevars
 
@@ -108,6 +110,17 @@ def tuple_fallback(typ: TupleType) -> Instance:
     info = typ.partial_fallback.type
     if info.fullname != "builtins.tuple":
         return typ.partial_fallback
+    return Instance(
+        info,
+        # Note: flattening recursive unions is dangerous, since it can fool recursive
+        # types optimization in subtypes.py and go into infinite recursion.
+        [make_simplified_union(get_tuple_item_types(typ), handle_recursive=False)],
+        extra_attrs=typ.partial_fallback.extra_attrs,
+    )
+
+
+def get_tuple_item_types(typ: TupleType) -> list[Type]:
+    """Return tuple item types, replacing unpacks with their possible item types."""
     items = []
     for item in typ.items:
         if isinstance(item, UnpackType):
@@ -123,13 +136,7 @@ def tuple_fallback(typ: TupleType) -> Instance:
                 raise NotImplementedError
         else:
             items.append(item)
-    return Instance(
-        info,
-        # Note: flattening recursive unions is dangerous, since it can fool recursive
-        # types optimization in subtypes.py and go into infinite recursion.
-        [make_simplified_union(items, handle_recursive=False)],
-        extra_attrs=typ.partial_fallback.extra_attrs,
-    )
+    return items
 
 
 def get_self_type(func: CallableType, def_info: TypeInfo) -> Type | None:
@@ -336,8 +343,6 @@ def class_callable(
     variables.extend(info.defn.type_vars)
     variables.extend(init_type.variables)
 
-    from mypy.subtypes import is_equivalent, is_subtype
-
     init_ret_type = get_proper_type(init_type.ret_type)
     orig_self_type = get_proper_type(orig_self_type)
     default_ret_type = fill_typevars(info)
@@ -356,7 +361,9 @@ def class_callable(
         and (
             isinstance(explicit_type, AnyType)
             and explicit_type.type_of_any != TypeOfAny.unannotated
-            or not is_equivalent(default_def_ret_type, explicit_type, ignore_type_params=True)
+            or not mypy.subtypes.is_equivalent(
+                default_def_ret_type, explicit_type, ignore_type_params=True
+            )
         )
     ):
         ret_type = explicit_type
@@ -367,7 +374,7 @@ def class_callable(
         and isinstance(default_ret_type, Instance)
         and not default_ret_type.type.is_protocol
         # Use the declared self in __init__ if it is a subtype of what we would use otherwise.
-        and is_subtype(explicit_type, default_ret_type, ignore_type_params=True)
+        and mypy.subtypes.is_subtype(explicit_type, default_ret_type, ignore_type_params=True)
     ):
         ret_type = explicit_type
     else:
@@ -463,15 +470,57 @@ def bind_self(
 
     """
     if isinstance(method, Overloaded):
-        items = [
-            bind_self(c, original_type, is_classmethod, ignore_instances) for c in method.items
-        ]
-        return cast(F, Overloaded(items))
+        items = []
+        # If the original object type has Any, we record the inferred self-types,
+        if original_type and mypy.subtypes.has_any_type(original_type, ignore_in_type_obj=True):
+            bound_args: list[Type] | None = []
+        else:
+            bound_args = None
+        for c in method.items:
+            bound = bind_self_inner(c, original_type, is_classmethod, ignore_instances)
+            if bound is None:
+                items.append(c)
+                bound_args = None
+                # If some items can't be bound, we ignore them all for simplicity.
+                continue
+            func, variables = bound
+            res = func.copy_modified(
+                arg_types=func.arg_types[1:],
+                arg_kinds=func.arg_kinds[1:],
+                arg_names=func.arg_names[1:],
+                variables=variables,
+                is_bound=True,
+            )
+            items.append(res)
+            if bound_args is not None:
+                bound_args.append(func.arg_types[0])
+        return cast(F, Overloaded(items, bound_args))
+
     assert isinstance(method, CallableType)
-    func: CallableType = method
+    bound = bind_self_inner(method, original_type, is_classmethod, ignore_instances)
+    if bound is None:
+        return method
+    func, variables = bound
+    res = func.copy_modified(
+        arg_types=func.arg_types[1:],
+        arg_kinds=func.arg_kinds[1:],
+        arg_names=func.arg_names[1:],
+        variables=variables,
+        is_bound=True,
+    )
+    return cast(F, res)
+
+
+def bind_self_inner(
+    func: CallableType,
+    original_type: Type | None = None,
+    is_classmethod: bool = False,
+    ignore_instances: bool = False,
+) -> tuple[CallableType, Sequence[TypeVarLikeType]] | None:
+    """Implementation of bind_self()."""
     if not func.arg_types:
         # Invalid method, return something.
-        return method
+        return None
     if func.arg_kinds[0] in (ARG_STAR, ARG_STAR2):
         # The signature is of the form 'def foo(*args, ...)'.
         # In this case we shouldn't drop the first arg,
@@ -480,7 +529,8 @@ def bind_self(
 
         # In the case of **kwargs we should probably emit an error, but
         # for now we simply skip it, to avoid crashes down the line.
-        return method
+        return None
+
     self_param_type = get_proper_type(func.arg_types[0])
 
     variables: Sequence[TypeVarLikeType]
@@ -502,8 +552,16 @@ def bind_self(
         self_ids = {tv.id for tv in get_all_type_vars(self_param_type)}
         self_vars = [tv for tv in func.variables if tv.id in self_ids]
 
+        cache_key = None
+        if not any(tv.id.is_meta_var() for tv in self_vars) and state.strict_optional:
+            # Only use cache for something that in not freshened (e.g. protocol access),
+            # otherwise it would be pointless as each fresh meta variable is unique.
+            cache_key = (func, original_type, is_classmethod, ignore_instances)
+        if cache_key is not None and cache_key in type_state.bind_self_cache:
+            return type_state.bind_self_cache[cache_key]
+
         # Solve for these type arguments using the actual class or instance type.
-        typeargs = infer_type_arguments(
+        typeargs, _ = infer_type_arguments(
             self_vars, self_param_type, original_type, is_supertype=True, erase_types=False
         )
         if (
@@ -512,7 +570,7 @@ def bind_self(
             and isinstance(original_type, (Instance, TypeVarType, TupleType))
         ):
             # In case we call a classmethod through an instance x, fallback to type(x).
-            typeargs = infer_type_arguments(
+            typeargs, _ = infer_type_arguments(
                 self_vars,
                 self_param_type,
                 TypeType(original_type),
@@ -525,17 +583,38 @@ def bind_self(
         to_apply = [t if t is not None else UninhabitedType() for t in typeargs]
         func = expand_type(func, {tv.id: arg for tv, arg in zip(self_vars, to_apply)})
         variables = [v for v in func.variables if v not in self_vars]
+        if cache_key is not None:
+            if len(type_state.bind_self_cache) > BIND_SELF_CACHE_MAX_SIZE:
+                type_state.bind_self_cache.clear()
+            type_state.bind_self_cache[cache_key] = func, variables
     else:
         variables = func.variables
+    return func, variables
 
-    res = func.copy_modified(
-        arg_types=func.arg_types[1:],
-        arg_kinds=func.arg_kinds[1:],
-        arg_names=func.arg_names[1:],
-        variables=variables,
+
+def bind_self_fast(method: F, original_type: Type | None = None) -> F:
+    """Return a copy of `method`, with the type of its first parameter (usually
+    self or cls) bound to original_type.
+
+    This is a faster version of mypy.typeops.bind_self() that can be used for methods
+    with trivial self/cls annotations.
+    """
+    if isinstance(method, Overloaded):
+        items = [bind_self_fast(c, original_type) for c in method.items]
+        return cast(F, Overloaded(items))
+    assert isinstance(method, CallableType)
+    if not method.arg_types:
+        # Invalid method, return something.
+        return method
+    if method.arg_kinds[0] in (ARG_STAR, ARG_STAR2):
+        # See bind_self() for details.
+        return method
+    return method.copy_modified(
+        arg_types=method.arg_types[1:],
+        arg_kinds=method.arg_kinds[1:],
+        arg_names=method.arg_names[1:],
         is_bound=True,
     )
-    return cast(F, res)
 
 
 def erase_to_bound(t: Type) -> Type:
@@ -816,6 +895,8 @@ def true_only(t: Type) -> ProperType:
         new_items = [true_only(item) for item in t.items]
         can_be_true_items = [item for item in new_items if item.can_be_true]
         return make_simplified_union(can_be_true_items, line=t.line, column=t.column)
+    elif isinstance(t, Instance) and t.type.fullname == "builtins.bool":
+        return LiteralType(True, fallback=t)
     else:
         ret_type = _get_type_method_ret_type(t, name="__bool__") or _get_type_method_ret_type(
             t, name="__len__"
@@ -855,6 +936,8 @@ def false_only(t: Type) -> ProperType:
         return LiteralType("", fallback=t)
     elif isinstance(t, Instance) and t.type.fullname == "builtins.int":
         return LiteralType(0, fallback=t)
+    elif isinstance(t, Instance) and t.type.fullname == "builtins.bool":
+        return LiteralType(False, fallback=t)
     else:
         ret_type = _get_type_method_ret_type(t, name="__bool__") or _get_type_method_ret_type(
             t, name="__len__"

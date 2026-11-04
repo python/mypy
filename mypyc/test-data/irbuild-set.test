@@ -213,9 +213,8 @@ L5:
 def test4():
     r0 :: set
     r1 :: short_int
-    x :: int
     r2 :: bit
-    r3 :: int
+    x, r3 :: int
     r4 :: object
     r5 :: i32
     r6 :: bit
@@ -224,7 +223,6 @@ def test4():
 L0:
     r0 = PySet_New(0)
     r1 = 2
-    x = r1
 L1:
     r2 = int_lt r1, 12
     if r2 goto L2 else goto L4 :: bool
@@ -244,9 +242,8 @@ L4:
 def test5():
     r0 :: set
     r1 :: short_int
-    x :: int
     r2 :: bit
-    r3 :: int
+    x, r3 :: int
     r4 :: object
     r5 :: i32
     r6 :: bit
@@ -255,7 +252,6 @@ def test5():
 L0:
     r0 = PySet_New(0)
     r1 = 2
-    x = r1
 L1:
     r2 = int_lt r1, 12
     if r2 goto L2 else goto L4 :: bool

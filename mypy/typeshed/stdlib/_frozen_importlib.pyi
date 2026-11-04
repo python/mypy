@@ -16,6 +16,8 @@ def __import__(
     fromlist: Sequence[str] | None = (),
     level: int = 0,
 ) -> ModuleType: ...
+
+# TODO: Revise the protocol for 'loader' param
 def spec_from_loader(
     name: str, loader: LoaderProtocol | None, *, origin: str | None = None, is_package: bool | None = None
 ) -> importlib.machinery.ModuleSpec | None: ...
@@ -61,11 +63,13 @@ class BuiltinImporter(importlib.abc.MetaPathFinder, importlib.abc.InspectLoader)
     @classmethod
     def is_package(cls, fullname: str) -> bool: ...
     @classmethod
-    def load_module(cls, fullname: str) -> types.ModuleType: ...
-    @classmethod
     def get_code(cls, fullname: str) -> None: ...
     @classmethod
     def get_source(cls, fullname: str) -> None: ...
+    if sys.version_info < (3, 15):
+        @classmethod
+        @deprecated("Deprecated since Python 3.10; removed in Python 3.15. Use `exec_module()` instead.")
+        def load_module(cls, fullname: str) -> types.ModuleType: ...
     # Loader
     if sys.version_info < (3, 12):
         @staticmethod
@@ -95,11 +99,13 @@ class FrozenImporter(importlib.abc.MetaPathFinder, importlib.abc.InspectLoader):
     @classmethod
     def is_package(cls, fullname: str) -> bool: ...
     @classmethod
-    def load_module(cls, fullname: str) -> types.ModuleType: ...
-    @classmethod
     def get_code(cls, fullname: str) -> None: ...
     @classmethod
     def get_source(cls, fullname: str) -> None: ...
+    if sys.version_info < (3, 15):
+        @classmethod
+        @deprecated("Deprecated since Python 3.10; removed in Python 3.15. Use `exec_module()` instead.")
+        def load_module(cls, fullname: str) -> types.ModuleType: ...
     # Loader
     if sys.version_info < (3, 12):
         @staticmethod

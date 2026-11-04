@@ -300,8 +300,9 @@ def f(n):
     r0 :: object
     r1 :: ptr
     r2, r3 :: vec[str]
-    r4, x :: i64
+    r4 :: i64
     r5 :: bit
+    x :: i64
     r6 :: str
     r7 :: object
     r8 :: ptr
@@ -313,7 +314,6 @@ L0:
     r2 = VecTApi.alloc(0, 0, r1)
     r3 = r2
     r4 = 0
-    x = r4
 L1:
     r5 = r4 < 5 :: signed
     if r5 goto L2 else goto L4 :: bool

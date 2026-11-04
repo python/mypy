@@ -254,7 +254,9 @@ PyTypeObject VecGenericAliasType = {
 static PyObject *extract_optional_item(PyObject *item) {
     PyObject *args = PyObject_GetAttrString(item, "__args__");
     if (args == NULL) {
-        PyErr_Clear();
+        if (PyErr_Occurred() && PyErr_ExceptionMatches(PyExc_AttributeError)) {
+            PyErr_Clear();
+        }
         return NULL;
     }
     if (!PyTuple_CheckExact(args))
@@ -264,9 +266,11 @@ static PyObject *extract_optional_item(PyObject *item) {
     PyObject *item0 = PyTuple_GET_ITEM(args, 0);
     PyObject *item1 = PyTuple_GET_ITEM(args, 1);
     if (item0 == (PyObject *)Py_None->ob_type) {
+        Py_INCREF(item1);
         Py_DECREF(args);
         return item1;
     } else if (item1 == (PyObject *)Py_None->ob_type) {
+        Py_INCREF(item0);
         Py_DECREF(args);
         return item0;
     }
@@ -300,9 +304,14 @@ static PyObject *vec_class_getitem(PyObject *type, PyObject *item)
         size_t depth = 0;
         size_t item_type;
         int optional = 0;
+        PyObject *optional_item = NULL;
         if (!PyObject_TypeCheck(item, &PyType_Type)) {
             PyObject *it = extract_optional_item(item);
+            if (it == NULL && PyErr_Occurred()) {
+                return NULL;
+            }
             if (it != NULL) {
+                optional_item = it;
                 optional = 1;
                 item = it;
                 // Check if this is a specialized value type that doesn't support None
@@ -314,20 +323,20 @@ static PyObject *vec_class_getitem(PyObject *type, PyObject *item)
                     item == (PyObject *)&PyBool_Type) {
                     PyErr_SetString(PyExc_TypeError,
                         "vec does not support optional value types (use vec[object] instead)");
-                    return NULL;
+                    goto error;
                 }
             }
             if (item->ob_type == &VecGenericAliasType) {
                 if (optional) {
                     PyErr_SetString(PyExc_TypeError, "optional type not expected in vec[...]");
-                    return NULL;
+                    goto error;
                 }
                 VecGenericAlias *p = (VecGenericAlias *)item;
                 item_type = p->item_type;
                 depth = p->depth + 1;
             } else if (!PyObject_TypeCheck(item, &PyType_Type)) {
                 PyErr_SetString(PyExc_TypeError, "type object expected in vec[...]");
-                return NULL;
+                goto error;
             } else {
                 item_type = (size_t)item | optional;
             }
@@ -357,17 +366,21 @@ static PyObject *vec_class_getitem(PyObject *type, PyObject *item)
         if (item == (PyObject *)&PyLong_Type) {
             PyErr_Format(PyExc_ValueError, "unsupported type in vec[%s] (use i64, i32, i16, or u8)",
                          ((PyTypeObject *)item)->tp_name);
-            return NULL;
+            goto error;
         }
         VecGenericAlias *p;
         p = PyObject_GC_New(VecGenericAlias, &VecGenericAliasType);
         if (p == NULL)
-            return NULL;
+            goto error;
         Py_INCREF(item);
         p->item_type = item_type;
         p->depth = depth;
         PyObject_GC_Track(p);
+        Py_XDECREF(optional_item);
         return (PyObject *)p;
+    error:
+        Py_XDECREF(optional_item);
+        return NULL;
     }
 }
 
@@ -996,113 +1009,126 @@ librt_vecs_module_exec(PyObject *m)
         return -1;
     }
 
-    LibRTVecs_I64TypeObj = (PyTypeObject *)PyObject_GetAttrString(ext, "i64");
-    if (LibRTVecs_I64TypeObj == NULL) {
-        return -1;
+    PyTypeObject *i64 = NULL, *i32 = NULL, *i16 = NULL, *u8 = NULL;
+
+    i64 = (PyTypeObject *)PyObject_GetAttrString(ext, "i64");
+    if (i64 == NULL) {
+        goto error;
     }
-    if (!PyType_Check(LibRTVecs_I64TypeObj)) {
+    if (!PyType_Check(i64)) {
         PyErr_SetString(PyExc_TypeError, "mypy_extensions.i64 is not a type");
-        return -1;
+        goto error;
     }
-    LibRTVecs_I32TypeObj = (PyTypeObject *)PyObject_GetAttrString(ext, "i32");
-    if (LibRTVecs_I32TypeObj == NULL) {
-        return -1;
+    i32 = (PyTypeObject *)PyObject_GetAttrString(ext, "i32");
+    if (i32 == NULL) {
+        goto error;
     }
-    if (!PyType_Check(LibRTVecs_I32TypeObj)) {
+    if (!PyType_Check(i32)) {
         PyErr_SetString(PyExc_TypeError, "mypy_extensions.i32 is not a type");
-        return -1;
+        goto error;
     }
-    LibRTVecs_I16TypeObj = (PyTypeObject *)PyObject_GetAttrString(ext, "i16");
-    if (LibRTVecs_I16TypeObj == NULL) {
-        return -1;
+    i16 = (PyTypeObject *)PyObject_GetAttrString(ext, "i16");
+    if (i16 == NULL) {
+        goto error;
     }
-    if (!PyType_Check(LibRTVecs_I16TypeObj)) {
+    if (!PyType_Check(i16)) {
         PyErr_SetString(PyExc_TypeError, "mypy_extensions.i16 is not a type");
-        return -1;
+        goto error;
     }
-    LibRTVecs_U8TypeObj = (PyTypeObject *)PyObject_GetAttrString(ext, "u8");
-    if (LibRTVecs_U8TypeObj == NULL) {
-        return -1;
+    u8 = (PyTypeObject *)PyObject_GetAttrString(ext, "u8");
+    if (u8 == NULL) {
+        goto error;
     }
-    if (!PyType_Check(LibRTVecs_U8TypeObj)) {
+    if (!PyType_Check(u8)) {
         PyErr_SetString(PyExc_TypeError, "mypy_extensions.u8 is not a type");
-        return -1;
+        goto error;
     }
 
     if (PyType_Ready(&VecType) < 0)
-        return -1;
+        goto error;
     if (PyType_Ready(&VecGenericAliasType) < 0)
-        return -1;
+        goto error;
 
     if (PyType_Ready(&VecTType) < 0)
-        return -1;
+        goto error;
     if (PyType_Ready(&VecTBufType) < 0)
-        return -1;
+        goto error;
     if (PyType_Ready(&VecTIterType) < 0)
-        return -1;
+        goto error;
 
     if (PyType_Ready(&VecNestedType) < 0)
-        return -1;
+        goto error;
     if (PyType_Ready(&VecNestedBufType) < 0)
-        return -1;
+        goto error;
     if (PyType_Ready(&VecNestedIterType) < 0)
-        return -1;
+        goto error;
 
     if (PyType_Ready(&VecI64Type) < 0)
-        return -1;
+        goto error;
     if (PyType_Ready(&VecI64BufType) < 0)
-        return -1;
+        goto error;
     if (PyType_Ready(&VecI64IterType) < 0)
-        return -1;
+        goto error;
     if (PyType_Ready(&VecI32Type) < 0)
-        return -1;
+        goto error;
     if (PyType_Ready(&VecI32BufType) < 0)
-        return -1;
+        goto error;
     if (PyType_Ready(&VecI32IterType) < 0)
-        return -1;
+        goto error;
     if (PyType_Ready(&VecI16Type) < 0)
-        return -1;
+        goto error;
     if (PyType_Ready(&VecI16BufType) < 0)
-        return -1;
+        goto error;
     if (PyType_Ready(&VecI16IterType) < 0)
-        return -1;
+        goto error;
     if (PyType_Ready(&VecU8Type) < 0)
-        return -1;
+        goto error;
     if (PyType_Ready(&VecU8BufType) < 0)
-        return -1;
+        goto error;
     if (PyType_Ready(&VecU8IterType) < 0)
-        return -1;
+        goto error;
     if (PyType_Ready(&VecFloatType) < 0)
-        return -1;
+        goto error;
     if (PyType_Ready(&VecFloatBufType) < 0)
-        return -1;
+        goto error;
     if (PyType_Ready(&VecFloatIterType) < 0)
-        return -1;
+        goto error;
     if (PyType_Ready(&VecBoolType) < 0)
-        return -1;
+        goto error;
     if (PyType_Ready(&VecBoolBufType) < 0)
-        return -1;
+        goto error;
     if (PyType_Ready(&VecBoolIterType) < 0)
-        return -1;
+        goto error;
 
     Py_INCREF(&VecType);
     if (PyModule_AddObject(m, "vec", (PyObject *)&VecType) < 0) {
         Py_DECREF(&VecType);
-        return -1;
+        goto error;
     }
 
     PyObject *c_api = PyCapsule_New(&Capsule, "librt.vecs._C_API", NULL);
     if (c_api == NULL)
-        return -1;
+        goto error;
 
     if (PyModule_AddObject(m, "_C_API", c_api) < 0) {
-        Py_XDECREF(c_api);
-        Py_DECREF(&VecType);
-        return -1;
+        Py_DECREF(c_api);
+        goto error;
     }
 
+    Py_XSETREF(LibRTVecs_I64TypeObj, i64);
+    Py_XSETREF(LibRTVecs_I32TypeObj, i32);
+    Py_XSETREF(LibRTVecs_I16TypeObj, i16);
+    Py_XSETREF(LibRTVecs_U8TypeObj, u8);
     Py_DECREF(ext);
     return 0;
+
+error:
+    Py_XDECREF(i64);
+    Py_XDECREF(i32);
+    Py_XDECREF(i16);
+    Py_XDECREF(u8);
+    Py_DECREF(ext);
+    return -1;
 }
 
 static PyModuleDef_Slot librt_vecs_module_slots[] = {

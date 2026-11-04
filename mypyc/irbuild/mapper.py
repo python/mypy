@@ -6,6 +6,7 @@ from mypy.nodes import ARG_STAR, ARG_STAR2, GDEF, ArgKind, FuncDef, RefExpr, Sym
 from mypy.types import (
     AnyType,
     CallableType,
+    DeletedType,
     Instance,
     LiteralType,
     NoneTyp,
@@ -165,6 +166,9 @@ class Mapper:
             return self.type_to_rtype(typ.fallback)
         elif isinstance(typ, (UninhabitedType, UnboundType)):
             # Sure, whatever!
+            return object_rprimitive
+        elif isinstance(typ, DeletedType):
+            # The type of an exception variable after the except block, for example
             return object_rprimitive
 
         # I think we've covered everything that is supposed to

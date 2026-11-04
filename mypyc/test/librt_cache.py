@@ -29,15 +29,14 @@ from typing import Any
 
 import filelock
 
-from mypyc.build import LIBRT_MODULES, get_cflags, include_dir
+from mypyc.build import LIBRT_MODULES, get_cflags, import_distutils, include_dir
 from mypyc.common import RUNTIME_C_FILES
 from mypyc.test.config import PREFIX
 
 
 def _librt_build_hash(experimental: bool, opt_level: str) -> str:
     """Compute hash for librt build, including sources and build environment."""
-    # Import lazily to ensure mypyc.build has ensured that distutils is correctly set up
-    from distutils import ccompiler
+    ccompiler, _ = import_distutils()
 
     h = hashlib.sha256()
     # Include experimental flag

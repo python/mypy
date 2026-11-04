@@ -535,7 +535,7 @@ with B() as x:
 import typing
 try:
     pass
-except Exception as typing:
+except Exception as typing:  # E: Incompatible types in assignment (expression has type "Exception", variable has type Module)
     pass
 [builtins fixtures/exception.pyi]
 [typing fixtures/typing-full.pyi]

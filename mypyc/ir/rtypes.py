@@ -40,13 +40,14 @@ from __future__ import annotations
 from abc import abstractmethod
 from typing import TYPE_CHECKING, ClassVar, Final, Generic, TypeGuard, TypeVar, Union, final
 
-from mypyc.common import HAVE_IMMORTAL, IS_32_BIT_PLATFORM, PLATFORM_SIZE, JsonDict, short_name
+from mypyc.common import IS_32_BIT_PLATFORM, PLATFORM_SIZE, JsonDict, short_name
 from mypyc.ir.deps import LIBRT_RANDOM, LIBRT_STRINGS, LIBRT_THREADING, LIBRT_VECS, Dependency
 from mypyc.namegen import NameGenerator
 
 if TYPE_CHECKING:
     from mypyc.ir.class_ir import ClassIR
     from mypyc.ir.ops import DeserMaps
+    from mypyc.options import TargetPython
 
 T = TypeVar("T")
 
@@ -98,10 +99,23 @@ class RType:
     def short_name(self) -> str:
         return short_name(self.name)
 
-    @property
     @abstractmethod
-    def may_be_immortal(self) -> bool:
+    def may_be_immortal(self, target: TargetPython) -> bool:
+        """Can a value of this type be an immortal object on the target Python?
+
+        This is always False if the target has no immortal objects (before 3.12),
+        so False doesn't imply that ref count ops can skip the immortality check.
+        Use should_use_nonimmortal_variant() for that.
+        """
         raise NotImplementedError
+
+    def should_use_nonimmortal_variant(self, target: TargetPython) -> bool:
+        """Can ref count ops skip the immortality check (e.g. CPy_INCREF_NO_IMM)?
+
+        This is only possible if the target has immortal objects, since otherwise
+        the regular ops don't check for immortality.
+        """
+        return target.have_immortal and not self.may_be_immortal(target)
 
     def __str__(self) -> str:
         return short_name(self.name)
@@ -199,8 +213,7 @@ class RVoid(RType):
     def accept(self, visitor: RTypeVisitor[T]) -> T:
         return visitor.visit_rvoid(self)
 
-    @property
-    def may_be_immortal(self) -> bool:
+    def may_be_immortal(self, target: TargetPython) -> bool:
         return False
 
     def serialize(self) -> str:
@@ -259,7 +272,9 @@ class RPrimitive(RType):
         self._ctype = ctype
         self.size = size
         self.error_overlap = error_overlap
-        self._may_be_immortal = may_be_immortal and HAVE_IMMORTAL
+        # Whether values may be immortal on targets that have immortal objects
+        # (see may_be_immortal(), which also takes the target into account)
+        self._may_be_immortal = may_be_immortal
         self.dependencies = dependencies
         if ctype == "CPyTagged":
             self.c_undefined = "CPY_INT_TAG"
@@ -285,9 +300,8 @@ class RPrimitive(RType):
     def accept(self, visitor: RTypeVisitor[T]) -> T:
         return visitor.visit_rprimitive(self)
 
-    @property
-    def may_be_immortal(self) -> bool:
-        return self._may_be_immortal
+    def may_be_immortal(self, target: TargetPython) -> bool:
+        return self._may_be_immortal and target.have_immortal
 
     def serialize(self) -> str:
         return self.name
@@ -811,8 +825,7 @@ class RTuple(RType):
     def accept(self, visitor: RTypeVisitor[T]) -> T:
         return visitor.visit_rtuple(self)
 
-    @property
-    def may_be_immortal(self) -> bool:
+    def may_be_immortal(self, target: TargetPython) -> bool:
         return False
 
     def __str__(self) -> str:
@@ -945,8 +958,7 @@ class RStruct(RType):
     def accept(self, visitor: RTypeVisitor[T]) -> T:
         return visitor.visit_rstruct(self)
 
-    @property
-    def may_be_immortal(self) -> bool:
+    def may_be_immortal(self, target: TargetPython) -> bool:
         return False
 
     def __str__(self) -> str:
@@ -1010,8 +1022,7 @@ class RInstance(RType):
     def accept(self, visitor: RTypeVisitor[T]) -> T:
         return visitor.visit_rinstance(self)
 
-    @property
-    def may_be_immortal(self) -> bool:
+    def may_be_immortal(self, target: TargetPython) -> bool:
         return False
 
     def struct_name(self, names: NameGenerator) -> str:
@@ -1058,8 +1069,7 @@ class RTypeVar(RType):
     def __init__(self, id: int) -> None:
         self.id = id
 
-    @property
-    def may_be_immortal(self) -> bool:
+    def may_be_immortal(self, target: TargetPython) -> bool:
         # RTypeVar must always be substituted before use, so this should never matter.
         return False
 
@@ -1114,8 +1124,7 @@ class RVec(RType):
             self.types = [c_pyssize_t_rprimitive, pointer_rprimitive]
             self.buf_type = VecTBufObject
 
-    @property
-    def may_be_immortal(self) -> bool:
+    def may_be_immortal(self, target: TargetPython) -> bool:
         return False
 
     def unwrap_item_type(self) -> RPrimitive | RInstance:
@@ -1218,9 +1227,8 @@ class RUnion(RType):
     def accept(self, visitor: RTypeVisitor[T]) -> T:
         return visitor.visit_runion(self)
 
-    @property
-    def may_be_immortal(self) -> bool:
-        return any(item.may_be_immortal for item in self.items)
+    def may_be_immortal(self, target: TargetPython) -> bool:
+        return any(item.may_be_immortal(target) for item in self.items)
 
     def __repr__(self) -> str:
         return "<RUnion %s>" % ", ".join(str(item) for item in self.items)
@@ -1293,8 +1301,7 @@ class RArray(RType):
     def accept(self, visitor: RTypeVisitor[T]) -> T:
         return visitor.visit_rarray(self)
 
-    @property
-    def may_be_immortal(self) -> bool:
+    def may_be_immortal(self, target: TargetPython) -> bool:
         return False
 
     def __str__(self) -> str:

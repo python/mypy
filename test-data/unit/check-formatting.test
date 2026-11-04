@@ -485,7 +485,7 @@ class D(bytes):
 '{}'.format(D())
 [builtins fixtures/primitives.pyi]
 
-[case testNoSpuriousFormattingErrorsDuringFailedOverlodMatch]
+[case testNoSpuriousFormattingErrorsDuringFailedOverloadMatch]
 from typing import overload, Callable
 
 @overload
