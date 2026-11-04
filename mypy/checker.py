@@ -2855,8 +2855,9 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                 or isinstance(typ, TypeType)
                 and isinstance(typ.item, AnyType)
             )
-            if is_any_base:
-                if self.options.disallow_subclassing_any:
+            is_type_type = isinstance(typ, TypeType)
+            if is_any_base or is_type_type:
+                if is_any_base and self.options.disallow_subclassing_any:
                     self.fail(
                         f'Class cannot subclass "{base_expr.name}" (has type "Any")', base_expr
                     )

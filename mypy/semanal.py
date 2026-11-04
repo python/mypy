@@ -2667,10 +2667,6 @@ class SemanticAnalyzer(
                             isinstance(member_type, Instance)
                             and member_type.type.fullname == "builtins.type"
                         )
-                        or (
-                            isinstance(member_type, TypeType)
-                            and isinstance(member_type.item, AnyType)
-                        )
                     ):
                         # The attribute is a type object. Treat it like a variable
                         # annotated with ``type``, which is accepted as a base class.
