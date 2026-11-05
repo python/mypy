@@ -1063,3 +1063,42 @@ A = list[T]
 a: A
 reveal_type(a)  # N: Revealed type is "builtins.list[builtins.list[Any]]"
 [builtins fixtures/tuple.pyi]
+
+[case testTypeVarTupleWithDefaultedParamSpecLegacy]
+from typing import Generic, ParamSpec, Callable
+from typing_extensions import TypeVarTuple, Unpack
+
+Ts = TypeVarTuple("Ts")
+P = ParamSpec("P", default=[float, bool])
+
+class Foo(Generic[Unpack[Ts], P]):
+    def args(self) -> tuple[Unpack[Ts]]: ...
+    def fn(self) -> Callable[P, None]: ...
+
+foo = Foo[int, str]()
+reveal_type(foo.args())  # N: Revealed type is "tuple[builtins.int, builtins.str]"
+reveal_type(foo.fn())    # N: Revealed type is "def (builtins.float, builtins.bool)"
+
+bar = Foo[int, str, [bytes]]()
+reveal_type(bar.args())  # N: Revealed type is "tuple[builtins.int, builtins.str]"
+reveal_type(bar.fn())    # N: Revealed type is "def (builtins.bytes)"
+
+def test_ann(a: Foo[int, str], b: Foo[int, str, [bytes]]) -> None:
+    reveal_type(a.args())  # N: Revealed type is "tuple[builtins.int, builtins.str]"
+    reveal_type(a.fn())    # N: Revealed type is "def (builtins.float, builtins.bool)"
+    reveal_type(b.args())  # N: Revealed type is "tuple[builtins.int, builtins.str]"
+    reveal_type(b.fn())    # N: Revealed type is "def (builtins.bytes)"
+[builtins fixtures/tuple.pyi]
+
+[case testTypeVarTupleWithParamSpecNegative]
+from typing import Generic, ParamSpec
+from typing_extensions import TypeVarTuple, Unpack
+
+Ts = TypeVarTuple("Ts")
+P = ParamSpec("P")
+
+class Bar(Generic[Unpack[Ts], P]): ...
+
+b1 = Bar[int, str]()  # E: Can only replace ParamSpec with a parameter types list or another ParamSpec, got "str"
+def f(x: Bar[int, str]) -> None: ...  # E: Can only replace ParamSpec with a parameter types list or another ParamSpec, got "str"
+[builtins fixtures/tuple.pyi]

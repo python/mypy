@@ -503,3 +503,116 @@ def test_vec_concat(left: Vec[A], right: Vec[B]) -> None:
     _0: Vec[A | B]     = concat_vecs(left, right)  # OK
     _1: Vec[A | B | C] = concat_vecs(left, right)  # OK
     _2: Vec[object]    = concat_vecs(left, right)  # OK
+
+[case testPEP695TypeVarTupleWithDefaultedParamSpec]
+from typing import Callable
+
+class Foo[*Ts, **P = [float, bool]]:
+    def args(self) -> tuple[*Ts]: ...
+    def fn(self) -> Callable[P, None]: ...
+
+foo = Foo[int, str]()
+reveal_type(foo.args())  # N: Revealed type is "tuple[builtins.int, builtins.str]"
+reveal_type(foo.fn())    # N: Revealed type is "def (builtins.float, builtins.bool)"
+
+bar = Foo[int, str, [bytes]]()
+reveal_type(bar.args())  # N: Revealed type is "tuple[builtins.int, builtins.str]"
+reveal_type(bar.fn())    # N: Revealed type is "def (builtins.bytes)"
+
+baz = Foo[int, str, ...]()
+reveal_type(baz.args())  # N: Revealed type is "tuple[builtins.int, builtins.str]"
+reveal_type(baz.fn())    # N: Revealed type is "def (*Any, **Any)"
+
+qux = Foo[[bytes]]()
+reveal_type(qux.args())  # N: Revealed type is "tuple[()]"
+reveal_type(qux.fn())    # N: Revealed type is "def (builtins.bytes)"
+
+single = Foo[int]()
+reveal_type(single.args())  # N: Revealed type is "tuple[builtins.int]"
+reveal_type(single.fn())    # N: Revealed type is "def (builtins.float, builtins.bool)"
+
+def test_ann(
+    a: Foo[int, str],
+    b: Foo[int, str, [bytes]],
+    c: Foo[[bytes]],
+    d: Foo[int],
+) -> None:
+    reveal_type(a.args())  # N: Revealed type is "tuple[builtins.int, builtins.str]"
+    reveal_type(a.fn())    # N: Revealed type is "def (builtins.float, builtins.bool)"
+    reveal_type(b.args())  # N: Revealed type is "tuple[builtins.int, builtins.str]"
+    reveal_type(b.fn())    # N: Revealed type is "def (builtins.bytes)"
+    reveal_type(c.args())  # N: Revealed type is "tuple[()]"
+    reveal_type(c.fn())    # N: Revealed type is "def (builtins.bytes)"
+    reveal_type(d.args())  # N: Revealed type is "tuple[builtins.int]"
+    reveal_type(d.fn())    # N: Revealed type is "def (builtins.float, builtins.bool)"
+
+type Alias[*Ts, **P = [float, bool]] = Foo[*Ts, P]
+al1: Alias[int, str]
+al2: Alias[int, str, [bytes]]
+reveal_type(al1.args())  # N: Revealed type is "tuple[builtins.int, builtins.str]"
+reveal_type(al1.fn())    # N: Revealed type is "def (builtins.float, builtins.bool)"
+reveal_type(al2.args())  # N: Revealed type is "tuple[builtins.int, builtins.str]"
+reveal_type(al2.fn())    # N: Revealed type is "def (builtins.bytes)"
+
+class Sub1(Foo[int, str]): ...
+class Sub2(Foo[int, str, [bytes]]): ...
+s1 = Sub1()
+s2 = Sub2()
+reveal_type(s1.args())  # N: Revealed type is "tuple[builtins.int, builtins.str]"
+reveal_type(s1.fn())    # N: Revealed type is "def (builtins.float, builtins.bool)"
+reveal_type(s2.args())  # N: Revealed type is "tuple[builtins.int, builtins.str]"
+reveal_type(s2.fn())    # N: Revealed type is "def (builtins.bytes)"
+[builtins fixtures/tuple.pyi]
+
+[case testPEP695TypeVarTupleWithDefaultedParamSpecPrefix]
+from typing import Callable
+
+class PrefFoo[T, *Ts, **P = [float, bool]]:
+    def first(self) -> T: ...
+    def args(self) -> tuple[*Ts]: ...
+    def fn(self) -> Callable[P, None]: ...
+
+p1 = PrefFoo[int, str, bool]()
+reveal_type(p1.first())  # N: Revealed type is "builtins.int"
+reveal_type(p1.args())   # N: Revealed type is "tuple[builtins.str, builtins.bool]"
+reveal_type(p1.fn())     # N: Revealed type is "def (builtins.float, builtins.bool)"
+
+p2 = PrefFoo[int, str, [bytes]]()
+reveal_type(p2.first())  # N: Revealed type is "builtins.int"
+reveal_type(p2.args())   # N: Revealed type is "tuple[builtins.str]"
+reveal_type(p2.fn())     # N: Revealed type is "def (builtins.bytes)"
+
+p3 = PrefFoo[int, [bytes]]()
+reveal_type(p3.first())  # N: Revealed type is "builtins.int"
+reveal_type(p3.args())   # N: Revealed type is "tuple[()]"
+reveal_type(p3.fn())     # N: Revealed type is "def (builtins.bytes)"
+
+p4 = PrefFoo[int]()
+reveal_type(p4.first())  # N: Revealed type is "builtins.int"
+reveal_type(p4.args())   # N: Revealed type is "tuple[()]"
+reveal_type(p4.fn())     # N: Revealed type is "def (builtins.float, builtins.bool)"
+[builtins fixtures/tuple.pyi]
+
+[case testPEP695TypeVarTupleWithDefaultedParamSpecBothDefaults]
+from typing import Callable
+
+class BothFoo[*Ts = *tuple[int, str], **P = [float, bool]]:
+    def args(self) -> tuple[*Ts]: ...
+    def fn(self) -> Callable[P, None]: ...
+
+b1 = BothFoo()
+reveal_type(b1.args())  # N: Revealed type is "tuple[builtins.int, builtins.str]"
+reveal_type(b1.fn())    # N: Revealed type is "def (builtins.float, builtins.bool)"
+
+b2 = BothFoo[bool]()
+reveal_type(b2.args())  # N: Revealed type is "tuple[builtins.bool]"
+reveal_type(b2.fn())    # N: Revealed type is "def (builtins.float, builtins.bool)"
+
+b3 = BothFoo[[bytes]]()
+reveal_type(b3.args())  # N: Revealed type is "tuple[()]"
+reveal_type(b3.fn())    # N: Revealed type is "def (builtins.bytes)"
+
+b4 = BothFoo[bool, [bytes]]()
+reveal_type(b4.args())  # N: Revealed type is "tuple[builtins.bool]"
+reveal_type(b4.fn())    # N: Revealed type is "def (builtins.bytes)"
+[builtins fixtures/tuple.pyi]
