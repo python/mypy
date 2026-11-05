@@ -2374,25 +2374,24 @@ native.test()
 ok
 
 [case testNativeClassHiddenMetaclass]
-# The stub hides the base classes' metaclass and base resolution behavior.
+# The driver replaces the base classes at runtime with ones that the
+# compile-time checks would reject, so that the runtime checks are exercised.
 from hidden import Prefix, Base, Second
 
 class C(Prefix, Base, Second):
     pass
 
-[file hidden.pyi]
-class Prefix: ...
-class Base: ...
-class Second: ...
-
 [file hidden.py]
 class Prefix:
+    pass
+
+class Base:
     pass
 
 class Meta(type):
     pass
 
-class Base(metaclass=Meta):
+class MetaBase(metaclass=Meta):
     pass
 
 class Second:
@@ -2427,6 +2426,7 @@ import sys
 import hidden
 from testutil import assertRaises
 
+hidden.Base = hidden.MetaBase
 for _ in range(3):
     with assertRaises(TypeError, "mypyc classes can't have a metaclass"):
         import native
