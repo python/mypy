@@ -1,0 +1,342 @@
+# Test cases for u32 native ints. Focus on things that are different from u8; no need to
+# duplicate all u8 test cases here.
+
+[case testU32BinaryOp]
+from mypy_extensions import u32
+
+def add_op(x: u32, y: u32) -> u32:
+    x = y + x
+    y = x + 5
+    y += x
+    y += 7
+    x = 5 + y
+    return x
+def compare(x: u32, y: u32) -> None:
+    a = x == y
+    b = x == 5
+    c = x < y
+    d = x < 5
+    e = 5 == x
+    f = 5 < x
+[out]
+def add_op(x, y):
+    x, y, r0, r1, r2, r3, r4 :: u32
+L0:
+    r0 = y + x
+    x = r0
+    r1 = x + 5
+    y = r1
+    r2 = y + x
+    y = r2
+    r3 = y + 7
+    y = r3
+    r4 = 5 + y
+    x = r4
+    return x
+def compare(x, y):
+    x, y :: u32
+    r0 :: bit
+    a :: bool
+    r1 :: bit
+    b :: bool
+    r2 :: bit
+    c :: bool
+    r3 :: bit
+    d :: bool
+    r4 :: bit
+    e :: bool
+    r5 :: bit
+    f :: bool
+L0:
+    r0 = x == y
+    a = r0
+    r1 = x == 5
+    b = r1
+    r2 = x < y :: unsigned
+    c = r2
+    r3 = x < 5 :: unsigned
+    d = r3
+    r4 = 5 == x
+    e = r4
+    r5 = 5 < x :: unsigned
+    f = r5
+    return 1
+
+[case testU32DetectMoreOutOfRangeLiterals_64bit]
+from mypy_extensions import u32
+
+def out_of_range() -> None:
+    a: u32 = 4294967296
+    b: u32 = -1
+    f(4294967296)
+    # The following are ok
+    c: u32 = 0
+    d: u32 = 4294967295
+    f(0)
+    f(4294967295)
+
+def f(x: u32) -> None: pass
+[out]
+main:4: error: Value 4294967296 is out of range for "u32"
+main:5: error: Value -1 is out of range for "u32"
+main:6: error: Value 4294967296 is out of range for "u32"
+
+[case testU32BoxAndUnbox]
+from typing import Any
+from mypy_extensions import u32
+
+def f(x: Any) -> Any:
+    y: u32 = x
+    return y
+[out]
+def f(x):
+    x :: object
+    r0, y :: u32
+    r1 :: object
+L0:
+    r0 = unbox(u32, x)
+    y = r0
+    r1 = box(u32, y)
+    return r1
+
+[case testU32ConvertToInt_64bit]
+from mypy_extensions import u32
+
+def u32_to_int(a: u32) -> int:
+    return a
+[out]
+def u32_to_int(a):
+    a :: u32
+    r0 :: native_int
+    r1 :: int
+L0:
+    r0 = extend a: u32 to native_int
+    r1 = r0 << 1
+    return r1
+
+[case testU32ExplicitConversionFromNativeInt]
+from mypy_extensions import i64, i32, i16, u8, u32
+
+def from_u32(x: u32) -> u32:
+    return u32(x)
+
+def from_u8(x: u8) -> u32:
+    return u32(x)
+
+def from_i16(x: i16) -> u32:
+    return u32(x)
+
+def from_i32(x: i32) -> u32:
+    return u32(x)
+
+def from_i64(x: i64) -> u32:
+    return u32(x)
+[out]
+def from_u32(x):
+    x :: u32
+L0:
+    return x
+def from_u8(x):
+    x :: u8
+    r0 :: u32
+L0:
+    r0 = extend x: u8 to u32
+    return r0
+def from_i16(x):
+    x :: i16
+    r0 :: u32
+L0:
+    r0 = extend signed x: i16 to u32
+    return r0
+def from_i32(x):
+    x :: i32
+    r0 :: u32
+L0:
+    r0 = truncate x: i32 to u32
+    return r0
+def from_i64(x):
+    x :: i64
+    r0 :: u32
+L0:
+    r0 = truncate x: i64 to u32
+    return r0
+
+[case testU32ExplicitConversionToNativeInt]
+from mypy_extensions import i64, i32, i16, u8, u32
+
+def to_u8(x: u32) -> u8:
+    return u8(x)
+
+def to_i16(x: u32) -> i16:
+    return i16(x)
+
+def to_i32(x: u32) -> i32:
+    return i32(x)
+
+def to_i64(x: u32) -> i64:
+    return i64(x)
+[out]
+def to_u8(x):
+    x :: u32
+    r0 :: u8
+L0:
+    r0 = truncate x: u32 to u8
+    return r0
+def to_i16(x):
+    x :: u32
+    r0 :: i16
+L0:
+    r0 = truncate x: u32 to i16
+    return r0
+def to_i32(x):
+    x :: u32
+    r0 :: i32
+L0:
+    r0 = truncate x: u32 to i32
+    return r0
+def to_i64(x):
+    x :: u32
+    r0 :: i64
+L0:
+    r0 = extend x: u32 to i64
+    return r0
+
+[case testU32ExplicitConversionFromInt_64bit]
+from mypy_extensions import u32
+
+def f(x: int) -> u32:
+    return u32(x)
+[out]
+def f(x):
+    x :: int
+    r0 :: native_int
+    r1, r2, r3 :: bit
+    r4 :: native_int
+    r5, r6 :: u32
+L0:
+    r0 = x & 1
+    r1 = r0 == 0
+    if r1 goto L1 else goto L4 :: bool
+L1:
+    r2 = x < 8589934592 :: signed
+    if r2 goto L2 else goto L4 :: bool
+L2:
+    r3 = x >= 0 :: signed
+    if r3 goto L3 else goto L4 :: bool
+L3:
+    r4 = x >> 1
+    r5 = truncate r4: native_int to u32
+    r6 = r5
+    goto L5
+L4:
+    CPyUInt32_Overflow()
+    unreachable
+L5:
+    return r6
+
+[case testU32ExplicitConversionFromLiteral_64bit]
+from mypy_extensions import u32
+
+def f() -> None:
+    x = u32(0)
+    y = u32(11)
+    z = u32(-3)  # Truncate
+    zz = u32(4294967298)  # Truncate
+    a = u32(4294967295)
+[out]
+def f():
+    x, y, z, zz, a :: u32
+L0:
+    x = 0
+    y = 11
+    z = 4294967293
+    zz = 2
+    a = 4294967295
+    return 1
+
+[case testU32FromShortInt_32bit]
+from mypy_extensions import u32
+
+def f(a: list[int]) -> u32:
+    x: u32 = len(a)
+    return x
+[out]
+def f(a):
+    a :: list
+    r0 :: native_int
+    r1 :: short_int
+    r2 :: bit
+    r3, x :: u32
+L0:
+    r0 = var_object_size a
+    r1 = r0 << 1
+    r2 = r1 >= 0 :: signed
+    if r2 goto L2 else goto L1 :: bool
+L1:
+    CPyUInt32_Overflow()
+    unreachable
+L2:
+    r3 = r1 >> 1
+    x = r3
+    return x
+
+[case testU32ConvertToInt_32bit]
+from mypy_extensions import u32
+
+def u32_to_int(a: u32) -> int:
+    return a
+[out]
+def u32_to_int(a):
+    a :: u32
+    r0 :: bit
+    r1, r2, r3 :: int
+L0:
+    r0 = a <= 1073741823 :: unsigned
+    if r0 goto L2 else goto L1 :: bool
+L1:
+    r1 = CPyTagged_FromUInt32(a)
+    r2 = r1
+    goto L3
+L2:
+    r3 = a << 1
+    r2 = r3
+L3:
+    return r2
+
+[case testU32ExplicitConversionFromInt_32bit]
+from mypy_extensions import u32
+
+def f(x: int) -> u32:
+    return u32(x)
+[out]
+def f(x):
+    x :: int
+    r0 :: native_int
+    r1, r2 :: bit
+    r3, r4 :: u32
+    r5 :: ptr
+    r6 :: c_ptr
+    r7 :: u32
+L0:
+    r0 = x & 1
+    r1 = r0 == 0
+    if r1 goto L1 else goto L3 :: bool
+L1:
+    r2 = x >= 0 :: signed
+    if r2 goto L2 else goto L4 :: bool
+L2:
+    r3 = x >> 1
+    r4 = r3
+    goto L5
+L3:
+    r5 = x ^ 1
+    r6 = r5
+    r7 = CPyLong_AsUInt32(r6)
+    r4 = r7
+    keep_alive x
+    goto L5
+L4:
+    CPyUInt32_Overflow()
+    unreachable
+L5:
+    return r4

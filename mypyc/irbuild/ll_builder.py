@@ -123,6 +123,7 @@ from mypyc.ir.rtypes import (
     is_tuple_rprimitive,
     is_uint8_rprimitive,
     is_uint16_rprimitive,
+    is_uint32_rprimitive,
     none_rprimitive,
     object_pointer_rprimitive,
     object_rprimitive,
@@ -170,9 +171,12 @@ from mypyc.primitives.int_ops import (
     int64_to_int_op,
     int_to_int32_op,
     int_to_int64_op,
+    int_to_uint32_op,
     ssize_t_to_int_op,
     uint8_overflow,
     uint16_overflow,
+    uint32_overflow,
+    uint32_to_int_op,
 )
 from mypyc.primitives.list_ops import list_build_op, list_extend_op, list_items, new_list_op
 from mypyc.primitives.misc_ops import (
@@ -575,7 +579,7 @@ class LowLevelIRBuilder:
         assert is_fixed_width_rtype(target_type), target_type
         assert isinstance(target_type, RPrimitive), target_type
 
-        fast, slow, end = BasicBlock(), BasicBlock(), BasicBlock()
+        fast, slow, overflow, end = BasicBlock(), BasicBlock(), BasicBlock(), BasicBlock()
 
         check = self.check_tagged_short_int(src, line)
         self.add(Branch(check, fast, slow, Branch.BOOL))
@@ -583,6 +587,15 @@ class LowLevelIRBuilder:
         self.activate_block(fast)
 
         size = target_type.size
+        needs_unsigned_fast_range_check = not target_type.is_signed and size == int_rprimitive.size
+        if needs_unsigned_fast_range_check:
+            # A tagged short int always fits in an unsigned type of the same
+            # width, except for negative values. Don't send those to the slow
+            # path, which expects a tagged pointer rather than a short int.
+            nonnegative = self.add(ComparisonOp(src, Integer(0, src.type), ComparisonOp.SGE, line))
+            valid = BasicBlock()
+            self.add(Branch(nonnegative, valid, overflow, Branch.BOOL, line))
+            self.activate_block(valid)
         if size < int_rprimitive.size:
             # Add a range check when the target type is smaller than the source type
             # Use helper method to generate range checking and conversion
@@ -601,8 +614,10 @@ class LowLevelIRBuilder:
             self.goto(end)
 
         self.activate_block(slow)
-        if is_int64_rprimitive(target_type) or (
-            is_int32_rprimitive(target_type) and size == int_rprimitive.size
+        if (
+            is_int64_rprimitive(target_type)
+            or (is_int32_rprimitive(target_type) and size == int_rprimitive.size)
+            or (is_uint32_rprimitive(target_type) and size == int_rprimitive.size)
         ):
             # Slow path calls a library function that handles more complex logic
             ptr = self.int_op(
@@ -612,6 +627,8 @@ class LowLevelIRBuilder:
             self.add(Assign(ptr2, ptr))
             if is_int64_rprimitive(target_type):
                 conv_op = int_to_int64_op
+            elif is_uint32_rprimitive(target_type):
+                conv_op = int_to_uint32_op
             else:
                 conv_op = int_to_int32_op
             tmp = self.call_c(conv_op, [ptr2], line)
@@ -620,6 +637,10 @@ class LowLevelIRBuilder:
             self.goto(end)
         else:
             # Slow path just always generates an OverflowError
+            self.emit_fixed_width_overflow_error(target_type, line)
+
+        if needs_unsigned_fast_range_check:
+            self.activate_block(overflow)
             self.emit_fixed_width_overflow_error(target_type, line)
 
         self.activate_block(end)
@@ -723,6 +744,8 @@ class LowLevelIRBuilder:
             self.call_c(int32_overflow, [], line)
         elif is_int16_rprimitive(target_type):
             self.call_c(int16_overflow, [], line)
+        elif is_uint32_rprimitive(target_type):
+            self.call_c(uint32_overflow, [], line)
         elif is_uint16_rprimitive(target_type):
             self.call_c(uint16_overflow, [], line)
         elif is_uint8_rprimitive(target_type):
@@ -738,6 +761,19 @@ class LowLevelIRBuilder:
         assert is_fixed_width_rtype(target_type), target_type
         assert isinstance(target_type, RPrimitive), target_type
 
+        if not target_type.is_signed and target_type.size >= short_int_rprimitive.size:
+            # Any non-negative short int fits in the target type, so only negative
+            # values need to be rejected.
+            overflow, valid = BasicBlock(), BasicBlock()
+            nonnegative = self.add(ComparisonOp(src, Integer(0, src.type), ComparisonOp.SGE, line))
+            self.add(Branch(nonnegative, valid, overflow, Branch.BOOL, line))
+            self.activate_block(overflow)
+            self.emit_fixed_width_overflow_error(target_type, line)
+            self.activate_block(valid)
+            tmp = src
+            if target_type.size > short_int_rprimitive.size:
+                tmp = self.add(Extend(src, target_type, signed=True))
+            return self.int_op(target_type, tmp, Integer(1, target_type), IntOp.RIGHT_SHIFT, line)
         if is_int64_rprimitive(target_type) or (
             PLATFORM_SIZE == 4 and is_int32_rprimitive(target_type)
         ):
@@ -762,6 +798,7 @@ class LowLevelIRBuilder:
         if (
             (is_int32_rprimitive(src.type) and PLATFORM_SIZE == 8)
             or is_int16_rprimitive(src.type)
+            or (is_uint32_rprimitive(src.type) and PLATFORM_SIZE == 8)
             or is_uint16_rprimitive(src.type)
             or is_uint8_rprimitive(src.type)
         ):
@@ -784,12 +821,23 @@ class LowLevelIRBuilder:
 
         fast, fast2, slow, end = BasicBlock(), BasicBlock(), BasicBlock(), BasicBlock()
 
-        c1 = self.add(ComparisonOp(src, Integer(MAX_SHORT_INT, src_type), ComparisonOp.SLE, line))
-        self.add(Branch(c1, fast, slow, Branch.BOOL))
+        if src_type.is_signed:
+            c1 = self.add(
+                ComparisonOp(src, Integer(MAX_SHORT_INT, src_type), ComparisonOp.SLE, line)
+            )
+            self.add(Branch(c1, fast, slow, Branch.BOOL))
 
-        self.activate_block(fast)
-        c2 = self.add(ComparisonOp(src, Integer(MIN_SHORT_INT, src_type), ComparisonOp.SGE, line))
-        self.add(Branch(c2, fast2, slow, Branch.BOOL))
+            self.activate_block(fast)
+            c2 = self.add(
+                ComparisonOp(src, Integer(MIN_SHORT_INT, src_type), ComparisonOp.SGE, line)
+            )
+            self.add(Branch(c2, fast2, slow, Branch.BOOL))
+        else:
+            # Unsigned values only need an upper bound check
+            c1 = self.add(
+                ComparisonOp(src, Integer(MAX_SHORT_INT, src_type), ComparisonOp.ULE, line)
+            )
+            self.add(Branch(c1, fast2, slow, Branch.BOOL))
 
         self.activate_block(slow)
         if is_int64_rprimitive(src_type):
@@ -797,6 +845,9 @@ class LowLevelIRBuilder:
         elif is_int32_rprimitive(src_type):
             assert PLATFORM_SIZE == 4
             conv_op = ssize_t_to_int_op
+        elif is_uint32_rprimitive(src_type):
+            assert PLATFORM_SIZE == 4
+            conv_op = uint32_to_int_op
         else:
             assert False, src_type
         x = self.call_c(conv_op, [src], line)
@@ -2731,6 +2782,9 @@ class LowLevelIRBuilder:
                 prim = int32_divide_op
             elif is_int16_rprimitive(type):
                 prim = int16_divide_op
+            elif is_uint32_rprimitive(type):
+                self.check_for_zero_division(rhs, type, line)
+                return self.int_op(type, lhs, rhs, op, line)
             elif is_uint16_rprimitive(type):
                 self.check_for_zero_division(rhs, type, line)
                 return self.int_op(type, lhs, rhs, op, line)
@@ -2754,6 +2808,9 @@ class LowLevelIRBuilder:
                 prim = int32_mod_op
             elif is_int16_rprimitive(type):
                 prim = int16_mod_op
+            elif is_uint32_rprimitive(type):
+                self.check_for_zero_division(rhs, type, line)
+                return self.int_op(type, lhs, rhs, op, line)
             elif is_uint16_rprimitive(type):
                 self.check_for_zero_division(rhs, type, line)
                 return self.int_op(type, lhs, rhs, op, line)

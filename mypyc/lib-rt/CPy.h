@@ -175,6 +175,7 @@ static inline size_t CPy_FindAttrOffset(PyTypeObject *trait, CPyVTableItem *vtab
 CPyTagged CPyTagged_FromSsize_t(Py_ssize_t value);
 CPyTagged CPyTagged_FromVoidPtr(void *ptr);
 CPyTagged CPyTagged_FromInt64(int64_t value);
+CPyTagged CPyTagged_FromUInt32(uint32_t value);
 PyObject *CPyTagged_AsObject(CPyTagged x);
 PyObject *CPyTagged_StealAsObject(CPyTagged x);
 Py_ssize_t CPyTagged_AsSsize_t(CPyTagged x);
@@ -218,6 +219,8 @@ int16_t CPyLong_AsInt16_(PyObject *o);
 int16_t CPyInt16_Divide(int16_t x, int16_t y);
 int16_t CPyInt16_Remainder(int16_t x, int16_t y);
 void CPyInt16_Overflow(void);
+uint32_t CPyLong_AsUInt32_(PyObject *o);
+void CPyUInt32_Overflow(void);
 uint16_t CPyLong_AsUInt16_(PyObject *o);
 void CPyUInt16_Overflow(void);
 uint8_t CPyLong_AsUInt8_(PyObject *o);
@@ -457,6 +460,32 @@ static inline int16_t CPyLong_AsInt16(PyObject *o) {
     }
     // Slow path
     return CPyLong_AsInt16_(o);
+}
+
+static inline uint32_t CPyLong_AsUInt32(PyObject *o) {
+    if (likely(PyLong_Check(o))) {
+    #if CPY_3_12_FEATURES
+        PyLongObject *lobj = (PyLongObject *)o;
+        size_t tag = CPY_LONG_TAG(lobj);
+        if (likely(tag == (1 << CPY_NON_SIZE_BITS))) {
+            // Fast path
+            return CPY_LONG_DIGIT(lobj, 0);
+        } else if (likely(tag == CPY_SIGN_ZERO)) {
+            return 0;
+        }
+    #else
+        PyLongObject *lobj = (PyLongObject *)o;
+        Py_ssize_t size = lobj->ob_base.ob_size;
+        if (likely(size == 1)) {
+            // Fast path
+            return CPY_LONG_DIGIT(lobj, 0);
+        } else if (likely(size == 0)) {
+            return 0;
+        }
+    #endif
+    }
+    // Slow path
+    return CPyLong_AsUInt32_(o);
 }
 
 static inline uint16_t CPyLong_AsUInt16(PyObject *o) {
