@@ -46,6 +46,7 @@ _PWrapper = ParamSpec("_PWrapper")
 _RWrapper = TypeVar("_RWrapper")
 _WrapperSelfT = TypeVar("_WrapperSelfT")
 _PBound = ParamSpec("_PBound")
+_CacheArgT_contra = TypeVar("_CacheArgT_contra", contravariant=True, default=Hashable)
 
 if sys.version_info >= (3, 14):
     @overload
@@ -65,23 +66,27 @@ class _CacheInfo(NamedTuple):
 
 @type_check_only
 class _CacheParameters(TypedDict):
-    maxsize: int
+    maxsize: int | None
     typed: bool
 
 @final
-class _lru_cache_wrapper(Generic[_T_co]):
+class _lru_cache_wrapper(Generic[_T_co, _CacheArgT_contra]):
     __wrapped__: Callable[..., _T_co]
-    def __call__(self, *args: Hashable, **kwargs: Hashable) -> _T_co: ...
+    def __call__(self, /, *args: _CacheArgT_contra, **kwargs: _CacheArgT_contra) -> _T_co: ...
     def cache_info(self) -> _CacheInfo: ...
     def cache_clear(self) -> None: ...
     def cache_parameters(self) -> _CacheParameters: ...
-    def __copy__(self) -> _lru_cache_wrapper[_T_co]: ...
-    def __deepcopy__(self, memo: Any, /) -> _lru_cache_wrapper[_T_co]: ...
+    def __copy__(self) -> Self: ...
+    def __deepcopy__(self, memo: Any, /) -> Self: ...
 
     # as with ``Callable``, we'll assume that these attributes exist
     __name__: str
     __qualname__: str
 
+@overload
+def lru_cache(
+    maxsize: Literal[0, False], typed: bool = False
+) -> Callable[[Callable[..., _T]], _lru_cache_wrapper[_T, object]]: ...
 @overload
 def lru_cache(maxsize: int | None = 128, typed: bool = False) -> Callable[[Callable[..., _T]], _lru_cache_wrapper[_T]]: ...
 @overload
