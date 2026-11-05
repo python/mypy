@@ -168,6 +168,23 @@ static inline size_t CPy_FindAttrOffset(PyTypeObject *trait, CPyVTableItem *vtab
 #define CPY_GET_METHOD_TRAIT(obj, trait, vtable_index, object_type, method_type) \
     ((method_type)(CPy_FindTraitVtable(trait, ((object_type *)obj)->vtable)[vtable_index]))
 
+// Clear the weak reference list of an object being deallocated, when the
+// weakreflist field is at a statically known location. Must be called from
+// tp_dealloc after PyObject_GC_UnTrack() and after running the finalizer.
+static inline void CPy_ClearWeakrefs(PyObject *obj, PyObject **weakreflist) {
+#ifdef Py_GIL_DISABLED
+    // The list can't be inspected without holding the per-object weakref lock,
+    // and PyObject_ClearWeakRefs() has its own fast path for an empty list.
+    (void)weakreflist;
+    PyObject_ClearWeakRefs(obj);
+#else
+    if (*weakreflist != NULL)
+        PyObject_ClearWeakRefs(obj);
+#endif
+}
+
+PyObject *CPy_GetWeakrefs(PyObject *obj, void *closure);
+
 
 // Int operations
 

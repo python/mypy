@@ -1782,3 +1782,34 @@ def translate_vec_pop(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Va
                 index_value = Integer(-1, int64_rprimitive)
             return vec_pop(builder.builder, vec_value, index_value, vec_arg.line)
     return None
+
+
+@specialize_function("weakref.ReferenceType")
+@specialize_function("_weakref.proxy")
+def check_weakref_target(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value | None:
+    """Report an error if a weak reference to a native instance can't be created.
+
+    Native classes only support weak references if requested explicitly, so a
+    weakref.ref() or weakref.proxy() call would fail at runtime. This is best effort:
+    we only detect calls where the argument has a precise native class type.
+
+    This doesn't generate any code, so translation continues as usual.
+    """
+    if expr.args and expr.arg_kinds[0] == ARG_POS:
+        rtype = builder.node_type(expr.args[0])
+        if (
+            isinstance(rtype, RInstance)
+            and not rtype.class_ir.is_trait
+            and not rtype.class_ir.supports_weakrefs()
+        ):
+            builder.error(
+                "Cannot create weak reference to instance of native class "
+                f'"{rtype.class_ir.fullname}"',
+                expr.line,
+            )
+            builder.note(
+                'Add "@mypy_extensions.mypyc_attr(weakrefs=True)" to the class '
+                "definition to enable support for weak references",
+                expr.line,
+            )
+    return None
