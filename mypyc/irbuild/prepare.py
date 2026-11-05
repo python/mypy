@@ -626,7 +626,7 @@ def find_unsupported_base(
         if base.slots:
             return base, "defines __slots__"
         if is_compiled_module_path(path):
-            return base, "defined in a separately compiled extension module"
+            return base, "its instance layout is unknown, since it's imported from a C extension"
         todo.extend(b.type for b in base.bases)
     return None
 
