@@ -6,7 +6,7 @@ from mypy.constraints import SUBTYPE_OF, SUPERTYPE_OF, Constraint
 from mypy.solve import Bounds, Graph, solve_constraints, transitive_closure
 from mypy.test.helpers import Suite, assert_equal
 from mypy.test.typefixture import TypeFixture
-from mypy.types import Type, TypeVarId, TypeVarLikeType, TypeVarType
+from mypy.types import Type, TypeVarId, TypeVarLikeType, TypeVarType, UnionType
 
 
 class SolveSuite(Suite):
@@ -84,7 +84,7 @@ class SolveSuite(Suite):
         self.assert_solve(
             [self.fx.t],
             [self.supc(self.fx.t, self.fx.anyt), self.supc(self.fx.t, self.fx.a)],
-            [self.fx.anyt],
+            [UnionType([self.fx.a, self.fx.anyt])],
         )
 
         self.assert_solve([self.fx.t], [self.subc(self.fx.t, self.fx.anyt)], [self.fx.anyt])

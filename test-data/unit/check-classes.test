@@ -9844,7 +9844,9 @@ fs = [f, lambda x: 1, f]
 reveal_type(fs)  # N: Revealed type is "builtins.list[def (x: Any) -> builtins.int]"
 
 [case testLambdaInferredInCollection2]
-def f(x: int, y: int)-> int: ...
+def f(x: int, y: int) -> int: ...
 
 fs = [lambda df, x: df.foo, f]
-reveal_type(fs)  # N: Revealed type is "builtins.list[def (Any, Any) -> Any]"
+reveal_type(fs)  # N: Revealed type is "builtins.list[def (Any, Any) -> builtins.int | Any]"
+fs2 = [f, lambda df, x: df.foo]
+reveal_type(fs2)  # N: Revealed type is "builtins.list[def (Any, Any) -> builtins.int | Any]"

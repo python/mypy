@@ -5591,6 +5591,19 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         return typeddict_context.copy_modified()
 
     def visit_dict_expr(self, e: DictExpr) -> Type:
+        old_allow_any_join = type_state.allow_any_join
+        try:
+            ctx = self.type_context[-1]
+            # This is somewhat ad hoc, but we want to cover situations where a dict
+            # appears inside another dict or list literal as well.
+            type_state.allow_any_join = (
+                ctx is None or isinstance(ctx, TypeVarType) and ctx.id.is_meta_var()
+            )
+            return self._visit_dict_expr(e)
+        finally:
+            type_state.allow_any_join = old_allow_any_join
+
+    def _visit_dict_expr(self, e: DictExpr) -> Type:
         """Type check a dict expression.
 
         Translate it into a call to dict(), with provisions for **expr.

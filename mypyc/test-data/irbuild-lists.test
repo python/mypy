@@ -986,7 +986,8 @@ def test():
     r19 :: list
     r20, r21 :: native_int
     r22 :: bit
-    r23, x :: object
+    r23 :: object
+    x :: union[str, tuple[str, str], object]
     r24 :: str
     r25 :: native_int
     a :: list

@@ -3958,6 +3958,20 @@ Ex = TypeVar("Ex", covariant=True)
 def takes_lambda(func: Callable[[Ex], Any]) -> None:
     pass
 
+[case testDictWithUnionAnySpecialCaseInStar2]
+from typing import Any
+
+a: Any
+d = {"x": 1, "y": a}
+d2 = dict(x=1, y=a)
+ds = [{"x": 1, "y": a} for _ in [1, 2, 3]]
+
+def test(x: int, y: str) -> None: ...
+test(**d)
+test(**d2)
+test(**ds[0])
+[builtins fixtures/dict.pyi]
+
 [case testTypeObjectJoinWithOverloadsCorrectFallback]
 from typing import Iterable, overload
 

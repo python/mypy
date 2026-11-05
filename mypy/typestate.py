@@ -113,11 +113,15 @@ class TypeState:
     # Whether to use new type inference algorithm that can infer polymorphic types.
     # This is temporary and will be removed soon when new algorithm is more polished.
     infer_polymorphic: bool
-    # No not simplify/normalize unions during type inference in this flag is set.
+    # Do not simplify/normalize unions during type inference in this flag is set.
     # Technically, union simplification gives strictly better type inference, but it
     # may have bad performance (since it is quadratic). So we may want to disable
     # it situations where performance is important.
     keep_unions: bool
+    # Infer join(X, Any) as Any (instead of X | Any) when this flag is set.
+    # This is used to preserve backwards compatibility for situations like
+    # testDictWithUnionAnySpecialCaseInStar2. This is needed until #5382 is fixed.
+    allow_any_join: bool
 
     # N.B: We do all the accesses to these properties through
     # TypeState, instead of making these classmethods and accessing
@@ -137,6 +141,7 @@ class TypeState:
         self.infer_unions = False
         self.infer_polymorphic = False
         self.keep_unions = False
+        self.allow_any_join = False
         self.bind_self_cache = {}
 
     def is_assumed_subtype(self, left: Type, right: Type) -> bool:

@@ -61,11 +61,11 @@ reveal_type(join(n32, n64))  # N: Revealed type is "builtins.object"
 reveal_type(join(n64, n32))  # N: Revealed type is "builtins.object"
 
 a: Any
-reveal_type(join(n, a))    # N: Revealed type is "Any"
-reveal_type(join(n32, a))  # N: Revealed type is "Any"
-reveal_type(join(a, n64))  # N: Revealed type is "Any"
-reveal_type(join(n64, a))  # N: Revealed type is "Any"
-reveal_type(join(a, n64))  # N: Revealed type is "Any"
+reveal_type(join(n, a))    # N: Revealed type is "builtins.int | Any"
+reveal_type(join(n32, a))  # N: Revealed type is "mypy_extensions.i32 | Any"
+reveal_type(join(a, n64))  # N: Revealed type is "mypy_extensions.i64 | Any"
+reveal_type(join(n64, a))  # N: Revealed type is "mypy_extensions.i64 | Any"
+reveal_type(join(a, n64))  # N: Revealed type is "mypy_extensions.i64 | Any"
 [builtins fixtures/dict.pyi]
 
 [case testNativeIntMeets]
