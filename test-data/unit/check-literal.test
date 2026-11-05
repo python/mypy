@@ -611,6 +611,21 @@ e: Literal[dummy()]             # E: Invalid type: Literal[...] cannot contain a
 [builtins fixtures/tuple.pyi]
 [out]
 
+[case testLiteralDisallowUnionExpressions]
+from typing import Literal, Optional, Union
+from typing import Literal as L, Optional as O, Union as U
+
+a: Literal[1 | None]                 # E: Parameter 1 of Literal[...] cannot be a union expression
+b: Literal[1 | 2]                    # E: Parameter 1 of Literal[...] cannot be a union expression
+c: Literal[Literal[1] | None]        # E: Parameter 1 of Literal[...] cannot be a union expression
+d: Literal[Union[Literal[1], None]]  # E: Parameter 1 of Literal[...] cannot be a union expression
+e: Literal[Optional[Literal[1]]]     # E: Parameter 1 of Literal[...] cannot be a union expression
+f: L[1 | None]                       # E: Parameter 1 of Literal[...] cannot be a union expression
+g: Literal[U[Literal[1], None]]      # E: Parameter 1 of Literal[...] cannot be a union expression
+h: Literal[O[Literal[1]]]            # E: Parameter 1 of Literal[...] cannot be a union expression
+[builtins fixtures/tuple.pyi]
+[out]
+
 [case testLiteralDisallowCollections]
 from typing import Literal
 a: Literal[{"a": 1, "b": 2}]    # E: Parameter 1 of Literal[...] is invalid
@@ -686,6 +701,32 @@ reveal_type(c)   # N: Revealed type is "Literal[1] | Literal['b'] | Literal[True
 reveal_type(d)   # N: Revealed type is "Literal[1] | Literal[1] | Literal[1]"
 reveal_type(e)   # N: Revealed type is "None | None | None"
 [builtins fixtures/bool.pyi]
+[out]
+
+[case testLiteralValidNoneUnionAlias]
+from typing import Literal, Union
+
+a: Literal[1, None]
+b: Literal[Literal[1, None]]
+
+Alias1 = Literal[1, None]
+c: Literal[Alias1]
+
+Alias2 = Literal[1] | None
+d: Literal[Alias2]
+
+Alias3 = Union[Literal[1], None]
+e: Literal[Alias3]
+
+f: Literal["1 | None"]
+
+reveal_type(a)  # N: Revealed type is "Literal[1] | None"
+reveal_type(b)  # N: Revealed type is "Literal[1] | None"
+reveal_type(c)  # N: Revealed type is "Literal[1] | None"
+reveal_type(d)  # N: Revealed type is "Literal[1] | None"
+reveal_type(e)  # N: Revealed type is "Literal[1] | None"
+reveal_type(f)  # N: Revealed type is "Literal['1 | None']"
+[builtins fixtures/tuple.pyi]
 [out]
 
 [case testLiteralMultipleValuesExplicitTuple]
