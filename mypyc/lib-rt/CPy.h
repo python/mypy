@@ -469,9 +469,7 @@ static inline uint32_t CPyLong_AsUInt32(PyObject *o) {
         size_t tag = CPY_LONG_TAG(lobj);
         if (likely(tag == (1 << CPY_NON_SIZE_BITS))) {
             // Fast path
-            digit x = CPY_LONG_DIGIT(lobj, 0);
-            if (x < 0x40000000)
-                return x;
+            return CPY_LONG_DIGIT(lobj, 0);
         } else if (likely(tag == CPY_SIGN_ZERO)) {
             return 0;
         }
@@ -480,9 +478,7 @@ static inline uint32_t CPyLong_AsUInt32(PyObject *o) {
         Py_ssize_t size = lobj->ob_base.ob_size;
         if (likely(size == 1)) {
             // Fast path
-            digit x = lobj->ob_digit[0];
-            if (x < 65536)
-                return x;
+            return CPY_LONG_DIGIT(lobj, 0);
         } else if (likely(size == 0)) {
             return 0;
         }
