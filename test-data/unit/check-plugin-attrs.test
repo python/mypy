@@ -942,6 +942,76 @@ class C:
 reveal_type(C)  # N: Revealed type is "def (x: Any, y: Any, z: Any) -> __main__.C"
 [builtins fixtures/list.pyi]
 
+[case testAttrsUsingHigherOrderConverter]
+# Regression test for https://github.com/python/mypy/issues/15736
+from typing import Any, Callable
+from attrs import define, field
+
+def make_converter(_length: int) -> Callable[[str], str]:
+    def converter(val: str) -> str:
+        return val
+    return converter
+
+def make_untyped_converter(_length: int) -> Callable[[Any], Any]:
+    def f(val: Any) -> Any:
+        return val
+    return f
+
+@define
+class C:
+    a: str = field(converter=make_converter(40))
+    b: str = field(converter=make_untyped_converter(40))
+
+reveal_type(C)  # N: Revealed type is "def (a: builtins.str, b: Any) -> __main__.C"
+reveal_type(C("hi", 5).a)  # N: Revealed type is "builtins.str"
+[builtins fixtures/list.pyi]
+
+[case testAttrsUsingCallableVariableConverter]
+from typing import Callable
+from attrs import define, field
+
+def to_str(x: int) -> str:
+    return ""
+my_converter: Callable[[int], str] = to_str
+
+@define
+class C:
+    x: str = field(converter=my_converter)
+
+reveal_type(C)  # N: Revealed type is "def (x: builtins.int) -> __main__.C"
+reveal_type(C(15).x)  # N: Revealed type is "builtins.str"
+[builtins fixtures/list.pyi]
+
+[case testAttrsUsingHigherOrderConverterChainedCall]
+from typing import Callable
+from attrs import define, field
+
+def outer() -> Callable[[int], Callable[[str], str]]:
+    def middle(_n: int) -> Callable[[str], str]:
+        def inner(v: str) -> str:
+            return v
+        return inner
+    return middle
+
+@define
+class C:
+    x: str = field(converter=outer()(40))
+
+reveal_type(C)  # N: Revealed type is "def (x: builtins.str) -> __main__.C"
+[builtins fixtures/list.pyi]
+
+[case testAttrsUsingDefaultIfNoneConverter]
+from typing import Optional
+from attrs import define, field
+from attrs.converters import default_if_none
+
+@define
+class C:
+    x: int = field(default=None, converter=default_if_none(0))
+
+reveal_type(C)  # N: Revealed type is "def (x: Any =) -> __main__.C"
+[builtins fixtures/plugin_attrs.pyi]
+
 [case testAttrsUsingConverterAndSubclass]
 import attr
 
