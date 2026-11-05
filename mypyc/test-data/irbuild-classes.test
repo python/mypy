@@ -2148,6 +2148,28 @@ class AnyBase(Any): ...
 class Indirect(AnyBase): ...
 IndirectAlias = Indirect
 
+[case testInheritFromDefaultDictOrOrderedDictError]
+from collections import defaultdict, OrderedDict
+
+from mypy_extensions import mypyc_attr
+
+class D(defaultdict[str, int]):  # E: Native classes cannot inherit from "collections.defaultdict" (defined in a stub, so its instance layout is unknown) \
+                                 # N: Potential workaround: @mypy_extensions.mypyc_attr(native_class=False) \
+                                 # N: https://mypyc.readthedocs.io/en/stable/native_classes.html#defining-non-native-classes
+    pass
+
+class O(OrderedDict[str, int]):  # E: Native classes cannot inherit from "collections.OrderedDict" (defined in a stub, so its instance layout is unknown) \
+                                 # N: Potential workaround: @mypy_extensions.mypyc_attr(native_class=False) \
+                                 # N: https://mypyc.readthedocs.io/en/stable/native_classes.html#defining-non-native-classes
+    pass
+
+class Ok(dict[str, int]):
+    pass
+
+@mypyc_attr(native_class=False)
+class NonNative(defaultdict[str, int]):
+    pass
+
 [case testMypycAttrNativeClassMetaError]
 from mypy_extensions import mypyc_attr
 
