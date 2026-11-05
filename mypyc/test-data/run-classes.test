@@ -1546,7 +1546,9 @@ def welp() -> int:
 from native import welp
 assert welp() == 35
 
-[case testSubclassUnsupportedException]
+[case testNonNativeSubclassOfUnsupportedBase]
+from collections import defaultdict, OrderedDict
+
 from mypy_extensions import mypyc_attr
 
 @mypyc_attr(native_class=False)
@@ -1592,6 +1594,32 @@ def test_raise_non_native_exception_subclass_2() -> None:
     else:
         assert False
     assert x
+
+@mypyc_attr(native_class=False)
+class DD(defaultdict[str, int]):
+    def __init__(self) -> None:
+        super().__init__(int)
+        self.x = 5
+
+@mypyc_attr(native_class=False)
+class OD(OrderedDict[str, int]):
+    def __init__(self) -> None:
+        super().__init__()
+        self.x = 6
+
+def test_non_native_default_dict_subclass() -> None:
+    d = DD()
+    assert d["a"] == 0
+    d["b"] += 2
+    assert d == {"a": 0, "b": 2}
+    assert d.x == 5
+
+def test_non_native_ordered_dict_subclass() -> None:
+    d = OD()
+    d["b"] = 1
+    d["a"] = 2
+    assert list(d) == ["b", "a"]
+    assert d.x == 6
 
 [case testSubclassExternalPythonBase]
 # Subclass Python classes defined outside the compiled module (some are unknown during
@@ -2346,25 +2374,24 @@ native.test()
 ok
 
 [case testNativeClassHiddenMetaclass]
-# The stub hides the base classes' metaclass and base resolution behavior.
+# The driver replaces the base classes at runtime with ones that the
+# compile-time checks would reject, so that the runtime checks are exercised.
 from hidden import Prefix, Base, Second
 
 class C(Prefix, Base, Second):
     pass
 
-[file hidden.pyi]
-class Prefix: ...
-class Base: ...
-class Second: ...
-
 [file hidden.py]
 class Prefix:
+    pass
+
+class Base:
     pass
 
 class Meta(type):
     pass
 
-class Base(metaclass=Meta):
+class MetaBase(metaclass=Meta):
     pass
 
 class Second:
@@ -2399,6 +2426,7 @@ import sys
 import hidden
 from testutil import assertRaises
 
+hidden.Base = hidden.MetaBase
 for _ in range(3):
     with assertRaises(TypeError, "mypyc classes can't have a metaclass"):
         import native
