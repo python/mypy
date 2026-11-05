@@ -5192,19 +5192,6 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             vars = list(t.variables)
         args = flatten_nested_tuples(args)
 
-        # TODO: this logic is duplicated with semanal_typeargs.
-        for tv, arg in zip(t.variables, args):
-            if isinstance(tv, ParamSpecType):
-                if not isinstance(
-                    get_proper_type(arg), (Parameters, ParamSpecType, AnyType, UnboundType)
-                ):
-                    self.chk.fail(
-                        "Can only replace ParamSpec with a parameter types list or"
-                        f" another ParamSpec, got {format_type(arg, self.chk.options)}",
-                        ctx,
-                    )
-                    return [AnyType(TypeOfAny.from_error)] * len(vars)
-
         # TODO: in future we may want to support type application to variadic functions.
         if not vars or not t.is_type_obj() or t.type_object().fullname == "builtins.tuple":
             return list(args)
@@ -5221,14 +5208,28 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             args = list(fake.args)
 
         if not any(isinstance(v, TypeVarTupleType) for v in vars):
-            return args
+            result = list(args)
+        else:
+            prefix = next(i for (i, v) in enumerate(vars) if isinstance(v, TypeVarTupleType))
+            suffix = len(vars) - prefix - 1
+            tvt = vars[prefix]
+            assert isinstance(tvt, TypeVarTupleType)
+            start, middle, end = split_with_prefix_and_suffix(tuple(args), prefix, suffix)
+            result = list(start) + [TupleType(list(middle), tvt.tuple_fallback)] + list(end)
 
-        prefix = next(i for (i, v) in enumerate(vars) if isinstance(v, TypeVarTupleType))
-        suffix = len(vars) - prefix - 1
-        tvt = vars[prefix]
-        assert isinstance(tvt, TypeVarTupleType)
-        start, middle, end = split_with_prefix_and_suffix(tuple(args), prefix, suffix)
-        return list(start) + [TupleType(list(middle), tvt.tuple_fallback)] + list(end)
+        for tv, arg in zip(vars, result):
+            if isinstance(tv, ParamSpecType):
+                if not isinstance(
+                    get_proper_type(arg), (Parameters, ParamSpecType, AnyType, UnboundType)
+                ):
+                    self.chk.fail(
+                        "Can only replace ParamSpec with a parameter types list or"
+                        f" another ParamSpec, got {format_type(arg, self.chk.options)}",
+                        ctx,
+                    )
+                    return [AnyType(TypeOfAny.from_error)] * len(vars)
+
+        return result
 
     def apply_type_arguments_to_callable(
         self, tp: Type, args: Sequence[Type], ctx: Context

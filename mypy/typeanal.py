@@ -118,6 +118,7 @@ from mypy.types import (
 )
 from mypy.types_utils import get_bad_type_type_item
 from mypy.typevars import fill_typevars
+from mypy.typevartuples import split_variadic_args_with_defaults
 
 T = TypeVar("T")
 
@@ -2165,16 +2166,73 @@ def fix_instance(
         for tv in t.type.defn.type_vars
     )
     max_tv_count = len(t.type.type_vars)
-    if arg_count < min_tv_count or arg_count > max_tv_count:
+    if arg_count < min_tv_count or (
+        not t.type.has_type_var_tuple_type and arg_count > max_tv_count
+    ):
         # Don't use existing args if arg_count doesn't match
-        if arg_count > max_tv_count:
+        if not t.type.has_type_var_tuple_type and arg_count > max_tv_count:
             # Already wrong arg count error, don't emit missing type parameters error as well.
             disallow_any = False
         t.args = ()
 
+    env: dict[TypeVarId, Type] = {}
+    if t.type.has_type_var_tuple_type and t.args:
+        prefix = t.type.type_var_tuple_prefix
+        assert prefix is not None
+        prefix_args, middle_args, suffix_args, omitted_suffix_vars = (
+            split_variadic_args_with_defaults(t.type.defn.type_vars, prefix, t.args)
+        )
+        if omitted_suffix_vars:
+            for tv, arg in zip(t.type.defn.type_vars[:prefix], prefix_args):
+                env[tv.id] = arg
+            tvt = t.type.defn.type_vars[prefix]
+            assert isinstance(tvt, TypeVarTupleType)
+            env[tvt.id] = TupleType(list(middle_args), tvt.tuple_fallback)
+            suffix_vars = t.type.defn.type_vars[prefix + 1 :]
+            for tv, arg in zip(suffix_vars[: len(suffix_args)], suffix_args):
+                env[tv.id] = arg
+            default_args: list[Type] = []
+            for tv in omitted_suffix_vars:
+                if tv.has_default():
+                    arg = tv.default
+                    if analyzing_tvar_def:
+                        used_default = True
+                        if is_typevar_default_recursive(tv.fullname, t.type):
+                            fullname = None if use_generic_error else t.type.fullname
+                            arg = get_omitted_any(
+                                disallow_any,
+                                fail,
+                                note,
+                                t,
+                                options,
+                                fullname,
+                                unexpanded_type,
+                                used_default,
+                            )
+                    with state.strict_optional_set(options.strict_optional):
+                        arg = expand_type(arg, env)
+                    env[tv.id] = arg
+                    default_args.append(arg)
+                    used_default = True
+                else:
+                    fullname = None if use_generic_error else t.type.fullname
+                    arg = get_omitted_any(
+                        disallow_any,
+                        fail,
+                        note,
+                        t,
+                        options,
+                        fullname,
+                        unexpanded_type,
+                        used_default,
+                    )
+                    env[tv.id] = arg
+                    default_args.append(arg)
+            t.args = prefix_args + middle_args + suffix_args + tuple(default_args)
+            return used_default
+
     args: list[Type] = list(t.args)
     any_type: AnyType | None = None
-    env: dict[TypeVarId, Type] = {}
     tvt_no_default = False
 
     for tv, arg in itertools.zip_longest(t.type.defn.type_vars, t.args, fillvalue=None):
@@ -2340,6 +2398,15 @@ def instantiate_type_alias(
                     # Variadic tuple is always correct.
                     correct = True
         fill_typevars = not correct
+        if correct and node.tvar_tuple_index is not None:
+            prefix = node.tvar_tuple_index
+            suffix_vars = node.alias_tvars[prefix + 1 :]
+            if any(v.has_default() for v in suffix_vars):
+                _, _, _, omitted_suffix_vars = split_variadic_args_with_defaults(
+                    node.alias_tvars, prefix, args
+                )
+                if omitted_suffix_vars:
+                    fill_typevars = True
     if fill_typevars:
         if not correct:
             if use_standard_error:
@@ -2429,8 +2496,42 @@ def set_any_tvars(
     else:
         type_of_any = TypeOfAny.from_omitted_generics
     any_type = AnyType(type_of_any, line=newline, column=newcolumn)
-
     env: dict[TypeVarId, Type] = {}
+
+    if node.tvar_tuple_index is not None and args:
+        prefix = node.tvar_tuple_index
+        prefix_args, middle_args, suffix_args, omitted_suffix_vars = (
+            split_variadic_args_with_defaults(node.alias_tvars, prefix, args)
+        )
+        if omitted_suffix_vars:
+            for tv, arg in zip(node.alias_tvars[:prefix], prefix_args):
+                env[tv.id] = arg
+            tvt = node.alias_tvars[prefix]
+            assert isinstance(tvt, TypeVarTupleType)
+            env[tvt.id] = TupleType(list(middle_args), tvt.tuple_fallback)
+            suffix_vars = node.alias_tvars[prefix + 1 :]
+            for tv, arg in zip(suffix_vars[: len(suffix_args)], suffix_args):
+                env[tv.id] = arg
+            default_args: list[Type] = []
+            for tv in omitted_suffix_vars:
+                if tv.has_default():
+                    arg = tv.default
+                    if analyzing_tvar_def:
+                        used_default = True
+                        if is_typevar_default_recursive(tv.fullname, node):
+                            arg = any_type
+                    with state.strict_optional_set(options.strict_optional):
+                        arg = expand_type(arg, env)
+                    env[tv.id] = arg
+                    default_args.append(arg)
+                    used_default = True
+                else:
+                    arg = any_type
+                    env[tv.id] = arg
+                    default_args.append(arg)
+            args = list(prefix_args + middle_args + suffix_args + tuple(default_args))
+            return TypeAliasType(node, args, newline, newcolumn), used_default
+
     used_any_type = False
     for tv, arg in itertools.zip_longest(node.alias_tvars, args, fillvalue=None):
         if tv is None:
@@ -2704,6 +2805,15 @@ def validate_instance(t: Instance, fail: MsgCallback, indexed: bool) -> bool:
                     if act_prefix < exp_prefix or act_suffix < exp_suffix:
                         fail("TypeVarTuple cannot be split", t, code=codes.TYPE_ARG)
                         return False
+            prefix = t.type.type_var_tuple_prefix
+            assert prefix is not None
+            suffix_vars = t.type.defn.type_vars[prefix + 1 :]
+            if any(v.has_default() for v in suffix_vars):
+                _, _, _, omitted_suffix_vars = split_variadic_args_with_defaults(
+                    t.type.defn.type_vars, prefix, t.args
+                )
+                if omitted_suffix_vars:
+                    return False
     elif any(isinstance(a, UnpackType) for a in t.args):
         # A variadic unpack in fixed size instance (fixed unpacks must be flattened by the caller)
         fail(message_registry.INVALID_UNPACK_POSITION, t, code=codes.VALID_TYPE)
