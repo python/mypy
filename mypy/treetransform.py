@@ -450,7 +450,9 @@ class TransformVisitor(NodeVisitor[Node]):
         )
 
     def visit_star_expr(self, node: StarExpr) -> StarExpr:
-        return StarExpr(node.expr)
+        new = StarExpr(self.expr(node.expr))
+        new.valid = node.valid
+        return new
 
     def visit_int_expr(self, node: IntExpr) -> IntExpr:
         return IntExpr(node.value)
