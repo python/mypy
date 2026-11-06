@@ -125,6 +125,30 @@ _T = TypeVar('_T')
 class cached_property(Generic[_T]): ...
 [builtins fixtures/property.pyi]
 
+[case testCachedPropertyClassAccess]
+from functools import cached_property
+
+class A:
+    @cached_property
+    def value(self) -> int: ...
+
+    @classmethod
+    def name(cls) -> str:
+        reveal_type(cls.value)  # N: Revealed type is "functools.cached_property[builtins.int]"
+        return cls.value.attrname or ""
+
+reveal_type(A.value)  # N: Revealed type is "functools.cached_property[builtins.int]"
+[file functools.pyi]
+from typing import Any, Generic, TypeVar, overload
+_T = TypeVar('_T')
+class cached_property(Generic[_T]):
+    attrname: str | None
+    @overload
+    def __get__(self, instance: None, owner: type[Any] | None = ...) -> cached_property[_T]: ...
+    @overload
+    def __get__(self, instance: object, owner: type[Any] | None = ...) -> _T: ...
+[builtins fixtures/property.pyi]
+
 [case testTotalOrderingWithForwardReference]
 from typing import Generic, Any, TypeVar
 import functools

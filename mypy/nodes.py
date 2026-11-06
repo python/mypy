@@ -1318,7 +1318,14 @@ class Decorator(SymbolNode, Statement):
     A single Decorator object can include any number of function decorators.
     """
 
-    __slots__ = ("func", "decorators", "original_decorators", "var", "is_overload")
+    __slots__ = (
+        "func",
+        "decorators",
+        "original_decorators",
+        "var",
+        "is_overload",
+        "is_cached_property",
+    )
 
     __match_args__ = ("decorators", "var", "func")
 
@@ -1337,6 +1344,7 @@ class Decorator(SymbolNode, Statement):
         self.original_decorators = decorators.copy()
         self.var = var
         self.is_overload = False
+        self.is_cached_property = False
 
     @property
     def name(self) -> str:
@@ -1367,6 +1375,7 @@ class Decorator(SymbolNode, Statement):
             "func": self.func.serialize(),
             "var": self.var.serialize(),
             "is_overload": self.is_overload,
+            "is_cached_property": self.is_cached_property,
         }
 
     @classmethod
@@ -1374,6 +1383,7 @@ class Decorator(SymbolNode, Statement):
         assert data[".class"] == "Decorator"
         dec = Decorator(FuncDef.deserialize(data["func"]), [], Var.deserialize(data["var"]))
         dec.is_overload = data["is_overload"]
+        dec.is_cached_property = data.get("is_cached_property", False)
         return dec
 
     def write(self, data: WriteBuffer) -> None:
@@ -1381,6 +1391,7 @@ class Decorator(SymbolNode, Statement):
         self.func.write(data)
         self.var.write(data)
         write_bool(data, self.is_overload)
+        write_bool(data, self.is_cached_property)
         write_tag(data, END_TAG)
 
     @classmethod
@@ -1391,6 +1402,7 @@ class Decorator(SymbolNode, Statement):
         var = Var.read(data)
         dec = Decorator(func, [], var)
         dec.is_overload = read_bool(data)
+        dec.is_cached_property = read_bool(data)
         assert read_tag(data) == END_TAG
         return dec
 
