@@ -496,6 +496,17 @@ def _options_lost_by_simplification(
     items that absorbed X can, keep X as an extra option so the solver does not commit
     to a wrong member (e.g. inferring ``T = bool`` from ``list[bool]`` alone).
     """
+    # Only recover an option when some simplified item already produced
+    # constraints: recovery exists to offer an alternative to a (possibly
+    # wrong) commitment, not to invent constraints where the fallback --
+    # inferring the literal's type from its items -- already applies. Without
+    # this, a context like ``Hashable | Sequence[Hashable] |
+    # dict[Hashable, Hashable]`` would gain a ``T = Hashable`` constraint for
+    # ``[names]`` and report a new ``list-item`` error where previously only
+    # an ``assignment`` error was reported (pandas/core/indexes/base.py:2143,
+    # reported by mypy_primer on #22381).
+    if not any(option is not None for option in simplified_options):
+        return []
     simplified_ids = {id(get_proper_type(item)) for item in simplified_items}
     extra: list[list[Constraint] | None] = []
     for item in original_items:

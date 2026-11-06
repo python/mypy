@@ -40,4 +40,8 @@ class bool(int): pass
 
 property = object() # Dummy definition.
 
-class dict: pass
+K = TypeVar('K')
+V = TypeVar('V')
+
+class dict(Generic[K, V]):
+    __hash__: ClassVar[None]  # type: ignore[assignment]
