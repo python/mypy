@@ -2582,6 +2582,30 @@ class C(B): pass
 # A refinement made by a parent also counts
 reveal_type(A() + C())  # N: Revealed type is "builtins.str"
 
+[case testReverseOperatorOrderingForClassObjects]
+from typing import assert_type
+
+class LeftMeta(type):
+    def __mul__(cls, other: object) -> int: return 1
+    def __rmul__(cls, other: object) -> str: return "left"
+
+class RightMeta(LeftMeta):
+    def __rmul__(cls, other: object) -> str: return "right"
+
+class InheritedMeta(LeftMeta): pass
+
+class OtherMeta(type):
+    def __rmul__(cls, other: object) -> str: return "other"
+
+class A(metaclass=LeftMeta): pass
+class B(metaclass=RightMeta): pass
+class C(metaclass=InheritedMeta): pass
+class D(metaclass=OtherMeta): pass
+
+assert_type(A * B, str)
+assert_type(A * C, int)
+assert_type(A * D, int)
+
 [case testReverseOperatorWithOverloads1]
 from typing import overload
 
