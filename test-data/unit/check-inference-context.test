@@ -1680,3 +1680,31 @@ x: Union[B, C]
 fn: Callable[[Union[A, B]], None]
 fn = make(x)
 reveal_type(fn)  # N: Revealed type is "def (__main__.B | __main__.C | __main__.A)"
+
+[case testListLiteralContextWithUnhashableListAndHashableSequence]
+# https://github.com/python/mypy/issues/22342
+from typing import Hashable, MutableSequence
+
+def f(k: list[bool] | Hashable | MutableSequence[str]) -> None: ...
+
+f(["a", "b"])
+f([True])
+f([1.5])  # E: Argument 1 to "f" has incompatible type "list[float]"; expected "list[bool] | Hashable | MutableSequence[str]" \
+          # N: Following member(s) of "list[float]" have conflicts: \
+          # N:     __hash__: expected "Callable[[], int]", got "None"
+[builtins fixtures/list_hashable.pyi]
+[typing fixtures/typing-full.pyi]
+
+[case testListLiteralContextUnionWithUnhashableDictMember]
+# mypy_primer regression reported on #22381 for the #22342 fix: no simplified
+# union item yields constraints here, so no option may be recovered. The list
+# literal must keep the previous behaviour (an `assignment` error, which the
+# pandas code suppresses with `# type: ignore[assignment]`), not a new
+# `list-item` error.
+from typing import Hashable, Sequence
+
+def g(names: Hashable | Sequence[Hashable] | dict[Hashable, Hashable]) -> None:
+    names = [names]  # E: Incompatible types in assignment (expression has type "list[Hashable | Sequence[Hashable] | dict[Hashable, Hashable]]", variable has type "Hashable | Sequence[Hashable] | dict[Hashable, Hashable]")
+
+[builtins fixtures/list_hashable.pyi]
+[typing fixtures/typing-full.pyi]
