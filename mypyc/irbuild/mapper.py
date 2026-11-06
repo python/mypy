@@ -52,6 +52,7 @@ from mypyc.ir.rtypes import (
     uint8_rprimitive,
     uint16_rprimitive,
     uint32_rprimitive,
+    uint64_rprimitive,
 )
 
 
@@ -125,6 +126,8 @@ class Mapper:
                 return int32_rprimitive
             elif typ.type.fullname == "mypy_extensions.i16":
                 return int16_rprimitive
+            elif typ.type.fullname == "mypy_extensions.u64":
+                return uint64_rprimitive
             elif typ.type.fullname == "mypy_extensions.u32":
                 return uint32_rprimitive
             elif typ.type.fullname == "mypy_extensions.u16":

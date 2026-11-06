@@ -85,6 +85,7 @@ from mypyc.ir.rtypes import (
     is_uint8_rprimitive,
     is_uint16_rprimitive,
     is_uint32_rprimitive,
+    is_uint64_rprimitive,
     list_rprimitive,
     object_rprimitive,
     set_rprimitive,
@@ -93,6 +94,7 @@ from mypyc.ir.rtypes import (
     uint8_rprimitive,
     uint16_rprimitive,
     uint32_rprimitive,
+    uint64_rprimitive,
 )
 from mypyc.irbuild.builder import IRBuilder, find_walrus_targets, get_call_target_fullname
 from mypyc.irbuild.constant_fold import constant_fold_expr
@@ -323,6 +325,7 @@ def translate_globals(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Va
 @specialize_function("mypy_extensions.i64")
 @specialize_function("mypy_extensions.i32")
 @specialize_function("mypy_extensions.i16")
+@specialize_function("mypy_extensions.u64")
 @specialize_function("mypy_extensions.u32")
 @specialize_function("mypy_extensions.u16")
 @specialize_function("mypy_extensions.u8")
@@ -337,7 +340,7 @@ def translate_builtins_with_unary_dunder(
         arg = expr.args[0]
         arg_typ = builder.node_type(arg)
         shortname = callee.fullname.split(".")[1]
-        if shortname in ("i64", "i32", "i16", "u32", "u16", "u8"):
+        if shortname in ("i64", "i32", "i16", "u64", "u32", "u16", "u8"):
             method = "__int__"
         else:
             method = f"__{shortname}__"
@@ -1181,6 +1184,9 @@ def translate_i64(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value 
     elif is_int32_rprimitive(arg_type) or is_int16_rprimitive(arg_type):
         val = builder.accept(arg)
         return builder.add(Extend(val, int64_rprimitive, signed=True, line=expr.line))
+    elif is_uint64_rprimitive(arg_type):
+        val = builder.accept(arg)
+        return builder.add(Truncate(val, int64_rprimitive, line=expr.line))
     elif is_uint32_rprimitive(arg_type):
         val = builder.accept(arg)
         return builder.add(Extend(val, int64_rprimitive, signed=False, line=expr.line))
@@ -1210,6 +1216,9 @@ def translate_i32(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value 
     elif is_int16_rprimitive(arg_type):
         val = builder.accept(arg)
         return builder.add(Extend(val, int32_rprimitive, signed=True, line=expr.line))
+    elif is_uint64_rprimitive(arg_type):
+        val = builder.accept(arg)
+        return builder.add(Truncate(val, int32_rprimitive, line=expr.line))
     elif is_uint32_rprimitive(arg_type):
         val = builder.accept(arg)
         return builder.add(Truncate(val, int32_rprimitive, line=expr.line))
@@ -1237,6 +1246,9 @@ def translate_i16(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value 
     elif is_int32_rprimitive(arg_type) or is_int64_rprimitive(arg_type):
         val = builder.accept(arg)
         return builder.add(Truncate(val, int16_rprimitive, line=expr.line))
+    elif is_uint64_rprimitive(arg_type):
+        val = builder.accept(arg)
+        return builder.add(Truncate(val, int16_rprimitive, line=expr.line))
     elif is_uint32_rprimitive(arg_type):
         val = builder.accept(arg)
         return builder.add(Truncate(val, int16_rprimitive, line=expr.line))
@@ -1253,6 +1265,34 @@ def translate_i16(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value 
     return None
 
 
+@specialize_function("mypy_extensions.u64")
+def translate_u64(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value | None:
+    if len(expr.args) != 1 or expr.arg_kinds[0] != ARG_POS:
+        return None
+    arg = expr.args[0]
+    arg_type = builder.node_type(arg)
+    if is_uint64_rprimitive(arg_type):
+        return builder.accept(arg)
+    elif is_int64_rprimitive(arg_type):
+        val = builder.accept(arg)
+        return builder.add(Truncate(val, uint64_rprimitive, line=expr.line))
+    elif is_int32_rprimitive(arg_type) or is_int16_rprimitive(arg_type):
+        val = builder.accept(arg)
+        return builder.add(Extend(val, uint64_rprimitive, signed=True, line=expr.line))
+    elif (
+        is_uint32_rprimitive(arg_type)
+        or is_uint16_rprimitive(arg_type)
+        or is_uint8_rprimitive(arg_type)
+    ):
+        val = builder.accept(arg)
+        return builder.add(Extend(val, uint64_rprimitive, signed=False, line=expr.line))
+    elif is_int_rprimitive(arg_type) or is_bool_rprimitive(arg_type):
+        val = builder.accept(arg)
+        val = truncate_literal(val, uint64_rprimitive)
+        return builder.coerce(val, uint64_rprimitive, expr.line)
+    return None
+
+
 @specialize_function("mypy_extensions.u32")
 def translate_u32(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value | None:
     if len(expr.args) != 1 or expr.arg_kinds[0] != ARG_POS:
@@ -1265,6 +1305,7 @@ def translate_u32(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value 
         is_int16_rprimitive(arg_type)
         or is_int32_rprimitive(arg_type)
         or is_int64_rprimitive(arg_type)
+        or is_uint64_rprimitive(arg_type)
         or is_uint16_rprimitive(arg_type)
         or is_uint8_rprimitive(arg_type)
     ):
@@ -1293,6 +1334,7 @@ def translate_u16(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value 
         is_int16_rprimitive(arg_type)
         or is_int32_rprimitive(arg_type)
         or is_int64_rprimitive(arg_type)
+        or is_uint64_rprimitive(arg_type)
         or is_uint32_rprimitive(arg_type)
         or is_uint8_rprimitive(arg_type)
     ):
@@ -1319,6 +1361,7 @@ def translate_u8(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value |
         is_int16_rprimitive(arg_type)
         or is_int32_rprimitive(arg_type)
         or is_int64_rprimitive(arg_type)
+        or is_uint64_rprimitive(arg_type)
         or is_uint32_rprimitive(arg_type)
         or is_uint16_rprimitive(arg_type)
     ):

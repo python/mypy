@@ -9,11 +9,12 @@ Mypyc supports these integer types:
 * ``i64`` (64-bit signed integer)
 * ``i32`` (32-bit signed integer)
 * ``i16`` (16-bit signed integer)
+* ``u64`` (64-bit unsigned integer)
 * ``u32`` (32-bit unsigned integer)
 * ``u16`` (16-bit unsigned integer)
 * ``u8`` (8-bit unsigned integer)
 
-``i64``, ``i32``, ``i16``, ``u32``, ``u16`` and ``u8`` are *native integer types* and
+``i64``, ``i32``, ``i16``, ``u64``, ``u32``, ``u16`` and ``u8`` are *native integer types* and
 are available in the ``mypy_extensions`` module. ``int`` corresponds
 to the Python ``int`` type, but uses a more efficient runtime
 representation (tagged pointer). Native integer types are value types.
@@ -37,6 +38,7 @@ Construction
 * ``int(x: i64)``
 * ``int(x: i32)``
 * ``int(x: i16)``
+* ``int(x: u64)``
 * ``int(x: u32)``
 * ``int(x: u16)``
 * ``int(x: u8)``
@@ -51,6 +53,7 @@ Construction
 * ``i64(x: i64)`` (no-op)
 * ``i64(x: i32)``
 * ``i64(x: i16)``
+* ``i64(x: u64)``
 * ``i64(x: u32)``
 * ``i64(x: u16)``
 * ``i64(x: u8)``
@@ -64,7 +67,8 @@ Construction
 * ``i32(x: i64)`` (truncate)
 * ``i32(x: i32)`` (no-op)
 * ``i32(x: i16)``
-* ``i32(x: u32)`` (truncate)
+* ``i32(x: u64)`` (truncate)
+* ``i32(x: u32)``
 * ``i32(x: u16)``
 * ``i32(x: u8)``
 * ``i32(x: str)``
@@ -77,19 +81,35 @@ Construction
 * ``i16(x: i64)`` (truncate)
 * ``i16(x: i32)`` (truncate)
 * ``i16(x: i16)`` (no-op)
+* ``i16(x: u64)`` (truncate)
 * ``i16(x: u32)`` (truncate)
-* ``i16(x: u16)`` (truncate)
+* ``i16(x: u16)``
 * ``i16(x: u8)``
 * ``i16(x: str)``
 * ``i16(x: str, base: int)``
+
+``u64`` type:
+
+* ``u64(x: int)``
+* ``u64(x: float)``
+* ``u64(x: i64)``
+* ``u64(x: i32)``
+* ``u64(x: i16)``
+* ``u64(x: u64)`` (no-op)
+* ``u64(x: u32)``
+* ``u64(x: u16)``
+* ``u64(x: u8)``
+* ``u64(x: str)``
+* ``u64(x: str, base: int)``
 
 ``u32`` type:
 
 * ``u32(x: int)``
 * ``u32(x: float)``
 * ``u32(x: i64)`` (truncate)
-* ``u32(x: i32)`` (truncate)
-* ``u32(x: i16)`` (truncate)
+* ``u32(x: i32)``
+* ``u32(x: i16)``
+* ``u32(x: u64)`` (truncate)
 * ``u32(x: u32)`` (no-op)
 * ``u32(x: u16)``
 * ``u32(x: u8)``
@@ -101,9 +121,10 @@ Construction
 * ``u16(x: int)``
 * ``u16(x: float)``
 * ``u16(x: i64)`` (truncate)
-* ``u16(x: u32)`` (truncate)
 * ``u16(x: i32)`` (truncate)
-* ``u16(x: i16)`` (truncate)
+* ``u16(x: i16)``
+* ``u16(x: u64)`` (truncate)
+* ``u16(x: u32)`` (truncate)
 * ``u16(x: u16)`` (no-op)
 * ``u16(x: u8)``
 * ``u16(x: str)``
@@ -116,6 +137,8 @@ Construction
 * ``u8(x: i64)`` (truncate)
 * ``u8(x: i32)`` (truncate)
 * ``u8(x: i16)`` (truncate)
+* ``u8(x: u64)`` (truncate)
+* ``u8(x: u32)`` (truncate)
 * ``u8(x: u16)`` (truncate)
 * ``u8(x: u8)`` (no-op)
 * ``u8(x: str)``
@@ -124,8 +147,11 @@ Construction
 Conversions from ``int`` to a native integer type raise
 ``OverflowError`` if the value is too large or small. Conversions from
 a wider native integer type to a narrower one truncate the value and never
-fail. More generally, operations between native integer types don't
-check for overflow.
+fail. Conversions between signed and unsigned types of the same or larger
+size don't fail either: a value outside the target range wraps around
+(for example, ``u64(i32(-1))`` is ``2**64 - 1`` and ``i64(u64(2**63))``
+is ``-2**63``). More generally, operations between
+native integer types don't check for overflow.
 
 Implicit conversions
 --------------------
