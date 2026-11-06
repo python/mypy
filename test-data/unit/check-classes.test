@@ -3409,6 +3409,45 @@ if int():
 if int():
     b = a(a)  # E: Incompatible types in assignment (expression has type "A", variable has type "B")
 
+[case testCallAttributeOfOwnTypeNoCrash]
+from typing import Generic, Optional, TypeVar
+from typing_extensions import Self
+
+T = TypeVar("T")
+
+class A:
+    __call__: A
+class B:
+    __call__: Optional[B]
+class S:
+    __call__: Optional[Self]
+class G(Generic[T]):
+    __call__: G[list[T]]
+class X:
+    __call__: Y
+class Y:
+    __call__: X
+
+def f(a: A, b: B, s: S, g: G[int], x: X) -> None:
+    a()  # E: "A" not callable
+    b()  # E: "B" not callable \
+         # E: "None" not callable
+    s()  # E: "S" not callable \
+         # E: "None" not callable
+    g()  # E: "G[list[int]]" not callable
+    x()  # E: "X" not callable
+[builtins fixtures/list.pyi]
+
+[case testCallAttributeOfCallableTypeNestedCall]
+class D:
+    def __call__(self, a: int) -> int: return a
+class E:
+    __call__: D
+
+def f(d: D, e: E) -> None:
+    reveal_type(d(d(1)))  # N: Revealed type is "builtins.int"
+    reveal_type(e(e(1)))  # N: Revealed type is "builtins.int"
+
 
 -- __new__
 -- --------
