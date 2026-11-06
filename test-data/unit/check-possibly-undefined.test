@@ -1230,3 +1230,61 @@ elif not b:
         z = 2
     y = z
 y + 1
+
+[case testExhaustiveMatchNoFallThrough]
+# flags: --enable-error-code possibly-undefined
+from enum import Enum
+from typing import Literal, Union
+
+class Color(Enum):
+    RED = 1
+    BLUE = 2
+
+def union_subject(x: Union[int, str]) -> None:
+    match x:
+        case int():
+            y = 1
+        case str():
+            y = 2
+    y  # OK
+
+def enum_subject(c: Color) -> None:
+    match c:
+        case Color.RED:
+            y = 1
+        case Color.BLUE:
+            y = 2
+    y  # OK
+
+def literal_subject(l: Literal["a", "b"]) -> None:
+    match l:
+        case "a":
+            y = 1
+        case "b":
+            y = 2
+    y  # OK
+
+def non_exhaustive(x: Union[int, str, bytes]) -> None:
+    match x:
+        case int():
+            y = 1
+        case str():
+            y = 2
+    y  # E: Name "y" may be undefined
+
+def guard_on_last_case(x: Union[int, str], b: bool) -> None:
+    match x:
+        case int():
+            y = 1
+        case str() if b:
+            y = 2
+    y  # E: Name "y" may be undefined
+
+def any_subject(x) -> None:
+    match x:
+        case int():
+            y = 1
+        case str():
+            y = 2
+    y  # E: Name "y" may be undefined
+[builtins fixtures/tuple.pyi]
