@@ -3097,10 +3097,10 @@ A(1) >= 1  # E: Unsupported operand types for >= ("A" and "int")
 A(1) == 1
 A(1) != 1
 
-1 < A(1)  # E: Unsupported operand types for > ("A" and "int")
-1 <= A(1)  # E: Unsupported operand types for >= ("A" and "int")
-1 > A(1)  # E: Unsupported operand types for < ("A" and "int")
-1 >= A(1)  # E: Unsupported operand types for <= ("A" and "int")
+1 < A(1)  # E: Unsupported operand types for < ("int" and "A")
+1 <= A(1)  # E: Unsupported operand types for <= ("int" and "A")
+1 > A(1)  # E: Unsupported operand types for > ("int" and "A")
+1 >= A(1)  # E: Unsupported operand types for >= ("int" and "A")
 1 == A(1)
 1 != A(1)
 
@@ -3123,10 +3123,10 @@ main:15: error: Unsupported operand types for < ("A" and "int")
 main:16: error: Unsupported operand types for <= ("A" and "int")
 main:17: error: Unsupported operand types for > ("A" and "int")
 main:18: error: Unsupported operand types for >= ("A" and "int")
-main:22: error: Unsupported operand types for > ("A" and "int")
-main:23: error: Unsupported operand types for >= ("A" and "int")
-main:24: error: Unsupported operand types for < ("A" and "int")
-main:25: error: Unsupported operand types for <= ("A" and "int")
+main:22: error: Unsupported operand types for < ("int" and "A")
+main:23: error: Unsupported operand types for <= ("int" and "A")
+main:24: error: Unsupported operand types for > ("int" and "A")
+main:25: error: Unsupported operand types for >= ("int" and "A")
 
 [case testAttrsIncrementalSubclassModified]
 from b import B
@@ -4010,10 +4010,10 @@ tmp/b.py:18: error: Unsupported operand types for < ("A" and "int")
 tmp/b.py:19: error: Unsupported operand types for <= ("A" and "int")
 tmp/b.py:20: error: Unsupported operand types for > ("A" and "int")
 tmp/b.py:21: error: Unsupported operand types for >= ("A" and "int")
-tmp/b.py:25: error: Unsupported operand types for > ("A" and "int")
-tmp/b.py:26: error: Unsupported operand types for >= ("A" and "int")
-tmp/b.py:27: error: Unsupported operand types for < ("A" and "int")
-tmp/b.py:28: error: Unsupported operand types for <= ("A" and "int")
+tmp/b.py:25: error: Unsupported operand types for < ("int" and "A")
+tmp/b.py:26: error: Unsupported operand types for <= ("int" and "A")
+tmp/b.py:27: error: Unsupported operand types for > ("int" and "A")
+tmp/b.py:28: error: Unsupported operand types for >= ("int" and "A")
 
 [case testIncrementalDataclassesSubclassModified]
 from b import B

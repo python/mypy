@@ -58,7 +58,7 @@ from mypy.nodes import (
     get_func_def,
     reverse_builtin_aliases,
 )
-from mypy.operators import op_methods, op_methods_to_symbols
+from mypy.operators import op_methods, op_methods_to_symbols, reverse_op_methods
 from mypy.options import Options
 from mypy.subtypes import (
     IS_CLASS_OR_STATIC,
@@ -180,11 +180,17 @@ class MessageBuilder:
     # Hack to deduplicate error messages from union types
     _disable_type_names: list[bool]
 
+    # Stack of operator method names for binary operator checks currently
+    # in progress (see check_op_reversible). The top of the stack is the
+    # operator as written in the source code, e.g. "__ge__" for `x >= 0`.
+    _operator_context: list[str]
+
     def __init__(self, errors: Errors, modules: dict[str, MypyFile]) -> None:
         self.errors = errors
         self.options = errors.options
         self.modules = modules
         self._disable_type_names = []
+        self._operator_context = []
 
     #
     # Helpers
@@ -218,6 +224,22 @@ class MessageBuilder:
             yield
         finally:
             self._disable_type_names.pop()
+
+    @contextmanager
+    def operator_context(self, op_name: str) -> Iterator[None]:
+        """Track the operator currently being checked, for error reporting.
+
+        When a binary operation is checked via the reflected method on the
+        other operand (e.g. `x >= 0` checked as `int.__le__(x)` because the
+        left operand has no `__ge__`), errors about the call would otherwise
+        name the reflected operator. This context lets incompatible_argument()
+        report the operator as written in the source code instead. See #22316.
+        """
+        self._operator_context.append(op_name)
+        try:
+            yield
+        finally:
+            self._operator_context.pop()
 
     def are_type_names_disabled(self) -> bool:
         return len(self._disable_type_names) > 0 and self._disable_type_names[-1]
@@ -643,6 +665,28 @@ class MessageBuilder:
                     )
                     return self.fail(error_msg.value, context, code=error_msg.code)
             elif name.startswith('"__'):
+                # If this comparison is being checked via the reflected method
+                # on the other operand (e.g. `x >= 0` failing as `int.__le__(x)`
+                # because the left operand has no `__ge__`), report the operator
+                # as written in the source code, with operands in source order,
+                # instead of the reflected operator. See #22316.
+                if self._operator_context:
+                    source_op = self._operator_context[-1]
+                    if source_op in ("__lt__", "__le__", "__gt__", "__ge__"):
+                        for method in (source_op, reverse_op_methods[source_op]):
+                            if name.startswith(f'"{method}" of'):
+                                op = op_methods_to_symbols[source_op]
+                                if method == source_op:
+                                    return self.unsupported_operand_types(
+                                        op, base, arg_type, context, code=codes.OPERATOR
+                                    )
+                                else:
+                                    # Reflected call: the argument is the source
+                                    # left operand and the base is the source
+                                    # right operand.
+                                    return self.unsupported_operand_types(
+                                        op, arg_type, base, context, code=codes.OPERATOR
+                                    )
                 for method, op in op_methods_to_symbols.items():
                     for variant in method, "__r" + method[2:]:
                         # FIX: do not rely on textual formatting

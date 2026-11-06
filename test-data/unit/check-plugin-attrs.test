@@ -204,10 +204,10 @@ A(1) >= 1  # E: Unsupported operand types for >= ("A" and "int")
 A(1) == 1
 A(1) != 1
 
-1 < A(1)  # E: Unsupported operand types for > ("A" and "int")
-1 <= A(1)  # E: Unsupported operand types for >= ("A" and "int")
-1 > A(1)  # E: Unsupported operand types for < ("A" and "int")
-1 >= A(1)  # E: Unsupported operand types for <= ("A" and "int")
+1 < A(1)  # E: Unsupported operand types for < ("int" and "A")
+1 <= A(1)  # E: Unsupported operand types for <= ("int" and "A")
+1 > A(1)  # E: Unsupported operand types for > ("int" and "A")
+1 >= A(1)  # E: Unsupported operand types for >= ("int" and "A")
 1 == A(1)
 1 != A(1)
 [builtins fixtures/plugin_attrs.pyi]
