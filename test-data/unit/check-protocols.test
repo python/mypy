@@ -273,6 +273,35 @@ x: P = C() # E: Incompatible types in assignment (expression has type "C", varia
            # N:     meth: expected "int", got "Callable[[], int]"
 [builtins fixtures/property.pyi]
 
+[case testProtocolInvariantMemberSuggestReadOnly]
+# Suggest read-only when a mutable protocol attribute is only rejected due to
+# invariance (https://github.com/python/mypy/issues/6002).
+from typing import Optional, Protocol
+
+class Proto(Protocol):
+    name: Optional[str]
+
+class C:
+    def __init__(self) -> None:
+        self.name = "x"
+
+x: Proto = C() # E: Incompatible types in assignment (expression has type "C", variable has type "Proto") \
+               # N: Following member(s) of "C" have conflicts: \
+               # N:     name: expected "str | None", got "str" \
+               # N:     Consider making "name" in "Proto" read-only, e.g. by using a read-only property, since a mutable protocol member is invariant -- see https://mypy.readthedocs.io/en/stable/protocols.html#invariance-of-protocol-attributes
+
+# No suggestion for a genuine mismatch that making the member read-only would not fix.
+class ProtoInt(Protocol):
+    val: int
+
+class D:
+    def __init__(self) -> None:
+        self.val = "oops"
+
+y: ProtoInt = D() # E: Incompatible types in assignment (expression has type "D", variable has type "ProtoInt") \
+                  # N: Following member(s) of "D" have conflicts: \
+                  # N:     val: expected "int", got "str"
+
 [case testCannotAssignNormalToProtocol]
 from typing import Protocol
 
@@ -758,7 +787,9 @@ x: P = D()  # Same as P[Any, Any]
 var: P[Union[int, P], Union[P, str]] = C() # E: Incompatible types in assignment (expression has type "C", variable has type "P[int | P[Any, Any], P[Any, Any] | str]") \
                                            # N: Following member(s) of "C" have conflicts: \
                                            # N:     attr1: expected "int | P[Any, Any]", got "int" \
-                                           # N:     attr2: expected "P[Any, Any] | str", got "str"
+                                           # N:     Consider making "attr1" in "P" read-only, e.g. by using a read-only property, since a mutable protocol member is invariant -- see https://mypy.readthedocs.io/en/stable/protocols.html#invariance-of-protocol-attributes \
+                                           # N:     attr2: expected "P[Any, Any] | str", got "str" \
+                                           # N:     Consider making "attr2" in "P" read-only, e.g. by using a read-only property, since a mutable protocol member is invariant -- see https://mypy.readthedocs.io/en/stable/protocols.html#invariance-of-protocol-attributes
 
 [case testGenericSubProtocolsExtensionCovariant]
 from typing import TypeVar, Protocol, Union
