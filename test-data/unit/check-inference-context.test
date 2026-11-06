@@ -1694,4 +1694,3 @@ f([1.5])  # E: Argument 1 to "f" has incompatible type "list[float]"; expected "
           # N:     __hash__: expected "Callable[[], int]", got "None"
 [builtins fixtures/list_hashable.pyi]
 [typing fixtures/typing-full.pyi]
-
