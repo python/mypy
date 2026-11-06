@@ -2,9 +2,50 @@
 
 from __future__ import annotations
 
-from mypyc.ir.ops import ERR_ALWAYS, ERR_FALSE, ERR_NEVER
-from mypyc.ir.rtypes import bit_rprimitive, exc_rtuple, object_rprimitive, void_rtype
-from mypyc.primitives.registry import custom_op, custom_primitive_op
+from mypyc.ir.ops import ERR_ALWAYS, ERR_FALSE, ERR_MAGIC, ERR_NEVER
+from mypyc.ir.rtypes import (
+    bit_rprimitive,
+    c_int_rprimitive,
+    exc_rtuple,
+    object_rprimitive,
+    void_rtype,
+)
+from mypyc.primitives.registry import ERR_NEG_INT, custom_op, custom_primitive_op
+
+# Give a contextmanager's generator factory the same runtime method binding.
+contextmanager_bind_op = custom_op(
+    arg_types=[object_rprimitive, object_rprimitive],
+    return_type=object_rprimitive,
+    c_function_name="CPyContextManager_Bind",
+    error_kind=ERR_MAGIC,
+)
+
+# Enter a @contextmanager generator, requiring it to yield a value.
+contextmanager_enter_op = custom_op(
+    arg_types=[object_rprimitive],
+    return_type=object_rprimitive,
+    c_function_name="CPyContextManager_Enter",
+    error_kind=ERR_MAGIC,
+)
+
+# Finish a @contextmanager generator after a successful with body.
+# Returns true on success; generator/protocol errors propagate normally.
+contextmanager_exit_normal_op = custom_op(
+    arg_types=[object_rprimitive],
+    return_type=bit_rprimitive,
+    c_function_name="CPyContextManager_ExitNormal",
+    error_kind=ERR_FALSE,
+)
+
+# Finish a contextmanager after a body exception. True suppresses the exception;
+# false leaves the original handled exception for the caller to reraise.
+contextmanager_exit_exception_op = custom_op(
+    arg_types=[object_rprimitive] * 4,
+    return_type=c_int_rprimitive,
+    c_function_name="CPyContextManager_ExitException",
+    error_kind=ERR_NEG_INT,
+    truncated_type=bit_rprimitive,
+)
 
 # If the argument is a class, raise an instance of the class. Otherwise, assume
 # that the argument is an exception object, and raise it.
@@ -86,6 +127,11 @@ propagate_if_error_op = custom_primitive_op(
 # later.
 error_catch_op = custom_op(
     arg_types=[], return_type=exc_rtuple, c_function_name="CPy_CatchError", error_kind=ERR_NEVER
+)
+
+# Clear the current exception.
+error_clear_op = custom_op(
+    arg_types=[], return_type=void_rtype, c_function_name="PyErr_Clear", error_kind=ERR_NEVER
 )
 
 # Restore an old "currently handled exception" returned from.
