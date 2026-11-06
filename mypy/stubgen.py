@@ -48,6 +48,7 @@ import os.path
 import sys
 import traceback
 from collections.abc import Iterable, Iterator
+from functools import cache
 from typing import Final
 
 import mypy.build
@@ -126,7 +127,11 @@ from mypy.plugins.dataclasses import DATACLASS_FIELD_SPECIFIERS
 from mypy.semanal_shared import find_dataclass_transform_spec
 from mypy.sharedparse import MAGIC_METHODS_POS_ARGS_ONLY
 from mypy.stubdoc import ArgSig, FunctionSig
-from mypy.stubgenc import InspectionStubGenerator, generate_stub_for_c_module
+from mypy.stubgenc import (
+    ExternalSignatureGenerator,
+    InspectionStubGenerator,
+    generate_stub_for_c_module,
+)
 from mypy.stubutil import (
     TYPING_BUILTIN_REPLACEMENTS,
     BaseStubGenerator,
@@ -1872,7 +1877,8 @@ def generate_stubs(options: Options) -> None:
                 all_modules=all_module_names,
             )
 
-    # Separately analyse C modules using different logic.
+    # Reuse the external signature index for C modules in this invocation.
+    load_doc_sigs = cache(ExternalSignatureGenerator.from_doc_dir)
     for mod in c_modules:
         if any(py_mod.module.startswith(mod.module + ".") for py_mod in all_modules):
             target = mod.module.replace(".", "/") + "/__init__.pyi"
@@ -1886,6 +1892,7 @@ def generate_stubs(options: Options) -> None:
                 target,
                 known_modules=all_module_names,
                 doc_dir=options.doc_dir,
+                load_doc_sigs=load_doc_sigs,
                 include_private=options.include_private,
                 export_less=options.export_less,
                 include_docstrings=options.include_docstrings,

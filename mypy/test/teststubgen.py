@@ -7,8 +7,10 @@ import shutil
 import sys
 import tempfile
 import unittest
+from pathlib import Path
 from types import ModuleType
 from typing import Any
+from unittest.mock import patch
 
 import pytest
 
@@ -35,7 +37,7 @@ from mypy.stubgen import (
     mypy_options,
     parse_options,
 )
-from mypy.stubgenc import InspectionStubGenerator, infer_c_method_args
+from mypy.stubgenc import ExternalSignatureGenerator, InspectionStubGenerator, infer_c_method_args
 from mypy.stubutil import (
     ClassInfo,
     FunctionContext,
@@ -119,6 +121,25 @@ class StubgenCmdLineSuite(unittest.TestCase):
             finally:
                 sys.stdout = sys.__stdout__
                 os.chdir(current)
+
+    def test_doc_dir_reused_within_one_invocation(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            doc = Path(tmp, "functions.rst")
+            output = Path(tmp, "out")
+            options = parse_options(
+                ["--doc-dir", tmp, "-m", "math", "-m", "cmath", "-o", str(output)]
+            )
+            with patch.object(
+                ExternalSignatureGenerator,
+                "from_doc_dir",
+                wraps=ExternalSignatureGenerator.from_doc_dir,
+            ) as load:
+                for arg in ["first_argument", "updated_argument"]:
+                    doc.write_text(f".. function:: sqrt({arg})\n")
+                    generate_stubs(options)
+                    for module in ["math", "cmath"]:
+                        assert f"def sqrt({arg}" in (output / f"{module}.pyi").read_text()
+                assert load.call_count == 2
 
     def make_file(self, *path: str, content: str = "") -> None:
         file = os.path.join(*path)
