@@ -466,6 +466,41 @@ silence the error:
     async def g() -> None:
         _ = asyncio.create_task(f())  # No error
 
+.. _code-unused-asyncio-task:
+
+Check that ``asyncio.create_task`` and ``asyncio.ensure_future`` return
+values are used [unused-asyncio-task]
+---------------------------------------------------------------------
+
+If you use :option:`--enable-error-code unused-asyncio-task <mypy --enable-error-code>`,
+mypy generates an error if the result of ``asyncio.create_task()`` or
+``asyncio.ensure_future()`` is not used. An unused task may be garbage
+collected before it completes.
+
+Example:
+
+.. code-block:: python
+
+    # mypy: enable-error-code="unused-asyncio-task"
+
+    import asyncio
+
+    async def f() -> int: ...
+
+    async def g() -> None:
+        # Error: Value of type "Any" must be used  [unused-asyncio-task]
+        #        The task may be garbage collected before it completes.
+        #        Assign the result to a variable or add it to a task list.
+        asyncio.create_task(f())
+
+You can assign the value to a variable, or await it, to silence the error:
+
+.. code-block:: python
+
+    async def g() -> None:
+        task = asyncio.create_task(f())  # No error
+        await task
+
 .. _code-unused-ignore:
 
 Check that ``# type: ignore`` comment is used [unused-ignore]
