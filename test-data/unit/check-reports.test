@@ -343,3 +343,34 @@ Name      Lines  Precise  Imprecise  Any  Empty  Unanalyzed
 -------------------------------------------------------------
 __main__      5        3          0    1      1           0
 m             4        3          0    1      0           0
+
+[case testLinePrecisionOverloadDecoratorCheckedScope]
+# flags: --lineprecision-report out
+from typing import overload
+
+@overload
+def f(x: int) -> int: ...
+@overload
+def f(x: str) -> str: ...
+def f(x):
+    return x
+[outfile out/lineprecision.txt]
+Name      Lines  Precise  Imprecise  Any  Empty  Unanalyzed
+-------------------------------------------------------------
+__main__      9        5          0    2      2           0
+
+[case testLinePrecisionOverloadDecoratorUncheckedScope]
+# flags: --lineprecision-report out
+from typing import overload
+
+def outer():
+    @overload
+    def f(x: int) -> int: ...
+    @overload
+    def f(x: str) -> str: ...
+    def f(x):
+        return x
+[outfile out/lineprecision.txt]
+Name      Lines  Precise  Imprecise  Any  Empty  Unanalyzed
+-------------------------------------------------------------
+__main__     10        1          0    7      2           0
