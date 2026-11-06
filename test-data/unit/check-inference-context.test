@@ -1708,4 +1708,3 @@ def g(names: Hashable | Sequence[Hashable] | dict[Hashable, Hashable]) -> None:
 
 [builtins fixtures/list_hashable.pyi]
 [typing fixtures/typing-full.pyi]
-
