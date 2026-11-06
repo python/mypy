@@ -157,6 +157,18 @@ is_type('int | None')
 [builtins fixtures/primitives.pyi]
 [typing fixtures/typing-full.pyi]
 
+[case testUnrecognizedStringTypeFormArgument]
+from typing import TypeVar
+from typing_extensions import TypeForm
+T = TypeVar("T")
+def foo(x: TypeForm[T]) -> None: pass
+foo("Unresolvable")  # E: TypeForm containing a string annotation cannot be recognized here. Surround with TypeForm(...) to recognize.
+foo(42)  # E: Argument 1 to "foo" has incompatible type "int"; expected "TypeForm[Never]"
+def foo_or_str(x: TypeForm[T] | str) -> None: pass
+foo_or_str("Unresolvable")
+[builtins fixtures/primitives.pyi]
+[typing fixtures/typing-full.pyi]
+
 
 -- Type Expression Location: Return Statement
 
