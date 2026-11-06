@@ -723,7 +723,27 @@ if int():
     s = A() < B()
 if int():
     n = A() < B() # E: Incompatible types in assignment (expression has type "str", variable has type "int")
-    s = object() < B() # E: Unsupported operand types for > ("B" and "object")
+    s = object() < B() # E: Unsupported operand types for < ("object" and "B")
+
+[case testComparisonOperatorMessageWithNone]
+# Regression test for #22316: the error for a comparison must name the
+# operator as written, with operands in source order, instead of the
+# reflected operator used to check it.
+def f(x: int | None) -> bool:
+    return x >= 0  # E: Unsupported operand types for >= ("None" and "int") \
+                   # N: Left operand is of type "int | None"
+def g(x: int | None) -> bool:
+    return x <= 0  # E: Unsupported operand types for <= ("None" and "int") \
+                   # N: Left operand is of type "int | None"
+def h(x: int | None) -> bool:
+    return x > 0  # E: Unsupported operand types for > ("None" and "int") \
+                  # N: Left operand is of type "int | None"
+def k(x: int | None) -> bool:
+    return x < 0  # E: Unsupported operand types for < ("None" and "int") \
+                  # N: Left operand is of type "int | None"
+def ok(x: int, s: str) -> bool:
+    return x >= s  # E: Unsupported operand types for >= ("int" and "str")
+[builtins fixtures/ops.pyi]
 
 [case testReversibleComparisonWithExtraArgument]
 class C:
