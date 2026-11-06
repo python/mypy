@@ -93,6 +93,18 @@ b: X  # E: Variable "__main__.X" is not valid as a type \
     # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
 [builtins fixtures/type.pyi]
 
+[case testUnionOrSyntaxWithTypeAliasDeduplication]
+from typing_extensions import TypeAlias
+
+TextInput: TypeAlias = str
+ImageInput: TypeAlias = str | None
+
+SingleInput: TypeAlias = TextInput | ImageInput
+def f(si: SingleInput) -> None:
+    pass
+f(1)  # E: Argument 1 to "f" has incompatible type "int"; expected "str | None"
+[builtins fixtures/type.pyi]
+
 [case testUnionOrSyntaxInComment]
 x = 1  # type: int | str
 
