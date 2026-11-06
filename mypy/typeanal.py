@@ -186,6 +186,30 @@ def analyze_type_alias(
     return res, analyzer.aliases_used
 
 
+class DeferredBaseClassVar(Exception):
+    """A base class is a variable whose type hasn't been inferred yet.
+
+    Semantic analysis runs before type checking, so when a class uses a variable
+    with an inferred (not declared) type as a base class -- e.g. ``x = args[1]``
+    where ``args[1]`` is ``Any`` -- the variable's type is not yet known. The
+    class is provisionally treated as having an ``Any`` base; the type checker
+    validates the inferred type once it is known (see
+    ``TypeChecker.check_deferred_base_classes``).
+
+    The variable is carried on the exception so the checker can inspect its
+    inferred type without re-resolving the base class expression.
+    """
+
+    def __init__(self, var: nodes.Var, defining_literal: bool) -> None:
+        super().__init__()
+        self.var = var
+        # Whether the base class expression was being analyzed as part of a
+        # Literal[...] type. Semantic analysis does not report "not valid as a
+        # type" for variables in that position, so the type checker must not
+        # either.
+        self.defining_literal = defining_literal
+
+
 class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
     """Semantic analyzer for types.
 
@@ -1018,6 +1042,23 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                     return AnyType(TypeOfAny.special_form)
                 if isinstance(typ, TypeType) and isinstance(typ.item, AnyType):
                     return AnyType(TypeOfAny.from_another_any, source_any=typ.item)
+                if typ is None and self.nesting_level == 0:
+                    # The variable's type has not been inferred yet (inference
+                    # happens in the type checker, after semantic analysis).
+                    # Defer the validity check; the type checker will verify
+                    # the inferred type. Provisionally treat the base as Any.
+                    # Only the base class itself may be deferred: a variable
+                    # nested inside another base type (e.g. a type argument,
+                    # as in `tuple[T]`) is not a base class, so it keeps the
+                    # normal "not valid as a type" error below.
+                    raise DeferredBaseClassVar(sym.node, defining_literal)
+                if t.args and self.nesting_level == 0:
+                    # The base class subscripts the variable, e.g. `args[1]`
+                    # where `args` is a *args tuple. Whether the base is valid
+                    # depends on the type of the subscripted item, which the
+                    # type checker computes (the variable's type may itself be
+                    # inferred). Defer the validity check, as above.
+                    raise DeferredBaseClassVar(sym.node, defining_literal)
         # Option 2:
         # Unbound type variable. Currently these may be still valid,
         # for example when defining a generic type alias.
@@ -2765,6 +2806,13 @@ class FindTypeVarVisitor(SyntheticTypeVisitor[None]):
         self.type_var_likes: list[tuple[str, TypeVarLikeExpr]] = []
         self.has_self_type = False
         self.include_callables = True
+        # Only set when scanning base classes for type variables: an argument
+        # of a subscripted base may be a value, not a type name (e.g. the
+        # string key in `kwargs['some_any_field']`, converted to an
+        # UnboundType by parse_type_string), so an unknown name there is not
+        # an error. Undefined type names in bases are reported when the
+        # bases are analyzed.
+        self.suppress_name_errors = False
 
     def _seems_like_callable(self, type: UnboundType) -> bool:
         if not type.args:
@@ -2773,7 +2821,7 @@ class FindTypeVarVisitor(SyntheticTypeVisitor[None]):
 
     def visit_unbound_type(self, t: UnboundType) -> None:
         name = t.name
-        node = self.api.lookup_qualified(name, t)
+        node = self.api.lookup_qualified(name, t, suppress_errors=self.suppress_name_errors)
         if node and node.fullname in SELF_TYPE_NAMES:
             self.has_self_type = True
         if (
