@@ -3007,3 +3007,22 @@ match foo:
         foo()
         reveal_type(foo) # N: Revealed type is "Literal[__main__.Foo.FOO2]"
 [builtins fixtures/primitives.pyi]
+
+[case testEnumLiteralInUnionContextWithGenericFallback]
+# https://github.com/python/mypy/issues/22334
+from enum import Enum
+from typing import Literal, TypeVar
+
+T = TypeVar("T")
+
+class E(Enum):
+    SPECIAL = 1
+
+def none_if_special(value: T | Literal[E.SPECIAL]) -> T | None:
+    return None if value is E.SPECIAL else value
+
+def func() -> None:
+    x: str | Literal[E.SPECIAL] | None = E.SPECIAL
+    x = none_if_special(x)
+    reveal_type(x)  # N: Revealed type is "builtins.str | None"
+[builtins fixtures/tuple.pyi]
