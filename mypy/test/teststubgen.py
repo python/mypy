@@ -942,6 +942,59 @@ class StubgenPythonSuite(DataSuite):
             result.extend(file.read().splitlines())
 
 
+class StubgenTypeAliasSuite(unittest.TestCase):
+    """Tests for preserving explicit (PEP 613) type aliases in generated stubs."""
+
+    # A version compatibility shim that re-exports TypeAlias, as reported in
+    # https://github.com/python/mypy/issues/22294.
+    COMPAT_MODULE = """\
+import sys
+from typing import TYPE_CHECKING
+
+if sys.version_info >= (3, 10):  # workaround for mypy, which cannot distinguish between real imports in except clause
+    from typing import TypeAlias
+elif TYPE_CHECKING:  # don't add a real dependency on typing_extensions!
+    from typing_extensions import TypeAlias
+else:
+    TypeAlias = object
+"""
+
+    EXAMPLE_MODULE = """\
+from typing import Union
+
+from types_compat import TypeAlias
+
+LDAPTokenDictValue: TypeAlias = Union[tuple[()], tuple[str, ...]]
+"""
+
+    @unittest.skipIf(sys.platform == "win32", "clean up fails on Windows")
+    def test_explicit_type_alias_imported_from_other_module(self) -> None:
+        # stubgen runs mypy with follow_imports=skip, so the re-exported
+        # TypeAlias name can't be resolved back to typing.TypeAlias.  The
+        # alias definition must still be preserved in the generated stub.
+        current = os.getcwd()
+        with local_sys_path_set(), tempfile.TemporaryDirectory() as tmp:
+            try:
+                os.chdir(tmp)
+                with open("types_compat.py", "w") as f:
+                    f.write(self.COMPAT_MODULE)
+                with open("example.py", "w") as f:
+                    f.write(self.EXAMPLE_MODULE)
+                options = parse_options(["-m", "example", "-o", "out"])
+                options.no_import = True
+                generate_stubs(options)
+                with open(os.path.join("out", "example.pyi")) as f:
+                    actual = f.read().splitlines()
+            finally:
+                os.chdir(current)
+        expected = [
+            "from types_compat import TypeAlias as TypeAlias",
+            "",
+            "LDAPTokenDictValue: TypeAlias = tuple[()] | tuple[str, ...]",
+        ]
+        assert_string_arrays_equal(expected, actual, "Invalid stub generated for example.py")
+
+
 self_arg = ArgSig(name="self")
 
 
