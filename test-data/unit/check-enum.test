@@ -3007,3 +3007,78 @@ match foo:
         foo()
         reveal_type(foo) # N: Revealed type is "Literal[__main__.Foo.FOO2]"
 [builtins fixtures/primitives.pyi]
+
+[case testEnumCallIgnoresInitSignature]
+from enum import Enum
+
+class A(Enum):
+    X = (1, "a")
+    def __init__(self, v: int, c: str) -> None:
+        self.c = c
+
+reveal_type(A(1))  # N: Revealed type is "__main__.A"
+[builtins fixtures/enum.pyi]
+
+[case testEnumCallIgnoresNewSignature]
+from enum import Enum
+
+class B(Enum):
+    X = (1, "a")
+    def __new__(cls, v: int, c: str) -> "B":
+        return super().__new__(cls, v)
+
+reveal_type(B(1))  # N: Revealed type is "__main__.B"
+[builtins fixtures/enum.pyi]
+
+[case testEnumCallIgnoresInitSignatureMixins]
+# flags: --python-version 3.11
+from enum import Enum, IntEnum, StrEnum, Flag
+
+class S(str, Enum):
+    X = ("x", 1)
+    def __init__(self, v: str, n: int) -> None: ...
+
+class IE(IntEnum):
+    X = (1, "a")
+    def __init__(self, v: int, c: str) -> None: ...
+
+class SE(StrEnum):
+    X = ("x", 1)
+    def __new__(cls, v: str, n: int) -> "SE":
+        return super().__new__(cls, v)
+
+class F(Flag):
+    A = (1, "a")
+    def __init__(self, v: int, c: str) -> None: ...
+
+reveal_type(S("x"))   # N: Revealed type is "__main__.S"
+reveal_type(IE(1))    # N: Revealed type is "__main__.IE"
+reveal_type(SE("x"))  # N: Revealed type is "__main__.SE"
+reveal_type(F(1))     # N: Revealed type is "__main__.F"
+[builtins fixtures/enum.pyi]
+
+[case testEnumCallWithCustomNewAndInitInMixinEnum]
+from enum import Enum
+
+class I(int, Enum):
+    X = (1, "a")
+    def __new__(cls, v: int, c: str) -> "I":
+        ...
+    def __init__(self, v: int, c: str) -> None:
+        self.c = c
+
+reveal_type(I(1))  # N: Revealed type is "__main__.I"
+[builtins fixtures/primitives.pyi]
+[typing fixtures/typing-medium.pyi]
+
+[case testEnumFunctionalApiStillWorksWithMemberConstructors]
+from enum import Enum, IntEnum
+
+class A(Enum):
+    X = (1, "a")
+    def __init__(self, v: int, c: str) -> None: ...
+
+reveal_type(A(1))                  # N: Revealed type is "__main__.A"
+reveal_type(Enum("Color", "RED GREEN"))   # N: Revealed type is "enum.Enum"
+reveal_type(IntEnum("N", "A B"))   # N: Revealed type is "enum.IntEnum"
+[builtins fixtures/enum.pyi]
