@@ -1446,6 +1446,13 @@ reveal_type(F[str]().m())  # N: Revealed type is "__main__.F[builtins.str]"
 reveal_type(F[str]().mm(b'x'))  # N: Revealed type is "tuple[__main__.F[builtins.str], builtins.bytes]"
 [builtins fixtures/tuple.pyi]
 
+[case testPEP695TypeVariableBoundSelfType]
+from typing import Self
+
+class C:
+    def foo[T: Self](self: T) -> None: pass # E: TypeVar upper bound can not be parametrized by type variables
+[builtins fixtures/tuple.pyi]
+
 [case testPEP695CallAlias]
 class C:
     def __init__(self, x: str) -> None: ...
