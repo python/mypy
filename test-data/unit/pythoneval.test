@@ -2287,6 +2287,20 @@ y = t"hello {1}"
 [out]
 m.pyi:3: error: T-strings: requires Python 3.14 or newer (current target: Python 3.13)
 
+[case testReversedListWithNestedAny]
+# flags: --python-version=3.12 --warn-return-any
+from typing import Any, assert_type
+
+def last_value(values: list[tuple[Any, int]]) -> int | None:
+    for key, value in reversed(values):
+        assert_type(value, int)
+        return value
+    return None
+
+assert last_value([('first', 1), ('last', 2)]) == 2
+assert last_value([]) is None
+[out]
+
 [case testNativeParserStarUnpackRequiresPython311]
 # flags: --python-version=3.10 --native-parser
 from typing_extensions import TypeVarTuple, Unpack
