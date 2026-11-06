@@ -572,6 +572,10 @@ foo[4] = 5
 for x in foo:
     reveal_type(x) # N: Revealed type is "builtins.int"
 
+class Bar(Foo):
+    def super_m(self) -> None:
+        reveal_type(super().m(2)) # N: Revealed type is "builtins.int"
+
 [file mypy.ini]
 \[mypy]
 plugins=<ROOT>/test-data/unit/plugins/method_sig_hook.py
