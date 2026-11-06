@@ -1367,6 +1367,7 @@ class ASTConverter:
 
     # Try(stmt* body, excepthandler* handlers, stmt* orelse, stmt* finalbody)
     def visit_Try(self, n: ast3.Try) -> TryStmt:
+        body = self.as_required_block(n.body)
         vs = [
             self.set_line(NameExpr(h.name), h) if h.name is not None else None for h in n.handlers
         ]
@@ -1374,16 +1375,12 @@ class ASTConverter:
         handlers = [self.as_required_block(h.body) for h in n.handlers]
 
         node = TryStmt(
-            self.as_required_block(n.body),
-            vs,
-            types,
-            handlers,
-            self.as_block(n.orelse),
-            self.as_block(n.finalbody),
+            body, vs, types, handlers, self.as_block(n.orelse), self.as_block(n.finalbody)
         )
         return self.set_line(node, n)
 
     def visit_TryStar(self, n: TryStar) -> TryStmt:
+        body = self.as_required_block(n.body)
         vs = [
             self.set_line(NameExpr(h.name), h) if h.name is not None else None for h in n.handlers
         ]
@@ -1391,12 +1388,7 @@ class ASTConverter:
         handlers = [self.as_required_block(h.body) for h in n.handlers]
 
         node = TryStmt(
-            self.as_required_block(n.body),
-            vs,
-            types,
-            handlers,
-            self.as_block(n.orelse),
-            self.as_block(n.finalbody),
+            body, vs, types, handlers, self.as_block(n.orelse), self.as_block(n.finalbody)
         )
         node.is_star = True
         return self.set_line(node, n)
