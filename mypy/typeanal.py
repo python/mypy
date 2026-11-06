@@ -639,13 +639,16 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                     t,
                     code=codes.VALID_TYPE,
                 )
-            else:
-                if not self.allow_final:
-                    self.fail(
-                        "Final can be only used as an outermost qualifier in a variable annotation",
-                        t,
-                        code=codes.VALID_TYPE,
-                    )
+            elif not self.allow_final:
+                self.fail(
+                    "Final can be only used as an outermost qualifier in a variable annotation",
+                    t,
+                    code=codes.VALID_TYPE,
+                )
+            elif t.args:
+                # Nested Final[...] is accepted here (e.g. ClassVar[Final[...]] on 3.13+);
+                # preserve and return the inner type instead of collapsing to Any.
+                return self.anal_type(t.args[0])
             return AnyType(TypeOfAny.from_error)
         elif fullname in TUPLE_NAMES:
             # Tuple is special because it is involved in builtin import cycle
