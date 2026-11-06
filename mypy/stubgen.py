@@ -979,8 +979,14 @@ class ASTStubGenerator(BaseStubGenerator, mypy.traverser.TraverserVisitor):
                 and self.is_alias_expression(o.rvalue)
                 and not self.is_private_name(lvalue.name)
             ):
-                is_explicit_type_alias = (
-                    o.unanalyzed_type and getattr(o.type, "name", None) == "TypeAlias"
+                is_explicit_type_alias = bool(o.unanalyzed_type) and (
+                    getattr(o.type, "name", None) == "TypeAlias"
+                    # The annotation isn't always analyzed to `typing.TypeAlias`:
+                    # stubgen runs mypy with follow_imports=skip, so a `TypeAlias`
+                    # name that is re-exported from another module (e.g. a version
+                    # compatibility shim) can't be resolved. Fall back to the name
+                    # as written in the source in that case.
+                    or getattr(o.unanalyzed_type, "name", None) == "TypeAlias"
                 )
                 if is_explicit_type_alias:
                     self.process_typealias(lvalue, o.rvalue, is_explicit_type_alias=True)
