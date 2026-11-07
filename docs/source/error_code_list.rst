@@ -1386,6 +1386,17 @@ to the line with the string literal:
    dict_of_typx = {'str_or_none': TypeForm(str | None)}
    list_of_typx: list[TypeForm] = [dict_of_typx['str_or_none']]  # type: ignore[maybe-unrecognized-str-typeform]
 
+.. _code-performance-limit:
+
+Checks skipped for performance reasons [performance-limit]
+----------------------------------------------------------
+
+Mypy reports this error when it limits or skip checks to avoid excessive type
+checking time. As a result, some errors may go undetected.
+
+For example, when a function has 50 or more ``@overload`` variants, mypy limits
+the number of variants it compares for overlap.
+
 .. _code-misc:
 
 Miscellaneous checks [misc]
