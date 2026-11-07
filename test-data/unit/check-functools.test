@@ -213,8 +213,10 @@ functools.partial(foo, 1, "a", "b", "c", d="a")  # E: Argument 3 to "foo" has in
 def bar(*a: bytes, **k: int):
     p1("a", 2, 3, 4, d="a", **k)
     p1("a", d="a", **k)
-    p1("a", **k)  # E: Argument 2 to "foo" has incompatible type "**dict[str, int]"; expected "str"
-    p1(**k)  # E: Argument 1 to "foo" has incompatible type "**dict[str, int]"; expected "str"
+    p1("a", **k)  # E: Argument 2 to "foo" has incompatible type "**dict[str, int]"; expected "str" \
+                  # N: Consider annotating the ** argument as "**kwargs: Any" or using a TypedDict
+    p1(**k)  # E: Argument 1 to "foo" has incompatible type "**dict[str, int]"; expected "str" \
+             # N: Consider annotating the ** argument as "**kwargs: Any" or using a TypedDict
     p1(*a)  # E: Expected iterable as variadic argument
 
 
@@ -223,6 +225,8 @@ def test_baz(xs: List[int]):
     p3 = functools.partial(baz, *xs)
     p3()
     p3(1)  # E: Too many arguments for "baz"
+
+
 
 
 [builtins fixtures/dict.pyi]

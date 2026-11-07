@@ -71,7 +71,8 @@ def g(**x: int) -> None: pass
 a = ['']
 f(*a)  # E:4: Argument 1 to "f" has incompatible type "*list[str]"; expected "int"
 b = {'x': 'y'}
-g(**b) # E:5: Argument 1 to "g" has incompatible type "**dict[str, str]"; expected "int"
+g(**b) # E:5: Argument 1 to "g" has incompatible type "**dict[str, str]"; expected "int" \
+       # N:5: Consider annotating the ** argument as "**kwargs: Any" or using a TypedDict
 [builtins fixtures/dict.pyi]
 
 [case testColumnsMultipleStatementsPerLine]
