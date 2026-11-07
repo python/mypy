@@ -33,6 +33,7 @@ from mypy.nodes import (
     JsonDict,
     NameExpr,
     Node,
+    OverloadedFuncDef,
     PlaceholderNode,
     RefExpr,
     Statement,
@@ -62,6 +63,7 @@ from mypy.types import (
     Instance,
     LiteralType,
     NoneType,
+    Overloaded,
     ProperType,
     SentinelValue,
     TupleType,
@@ -1134,6 +1136,35 @@ def check_post_init(api: TypeChecker, defn: FuncItem, info: TypeInfo) -> None:
     assert isinstance(ideal_sig, ProperType)  # we set it ourselves
     assert isinstance(ideal_sig, CallableType)
     ideal_sig = ideal_sig.copy_modified(name="__post_init__")
+
+    # An overloaded __post_init__ reaches this hook once per item, each time
+    # carrying only that item's signature. Checking an item on its own would
+    # report variants the generated call never has to use: the dataclass
+    # passes the InitVar values once, and the overload is fine when any one
+    # item accepts them -- the same rule an ordinary method override follows.
+    # So the overload is checked as a whole, once, from its first item; the
+    # other items and the implementation fall through without checking. A
+    # single-signature __post_init__ is checked directly as before.
+    sym = info.names.get("__post_init__")
+    if isinstance(sym, SymbolTableNode) and isinstance(sym.node, OverloadedFuncDef):
+        overload_type = sym.node.type
+        first_item = (
+            sym.node.items[0].func
+            if sym.node.items and isinstance(sym.node.items[0], Decorator)
+            else None
+        )
+        if isinstance(overload_type, Overloaded) and first_item is defn:
+            api.check_override(
+                override=overload_type,
+                original=ideal_sig,
+                name="__post_init__",
+                name_in_super="__post_init__",
+                supertype="dataclass",
+                original_class_or_static=False,
+                override_class_or_static=False,
+                node=defn,
+            )
+        return
 
     api.check_override(
         override=defn.type,

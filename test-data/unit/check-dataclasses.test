@@ -2439,6 +2439,50 @@ class Test8:
     def __post_init__(self, s: Self) -> None: ...
 [builtins fixtures/dataclasses.pyi]
 
+[case testPostInitOverloadWithCompatibleItem]
+from dataclasses import dataclass, InitVar
+from typing import overload
+
+# One compatible overload item is enough: the dataclass calls __post_init__
+# with the InitVar values, and an overloaded override is fine when the
+# overload as a whole accepts that call, as with an ordinary override.
+@dataclass
+class Record:
+    value: InitVar[int]
+
+    @overload
+    def __post_init__(self, value: int) -> None: ...
+    @overload
+    def __post_init__(self, value: str) -> None: ...
+    def __post_init__(self, value: int | str) -> None: ...
+
+Record(1)
+[builtins fixtures/dataclasses.pyi]
+
+[case testPostInitOverloadWithoutCompatibleItem]
+from dataclasses import dataclass, InitVar
+from typing import overload
+
+@dataclass
+class Record:
+    value: InitVar[int]
+
+    @overload
+    def __post_init__(self, value: str) -> None: ...  # E: Signature of "__post_init__" incompatible with supertype "dataclass" \
+                                                      # N:      Superclass: \
+                                                      # N:          def __post_init__(self: Record, value: int) -> None \
+                                                      # N:      Subclass: \
+                                                      # N:          @overload \
+                                                      # N:          def __post_init__(self: Record, value: str) -> None \
+                                                      # N:          @overload \
+                                                      # N:          def __post_init__(self: Record, value: bytes) -> None
+    @overload
+    def __post_init__(self, value: bytes) -> None: ...
+    def __post_init__(self, value: str | bytes) -> None: ...
+
+Record(1)
+[builtins fixtures/dataclasses.pyi]
+
 [case testPostInitSubclassing]
 from dataclasses import dataclass, InitVar
 
