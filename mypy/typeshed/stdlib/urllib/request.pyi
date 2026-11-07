@@ -1,13 +1,13 @@
 import ssl
 import sys
-from _typeshed import ReadableBuffer, StrOrBytesPath, SupportsRead
+from _typeshed import ReadableBuffer, StrOrBytesPath, SupportsItems, SupportsRead
 from collections.abc import Callable, Iterable, Mapping, MutableMapping, Sequence
 from email.message import Message
 from http.client import HTTPConnection, HTTPMessage, HTTPResponse
 from http.cookiejar import CookieJar
 from re import Pattern
-from typing import IO, Any, ClassVar, NoReturn, Protocol, TypeVar, overload, type_check_only
-from typing_extensions import TypeAlias, deprecated
+from typing import IO, Any, ClassVar, Literal, Protocol, TypeAlias, TypeVar, overload, type_check_only
+from typing_extensions import Never, deprecated
 from urllib.error import HTTPError as HTTPError
 from urllib.response import addclosehook, addinfourl
 
@@ -65,18 +65,34 @@ if sys.version_info >= (3, 13):
     ) -> _UrlopenRet: ...
 
 else:
+    @overload
     def urlopen(
         url: str | Request,
         data: _DataType | None = None,
         timeout: float | None = ...,
         *,
-        cafile: str | None = None,
-        capath: str | None = None,
-        cadefault: bool = False,
+        cafile: None = None,
+        capath: None = None,
+        cadefault: Literal[False] = False,
         context: ssl.SSLContext | None = None,
     ) -> _UrlopenRet: ...
+    @overload
+    @deprecated(
+        "The `cafile`, `capath`, `cadefault` parameters are deprecated since Python 3.6; "
+        "removed in Python 3.13. Use `context` parameter instead."
+    )
+    def urlopen(
+        url: str | Request,
+        data: _DataType | None = None,
+        timeout: float | None = ...,
+        *,
+        cafile: StrOrBytesPath | None = None,
+        capath: StrOrBytesPath | None = None,
+        cadefault: bool = False,
+        context: None = None,
+    ) -> _UrlopenRet: ...
 
-def install_opener(opener: OpenerDirector) -> None: ...
+def install_opener(opener: OpenerDirector | None) -> None: ...
 def build_opener(*handlers: BaseHandler | Callable[[], BaseHandler]) -> OpenerDirector: ...
 
 if sys.version_info >= (3, 14):
@@ -85,7 +101,11 @@ if sys.version_info >= (3, 14):
 
 else:
     if sys.platform == "win32":
-        from nturl2path import pathname2url as pathname2url, url2pathname as url2pathname
+        # These functions are implemented in the deprecated ``nturl2path`` module,
+        # but remain part of the public ``urllib.request`` API.
+        def url2pathname(url: str) -> str: ...
+        def pathname2url(p: str) -> str: ...
+
     else:
         def url2pathname(pathname: str) -> str: ...
         def pathname2url(pathname: str) -> str: ...
@@ -108,6 +128,7 @@ class Request:
     def full_url(self, value: str) -> None: ...
     @full_url.deleter
     def full_url(self) -> None: ...
+
     type: str
     host: str
     origin_req_host: str
@@ -122,7 +143,7 @@ class Request:
         self,
         url: str,
         data: _DataType = None,
-        headers: MutableMapping[str, str] = {},
+        headers: SupportsItems[str, str] = {},
         origin_req_host: str | None = None,
         unverifiable: bool = False,
         method: str | None = None,
@@ -134,10 +155,12 @@ class Request:
     def remove_header(self, header_name: str) -> None: ...
     def get_full_url(self) -> str: ...
     def set_proxy(self, host: str, type: str) -> None: ...
+
     @overload
     def get_header(self, header_name: str) -> str | None: ...
     @overload
     def get_header(self, header_name: str, default: _T) -> str | _T: ...
+
     def header_items(self) -> list[tuple[str, str]]: ...
     def has_proxy(self) -> bool: ...
 
@@ -317,7 +340,7 @@ class CacheFTPHandler(FTPHandler):
     def clear_cache(self) -> None: ...  # undocumented
 
 class UnknownHandler(BaseHandler):
-    def unknown_open(self, req: Request) -> NoReturn: ...
+    def unknown_open(self, req: Request) -> Never: ...
 
 class HTTPErrorProcessor(BaseHandler):
     def http_response(self, request: Request, response: HTTPResponse) -> _UrlopenRet: ...

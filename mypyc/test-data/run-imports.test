@@ -92,12 +92,30 @@ from testmodule import g
 
 def f(x: int) -> int:
     return g(x)
+
+def read_value() -> int:
+    from badmodule import value
+    return value
+
+[file badmodule.pyi]
+value: int
+
+[file badmodule.py]
+def __getattr__(name):
+    if name == "value":
+        raise RuntimeError("module attribute failed")
+    raise AttributeError(name)
+
 [file testmodule.py]
 def g(x: int) -> int:
     return x + 1
 [file driver.py]
-from native import f
+from native import f, read_value
+from testutil import assertRaises
+
 assert f(1) == 2
+with assertRaises(RuntimeError, "module attribute failed"):
+    read_value()
 
 [case testFromImportWithUntypedModule]
 

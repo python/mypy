@@ -185,7 +185,7 @@ L1:
 L2:
     return 2
 
-[case testIRTransformRegisterOps1]
+[case testIRTransformRegisterOps1_withgil]
 from __future__ import annotations
 from typing import cast
 

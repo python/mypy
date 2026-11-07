@@ -1,0 +1,255 @@
+# Test cases for u16 native ints. Focus on things that are different from u8; no need to
+# duplicate all u8 test cases here.
+
+[case testU16BinaryOp]
+from mypy_extensions import u16
+
+def add_op(x: u16, y: u16) -> u16:
+    x = y + x
+    y = x + 5
+    y += x
+    y += 7
+    x = 5 + y
+    return x
+def compare(x: u16, y: u16) -> None:
+    a = x == y
+    b = x == 5
+    c = x < y
+    d = x < 5
+    e = 5 == x
+    f = 5 < x
+[out]
+def add_op(x, y):
+    x, y, r0, r1, r2, r3, r4 :: u16
+L0:
+    r0 = y + x
+    x = r0
+    r1 = x + 5
+    y = r1
+    r2 = y + x
+    y = r2
+    r3 = y + 7
+    y = r3
+    r4 = 5 + y
+    x = r4
+    return x
+def compare(x, y):
+    x, y :: u16
+    r0 :: bit
+    a :: bool
+    r1 :: bit
+    b :: bool
+    r2 :: bit
+    c :: bool
+    r3 :: bit
+    d :: bool
+    r4 :: bit
+    e :: bool
+    r5 :: bit
+    f :: bool
+L0:
+    r0 = x == y
+    a = r0
+    r1 = x == 5
+    b = r1
+    r2 = x < y :: unsigned
+    c = r2
+    r3 = x < 5 :: unsigned
+    d = r3
+    r4 = 5 == x
+    e = r4
+    r5 = 5 < x :: unsigned
+    f = r5
+    return 1
+
+[case testU16DetectMoreOutOfRangeLiterals]
+from mypy_extensions import u16
+
+def out_of_range() -> None:
+    a: u16 = 65536
+    b: u16 = -1
+    f(65536)
+    # The following are ok
+    c: u16 = 0
+    d: u16 = 65535
+    f(0)
+    f(65535)
+
+def f(x: u16) -> None: pass
+[out]
+main:4: error: Value 65536 is out of range for "u16"
+main:5: error: Value -1 is out of range for "u16"
+main:6: error: Value 65536 is out of range for "u16"
+
+[case testU16BoxAndUnbox]
+from typing import Any
+from mypy_extensions import u16
+
+def f(x: Any) -> Any:
+    y: u16 = x
+    return y
+[out]
+def f(x):
+    x :: object
+    r0, y :: u16
+    r1 :: object
+L0:
+    r0 = unbox(u16, x)
+    y = r0
+    r1 = box(u16, y)
+    return r1
+
+[case testU16ConvertToInt]
+from mypy_extensions import u16
+
+def u16_to_int(a: u16) -> int:
+    return a
+[out]
+def u16_to_int(a):
+    a :: u16
+    r0 :: native_int
+    r1 :: int
+L0:
+    r0 = extend a: u16 to native_int
+    r1 = r0 << 1
+    return r1
+
+[case testU16ExplicitConversionFromNativeInt]
+from mypy_extensions import i64, i32, i16, u8, u16
+
+def from_u16(x: u16) -> u16:
+    return u16(x)
+
+def from_u8(x: u8) -> u16:
+    return u16(x)
+
+def from_i16(x: i16) -> u16:
+    return u16(x)
+
+def from_i32(x: i32) -> u16:
+    return u16(x)
+
+def from_i64(x: i64) -> u16:
+    return u16(x)
+[out]
+def from_u16(x):
+    x :: u16
+L0:
+    return x
+def from_u8(x):
+    x :: u8
+    r0 :: u16
+L0:
+    r0 = extend x: u8 to u16
+    return r0
+def from_i16(x):
+    x :: i16
+    r0 :: u16
+L0:
+    r0 = truncate x: i16 to u16
+    return r0
+def from_i32(x):
+    x :: i32
+    r0 :: u16
+L0:
+    r0 = truncate x: i32 to u16
+    return r0
+def from_i64(x):
+    x :: i64
+    r0 :: u16
+L0:
+    r0 = truncate x: i64 to u16
+    return r0
+
+[case testU16ExplicitConversionToNativeInt]
+from mypy_extensions import i64, i32, i16, u8, u16
+
+def to_u8(x: u16) -> u8:
+    return u8(x)
+
+def to_i16(x: u16) -> i16:
+    return i16(x)
+
+def to_i32(x: u16) -> i32:
+    return i32(x)
+
+def to_i64(x: u16) -> i64:
+    return i64(x)
+[out]
+def to_u8(x):
+    x :: u16
+    r0 :: u8
+L0:
+    r0 = truncate x: u16 to u8
+    return r0
+def to_i16(x):
+    x :: u16
+    r0 :: i16
+L0:
+    r0 = truncate x: u16 to i16
+    return r0
+def to_i32(x):
+    x :: u16
+    r0 :: i32
+L0:
+    r0 = extend x: u16 to i32
+    return r0
+def to_i64(x):
+    x :: u16
+    r0 :: i64
+L0:
+    r0 = extend x: u16 to i64
+    return r0
+
+[case testU16ExplicitConversionFromInt]
+from mypy_extensions import u16
+
+def f(x: int) -> u16:
+    return u16(x)
+[out]
+def f(x):
+    x :: int
+    r0 :: native_int
+    r1, r2, r3 :: bit
+    r4 :: native_int
+    r5, r6 :: u16
+L0:
+    r0 = x & 1
+    r1 = r0 == 0
+    if r1 goto L1 else goto L4 :: bool
+L1:
+    r2 = x < 131072 :: signed
+    if r2 goto L2 else goto L4 :: bool
+L2:
+    r3 = x >= 0 :: signed
+    if r3 goto L3 else goto L4 :: bool
+L3:
+    r4 = x >> 1
+    r5 = truncate r4: native_int to u16
+    r6 = r5
+    goto L5
+L4:
+    CPyUInt16_Overflow()
+    unreachable
+L5:
+    return r6
+
+[case testU16ExplicitConversionFromLiteral]
+from mypy_extensions import u16
+
+def f() -> None:
+    x = u16(0)
+    y = u16(11)
+    z = u16(-3)  # Truncate
+    zz = u16(65538)  # Truncate
+    a = u16(65535)
+[out]
+def f():
+    x, y, z, zz, a :: u16
+L0:
+    x = 0
+    y = 11
+    z = 65533
+    zz = 2
+    a = 65535
+    return 1

@@ -1,5 +1,6 @@
 # builtins stub with non-generic primitive types
 import _typeshed
+import types
 from typing import Generic, TypeVar, Sequence, Iterator, Mapping, Iterable, Tuple, Union
 
 T = TypeVar('T')
@@ -35,20 +36,25 @@ class str(Sequence[str]):
     def __contains__(self, other: object) -> bool: pass
     def __getitem__(self, item: int) -> str: pass
     def format(self, *args: object, **kwargs: object) -> str: pass
+    def join(self, iterable: Iterable[str], /) -> str: pass
+    def split(self, sep: str = ...) -> list[str]: pass
 class bytes(Sequence[int]):
     def __iter__(self) -> Iterator[int]: pass
     def __contains__(self, other: object) -> bool: pass
     def __getitem__(self, item: int) -> int: pass
+    def __eq__(self, other: object) -> bool: pass
 class bytearray(Sequence[int]):
     def __init__(self, x: bytes) -> None: pass
     def __iter__(self) -> Iterator[int]: pass
     def __contains__(self, other: object) -> bool: pass
     def __getitem__(self, item: int) -> int: pass
+    def __eq__(self, other: object) -> bool: pass
 class memoryview(Sequence[int]):
     def __init__(self, x: bytes) -> None: pass
     def __iter__(self) -> Iterator[int]: pass
     def __contains__(self, other: object) -> bool: pass
     def __getitem__(self, item: int) -> int: pass
+    def __eq__(self, other: object) -> bool: pass
 class tuple(Generic[T]):
     def __contains__(self, other: object) -> bool: pass
 class list(Sequence[T]):
@@ -60,10 +66,10 @@ class dict(Mapping[T, V]):
     def __iter__(self) -> Iterator[T]: pass
 class set(Iterable[T]):
     def __iter__(self) -> Iterator[T]: pass
+    def __contains__(self, o: object, /) -> bool: pass
 class frozenset(Iterable[T]):
     def __iter__(self) -> Iterator[T]: pass
 class function: pass
-class ellipsis: pass
 
 class range(Sequence[int]):
     def __init__(self, __x: int, __y: int = ..., __z: int = ...) -> None: pass
@@ -76,3 +82,5 @@ class range(Sequence[int]):
 def isinstance(x: object, t: Union[type, Tuple]) -> bool: pass
 
 class BaseException: pass
+
+class slice: pass

@@ -5,6 +5,187 @@
 
 #include "pythonsupport.h"
 
+#ifdef Py_GIL_DISABLED
+// Cold slow path of CPy_GetAttrRef (declared in pythonsupport.h). First try to
+// acquire a shared reference without locking, then validate that the field still
+// contains v. If validation fails, drop the provisional reference. If the shared
+// incref or validation fails, take the owner's critical section, reload the field,
+// and take a reference while the value cannot be replaced. _Py_XNewRefWithLock
+// also sets maybe-weakref lazily, so later cross-thread reads generally use the
+// lock-free shared-refcount path. Returns NULL if the field is NULL on reload.
+//
+// The reload can be relaxed: acquiring the owner's critical section synchronizes
+// with the writer ending its critical section. A value stored by CPy_InitAttrRef is
+// ordered by the later publication of the owner itself (see CPy_InitAttrRef).
+CPy_NOINLINE
+CPy_COLD
+PyObject *CPy_GetAttrRefSlow(PyObject *v, PyObject *owner, PyObject **field) {
+    if (_Py_TryIncRefShared(v)) {
+        if (v == (PyObject *)_Py_atomic_load_ptr(field)) {
+            return v;
+        }
+        Py_DECREF(v);
+    }
+    PyObject *result;
+    Py_BEGIN_CRITICAL_SECTION(owner);
+    result = _Py_XNewRefWithLock((PyObject *)_Py_atomic_load_ptr_relaxed(field));
+    Py_END_CRITICAL_SECTION();
+    return result;
+}
+
+// Cold slow path of CPyTagged_GetAttr, also used for undefined (CPY_INT_TAG) values.
+// Reload the field with acquire (rather than using an acquire fence after the relaxed
+// load, which TSan doesn't model), so that a long stored with release by
+// CPyTagged_SetAttrSlow is fully visible. Then secure a reference to the PyLong using
+// the CPy_GetAttrRef protocol.
+CPy_NOINLINE
+CPy_COLD
+CPyTagged CPyTagged_GetAttrSlow(PyObject *owner, CPyTagged *field) {
+    CPyTagged v = _Py_atomic_load_uintptr_acquire((uintptr_t *)field);
+    if (CPyTagged_IsPointerFree(v)) {
+        return v;
+    }
+    PyObject *p = (PyObject *)(v & ~CPY_INT_TAG);
+    if (_Py_TryIncrefFast(p)) {
+        return v;
+    }
+    if (_Py_TryIncRefShared(p)) {
+        if (v == _Py_atomic_load_uintptr((uintptr_t *)field)) {
+            return v;
+        }
+        Py_DECREF(p);
+    }
+    Py_BEGIN_CRITICAL_SECTION(owner);
+    v = _Py_atomic_load_uintptr_relaxed((uintptr_t *)field);
+    if (!CPyTagged_IsPointerFree(v)) {
+        _Py_NewRefWithLock((PyObject *)(v & ~CPY_INT_TAG));
+    }
+    Py_END_CRITICAL_SECTION();
+    return v;
+}
+
+// Cold slow path of CPyTagged_SetAttr, used when the new or the old value may be a
+// long. Like CPy_SetAttrRef: store the new value under the owner's critical section
+// and release the old value (if it's a long) after leaving it.
+CPy_NOINLINE
+CPy_COLD
+void CPyTagged_SetAttrSlow(PyObject *owner, CPyTagged *field, CPyTagged value) {
+    CPyTagged old;
+    Py_BEGIN_CRITICAL_SECTION(owner);
+    old = _Py_atomic_load_uintptr_relaxed((uintptr_t *)field);
+    _Py_atomic_store_uintptr_release((uintptr_t *)field, value);
+    Py_END_CRITICAL_SECTION();
+    if (!CPyTagged_IsPointerFree(old)) {
+        Py_DECREF((PyObject *)(old & ~CPY_INT_TAG));
+    }
+}
+#endif
+
+/////////////////////////////////////////
+// Adapted from bltinmodule.c in Python 3.7.0
+PyObject*
+update_bases(PyObject *bases)
+{
+    Py_ssize_t i, j;
+    PyObject *base, *meth, *new_base, *result, *new_bases = NULL;
+    PyObject *stack[1] = {bases};
+    assert(PyTuple_Check(bases));
+
+    Py_ssize_t nargs = PyTuple_GET_SIZE(bases);
+    for (i = 0; i < nargs; i++) {
+        base = PyTuple_GET_ITEM(bases, i);
+        if (PyType_Check(base)) {
+            if (new_bases) {
+                /* If we already have made a replacement, then we append every normal base,
+                   otherwise just skip it. */
+                if (PyList_Append(new_bases, base) < 0) {
+                    goto error;
+                }
+            }
+            continue;
+        }
+        if (PyObject_GetOptionalAttr(base, mypyc_interned_str.__mro_entries__, &meth) < 0) {
+            goto error;
+        }
+        if (!meth) {
+            if (new_bases) {
+                if (PyList_Append(new_bases, base) < 0) {
+                    goto error;
+                }
+            }
+            continue;
+        }
+        new_base = PyObject_Vectorcall(meth, stack, 1, NULL);
+        Py_DECREF(meth);
+        if (!new_base) {
+            goto error;
+        }
+        if (!PyTuple_Check(new_base)) {
+            PyErr_SetString(PyExc_TypeError,
+                            "__mro_entries__ must return a tuple");
+            Py_DECREF(new_base);
+            goto error;
+        }
+        if (!new_bases) {
+            /* If this is a first successful replacement, create new_bases list and
+               copy previously encountered bases. */
+            if (!(new_bases = PyList_New(i))) {
+                Py_DECREF(new_base);
+                goto error;
+            }
+            for (j = 0; j < i; j++) {
+                base = PyTuple_GET_ITEM(bases, j);
+                PyList_SET_ITEM(new_bases, j, base);
+                Py_INCREF(base);
+            }
+        }
+        j = PyList_GET_SIZE(new_bases);
+        if (PyList_SetSlice(new_bases, j, j, new_base) < 0) {
+            Py_DECREF(new_base);
+            goto error;
+        }
+        Py_DECREF(new_base);
+    }
+    if (!new_bases) {
+        return bases;
+    }
+    result = PyList_AsTuple(new_bases);
+    Py_DECREF(new_bases);
+    return result;
+
+error:
+    Py_XDECREF(new_bases);
+    return NULL;
+}
+
+// From Python 3.7's typeobject.c
+int
+init_subclass(PyTypeObject *type, PyObject *kwds)
+{
+    PyObject *super, *func, *result;
+    PyObject *args[2] = {(PyObject *)type, (PyObject *)type};
+
+    super = PyObject_Vectorcall((PyObject *)&PySuper_Type, args, 2, NULL);
+    if (super == NULL) {
+        return -1;
+    }
+
+    func = PyObject_GetAttr(super, mypyc_interned_str.__init_subclass__);
+    Py_DECREF(super);
+    if (func == NULL) {
+        return -1;
+    }
+
+    result = _PyObject_FastCallDict(func, NULL, 0, kwds);
+    Py_DECREF(func);
+    if (result == NULL) {
+        return -1;
+    }
+
+    Py_DECREF(result);
+    return 0;
+}
+
 #if CPY_3_12_FEATURES
 
 // Slow path of CPyLong_AsSsize_tAndOverflow (non-inlined)

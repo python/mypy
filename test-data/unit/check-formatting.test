@@ -60,6 +60,7 @@ a = None # type: Any
 [case testStringInterpolationInvalidPlaceholder]
 '%W' % 1  # E: Unsupported format character "W"
 '%b' % 1  # E: Format character "b" is only supported on bytes patterns
+'%(a)' % {'a': 1}  # E: Unsupported format character ""
 
 [case testStringInterpolationWidth]
 '%2f' % 3.14
@@ -484,7 +485,7 @@ class D(bytes):
 '{}'.format(D())
 [builtins fixtures/primitives.pyi]
 
-[case testNoSpuriousFormattingErrorsDuringFailedOverlodMatch]
+[case testNoSpuriousFormattingErrorsDuringFailedOverloadMatch]
 from typing import overload, Callable
 
 @overload
@@ -630,4 +631,9 @@ Responses.TEMPLATED.format()  # E: Cannot find replacement for positional format
 Responses.TEMPLATED_WITH_KW.format()  # E: Cannot find replacement for named format specifier "value"
 Responses.NORMAL.format(42)  # E: Not all arguments converted during string formatting
 Responses.NORMAL.format(value=42)  # E: Not all arguments converted during string formatting
+[builtins fixtures/primitives.pyi]
+
+[case testDebugFStringReprAutoApplied]
+test = b"abc"
+debug = f"{test=}"  # OK, no str/bytes warning since !r is implicit
 [builtins fixtures/primitives.pyi]

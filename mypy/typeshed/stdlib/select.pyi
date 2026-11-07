@@ -2,8 +2,8 @@ import sys
 from _typeshed import FileDescriptorLike
 from collections.abc import Iterable
 from types import TracebackType
-from typing import Any, ClassVar, Final, TypeVar, final
-from typing_extensions import Never, Self
+from typing import Any, ClassVar, Final, TypeVar, final, overload
+from typing_extensions import Never, Self, deprecated
 
 if sys.platform != "win32":
     PIPE_BUF: Final[int]
@@ -24,6 +24,7 @@ if sys.platform != "win32":
 
     # This is actually a function that returns an instance of a class.
     # The class is not accessible directly, and also calls itself select.poll.
+    @final
     class poll:
         # default value is select.POLLIN | select.POLLPRI | select.POLLOUT
         def register(self, fd: FileDescriptorLike, eventmask: int = 7, /) -> None: ...
@@ -31,9 +32,9 @@ if sys.platform != "win32":
         def unregister(self, fd: FileDescriptorLike, /) -> None: ...
         def poll(self, timeout: float | None = None, /) -> list[tuple[int, int]]: ...
 
-_R = TypeVar("_R", default=Never)
-_W = TypeVar("_W", default=Never)
-_X = TypeVar("_X", default=Never)
+_R = TypeVar("_R", default=Never, bound=FileDescriptorLike)
+_W = TypeVar("_W", default=Never, bound=FileDescriptorLike)
+_X = TypeVar("_X", default=Never, bound=FileDescriptorLike)
 
 def select(
     rlist: Iterable[_R], wlist: Iterable[_W], xlist: Iterable[_X], timeout: float | None = None, /
@@ -52,13 +53,7 @@ if sys.platform != "linux" and sys.platform != "win32":
         ident: int
         udata: Any
         def __init__(
-            self,
-            ident: FileDescriptorLike,
-            filter: int = ...,
-            flags: int = ...,
-            fflags: int = ...,
-            data: Any = ...,
-            udata: Any = ...,
+            self, ident: FileDescriptorLike, filter: int = ..., flags: int = ..., fflags: int = 0, data: Any = 0, udata: Any = 0
         ) -> None: ...
         __hash__: ClassVar[None]  # type: ignore[assignment]
 
@@ -118,12 +113,20 @@ if sys.platform != "linux" and sys.platform != "win32":
 if sys.platform == "linux":
     @final
     class epoll:
-        def __new__(self, sizehint: int = ..., flags: int = ...) -> Self: ...
+        @overload
+        def __new__(self, sizehint: int = -1) -> Self: ...
+        @overload
+        @deprecated(
+            "The `flags` parameter is deprecated since Python 3.4. "
+            "Use `os.set_inheritable()` to make the file descriptor inheritable."
+        )
+        def __new__(self, sizehint: int = -1, flags: int = 0) -> Self: ...
+
         def __enter__(self) -> Self: ...
         def __exit__(
             self,
             exc_type: type[BaseException] | None = None,
-            exc_value: BaseException | None = ...,
+            exc_value: BaseException | None = None,
             exc_tb: TracebackType | None = None,
             /,
         ) -> None: ...
@@ -157,6 +160,7 @@ if sys.platform == "linux":
 
 if sys.platform != "linux" and sys.platform != "darwin" and sys.platform != "win32":
     # Solaris only
+    @final
     class devpoll:
         def close(self) -> None: ...
         closed: bool
@@ -164,4 +168,4 @@ if sys.platform != "linux" and sys.platform != "darwin" and sys.platform != "win
         def register(self, fd: FileDescriptorLike, eventmask: int = ...) -> None: ...
         def modify(self, fd: FileDescriptorLike, eventmask: int = ...) -> None: ...
         def unregister(self, fd: FileDescriptorLike) -> None: ...
-        def poll(self, timeout: float | None = ...) -> list[tuple[int, int]]: ...
+        def poll(self, timeout: float | None = None) -> list[tuple[int, int]]: ...

@@ -318,7 +318,7 @@ BinaryOps: [a, b, c, d, e, f]
 LocalsAndGlobals: [a, g]
 Booleans: [a, b, c, d, e]
 ModuleFinal: [a, b]
-ClassFinal: [F, a]
+ClassFinal: [a]
 Literals: [a, b, c]
 ListComprehension: [a]
 Helper: [x]
@@ -729,3 +729,13 @@ class NestedFunc:
 -- TODO: Support nested functions.
 NestedFunc: []
 f___init___NestedFunc_obj: []
+
+[case testAlwaysDefinedWithVecSetItem]
+from librt.vecs import vec
+
+class C:
+    def __init__(self, v: vec[C]) -> None:
+        self.v = v
+        self.v[0] = self
+[out]
+C: [v]

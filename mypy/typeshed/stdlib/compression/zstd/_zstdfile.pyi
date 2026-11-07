@@ -3,8 +3,7 @@ from collections.abc import Mapping
 from compression._common import _streams
 from compression.zstd import ZstdDict
 from io import TextIOWrapper, _WrappedBuffer
-from typing import Literal, Protocol, overload, type_check_only
-from typing_extensions import TypeAlias
+from typing import Literal, Protocol, TypeAlias, overload, type_check_only
 
 from _zstd import ZstdCompressor, _ZstdCompressorFlushBlock, _ZstdCompressorFlushFrame
 
@@ -36,7 +35,7 @@ class ZstdFile(_streams.BaseStream):
         *,
         level: None = None,
         options: Mapping[int, int] | None = None,
-        zstd_dict: ZstdDict | None = None,
+        zstd_dict: ZstdDict | tuple[ZstdDict, int] | None = None,
     ) -> None: ...
     @overload
     def __init__(
@@ -47,8 +46,9 @@ class ZstdFile(_streams.BaseStream):
         *,
         level: int | None = None,
         options: Mapping[int, int] | None = None,
-        zstd_dict: ZstdDict | None = None,
+        zstd_dict: ZstdDict | tuple[ZstdDict, int] | None = None,
     ) -> None: ...
+
     def write(self, data: ReadableBuffer, /) -> int: ...
     def flush(self, mode: _ZstdCompressorFlushBlock | _ZstdCompressorFlushFrame = 1) -> bytes: ...  # type: ignore[override]
     def read(self, size: int | None = -1) -> bytes: ...
@@ -71,7 +71,7 @@ def open(
     *,
     level: None = None,
     options: Mapping[int, int] | None = None,
-    zstd_dict: ZstdDict | None = None,
+    zstd_dict: ZstdDict | tuple[ZstdDict, int] | None = None,
     encoding: str | None = None,
     errors: str | None = None,
     newline: str | None = None,
@@ -84,7 +84,7 @@ def open(
     *,
     level: int | None = None,
     options: Mapping[int, int] | None = None,
-    zstd_dict: ZstdDict | None = None,
+    zstd_dict: ZstdDict | tuple[ZstdDict, int] | None = None,
     encoding: str | None = None,
     errors: str | None = None,
     newline: str | None = None,
@@ -97,7 +97,7 @@ def open(
     *,
     level: None = None,
     options: Mapping[int, int] | None = None,
-    zstd_dict: ZstdDict | None = None,
+    zstd_dict: ZstdDict | tuple[ZstdDict, int] | None = None,
     encoding: str | None = None,
     errors: str | None = None,
     newline: str | None = None,
@@ -110,7 +110,7 @@ def open(
     *,
     level: int | None = None,
     options: Mapping[int, int] | None = None,
-    zstd_dict: ZstdDict | None = None,
+    zstd_dict: ZstdDict | tuple[ZstdDict, int] | None = None,
     encoding: str | None = None,
     errors: str | None = None,
     newline: str | None = None,

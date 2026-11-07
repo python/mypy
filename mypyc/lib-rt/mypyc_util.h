@@ -17,10 +17,13 @@
 
 #if defined(__clang__) || defined(__GNUC__)
 #define CPy_NOINLINE __attribute__((noinline))
+#define CPy_COLD __attribute__((cold))
 #elif defined(_MSC_VER)
 #define CPy_NOINLINE __declspec(noinline)
+#define CPy_COLD
 #else
 #define CPy_NOINLINE
+#define CPy_COLD
 #endif
 
 #ifndef Py_GIL_DISABLED
@@ -130,6 +133,11 @@ typedef size_t CPyPtr;
 
 typedef PyObject CPyModule;
 
+// Module caches use the low bit to distinguish a module that may still be
+// initializing from one whose initialization has been verified. PyObject
+// pointers are aligned, so the low bit is otherwise unused.
+typedef uintptr_t CPyModuleCache;
+
 // Tag bit used for long integers
 #define CPY_INT_TAG 1
 
@@ -156,10 +164,15 @@ static inline CPyTagged CPyTagged_ShortFromSsize_t(Py_ssize_t x) {
     return x << 1;
 }
 
+static inline int CPyTagged_IsNegative(CPyTagged x) {
+    return ((Py_ssize_t)x) < 0;
+}
+
 // Are we targeting Python 3.X or newer?
 #define CPY_3_11_FEATURES (PY_VERSION_HEX >= 0x030b0000)
 #define CPY_3_12_FEATURES (PY_VERSION_HEX >= 0x030c0000)
 #define CPY_3_14_FEATURES (PY_VERSION_HEX >= 0x030e0000)
+#define CPY_3_15_FEATURES (PY_VERSION_HEX >= 0x030f0000)
 
 #if CPY_3_12_FEATURES
 

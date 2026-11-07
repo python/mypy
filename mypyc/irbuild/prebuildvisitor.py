@@ -4,22 +4,56 @@ from mypy.nodes import (
     AssignmentStmt,
     Block,
     Decorator,
+    DelStmt,
+    DictionaryComprehension,
     Expression,
     FuncDef,
     FuncItem,
+    GeneratorExpr,
     Import,
     LambdaExpr,
+    ListExpr,
     MemberExpr,
     MypyFile,
     NameExpr,
     Node,
+    StrExpr,
     SymbolNode,
+    TupleExpr,
     Var,
 )
-from mypy.traverser import ExtendedTraverserVisitor
+from mypy.traverser import ExtendedTraverserVisitor, TraverserVisitor
 from mypy.types import Type
 from mypyc.errors import Errors
 from mypyc.irbuild.missingtypevisitor import MissingTypesVisitor
+
+
+class _LambdaChecker(TraverserVisitor):
+    """Check whether an AST subtree contains a lambda expression."""
+
+    found = False
+
+    def visit_lambda_expr(self, _o: LambdaExpr) -> None:
+        self.found = True
+
+
+def _comprehension_has_lambda(node: GeneratorExpr | DictionaryComprehension) -> bool:
+    """Return True if a comprehension body contains a lambda.
+
+    Only checks body expressions (left_expr/key/value and conditions),
+    not the sequences, since sequences are evaluated in the enclosing scope.
+    """
+    checker = _LambdaChecker()
+    if isinstance(node, GeneratorExpr):
+        node.left_expr.accept(checker)
+    else:
+        if node.key is not None:
+            node.key.accept(checker)
+        node.value.accept(checker)
+    for conds in node.condlists:
+        for cond in conds:
+            cond.accept(checker)
+    return checker.found
 
 
 class PreBuildVisitor(ExtendedTraverserVisitor):
@@ -63,6 +97,10 @@ class PreBuildVisitor(ExtendedTraverserVisitor):
         # All property setters encountered so far.
         self.prop_setters: set[FuncDef] = set()
 
+        # Local variables that occur in a del statement. This is needed before
+        # their first assignment is lowered (see IRBuilder.get_assignment_target).
+        self.deleted_vars: set[Var] = set()
+
         # A map from any function that contains nested functions to
         # a set of all the functions that are nested within it.
         self.encapsulating_funcs: dict[FuncItem, list[FuncItem]] = {}
@@ -88,6 +126,17 @@ class PreBuildVisitor(ExtendedTraverserVisitor):
 
         self.missing_types_visitor = MissingTypesVisitor(types)
 
+        # Synthetic FuncDef representing the module scope, created on demand
+        # when a comprehension at module/class level contains a lambda.
+        self._module_fitem: FuncDef | None = None
+
+        # Counter for generating unique synthetic comprehension scope names.
+        self._comprehension_counter = 0
+
+        # Map comprehension AST nodes to synthetic FuncDefs representing
+        # their scope (only for comprehensions that contain lambdas).
+        self.comprehension_to_fitem: dict[GeneratorExpr | DictionaryComprehension, FuncDef] = {}
+
     def visit(self, o: Node) -> bool:
         if not isinstance(o, Import):
             self._current_import_group = None
@@ -104,6 +153,17 @@ class PreBuildVisitor(ExtendedTraverserVisitor):
         self._current_import_group = None
         super().visit_block(block)
         self._current_import_group = None
+
+    def visit_del_stmt(self, stmt: DelStmt) -> None:
+        self.record_deleted_names(stmt.expr)
+        super().visit_del_stmt(stmt)
+
+    def record_deleted_names(self, expr: Expression) -> None:
+        if isinstance(expr, NameExpr) and isinstance(expr.node, Var):
+            self.deleted_vars.add(expr.node)
+        elif isinstance(expr, (ListExpr, TupleExpr)):
+            for item in expr.items:
+                self.record_deleted_names(item)
 
     def visit_decorator(self, dec: Decorator) -> None:
         if dec.decorators:
@@ -157,6 +217,55 @@ class PreBuildVisitor(ExtendedTraverserVisitor):
         super().visit_func(func)
         self.funcs.pop()
 
+    def _visit_comprehension_with_scope(self, o: GeneratorExpr | DictionaryComprehension) -> None:
+        """Visit a comprehension that contains lambdas.
+
+        Creates a synthetic FuncDef to represent the comprehension's scope,
+        registers it in the function nesting hierarchy, and traverses the
+        comprehension body with it on the stack.
+        """
+        pushed_module = False
+        if not self.funcs:
+            # At module level: push synthetic module FuncDef.
+            if self._module_fitem is None:
+                self._module_fitem = FuncDef("__mypyc_module__")
+                self._module_fitem.line = 1
+            self.funcs.append(self._module_fitem)
+            pushed_module = True
+
+        # Create synthetic FuncDef for the comprehension scope.
+        comprehension_fdef = FuncDef(f"__comprehension_{self._comprehension_counter}__")
+        self._comprehension_counter += 1
+        comprehension_fdef.line = o.line
+        self.comprehension_to_fitem[o] = comprehension_fdef
+
+        # Register as nested within enclosing function.
+        self.encapsulating_funcs.setdefault(self.funcs[-1], []).append(comprehension_fdef)
+        self.nested_funcs[comprehension_fdef] = self.funcs[-1]
+
+        # Push and traverse.
+        self.funcs.append(comprehension_fdef)
+        if isinstance(o, GeneratorExpr):
+            super().visit_generator_expr(o)
+        else:
+            super().visit_dictionary_comprehension(o)
+        self.funcs.pop()
+
+        if pushed_module:
+            self.funcs.pop()
+
+    def visit_generator_expr(self, o: GeneratorExpr) -> None:
+        if _comprehension_has_lambda(o):
+            self._visit_comprehension_with_scope(o)
+        else:
+            super().visit_generator_expr(o)
+
+    def visit_dictionary_comprehension(self, o: DictionaryComprehension) -> None:
+        if _comprehension_has_lambda(o):
+            self._visit_comprehension_with_scope(o)
+        else:
+            super().visit_dictionary_comprehension(o)
+
     def visit_import(self, imp: Import) -> None:
         if self._current_import_group is not None:
             self.module_import_groups[self._current_import_group].append(imp)
@@ -168,6 +277,17 @@ class PreBuildVisitor(ExtendedTraverserVisitor):
     def visit_name_expr(self, expr: NameExpr) -> None:
         if isinstance(expr.node, (Var, FuncDef)):
             self.visit_symbol_node(expr.node)
+
+    def visit_str_expr(self, o: StrExpr) -> None:
+        # Handle surrogates before main pass to avoid conflicts with various optimizations
+        # like replacing `ord("<some char>")` with its integer value statically, etc.
+        if o.has_surrogates:
+            self.errors.error(
+                "Surrogate codepoints in string literals not supported, use chr(...) instead",
+                self.current_file.path,
+                o.line,
+            )
+        super().visit_str_expr(o)
 
     def visit_var(self, var: Var) -> None:
         self.visit_symbol_node(var)
@@ -182,7 +302,7 @@ class PreBuildVisitor(ExtendedTraverserVisitor):
             orig_func = self.symbols_to_funcs[symbol]
             if self.is_parent(self.funcs[-1], orig_func):
                 # The function in which the symbol was previously seen is
-                # nested within the function currently being visited. Thus
+                # nested within the function currently being visited. Thus,
                 # the current function is a better candidate to contain the
                 # declaration.
                 self.symbols_to_funcs[symbol] = self.funcs[-1]

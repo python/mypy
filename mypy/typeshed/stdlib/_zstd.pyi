@@ -1,8 +1,8 @@
 from _typeshed import ReadableBuffer
 from collections.abc import Mapping
 from compression.zstd import CompressionParameter, DecompressionParameter
-from typing import Final, Literal, final
-from typing_extensions import Self, TypeAlias
+from typing import Final, Literal, TypeAlias, final
+from typing_extensions import Self
 
 ZSTD_CLEVEL_DEFAULT: Final = 3
 ZSTD_DStreamOutSize: Final = 131072
@@ -46,7 +46,10 @@ class ZstdCompressor:
     FLUSH_BLOCK: Final = 1
     FLUSH_FRAME: Final = 2
     def __new__(
-        cls, level: int | None = None, options: Mapping[int, int] | None = None, zstd_dict: ZstdDict | None = None
+        cls,
+        level: int | None = None,
+        options: Mapping[int, int] | None = None,
+        zstd_dict: ZstdDict | tuple[ZstdDict, int] | None = None,
     ) -> Self: ...
     def compress(
         self, /, data: ReadableBuffer, mode: _ZstdCompressorContinue | _ZstdCompressorFlushBlock | _ZstdCompressorFlushFrame = 0
@@ -58,7 +61,9 @@ class ZstdCompressor:
 
 @final
 class ZstdDecompressor:
-    def __new__(cls, zstd_dict: ZstdDict | None = None, options: Mapping[int, int] | None = None) -> Self: ...
+    def __new__(
+        cls, zstd_dict: ZstdDict | tuple[ZstdDict, int] | None = None, options: Mapping[int, int] | None = None
+    ) -> Self: ...
     def decompress(self, /, data: ReadableBuffer, max_length: int = -1) -> bytes: ...
     @property
     def eof(self) -> bool: ...
@@ -69,7 +74,7 @@ class ZstdDecompressor:
 
 @final
 class ZstdDict:
-    def __new__(cls, dict_content: bytes, /, *, is_raw: bool = False) -> Self: ...
+    def __new__(cls, dict_content: ReadableBuffer, /, *, is_raw: bool = False) -> Self: ...
     def __len__(self, /) -> int: ...
     @property
     def as_digested_dict(self) -> tuple[Self, int]: ...

@@ -1,3 +1,5 @@
+import _typeshed
+import types
 from typing import Sequence, Iterator, TypeVar, Mapping, Iterable, Optional, Union, overload, Tuple, Generic, List
 
 class object:
@@ -32,7 +34,6 @@ class bytes(Sequence[int]):
 class bytearray: pass
 class tuple(Generic[T]): pass
 class function: pass
-class ellipsis: pass
 
 # copy-pasted from list.pyi
 class list(Sequence[T]):
@@ -55,7 +56,9 @@ class dict(Mapping[KT, VT]):
     def __contains__(self, item: object) -> int: pass
     def update(self, a: Mapping[KT, VT]) -> None: pass
     @overload
-    def get(self, k: KT) -> Optional[VT]: pass
+    def get(self, key: KT, default: None = None, /) -> Optional[VT]: pass
     @overload
-    def get(self, k: KT, default: Union[KT, T]) -> Union[VT, T]: pass
+    def get(self, key: KT, default: VT, /) -> VT: pass
+    @overload
+    def get(self, key: KT, default: T, /) -> Union[VT, T]: pass
     def __len__(self) -> int: ...

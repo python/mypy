@@ -5,10 +5,13 @@ from __future__ import annotations
 import re
 from unittest import TestCase, skipUnless
 
+from librt.internal import ReadBuffer, WriteBuffer
+
+from mypy.cache import read_tag
 from mypy.erasetype import erase_type, remove_instance_last_known_values
 from mypy.indirection import TypeIndirectionVisitor
 from mypy.join import join_types
-from mypy.meet import meet_types, narrow_declared_type
+from mypy.meet import is_overlapping_types, meet_types, narrow_declared_type
 from mypy.nodes import (
     ARG_NAMED,
     ARG_OPT,
@@ -30,6 +33,7 @@ from mypy.test.helpers import Suite, assert_equal, assert_type, skip
 from mypy.test.typefixture import InterfaceTypeFixture, TypeFixture
 from mypy.typeops import false_only, make_simplified_union, true_only
 from mypy.types import (
+    LITERAL_TYPE,
     AnyType,
     CallableType,
     Instance,
@@ -37,8 +41,10 @@ from mypy.types import (
     NoneType,
     Overloaded,
     ProperType,
+    SentinelValue,
     TupleType,
     Type,
+    TypedDictType,
     TypeOfAny,
     TypeType,
     TypeVarId,
@@ -64,6 +70,25 @@ class TypesSuite(Suite):
 
     def test_any(self) -> None:
         assert_equal(str(AnyType(TypeOfAny.special_form)), "Any")
+
+    def test_sentinel_literal_json_roundtrip(self) -> None:
+        literal = LiteralType(SentinelValue("__main__.MISSING", "MISSING"), self.fx.a)
+        assert_equal(str(literal), "MISSING")
+        data = literal.serialize()
+        assert isinstance(data, dict)
+        roundtrip = LiteralType.deserialize(data)
+        self.assertEqual(roundtrip.value, literal.value)
+        self.assertEqual(roundtrip.fallback.type_ref, self.fx.a.type.fullname)
+
+    def test_sentinel_literal_ff_roundtrip(self) -> None:
+        literal = LiteralType(SentinelValue("__main__.MISSING", "MISSING"), self.fx.a)
+        data = WriteBuffer()
+        literal.write(data)
+        buffer = ReadBuffer(data.getvalue())
+        assert read_tag(buffer) == LITERAL_TYPE
+        roundtrip = LiteralType.read(buffer)
+        self.assertEqual(roundtrip.value, literal.value)
+        self.assertEqual(roundtrip.fallback.type_ref, self.fx.a.type.fullname)
 
     def test_simple_unbound_type(self) -> None:
         u = UnboundType("Foo")
@@ -144,7 +169,7 @@ class TypesSuite(Suite):
                     "X", "X", TypeVarId(1), [], self.fx.o, AnyType(TypeOfAny.from_omitted_generics)
                 )
             ),
-            "X`1",
+            "X",
         )
         assert_equal(
             str(
@@ -157,7 +182,7 @@ class TypesSuite(Suite):
                     AnyType(TypeOfAny.from_omitted_generics),
                 )
             ),
-            "X`1",
+            "X",
         )
 
     def test_generic_function_type(self) -> None:
@@ -194,12 +219,12 @@ class TypesSuite(Suite):
 
     def test_type_alias_expand_once(self) -> None:
         A, target = self.fx.def_alias_1(self.fx.a)
-        assert get_proper_type(A) == target
         assert get_proper_type(target) == target
+        assert get_proper_type(A) == target
 
         A, target = self.fx.def_alias_2(self.fx.a)
-        assert get_proper_type(A) == target
         assert get_proper_type(target) == target
+        assert get_proper_type(A) == target
 
     def test_recursive_nested_in_non_recursive(self) -> None:
         A, _ = self.fx.def_alias_1(self.fx.a)
@@ -222,6 +247,22 @@ class TypesSuite(Suite):
         A.accept(visitor)
         modules = visitor.modules
         assert modules == {"__main__", "builtins"}
+
+    def test_typeddict_type_constructor_signature(self) -> None:
+        typ = TypedDictType({"x": self.fx.o}, {"x"}, set(), self.fx.a, 10, 20)
+
+        assert typ.fallback is self.fx.a
+        assert_equal(typ.line, 10)
+        assert_equal(typ.column, 20)
+        assert not typ.is_closed
+
+        closed = TypedDictType({"x": self.fx.o}, {"x"}, set(), self.fx.a, is_closed=True)
+        assert closed.is_closed
+
+        with self.assertRaises(TypeError):
+            TypedDictType(  # type: ignore[call-arg]
+                {"x": self.fx.o}, {"x"}, set(), self.fx.a, 10, 20, True
+            )
 
 
 class TypeOpsSuite(Suite):
@@ -499,6 +540,7 @@ class TypeOpsSuite(Suite):
         assert_type(Instance, to)
         # The original class still can be false
         assert self.fx.a.can_be_false
+        assert_equal(true_only(self.fx.bool_type), self.fx.lit_true)
 
     def test_true_only_of_union(self) -> None:
         tup_type = self.tuple(AnyType(TypeOfAny.special_form))
@@ -538,6 +580,7 @@ class TypeOpsSuite(Suite):
         assert_type(Instance, fo)
         # The original class still can be true
         assert self.fx.a.can_be_true
+        assert_equal(false_only(self.fx.bool_type), self.fx.lit_false)
 
     def test_false_only_of_union(self) -> None:
         with state.strict_optional_set(True):
@@ -644,6 +687,20 @@ class TypeOpsSuite(Suite):
     def assert_simplified_union(self, original: list[Type], union: Type) -> None:
         assert_equal(make_simplified_union(original), union)
         assert_equal(make_simplified_union(list(reversed(original))), union)
+
+    def test_generic_callable_overlap_is_symmetric(self) -> None:
+        any_type = AnyType(TypeOfAny.from_omitted_generics)
+        outer_t = TypeVarType("T", "T", TypeVarId(1), [], self.fx.o, any_type)
+        outer_s = TypeVarType("S", "S", TypeVarId(2), [], self.fx.o, any_type)
+        generic_t = TypeVarType("T", "T", TypeVarId(-1), [], self.fx.o, any_type)
+
+        callable_type = CallableType([outer_t], [ARG_POS], [None], outer_s, self.fx.function)
+        generic_identity = CallableType(
+            [generic_t], [ARG_POS], [None], generic_t, self.fx.function, variables=[generic_t]
+        )
+
+        assert is_overlapping_types(callable_type, generic_identity)
+        assert is_overlapping_types(generic_identity, callable_type)
 
     # Helpers
 
@@ -783,21 +840,45 @@ class JoinSuite(Suite):
             self.assert_join(t, UnboundType("X"), self.fx.anyt)
 
     def test_any_type(self) -> None:
-        # Join against 'Any' type always results in 'Any'.
         with state.strict_optional_set(False):
             self.assert_join(NoneType(), self.fx.anyt, self.fx.anyt)
 
         for t in [
-            self.fx.anyt,
             self.fx.a,
-            self.fx.o,
-            NoneType(),
             UnboundType("x"),
             self.fx.t,
             self.tuple(),
             self.callable(self.fx.a, self.fx.b),
         ]:
-            self.assert_join(t, self.fx.anyt, self.fx.anyt)
+            self.assert_join(t, self.fx.anyt, UnionType([t, self.fx.anyt]))
+            self.assert_join(self.fx.anyt, t, UnionType([t, self.fx.anyt]))
+
+        self.assert_join(self.fx.anyt, self.fx.anyt, self.fx.anyt)
+
+        self.assert_join(self.fx.o, self.fx.anyt, self.fx.o)
+        self.assert_join(NoneType(), self.fx.anyt, UnionType([self.fx.anyt, NoneType()]))
+        self.assert_join(UninhabitedType(), self.fx.anyt, self.fx.anyt)
+
+        self.assert_join(self.fx.anyt, self.fx.o, self.fx.o)
+        self.assert_join(self.fx.anyt, NoneType(), UnionType([self.fx.anyt, NoneType()]))
+        self.assert_join(self.fx.anyt, UninhabitedType(), self.fx.anyt)
+
+    def test_any_type_with_union(self) -> None:
+        self.assert_join(
+            UnionType([self.fx.a, self.fx.anyt]),
+            self.fx.anyt,
+            UnionType([self.fx.a, self.fx.anyt]),
+        )
+        self.assert_join(
+            self.fx.anyt,
+            UnionType([self.fx.a, self.fx.anyt]),
+            UnionType([self.fx.a, self.fx.anyt]),
+        )
+        self.assert_join(
+            UnionType([self.fx.a, self.fx.anyt]),
+            UnionType([self.fx.a, self.fx.anyt]),
+            UnionType([self.fx.a, self.fx.anyt]),
+        )
 
     def test_mixed_truth_restricted_type_simple(self) -> None:
         # make_simplified_union against differently restricted truthiness types drops restrictions.
@@ -828,7 +909,7 @@ class JoinSuite(Suite):
         with state.strict_optional_set(True):
             self.assert_join(self.fx.ga, self.fx.nonet, UnionType([self.fx.ga, NoneType()]))
 
-        self.assert_join(self.fx.ga, self.fx.anyt, self.fx.anyt)
+        self.assert_join(self.fx.ga, self.fx.anyt, UnionType([self.fx.ga, self.fx.anyt]))
 
         for t in [
             self.fx.a,
@@ -881,7 +962,9 @@ class JoinSuite(Suite):
         self.assert_join(
             self.callable(self.fx.a, self.fx.a, self.fx.anyt, self.fx.a),
             self.callable(self.fx.a, self.fx.anyt, self.fx.a, self.fx.anyt),
-            self.callable(self.fx.a, self.fx.anyt, self.fx.anyt, self.fx.anyt),
+            self.callable(
+                self.fx.a, self.fx.anyt, self.fx.anyt, UnionType([self.fx.a, self.fx.anyt])
+            ),
         )
 
     def test_overloaded(self) -> None:
@@ -959,12 +1042,14 @@ class JoinSuite(Suite):
 
     def test_type_type(self) -> None:
         self.assert_join(self.fx.type_a, self.fx.type_b, self.fx.type_a)
-        self.assert_join(self.fx.type_b, self.fx.type_any, self.fx.type_any)
+        self.assert_join(
+            self.fx.type_b, self.fx.type_any, UnionType([self.fx.type_b, self.fx.type_any])
+        )
         self.assert_join(self.fx.type_b, self.fx.type_type, self.fx.type_type)
         self.assert_join(self.fx.type_b, self.fx.type_c, self.fx.type_a)
         self.assert_join(self.fx.type_c, self.fx.type_d, TypeType.make_normalized(self.fx.o))
         self.assert_join(self.fx.type_type, self.fx.type_any, self.fx.type_type)
-        self.assert_join(self.fx.type_b, self.fx.anyt, self.fx.anyt)
+        self.assert_join(self.fx.type_b, self.fx.anyt, UnionType([self.fx.type_b, self.fx.anyt]))
 
     def test_literal_type(self) -> None:
         a = self.fx.a
@@ -978,7 +1063,7 @@ class JoinSuite(Suite):
         self.assert_join(lit1, d, self.fx.o)
         self.assert_join(lit1, lit2, a)
         self.assert_join(lit1, lit3, self.fx.o)
-        self.assert_join(lit1, self.fx.anyt, self.fx.anyt)
+        self.assert_join(lit1, self.fx.anyt, UnionType([lit1, self.fx.anyt]))
         self.assert_join(UnionType([lit1, lit2]), lit2, UnionType([lit1, lit2]))
         self.assert_join(UnionType([lit1, lit2]), a, a)
         self.assert_join(UnionType([lit1, lit3]), a, UnionType([a, lit3]))
@@ -1267,7 +1352,12 @@ class MeetSuite(Suite):
         self.assert_meet(
             self.callable(self.fx.a, self.fx.a, self.fx.anyt, self.fx.a),
             self.callable(self.fx.a, self.fx.anyt, self.fx.a, self.fx.anyt),
-            self.callable(self.fx.a, self.fx.anyt, self.fx.anyt, self.fx.anyt),
+            self.callable(
+                self.fx.a,
+                UnionType([self.fx.a, self.fx.anyt]),
+                UnionType([self.fx.a, self.fx.anyt]),
+                self.fx.a,
+            ),
         )
 
     def test_meet_interface_types(self) -> None:

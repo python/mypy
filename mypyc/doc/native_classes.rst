@@ -66,6 +66,12 @@ classes:
 * ``LookupError``
 * ``UserWarning``
 
+A native class can't inherit from a base class with type ``Any``, such
+as a class imported from a module that isn't type checked, even
+indirectly through other base classes, since mypyc needs to know the
+layout of all base classes. Use a
+:ref:`non-native class <non-native-classes>` instead.
+
 By default, a non-native class can't inherit a native class, and you
 can't inherit from a native class outside the compilation unit that
 defines the class. You can enable these through
@@ -82,6 +88,60 @@ of instances of the native class.  Accessing methods and attributes of
 a *non-native* subclass (or a subclass defined in another compilation
 unit) will be slower, since it needs to use the normal Python
 attribute access mechanism.
+
+Note that setting the value of an attribute inherited from a native class
+in the body of the interpreted subclass *does not* update the value of
+the native attribute. This leads to native and interpreted code observing
+different values of the attribute::
+
+    # native module
+    from mypy_extensions import mypyc_attr
+
+    @mypyc_attr(allow_interpreted_subclasses=True)
+    class Base:
+        value = 1
+
+        def read_value(self) -> int:
+            return self.value
+
+    # interpreted module
+    from native import Base
+
+    class Child(Base):
+        value = 98
+
+    obj = Child()
+    print(obj.value)         # 98
+    print(obj.read_value())  # 1
+
+When methods are marked `@final` in a native class that allows interpreted
+subclasses, mypyc assumes that no overrides are possible and optimizes calls
+to these methods. This means that if a subclass overrides a final method,
+calls through the compiled base class will still resolve to the base method::
+
+    # native module
+    from typing import final
+    from mypy_extensions import mypyc_attr
+
+    @mypyc_attr(allow_interpreted_subclasses=True)
+    class Base:
+        @final
+        def name(self) -> str:
+            return "base"
+
+        def call_name(self) -> str:
+            return self.name()
+
+    # interpreted module
+    from final_native import Base
+
+    class Child(Base):
+        def name(self) -> str:
+            return "child"
+
+    obj = Child()
+    print(obj.name())       # child
+    print(obj.call_name())  # base
 
 You need to install ``mypy-extensions`` to use ``@mypyc_attr``:
 
@@ -177,6 +237,8 @@ efficient as pure native classes.
    If a class definition uses an unsupported class decorator, *mypyc
    compiles the class into a regular Python class* (non-native class).
 
+.. _non-native-classes:
+
 Defining non-native classes
 ---------------------------
 
@@ -265,6 +327,38 @@ refer to attributes. These are not valid::
        __deletable__ = a  # Error: cannot use variable 'a'
 
    __deletable__ = ('a',)  # Error: not in a class body
+
+Acyclic classes
+---------------
+
+By default, native classes participate in CPython's cyclic garbage
+collector (GC). This adds some overhead to object allocation and
+deallocation. If you know that instances of a class can never be
+part of reference cycles, you can opt out of cyclic GC using
+``@mypyc_attr(acyclic=True)``::
+
+    from mypy_extensions import mypyc_attr
+
+    @mypyc_attr(acyclic=True)
+    class Leaf:
+        def __init__(self, x: int, name: str) -> None:
+            self.x = x
+            self.name = name
+
+This can improve performance, especially for classes that are
+allocated and deallocated frequently. Acyclic instances also use
+less memory, since CPython doesn't need to add a GC header to them.
+
+The acyclic property is not inherited by subclasses. Each subclass
+must explicitly use ``@mypyc_attr(acyclic=True)`` to also opt out
+of cyclic GC.
+
+.. warning::
+
+    If instances of an acyclic class actually participate in reference
+    cycles, those cycles will never be collected, resulting in memory
+    leaks. Only use this for classes whose instances won't refer back
+    to objects that (directly or indirectly) refer to the instance.
 
 Other properties
 ----------------

@@ -1,4 +1,5 @@
 import _typeshed
+import types
 from typing import (
     Generic, Iterator, Iterable, Mapping, Optional, Sequence, Tuple,
     TypeVar, Union, overload,
@@ -17,7 +18,6 @@ class object:
     def __ne__(self, o: object) -> bool: pass
 
 class type: pass
-class ellipsis: pass
 class tuple(Generic[_T]): pass
 class int: pass
 class float: pass
@@ -38,9 +38,11 @@ class dict(Mapping[KT, VT]):
     def __contains__(self, item: object) -> int: pass
     def update(self, a: Mapping[KT, VT]) -> None: pass
     @overload
-    def get(self, k: KT) -> Optional[VT]: pass
+    def get(self, key: KT, default: None = None, /) -> Optional[VT]: pass
     @overload
-    def get(self, k: KT, default: Union[KT, _T]) -> Union[VT, _T]: pass
+    def get(self, key: KT, default: VT, /) -> VT: pass
+    @overload
+    def get(self, key: KT, default: _T, /) -> Union[VT, _T]: pass
     def __len__(self) -> int: ...
 
 class list(Generic[_T], Sequence[_T]):

@@ -1,6 +1,5 @@
 from collections.abc import Callable
-from typing import Any
-from typing_extensions import TypeAlias
+from typing import Any, TypeAlias
 
 __all__ = ["getline", "clearcache", "checkcache", "lazycache"]
 

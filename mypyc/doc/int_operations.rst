@@ -9,9 +9,11 @@ Mypyc supports these integer types:
 * ``i64`` (64-bit signed integer)
 * ``i32`` (32-bit signed integer)
 * ``i16`` (16-bit signed integer)
+* ``u32`` (32-bit unsigned integer)
+* ``u16`` (16-bit unsigned integer)
 * ``u8`` (8-bit unsigned integer)
 
-``i64``, ``i32``, ``i16`` and ``u8`` are *native integer types* and
+``i64``, ``i32``, ``i16``, ``u32``, ``u16`` and ``u8`` are *native integer types* and
 are available in the ``mypy_extensions`` module. ``int`` corresponds
 to the Python ``int`` type, but uses a more efficient runtime
 representation (tagged pointer). Native integer types are value types.
@@ -35,6 +37,8 @@ Construction
 * ``int(x: i64)``
 * ``int(x: i32)``
 * ``int(x: i16)``
+* ``int(x: u32)``
+* ``int(x: u16)``
 * ``int(x: u8)``
 * ``int(x: str)``
 * ``int(x: str, base: int)``
@@ -47,6 +51,8 @@ Construction
 * ``i64(x: i64)`` (no-op)
 * ``i64(x: i32)``
 * ``i64(x: i16)``
+* ``i64(x: u32)``
+* ``i64(x: u16)``
 * ``i64(x: u8)``
 * ``i64(x: str)``
 * ``i64(x: str, base: int)``
@@ -58,6 +64,8 @@ Construction
 * ``i32(x: i64)`` (truncate)
 * ``i32(x: i32)`` (no-op)
 * ``i32(x: i16)``
+* ``i32(x: u32)`` (truncate)
+* ``i32(x: u16)``
 * ``i32(x: u8)``
 * ``i32(x: str)``
 * ``i32(x: str, base: int)``
@@ -69,9 +77,49 @@ Construction
 * ``i16(x: i64)`` (truncate)
 * ``i16(x: i32)`` (truncate)
 * ``i16(x: i16)`` (no-op)
+* ``i16(x: u32)`` (truncate)
+* ``i16(x: u16)`` (truncate)
 * ``i16(x: u8)``
 * ``i16(x: str)``
 * ``i16(x: str, base: int)``
+
+``u32`` type:
+
+* ``u32(x: int)``
+* ``u32(x: float)``
+* ``u32(x: i64)`` (truncate)
+* ``u32(x: i32)`` (truncate)
+* ``u32(x: i16)`` (truncate)
+* ``u32(x: u32)`` (no-op)
+* ``u32(x: u16)``
+* ``u32(x: u8)``
+* ``u32(x: str)``
+* ``u32(x: str, base: int)``
+
+``u16`` type:
+
+* ``u16(x: int)``
+* ``u16(x: float)``
+* ``u16(x: i64)`` (truncate)
+* ``u16(x: u32)`` (truncate)
+* ``u16(x: i32)`` (truncate)
+* ``u16(x: i16)`` (truncate)
+* ``u16(x: u16)`` (no-op)
+* ``u16(x: u8)``
+* ``u16(x: str)``
+* ``u16(x: str, base: int)``
+
+``u8`` type:
+
+* ``u8(x: int)``
+* ``u8(x: float)``
+* ``u8(x: i64)`` (truncate)
+* ``u8(x: i32)`` (truncate)
+* ``u8(x: i16)`` (truncate)
+* ``u8(x: u16)`` (truncate)
+* ``u8(x: u8)`` (no-op)
+* ``u8(x: str)``
+* ``u8(x: str, base: int)``
 
 Conversions from ``int`` to a native integer type raise
 ``OverflowError`` if the value is too large or small. Conversions from
@@ -121,7 +169,7 @@ the type. For this reason, the arbitrary-precision ``int`` type is
 recommended for signed values unless the performance of integer
 operations is critical.
 
-Operations on unsigned integers (``u8``) wrap around on overflow.
+Operations on unsigned integers (``u32``, ``u16`` and ``u8``) wrap around on overflow.
 
 It's a compile-time error to mix different native integer types in a
 binary operation such as addition. An explicit conversion is required::
@@ -142,6 +190,24 @@ and the ``int`` operand is coerced to the native integer type::
       ...
       b = 1 - x
       # Similarly, type of "b" is "i64"
+
+Functions
+---------
+
+* ``abs(n)``
+
+Attributes
+----------
+
+* ``n.real`` (``int`` only)
+* ``n.imag`` (``int`` only)
+
+Methods
+-------
+
+* ``n.bit_length()``
+* ``n.to_bytes(length: int, byteorder: str)``
+* ``n.to_bytes(length: int, byteorder: str, signed: bool)``
 
 Statements
 ----------

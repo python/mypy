@@ -749,7 +749,7 @@ def bad(x: str) -> str: ...
 reveal_type(ci.from_item(conv))  # N: Revealed type is "builtins.str"
 ci.from_item(bad)  # E: Argument 1 to "from_item" of "C" has incompatible type "Callable[[str], str]"; expected "Callable[[int], str]"
 
-[case testSelfTypeRestrictedMethodOverloadInit_no_parallel]
+[case testSelfTypeRestrictedMethodOverloadInit]
 from typing import TypeVar
 from lib import P, C
 
@@ -767,8 +767,8 @@ class SubP(P[T]):
 
 SubP('no')  # E: No overload variant of "SubP" matches argument type "str" \
             # N: Possible overload variants: \
-            # N:     def [T] __init__(self, use_str: Literal[True]) -> SubP[T] \
-            # N:     def [T] __init__(self, use_str: Literal[False]) -> SubP[T]
+            # N:     def [T] SubP(use_str: Literal[True]) -> SubP[T] \
+            # N:     def [T] SubP(use_str: Literal[False]) -> SubP[T]
 
 # This is a bit unfortunate: we don't have a way to map the overloaded __init__ to subtype.
 x = SubP(use_str=True)  # E: Need type annotation for "x"
@@ -1058,7 +1058,7 @@ class A:
     def f(x: int) -> None: ...
     def g(self: None) -> None: ...
 [out]
-main:3: error: Self argument missing for a non-static method (or an invalid type for self)
+main:3: error: "self" parameter missing for a non-static method (or an invalid type for self)
 main:4: error: The erased type of self "None" is not a supertype of its class "__main__.A"
 
 [case testUnionPropertyField]
@@ -1548,6 +1548,24 @@ class D(C): ...
 reveal_type(D.meth())  # N: Revealed type is "__main__.D"
 reveal_type(D.bad())  # N: Revealed type is "Never"
 [builtins fixtures/classmethod.pyi]
+
+[case testTypingSelfAnnotatedType]
+# See: https://github.com/python/mypy/issues/21917
+
+from typing import Self
+from typing_extensions import Annotated
+
+class C:
+    def foo(self: Annotated[Self, "some_metadata"], x: int) -> None:
+        ...
+
+    @classmethod
+    def bar(cls: Annotated[type[Self], "some_metadata"], x: int) -> None:
+        ...
+
+reveal_type(C.foo) # N: Revealed type is "def [Self <: __main__.C] (self: Self`2, x: builtins.int)"
+reveal_type(C.bar) # N: Revealed type is "def (x: builtins.int)"
+[builtins fixtures/tuple.pyi]
 
 [case testTypingSelfOverload]
 from typing import Self, overload, Union
@@ -2296,8 +2314,8 @@ class A:
 
     @classmethod
     def other_meth(cls) -> Self:
-        reveal_type(cls.meth)  # N: Revealed type is "def [Self <: __main__.A] (self: Self`1) -> Self`1"
-        reveal_type(A.meth)  # N: Revealed type is "def [Self <: __main__.A] (self: Self`2) -> Self`2"
+        reveal_type(cls.meth)  # N: Revealed type is "def [Self <: __main__.A] (self: Self`2) -> Self`2"
+        reveal_type(A.meth)  # N: Revealed type is "def [Self <: __main__.A] (self: Self`3) -> Self`3"
         return cls().meth()
 
 class B:

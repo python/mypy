@@ -52,7 +52,7 @@ class TestRefCountTransform(MypycDataSuite):
                 for fn in ir:
                     if fn.name == TOP_LEVEL_NAME and not testcase.name.endswith("_toplevel"):
                         continue
-                    insert_uninit_checks(fn)
+                    insert_uninit_checks(fn, True)
                     insert_ref_count_opcodes(fn)
                     actual.extend(format_func(fn))
 

@@ -4,8 +4,8 @@ import types
 from _typeshed import SupportsKeysAndGetItem, Unused
 from builtins import property as _builtins_property
 from collections.abc import Callable, Iterable, Iterator, Mapping
-from typing import Any, Final, Generic, Literal, TypeVar, overload
-from typing_extensions import Self, TypeAlias, disjoint_base
+from typing import Any, Final, Generic, Literal, SupportsIndex, TypeAlias, TypeVar, overload
+from typing_extensions import Self, disjoint_base
 
 __all__ = ["EnumMeta", "Enum", "IntEnum", "Flag", "IntFlag", "auto", "unique"]
 
@@ -37,6 +37,8 @@ if sys.version_info >= (3, 11):
 
 if sys.version_info >= (3, 13):
     __all__ += ["EnumDict"]
+if sys.version_info >= (3, 15):
+    __all__ += ["show_flag_values", "bin"]
 
 _EnumMemberT = TypeVar("_EnumMemberT")
 _EnumerationT = TypeVar("_EnumerationT", bound=type[Enum])
@@ -81,6 +83,7 @@ class _EnumDict(dict[str, Any]):
         def update(self, members: SupportsKeysAndGetItem[str, Any], **more_members: Any) -> None: ...
         @overload
         def update(self, members: Iterable[tuple[str, Any]], **more_members: Any) -> None: ...
+
     if sys.version_info >= (3, 13):
         @property
         def member_names(self) -> list[str]: ...
@@ -113,11 +116,9 @@ class EnumMeta(type):
     if sys.version_info >= (3, 12):
         def __contains__(self: type[Any], value: object) -> bool: ...
     elif sys.version_info >= (3, 11):
-        def __contains__(self: type[Any], member: object) -> bool: ...
-    elif sys.version_info >= (3, 10):
-        def __contains__(self: type[Any], obj: object) -> bool: ...
+        def __contains__(self: type[Any], member: Enum) -> bool: ...
     else:
-        def __contains__(self: type[Any], member: object) -> bool: ...
+        def __contains__(self: type[Any], obj: Enum) -> bool: ...
 
     def __getitem__(self: type[_EnumMemberT], name: str) -> _EnumMemberT: ...
     @_builtins_property
@@ -255,6 +256,7 @@ _auto_null: Any
 class Flag(Enum):
     _name_: str | None  # type: ignore[assignment]
     _value_: int
+    _numeric_repr_: Callable[[int], str]
     @_magic_enum_attr
     def name(self) -> str | None: ...  # type: ignore[override]
     @_magic_enum_attr
@@ -310,6 +312,7 @@ if sys.version_info >= (3, 11):
     def global_enum_repr(self: Enum) -> str: ...
     def global_flag_repr(self: Flag) -> str: ...
     def show_flag_values(value: int) -> list[int]: ...
+    def bin(num: SupportsIndex, max_bits: int | None = None) -> str: ...
 
 if sys.version_info >= (3, 12):
     # The body of the class is the same, but the base classes are different.

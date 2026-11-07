@@ -1,20 +1,13 @@
-import builtins
 import sys
 import types
 from _typeshed import ReadableBuffer, SupportsRead, SupportsWrite
-from typing import Any, Final
-from typing_extensions import TypeAlias
+from typing import Any, Final, TypeAlias
 
 version: Final[int]
 
 _Marshallable: TypeAlias = (
-    # handled in w_object() in marshal.c
-    None
-    | type[StopIteration]
-    | builtins.ellipsis
-    | bool
     # handled in w_complex_object() in marshal.c
-    | int
+    int
     | float
     | complex
     | bytes
@@ -26,9 +19,18 @@ _Marshallable: TypeAlias = (
     | frozenset[_Marshallable]
     | types.CodeType
     | ReadableBuffer
+    # handled in w_object() in marshal.c
+    | type[StopIteration]
+    | types.EllipsisType
+    | bool
+    | None
 )
 
-if sys.version_info >= (3, 14):
+if sys.version_info >= (3, 15):
+    def dump(value: _Marshallable, file: SupportsWrite[bytes], version: int = 6, /, *, allow_code: bool = True) -> None: ...
+    def dumps(value: _Marshallable, version: int = 6, /, *, allow_code: bool = True) -> bytes: ...
+
+elif sys.version_info >= (3, 14):
     def dump(value: _Marshallable, file: SupportsWrite[bytes], version: int = 5, /, *, allow_code: bool = True) -> None: ...
     def dumps(value: _Marshallable, version: int = 5, /, *, allow_code: bool = True) -> bytes: ...
 

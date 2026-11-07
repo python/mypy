@@ -48,24 +48,17 @@ def f(s: str, num: int) -> None:
 def f(s, num):
     s :: str
     num :: int
-    r0 :: object
-    r1 :: str
-    r2, r3, a :: object
-    r4 :: bytes
-    b, r5 :: object
-    r6 :: bytes
-    c :: object
+    r0, a, r1, b :: bytearray
+    r2 :: object
+    r3, c :: bytearray
 L0:
-    r0 = builtins :: module
-    r1 = 'bytearray'
-    r2 = CPyObject_GetAttr(r0, r1)
-    r3 = PyObject_Vectorcall(r2, 0, 0, 0)
-    a = r3
-    r4 = PyByteArray_FromObject(s)
-    b = r4
-    r5 = box(int, num)
-    r6 = PyByteArray_FromObject(r5)
-    c = r6
+    r0 = CPyByteArray_New()
+    a = r0
+    r1 = PyByteArray_FromObject(s)
+    b = r1
+    r2 = box(int, num)
+    r3 = PyByteArray_FromObject(r2)
+    c = r3
     return 1
 
 [case testBytesEquality]
@@ -106,16 +99,127 @@ L0:
     r0 = CPyBytes_GetSlice(a, start, end)
     return r0
 
+[case testBytearrayFromBytesSlice]
+def f(a: bytes, start: int, end: int) -> bytearray:
+    return bytearray(a[start:end])
+
+def from_start(a: bytes, start: int) -> bytearray:
+    return bytearray(a[start:])
+
+def to_end(a: bytes, end: int) -> bytearray:
+    return bytearray(a[:end])
+
+def full(a: bytes) -> bytearray:
+    return bytearray(a[:])
+[out]
+def f(a, start, end):
+    a :: bytes
+    start, end :: int
+    r0 :: bytearray
+L0:
+    r0 = CPyByteArray_FromBytesSlice(a, start, end)
+    return r0
+def from_start(a, start):
+    a :: bytes
+    start, r0 :: int
+    r1 :: bytearray
+L0:
+    r0 = <error> :: int
+    r1 = CPyByteArray_FromBytesSlice(a, start, r0)
+    return r1
+def to_end(a, end):
+    a :: bytes
+    end, r0 :: int
+    r1 :: bytearray
+L0:
+    r0 = <error> :: int
+    r1 = CPyByteArray_FromBytesSlice(a, r0, end)
+    return r1
+def full(a):
+    a :: bytes
+    r0, r1 :: int
+    r2 :: bytearray
+L0:
+    r0 = <error> :: int
+    r1 = <error> :: int
+    r2 = CPyByteArray_FromBytesSlice(a, r0, r1)
+    return r2
+
+[case testBytearrayFromBytesSliceFixedWidth_64bit]
+from mypy_extensions import i32, i64
+
+def f(a: bytes, start: i32, end: i64) -> bytearray:
+    return bytearray(a[start:end])
+[out]
+def f(a, start, end):
+    a :: bytes
+    start :: i32
+    end :: i64
+    r0 :: native_int
+    r1 :: int
+    r2, r3 :: bit
+    r4, r5, r6 :: int
+    r7 :: bytearray
+L0:
+    r0 = extend signed start: i32 to native_int
+    r1 = r0 << 1
+    r2 = end <= 4611686018427387903 :: signed
+    if r2 goto L1 else goto L2 :: bool
+L1:
+    r3 = end >= -4611686018427387904 :: signed
+    if r3 goto L3 else goto L2 :: bool
+L2:
+    r4 = CPyTagged_FromInt64(end)
+    r5 = r4
+    goto L4
+L3:
+    r6 = end << 1
+    r5 = r6
+L4:
+    r7 = CPyByteArray_FromBytesSlice(a, r1, r5)
+    return r7
+
+[case testBytearrayFromBytesSliceWithStep]
+def f(a: bytes, start: int, end: int, step: int) -> bytearray:
+    return bytearray(a[start:end:step])
+[out]
+def f(a, start, end, step):
+    a :: bytes
+    start, end, step :: int
+    r0, r1, r2, r3, r4 :: object
+    r5 :: bytes
+    r6 :: bytearray
+L0:
+    r0 = box(int, start)
+    r1 = box(int, end)
+    r2 = box(int, step)
+    r3 = PySlice_New(r0, r1, r2)
+    r4 = PyObject_GetItem(a, r3)
+    r5 = cast(bytes, r4)
+    r6 = PyByteArray_FromObject(r5)
+    return r6
+
 [case testBytesIndex]
-def f(a: bytes, i: int) -> int:
+from mypy_extensions import i64
+
+def f(a: bytes, i: i64) -> int:
     return a[i]
 [out]
 def f(a, i):
     a :: bytes
-    i, r0 :: int
+    i, r0 :: i64
+    r1, r2 :: bool
+    r3 :: int
 L0:
-    r0 = CPyBytes_GetItem(a, i)
-    return r0
+    r0 = CPyBytes_AdjustIndex(a, i)
+    r1 = CPyBytes_RangeCheck(a, r0)
+    if r1 goto L2 else goto L1 :: bool
+L1:
+    r2 = raise IndexError('index out of range')
+    unreachable
+L2:
+    r3 = CPyBytes_GetItemUnsafe(a, r0)
+    return r3
 
 [case testBytesConcat]
 def f(a: bytes, b: bytes) -> bytes:
@@ -159,31 +263,39 @@ def f(var: bytes, num: int) -> None:
     b2 = b'aaaa%bbbbb%s%d' % (var, var, num)
     b3 = b'%b' % var
     b4 = b'%ssss' % var
+    b5 = b'%d' % num
+    b6 = b'%d' % 42
+    b7 = b'%d' % (67 + 2)
 [typing fixtures/typing-full.pyi]
 [out]
 def f(var, num):
     var :: bytes
     num :: int
-    r0, r1, r2, b1, r3 :: bytes
-    r4 :: tuple[bytes, bytes, int]
-    r5, r6 :: object
-    r7, b2, r8, b3, r9, r10, b4 :: bytes
+    r0, r1, r2, b1, r3, r4, r5, r6, b2, r7, b3, r8, r9, b4, r10, r11, b5, r12, r13, b6, r14, r15, b7 :: bytes
 L0:
     r0 = b'aaaa'
     r1 = b'bbbb'
     r2 = CPyBytes_Build(4, r0, var, r1, var)
     b1 = r2
-    r3 = b'aaaa%bbbbb%s%d'
-    r4 = (var, var, num)
-    r5 = box(tuple[bytes, bytes, int], r4)
-    r6 = PyNumber_Remainder(r3, r5)
-    r7 = cast(bytes, r6)
-    b2 = r7
-    r8 = CPyBytes_Build(1, var)
-    b3 = r8
-    r9 = b'sss'
-    r10 = CPyBytes_Build(2, var, r9)
-    b4 = r10
+    r3 = CPyTagged_AsciiBytes(num)
+    r4 = b'aaaa'
+    r5 = b'bbbb'
+    r6 = CPyBytes_Build(5, r4, var, r5, var, r3)
+    b2 = r6
+    r7 = CPyBytes_Build(1, var)
+    b3 = r7
+    r8 = b'sss'
+    r9 = CPyBytes_Build(2, var, r8)
+    b4 = r9
+    r10 = CPyTagged_AsciiBytes(num)
+    r11 = CPyBytes_Build(1, r10)
+    b5 = r11
+    r12 = b'42'
+    r13 = CPyBytes_Build(1, r12)
+    b6 = r13
+    r14 = b'69'
+    r15 = CPyBytes_Build(1, r14)
+    b7 = r15
     return 1
 
 [case testOptionalBytesEquality]
@@ -261,3 +373,29 @@ L0:
     r0 = CPyBytes_Startswith(a, b)
     r1 = truncate r0: i32 to builtins.bool
     return r1
+
+[case testBytesEndsWith]
+def f(a: bytes, b: bytes) -> bool:
+    return a.endswith(b)
+[out]
+def f(a, b):
+    a, b :: bytes
+    r0 :: i32
+    r1 :: bool
+L0:
+    r0 = CPyBytes_Endswith(a, b)
+    r1 = truncate r0: i32 to builtins.bool
+    return r1
+
+[case testBytesVsBytearray]
+def bytes_func(b: bytes) -> None: pass
+def bytearray_func(ba: bytearray) -> None: pass
+
+def foo(b: bytes, ba: bytearray) -> None:
+    bytes_func(b)
+    bytearray_func(ba)
+    bytes_func(ba)
+    bytearray_func(b)
+[out]
+main:7: error: Argument 1 to "bytes_func" has incompatible type "bytearray"; expected "bytes"
+main:8: error: Argument 1 to "bytearray_func" has incompatible type "bytes"; expected "bytearray"

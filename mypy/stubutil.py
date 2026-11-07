@@ -31,7 +31,7 @@ from mypy.types import (
 )
 
 # Modules that may fail when imported, or that may have side effects (fully qualified).
-NOT_IMPORTABLE_MODULES = ()
+NOT_IMPORTABLE_MODULES: tuple[str, ...] = ()
 
 # Typing constructs to be replaced by their builtin equivalents.
 TYPING_BUILTIN_REPLACEMENTS: Final = {

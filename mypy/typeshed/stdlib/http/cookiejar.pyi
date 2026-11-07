@@ -1,4 +1,3 @@
-import sys
 from _typeshed import StrPath
 from collections.abc import Iterator, Sequence
 from http.client import HTTPResponse
@@ -49,9 +48,7 @@ class FileCookieJar(CookieJar):
     def load(self, filename: str | None = None, ignore_discard: bool = False, ignore_expires: bool = False) -> None: ...
     def revert(self, filename: str | None = None, ignore_discard: bool = False, ignore_expires: bool = False) -> None: ...
 
-class MozillaCookieJar(FileCookieJar):
-    if sys.version_info < (3, 10):
-        header: ClassVar[str]  # undocumented
+class MozillaCookieJar(FileCookieJar): ...
 
 class LWPCookieJar(FileCookieJar):
     def as_lwp_str(self, ignore_discard: bool = True, ignore_expires: bool = True) -> str: ...  # undocumented
@@ -132,7 +129,7 @@ class Cookie:
     domain_initial_dot: bool
     def __init__(
         self,
-        version: int | None,
+        version: int | str | None,
         name: str,
         value: str | None,  # undocumented
         port: str | None,
@@ -143,7 +140,7 @@ class Cookie:
         path: str,
         path_specified: bool,
         secure: bool,
-        expires: int | None,
+        expires: float | str | None,
         discard: bool,
         comment: str | None,
         comment_url: str | None,
@@ -151,9 +148,11 @@ class Cookie:
         rfc2109: bool = False,
     ) -> None: ...
     def has_nonstandard_attr(self, name: str) -> bool: ...
+
     @overload
     def get_nonstandard_attr(self, name: str) -> str | None: ...
     @overload
     def get_nonstandard_attr(self, name: str, default: _T) -> str | _T: ...
+
     def set_nonstandard_attr(self, name: str, value: str) -> None: ...
     def is_expired(self, now: int | None = None) -> bool: ...

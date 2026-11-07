@@ -1,3 +1,4 @@
+import types
 from typing import overload, Any, Generic, Sequence, Tuple, TypeVar, Optional
 
 Tco = TypeVar('Tco', covariant=True)
@@ -42,6 +43,7 @@ class int:
     def __rtruediv__(self, x: 'int') -> 'int': pass
     def __mod__(self, x: 'int') -> 'int': pass
     def __floordiv__(self, x: 'int') -> 'int': pass
+    def __or__(self, x: 'int') -> 'int': pass
     def __pow__(self, x: 'int', __modulo: Optional[int] = ...) -> Any: pass
     def __pos__(self) -> 'int': pass
     def __neg__(self) -> 'int': pass
@@ -71,6 +73,5 @@ class BaseException: pass
 def __print(a1: object = None, a2: object = None, a3: object = None,
             a4: object = None) -> None: pass
 
-class ellipsis: pass
 
 class dict: pass

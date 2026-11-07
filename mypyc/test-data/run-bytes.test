@@ -79,8 +79,8 @@ def test_concat() -> None:
     assert type(b1) == bytes
     assert type(b2) == bytes
     assert type(b3) == bytes
-    brr1: bytes = bytearray(3)
-    brr2: bytes = bytearray(range(5))
+    brr1 = bytearray(3)
+    brr2 = bytearray(range(5))
     b4 = b1 + brr1
     assert b4 == b'123\x00\x00\x00'
     assert type(brr1) == bytearray
@@ -94,9 +94,9 @@ def test_concat() -> None:
     b5 = brr2 + b2
     assert b5 == bytearray(b'\x00\x01\x02\x03\x04456')
     assert type(b5) == bytearray
-    b5 = b2 + brr2
-    assert b5 == b'456\x00\x01\x02\x03\x04'
-    assert type(b5) == bytes
+    b6 = b2 + brr2
+    assert b6 == b'456\x00\x01\x02\x03\x04'
+    assert type(b6) == bytes
 
 def test_join() -> None:
     seq = (b'1', b'"', b'\xf0')
@@ -217,11 +217,42 @@ def test_startswith() -> None:
     assert test.startswith(bytearray(b'some'))
     assert not test.startswith(bytearray(b'other'))
 
-    test = bytearray(b'some string')
-    assert test.startswith(b'some')
-    assert not test.startswith(b'other')
+    test2 = bytearray(b'some string')
+    assert test2.startswith(b'some')
+    assert not test2.startswith(b'other')
+
+def test_endswith() -> None:
+    # Test default behavior
+    test = b'some string'
+    assert test.endswith(b'string')
+    assert test.endswith(b'some string')
+    assert not test.endswith(b'other')
+    assert not test.endswith(b'some string but longer')
+
+    # Test empty cases
+    assert test.endswith(b'')
+    assert b''.endswith(b'')
+    assert not b''.endswith(test)
+
+    # Test bytearray to verify slow paths
+    assert test.endswith(bytearray(b'string'))
+    assert not test.endswith(bytearray(b'other'))
+
+    test2 = bytearray(b'some string')
+    assert test2.endswith(b'string')
+    assert not test2.endswith(b'other')
 
 [case testBytesSlicing]
+from typing import Any, cast
+
+def test_reversed_slice_bounds() -> None:
+    bounds = (-100, -3, -1, 0, 1, 2, 3, 100, 2**100)
+    for value in (b"", b"a", b"abc"):
+        interpreted = cast(Any, value)
+        for start in bounds:
+            for end in bounds:
+                assert value[start:end] == interpreted[start:end]
+
 def test_bytes_slicing() -> None:
     b = b'abcdefg'
     zero = int()
@@ -254,37 +285,235 @@ def test_bytes_slicing() -> None:
     assert type(b[-ten:]) == bytes
     assert type(b[:]) == bytes
 
+[case testBytearrayFromBytesSlice]
+from typing import Any, Callable
+from mypy_extensions import i32, i64
+
+def from_slice(b: bytes, start: int, end: int) -> bytearray:
+    return bytearray(b[start:end])
+
+def from_slice_i64(b: bytes, start: i64, end: i64) -> bytearray:
+    return bytearray(b[start:end])
+
+def from_slice_i32(b: bytes, start: i32, end: i32) -> bytearray:
+    return bytearray(b[start:end])
+
+def from_slice_calls(
+    source: Callable[[], bytes], start: Callable[[], int], end: Callable[[], int]
+) -> bytearray:
+    return bytearray(source()[start():end()])
+
+def from_slice_step(b: bytes, start: int, end: int, step: int) -> bytearray:
+    return bytearray(b[start:end:step])
+
+def from_slice_any(b: bytes, start: Any, end: Any) -> bytearray:
+    return bytearray(b[start:end])
+
+def from_start(b: bytes, start: int) -> bytearray:
+    return bytearray(b[start:])
+
+def to_end(b: bytes, end: int) -> bytearray:
+    return bytearray(b[:end])
+
+def from_start_i64(b: bytes, start: i64) -> bytearray:
+    return bytearray(b[start:])
+
+def to_end_i32(b: bytes, end: i32) -> bytearray:
+    return bytearray(b[:end])
+
+def full(b: bytes) -> bytearray:
+    return bytearray(b[:])
+
+def from_start_calls(source: Callable[[], bytes], start: Callable[[], int]) -> bytearray:
+    return bytearray(source()[start():])
+
+def to_end_calls(source: Callable[[], bytes], end: Callable[[], int]) -> bytearray:
+    return bytearray(source()[:end()])
+
+[file driver.py]
+from native import (
+    from_slice, from_slice_i64, from_slice_i32, from_slice_calls,
+    from_slice_step, from_slice_any,
+    from_start, to_end, from_start_i64, to_end_i32, full,
+    from_start_calls, to_end_calls,
+)
+from testutil import assertRaises
+
+small_indices = [-100, -8, -7, -5, -3, -1, 0, 1, 3, 6, 7, 8, 100]
+for f, large_indices in [
+    (from_slice, [-2**100, -2**63, 2**63, 2**100]),
+    (from_slice_i64, [-2**63, 2**63 - 1]),
+    (from_slice_i32, [-2**31, 2**31 - 1]),
+]:
+    for b in [b'', b'abcdefg', b'\x00\xff\x80\x00abc']:
+        for start in small_indices + large_indices:
+            for end in small_indices + large_indices:
+                result = f(b, start, end)
+                assert type(result) is bytearray
+                assert result == bytearray(b[start:end]), (b, start, end, result)
+                assert result is not f(b, start, end)
+
+for f, is_start, large_indices in [
+    (from_start, True, [-2**100, -2**63, 2**63, 2**100]),
+    (to_end, False, [-2**100, -2**63, 2**63, 2**100]),
+    (from_start_i64, True, [-2**63, 2**63 - 1]),
+    (to_end_i32, False, [-2**31, 2**31 - 1]),
+]:
+    for b in [b'', b'abcdefg', b'\x00\xff\x80\x00abc']:
+        for n in small_indices + large_indices:
+            result = f(b, n)
+            expected = bytearray(b[n:] if is_start else b[:n])
+            assert type(result) is bytearray
+            assert result == expected, (b, n, result)
+            assert result is not f(b, n)
+
+for b in [b'', b'abcdefg', b'\x00\xff\x80']:
+    result = full(b)
+    assert type(result) is bytearray
+    assert result == b
+    assert result is not full(b)
+    if result:
+        result[0] = 1
+        assert full(b) == b
+
+b = b'abcdefg'
+result = from_slice(b, 1, 4)
+result[0] = 0
+assert b == b'abcdefg'
+assert from_slice(b, 1, 4) == b'bcd'
+
+# A bytes subclass can override slicing, including returning a different type.
+# Omitted bounds must remain None in a subclass's __getitem__.
+class SubBytes(bytes):
+    def __getitem__(self, key):
+        assert key == expected_slice
+        return [0, 255, 128]
+
+class BadSlice(bytes):
+    def __getitem__(self, key):
+        raise ValueError('slice failed')
+
+class BadResult(bytes):
+    def __getitem__(self, key):
+        return object()
+
+cases = [(from_slice, (start, end), slice(start, end))
+         for start, end in [(1, 4), (-5, -1), (0, 2**100)]]
+cases.append((full, (), slice(None)))
+for n in small_indices + [-2**100, 2**100]:
+    cases.extend([(from_start, (n,), slice(n, None)), (to_end, (n,), slice(None, n))])
+for f, args, expected_slice in cases:
+    assert f(SubBytes(b), *args) == bytearray([0, 255, 128])
+    with assertRaises(ValueError, 'slice failed'):
+        f(BadSlice(b), *args)
+    with assertRaises(TypeError):
+        f(BadResult(b), *args)
+
+# Evaluate the source and both bounds exactly once, in order, on either path.
+def argument(name, value, fail=False):
+    def call():
+        calls.append(name)
+        if fail:
+            raise ValueError(name)
+        return value
+    return call
+
+for start, end in [(1, 4), (1, -1), (-5, 4), (-5, -1), (-5, 2**100)]:
+    calls = []
+    assert from_slice_calls(
+        argument('source', b), argument('start', start), argument('end', end)
+    ) == bytearray(b[start:end])
+    assert calls == ['source', 'start', 'end']
+
+for fail_at in range(3):
+    calls = []
+    names = ['source', 'start', 'end']
+    args = [argument(name, value, i == fail_at)
+            for i, (name, value) in enumerate(zip(names, [b, 1, 4]))]
+    with assertRaises(ValueError, names[fail_at]):
+        from_slice_calls(*args)
+    assert calls == names[:fail_at + 1]
+
+for f, direct in [(from_start_calls, from_start), (to_end_calls, to_end)]:
+    for n in [2, -2, 2**100]:
+        for fail in [False, True]:
+            calls = []
+            args = [argument('source', b), argument('bound', n, fail)]
+            if fail:
+                with assertRaises(ValueError, 'bound'):
+                    f(*args)
+            else:
+                assert f(*args) == direct(b, n)
+            assert calls == ['source', 'bound']
+
+# Unsupported forms must retain the ordinary constructor and slicing behavior.
+for step in [-2, -1, 1, 2]:
+    assert from_slice_step(b, 1, 6, step) == bytearray(b[1:6:step])
+with assertRaises(ValueError):
+    from_slice_step(b, 1, 6, 0)
+
+class Index:
+    def __index__(self):
+        return 2
+
+assert from_slice_any(b, Index(), 5) == b'cde'
+assert from_slice_any(b, None, None) == b
+with assertRaises(TypeError):
+    from_slice_any(b, 'bad', 5)
+
 [case testBytearrayBasics]
 from typing import Any
 
+from testutil import assertRaises
+
 def test_basics() -> None:
-    brr1: bytes = bytearray(3)
+    brr0 = bytearray()
+    assert brr0 == bytearray(b'')
+    assert brr0 == b''
+    assert len(brr0) == 0
+    brr1 = bytearray(3)
     assert brr1 == bytearray(b'\x00\x00\x00')
     assert brr1 == b'\x00\x00\x00'
     l = [10, 20, 30, 40]
-    brr2: bytes = bytearray(l)
+    brr2 = bytearray(l)
     assert brr2 == bytearray(b'\n\x14\x1e(')
     assert brr2 == b'\n\x14\x1e('
-    brr3: bytes = bytearray(range(5))
+    brr3 = bytearray(range(5))
     assert brr3 == bytearray(b'\x00\x01\x02\x03\x04')
     assert brr3 == b'\x00\x01\x02\x03\x04'
-    brr4: bytes = bytearray('string', 'utf-8')
+    brr4 = bytearray('string', 'utf-8')
     assert brr4 == bytearray(b'string')
     assert brr4 == b'string'
     assert len(brr1) == 3
     assert len(brr2) == 4
 
-def f(b: bytes) -> bool:
-    return True
+def test_bytearray_type_object() -> None:
+    b = bytearray()
+    assert type(b) is bytearray
+
+def fb(b: bytes) -> str:
+    return "xy"
 
 def test_bytearray_passed_into_bytes() -> None:
-    assert f(bytearray(3))
     brr1: Any = bytearray()
-    assert f(brr1)
+    with assertRaises(TypeError, "bytes object expected; got bytearray"):
+        fb(brr1)
+    with assertRaises(TypeError, "bytes object expected; got bytearray"):
+        b: bytes = brr1
+
+def fba(brr: bytearray) -> str:
+    return "xy"
+
+def test_bytes_passed_into_bytearray() -> None:
+    b: Any = b"foo"
+    with assertRaises(TypeError, "bytearray object expected; got bytes"):
+        fba(b)
+    with assertRaises(TypeError, "bytearray object expected; got bytes"):
+        brr: bytearray = b
 
 [case testBytearraySlicing]
 def test_bytearray_slicing() -> None:
-    b: bytes = bytearray(b'abcdefg')
+    b = bytearray(b'abcdefg')
     zero = int()
     ten = 10 + zero
     two = 2 + zero
@@ -318,7 +547,7 @@ def test_bytearray_slicing() -> None:
 from testutil import assertRaises
 
 def test_bytearray_indexing() -> None:
-    b: bytes = bytearray(b'\xae\x80\xfe\x15')
+    b = bytearray(b'\xae\x80\xfe\x15')
     assert b[0] == 174
     assert b[1] == 128
     assert b[2] == 254
@@ -347,10 +576,6 @@ def test_bytes_join() -> None:
     assert b' '.join([b'a', b'b']) == b'a b'
     assert b' '.join([]) == b''
 
-    x: bytes = bytearray(b' ')
-    assert x.join([b'a', b'b']) == b'a b'
-    assert type(x.join([b'a', b'b'])) == bytearray
-
     y: bytes = bytes_subclass()
     assert y.join([]) == b'spook'
 
@@ -364,7 +589,29 @@ class bytes_subclass(bytes):
         return b'spook'
 
 [case testBytesFormatting]
+import sys
+from typing import Any
 from testutil import assertRaises
+
+def format_int(n: int) -> bytes:
+    return b"%d" % n
+
+def test_bytes_formatting_error_propagation() -> None:
+    sys_module: Any = sys
+    if hasattr(sys_module, "set_int_max_str_digits"):
+        old_limit = sys_module.get_int_max_str_digits()
+        try:
+            sys_module.set_int_max_str_digits(640)
+            n = 10 ** 1000
+            before = sys_module.getrefcount(n)
+            for _ in range(3):
+                with assertRaises(ValueError):
+                    format_int(n)
+            assert sys_module.getrefcount(n) == before
+            assert n == 10 ** 1000  # Keep n alive across both refcount checks.
+        finally:
+            sys_module.set_int_max_str_digits(old_limit)
+    assert format_int(123) == b"123"
 
 # https://www.python.org/dev/peps/pep-0461/
 def test_bytes_formatting() -> None:
@@ -373,6 +620,15 @@ def test_bytes_formatting() -> None:
     assert b'%4x' % val == b'   a'
     assert b'%#4x' % val == b' 0xa'
     assert b'%04X' % val == b'000A'
+    assert b'%d' % val == b'10'
+    assert b'%d' % (val + 2) == b'12'
+    assert b'%d' % 0 == b'0'
+    assert b'%d' % -3 == b'-3'
+    assert b'folded: %d' % (4 - 2) == b'folded: 2'
+
+    large_num = 2**65
+    assert b'number: %d' % large_num == b'number: 36893488147419103232'
+    assert b'negative integer: %d' % (-large_num) == b'negative integer: -36893488147419103232'
 
     assert b'%c' % 48 == b'0'
     assert b'%c' % b'a' == b'a'

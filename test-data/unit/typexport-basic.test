@@ -64,7 +64,7 @@ NameExpr(10) : A
 import typing
 ...
 [out]
-EllipsisExpr(2) : builtins.ellipsis
+EllipsisExpr(2) : types.EllipsisType
 
 [case testMemberAccess]
 ## MemberExpr|CallExpr
@@ -818,7 +818,7 @@ map(
 CallExpr(7) : builtins.list[Any]
 NameExpr(7) : def (f: builtins.list[def (A) -> Any], a: builtins.list[A]) -> builtins.list[Any]
 LambdaExpr(8) : def (x: A) -> A
-ListExpr(8) : builtins.list[def (A) -> Any]
+ListExpr(8) : builtins.list[def (A) -> A | Any]
 NameExpr(8) : A
 NameExpr(9) : builtins.list[A]
 

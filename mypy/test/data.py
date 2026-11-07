@@ -158,8 +158,10 @@ def parse_test_case(case: DataDrivenTestCase) -> None:
             for arg in args:
                 if arg.startswith("version"):
                     compare_op = arg[7:9]
-                    if compare_op not in {">=", "=="}:
-                        _item_fail("Only >= and == version checks are currently supported")
+                    if compare_op not in {">=", "==", "< "}:
+                        _item_fail(
+                            "Only `>=', `==', and `< ' version checks are currently supported"
+                        )
                     version_str = arg[9:]
                     try:
                         version = tuple(int(x) for x in version_str.split("."))
@@ -181,6 +183,12 @@ def parse_test_case(case: DataDrivenTestCase) -> None:
                                 f'Only minor or patch version checks are currently supported with "==": {version_str!r}'
                             )
                         version_check = sys.version_info[: len(version)] == version
+                    elif compare_op == "< ":
+                        if version < defaults.PYTHON3_VERSION:
+                            _item_fail(
+                                f"{arg} always false since minimum runtime version is {defaults.PYTHON3_VERSION}"
+                            )
+                        version_check = sys.version_info < version
             if version_check:
                 tmp_output = [expand_variables(line) for line in item.data]
                 if os.path.sep == "\\" and case.normalize_output:
@@ -314,6 +322,19 @@ class DataDrivenTestCase(pytest.Item):
         # TODO: add a better error message for when someone uses skip and xfail at the same time
         elif self.xfail:
             self.add_marker(pytest.mark.xfail)
+
+        if (
+            not [line for line in self.input if line.strip()]
+            and "Empty" not in self.name
+            and not [
+                file
+                for file in self.files
+                # these files are added based on other things
+                if os.path.basename(file[0]) not in ("typing.pyi", "_typeshed.pyi", "builtins.pyi")
+            ]
+        ):
+            raise AssertionError(f"{self.name} is empty.")
+
         parent = self.getparent(DataSuiteCollector)
         assert parent is not None, "Should not happen"
         suite = parent.obj()
@@ -358,7 +379,7 @@ class DataDrivenTestCase(pytest.Item):
                 # Write the first incremental steps
                 dir = os.path.dirname(path)
                 os.makedirs(dir, exist_ok=True)
-                with open(path, "w", encoding="utf8") as f:
+                with open(path, "w", encoding=choose_file_encoding(path)) as f:
                     f.write(content)
 
         for num, paths in self.deleted_paths.items():
@@ -405,7 +426,7 @@ class DataDrivenTestCase(pytest.Item):
         second step, etc. Each operation can either be a file modification/creation (UpdateFile)
         or deletion (DeleteFile).
 
-        Defaults to having two steps if there aern't any operations.
+        Defaults to having two steps if there aren't any operations.
         """
         return self.steps
 
@@ -808,6 +829,14 @@ def has_stable_flags(testcase: DataDrivenTestCase) -> bool:
         if os.path.basename(filename).startswith("mypy.ini."):
             return False
     return True
+
+
+def choose_file_encoding(path: str) -> str:
+    base_name, _ = os.path.splitext(path)
+    if base_name.endswith("_latin1"):
+        return "latin-1"
+    else:
+        return "utf-8"
 
 
 class DataSuite:

@@ -3,8 +3,8 @@ import types
 import unittest
 from _typeshed import ExcInfo
 from collections.abc import Callable
-from typing import Any, Final, NamedTuple, type_check_only
-from typing_extensions import Self, TypeAlias
+from typing import Any, Final, NamedTuple, TypeAlias, type_check_only
+from typing_extensions import Self
 
 __all__ = [
     "register_optionflag",
@@ -133,7 +133,7 @@ class DocTestFinder:
         self,
         obj: object,
         name: str | None = None,
-        module: None | bool | types.ModuleType = None,
+        module: bool | types.ModuleType | None = None,
         globs: dict[str, Any] | None = None,
         extraglobs: dict[str, Any] | None = None,
     ) -> list[DocTest]: ...
@@ -150,6 +150,9 @@ class DocTestRunner:
         skips: int
     test: DocTest
     def __init__(self, checker: OutputChecker | None = None, verbose: bool | None = None, optionflags: int = 0) -> None: ...
+    if sys.version_info >= (3, 15):
+        def report_skip(self, out: _Out, test: DocTest, example: Example) -> None: ...
+
     def report_start(self, out: _Out, test: DocTest, example: Example) -> None: ...
     def report_success(self, out: _Out, test: DocTest, example: Example, got: str) -> None: ...
     def report_failure(self, out: _Out, test: DocTest, example: Example, got: str) -> None: ...
@@ -195,7 +198,7 @@ def testfile(
     filename: str,
     module_relative: bool = True,
     name: str | None = None,
-    package: None | str | types.ModuleType = None,
+    package: str | types.ModuleType | None = None,
     globs: dict[str, Any] | None = None,
     verbose: bool | None = None,
     report: bool = True,
@@ -236,7 +239,7 @@ class SkipDocTestCase(DocTestCase):
 class _DocTestSuite(unittest.TestSuite): ...
 
 def DocTestSuite(
-    module: None | str | types.ModuleType = None,
+    module: str | types.ModuleType | None = None,
     globs: dict[str, Any] | None = None,
     extraglobs: dict[str, Any] | None = None,
     test_finder: DocTestFinder | None = None,
@@ -248,7 +251,7 @@ class DocFileCase(DocTestCase): ...
 def DocFileTest(
     path: str,
     module_relative: bool = True,
-    package: None | str | types.ModuleType = None,
+    package: str | types.ModuleType | None = None,
     globs: dict[str, Any] | None = None,
     parser: DocTestParser = ...,
     encoding: str | None = None,
@@ -256,7 +259,7 @@ def DocFileTest(
 ) -> DocFileCase: ...
 def DocFileSuite(*paths: str, **kw: Any) -> _DocTestSuite: ...
 def script_from_examples(s: str) -> str: ...
-def testsource(module: None | str | types.ModuleType, name: str) -> str: ...
+def testsource(module: str | types.ModuleType | None, name: str) -> str: ...
 def debug_src(src: str, pm: bool = False, globs: dict[str, Any] | None = None) -> None: ...
 def debug_script(src: str, pm: bool = False, globs: dict[str, Any] | None = None) -> None: ...
-def debug(module: None | str | types.ModuleType, name: str, pm: bool = False) -> None: ...
+def debug(module: str | types.ModuleType | None, name: str, pm: bool = False) -> None: ...

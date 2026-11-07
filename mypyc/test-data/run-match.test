@@ -230,6 +230,27 @@ test 21 ('')
 test 21 (' as well')
 test sequence final
 test final
+
+[case testMatchOrSequencePattern_python3_10]
+def f(x: tuple[str, str]) -> str:
+    match x:
+        case ("X", "Y") | ("X", "Z"):
+            return "THERE"
+        case _:
+            return "OTHER"
+
+[file driver.py]
+from native import f
+
+print(f(("X", "Y")))
+print(f(("X", "Z")))
+print(f(("X", "A")))
+
+[out]
+THERE
+THERE
+OTHER
+
 [case testCustomMappingAndSequenceObjects_python3_10]
 def f(x: object) -> None:
     match x:

@@ -32,6 +32,7 @@ def parse(
 def parse_multipart(
     fp: IO[Any], pdict: SupportsGetItem[str, bytes], encoding: str = "utf-8", errors: str = "replace", separator: str = "&"
 ) -> dict[str, list[Any]]: ...
+
 @type_check_only
 class _Environ(Protocol):
     def __getitem__(self, k: str, /) -> str: ...
@@ -80,7 +81,7 @@ class FieldStorage:
     length: int
     done: int
     list: _list[Any] | None
-    value: None | bytes | _list[Any]
+    value: bytes | _list[Any] | None
     def __init__(
         self,
         fp: IO[Any] | None = None,

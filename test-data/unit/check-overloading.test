@@ -226,12 +226,31 @@ def f(x: 'A') -> 'B': ...
 @overload
 def f(x: 'B') -> 'A': ...
 
-def f(x: 'A') -> Any: # E: Overloaded function implementation does not accept all possible arguments of signature 2
+def f(x: 'A') -> Any: # E: Overloaded function implementation does not accept all possible parameters of signature 2
     pass
 
 reveal_type(f(A())) # N: Revealed type is "__main__.B"
 reveal_type(f(B())) # N: Revealed type is "__main__.A"
 [builtins fixtures/isinstance.pyi]
+
+[case testOverloadImplementationArgumentNames]
+from typing import overload
+
+@overload
+def f(x: int, y: int) -> None: ...
+@overload
+def f(x: str, y: int, /) -> None: ...
+def f(a: int | str, /, b: int) -> None:  # E: Overloaded function implementation does not accept all possible parameters of signature 1 \
+                                         # N: Consider marking "x", "y" positional-only in signature 1
+    pass
+
+@overload
+def h(x: int = 0, y: int = 0) -> None: ...
+@overload
+def h(x: str, /, y: int = 0) -> None: ...
+def h(a: int | str = 0, b: int = 0, /, *, y: int = 0) -> None:  # E: Overloaded function implementation does not accept all possible parameters of signature 1 \
+                                                                # N: Consider marking "x" positional-only in signature 1
+    pass
 
 [case testTypeCheckOverloadImplOverlapVarArgsAndKwargs]
 from __future__ import annotations
@@ -271,7 +290,7 @@ from typing import overload
 @overload  # E: Single overload definition, multiple required
 def foo(x: int) -> None: ...
 
-def foo(*args: int, **kw: str) -> None:  # E: Overloaded function implementation does not accept all possible arguments of signature 1
+def foo(*args: int, **kw: str) -> None:  # E: Overloaded function implementation does not accept all possible parameters of signature 1
     pass
 [builtins fixtures/tuple.pyi]
 
@@ -625,8 +644,8 @@ a = A(a)
 a = A(b)
 a = A(object()) # E: No overload variant of "A" matches argument type "object" \
                 # N: Possible overload variants: \
-                # N:     def __init__(self, a: A) -> A \
-                # N:     def __init__(self, b: B) -> A
+                # N:     def A(a: A) -> A \
+                # N:     def A(b: B) -> A
 
 class A:
   @overload
@@ -1905,6 +1924,81 @@ def f(x): pass
 a: Any
 reveal_type(f(a))     # N: Revealed type is "def (*Any, **Any) -> Any"
 reveal_type(f(a)(a))  # N: Revealed type is "Any"
+
+[case testOverloadWithOverlappingItemsAndAnyArgumentSelf1]
+from typing import Generic, TypeVar, overload, Any
+
+T = TypeVar("T")
+
+class Some(Generic[T]):
+    @overload
+    def method(self: Some[int]) -> bool: ...
+    @overload
+    def method(self: Some[str]) -> float: ...
+    def method(self): ...
+
+s: Some[Any]
+reveal_type(s.method())  # N: Revealed type is "Any"
+
+[case testOverloadWithOverlappingItemsAndAnyArgumentSelf2]
+from typing import Generic, TypeVar, overload, Any
+
+T = TypeVar("T")
+
+class Some(Generic[T]):
+    @overload
+    def method(self: Some[int]) -> bool: ...
+    @overload
+    def method(self: Some[str]) -> bool: ...
+    def method(self): ...
+
+s: Some[Any]
+reveal_type(s.method())  # N: Revealed type is "builtins.bool"
+
+[case testOverloadWithOverlappingItemsAndAnyArgumentSelf3]
+from typing import Generic, TypeVar, overload, Any
+
+T = TypeVar("T")
+
+class Some(Generic[T]):
+    @overload
+    def method(self: Some[int]) -> list[bool]: ...
+    @overload
+    def method(self: Some[str]) -> list[float]: ...
+    def method(self): ...
+
+s: Some[Any]
+reveal_type(s.method())  # N: Revealed type is "builtins.list[Any]"
+
+[case testOverloadWithOverlappingItemsAndAnyArgumentSelf4]
+from typing import Generic, TypeVar, overload, Any
+
+T = TypeVar("T")
+
+class Some(Generic[T]):
+    @overload
+    def method(self, x: int) -> bool: ...
+    @overload
+    def method(self, x: object) -> int: ...
+    def method(self): ...
+
+s: Some[Any]
+reveal_type(s.method(42))  # N: Revealed type is "builtins.bool"
+
+[case testOverloadWithOverlappingItemsAndAnyArgumentSelf5]
+from typing import Generic, TypeVar, overload, Any
+
+T = TypeVar("T")
+
+class Some(Generic[T]):
+    @overload
+    def method(self: Some[int], x: int) -> bool: ...
+    @overload
+    def method(self: Some[int], x: object) -> int: ...
+    def method(self): ...
+
+s: Some[Any]
+reveal_type(s.method(42))  # N: Revealed type is "builtins.bool"
 
 [case testOverloadOnOverloadWithType]
 from typing import Any, Type, TypeVar, overload
@@ -4347,7 +4441,7 @@ class Wrapper2:
     @staticmethod
     def foo(x: int) -> int: ...
     @overload
-    def foo(x: str) -> str: ...  # E: Self argument missing for a non-static method (or an invalid type for self)
+    def foo(x: str) -> str: ...  # E: "self" parameter missing for a non-static method (or an invalid type for self)
     @staticmethod
     def foo(x): pass
 
@@ -4358,7 +4452,7 @@ class Wrapper3:
     @overload
     @staticmethod
     def foo(x: str) -> str: ...
-    def foo(x: Union[int, str]): pass  # E: Self argument missing for a non-static method (or an invalid type for self)
+    def foo(x: Union[int, str]): pass  # E: "self" parameter missing for a non-static method (or an invalid type for self)
 [builtins fixtures/staticmethod.pyi]
 
 [case testOverloadWithSwappedDecorators2]
@@ -4394,7 +4488,7 @@ class Wrapper3:
     def foo(x: int) -> int: ...
 
     @overload
-    def foo(x: str) -> str: ...  # E: Self argument missing for a non-static method (or an invalid type for self)
+    def foo(x: str) -> str: ...  # E: "self" parameter missing for a non-static method (or an invalid type for self)
 
     @staticmethod
     def foo(x): pass
@@ -4756,7 +4850,7 @@ def none_loose_impl(x: int) -> int: ...
 def none_loose_impl(x: int) -> int:
     return x
 [out]
-main:21: error: Overloaded function implementation does not accept all possible arguments of signature 1
+main:21: error: Overloaded function implementation does not accept all possible parameters of signature 1
 main:21: error: Overloaded function implementation cannot produce return type of signature 1
 
 [case testTooManyUnionsException]
@@ -5280,33 +5374,24 @@ def lol(x: int, y: int) -> int:
 
 [case testVeryBrokenOverload]
 import lib
-reveal_type(lib.func)
+reveal_type(lib.func)  # N: Revealed type is "Any"
 [file lib.pyi]
-@overload
+@overload  # E: Name "overload" is not defined
 def func(x: int) -> int: ...
 
-def func(x):
+def func(x):  # E: Name "func" already defined on line 1
     return x
-[out]
-tmp/lib.pyi:1: error: Name "overload" is not defined
-tmp/lib.pyi:4: error: Name "func" already defined on line 1
-main:2: note: Revealed type is "Any"
 
 -- Order of errors is different
 [case testVeryBrokenOverload2]
 
 import lib
-reveal_type(lib.func)
+reveal_type(lib.func)  # N: Revealed type is "Any"
 [file lib.pyi]
-@overload
+@overload  # E: Name "overload" is not defined
 def func(x: int) -> int: ...
-@overload
+@overload  # E: Name "func" already defined on line 1 # E: Name "overload" is not defined
 def func(x: str) -> str: ...
-[out]
-tmp/lib.pyi:1: error: Name "overload" is not defined
-tmp/lib.pyi:3: error: Name "func" already defined on line 1
-tmp/lib.pyi:3: error: Name "overload" is not defined
-main:3: note: Revealed type is "Any"
 
 [case testLiteralSubtypeOverlap]
 from typing import Literal, overload
@@ -5426,7 +5511,7 @@ def dec_c(f: Callable[..., Any]) -> C:
 def f_c(arg: int) -> None: ...
 @overload
 def f_c(arg: str) -> None: ...
-@dec_c  # E: Overloaded function implementation does not accept all possible arguments of signature 2
+@dec_c  # E: Overloaded function implementation does not accept all possible parameters of signature 2
 def f_c(arg): ...
 [builtins fixtures/dict.pyi]
 
@@ -5552,7 +5637,7 @@ reveal_type(f5(C()))  # N: Revealed type is "__main__.C"
 reveal_type(f5(D()))  # N: Revealed type is "__main__.D"
 
 [case testOverloadIfSysVersion]
-# flags: --python-version 3.9
+# flags: --python-version 3.10
 from typing import overload
 import sys
 
@@ -5567,7 +5652,7 @@ class C: ...
 
 @overload
 def f1(g: A) -> A: ...
-if sys.version_info >= (3, 9):
+if sys.version_info >= (3, 10):
     @overload
     def f1(g: B) -> B: ...
 def f1(g): ...
@@ -5578,7 +5663,7 @@ reveal_type(f1(B()))  # N: Revealed type is "__main__.B"
 def f2(g: A) -> A: ...
 @overload
 def f2(g: B) -> B: ...
-if sys.version_info >= (3, 10):
+if sys.version_info >= (3, 11):
     @overload
     def f2(g: C) -> C: ...
 def f2(g): ...
@@ -6196,14 +6281,14 @@ else:
     def f2(x): ...
 reveal_type(f2(A()))  # N: Revealed type is "__main__.A"
 
-@overload  # E: An overloaded function outside a stub file must have an implementation
+@overload
 def f3(x: A) -> A: ...
 @overload
 def f3(x: B) -> B: ...
 if True:
-    def f3(x): ...   # E: Name "f3" already defined on line 31
+    def f3(x): ...
 else:
-    pass  # some other node
+    pass  # some other node (OK, because statically unreachable)
     def f3(x): ...
 reveal_type(f3(A()))  # N: Revealed type is "__main__.A"
 
@@ -6865,3 +6950,99 @@ if isinstance(headers, dict):
 
 reveal_type(headers)  # N: Revealed type is "__main__.Headers | typing.Iterable[tuple[builtins.bytes, builtins.bytes]]"
 [builtins fixtures/isinstancelist.pyi]
+
+[case testOverloadUnionCallableSubtype]
+from typing import Callable, Union, overload
+
+def f(fn: Callable[[Union[int, str]], Union[int, str]]) -> None: pass
+def f1(fn: Callable[[Union[int, str, bytes]], Union[int, str]]) -> None: pass
+def f2(fn: Callable[[Union[int, str]], int]) -> None: pass
+
+@overload
+def g(x: int) -> int: ...
+@overload
+def g(x: str) -> str: ...
+def g(x): ...
+
+f(g)
+f1(g)  # E: Argument 1 to "f1" has incompatible type overloaded function; expected "Callable[[int | str | bytes], int | str]"
+f2(g)  # E: Argument 1 to "f2" has incompatible type overloaded function; expected "Callable[[int | str], int]"
+
+[case testOverloadOverridesUnionCallable]
+from typing import overload, Union
+
+class A:
+    def f(self, x: Union[int, str]) -> None: ...
+
+class B(A):
+    @overload
+    def f(self, x: int) -> None: ...
+    @overload
+    def f(self, x: str) -> None: ...
+    def f(self, x: Union[int, str]) -> None: ...
+
+[case testOverloadOverridesUnionCallableGeneric]
+from typing import overload, Optional, TypeVar
+
+T = TypeVar("T")
+
+class A:
+    def f(self, x: Optional[T]) -> Optional[T]: ...
+
+class B(A):
+    @overload
+    def f(self, x: None) -> None: ...
+    @overload
+    def f(self, x: T) -> T: ...
+    def f(self, x: Optional[T]) -> Optional[T]: ...
+
+[case testOverloadSubtypingRespectPosArgNames]
+from typing import Protocol, overload, Union
+
+class P(Protocol):
+    def __call__(self, __x: Union[int, str]) -> Union[int, str]: ...
+
+class PBad(Protocol):
+    def __call__(self, x: Union[int, str]) -> Union[int, str]: ...
+
+@overload
+def f(x: int) -> int: ...
+@overload
+def f(y: str) -> str: ...
+def f(*args, **kwargs):
+    pass
+
+p: P = f
+pb: PBad = f  # E: Incompatible types in assignment (expression has type overloaded function, variable has type "PBad") \
+              # N: "PBad.__call__" has type "def __call__(self, x: int | str) -> int | str"
+
+class A:
+    def f(self, x: Union[int, str]) -> None: ...
+
+class B(A):
+    @overload
+    def f(self, x: int) -> None: ...
+    @overload
+    def f(self, y: str) -> None: ...  # This is currently allowed (note different name)
+    def f(self, *args, **kwargs) -> None: ...
+[builtins fixtures/tuple.pyi]
+
+[case testRespectPreciseOverloadFallbackIfPossible]
+from typing import overload, Any
+
+@overload
+def f(x: list[int]) -> list[tuple[int, ...]]: ...
+@overload
+def f(x: list[Any]) -> list[tuple[Any, ...]]: ...
+def f(x): pass
+
+a: Any
+la: list[Any]
+li: list[int]
+ls: list[str]
+
+reveal_type(f(a))  # N: Revealed type is "builtins.list[builtins.tuple[Any, ...]]"
+reveal_type(f(la))  # N: Revealed type is "builtins.list[builtins.tuple[Any, ...]]"
+reveal_type(f(li))  # N: Revealed type is "builtins.list[builtins.tuple[builtins.int, ...]]"
+reveal_type(f(ls))  # N: Revealed type is "builtins.list[builtins.tuple[Any, ...]]"
+[builtins fixtures/tuple.pyi]

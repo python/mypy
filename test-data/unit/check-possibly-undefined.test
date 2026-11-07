@@ -1054,3 +1054,179 @@ def foo(x: Union[int, str]) -> None:
         assert_never(x)
     f  # OK
 [builtins fixtures/tuple.pyi]
+
+[case testForElseWithBreakInTryExceptContinue]
+# flags: --enable-error-code possibly-undefined
+# Test for issue where variable defined before break in try block
+# was incorrectly reported as undefined when except has continue
+def random() -> float: return 0.5
+
+if random():
+    for i in range(10):
+        try:
+            value = random()
+            break
+        except Exception:
+            continue
+    else:
+        raise RuntimeError
+
+    print(value)  # Should not error - value is defined if we broke
+else:
+    value = random()
+
+print(value)  # Should not error
+[builtins fixtures/for_else_exception.pyi]
+
+[case testForElseWithBreakInTryExceptContinueNoIf]
+# flags: --enable-error-code possibly-undefined
+# Simpler version without if statement
+def random() -> float: return 0.5
+
+for i in range(10):
+    try:
+        value = random()
+        break
+    except Exception:
+        continue
+else:
+    raise RuntimeError
+
+print(value)  # Should not error
+[builtins fixtures/for_else_exception.pyi]
+
+[case testForElseWithBreakInTryExceptPass]
+# flags: --enable-error-code possibly-undefined
+# Version with pass instead of continue - should also work
+def random() -> float: return 0.5
+
+if random():
+    for i in range(10):
+        try:
+            value = random()
+            break
+        except Exception:
+            pass
+    else:
+        raise RuntimeError
+
+    print(value)  # Should not error
+else:
+    value = random()
+
+print(value)  # Should not error
+[builtins fixtures/for_else_exception.pyi]
+
+[case testForElseWithConditionalDefBeforeBreak]
+# flags: --enable-error-code possibly-undefined
+# Test that conditional definition before break still works correctly
+def random() -> float: return 0.5
+
+if random():
+    for i in range(10):
+        try:
+            if i > 10:
+                value = random()
+                break
+        except Exception:
+            continue
+    else:
+        raise RuntimeError
+
+    print(value)  # Should not error (though might be undefined at runtime)
+else:
+    value = random()
+
+print(value)  # Should not error
+[builtins fixtures/for_else_exception.pyi]
+
+[case testForElseDefineInBothBranches]
+# flags: --enable-error-code possibly-undefined
+# Test that variable defined in both for break and else branches is not undefined
+for i in range(10):
+    if i:
+        value = i
+        break
+else:
+    value = 1
+
+print(value)  # Should not error - value is defined in all paths
+[builtins fixtures/for_else_exception.pyi]
+
+[case testForElseWithWalrusInBreak]
+# flags: --enable-error-code possibly-undefined
+# Test with walrus operator in if condition before break
+def random() -> float: return 0.5
+
+if random():
+    for i in range(10):
+        if value := random():
+            break
+    else:
+        raise RuntimeError
+
+    print(value)  # Should not error - value is defined if we broke
+else:
+    value = random()
+
+print(value)  # Should not error
+[builtins fixtures/for_else_exception.pyi]
+
+[case testForElseWithWalrusInBreakConditionalRaise]
+# flags: --enable-error-code possibly-undefined
+# Test with walrus operator in if condition before break
+def random() -> float: return 0.5
+
+def f1() -> None:
+    if random():
+        for i in range(10):
+            if value := random():
+                break
+        else:
+            if random() > 0.5:  # E: Unsupported left operand type for > ("float")
+                raise RuntimeError
+
+        print(value)  # E: Name "value" may be undefined
+    else:
+        value = random()
+
+    print(value)  # Already emitted error
+
+
+def f2() -> None:
+    if random():
+        for i in range(10):
+            if value := random():
+                break
+        else:
+            if random() > 0.5:  # E: Unsupported left operand type for > ("float")
+                raise RuntimeError
+    else:
+        value = random()
+
+    print(value)  # E: Name "value" may be undefined
+[builtins fixtures/for_else_exception.pyi]
+
+[case testOmittedUnrequiredElse]
+# flags: --enable-error-code possibly-undefined
+from typing import Literal
+
+a: Literal[True]
+if a:
+    w = 1
+w + 1
+
+b: bool
+if b:
+    x = 1
+elif not b:
+    x = 2
+x + 1
+
+if b:
+    y = 1
+elif not b:
+    if a:
+        z = 2
+    y = z
+y + 1

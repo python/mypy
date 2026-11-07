@@ -14,10 +14,18 @@ from gettext import gettext
 from io import TextIOWrapper
 from typing import IO, TYPE_CHECKING, Any, Final, NoReturn, TextIO
 
+if platform.python_implementation() == "PyPy":
+    sys.stderr.write(
+        "ERROR: Running mypy on PyPy is not supported yet.\n"
+        "To type-check a PyPy library please use an equivalent CPython version,\n"
+        "see https://github.com/mypyc/librt/issues/16 for possible workarounds.\n"
+    )
+    sys.exit(2)
+
 from mypy import build, defaults, state, util
 from mypy.config_parser import (
-    get_config_module_names,
     parse_config_file,
+    parse_num_workers,
     parse_version,
     validate_package_allow_list,
 )
@@ -40,14 +48,6 @@ from mypy.version import __version__
 
 if TYPE_CHECKING:
     from _typeshed import SupportsWrite
-
-if platform.python_implementation() == "PyPy":
-    sys.stderr.write(
-        "ERROR: Running mypy on PyPy is not supported yet.\n"
-        "To type-check a PyPy library please use an equivalent CPython version,\n"
-        "see https://github.com/mypyc/librt/issues/16 for possible workarounds.\n"
-    )
-    sys.exit(2)
 
 orig_stat: Final = os.stat
 MEM_PROFILE: Final = False  # If True, dump memory profile
@@ -102,9 +102,41 @@ def main(
         stdout, stderr, options.hide_error_codes, hide_success=bool(options.output)
     )
 
-    if options.allow_redefinition_new and not options.local_partial_types:
+    if options.num_workers:
+        # Supporting both parsers would be really tricky, so just support the new one.
+        options.native_parser = True
+        if not options.incremental and os.path.isdir(options.cache_dir):
+            print(
+                "Warning: disabling incremental mode may severely reduce performance", file=stdout
+            )
+            print(
+                f"If this is intentional, delete '{options.cache_dir}' to suppress this warning",
+                file=stdout,
+            )
+        if options.num_workers < 0:
+            fail("error: Number of workers cannot be negative", stderr, options)
+        if options.cache_dir == os.devnull:
+            fail("error: Cache must be enabled in parallel mode", stderr, options)
+        if not options.local_partial_types:
+            fail("error: --local-partial-types must be enabled in parallel mode", stderr, options)
+        if options.report_dirs:
+            fail(
+                "error: Reports are not supported in parallel mode yet\n"
+                "note: Use -n0 to disable parallel checking",
+                stderr,
+                options,
+            )
+
+    if options.allow_redefinition and not options.local_partial_types:
         fail(
-            "error: --local-partial-types must be enabled if using --allow-redefinition-new",
+            "error: --local-partial-types must be enabled if using --allow-redefinition",
+            stderr,
+            options,
+        )
+
+    if options.allow_redefinition and options.allow_redefinition_old:
+        fail(
+            "--allow-redefinition-old and --allow-redefinition should not be used together",
             stderr,
             options,
         )
@@ -183,6 +215,12 @@ def main(
     list([res])  # noqa: C410
 
 
+class BuildResultThunk:
+    # We pass this around so that we avoid freeing memory, which is slow
+    def __init__(self, build_result: build.BuildResult | None) -> None:
+        self._result = build_result
+
+
 def run_build(
     sources: list[BuildSource],
     options: Options,
@@ -190,7 +228,7 @@ def run_build(
     t0: float,
     stdout: TextIO,
     stderr: TextIO,
-) -> tuple[build.BuildResult | None, list[str], bool]:
+) -> tuple[BuildResultThunk | None, list[str], bool]:
     formatter = util.FancyFormatter(
         stdout, stderr, options.hide_error_codes, hide_success=bool(options.output)
     )
@@ -221,28 +259,12 @@ def run_build(
         blockers = True
         if not e.use_stdout:
             serious = True
-    if (
-        options.warn_unused_configs
-        and options.unused_configs
-        and not options.incremental
-        and not options.non_interactive
-    ):
-        print(
-            "Warning: unused section(s) in {}: {}".format(
-                options.config_file,
-                get_config_module_names(
-                    options.config_file,
-                    [
-                        glob
-                        for glob in options.per_module_options.keys()
-                        if glob in options.unused_configs
-                    ],
-                ),
-            ),
-            file=stderr,
-        )
+
+    if res:
+        res.manager.metastore.close()
+
     maybe_write_junit_xml(time.time() - t0, serious, messages, messages_by_file, options)
-    return res, messages, blockers
+    return BuildResultThunk(res), messages, blockers
 
 
 def show_messages(
@@ -384,7 +406,8 @@ command line flags. For more details, see:
 
 FOOTER: Final = """Environment variables:
   Define MYPYPATH for additional module search path entries.
-  Define MYPY_CACHE_DIR to override configuration cache_dir path."""
+  Define MYPY_CACHE_DIR to override configuration cache_dir path.
+  Define MYPY_NUM_WORKERS to override configuration num_workers value."""
 
 
 class CapturableArgumentParser(argparse.ArgumentParser):
@@ -613,7 +636,6 @@ def define_options(
     add_invertible_flag(
         "--warn-unused-configs",
         default=False,
-        strict_flag=True,
         help="Warn about unused '[mypy-<pattern>]' or '[[tool.mypy.overrides]]' config sections",
         group=config_group,
     )
@@ -891,6 +913,14 @@ def define_options(
         "--allow-redefinition",
         default=False,
         strict_flag=False,
+        help="Allow flexible variable redefinition with a new type",
+        group=strictness_group,
+    )
+
+    add_invertible_flag(
+        "--allow-redefinition-old",
+        default=False,
+        strict_flag=False,
         help="Allow restricted, unconditional variable redefinition with a new type",
         group=strictness_group,
     )
@@ -899,8 +929,9 @@ def define_options(
         "--allow-redefinition-new",
         default=False,
         strict_flag=False,
-        help="Allow more flexible variable redefinition semantics (experimental)",
+        help="Deprecated alias for --allow-redefinition",
         group=strictness_group,
+        dest="allow_redefinition",
     )
 
     add_invertible_flag(
@@ -930,10 +961,10 @@ def define_options(
     )
 
     add_invertible_flag(
-        "--strict-bytes",
-        default=False,
-        strict_flag=True,
-        help="Disable treating bytearray and memoryview as subtypes of bytes",
+        "--no-strict-bytes",
+        default=True,
+        dest="strict_bytes",
+        help="Treat bytearray and memoryview as subtypes of bytes",
         group=strictness_group,
     )
 
@@ -944,6 +975,13 @@ def define_options(
         help="Enable additional checks that are technically correct but may be impractical "
         "in real code. For example, this prohibits partial overlap in TypedDict updates, "
         "and makes arguments prepended via Concatenate positional-only",
+        group=strictness_group,
+    )
+
+    add_invertible_flag(
+        "--check-unreachable",
+        default=False,
+        help=argparse.SUPPRESS,  # "Type check unreachable code",
         group=strictness_group,
     )
 
@@ -1072,14 +1110,23 @@ def define_options(
         group=incremental_group,
     )
     incremental_group.add_argument(
+        "--sqlite-num-shards",
+        type=int,
+        default=defaults.SQLITE_NUM_SHARDS,
+        dest="sqlite_num_shards",
+        help=argparse.SUPPRESS,
+    )
+    incremental_group.add_argument(
         "--cache-fine-grained",
         action="store_true",
         help="Include fine-grained dependency information in the cache for the mypy daemon",
     )
-    incremental_group.add_argument(
-        "--fixed-format-cache",
-        action="store_true",
-        help="Use new fast and compact fixed format cache",
+    add_invertible_flag(
+        "--no-fixed-format-cache",
+        dest="fixed_format_cache",
+        default=True,
+        help="Do not use new fixed format cache",
+        group=incremental_group,
     )
     incremental_group.add_argument(
         "--skip-version-check",
@@ -1151,9 +1198,14 @@ def define_options(
     # This undocumented feature exports limited line-level dependency information.
     internals_group.add_argument("--export-ref-info", action="store_true", help=argparse.SUPPRESS)
 
-    # Experimental parallel type-checking support.
+    # Parallel type-checking support.
     internals_group.add_argument(
-        "-n", "--num-workers", type=int, default=0, help=argparse.SUPPRESS
+        "-n",
+        "--num-workers",
+        type=parse_num_workers,
+        metavar="VALUE",
+        default=0,
+        help="Number of separate mypy worker processes, or 'auto'",
     )
 
     report_group = parser.add_argument_group(
@@ -1258,7 +1310,19 @@ def define_options(
     parser.add_argument("--test-env", action="store_true", help=argparse.SUPPRESS)
     # --local-partial-types disallows partial types spanning module top level and a function
     # (implicitly defined in fine-grained incremental mode)
-    add_invertible_flag("--local-partial-types", default=False, help=argparse.SUPPRESS)
+    add_invertible_flag(
+        "--no-local-partial-types",
+        inverse="--local-partial-types",
+        default=True,
+        dest="local_partial_types",
+        help=argparse.SUPPRESS,
+    )
+    add_invertible_flag(
+        "--no-native-parser",
+        default=True,
+        dest="native_parser",
+        help="Do not use faster parser that parses directly to mypy AST",
+    )
     # --logical-deps adds some more dependencies that are not semantically needed, but
     # may be helpful to determine relative importance of classes and functions for overall
     # type precision in a code base. It also _removes_ some deps, so this flag should be never
@@ -1371,6 +1435,7 @@ def process_options(
     fscache: FileSystemCache | None = None,
     program: str = "mypy",
     header: str = HEADER,
+    mypyc: bool = False,
 ) -> tuple[list[BuildSource], Options]:
     """Parse command line arguments.
 
@@ -1398,6 +1463,9 @@ def process_options(
 
     options = Options()
     strict_option_set = False
+    if mypyc:
+        # Mypyc has strict_bytes enabled by default
+        options.strict_bytes = True
 
     def set_strict_flags() -> None:
         nonlocal strict_option_set
@@ -1418,6 +1486,14 @@ def process_options(
     if environ_cache_dir.strip():
         options.cache_dir = environ_cache_dir
     options.cache_dir = os.path.expanduser(options.cache_dir)
+
+    # Override num_workers if provided in the environment
+    environ_num_workers = os.getenv("MYPY_NUM_WORKERS", "")
+    if environ_num_workers.strip():
+        try:
+            options.num_workers = parse_num_workers(environ_num_workers)
+        except argparse.ArgumentTypeError as error:
+            parser.error(f"MYPY_NUM_WORKERS: {error}")
 
     # Parse command line for real, using a split namespace.
     special_opts = argparse.Namespace()
@@ -1550,7 +1626,8 @@ def process_options(
                 reason = cache.find_module(p)
                 if reason is ModuleNotFoundReason.FOUND_WITHOUT_TYPE_HINTS:
                     fail(
-                        f"Package '{p}' cannot be type checked due to missing py.typed marker. See https://mypy.readthedocs.io/en/stable/installed_packages.html for more details",
+                        f"Package '{p}' cannot be type checked due to missing py.typed marker.\n"
+                        "See https://mypy.readthedocs.io/en/stable/installed_packages.html for more details",
                         stderr,
                         options,
                     )
@@ -1621,13 +1698,15 @@ def process_cache_map(
             parser.error(f"Duplicate --cache-map source {source})")
         if not source.endswith(".py") and not source.endswith(".pyi"):
             parser.error(f"Invalid --cache-map source {source} (triple[0] must be *.py[i])")
-        if not meta_file.endswith(".meta.json"):
+        if not meta_file.endswith((".meta.json", ".meta.ff")):
             parser.error(
-                "Invalid --cache-map meta_file %s (triple[1] must be *.meta.json)" % meta_file
+                "Invalid --cache-map meta_file %s (triple[1] must be *.meta.json or *.meta.ff)"
+                % meta_file
             )
-        if not data_file.endswith(".data.json"):
+        if not data_file.endswith((".data.json", ".data.ff")):
             parser.error(
-                "Invalid --cache-map data_file %s (triple[2] must be *.data.json)" % data_file
+                "Invalid --cache-map data_file %s (triple[2] must be *.data.json or *.data.ff)"
+                % data_file
             )
         options.cache_map[source] = (meta_file, data_file)
 
@@ -1640,6 +1719,9 @@ def maybe_write_junit_xml(
     options: Options,
 ) -> None:
     if options.junit_xml:
+        if options.bazel:
+            # Elapsed time would make the output non-reproducible.
+            td = 0.0
         py_version = f"{options.python_version[0]}_{options.python_version[1]}"
         if options.junit_format == "global":
             util.write_junit_xml(
@@ -1671,7 +1753,7 @@ def read_types_packages_to_install(cache_dir: str, after_run: bool) -> list[str]
         if not after_run:
             sys.stderr.write(
                 "error: Can't determine which types to install with no files to check "
-                + "(and no cache from previous mypy run)\n"
+                "(and no cache from previous mypy run)\n"
             )
         else:
             sys.stderr.write(

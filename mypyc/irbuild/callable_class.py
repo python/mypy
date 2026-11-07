@@ -6,15 +6,15 @@ non-local variables defined in outer scopes.
 
 from __future__ import annotations
 
-from mypyc.common import ENV_ATTR_NAME, PROPSET_PREFIX, SELF_NAME
+from mypyc.common import CPYFUNCTION_NAME, ENV_ATTR_NAME, PROPSET_PREFIX, SELF_NAME
 from mypyc.ir.class_ir import ClassIR
 from mypyc.ir.func_ir import FuncDecl, FuncIR, FuncSignature, RuntimeArg
 from mypyc.ir.ops import (
-    NAMESPACE_STATIC,
     BasicBlock,
+    Branch,
     Call,
+    GetAttr,
     Integer,
-    LoadStatic,
     Register,
     Return,
     SetAttr,
@@ -54,22 +54,7 @@ def setup_callable_class(builder: IRBuilder) -> None:
     Return a newly constructed ClassIR representing the callable
     class for the nested function.
     """
-    # Check to see that the name has not already been taken. If so,
-    # rename the class. We allow multiple uses of the same function
-    # name because this is valid in if-else blocks. Example:
-    #
-    #     if True:
-    #         def foo():          ---->    foo_obj()
-    #             return True
-    #     else:
-    #         def foo():          ---->    foo_obj_0()
-    #             return False
-    name = base_name = f"{builder.fn_info.namespaced_name()}_obj"
-    count = 0
-    while name in builder.callable_class_names:
-        name = base_name + "_" + str(count)
-        count += 1
-    builder.callable_class_names.add(name)
+    name = builder.unique_class_name(f"{builder.fn_info.namespaced_name()}_obj")
 
     # Define the actual callable class ClassIR, and set its
     # environment to point at the previously defined environment
@@ -88,6 +73,9 @@ def setup_callable_class(builder: IRBuilder) -> None:
     # this is a toplevel lambda), don't set up an environment.
     if builder.fn_infos[-2].contains_nested:
         callable_class_ir.attributes[ENV_ATTR_NAME] = RInstance(builder.fn_infos[-2].env_class)
+        # The link is initialized before the callable is published and is never rebound.
+        # Treating it as Final permits plain loads on free-threaded builds.
+        callable_class_ir.final_attributes.add(ENV_ATTR_NAME)
     callable_class_ir.mro = [callable_class_ir]
     builder.fn_info.callable_class = ImplicitClass(callable_class_ir)
     builder.classes.append(callable_class_ir)
@@ -108,6 +96,7 @@ def add_coroutine_properties(
     Needed to make introspection functions like inspect.iscoroutinefunction work.
     """
     callable_class_ir.coroutine_name = coroutine_name
+    callable_class_ir.attributes[CPYFUNCTION_NAME] = object_rprimitive
 
     properties = {
         "__name__": cpyfunction_get_name,
@@ -122,20 +111,32 @@ def add_coroutine_properties(
         "__annotations__": cpyfunction_set_annotations,
     }
 
+    line = builder.fn_info.fitem.line
+
     def get_func_wrapper() -> Value:
-        return builder.add(
-            LoadStatic(
-                object_rprimitive,
-                callable_class_ir.name + "_cpyfunction",
-                builder.module_name,
-                NAMESPACE_STATIC,
+        # The wrapper is created lazily on first introspection, since creating it
+        # (including a code object) for every instance is expensive.
+        self_reg = builder.self()
+        init, done = BasicBlock(), BasicBlock()
+        cur = builder.add(
+            GetAttr(
+                self_reg,
+                CPYFUNCTION_NAME,
+                line,
+                borrow=not builder.options.target_python.free_threaded,
+                allow_error_value=True,
             )
         )
+        builder.add(Branch(cur, init, done, Branch.IS_ERROR))
+        builder.activate_block(init)
+        builder.add_coroutine_setup_call(callable_class_ir.name, self_reg)
+        builder.goto_and_activate(done)
+        return builder.add(GetAttr(self_reg, CPYFUNCTION_NAME, line))
 
     for name, primitive in properties.items():
         with builder.enter_method(callable_class_ir, name, object_rprimitive, internal=True):
             func = get_func_wrapper()
-            val = builder.primitive_op(primitive, [func, Integer(0, c_pointer_rprimitive)], -1)
+            val = builder.primitive_op(primitive, [func, Integer(0, c_pointer_rprimitive)], line)
             builder.add(Return(val))
 
     for name, primitive in writable_props.items():
@@ -145,7 +146,7 @@ def add_coroutine_properties(
             value = builder.add_argument("value", object_rprimitive)
             func = get_func_wrapper()
             rv = builder.primitive_op(
-                primitive, [func, value, Integer(0, c_pointer_rprimitive)], -1
+                primitive, [func, value, Integer(0, c_pointer_rprimitive)], line
             )
             builder.add(Return(rv))
 
@@ -201,7 +202,7 @@ def add_get_to_callable_class(builder: IRBuilder, fn_info: FuncInfo) -> None:
         # instance method object.
         instance_block, class_block = BasicBlock(), BasicBlock()
         comparison = builder.translate_is_op(
-            builder.read(instance), builder.none_object(), "is", line
+            builder.read(instance), builder.none_object(line), "is", line
         )
         builder.add_bool_branch(comparison, class_block, instance_block)
 
@@ -238,14 +239,22 @@ def instantiate_callable_class(builder: IRBuilder, fn_info: FuncInfo) -> Value:
     # - A generator function: the callable class is instantiated
     #   from the '__next__' method of the generator class, and hence the
     #   environment of the generator class is used.
-    # - Regular function: we use the environment of the original function.
+    # - Regular function or comprehension scope: we use the environment
+    #   of the original function. Comprehension scopes are inlined (no
+    #   callable class), so they fall into this case despite is_nested.
     curr_env_reg = None
     if builder.fn_info.is_generator:
         curr_env_reg = builder.fn_info.generator_class.curr_env_reg
-    elif builder.fn_info.is_nested:
+    elif builder.fn_info.is_nested and not builder.fn_info.is_comprehension_scope:
         curr_env_reg = builder.fn_info.callable_class.curr_env_reg
     elif builder.fn_info.contains_nested:
         curr_env_reg = builder.fn_info.curr_env_reg
     if curr_env_reg:
-        builder.add(SetAttr(func_reg, ENV_ATTR_NAME, curr_env_reg, fitem.line))
+        set_env = SetAttr(func_reg, ENV_ATTR_NAME, curr_env_reg, fitem.line)
+        # A new or freelist-reused callable has had all of its fields cleared, and this store
+        # happens before the callable can escape.
+        set_env.mark_as_initializer()
+        builder.add(set_env)
+    # Callable classes of coroutines need their own function wrapper per instance
+    # (for introspection), but it's created lazily by the property getters/setters.
     return func_reg

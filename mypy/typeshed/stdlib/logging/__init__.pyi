@@ -7,8 +7,8 @@ from re import Pattern
 from string import Template
 from time import struct_time
 from types import FrameType, GenericAlias, TracebackType
-from typing import Any, ClassVar, Final, Generic, Literal, Protocol, TextIO, TypeVar, overload, type_check_only
-from typing_extensions import Self, TypeAlias, deprecated
+from typing import Any, ClassVar, Final, Generic, Literal, Protocol, TextIO, TypeAlias, TypeVar, overload, type_check_only
+from typing_extensions import Self, deprecated
 
 __all__ = [
     "BASIC_FORMAT",
@@ -61,7 +61,7 @@ if sys.version_info >= (3, 12):
     __all__ += ["getHandlerByName", "getHandlerNames"]
 
 _SysExcInfoType: TypeAlias = tuple[type[BaseException], BaseException, TracebackType | None] | tuple[None, None, None]
-_ExcInfoType: TypeAlias = None | bool | _SysExcInfoType | BaseException
+_ExcInfoType: TypeAlias = bool | _SysExcInfoType | BaseException | None
 _ArgsType: TypeAlias = tuple[object, ...] | Mapping[str, object]
 _Level: TypeAlias = int | str
 _FormatStyle: TypeAlias = Literal["%", "{", "$"]
@@ -225,7 +225,7 @@ class Logger(Filterer):
         lno: int,
         msg: object,
         args: _ArgsType,
-        exc_info: _SysExcInfoType | None,
+        exc_info: _SysExcInfoType | Literal[False] | None,
         func: str | None = None,
         extra: Mapping[str, object] | None = None,
         sinfo: str | None = None,
@@ -245,7 +245,7 @@ NOTSET: Final = 0
 class Handler(Filterer):
     level: int  # undocumented
     formatter: Formatter | None  # undocumented
-    lock: threading.Lock | None  # undocumented
+    lock: threading.RLock | None  # undocumented
     name: str | None  # undocumented
     def __init__(self, level: _Level = 0) -> None: ...
     def get_name(self) -> str: ...  # undocumented
@@ -274,21 +274,15 @@ class Formatter:
     default_time_format: str
     default_msec_format: str | None
 
-    if sys.version_info >= (3, 10):
-        def __init__(
-            self,
-            fmt: str | None = None,
-            datefmt: str | None = None,
-            style: _FormatStyle = "%",
-            validate: bool = True,
-            *,
-            defaults: Mapping[str, Any] | None = None,
-        ) -> None: ...
-    else:
-        def __init__(
-            self, fmt: str | None = None, datefmt: str | None = None, style: _FormatStyle = "%", validate: bool = True
-        ) -> None: ...
-
+    def __init__(
+        self,
+        fmt: str | None = None,
+        datefmt: str | None = None,
+        style: _FormatStyle = "%",
+        validate: bool = True,
+        *,
+        defaults: Mapping[str, Any] | None = None,
+    ) -> None: ...
     def format(self, record: LogRecord) -> str: ...
     def formatTime(self, record: LogRecord, datefmt: str | None = None) -> str: ...
     def formatException(self, ei: _SysExcInfoType) -> str: ...
@@ -313,12 +307,15 @@ class Filter:
         def filter(self, record: LogRecord) -> bool: ...
 
 class LogRecord:
-    # args can be set to None by logging.handlers.QueueHandler
-    # (see https://bugs.python.org/issue44473)
+    # args can be set to None by logging.handlers.QueueHandler, which
+    # contradicts the LogRecord documentation, but seems to be intentional,
+    # see https://github.com/python/cpython/issues/88639
     args: _ArgsType | None
     asctime: str
     created: float
-    exc_info: _SysExcInfoType | None
+    # Prior to Python 3.16, Logger._log() only normalizes truthy exc_info
+    # values so exc_info=False ends up on the record unchanged.
+    exc_info: _SysExcInfoType | Literal[False] | None
     exc_text: str | None
     filename: str
     funcName: str
@@ -348,6 +345,9 @@ class LogRecord:
         pathname: str,
         lineno: int,
         msg: object,
+        # args can be set to None by logging.handlers.QueueHandler, which
+        # contradicts the LogRecord documentation, but seems to be intentional,
+        # see https://github.com/python/cpython/issues/88639
         args: _ArgsType | None,
         exc_info: _SysExcInfoType | None,
         func: str | None = None,
@@ -362,18 +362,12 @@ _L = TypeVar("_L", bound=Logger | LoggerAdapter[Any])
 class LoggerAdapter(Generic[_L]):
     logger: _L
     manager: Manager  # undocumented
+    extra: Mapping[str, object] | None
 
     if sys.version_info >= (3, 13):
         def __init__(self, logger: _L, extra: Mapping[str, object] | None = None, merge_extra: bool = False) -> None: ...
-    elif sys.version_info >= (3, 10):
+    else:
         def __init__(self, logger: _L, extra: Mapping[str, object] | None = None) -> None: ...
-    else:
-        def __init__(self, logger: _L, extra: Mapping[str, object]) -> None: ...
-
-    if sys.version_info >= (3, 10):
-        extra: Mapping[str, object] | None
-    else:
-        extra: Mapping[str, object]
 
     if sys.version_info >= (3, 13):
         merge_extra: bool
@@ -566,6 +560,7 @@ fatal = critical
 
 def disable(level: int = 50) -> None: ...
 def addLevelName(level: int, levelName: str) -> None: ...
+
 @overload
 def getLevelName(level: int) -> str: ...
 @overload
@@ -576,20 +571,43 @@ if sys.version_info >= (3, 11):
     def getLevelNamesMapping() -> dict[str, int]: ...
 
 def makeLogRecord(dict: Mapping[str, object]) -> LogRecord: ...
+
+@overload  # handlers is non-None
 def basicConfig(
     *,
-    filename: StrPath | None = ...,
-    filemode: str = ...,
-    format: str = ...,
-    datefmt: str | None = ...,
-    style: _FormatStyle = ...,
-    level: _Level | None = ...,
-    stream: SupportsWrite[str] | None = ...,
-    handlers: Iterable[Handler] | None = ...,
-    force: bool | None = ...,
-    encoding: str | None = ...,
-    errors: str | None = ...,
+    format: str = ...,  # default value depends on the value of `style`
+    datefmt: str | None = None,
+    style: _FormatStyle = "%",
+    level: _Level | None = None,
+    handlers: Iterable[Handler],
+    force: bool | None = False,
 ) -> None: ...
+@overload  # handlers is None, filename is passed (but possibly None)
+def basicConfig(
+    *,
+    filename: StrPath | None,
+    filemode: str = "a",
+    format: str = ...,  # default value depends on the value of `style`
+    datefmt: str | None = None,
+    style: _FormatStyle = "%",
+    level: _Level | None = None,
+    handlers: None = None,
+    force: bool | None = False,
+    encoding: str | None = None,
+    errors: str | None = "backslashreplace",
+) -> None: ...
+@overload  # handlers is None, filename is not passed
+def basicConfig(
+    *,
+    format: str = ...,  # default value depends on the value of `style`
+    datefmt: str | None = None,
+    style: _FormatStyle = "%",
+    level: _Level | None = None,
+    stream: SupportsWrite[str] | None = None,
+    handlers: None = None,
+    force: bool | None = False,
+) -> None: ...
+
 def shutdown(handlerList: Sequence[Any] = ...) -> None: ...  # handlerList is undocumented
 def setLoggerClass(klass: type[Logger]) -> None: ...
 def captureWarnings(capture: bool) -> None: ...
@@ -602,10 +620,12 @@ _StreamT = TypeVar("_StreamT", bound=SupportsWrite[str])
 class StreamHandler(Handler, Generic[_StreamT]):
     stream: _StreamT  # undocumented
     terminator: str
+
     @overload
     def __init__(self: StreamHandler[TextIO], stream: None = None) -> None: ...
     @overload
     def __init__(self: StreamHandler[_StreamT], stream: _StreamT) -> None: ...  # pyright: ignore[reportInvalidTypeVarUse]  #11780
+
     def setStream(self, stream: _StreamT) -> _StreamT | None: ...
     if sys.version_info >= (3, 11):
         def __class_getitem__(cls, item: Any, /) -> GenericAlias: ...
@@ -616,6 +636,7 @@ class FileHandler(StreamHandler[TextIOWrapper]):
     encoding: str | None  # undocumented
     delay: bool  # undocumented
     errors: str | None  # undocumented
+    stream: TextIOWrapper | None  # type: ignore[assignment]  # None when delay=True or after close()
     def __init__(
         self, filename: StrPath, mode: str = "a", encoding: str | None = None, delay: bool = False, errors: str | None = None
     ) -> None: ...
@@ -641,11 +662,8 @@ class PercentStyle:  # undocumented
     asctime_search: str
     validation_pattern: Pattern[str]
     _fmt: str
-    if sys.version_info >= (3, 10):
-        def __init__(self, fmt: str, *, defaults: Mapping[str, Any] | None = None) -> None: ...
-    else:
-        def __init__(self, fmt: str) -> None: ...
 
+    def __init__(self, fmt: str, *, defaults: Mapping[str, Any] | None = None) -> None: ...
     def usesTime(self) -> bool: ...
     def validate(self) -> None: ...
     def format(self, record: Any) -> str: ...

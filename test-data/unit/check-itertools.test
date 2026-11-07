@@ -1,0 +1,47 @@
+[case testItertoolsBatched312]
+# flags: --python-version 3.12
+
+from itertools import batched
+
+b = batched([0], 1)
+reveal_type(b)  # N: Revealed type is "itertools.batched[builtins.tuple[builtins.int, ...]]"
+reveal_type(b.__next__())  # N: Revealed type is "builtins.tuple[builtins.int, ...]"
+
+reveal_type(batched([0, 0], 2))  # N: Revealed type is "itertools.batched[builtins.tuple[builtins.int, ...]]"
+reveal_type(batched([0, 0, 0], 3))  # N: Revealed type is "itertools.batched[builtins.tuple[builtins.int, ...]]"
+reveal_type(batched([0, 0, 0, 0], 4))  # N: Revealed type is "itertools.batched[builtins.tuple[builtins.int, ...]]"
+reveal_type(batched([0, 0, 0, 0, 0], 5))  # N: Revealed type is "itertools.batched[builtins.tuple[builtins.int, ...]]"
+
+reveal_type(batched([0], 2))  # N: Revealed type is "itertools.batched[builtins.tuple[builtins.int, ...]]"
+reveal_type(batched([0], 2))  # N: Revealed type is "itertools.batched[builtins.tuple[builtins.int, ...]]"
+
+def f() -> int:
+    return 3
+
+reveal_type(batched([0, 0, 0], f()))  # N: Revealed type is "itertools.batched[builtins.tuple[builtins.int, ...]]"
+
+[builtins fixtures/tuple.pyi]
+
+[case testItertoolsBatched313]
+# flags: --python-version 3.13
+
+from itertools import batched
+
+b = batched([0], 1, strict=True)
+reveal_type(b)  # N: Revealed type is "itertools.batched[tuple[builtins.int]]"
+reveal_type(b.__next__())  # N: Revealed type is "tuple[builtins.int]"
+
+reveal_type(batched([0, 0], 2, strict=True))  # N: Revealed type is "itertools.batched[tuple[builtins.int, builtins.int]]"
+reveal_type(batched([0, 0, 0], 3, strict=True))  # N: Revealed type is "itertools.batched[tuple[builtins.int, builtins.int, builtins.int]]"
+reveal_type(batched([0, 0, 0, 0], 4, strict=True))  # N: Revealed type is "itertools.batched[tuple[builtins.int, builtins.int, builtins.int, builtins.int]]"
+reveal_type(batched([0, 0, 0, 0, 0], 5, strict=True))  # N: Revealed type is "itertools.batched[tuple[builtins.int, builtins.int, builtins.int, builtins.int, builtins.int]]"
+
+reveal_type(batched([0], 2),)  # N: Revealed type is "itertools.batched[builtins.tuple[builtins.int, ...]]"
+reveal_type(batched([0], 2, strict=False))  # N: Revealed type is "itertools.batched[builtins.tuple[builtins.int, ...]]"
+
+def f() -> int:
+    return 3
+
+reveal_type(batched([0, 0, 0], f(), strict=True))  # N: Revealed type is "itertools.batched[builtins.tuple[builtins.int, ...]]"
+
+[builtins fixtures/tuple.pyi]

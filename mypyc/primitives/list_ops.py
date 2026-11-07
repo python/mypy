@@ -108,7 +108,18 @@ method_op(
     priority=2,
 )
 
-# list[index] that produces a borrowed result
+# Version with native int index
+list_get_item_int64_op = method_op(
+    name="__getitem__",
+    arg_types=[list_rprimitive, int64_rprimitive],
+    return_type=object_rprimitive,
+    c_function_name="CPyList_GetItemInt64",
+    error_kind=ERR_MAGIC,
+    priority=5,
+)
+
+# list[index] that produces a borrowed result. Borrowed variants are unsafe on
+# free-threaded builds (another thread could remove the item and free it).
 method_op(
     name="__getitem__",
     arg_types=[list_rprimitive, int_rprimitive],
@@ -116,6 +127,7 @@ method_op(
     c_function_name="CPyList_GetItemBorrow",
     error_kind=ERR_MAGIC,
     is_borrowed=True,
+    gil_only=True,
     priority=3,
 )
 
@@ -127,17 +139,8 @@ method_op(
     c_function_name="CPyList_GetItemShortBorrow",
     error_kind=ERR_MAGIC,
     is_borrowed=True,
+    gil_only=True,
     priority=4,
-)
-
-# Version with native int index
-method_op(
-    name="__getitem__",
-    arg_types=[list_rprimitive, int64_rprimitive],
-    return_type=object_rprimitive,
-    c_function_name="CPyList_GetItemInt64",
-    error_kind=ERR_MAGIC,
-    priority=5,
 )
 
 # Version with native int index
@@ -147,11 +150,12 @@ method_op(
     return_type=object_rprimitive,
     c_function_name="CPyList_GetItemInt64Borrow",
     is_borrowed=True,
+    gil_only=True,
     error_kind=ERR_MAGIC,
     priority=6,
 )
 
-# This is unsafe because it assumes that the index is a non-negative short integer
+# This is unsafe because it assumes that the index is a non-negative integer
 # that is in-bounds for the list.
 list_get_item_unsafe_op = custom_primitive_op(
     name="list_get_item_unsafe",

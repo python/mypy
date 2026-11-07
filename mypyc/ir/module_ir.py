@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from mypyc.common import JsonDict
 from mypyc.ir.class_ir import ClassIR
-from mypyc.ir.deps import Capsule, Dependency, SourceDep
+from mypyc.ir.deps import Capsule, Dependency, HeaderDep, SourceDep
 from mypyc.ir.func_ir import FuncDecl, FuncIR
 from mypyc.ir.ops import DeserMaps
 from mypyc.ir.rtypes import RType, deserialize_type
@@ -41,7 +41,21 @@ class ModuleIR:
             if isinstance(dep, Capsule):
                 serialized_deps.append({"type": "Capsule", "name": dep.name})
             elif isinstance(dep, SourceDep):
-                serialized_deps.append({"type": "SourceDep", "path": dep.path})
+                source_dep: JsonDict = {
+                    "type": "SourceDep",
+                    "path": dep.path,
+                    "include_dirs": dep.include_dirs,
+                    "internal": dep.internal,
+                }
+                serialized_deps.append(source_dep)
+            elif isinstance(dep, HeaderDep):
+                header_dep: JsonDict = {
+                    "type": "HeaderDep",
+                    "path": dep.path,
+                    "include_dirs": dep.include_dirs,
+                    "internal": dep.internal,
+                }
+                serialized_deps.append(header_dep)
 
         return {
             "fullname": self.fullname,
@@ -69,7 +83,21 @@ class ModuleIR:
             if dep_dict["type"] == "Capsule":
                 deps.add(Capsule(dep_dict["name"]))
             elif dep_dict["type"] == "SourceDep":
-                deps.add(SourceDep(dep_dict["path"]))
+                deps.add(
+                    SourceDep(
+                        dep_dict["path"],
+                        include_dirs=dep_dict["include_dirs"],
+                        internal=dep_dict["internal"],
+                    )
+                )
+            elif dep_dict["type"] == "HeaderDep":
+                deps.add(
+                    HeaderDep(
+                        dep_dict["path"],
+                        include_dirs=dep_dict["include_dirs"],
+                        internal=dep_dict["internal"],
+                    )
+                )
         module.dependencies = deps
 
         return module

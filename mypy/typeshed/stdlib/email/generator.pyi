@@ -12,6 +12,7 @@ _MessageT = TypeVar("_MessageT", bound=Message[Any, Any], default=Any)
 class Generator(Generic[_MessageT]):
     maxheaderlen: int | None
     policy: Policy[_MessageT] | None
+
     @overload
     def __init__(
         self: Generator[Any],  # The Policy of the message is used.
@@ -30,6 +31,7 @@ class Generator(Generic[_MessageT]):
         *,
         policy: Policy[_MessageT],
     ) -> None: ...
+
     def write(self, s: str) -> None: ...
     def flatten(self, msg: _MessageT, unixfrom: bool = False, linesep: str | None = None) -> None: ...
     def clone(self, fp: SupportsWrite[str]) -> Self: ...

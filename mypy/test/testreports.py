@@ -42,8 +42,7 @@ class CoberturaReportSuite(Suite):
 
         cobertura_package.packages["raz"] = child_package
 
-        expected_output = textwrap.dedent(
-            """\
+        expected_output = textwrap.dedent("""\
             <package complexity="1.0" name="foobar" branch-rate="0" line-rate="0.5000">
               <classes/>
               <packages>
@@ -54,8 +53,7 @@ class CoberturaReportSuite(Suite):
                 </package>
               </packages>
             </package>
-        """
-        ).encode("ascii")
+        """).encode("ascii")
         assert_equal(
             expected_output, etree.tostring(cobertura_package.as_xml(), pretty_print=True)
         )

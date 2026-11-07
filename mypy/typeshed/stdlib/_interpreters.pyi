@@ -1,7 +1,8 @@
+import sys
 import types
 from collections.abc import Callable
-from typing import Any, Final, Literal, SupportsIndex, TypeVar, overload
-from typing_extensions import TypeAlias, disjoint_base
+from typing import Any, Final, Literal, SupportsIndex, TypeAlias, TypeVar, overload
+from typing_extensions import disjoint_base
 
 _R = TypeVar("_R")
 
@@ -10,7 +11,12 @@ _SharedDict: TypeAlias = dict[str, Any]  # many objects can be shared
 
 class InterpreterError(Exception): ...
 class InterpreterNotFoundError(InterpreterError): ...
-class NotShareableError(ValueError): ...
+
+if sys.version_info >= (3, 14):
+    class NotShareableError(TypeError): ...
+
+else:
+    class NotShareableError(ValueError): ...
 
 @disjoint_base
 class CrossInterpreterBufferView:
@@ -27,7 +33,7 @@ def get_config(id: SupportsIndex, *, restrict: bool = False) -> types.SimpleName
 def whence(id: SupportsIndex) -> _Whence: ...
 def exec(
     id: SupportsIndex, code: str | types.CodeType | Callable[[], object], shared: _SharedDict = {}, *, restrict: bool = False
-) -> None | types.SimpleNamespace: ...
+) -> types.SimpleNamespace | None: ...
 def call(
     id: SupportsIndex,
     callable: Callable[..., _R],
@@ -47,6 +53,7 @@ def set___main___attrs(id: SupportsIndex, updates: _SharedDict, *, restrict: boo
 def incref(id: SupportsIndex, *, implieslink: bool = False, restrict: bool = False) -> None: ...
 def decref(id: SupportsIndex, *, restrict: bool = False) -> None: ...
 def is_shareable(obj: object) -> bool: ...
+
 @overload
 def capture_exception(exc: BaseException) -> types.SimpleNamespace: ...
 @overload

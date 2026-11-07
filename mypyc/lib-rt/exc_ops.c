@@ -7,16 +7,67 @@
 #include <Python.h>
 #include "CPy.h"
 
-void CPy_Raise(PyObject *exc) {
-    if (PyObject_IsInstance(exc, (PyObject *)&PyType_Type)) {
-        PyObject *obj = PyObject_CallNoArgs(exc);
-        if (!obj)
-            return;
-        PyErr_SetObject(exc, obj);
-        Py_DECREF(obj);
-    } else {
-        PyErr_SetObject((PyObject *)Py_TYPE(exc), exc);
+// Return a new exception instance, or NULL with an error set.
+static PyObject *instantiate_exception(PyObject *type) {
+    PyObject *value = PyObject_CallNoArgs(type);
+    if (!value)
+        return NULL;
+    if (!PyExceptionInstance_Check(value)) {
+        PyErr_Format(PyExc_TypeError,
+                     "calling %R should have returned an instance of "
+                     "BaseException, not %R", type, Py_TYPE(value));
+        Py_DECREF(value);
+        return NULL;
     }
+    return value;
+}
+
+// A NULL cause means no 'from' clause; Py_None means 'from None'.
+static void raise_exception(PyObject *exc, PyObject *cause) {
+    PyObject *type;
+    PyObject *value;
+    if (PyExceptionClass_Check(exc)) {
+        type = exc;
+        value = instantiate_exception(exc);
+        if (!value)
+            return;
+    } else if (PyExceptionInstance_Check(exc)) {
+        type = (PyObject *)Py_TYPE(exc);
+        value = Py_NewRef(exc);
+    } else {
+        PyErr_SetString(PyExc_TypeError, "exceptions must derive from BaseException");
+        return;
+    }
+
+    if (cause != NULL) {
+        PyObject *fixed_cause;
+        if (PyExceptionClass_Check(cause)) {
+            fixed_cause = instantiate_exception(cause);
+            if (!fixed_cause)
+                goto fail;
+        } else if (PyExceptionInstance_Check(cause)) {
+            fixed_cause = Py_NewRef(cause);
+        } else if (Py_IsNone(cause)) {
+            fixed_cause = NULL;
+        } else {
+            PyErr_SetString(PyExc_TypeError, "exception causes must derive from BaseException");
+            goto fail;
+        }
+        // This steals the reference to the cause and sets __suppress_context__
+        PyException_SetCause(value, fixed_cause);
+    }
+    // Normalize against the original class, even if __new__ returned an unrelated exception.
+    PyErr_SetObject(type, value);
+fail:
+    Py_DECREF(value);
+}
+
+void CPy_Raise(PyObject *exc) {
+    raise_exception(exc, NULL);
+}
+
+void CPy_RaiseFrom(PyObject *exc, PyObject *cause) {
+    raise_exception(exc, cause);
 }
 
 void CPy_Reraise(void) {
@@ -32,13 +83,16 @@ void CPyErr_SetObjectAndTraceback(PyObject *type, PyObject *value, PyObject *tra
         type = (PyObject *)Py_TYPE(value);
     }
 
-    // Set the value and traceback of an error. Because calling
-    // PyErr_Restore takes away a reference to each object passed in
-    // as an argument, we manually increase the reference count of
-    // each argument before calling it.
+    // PyErr_Restore steals a reference to each argument.
     Py_INCREF(type);
     Py_INCREF(value);
-    Py_INCREF(traceback);
+    // An omitted traceback (or None) preserves an exception instance's
+    // existing traceback, as generator.throw() and coroutine.throw() do.
+    if (Py_IsNone(traceback) && PyExceptionInstance_Check(value)) {
+        traceback = PyException_GetTraceback(value);
+    } else {
+        Py_INCREF(traceback);
+    }
     PyErr_Restore(type, value, traceback);
 }
 
@@ -123,11 +177,11 @@ static PyObject *CPy_GetTypeName(PyObject *type) {
     PyObject *module = NULL, *name = NULL;
     PyObject *full = NULL;
 
-    module = PyObject_GetAttrString(type, "__module__");
+    module = PyObject_GetAttr(type, mypyc_interned_str.__module__);
     if (!module || !PyUnicode_Check(module)) {
         goto out;
     }
-    name = PyObject_GetAttrString(type, "__qualname__");
+    name = PyObject_GetAttr(type, mypyc_interned_str.__qualname__);
     if (!name || !PyUnicode_Check(name)) {
         goto out;
     }

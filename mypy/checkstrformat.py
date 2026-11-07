@@ -39,7 +39,6 @@ from mypy.nodes import (
     MemberExpr,
     MypyFile,
     NameExpr,
-    Node,
     StarExpr,
     StrExpr,
     TempNode,
@@ -145,10 +144,10 @@ class ConversionSpecifier:
         self.key = m_dict.get("key")
 
         # Replace unmatched optional groups with empty matches (for convenience).
-        self.conv_type = m_dict.get("type", "")
-        self.flags = m_dict.get("flags", "")
-        self.width = m_dict.get("width", "")
-        self.precision = m_dict.get("precision", "")
+        self.conv_type = m_dict.get("type") or ""
+        self.flags = m_dict.get("flags") or ""
+        self.width = m_dict.get("width") or ""
+        self.precision = m_dict.get("precision") or ""
 
         # Used only for str.format() calls (it may be custom for types with __format__()).
         self.format_spec = m_dict.get("format_spec")
@@ -582,8 +581,13 @@ class StringFormatterChecker:
 
         temp_errors = Errors(self.chk.options)
         dummy = DUMMY_FIELD_NAME + spec.field[len(spec.key) :]
-        temp_ast: Node = parse(
-            dummy, fnam="<format>", module=None, options=self.chk.options, errors=temp_errors
+        temp_ast = parse(
+            dummy,
+            fnam="<format>",
+            module=None,
+            options=self.chk.options,
+            errors=temp_errors,
+            eager=True,
         )
         if temp_errors.is_errors():
             self.msg.fail(

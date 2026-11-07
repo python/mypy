@@ -78,6 +78,7 @@ from mypy.nodes import (
     Statement,
     StrExpr,
     SuperExpr,
+    TemplateStrExpr,
     TempNode,
     TryStmt,
     TupleExpr,
@@ -89,7 +90,7 @@ from mypy.nodes import (
     WithStmt,
     YieldExpr,
     YieldFromExpr,
-    check_arg_names,
+    check_param_names,
 )
 from mypy.options import Options
 from mypy.patterns import (
@@ -205,12 +206,14 @@ def parse(
         options = Options()
     errors.set_file(fnam, module, options=options)
     is_stub_file = fnam.endswith(".pyi")
-    if is_stub_file:
+    if ignore_errors:
+        feature_version = sys.version_info[1]
+    elif is_stub_file:
         feature_version = defaults.PYTHON3_VERSION[1]
-        if options.python_version[0] == 3 and options.python_version[1] > feature_version:
-            feature_version = options.python_version[1]
     else:
         assert options.python_version[0] >= 3
+        feature_version = options.python_version[1]
+    if options.python_version[0] == 3 and options.python_version[1] > feature_version:
         feature_version = options.python_version[1]
     try:
         # Disable
@@ -388,6 +391,7 @@ class ASTConverter:
         self.path = path
 
         self.type_ignores: dict[int, list[str]] = {}
+        self.uses_template_strings = False
 
         # Cache of visit_X methods keyed by type of visited object
         self.visitor_cache: dict[type, Callable[[AST | None], Any]] = {}
@@ -426,8 +430,8 @@ class ASTConverter:
     def set_line(self, node: N, n: AstNode) -> N:
         node.line = n.lineno
         node.column = n.col_offset
-        node.end_line = getattr(n, "end_lineno", None)
-        node.end_column = getattr(n, "end_col_offset", None)
+        node.end_line = n.end_lineno
+        node.end_column = n.end_col_offset
 
         return node
 
@@ -463,20 +467,17 @@ class ASTConverter:
             ismodule
             and stmts
             and self.type_ignores
-            and min(self.type_ignores) < self.get_lineno(stmts[0])
+            and (first := min(self.type_ignores)) < self.get_lineno(stmts[0])
         ):
-            ignores = self.type_ignores[min(self.type_ignores)]
+            ignores = self.type_ignores.pop(first)
             if ignores:
                 joined_ignores = ", ".join(ignores)
                 self.fail(
                     message_registry.TYPE_IGNORE_WITH_ERRCODE_ON_MODULE.format(joined_ignores),
-                    line=min(self.type_ignores),
+                    line=first,
                     column=0,
                     blocker=False,
                 )
-            self.errors.used_ignored_lines[self.errors.file][min(self.type_ignores)].append(
-                codes.FILE.code
-            )
             block = Block(self.fix_function_overloads(self.translate_stmt_list(stmts)))
             self.set_block_lines(block, stmts)
             mark_block_unreachable(block)
@@ -586,8 +587,8 @@ class ASTConverter:
         first, last = stmts[0], stmts[-1]
         b.line = first.lineno
         b.column = first.col_offset
-        b.end_line = getattr(last, "end_lineno", None)
-        b.end_column = getattr(last, "end_col_offset", None)
+        b.end_line = last.end_lineno
+        b.end_column = last.end_col_offset
         if not b.body:
             return
         new_first = b.body[0]
@@ -634,7 +635,7 @@ class ASTConverter:
                 # Check IfStmt block to determine if function overloads can be merged
                 if_overload_name = self._check_ifstmt_for_overloads(stmt, current_overload_name)
                 if if_overload_name is not None:
-                    (if_block_with_overload, if_unknown_truth_value) = (
+                    if_block_with_overload, if_unknown_truth_value = (
                         self._get_executable_if_block_with_overloads(stmt)
                     )
 
@@ -878,6 +879,7 @@ class ASTConverter:
 
     def visit_Module(self, mod: ast3.Module) -> MypyFile:
         self.type_ignores = {}
+        self.uses_template_strings = False
         for ti in mod.type_ignores:
             parsed = parse_type_ignore_tag(ti.tag)
             if parsed is not None:
@@ -890,6 +892,7 @@ class ASTConverter:
         ret = MypyFile(body, self.imports, False, ignored_lines=self.type_ignores)
         ret.is_stub = self.is_stub
         ret.path = self.path
+        ret.uses_template_strings = self.uses_template_strings
         return ret
 
     # --- stmt ---
@@ -916,7 +919,7 @@ class ASTConverter:
 
         lineno = n.lineno
         args = self.transform_args(n.args, lineno, no_type_check=no_type_check)
-        if special_function_elide_names(n.name):
+        if self.options.pos_only_special_methods and special_function_elide_names(n.name):
             for arg in args:
                 arg.pos_only = True
 
@@ -1001,21 +1004,21 @@ class ASTConverter:
         if any(arg_types) or return_type:
             if len(arg_types) != 1 and any(isinstance(t, EllipsisType) for t in arg_types):
                 self.fail(
-                    message_registry.ELLIPSIS_WITH_OTHER_TYPEARGS,
+                    message_registry.ELLIPSIS_WITH_OTHER_TYPEPARAMS,
                     lineno,
                     n.col_offset,
                     blocker=False,
                 )
             elif len(arg_types) > len(arg_kinds):
                 self.fail(
-                    message_registry.TYPE_SIGNATURE_TOO_MANY_ARGS,
+                    message_registry.TYPE_SIGNATURE_TOO_MANY_PARAMS,
                     lineno,
                     n.col_offset,
                     blocker=False,
                 )
             elif len(arg_types) < len(arg_kinds):
                 self.fail(
-                    message_registry.TYPE_SIGNATURE_TOO_FEW_ARGS,
+                    message_registry.TYPE_SIGNATURE_TOO_FEW_PARAMS,
                     lineno,
                     n.col_offset,
                     blocker=False,
@@ -1030,8 +1033,8 @@ class ASTConverter:
                 )
 
         # End position is always the same.
-        end_line = getattr(n, "end_lineno", None)
-        end_column = getattr(n, "end_col_offset", None)
+        end_line = n.end_lineno
+        end_column = n.end_col_offset
 
         self.class_and_function_stack.pop()
         self.class_and_function_stack.append("F")
@@ -1079,7 +1082,7 @@ class ASTConverter:
     ) -> list[Argument]:
         new_args = []
         names: list[ast3.arg] = []
-        posonlyargs = getattr(args, "posonlyargs", cast(list[ast3.arg], []))
+        posonlyargs = args.posonlyargs
         args_args = posonlyargs + args.args
         args_defaults = args.defaults
         num_no_defaults = len(args_args) - len(args_defaults)
@@ -1114,7 +1117,7 @@ class ASTConverter:
             new_args.append(self.make_argument(args.kwarg, None, ARG_STAR2, no_type_check))
             names.append(args.kwarg)
 
-        check_arg_names([arg.variable.name for arg in new_args], names, self.fail_arg)
+        check_param_names([arg.variable.name for arg in new_args], names, self.fail_arg)
 
         return new_args
 
@@ -1148,13 +1151,9 @@ class ASTConverter:
 
         var = Var(arg.arg, arg_type)
         var.is_inferred = False
+        var.is_argument = True
         argument = Argument(var, arg_type, self.visit(default), kind, pos_only)
-        argument.set_line(
-            arg.lineno,
-            arg.col_offset,
-            getattr(arg, "end_lineno", None),
-            getattr(arg, "end_col_offset", None),
-        )
+        argument.set_line(arg.lineno, arg.col_offset, arg.end_lineno, arg.end_col_offset)
         return argument
 
     def fail_arg(self, msg: str, arg: ast3.arg) -> None:
@@ -1190,8 +1189,8 @@ class ASTConverter:
         if self.options.include_docstrings:
             cdef.docstring = ast3.get_docstring(n, clean=False)
         cdef.column = n.col_offset
-        cdef.end_line = getattr(n, "end_lineno", None)
-        cdef.end_column = getattr(n, "end_col_offset", None)
+        cdef.end_line = n.end_lineno
+        cdef.end_column = n.end_col_offset
         self.class_and_function_stack.pop()
         return cdef
 
@@ -1570,9 +1569,15 @@ class ASTConverter:
         iters = [self.visit(c.iter) for c in n.generators]
         ifs_list = [self.translate_expr_list(c.ifs) for c in n.generators]
         is_async = [bool(c.is_async) for c in n.generators]
-        e = DictionaryComprehension(
-            self.visit(n.key), self.visit(n.value), targets, iters, ifs_list, is_async
-        )
+        key = self.visit(n.key)
+        if n.value is not None:
+            value = self.visit(n.value)
+        else:
+            # Our convention for ** unpack in dictionary comprehension matches Ruff
+            # parser, while Python parser has an opposite one.
+            value = key  # type: ignore[unreachable]
+            key = None
+        e = DictionaryComprehension(key, value, targets, iters, ifs_list, is_async)
         return self.set_line(e, n)
 
     # GeneratorExp(expr elt, comprehension* generators)
@@ -1693,19 +1698,22 @@ class ASTConverter:
         return self.set_line(result_expression, n)
 
     # TemplateStr(expr* values)
-    def visit_TemplateStr(self, n: ast_TemplateStr) -> Expression:
-        self.fail(
-            ErrorMessage("PEP 750 template strings are not yet supported"),
-            n.lineno,
-            n.col_offset,
-            blocker=False,
-        )
-        e = TempNode(AnyType(TypeOfAny.from_error))
+    def visit_TemplateStr(self, n: ast_TemplateStr) -> TemplateStrExpr:
+        self.uses_template_strings = True
+        items: list[Expression | tuple[Expression, str, str | None, Expression | None]] = []
+        for value in n.values:
+            if isinstance(value, ast_Interpolation):  # type: ignore[misc]
+                val_expr = self.visit(value.value)
+                val_expr.set_line(value.lineno, value.col_offset)
+                conversion = None if value.conversion < 0 else chr(value.conversion)
+                format_spec = (
+                    self.visit(value.format_spec) if value.format_spec is not None else None
+                )
+                items.append((val_expr, value.str, conversion, format_spec))
+            else:
+                items.append(self.visit(value))
+        e = TemplateStrExpr(items)
         return self.set_line(e, n)
-
-    # Interpolation(expr value, constant str, int conversion, expr? format_spec)
-    def visit_Interpolation(self, n: ast_Interpolation) -> Expression:
-        assert False, "Unreachable"
 
     # Attribute(expr value, identifier attr, expr_context ctx)
     def visit_Attribute(self, n: Attribute) -> MemberExpr | SuperExpr:
@@ -1958,7 +1966,10 @@ class TypeConverter:
         if not isinstance(self.parent(), ast3.List):
             note = None
             if constructor:
-                note = "Suggestion: use {0}[...] instead of {0}(...)".format(constructor)
+                if e.keywords:
+                    note = "Cannot use a function call in a type annotation"
+                else:
+                    note = "Suggestion: use {0}[...] instead of {0}(...)".format(constructor)
             return self.invalid_type(e, note=note)
         if not constructor:
             self.fail(message_registry.ARG_CONSTRUCTOR_NAME_EXPECTED, e.lineno, e.col_offset)
@@ -2113,8 +2124,8 @@ class TypeConverter:
                 column=value.column,
                 empty_tuple_index=empty_tuple_index,
             )
-            result.end_column = getattr(n, "end_col_offset", None)
-            result.end_line = getattr(n, "end_lineno", None)
+            result.end_column = n.end_col_offset
+            result.end_line = n.end_lineno
             return result
         else:
             return self.invalid_type(n)

@@ -216,6 +216,15 @@ class CFunctionStub:
 _Missing = enum.Enum("_Missing", "VALUE")
 
 
+def _is_sentinel_object(obj: object) -> bool:
+    """Whether obj is a sentinel object."""
+    typ = type(obj)
+    return typ.__module__ in ("builtins", "typing_extensions") and typ.__name__ in (
+        "sentinel",  # 4.16+
+        "Sentinel",  # 4.14 - 4.15
+    )
+
+
 class InspectionStubGenerator(BaseStubGenerator):
     """Stub generator that does not parse code.
 
@@ -323,6 +332,12 @@ class InspectionStubGenerator(BaseStubGenerator):
                 if default_value is not _Missing.VALUE:
                     if arg in annotations:
                         argtype = get_annotation(arg)
+                    elif _is_sentinel_object(default_value):
+                        # Reference the sentinel itself by name when possible, e.g.
+                        # `Incomplete | _MISSING`.
+                        incomplete = self.add_name("_typeshed.Incomplete")
+                        ref = self._sentinel_type_ref(default_value)
+                        argtype = f"{incomplete} | {ref}" if ref else incomplete
                     else:
                         argtype = self.get_type_annotation(default_value)
                         if argtype == "None":
@@ -536,8 +551,26 @@ class InspectionStubGenerator(BaseStubGenerator):
             return self.add_name("typing.Callable")
         elif isinstance(obj, ModuleType):
             return self.add_name("types.ModuleType", require=False)
+        elif _is_sentinel_object(obj):
+            # Works across all supported Python versions
+            return "typing_extensions.sentinel"
         else:
             return self.get_type_fullname(type(obj))
+
+    def _sentinel_type_ref(self, sentinel_obj: object) -> str | None:
+        """Return a reference to the name a sentinel object is bound to.
+
+        The sentinel spec says __name__ and __module__ are always present,
+        typing-extensions 4.16+ implements these, and stubs always use the
+        latest typing-extensions.
+
+        - https://docs.python.org/3.15/builtins/functions.html#sentinel.__name__
+        - https://docs.python.org/3.15/builtins/functions.html#sentinel.__module__
+        """
+        if (name := getattr(sentinel_obj, "__name__", None)) and name.isidentifier():
+            return f"{sentinel_obj.__module__}.{name}"
+
+        return None
 
     def is_function(self, obj: object) -> bool:
         if self.is_c_module:
@@ -913,6 +946,12 @@ class InspectionStubGenerator(BaseStubGenerator):
         The result lines will be appended to 'output'. If necessary, any
         required names will be added to 'imports'.
         """
+        # A sentinel's name is emitted regardless of privacy/`__all__`.
+        if _is_sentinel_object(obj):
+            self.record_name(name)
+            self.add_import_line("import typing_extensions\n")
+            output.append(f"{name} = typing_extensions.sentinel('{name}')")
+            return
         if self.is_private_name(name, f"{self.module_name}.{name}") or self.is_not_in_all(name):
             return
         self.record_name(name)

@@ -42,6 +42,7 @@ from mypy.nodes import (
     StarExpr,
     StrExpr,
     SuperExpr,
+    TemplateStrExpr,
     TempNode,
     TupleExpr,
     TypeAliasExpr,
@@ -314,6 +315,9 @@ class _Hasher(ExpressionVisitor[Key | None]):
         return None
 
     def visit_await_expr(self, e: AwaitExpr) -> None:
+        return None
+
+    def visit_template_str_expr(self, e: TemplateStrExpr) -> None:
         return None
 
     def visit_temp_node(self, e: TempNode) -> None:

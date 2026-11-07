@@ -105,7 +105,7 @@ class NamedTupleAnalyzer:
         self.msg = msg
 
     def analyze_namedtuple_classdef(
-        self, defn: ClassDef, is_stub_file: bool, is_func_scope: bool
+        self, defn: ClassDef, is_stub_file: bool
     ) -> tuple[bool, TypeInfo | None]:
         """Analyze if given class definition can be a named tuple definition.
 
@@ -122,8 +122,6 @@ class NamedTupleAnalyzer:
                         # This is a valid named tuple, but some types are incomplete.
                         return True, None
                     items, types, default_items, statements = result
-                    if is_func_scope and "@" not in defn.name:
-                        defn.name += "@" + str(defn.line)
                     existing_info = None
                     if isinstance(defn.analyzed, NamedTupleExpr):
                         existing_info = defn.analyzed.info
@@ -221,12 +219,13 @@ class NamedTupleAnalyzer:
         return items, types, default_items, statements
 
     def check_namedtuple(
-        self, node: Expression, var_name: str | None, is_func_scope: bool
+        self, node: Expression, name: str
     ) -> tuple[str | None, TypeInfo | None, list[TypeVarLikeType]]:
         """Check if a call defines a namedtuple.
 
-        The optional var_name argument is the name of the variable to
-        which this is assigned, if any.
+        The name argument is the name of the variable to which this is assigned.
+        For an inlined base class this is a unique name generated from class name
+        base number.
 
         Return a tuple of two items:
           * Internal name of the named tuple (e.g. the name passed as an argument to namedtuple)
@@ -254,42 +253,17 @@ class NamedTupleAnalyzer:
             items, types, defaults, typename, tvar_defs, ok = result
         else:
             # Error. Construct dummy return value.
-            if var_name:
-                name = var_name
-                if is_func_scope:
-                    name += "@" + str(call.line)
-            else:
-                name = var_name = "namedtuple@" + str(call.line)
             info = self.build_namedtuple_typeinfo(name, [], [], {}, node.line, None)
-            self.store_namedtuple_info(info, var_name, call, is_typed)
-            if name != var_name or is_func_scope:
-                # NOTE: we skip local namespaces since they are not serialized.
-                self.api.add_symbol_skip_local(name, info)
-            return var_name, info, []
+            self.store_namedtuple_info(info, name, call, is_typed)
+            if self.api.is_nested_within_func_scope():
+                # NOTE: we always serialize in global namespace for convenience,
+                # because local namespaces are never serialized.
+                self.api.add_global_symbol(name, call, info)
+            return name, info, []
         if not ok:
             # This is a valid named tuple but some types are not ready.
-            return typename, None, []
+            return name, None, []
 
-        # We use the variable name as the class name if it exists. If
-        # it doesn't, we use the name passed as an argument. We prefer
-        # the variable name because it should be unique inside a
-        # module, and so we don't need to disambiguate it with a line
-        # number.
-        if var_name:
-            name = var_name
-        else:
-            name = typename
-
-        if var_name is None or is_func_scope:
-            # There are two special cases where need to give it a unique name derived
-            # from the line number:
-            #   * This is a base class expression, since it often matches the class name:
-            #         class NT(NamedTuple('NT', [...])):
-            #             ...
-            #   * This is a local (function or method level) named tuple, since
-            #     two methods of a class can define a named tuple with the same name,
-            #     and they will be stored in the same namespace (see below).
-            name += "@" + str(call.line)
         if defaults:
             default_items = {
                 arg_name: default for arg_name, default in zip(items[-len(defaults) :], defaults)
@@ -304,29 +278,9 @@ class NamedTupleAnalyzer:
             name, items, types, default_items, node.line, existing_info
         )
 
-        # If var_name is not None (i.e. this is not a base class expression), we always
-        # store the generated TypeInfo under var_name in the current scope, so that
-        # other definitions can use it.
-        if var_name:
-            self.store_namedtuple_info(info, var_name, call, is_typed)
-        else:
-            call.analyzed = NamedTupleExpr(info, is_typed=is_typed)
-            call.analyzed.set_line(call)
-        # There are three cases where we need to store the generated TypeInfo
-        # second time (for the purpose of serialization):
-        #   * If there is a name mismatch like One = NamedTuple('Other', [...])
-        #     we also store the info under name 'Other@lineno', this is needed
-        #     because classes are (de)serialized using their actual fullname, not
-        #     the name of l.h.s.
-        #   * If this is a method level named tuple. It can leak from the method
-        #     via assignment to self attribute and therefore needs to be serialized
-        #     (local namespaces are not serialized).
-        #   * If it is a base class expression. It was not stored above, since
-        #     there is no var_name (but it still needs to be serialized
-        #     since it is in MRO of some class).
-        if name != var_name or is_func_scope:
-            # NOTE: we skip local namespaces since they are not serialized.
-            self.api.add_symbol_skip_local(name, info)
+        self.store_namedtuple_info(info, name, call, is_typed)
+        if self.api.is_nested_within_func_scope():
+            self.api.add_global_symbol(name, call, info)
         return typename, info, tvar_defs
 
     def store_namedtuple_info(
@@ -527,7 +481,7 @@ class NamedTupleAnalyzer:
         info = existing_info or self.api.basic_new_typeinfo(name, fallback, line)
         info.is_named_tuple = True
         tuple_base = TupleType(types, fallback)
-        if info.special_alias and has_placeholder(info.special_alias.target):
+        if has_placeholder(tuple_base):
             self.api.process_placeholder(
                 None, "NamedTuple item", info, force_progress=tuple_base != info.tuple_type
             )
@@ -569,8 +523,7 @@ class NamedTupleAnalyzer:
         add_field(Var("_source", strtype), is_initialized_in_class=True)
         add_field(Var("__annotations__", ordereddictype), is_initialized_in_class=True)
         add_field(Var("__doc__", strtype), is_initialized_in_class=True)
-        if self.options.python_version >= (3, 10):
-            add_field(Var("__match_args__", match_args_type), is_initialized_in_class=True)
+        add_field(Var("__match_args__", match_args_type), is_initialized_in_class=True)
 
         assert info.tuple_type is not None  # Set by update_tuple_type() above.
         shared_self_type = TypeVarType(

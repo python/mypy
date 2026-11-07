@@ -59,6 +59,18 @@ CPyTagged CPyTagged_FromInt64(int64_t value) {
     }
 }
 
+CPyTagged CPyTagged_FromUInt32(uint32_t value) {
+#if SIZEOF_SIZE_T == 4
+    // Only 32-bit platforms can have values that don't fit in a short int. Doing
+    // the comparison on 64-bit platforms would trigger a tautological compare warning.
+    if (unlikely(value > CPY_TAGGED_MAX)) {
+        PyObject *object = PyLong_FromUnsignedLong(value);
+        return ((CPyTagged)object) | CPY_INT_TAG;
+    }
+#endif
+    return ((CPyTagged)value) << 1;
+}
+
 PyObject *CPyTagged_AsObject(CPyTagged x) {
     PyObject *value;
     if (unlikely(CPyTagged_CheckLong(x))) {
@@ -119,6 +131,17 @@ void CPyTagged_XDecRef(CPyTagged x) {
 CPyTagged CPyTagged_Negate_(CPyTagged num) {
     PyObject *num_obj = CPyTagged_AsObject(num);
     PyObject *result = PyNumber_Negative(num_obj);
+    if (result == NULL) {
+        CPyError_OutOfMemory();
+    }
+    Py_DECREF(num_obj);
+    return CPyTagged_StealFromObject(result);
+}
+
+// Tagged int absolute value slow path, where the result may be a long integer
+CPyTagged CPyTagged_Absolute_(CPyTagged num) {
+    PyObject *num_obj = CPyTagged_AsObject(num);
+    PyObject *result = PyNumber_Absolute(num_obj);
     if (result == NULL) {
         CPyError_OutOfMemory();
     }
@@ -225,6 +248,9 @@ bool CPyTagged_IsLt_(CPyTagged left, CPyTagged right) {
 
 PyObject *CPyLong_FromStrWithBase(PyObject *o, CPyTagged base) {
     Py_ssize_t base_size_t = CPyTagged_AsSsize_t(base);
+    if (base_size_t == -1 && PyErr_Occurred()) {
+        return NULL;
+    }
     return PyLong_FromUnicodeObject(o, base_size_t);
 }
 
@@ -555,6 +581,50 @@ void CPyInt16_Overflow() {
     PyErr_SetString(PyExc_ValueError, "int too large to convert to i16");
 }
 
+// u32 unboxing slow path
+uint32_t CPyLong_AsUInt32_(PyObject *o) {
+    unsigned long result = PyLong_AsUnsignedLong(o);
+    if (result == (unsigned long)-1 && PyErr_Occurred()) {
+        if (PyErr_ExceptionMatches(PyExc_OverflowError)) {
+            PyErr_Clear();
+            PyErr_SetString(PyExc_ValueError, "int too large or small to convert to u32");
+        }
+        return CPY_LL_UINT_ERROR;
+    }
+    if (result > UINT32_MAX) {
+        PyErr_SetString(PyExc_ValueError, "int too large or small to convert to u32");
+        return CPY_LL_UINT_ERROR;
+    }
+    return (uint32_t)result;
+}
+
+void CPyUInt32_Overflow() {
+    PyErr_SetString(PyExc_ValueError, "int too large or small to convert to u32");
+}
+
+// u16 unboxing slow path
+uint16_t CPyLong_AsUInt16_(PyObject *o) {
+    int overflow;
+    long result = PyLong_AsLongAndOverflow(o, &overflow);
+    if (result < 0 || result >= 65536) {
+        overflow = 1;
+        result = -1;
+    }
+    if (result == -1) {
+        if (PyErr_Occurred()) {
+            return CPY_LL_UINT_ERROR;
+        } else if (overflow) {
+            PyErr_SetString(PyExc_ValueError, "int too large or small to convert to u16");
+            return CPY_LL_UINT_ERROR;
+        }
+    }
+    return result;
+}
+
+void CPyUInt16_Overflow() {
+    PyErr_SetString(PyExc_ValueError, "int too large or small to convert to u16");
+}
+
 // u8 unboxing slow path
 uint8_t CPyLong_AsUInt8_(PyObject *o) {
     int overflow;
@@ -590,11 +660,80 @@ double CPyTagged_TrueDivide(CPyTagged x, CPyTagged y) {
         PyObject *yo = CPyTagged_AsObject(y);
         PyObject *result = PyNumber_TrueDivide(xo, yo);
         if (result == NULL) {
+            Py_DECREF(xo);
+            Py_DECREF(yo);
             return CPY_FLOAT_ERROR;
         }
-        return PyFloat_AsDouble(result);
+        double value = PyFloat_AsDouble(result);
+        Py_DECREF(xo);
+        Py_DECREF(yo);
+        Py_DECREF(result);
+        return value;
     }
     return 1.0;
+}
+
+static PyObject *CPyLong_ToBytes(PyObject *v, Py_ssize_t length, int little_endian, int signed_flag) {
+    // This is a wrapper for PyLong_AsByteArray and PyBytes_FromStringAndSize
+    PyObject *result = PyBytes_FromStringAndSize(NULL, length);
+    if (!result) {
+        return NULL;
+    }
+    unsigned char *bytes = (unsigned char *)PyBytes_AS_STRING(result);
+#if PY_VERSION_HEX >= 0x030D0000  // 3.13.0
+    int res = _PyLong_AsByteArray((PyLongObject *)v, bytes, length, little_endian, signed_flag, 1);
+#else
+    int res = _PyLong_AsByteArray((PyLongObject *)v, bytes, length, little_endian, signed_flag);
+#endif
+    if (res < 0) {
+        Py_DECREF(result);
+        return NULL;
+    }
+    return result;
+}
+
+// int.to_bytes(length, byteorder, signed=False)
+PyObject *CPyTagged_ToBytes(CPyTagged self, Py_ssize_t length, PyObject *byteorder, int signed_flag) {
+    PyObject *pyint = CPyTagged_AsObject(self);
+    if (!PyUnicode_Check(byteorder)) {
+        Py_DECREF(pyint);
+        PyErr_SetString(PyExc_TypeError, "byteorder must be str");
+        return NULL;
+    }
+    const char *order = PyUnicode_AsUTF8(byteorder);
+    if (!order) {
+        Py_DECREF(pyint);
+        return NULL;
+    }
+    int little_endian;
+    if (strcmp(order, "big") == 0) {
+        little_endian = 0;
+    } else if (strcmp(order, "little") == 0) {
+        little_endian = 1;
+    } else {
+        Py_DECREF(pyint);
+        PyErr_SetString(PyExc_ValueError, "byteorder must be either 'little' or 'big'");
+        return NULL;
+    }
+    PyObject *result = CPyLong_ToBytes(pyint, length, little_endian, signed_flag);
+    Py_DECREF(pyint);
+    return result;
+}
+
+// int.to_bytes(length, byteorder="little", signed=False)
+PyObject *CPyTagged_ToLittleEndianBytes(CPyTagged self, Py_ssize_t length, int signed_flag) {
+    PyObject *pyint = CPyTagged_AsObject(self);
+    PyObject *result = CPyLong_ToBytes(pyint, length, 1, signed_flag);
+    Py_DECREF(pyint);
+    return result;
+}
+
+// int.to_bytes(length, "big", signed=False)
+PyObject *CPyTagged_ToBigEndianBytes(CPyTagged self, Py_ssize_t length, int signed_flag) {
+    PyObject *pyint = CPyTagged_AsObject(self);
+    PyObject *result = CPyLong_ToBytes(pyint, length, 0, signed_flag);
+    Py_DECREF(pyint);
+    return result;
 }
 
 // int.bit_length()
@@ -644,4 +783,20 @@ CPyTagged CPyTagged_BitLength(CPyTagged self) {
         return CPY_INT_TAG;
     }
     return bits << 1;
+}
+
+// Look up o.real or o.imag, where o is an instance of an int subclass, and convert
+// it to a tagged int (see CPyTagged_Real)
+CPyTagged CPyTagged_GetPartSlow(PyObject *o, PyObject *name) {
+    PyObject *part = PyObject_GetAttr(o, name);
+    if (part == NULL) {
+        return CPY_INT_TAG;
+    }
+    if (!PyLong_Check(part)) {
+        // Same error as unboxing the attribute value would produce
+        CPy_TypeError("int", part);
+        Py_DECREF(part);
+        return CPY_INT_TAG;
+    }
+    return CPyTagged_StealFromObject(part);
 }

@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import importlib.util
 from collections.abc import Callable, Sequence
+from typing import Final
 
 import mypy.nodes
 from mypy.nodes import (
@@ -29,6 +30,7 @@ from mypy.nodes import (
     Import,
     ImportAll,
     ImportFrom,
+    IndexExpr,
     ListExpr,
     Lvalue,
     MatchStmt,
@@ -47,7 +49,12 @@ from mypy.nodes import (
     YieldExpr,
     YieldFromExpr,
 )
-from mypyc.common import TEMP_ATTR_NAME
+from mypyc.common import (
+    GENERATOR_HELPER_NAME,
+    KEEP_ALIVE_SHORT_LIVED,
+    KEEP_ALIVE_WHOLE_EXPRESSION,
+    source_name_from_generator_attribute,
+)
 from mypyc.ir.ops import (
     ERR_NEVER,
     NAMESPACE_MODULE,
@@ -56,7 +63,6 @@ from mypyc.ir.ops import (
     BasicBlock,
     Branch,
     Call,
-    InitStatic,
     Integer,
     LoadAddress,
     LoadErrorValue,
@@ -75,23 +81,31 @@ from mypyc.ir.ops import (
 from mypyc.ir.rtypes import (
     RInstance,
     RTuple,
+    c_pointer_rprimitive,
     c_pyssize_t_rprimitive,
     exc_rtuple,
     is_tagged,
+    lock_rprimitive,
     none_rprimitive,
     object_pointer_rprimitive,
     object_rprimitive,
 )
 from mypyc.irbuild.ast_helpers import is_borrow_friendly_expr, process_conditional
-from mypyc.irbuild.builder import IRBuilder, create_type_params, int_borrow_friendly_op
-from mypyc.irbuild.for_helpers import for_loop_helper
+from mypyc.irbuild.builder import (
+    IRBuilder,
+    create_type_params,
+    expr_has_suspend,
+    find_walrus_targets,
+    int_borrow_friendly_op,
+)
+from mypyc.irbuild.for_helpers import find_loop_assignments, for_loop_helper
 from mypyc.irbuild.generator import add_raise_exception_blocks_to_generator_class
 from mypyc.irbuild.nonlocalcontrol import (
     ExceptNonlocalControl,
     FinallyNonlocalControl,
     TryFinallyNonlocalControl,
 )
-from mypyc.irbuild.prepare import GENERATOR_HELPER_NAME
+from mypyc.irbuild.specialize import apply_dunder_specialization
 from mypyc.irbuild.targets import (
     AssignmentTarget,
     AssignmentTargetAttr,
@@ -107,14 +121,17 @@ from mypyc.primitives.exc_ops import (
     keep_propagating_op,
     no_err_occurred_op,
     propagate_if_error_op,
+    raise_exception_from_op,
     raise_exception_op,
     reraise_exception_op,
     restore_exc_info_op,
 )
-from mypyc.primitives.generic_ops import iter_op, next_raw_op, py_delattr_op
+from mypyc.primitives.generic_ops import iter_op, py_delattr_op
+from mypyc.primitives.librt_threading_ops import lock_acquire_op, lock_release_op
 from mypyc.primitives.misc_ops import (
-    check_stop_op,
     coro_op,
+    get_native_attrs_op,
+    import_cache_replace_for_import_op,
     import_from_many_op,
     import_many_op,
     import_op,
@@ -155,10 +172,17 @@ def transform_expression_stmt(builder: IRBuilder, stmt: ExpressionStmt) -> None:
     if isinstance(stmt.expr, StrExpr):
         # Docstring. Ignore
         return
-    # ExpressionStmts do not need to be coerced like other Expressions, so we shouldn't
-    # call builder.accept here.
+    # ExpressionStmts do not need to be coerced like other Expressions, so
+    # we shouldn't call builder.accept here.
+    builder.expression_depth += 1
+    builder.reassigned_in_expr = find_walrus_targets(stmt.expr)
+    builder.expr_has_suspend = expr_has_suspend(stmt.expr)
     stmt.expr.accept(builder.visitor)
-    builder.flush_keep_alives()
+    builder.expression_depth -= 1
+    builder.reassigned_in_expr = set()
+    builder.expr_has_suspend = False
+    builder.flush_keep_alives(stmt.line, scope=KEEP_ALIVE_SHORT_LIVED)
+    builder.flush_keep_alives(stmt.line, scope=KEEP_ALIVE_WHOLE_EXPRESSION)
 
 
 def transform_return_stmt(builder: IRBuilder, stmt: ReturnStmt) -> None:
@@ -232,7 +256,7 @@ def transform_assignment_stmt(builder: IRBuilder, stmt: AssignmentStmt) -> None:
         for left, temp in zip(first_lvalue.items, temps):
             assignment_target = builder.get_assignment_target(left)
             builder.assign(assignment_target, temp, stmt.line)
-        builder.flush_keep_alives()
+        builder.flush_keep_alives(stmt.line)
         return
 
     line = stmt.rvalue.line
@@ -252,17 +276,26 @@ def transform_assignment_stmt(builder: IRBuilder, stmt: AssignmentStmt) -> None:
     ):
         n = len(first_lvalue.items)
         borrows = [builder.add(TupleGet(rvalue_reg, i, borrow=True)) for i in range(n)]
-        builder.builder.keep_alive([rvalue_reg], steal=True)
+        builder.builder.keep_alive([rvalue_reg], line, steal=True)
         for lvalue_item, rvalue_item in zip(first_lvalue.items, borrows):
             rvalue_item = builder.add(Unborrow(rvalue_item))
             builder.assign(builder.get_assignment_target(lvalue_item), rvalue_item, line)
-        builder.flush_keep_alives()
+        builder.flush_keep_alives(line)
         return
 
     for lvalue in lvalues:
+        # Check for __setitem__ dunder specialization before converting to assignment target
+        if isinstance(lvalue, IndexExpr):
+            specialized = apply_dunder_specialization(
+                builder, lvalue.base, [lvalue.index, stmt.rvalue], "__setitem__", lvalue
+            )
+            if specialized is not None:
+                builder.flush_keep_alives(lvalue.line)
+                continue
+
         target = builder.get_assignment_target(lvalue)
         builder.assign(target, rvalue_reg, line)
-        builder.flush_keep_alives()
+        builder.flush_keep_alives(line)
 
 
 def is_simple_lvalue(expr: Expression) -> bool:
@@ -291,7 +324,7 @@ def transform_operator_assignment_stmt(builder: IRBuilder, stmt: OperatorAssignm
     # usually operator assignments are done in-place
     # but when target doesn't support that we need to manually assign
     builder.assign(target, res, res.line)
-    builder.flush_keep_alives()
+    builder.flush_keep_alives(res.line)
 
 
 def import_globals_id_and_name(module_id: str, as_name: str | None) -> tuple[str, str]:
@@ -332,43 +365,94 @@ def transform_import(builder: IRBuilder, node: Import) -> None:
     #   import mod4        <| group #3
     #   import mod5         |
     #
-    # Every time we encounter the first import of a group, build IR to call a
-    # helper function that will perform all of the group's imports in one go.
+    # Every time we encounter the first import of a group, build IR to import
+    # all modules in the group. Native same-group imports are handled individually,
+    # while non-native imports use a table-driven helper for compactness.
+
     if not node.is_top_level:
         # (*) Unless the import is within a function. In that case, prioritize
         # speed over codesize when generating IR.
-        globals = builder.load_globals_dict()
-        for mod_id, as_name in node.ids:
-            builder.gen_import(mod_id, node.line)
-            globals_id, globals_name = import_globals_id_and_name(mod_id, as_name)
-            builder.gen_method_call(
-                globals,
-                "__setitem__",
-                [builder.load_str(globals_name), builder.get_module(globals_id, node.line)],
-                result_type=None,
-                line=node.line,
-            )
+        group = [(mod_id, as_id, node.line) for mod_id, as_id in node.ids]
+        transform_imports_without_grouping(builder, group)
         return
 
     if node not in builder.module_import_groups:
         return
 
+    group_nodes = builder.module_import_groups[node]
+    subgroups = split_import_group_to_python_and_native(builder, group_nodes)
+    for subgroup, is_native in subgroups:
+        if is_native:
+            transform_imports_without_grouping(builder, subgroup)
+        else:
+            transform_non_native_import_group(builder, subgroup)
+
+
+def split_import_group_to_python_and_native(
+    builder: IRBuilder, group: list[Import]
+) -> list[tuple[list[tuple[str, str | None, int]], bool]]:
+    """Split imports into consecutive runs of native same-group and non-native imports."""
+    flat_list = []
+    for imp in group:
+        for mod_id, as_name in imp.ids:
+            flat_list.append(
+                (
+                    mod_id,
+                    as_name,
+                    imp.line,
+                    builder.is_native_module(mod_id) and builder.is_same_group_module(mod_id),
+                )
+            )
+    result = []
+    i = 0
+    while i < len(flat_list):
+        i0 = i
+        is_native = flat_list[i][3]
+        i += 1
+        while i < len(flat_list) and flat_list[i][3] == is_native:
+            i += 1
+        result.append(([t[:3] for t in flat_list[i0:i]], is_native))
+    return result
+
+
+def transform_imports_without_grouping(
+    builder: IRBuilder, group: list[tuple[str, str | None, int]]
+) -> None:
+    globals = builder.load_globals_dict()
+    for mod_id, as_name, line in group:
+        imported = builder.gen_import(mod_id, line)
+        globals_id, globals_name = import_globals_id_and_name(mod_id, as_name)
+        globals_name_value = builder.load_str(globals_name)
+        module = (
+            imported
+            if imported is not None and globals_id == mod_id
+            else builder.get_module(globals_id, line)
+        )
+        builder.gen_method_call(
+            globals, "__setitem__", [globals_name_value, module], result_type=None, line=line
+        )
+
+
+def transform_non_native_import_group(
+    builder: IRBuilder, group: list[tuple[str, str | None, int]]
+) -> None:
+    """Transform a group of import statements that target non-native modules."""
     modules = []
     static_ptrs = []
     # To show the right line number on failure, we have to add the traceback
     # entry within the helper function (which is admittedly ugly). To drive
     # this, we need the line number corresponding to each module.
     mod_lines = []
-    for import_node in builder.module_import_groups[node]:
-        for mod_id, as_name in import_node.ids:
-            builder.imports[mod_id] = None
-            modules.append((mod_id, *import_globals_id_and_name(mod_id, as_name)))
-            mod_static = LoadStatic(object_rprimitive, mod_id, namespace=NAMESPACE_MODULE)
-            static_ptrs.append(builder.add(LoadAddress(object_pointer_rprimitive, mod_static)))
-            mod_lines.append(Integer(import_node.line, c_pyssize_t_rprimitive))
+    first_line = group[0][2] if group else NO_TRACEBACK_LINE_NO
+    for mod_id, as_name, line in group:
+        builder.imports[mod_id] = None
+        modules.append((mod_id, *import_globals_id_and_name(mod_id, as_name)))
+        mod_static = LoadStatic(object_rprimitive, mod_id, namespace=NAMESPACE_MODULE)
+        static_ptrs.append(builder.add(LoadAddress(c_pointer_rprimitive, mod_static)))
+        mod_lines.append(Integer(line, c_pyssize_t_rprimitive))
 
-    static_array_ptr = builder.builder.setup_rarray(object_pointer_rprimitive, static_ptrs)
-    import_line_ptr = builder.builder.setup_rarray(c_pyssize_t_rprimitive, mod_lines)
+    static_array_ptr = builder.builder.setup_rarray(c_pointer_rprimitive, static_ptrs, first_line)
+    import_line_ptr = builder.builder.setup_rarray(c_pyssize_t_rprimitive, mod_lines, first_line)
     builder.call_c(
         import_many_op,
         [
@@ -400,21 +484,123 @@ def transform_import_from(builder: IRBuilder, node: ImportFrom) -> None:
 
     names = [name for name, _ in node.names]
     as_names = [as_name or name for name, as_name in node.names]
-    names_literal = builder.add(LoadLiteral(tuple(names), object_rprimitive))
-    if as_names == names:
-        # Reuse names tuple to reduce verbosity.
-        as_names_literal = names_literal
-    else:
-        as_names_literal = builder.add(LoadLiteral(tuple(as_names), object_rprimitive))
-    # Note that we miscompile import from inside of functions here,
-    # since that case *shouldn't* load everything into the globals dict.
-    # This probably doesn't matter much and the code runs basically right.
-    module = builder.call_c(
-        import_from_many_op,
-        [builder.load_str(id), names_literal, as_names_literal, builder.load_globals_dict()],
-        node.line,
-    )
-    builder.add(InitStatic(module, id, namespace=NAMESPACE_MODULE))
+
+    parent_is_native = builder.is_native_module(id) and builder.is_same_group_module(id)
+    transform_import_from_buckets(builder, id, names, as_names, node.line, parent_is_native)
+
+
+# Import kind constants for classify_import_from.
+IMPORT_NATIVE_SUBMODULE: Final = 0  # native same-group submodule (import directly)
+IMPORT_NATIVE_ATTR: Final = 1  # attribute of a native module (getattr)
+IMPORT_NON_NATIVE: Final = 2  # non-native or cross-group (use Python import system)
+
+
+class ImportFromBucket:
+    def __init__(self, kind: int, names: list[str], as_names: list[str]) -> None:
+        self.kind = kind
+        self.names = names
+        self.as_names = as_names
+
+
+def group_consecutive(items: list[tuple[int, str, str]]) -> list[ImportFromBucket]:
+    """Group consecutive items by kind (first element) into ImportFromBuckets.
+
+    Each item is a (kind, name, as_name) tuple.
+    """
+    result: list[ImportFromBucket] = []
+    i = 0
+    while i < len(items):
+        kind = items[i][0]
+        i0 = i
+        i += 1
+        while i < len(items) and items[i][0] == kind:
+            i += 1
+        result.append(
+            ImportFromBucket(kind, [t[1] for t in items[i0:i]], [t[2] for t in items[i0:i]])
+        )
+    return result
+
+
+def classify_import_from(
+    builder: IRBuilder,
+    module_id: str,
+    names: list[str],
+    as_names: list[str],
+    parent_is_native: bool,
+) -> list[ImportFromBucket]:
+    """Classify each imported name and group consecutive same-kind names into buckets."""
+    flat_list = []
+    for name, as_name in zip(names, as_names):
+        submodule_id = f"{module_id}.{name}"
+        if builder.is_native_module(submodule_id) and builder.is_same_group_module(submodule_id):
+            kind = IMPORT_NATIVE_SUBMODULE
+        elif parent_is_native and submodule_id not in builder.graph:
+            kind = IMPORT_NATIVE_ATTR
+        else:
+            kind = IMPORT_NON_NATIVE
+        flat_list.append((kind, name, as_name))
+    return group_consecutive(flat_list)
+
+
+def transform_import_from_buckets(
+    builder: IRBuilder,
+    module_id: str,
+    names: list[str],
+    as_names: list[str],
+    line: int,
+    parent_is_native: bool,
+) -> None:
+    """Handle 'from module_id import names' by dispatching each bucket to the right strategy."""
+    buckets = classify_import_from(builder, module_id, names, as_names, parent_is_native)
+    module = None
+    for bucket in buckets:
+        if bucket.kind == IMPORT_NATIVE_SUBMODULE:
+            group: list[tuple[str, str | None, int]] = [
+                (f"{module_id}.{name}", as_name, line)
+                for name, as_name in zip(bucket.names, bucket.as_names)
+            ]
+            transform_imports_without_grouping(builder, group)
+        elif bucket.kind == IMPORT_NATIVE_ATTR:
+            native_module = builder.gen_import(module_id, line)
+            assert native_module is not None
+            names_literal = builder.add(LoadLiteral(tuple(bucket.names), object_rprimitive))
+            if bucket.as_names == bucket.names:
+                as_names_literal = names_literal
+            else:
+                as_names_literal = builder.add(
+                    LoadLiteral(tuple(bucket.as_names), object_rprimitive)
+                )
+            builder.call_c(
+                get_native_attrs_op,
+                [native_module, names_literal, as_names_literal, builder.load_globals_dict()],
+                line,
+            )
+        else:
+            assert bucket.kind == IMPORT_NON_NATIVE
+            # Note that we miscompile import from inside of functions here,
+            # since that case *shouldn't* load everything into the globals dict.
+            # This probably doesn't matter much and the code runs basically right.
+            names_literal = builder.add(LoadLiteral(tuple(bucket.names), object_rprimitive))
+            if bucket.as_names == bucket.names:
+                as_names_literal = names_literal
+            else:
+                as_names_literal = builder.add(
+                    LoadLiteral(tuple(bucket.as_names), object_rprimitive)
+                )
+            module = builder.call_c(
+                import_from_many_op,
+                [
+                    builder.load_str(module_id),
+                    names_literal,
+                    as_names_literal,
+                    builder.load_globals_dict(),
+                ],
+                line,
+            )
+    if module is not None:
+        mod_static = LoadStatic(object_rprimitive, module_id, namespace=NAMESPACE_MODULE)
+        module_cache = builder.add(LoadAddress(c_pointer_rprimitive, mod_static))
+        builder.call_c(import_cache_replace_for_import_op, [module_cache, module], line)
 
 
 def transform_import_all(builder: IRBuilder, node: ImportAll) -> None:
@@ -475,7 +661,14 @@ def transform_for_stmt(builder: IRBuilder, s: ForStmt) -> None:
         builder.accept(s.else_body)
 
     for_loop_helper(
-        builder, s.index, s.expr, body, else_block if s.else_body else None, s.is_async, s.line
+        builder,
+        s.index,
+        s.expr,
+        body,
+        else_block if s.else_body else None,
+        s.is_async,
+        s.line,
+        reassigned=find_loop_assignments(s),
     )
 
 
@@ -494,7 +687,16 @@ def transform_raise_stmt(builder: IRBuilder, s: RaiseStmt) -> None:
         return
 
     exc = builder.accept(s.expr)
-    builder.call_c(raise_exception_op, [exc], s.line)
+    if s.from_expr is not None:
+        if isinstance(exc, Register):
+            # Evaluating the cause may reassign the variable holding the exception.
+            temp = Register(exc.type)
+            builder.assign(temp, exc, s.line)
+            exc = temp
+        cause = builder.accept(s.from_expr)
+        builder.call_c(raise_exception_from_op, [exc, cause], s.line)
+    else:
+        builder.call_c(raise_exception_op, [exc], s.line)
     builder.add(Unreachable())
 
 
@@ -530,7 +732,10 @@ def transform_try_except(
     # exception is raised, based on the exception in exc_info.
     builder.builder.push_error_handler(double_except_block)
     builder.activate_block(except_entry)
-    old_exc = builder.maybe_spill(builder.call_c(error_catch_op, [], line))
+    old_exc = builder.call_c(error_catch_op, [], line)
+    if builder.code_fn_info.is_generator:
+        # CFG cleanup may remove the CallC's block while resume cleanup paths remain.
+        old_exc = builder.ensure_register(old_exc)
     # Compile the except blocks with the nonlocal control flow overridden to clear exc_info
     builder.nonlocal_control.append(ExceptNonlocalControl(builder.nonlocal_control[-1], old_exc))
 
@@ -541,7 +746,7 @@ def transform_try_except(
             type_f, type_line = type
             next_block, body_block = BasicBlock(), BasicBlock()
             matches = builder.call_c(exc_matches_op, [type_f()], type_line)
-            builder.add(Branch(matches, body_block, next_block, Branch.BOOL))
+            builder.add(Branch(matches, body_block, next_block, Branch.BOOL, type_line))
             builder.activate_block(body_block)
         if var:
             target = builder.get_assignment_target(var)
@@ -563,14 +768,14 @@ def transform_try_except(
     # restore the saved exc_info information and continue propagating
     # the exception if it exists.
     builder.activate_block(cleanup_block)
-    builder.call_c(restore_exc_info_op, [builder.read(old_exc)], line)
+    builder.call_c(restore_exc_info_op, [builder.read(old_exc, line)], line)
     builder.goto(exit_block)
 
     # Cleanup for if we leave except through a raised exception:
     # restore the saved exc_info information and continue propagating
     # the exception.
     builder.activate_block(double_except_block)
-    builder.call_c(restore_exc_info_op, [builder.read(old_exc)], line)
+    builder.call_c(restore_exc_info_op, [builder.read(old_exc, line)], line)
     builder.call_c(keep_propagating_op, [], NO_TRACEBACK_LINE_NO)
     builder.add(Unreachable())
 
@@ -610,7 +815,7 @@ def try_finally_try(
     return_entry: BasicBlock,
     main_entry: BasicBlock,
     try_body: GenFunc,
-) -> Register | AssignmentTarget | None:
+) -> Register | None:
     # Compile the try block with an error handler
     control = TryFinallyNonlocalControl(return_entry)
     builder.builder.push_error_handler(err_handler)
@@ -631,25 +836,26 @@ def try_finally_entry_blocks(
     return_entry: BasicBlock,
     main_entry: BasicBlock,
     finally_block: BasicBlock,
-    ret_reg: Register | AssignmentTarget | None,
+    ret_reg: Register | None,
 ) -> Value:
-    old_exc = Register(exc_rtuple)
+    line = builder.fn_info.fitem.line
+    old_exc = Register(exc_rtuple, line=line)
 
     # Entry block for non-exceptional flow
     builder.activate_block(main_entry)
     if ret_reg:
-        builder.assign(ret_reg, builder.add(LoadErrorValue(builder.ret_types[-1])), -1)
+        builder.assign(ret_reg, builder.add(LoadErrorValue(builder.ret_types[-1], line)), line)
     builder.goto(return_entry)
 
     builder.activate_block(return_entry)
-    builder.add(Assign(old_exc, builder.add(LoadErrorValue(exc_rtuple))))
+    builder.add(Assign(old_exc, builder.add(LoadErrorValue(exc_rtuple, line)), line))
     builder.goto(finally_block)
 
     # Entry block for errors
     builder.activate_block(err_handler)
     if ret_reg:
-        builder.assign(ret_reg, builder.add(LoadErrorValue(builder.ret_types[-1])), -1)
-    builder.add(Assign(old_exc, builder.call_c(error_catch_op, [], -1)))
+        builder.assign(ret_reg, builder.add(LoadErrorValue(builder.ret_types[-1], line)), line)
+    builder.add(Assign(old_exc, builder.call_c(error_catch_op, [], line), line))
     builder.goto(finally_block)
 
     return old_exc
@@ -675,35 +881,31 @@ def try_finally_resolve_control(
     cleanup_block: BasicBlock,
     finally_control: FinallyNonlocalControl,
     old_exc: Value,
-    ret_reg: Register | AssignmentTarget | None,
+    ret_reg: Register | None,
 ) -> BasicBlock:
     """Resolve the control flow out of a finally block.
 
     This means returning if there was a return, propagating
     exceptions, break/continue (soon), or just continuing on.
     """
+    line = builder.fn_info.fitem.line
     reraise, rest = BasicBlock(), BasicBlock()
-    builder.add(Branch(old_exc, rest, reraise, Branch.IS_ERROR))
+    builder.add(Branch(old_exc, rest, reraise, Branch.IS_ERROR, line))
 
     # Reraise the exception if there was one
     builder.activate_block(reraise)
     builder.call_c(reraise_exception_op, [], NO_TRACEBACK_LINE_NO)
-    builder.add(Unreachable())
+    builder.add(Unreachable(line))
     builder.builder.pop_error_handler()
 
     # If there was a return, keep returning
     if ret_reg:
         builder.activate_block(rest)
         return_block, rest = BasicBlock(), BasicBlock()
-        # For spill targets in try/finally, use nullable read to avoid AttributeError
-        if isinstance(ret_reg, AssignmentTargetAttr) and ret_reg.attr.startswith(TEMP_ATTR_NAME):
-            ret_val = builder.read_nullable_attr(ret_reg.obj, ret_reg.attr, -1)
-        else:
-            ret_val = builder.read(ret_reg)
-        builder.add(Branch(ret_val, rest, return_block, Branch.IS_ERROR))
+        builder.add(Branch(ret_reg, rest, return_block, Branch.IS_ERROR, line))
 
         builder.activate_block(return_block)
-        builder.nonlocal_control[-1].gen_return(builder, ret_val, -1)
+        builder.nonlocal_control[-1].gen_return(builder, ret_reg, line)
 
     # TODO: handle break/continue
     builder.activate_block(rest)
@@ -712,7 +914,7 @@ def try_finally_resolve_control(
 
     # If there was an exception, restore again
     builder.activate_block(cleanup_block)
-    finally_control.gen_cleanup(builder, -1)
+    finally_control.gen_cleanup(builder, line)
     builder.call_c(keep_propagating_op, [], NO_TRACEBACK_LINE_NO)
     builder.add(Unreachable())
 
@@ -832,7 +1034,7 @@ def transform_try_finally_stmt_async(
         return_block, check_old_exc = BasicBlock(), BasicBlock()
         builder.add(
             Branch(
-                builder.read(ret_reg, allow_error_value=True),
+                builder.read(ret_reg, line, allow_error_value=True),
                 check_old_exc,
                 return_block,
                 Branch.IS_ERROR,
@@ -840,7 +1042,7 @@ def transform_try_finally_stmt_async(
         )
 
         builder.activate_block(return_block)
-        builder.nonlocal_control[-1].gen_return(builder, builder.read(ret_reg), -1)
+        builder.nonlocal_control[-1].gen_return(builder, builder.read(ret_reg, line), line)
 
         builder.activate_block(check_old_exc)
 
@@ -917,8 +1119,9 @@ def transform_try_stmt(builder: IRBuilder, t: TryStmt) -> None:
 
 
 def get_sys_exc_info(builder: IRBuilder) -> list[Value]:
-    exc_info = builder.call_c(get_exc_info_op, [], -1)
-    return [builder.add(TupleGet(exc_info, i, -1)) for i in range(3)]
+    line = builder.fn_info.fitem.line
+    exc_info = builder.call_c(get_exc_info_op, [], line)
+    return [builder.add(TupleGet(exc_info, i, line)) for i in range(3)]
 
 
 def transform_with(
@@ -937,17 +1140,27 @@ def transform_with(
     al = "a" if is_async else ""
 
     mgr_v = builder.accept(expr)
-    is_native = isinstance(mgr_v.type, RInstance)
+
+    if not is_async and mgr_v.type == lock_rprimitive:
+        transform_with_lock(builder, mgr_v, target, body, line)
+        return
+    # The methods may be inherited from a non-native class, and then they can't be
+    # called natively.
+    is_native = (
+        isinstance(mgr_v.type, RInstance)
+        and mgr_v.type.class_ir.has_method(f"__{al}enter__")
+        and mgr_v.type.class_ir.has_method(f"__{al}exit__")
+    )
     if is_native:
         value = builder.add(MethodCall(mgr_v, f"__{al}enter__", args=[], line=line))
         exit_ = None
     else:
         typ = builder.primitive_op(type_op, [mgr_v], line)
-        exit_ = builder.maybe_spill(builder.py_get_attr(typ, f"__{al}exit__", line))
+        exit_ = builder.py_get_attr(typ, f"__{al}exit__", line)
         value = builder.py_call(builder.py_get_attr(typ, f"__{al}enter__", line), [mgr_v], line)
 
-    mgr = builder.maybe_spill(mgr_v)
-    exc = builder.maybe_spill_assignable(builder.true())
+    mgr = mgr_v
+    exc = builder.ensure_register(builder.true())
     if is_async:
         value = emit_await(builder, value, line)
 
@@ -961,7 +1174,7 @@ def transform_with(
         if is_native:
             assert isinstance(mgr_v.type, RInstance), mgr_v.type
             exit_val = builder.gen_method_call(
-                builder.read(mgr),
+                builder.read(mgr, line),
                 f"__{al}exit__",
                 arg_values=args,
                 line=line,
@@ -969,7 +1182,9 @@ def transform_with(
             )
         else:
             assert exit_ is not None
-            exit_val = builder.py_call(builder.read(exit_), [builder.read(mgr)] + args, line)
+            exit_val = builder.py_call(
+                builder.read(exit_, line), [builder.read(mgr, line)] + args, line
+            )
 
         if is_async:
             return emit_await(builder, exit_val, line)
@@ -992,7 +1207,7 @@ def transform_with(
 
     def finally_body() -> None:
         out_block, exit_block = BasicBlock(), BasicBlock()
-        builder.add(Branch(builder.read(exc), exit_block, out_block, Branch.BOOL))
+        builder.add(Branch(builder.read(exc, line), exit_block, out_block, Branch.BOOL))
         builder.activate_block(exit_block)
 
         maybe_natively_call_exit(exc_info=False)
@@ -1004,6 +1219,32 @@ def transform_with(
         finally_body,
         line,
     )
+
+
+def transform_with_lock(
+    builder: IRBuilder, mgr_v: Value, target: Lvalue | None, body: GenFunc, line: int
+) -> None:
+    """Optimized 'with' for librt.threading.Lock.
+
+    Generate a simple try/finally with direct acquire/release calls.
+    Lock.__exit__ never suppresses exceptions, so we don't need the
+    full PEP 343 try/except/finally machinery.
+    """
+    # __enter__: acquire the lock
+    value = builder.primitive_op(lock_acquire_op, [mgr_v], line)
+
+    mgr = mgr_v
+
+    def try_body() -> None:
+        if target:
+            builder.assign(builder.get_assignment_target(target), value, line)
+        body()
+
+    def finally_body() -> None:
+        # __exit__: release the lock (ignoring exception info)
+        builder.primitive_op(lock_release_op, [builder.read(mgr, line)], line)
+
+    transform_try_finally_stmt(builder, try_body, finally_body, line)
 
 
 def transform_with_stmt(builder: IRBuilder, o: WithStmt) -> None:
@@ -1055,7 +1296,9 @@ def transform_del_item(builder: IRBuilder, target: AssignmentTarget, line: int) 
         if isinstance(target.obj_type, RInstance):
             cl = target.obj_type.class_ir
             if not cl.is_deletable(target.attr):
-                builder.error(f'"{target.attr}" cannot be deleted', line)
+                _, decl_cl = cl.attr_details(target.attr)
+                name = source_name_from_generator_attribute(target.attr, decl_cl.fullname)
+                builder.error(f'"{name}" cannot be deleted', line)
                 builder.note(
                     'Using "__deletable__ = '
                     + '[\'<attr>\']" in the class body enables "del obj.<attr>"',
@@ -1067,7 +1310,7 @@ def transform_del_item(builder: IRBuilder, target: AssignmentTarget, line: int) 
         # Delete a local by assigning an error value to it, which will
         # prompt the insertion of uninit checks.
         builder.add(
-            Assign(target.register, builder.add(LoadErrorValue(target.type, undefines=True)))
+            Assign(target.register, builder.add(LoadErrorValue(target.type, undefines=True)), line)
         )
     elif isinstance(target, AssignmentTargetTuple):
         for subtarget in target.items:
@@ -1082,7 +1325,7 @@ def transform_del_item(builder: IRBuilder, target: AssignmentTarget, line: int) 
 def emit_yield(builder: IRBuilder, val: Value, line: int) -> Value:
     retval = builder.coerce(val, builder.ret_types[-1], line)
 
-    cls = builder.fn_info.generator_class
+    cls = builder.code_fn_info.generator_class
     # Create a new block for the instructions immediately following the yield expression, and
     # set the next label so that the next time '__next__' is called on the generator object,
     # the function continues at the new block.
@@ -1090,7 +1333,7 @@ def emit_yield(builder: IRBuilder, val: Value, line: int) -> Value:
     next_label = len(cls.continuation_blocks)
     cls.continuation_blocks.append(next_block)
     builder.assign(cls.next_label_target, Integer(next_label), line)
-    builder.add(Return(retval, yield_target=next_block))
+    builder.add(Return(retval, line, yield_target=next_block))
     builder.activate_block(next_block)
 
     add_raise_exception_blocks_to_generator_class(builder, line)
@@ -1105,9 +1348,9 @@ def emit_yield_from_or_await(
     # This is basically an implementation of the code in PEP 380.
 
     # TODO: do we want to use the right types here?
-    result = Register(object_rprimitive)
-    to_yield_reg = Register(object_rprimitive)
-    received_reg = Register(object_rprimitive)
+    result = Register(object_rprimitive, line=line)
+    to_yield_reg = Register(object_rprimitive, line=line)
+    received_reg = Register(object_rprimitive, line=line)
 
     helper_method = GENERATOR_HELPER_NAME
     if (
@@ -1119,8 +1362,7 @@ def emit_yield_from_or_await(
         # This allows two optimizations:
         # 1) No need to call CPy_GetCoro() or iter() since for native generators
         #    it just returns the generator object (implemented here).
-        # 2) Instead of calling next(), call generator helper method directly,
-        #    since next() just calls __next__ which calls the helper method.
+        # 2) Call the generator helper method directly instead of using PyIter_Send.
         iter_val: Value = val
     else:
         get_op = coro_op if is_await else iter_op
@@ -1129,40 +1371,60 @@ def emit_yield_from_or_await(
         else:
             iter_val = builder.call_c(get_op, [val], line)
 
-    iter_reg = builder.maybe_spill_assignable(iter_val)
+    iter_reg = builder.ensure_register(iter_val)
 
     stop_block, main_block, done_block = BasicBlock(), BasicBlock(), BasicBlock()
 
-    if isinstance(iter_reg.type, RInstance) and iter_reg.type.class_ir.has_method(helper_method):
+    fast_path = isinstance(iter_reg.type, RInstance) and iter_reg.type.class_ir.has_method(
+        helper_method
+    )
+
+    # Neither the direct helper call nor CPyIter_Send raises StopIteration on normal
+    # completion. Instead they store the return value through a PyObject ** argument,
+    # which must be cleared before each call.
+    stop_iter_val = Register(object_rprimitive)
+
+    def clear_stop_iter_val() -> Value:
+        """Reset the stop iteration value and return a pointer to it."""
+        err = builder.add(LoadErrorValue(object_rprimitive, undefines=True))
+        builder.assign(stop_iter_val, err, line)
+        return builder.add(LoadAddress(object_pointer_rprimitive, stop_iter_val))
+
+    def native_step(sent: Value) -> Value:
+        """Advance a native generator/coroutine child by calling its helper directly.
+
+        Returns the value yielded by the child, or NULL if the child completed or
+        raised. On normal completion the return value is stored in stop_iter_val,
+        which is set to the error value if a real exception was raised instead.
+        """
+        obj = builder.read(iter_reg, line)
+        nn = builder.none_object()
+        ptr = clear_stop_iter_val()
+        m = MethodCall(obj, helper_method, [nn, nn, nn, sent, ptr], line)
+        # Generators have custom error handling, so disable normal error handling.
+        m.error_kind = ERR_NEVER
+        return builder.add(m)
+
+    if fast_path:
         # Second fast path optimization: call helper directly (see also comment above).
         #
         # Calling a generated generator, so avoid raising StopIteration by passing
         # an extra PyObject ** argument to helper where the stop iteration value is stored.
-        fast_path = True
-        obj = builder.read(iter_reg)
-        nn = builder.none_object()
-        stop_iter_val = Register(object_rprimitive)
-        err = builder.add(LoadErrorValue(object_rprimitive, undefines=True))
-        builder.assign(stop_iter_val, err, line)
-        ptr = builder.add(LoadAddress(object_pointer_rprimitive, stop_iter_val))
-        m = MethodCall(obj, helper_method, [nn, nn, nn, nn, ptr], line)
-        # Generators have custom error handling, so disable normal error handling.
-        m.error_kind = ERR_NEVER
-        _y_init = builder.add(m)
+        _y_init = native_step(builder.none_object())
     else:
-        fast_path = False
-        _y_init = builder.call_c(next_raw_op, [builder.read(iter_reg)], line)
+        # Use PyIter_Send (via CPyIter_Send) so that a natively compiled iterator can
+        # complete through its am_send slot without raising StopIteration, even if we
+        # don't know the type statically.
+        ptr = clear_stop_iter_val()
+        _y_init = builder.call_c(
+            send_op, [builder.read(iter_reg, line), builder.none_object(), ptr], line
+        )
 
     builder.add(Branch(_y_init, stop_block, main_block, Branch.IS_ERROR))
 
     builder.activate_block(stop_block)
-    if fast_path:
-        builder.primitive_op(propagate_if_error_op, [stop_iter_val], line)
-        builder.assign(result, stop_iter_val, line)
-    else:
-        # Try extracting a return value from a StopIteration and return it.
-        # If it wasn't, this reraises the exception.
-        builder.assign(result, builder.call_c(check_stop_op, [], line), line)
+    builder.primitive_op(propagate_if_error_op, [stop_iter_val], line)
+    builder.assign(result, stop_iter_val, line)
     # Clear the spilled iterator/coroutine so that it will be freed.
     # Otherwise, the freeing of the spilled register would likely be delayed.
     err = builder.add(LoadErrorValue(iter_reg.type))
@@ -1177,7 +1439,13 @@ def emit_yield_from_or_await(
     builder.goto_and_activate(loop_block)
 
     def try_body() -> None:
-        builder.assign(received_reg, emit_yield(builder, builder.read(to_yield_reg), line), line)
+        # Traceback will be added if yield_from_except_op propagates an error.
+        # Skip it here to not have a duplicated entry.
+        builder.assign(
+            received_reg,
+            emit_yield(builder, builder.read(to_yield_reg, line), NO_TRACEBACK_LINE_NO),
+            line,
+        )
 
     def except_body() -> None:
         # The body of the except is all implemented in a C function to
@@ -1185,7 +1453,9 @@ def emit_yield_from_or_await(
         # indicating whether to break or yield (or raise an exception).
         val = Register(object_rprimitive)
         val_address = builder.add(LoadAddress(object_pointer_rprimitive, val))
-        to_stop = builder.call_c(yield_from_except_op, [builder.read(iter_reg), val_address], line)
+        to_stop = builder.call_c(
+            yield_from_except_op, [builder.read(iter_reg, line), val_address], line
+        )
 
         ok, stop = BasicBlock(), BasicBlock()
         builder.add(Branch(to_stop, stop, ok, Branch.BOOL))
@@ -1201,9 +1471,21 @@ def emit_yield_from_or_await(
         builder.nonlocal_control[-1].gen_break(builder, line)
 
     def else_body() -> None:
-        # Do a next() or a .send(). It will return NULL on exception
-        # but it won't automatically propagate.
-        _y = builder.call_c(send_op, [builder.read(iter_reg), builder.read(received_reg)], line)
+        # This path runs when the parent's yield is resumed normally via next() or send().
+        # An exception injected via throw() or close() takes the except_body path instead.
+        if fast_path:
+            # Reuse the direct helper call on resumes as well, so that native-to-native
+            # completion doesn't have to go through .send() and StopIteration.
+            _y = native_step(builder.read(received_reg, line))
+        else:
+            # Do a next() or a .send(). It will return NULL on exception or on normal
+            # completion, but it won't automatically propagate an error.
+            ptr = clear_stop_iter_val()
+            _y = builder.call_c(
+                send_op,
+                [builder.read(iter_reg, line), builder.read(received_reg, line), ptr],
+                line,
+            )
         ok, stop = BasicBlock(), BasicBlock()
         builder.add(Branch(_y, stop, ok, Branch.IS_ERROR))
 
@@ -1212,10 +1494,12 @@ def emit_yield_from_or_await(
         builder.assign(to_yield_reg, _y, line)
         builder.nonlocal_control[-1].gen_continue(builder, line)
 
-        # Try extracting a return value from a StopIteration and return it.
-        # If it wasn't, this rereaises the exception.
+        # The iterator completed (or raised). If it completed normally, the
+        # return value is the result of the await/yield from. Otherwise
+        # propagate the exception.
         builder.activate_block(stop)
-        builder.assign(result, builder.call_c(check_stop_op, [], line), line)
+        builder.primitive_op(propagate_if_error_op, [stop_iter_val], line)
+        builder.assign(result, stop_iter_val, line)
         builder.nonlocal_control[-1].gen_break(builder, line)
 
     builder.push_loop_stack(loop_block, done_block)
@@ -1223,7 +1507,7 @@ def emit_yield_from_or_await(
     builder.pop_loop_stack()
 
     builder.goto_and_activate(done_block)
-    return builder.read(result)
+    return builder.read(result, line)
 
 
 def emit_await(builder: IRBuilder, val: Value, line: int) -> Value:

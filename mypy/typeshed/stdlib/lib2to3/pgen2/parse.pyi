@@ -1,6 +1,6 @@
 from _typeshed import Incomplete
 from collections.abc import Sequence
-from typing_extensions import TypeAlias
+from typing import TypeAlias
 
 from ..pytree import _NL, _RawNode
 from . import _Convert
