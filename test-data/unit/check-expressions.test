@@ -704,6 +704,25 @@ assert_type(tupX + size, Size)
 
 [builtins fixtures/tuple-typeshed.pyi]
 
+[case testReverseBinaryOperatorSameTypeDoesNotGetPriority]
+# The reflected method has priority only for operands of different types;
+# for same-type operands CPython calls the left's method first even when
+# __op__ and __rop__ are defined in different classes of the MRO (#22386).
+from typing import assert_type
+
+class Base:
+    def __lt__(self, other: "Base") -> str: return "lt"
+
+class Child(Base):
+    def __gt__(self, other: "Child") -> int: return 7
+
+a = Child()
+b = Child()
+assert_type(a < b, str)
+assert_type(a > b, int)
+
+[builtins fixtures/primitives.pyi]
+
 [case testBinaryOperatorWithAnyRightOperand]
 from typing import Any, cast
 class A: pass
