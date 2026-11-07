@@ -6359,7 +6359,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             # TODO: consider using cache for more expression kinds.
             elif (
                 (
-                    isinstance(node, (CallExpr, ListExpr, TupleExpr, DictExpr, OpExpr))
+                    isinstance(node, (CallExpr, ListExpr, TupleExpr, DictExpr, OpExpr, IndexExpr))
                     # Only cache non-static access, it may be slow, and may freshen type vars.
                     or isinstance(node, MemberExpr)
                     and node.node is None
