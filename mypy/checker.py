@@ -1099,9 +1099,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                 if overload_can_never_match(sig1, sig2):
                     ctx_item = defn.items[i + j + 1]
                     assert isinstance(ctx_item, Decorator)
-                    self.msg.overloaded_signature_will_never_match(
-                        i + 1, i + j + 2, ctx_item.func
-                    )
+                    self.msg.overloaded_signature_will_never_match(i + 1, i + j + 2, ctx_item.func)
                 elif not is_descriptor_get and expanded_count < max_expanded_count:
                     # Note: we force mypy to check overload signatures in strict-optional mode
                     # so we don't incorrectly report errors when a user tries typing an overload
