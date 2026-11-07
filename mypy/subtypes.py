@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Iterable, Iterator, Sequence
-from contextlib import contextmanager
+from contextlib import contextmanager, nullcontext
 from typing import Any, Final, TypeAlias as _TypeAlias, TypeVar, cast
 
 import mypy.applytype
@@ -615,9 +615,27 @@ class SubtypeVisitor(TypeVisitor[bool]):
                                 variance = COVARIANT
                             else:
                                 variance = tvar.variance
-                            if not check_type_parameter(
-                                lefta, righta, variance, self.proper_subtype, self.subtype_context
-                            ):
+                            # A contravariant argument may refer back to this very pair (e.g.
+                            # `class C(N[N["C"]])` with contravariant `N`), so assume the pair
+                            # holds while checking it, to avoid infinite recursion.
+                            assume = (
+                                pop_on_exit(
+                                    type_state.get_assumptions(is_proper=self.proper_subtype),
+                                    left,
+                                    right,
+                                )
+                                if variance == CONTRAVARIANT
+                                else nullcontext()
+                            )
+                            with assume:
+                                ok = check_type_parameter(
+                                    lefta,
+                                    righta,
+                                    variance,
+                                    self.proper_subtype,
+                                    self.subtype_context,
+                                )
+                            if not ok:
                                 nominal = False
                         else:
                             # TODO: everywhere else ParamSpecs are handled as invariant.
