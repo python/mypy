@@ -1389,7 +1389,7 @@ to the line with the string literal:
 .. _code-performance-limit:
 
 Checks skipped for performance reasons [performance-limit]
----------------------------------------------------------
+----------------------------------------------------------
 
 Mypy reports this error when it limits or skip checks to avoid excessive type
 checking time. As a result, some errors may go undetected.
