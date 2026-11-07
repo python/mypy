@@ -108,7 +108,8 @@ INCONSISTENT_ABSTRACT_OVERLOAD: Final = ErrorMessage(
 )
 MULTIPLE_OVERLOADS_REQUIRED: Final = ErrorMessage("Single overload definition, multiple required")
 TOO_MANY_OVERLOADS: Final = ErrorMessage(
-    "Not all overload combinations were checked for overlap because there were too many"
+    "Not all overload combinations were checked for overlap because there were too many",
+    codes.PERFORMANCE_LIMIT,
 )
 READ_ONLY_PROPERTY_OVERRIDES_READ_WRITE: Final = ErrorMessage(
     "Read-only property cannot override read-write property"
