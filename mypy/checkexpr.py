@@ -4326,8 +4326,17 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                     )
                 )
             )
-            # Note: use `covers_at_runtime` instead of `is_subtype` (#19006)
+            # The reflected method goes first only when the right operand's
+            # type is a runtime subclass of the left's that is NOT the same
+            # type (the data model gives the reflected method priority only
+            # "if the operands are of different types"). covers_at_runtime
+            # rather than is_subtype kept in #19006 for `tuple[int, ...]` vs.
+            # a named subclass, where is_subtype failed on the tuple items;
+            # it also holds for equal types, which wrongly put the reflected
+            # method first when the operands have the same type but define
+            # __op__ and __rop__ in different classes of the MRO (#22386).
             and covers_at_runtime(right_type, left_type)
+            and not is_same_type(left_type, right_type)
         ):
             # When we do "A() + B()" where B is a subclass of A, we'll actually try calling
             # B's __radd__ method first, but ONLY if B explicitly defines or overrides the
