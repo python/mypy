@@ -83,13 +83,16 @@ void CPyErr_SetObjectAndTraceback(PyObject *type, PyObject *value, PyObject *tra
         type = (PyObject *)Py_TYPE(value);
     }
 
-    // Set the value and traceback of an error. Because calling
-    // PyErr_Restore takes away a reference to each object passed in
-    // as an argument, we manually increase the reference count of
-    // each argument before calling it.
+    // PyErr_Restore steals a reference to each argument.
     Py_INCREF(type);
     Py_INCREF(value);
-    Py_INCREF(traceback);
+    // An omitted traceback (or None) preserves an exception instance's
+    // existing traceback, as generator.throw() and coroutine.throw() do.
+    if (Py_IsNone(traceback) && PyExceptionInstance_Check(value)) {
+        traceback = PyException_GetTraceback(value);
+    } else {
+        Py_INCREF(traceback);
+    }
     PyErr_Restore(type, value, traceback);
 }
 

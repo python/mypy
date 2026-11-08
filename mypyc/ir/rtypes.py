@@ -400,6 +400,26 @@ int64_rprimitive: Final = RPrimitive(
     size=8,
     error_overlap=True,
 )
+uint32_rprimitive: Final = RPrimitive(
+    "u32",
+    is_unboxed=True,
+    is_refcounted=False,
+    is_native_int=True,
+    is_signed=False,
+    ctype="uint32_t",
+    size=4,
+    error_overlap=True,
+)
+uint16_rprimitive: Final = RPrimitive(
+    "u16",
+    is_unboxed=True,
+    is_refcounted=False,
+    is_native_int=True,
+    is_signed=False,
+    ctype="uint16_t",
+    size=2,
+    error_overlap=True,
+)
 uint8_rprimitive: Final = RPrimitive(
     "u8",
     is_unboxed=True,
@@ -411,29 +431,9 @@ uint8_rprimitive: Final = RPrimitive(
     error_overlap=True,
 )
 
-# The following unsigned native int types (u16, u32, u64) are not
+# The following unsigned native int types (u64) are not
 # exposed to the user. They are for internal use within mypyc only.
 
-u16_rprimitive: Final = RPrimitive(
-    "u16",
-    is_unboxed=True,
-    is_refcounted=False,
-    is_native_int=True,
-    is_signed=False,
-    ctype="uint16_t",
-    size=2,
-    error_overlap=True,
-)
-uint32_rprimitive: Final = RPrimitive(
-    "u32",
-    is_unboxed=True,
-    is_refcounted=False,
-    is_native_int=True,
-    is_signed=False,
-    ctype="uint32_t",
-    size=4,
-    error_overlap=True,
-)
 uint64_rprimitive: Final = RPrimitive(
     "u64",
     is_unboxed=True,
@@ -633,8 +633,14 @@ def is_fixed_width_rtype(rtype: RType) -> TypeGuard[RPrimitive]:
         is_int64_rprimitive(rtype)
         or is_int32_rprimitive(rtype)
         or is_int16_rprimitive(rtype)
+        or is_uint32_rprimitive(rtype)
+        or is_uint16_rprimitive(rtype)
         or is_uint8_rprimitive(rtype)
     )
+
+
+def is_uint16_rprimitive(rtype: RType) -> TypeGuard[RPrimitive]:
+    return rtype is uint16_rprimitive
 
 
 def is_uint8_rprimitive(rtype: RType) -> TypeGuard[RPrimitive]:
@@ -762,6 +768,10 @@ class TupleNameVisitor(RTypeVisitor[str]):
             return "4"  # "4 byte integer"
         elif t._ctype == "int16_t":
             return "2"  # "2 byte integer"
+        elif t._ctype == "uint32_t":
+            return "U4"
+        elif t._ctype == "uint16_t":
+            return "U2"  # "2 byte unsigned integer"
         elif t._ctype == "uint8_t":
             return "U1"  # "1 byte unsigned integer"
         elif t._ctype == "double":

@@ -2148,6 +2148,70 @@ class AnyBase(Any): ...
 class Indirect(AnyBase): ...
 IndirectAlias = Indirect
 
+[case testInheritFromDefaultDictOrOrderedDictError]
+from collections import defaultdict, OrderedDict
+
+from mypy_extensions import mypyc_attr
+
+class D(defaultdict[str, int]):  # E: Native classes cannot inherit from "collections.defaultdict" (defined in a stub, so its instance layout is unknown) \
+                                 # N: Potential workaround: @mypy_extensions.mypyc_attr(native_class=False) \
+                                 # N: https://mypyc.readthedocs.io/en/stable/native_classes.html#defining-non-native-classes
+    pass
+
+class O(OrderedDict[str, int]):  # E: Native classes cannot inherit from "collections.OrderedDict" (defined in a stub, so its instance layout is unknown) \
+                                 # N: Potential workaround: @mypy_extensions.mypyc_attr(native_class=False) \
+                                 # N: https://mypyc.readthedocs.io/en/stable/native_classes.html#defining-non-native-classes
+    pass
+
+class Ok(dict[str, int]):
+    pass
+
+@mypyc_attr(native_class=False)
+class NonNative(defaultdict[str, int]):
+    pass
+
+[case testInheritFromClassInCExtensionError]
+from compiled import Base
+from plain import Indirect, Plain
+
+from mypy_extensions import mypyc_attr
+
+class C(Base):  # E: Native classes cannot inherit from "compiled.Base" (its instance layout is unknown, since it's imported from a C extension) \
+                # N: Potential workaround: @mypy_extensions.mypyc_attr(native_class=False) \
+                # N: https://mypyc.readthedocs.io/en/stable/native_classes.html#defining-non-native-classes
+    pass
+
+class D(Indirect):  # E: Native classes cannot inherit from "compiled.Base" (its instance layout is unknown, since it's imported from a C extension) \
+                    # N: Potential workaround: @mypy_extensions.mypyc_attr(native_class=False) \
+                    # N: https://mypyc.readthedocs.io/en/stable/native_classes.html#defining-non-native-classes
+    pass
+
+class Ok(Plain):
+    pass
+
+@mypyc_attr(native_class=False)
+class NonNative(Base):
+    pass
+
+[file compiled.py]
+class Base:
+    pass
+
+-- An extension module next to compiled.py is imported instead of it at runtime.
+-- The check only looks for the file, so the contents don't matter. Create both
+-- to cover the extension suffixes on all platforms.
+[file compiled.so]
+[file compiled.pyd]
+
+[file plain.py]
+from compiled import Base
+
+class Indirect(Base):
+    pass
+
+class Plain:
+    pass
+
 [case testMypycAttrNativeClassMetaError]
 from mypy_extensions import mypyc_attr
 

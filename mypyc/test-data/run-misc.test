@@ -342,7 +342,9 @@ bar
 0
 
 [case testMultipleAssignment]
-from typing import Tuple, List, Any
+from typing import Tuple, List, Any, Iterator
+
+from testutil import assertRaises
 
 def from_tuple(t: Tuple[int, str]) -> List[Any]:
     x, y = t
@@ -369,40 +371,68 @@ def multiple_assignments(t: Tuple[int, str]) -> List[Any]:
     a, b = c, d = t
     e, f = g, h = 1, 2
     return [a, b, c, d, e, f, g, h]
-[file driver.py]
-from native import (
-    from_tuple, from_tuple_sequence, from_list, from_list_complex, from_any, multiple_assignments
-)
 
-assert from_tuple((1, 'x')) == ['x', 1]
+def test_from_tuple() -> None:
+    assert from_tuple((1, 'x')) == ['x', 1]
 
-assert from_tuple_sequence((1, 5, 4)) == [4, 5, 1]
-try:
-    from_tuple_sequence((1, 5))
-except ValueError as e:
-    assert 'not enough values to unpack (expected 3, got 2)' in str(e)
-else:
-    assert False
+def test_from_tuple_sequence() -> None:
+    assert from_tuple_sequence((1, 5, 4)) == [4, 5, 1]
+    with assertRaises(ValueError, "not enough values to unpack (expected 3, got 2)"):
+        from_tuple_sequence((1, 5))
 
-assert from_list([3, 4]) == [4, 3]
-try:
-    from_list([5, 4, 3])
-except ValueError as e:
-    assert 'too many values to unpack (expected 2)' in str(e)
-else:
-    assert False
+def test_from_list() -> None:
+    assert from_list([3, 4]) == [4, 3]
+    with assertRaises(ValueError, "too many values to unpack (expected 2)"):
+        from_list([5, 4, 3])
 
-assert from_list_complex([7, 6]) == [6, 7]
-try:
-    from_list_complex([5, 4, 3])
-except ValueError as e:
-    assert 'too many values to unpack (expected 2)' in str(e)
-else:
-    assert False
+def test_from_list_complex() -> None:
+    assert from_list_complex([7, 6]) == [6, 7]
+    with assertRaises(ValueError, "too many values to unpack (expected 2)"):
+        from_list_complex([5, 4, 3])
 
-assert from_any('xy') == ['y', 'x']
+def test_from_any() -> None:
+    assert from_any('xy') == ['y', 'x']
 
-assert multiple_assignments((4, 'x')) == [4, 'x', 4, 'x', 1, 2, 1, 2]
+def test_multiple_assignments() -> None:
+    assert multiple_assignments((4, 'x')) == [4, 'x', 4, 'x', 1, 2, 1, 2]
+
+log: list[str] = []
+
+def gen(n: int) -> Iterator[int]:
+    for i in range(n):
+        log.append(f"next {i}")
+        yield i
+    log.append("end")
+
+class C:
+    def __setattr__(self, name: str, value: object) -> None:
+        log.append(f"set {name}={value}")
+
+def test_unpack_iterator_order() -> None:
+    log.clear()
+    c: Any = C()
+    c.x, c.y = gen(2)
+    assert log == ["next 0", "next 1", "end", "set x=0", "set y=1"], log
+
+def test_unpack_iterator_star_order() -> None:
+    log.clear()
+    c: Any = C()
+    c.x, *c.y, c.z, c.w = gen(5)
+    assert log == [
+        "next 0", "next 1", "next 2", "next 3", "next 4", "end",
+        "set x=0", "set y=[1, 2]", "set z=3", "set w=4",
+    ], log
+
+def test_unpack_iterator_errors() -> None:
+    log.clear()
+    c: Any = C()
+    with assertRaises(ValueError, "too many values to unpack"):
+        c.x, c.y = gen(3)
+    with assertRaises(ValueError, "not enough values to unpack"):
+        c.x, c.y = gen(1)
+    with assertRaises(ValueError, "not enough values to unpack"):
+        c.x, *c.y, c.z = gen(1)
+    assert not any(s.startswith("set") for s in log), log
 
 [case testUnpack]
 from typing import List
@@ -730,7 +760,9 @@ def test_named_tuple() -> None:
     assert not isinstance(tuple([1]), NT)
 
 [case testUnion]
-from typing import Union
+from typing import Any, Union
+from mypy_extensions import trait
+from testutil import assertRaises
 
 class A:
     def __init__(self, x: int) -> None:
@@ -762,22 +794,89 @@ def get(x: Union[A, B]) -> object:
 def call(x: Union[A, B]) -> object:
     return x.f(5)
 
-[file driver.py]
-from native import A, B, f, g, get, call
-assert f('a') == 'ax'
-assert f(A(4)) == 4
-assert isinstance(g(0), A)
-assert g(2) == 3
-assert get(A(5)) == 5
-assert get(B('x')) == 'x'
-assert call(A(4)) == 9
-assert call(B('x')) == 5
-try:
-    f(1)
-except TypeError:
+def test_union() -> None:
+    assert f('a') == 'ax'
+    assert f(A(4)) == 4
+    assert isinstance(g(0), A)
+    assert g(2) == 3
+    assert get(A(5)) == 5
+    assert get(B('x')) == 'x'
+    assert call(A(4)) == 9
+    assert call(B('x')) == 5
+    x: Any = 1
+    with assertRaises(TypeError):
+        f(x)
+
+class Base:
+    def __init__(self, x: int) -> None:
+        self.x = x
+    def m(self) -> str:
+        return 'Base'
+    def add(self, out: list[str]) -> None:
+        out.append('Base')
+    @property
+    def p(self) -> int:
+        return self.x * 10
+
+class Sub(Base):
+    def m(self) -> str:
+        return 'Sub'
+    def add(self, out: list[str]) -> None:
+        out.append('Sub')
+    @property
+    def p(self) -> int:
+        return self.x * 100
+
+class SubSub(Sub):
     pass
-else:
-    assert False
+
+@trait
+class T:
+    def t(self) -> int:
+        return 1
+
+class TImpl(T):
+    def t(self) -> int:
+        return 2
+
+def call_sub_first(o: Sub | Base) -> str:
+    return o.m()
+
+def call_base_first(o: Base | Sub) -> str:
+    return o.m()
+
+def call_all(objs: list[Base | Sub | SubSub]) -> list[str]:
+    return [o.m() for o in objs]
+
+def get_attr(o: SubSub | Sub | Base) -> int:
+    return o.x
+
+def get_prop(o: Sub | Base) -> int:
+    return o.p
+
+def get_bound(o: Sub | Base) -> str:
+    m = o.m
+    return m()
+
+def call_in_loop(objs: list[Base | Sub], out: list[str]) -> None:
+    for o in objs:
+        o.add(out)
+
+def call_trait(o: T | TImpl) -> int:
+    return o.t()
+
+def test_union_of_subclasses() -> None:
+    b, s, ss = Base(1), Sub(2), SubSub(3)
+    assert [call_sub_first(b), call_sub_first(s), call_sub_first(ss)] == ['Base', 'Sub', 'Sub']
+    assert [call_base_first(b), call_base_first(s)] == ['Base', 'Sub']
+    assert call_all([ss, s, b]) == ['Sub', 'Sub', 'Base']
+    assert [get_attr(b), get_attr(s), get_attr(ss)] == [1, 2, 3]
+    assert [get_prop(b), get_prop(s)] == [10, 200]
+    assert [get_bound(b), get_bound(s)] == ['Base', 'Sub']
+    assert call_trait(TImpl()) == 2
+    out: list[str] = []
+    call_in_loop([b, s, ss], out)
+    assert out == ['Base', 'Sub', 'Sub']
 
 [case testAnyAll]
 from typing import Iterable
@@ -1445,3 +1544,21 @@ def test_walrus() -> None:
     assert check_nested_walrus(1.5) is True
     assert check_nested_walrus("x") is True
     assert check_nested_walrus(b"x") is False
+
+[case testFinal]
+from typing import Final
+
+def local_final_with_same_name_as_module(items: list[str]) -> dict[str, int]:
+    # "types" is also a module name
+    types: Final[dict[str, int]] = {i: len(i) for i in items}
+    return {k: v + 1 for k, v in types.items()}
+
+def local_final_literal() -> list[int]:
+    n: Final = 5
+    return [n + i for i in range(2)]
+
+def test_local_final_with_same_name_as_module() -> None:
+    assert local_final_with_same_name_as_module(["a", "bb"]) == {"a": 2, "bb": 3}
+
+def test_local_final_literal() -> None:
+    assert local_final_literal() == [5, 6]

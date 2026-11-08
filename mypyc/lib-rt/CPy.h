@@ -175,6 +175,7 @@ static inline size_t CPy_FindAttrOffset(PyTypeObject *trait, CPyVTableItem *vtab
 CPyTagged CPyTagged_FromSsize_t(Py_ssize_t value);
 CPyTagged CPyTagged_FromVoidPtr(void *ptr);
 CPyTagged CPyTagged_FromInt64(int64_t value);
+CPyTagged CPyTagged_FromUInt32(uint32_t value);
 PyObject *CPyTagged_AsObject(CPyTagged x);
 PyObject *CPyTagged_StealAsObject(CPyTagged x);
 Py_ssize_t CPyTagged_AsSsize_t(CPyTagged x);
@@ -185,6 +186,7 @@ void CPyTagged_XDecRef(CPyTagged x);
 bool CPyTagged_IsEq_(CPyTagged left, CPyTagged right);
 bool CPyTagged_IsLt_(CPyTagged left, CPyTagged right);
 CPyTagged CPyTagged_Negate_(CPyTagged num);
+CPyTagged CPyTagged_Absolute_(CPyTagged num);
 CPyTagged CPyTagged_Invert_(CPyTagged num);
 CPyTagged CPyTagged_Add_(CPyTagged left, CPyTagged right);
 CPyTagged CPyTagged_Subtract_(CPyTagged left, CPyTagged right);
@@ -217,6 +219,10 @@ int16_t CPyLong_AsInt16_(PyObject *o);
 int16_t CPyInt16_Divide(int16_t x, int16_t y);
 int16_t CPyInt16_Remainder(int16_t x, int16_t y);
 void CPyInt16_Overflow(void);
+uint32_t CPyLong_AsUInt32_(PyObject *o);
+void CPyUInt32_Overflow(void);
+uint16_t CPyLong_AsUInt16_(PyObject *o);
+void CPyUInt16_Overflow(void);
 uint8_t CPyLong_AsUInt8_(PyObject *o);
 void CPyUInt8_Overflow(void);
 double CPyTagged_TrueDivide(CPyTagged x, CPyTagged y);
@@ -456,6 +462,62 @@ static inline int16_t CPyLong_AsInt16(PyObject *o) {
     return CPyLong_AsInt16_(o);
 }
 
+static inline uint32_t CPyLong_AsUInt32(PyObject *o) {
+    if (likely(PyLong_Check(o))) {
+    #if CPY_3_12_FEATURES
+        PyLongObject *lobj = (PyLongObject *)o;
+        size_t tag = CPY_LONG_TAG(lobj);
+        if (likely(tag == (1 << CPY_NON_SIZE_BITS))) {
+            // Fast path
+            return CPY_LONG_DIGIT(lobj, 0);
+        } else if (likely(tag == CPY_SIGN_ZERO)) {
+            return 0;
+        }
+    #else
+        PyLongObject *lobj = (PyLongObject *)o;
+        Py_ssize_t size = lobj->ob_base.ob_size;
+        if (likely(size == 1)) {
+            // Fast path
+            return CPY_LONG_DIGIT(lobj, 0);
+        } else if (likely(size == 0)) {
+            return 0;
+        }
+    #endif
+    }
+    // Slow path
+    return CPyLong_AsUInt32_(o);
+}
+
+static inline uint16_t CPyLong_AsUInt16(PyObject *o) {
+    if (likely(PyLong_Check(o))) {
+    #if CPY_3_12_FEATURES
+        PyLongObject *lobj = (PyLongObject *)o;
+        size_t tag = CPY_LONG_TAG(lobj);
+        if (likely(tag == (1 << CPY_NON_SIZE_BITS))) {
+            // Fast path
+            digit x = CPY_LONG_DIGIT(lobj, 0);
+            if (x < 65536)
+                return x;
+        } else if (likely(tag == CPY_SIGN_ZERO)) {
+            return 0;
+        }
+    #else
+        PyLongObject *lobj = (PyLongObject *)o;
+        Py_ssize_t size = lobj->ob_base.ob_size;
+        if (likely(size == 1)) {
+            // Fast path
+            digit x = lobj->ob_digit[0];
+            if (x < 65536)
+                return x;
+        } else if (likely(size == 0)) {
+            return 0;
+        }
+    #endif
+    }
+    // Slow path
+    return CPyLong_AsUInt16_(o);
+}
+
 static inline uint8_t CPyLong_AsUInt8(PyObject *o) {
     if (likely(PyLong_Check(o))) {
     #if CPY_3_12_FEATURES
@@ -494,6 +556,14 @@ static inline CPyTagged CPyTagged_Negate(CPyTagged num) {
         return -num;
     }
     return CPyTagged_Negate_(num);
+}
+
+static inline CPyTagged CPyTagged_Absolute(CPyTagged num) {
+    if (likely(CPyTagged_CheckShort(num)
+               && num != (CPyTagged) ((Py_ssize_t)1 << (CPY_INT_BITS - 1)))) {
+        return (Py_ssize_t)num < 0 ? -num : num;
+    }
+    return CPyTagged_Absolute_(num);
 }
 
 static inline CPyTagged CPyTagged_Add(CPyTagged left, CPyTagged right) {
@@ -780,6 +850,11 @@ static void CPy_LogGetAttr(const char *method, PyObject *obj, PyObject *attr) {
      PyObject_GetAttr((obj), (attr)))
 
 CPyTagged CPyObject_Hash(PyObject *o);
+
+// Default identity-based hash (same as object.__hash__), used as tp_hash
+static inline Py_hash_t CPy_DefaultHash(PyObject *o) {
+    return PyBaseObject_Type.tp_hash(o);
+}
 PyObject *CPyObject_GetAttr3(PyObject *v, PyObject *name, PyObject *defl);
 PyObject *CPyIter_Next(PyObject *iter);
 PyObject *CPyNumber_Power(PyObject *base, PyObject *index);

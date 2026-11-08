@@ -3595,7 +3595,7 @@ def draw_none(
         takes_int_str_none(c3)
 [builtins fixtures/tuple.pyi]
 
-[case testDeterminismFromJoinOrderingInSolver2]
+[case testDeterminismFromJoinOrderingInSolver2_no_verbose_reveal]
 # Used to fail non-deterministically
 # https://github.com/python/mypy/issues/21445
 from typing import Generic, Iterable, TypeVar, overload
@@ -3632,7 +3632,7 @@ class dictlike(Generic[K, V]):
     def __init__(self, arg: Iterable[tuple[K, V]]) -> None: pass
 
 x = dictlike(ziplike("012", (f0, f1, g)))
-reveal_type(x)  # N: Revealed type is "__main__.dictlike[builtins.str, Overload(def (Any, Any) -> Any, def (Any, Any) -> Any, def (Any, Any) -> Any, def (Any, Any) -> Any)]"
+reveal_type(x)  # N: Revealed type is "__main__.dictlike[str, Overload(def (Any, Any) -> object, def (Any, Any) -> object, def (Any, Any) -> object, def (Any, Any) -> object)]"
 [builtins fixtures/dict.pyi]
 
 [case testPropertyWithGenericSetter]

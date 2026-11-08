@@ -136,7 +136,7 @@ from _socket import (
 from _typeshed import ReadableBuffer, Unused, WriteableBuffer
 from collections.abc import Iterable
 from enum import IntEnum, IntFlag
-from io import BufferedReader, BufferedRWPair, BufferedWriter, IOBase, RawIOBase, TextIOWrapper
+from io import BufferedReader, BufferedRWPair, BufferedWriter, RawIOBase, TextIOWrapper
 from typing import Any, Final, Literal, Protocol, SupportsIndex, TypeAlias, overload, type_check_only
 from typing_extensions import Self
 
@@ -961,6 +961,11 @@ if sys.platform == "linux" and sys.version_info >= (3, 13):
 
     __all__ += ["NI_IDN", "SO_BINDTOIFINDEX"]
 
+if sys.platform == "linux" and sys.version_info >= (3, 15):
+    from _socket import SO_PASSRIGHTS as SO_PASSRIGHTS
+
+    __all__ += ["SO_PASSRIGHTS"]
+
 if sys.version_info >= (3, 12):
     from _socket import (
         IP_ADD_SOURCE_MEMBERSHIP as IP_ADD_SOURCE_MEMBERSHIP,
@@ -1507,7 +1512,7 @@ class socket(_socket.socket):
         encoding: str | None = None,
         errors: str | None = None,
         newline: str | None = None,
-    ) -> IOBase: ...
+    ) -> SocketIO | BufferedRWPair | BufferedReader | BufferedWriter: ...
     @overload
     def makefile(
         self,

@@ -4819,3 +4819,49 @@ class Bad(Generic[T]):
 bad: Bad[str] = Bad()
 fail: SupportsFoo = bad  # E: Incompatible types in assignment (expression has type "Bad[str]", variable has type "SupportsFoo")
 [builtins fixtures/tuple.pyi]
+
+[case testProtocolGenericSelfTypeInTypeArgumentBound]
+from typing import Generic, Protocol, TypeVar
+from b import Base
+
+class P(Protocol):
+    def meth(self) -> int: ...
+
+class C(Base[int]): pass
+class D(Base[str]): pass
+
+PT = TypeVar("PT", bound=P)
+class Box(Generic[PT]): pass
+
+x: Box[C]
+y: Box[D]  # E: Type argument "D" of "Box" must be a subtype of "P"
+[file b.pyi]
+from typing import Generic, TypeVar
+T = TypeVar("T")
+S = TypeVar("S")
+class Base(Generic[T]):
+    def meth(self: Base[S]) -> S: ...
+
+[case testProtocolImplicitClassmethodSelfTypeInTypeArgumentBound]
+from typing import Callable, Generic, Protocol, TypeVar
+from b import C
+
+class P(Protocol):
+    def __init_subclass__(cls, item: Callable[[str], None]) -> None: ...
+
+PT = TypeVar("PT", bound=P)
+class Box(Generic[PT]): pass
+
+x: Box[C]
+def f(x: P) -> None: pass
+f(C())  # E: Argument 1 to "f" has incompatible type "C"; expected "P" \
+        # N: Following member(s) of "C" have conflicts: \
+        # N:     Expected: \
+        # N:         def __init_subclass__(cls, item: Callable[[str], None]) -> None \
+        # N:     Got: \
+        # N:         def __init_subclass__(cls, item: Callable[[C], None]) -> None
+[file b.pyi]
+from typing import Callable, TypeVar
+S = TypeVar("S")
+class C:
+    def __init_subclass__(cls: type[S], item: Callable[[S], None]) -> None: ...

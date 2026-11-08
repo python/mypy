@@ -943,6 +943,36 @@ async def async_def_contains_decorated_async_def(n: int) -> int:
 async def test_async_def_contains_decorated_async_def() -> None:
     assert await async_def_contains_decorated_async_def(7) == 10
 
+async def conditional_nested_async(flag: int) -> str:
+    if flag < 0:
+        async def inner() -> str:
+            return "first"
+    elif flag > 0:
+        async def inner() -> str:
+            return "second"
+    else:
+        async def inner() -> str:
+            return "third"
+    return await inner()
+
+async def test_conditional_nested_async_defs_with_same_name() -> None:
+    assert await conditional_nested_async(-1) == "first"
+    assert await conditional_nested_async(1) == "second"
+    assert await conditional_nested_async(0) == "third"
+
+def conditional_nested_generator(flag: bool) -> list[int]:
+    if flag:
+        def gen() -> Iterator[int]:
+            yield 1
+    else:
+        def gen() -> Iterator[int]:
+            yield 2
+    return list(gen())
+
+def test_conditional_nested_generators_with_same_name() -> None:
+    assert conditional_nested_generator(True) == [1]
+    assert conditional_nested_generator(False) == [2]
+
 [file asyncio/__init__.pyi]
 def run(x: object) -> object: ...
 
@@ -2732,6 +2762,87 @@ def test_close_suspended_native_child() -> None:
     coro = parent(3)
     coro.send(None)
     coro.close()
+
+async def throw_child(explicit: bool) -> None:
+    try:
+        await Suspend(1)
+    except ValueError as exc:
+        if explicit:
+            raise exc
+        raise
+
+async def throw_parent(explicit: bool) -> None:
+    await throw_child(explicit)
+
+def traceback_frames(tb: Any) -> list[str]:
+    result = []
+    while tb is not None:
+        result.append(tb.tb_frame.f_code.co_name)
+        tb = tb.tb_next
+    return result
+
+def throw_origin() -> None:
+    raise ValueError('injected')
+
+def check_throw_traceback(nested: bool, explicit: bool, kind: str) -> None:
+    error: Any
+    try:
+        throw_origin()
+    except ValueError as exc:
+        error = exc
+    if kind == 'fresh':
+        error = ValueError('fresh')
+    original = traceback_frames(error.__traceback__)
+    coro = (throw_parent if nested else throw_child)(explicit)
+    assert coro.send(None) == 0
+    with assertRaises(ValueError):
+        if kind == 'triple':
+            coro.throw(type(error), error, error.__traceback__)
+        else:
+            coro.throw(error)
+    expected = ['throw_parent'] if nested else []
+    if explicit:
+        expected += ['throw_child']
+    expected += ['throw_child', '__await__'] + original
+    # Skip assertRaises and this helper's throw() call.
+    actual = traceback_frames(error.__traceback__)[2:]
+    assert actual == expected, (nested, explicit, kind, actual, expected)
+
+def test_throw_fresh_reraise() -> None:
+    check_throw_traceback(False, False, 'fresh')
+
+def test_throw_existing_reraise() -> None:
+    check_throw_traceback(False, False, 'existing')
+
+def test_throw_triple_reraise() -> None:
+    check_throw_traceback(False, False, 'triple')
+
+def test_throw_fresh_raise_exc() -> None:
+    check_throw_traceback(False, True, 'fresh')
+
+def test_throw_existing_raise_exc() -> None:
+    check_throw_traceback(False, True, 'existing')
+
+def test_throw_triple_raise_exc() -> None:
+    check_throw_traceback(False, True, 'triple')
+
+def test_throw_nested_fresh_reraise() -> None:
+    check_throw_traceback(True, False, 'fresh')
+
+def test_throw_nested_existing_reraise() -> None:
+    check_throw_traceback(True, False, 'existing')
+
+def test_throw_nested_triple_reraise() -> None:
+    check_throw_traceback(True, False, 'triple')
+
+def test_throw_nested_fresh_raise_exc() -> None:
+    check_throw_traceback(True, True, 'fresh')
+
+def test_throw_nested_existing_raise_exc() -> None:
+    check_throw_traceback(True, True, 'existing')
+
+def test_throw_nested_triple_raise_exc() -> None:
+    check_throw_traceback(True, True, 'triple')
 
 [typing fixtures/typing-full.pyi]
 

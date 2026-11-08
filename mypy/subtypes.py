@@ -30,6 +30,7 @@ from mypy.nodes import (
     Context,
     Decorator,
     FuncBase,
+    FuncDef,
     OverloadedFuncDef,
     TypeInfo,
     Var,
@@ -1489,6 +1490,7 @@ def find_member(
         # to avoid type variable id collisions, but for protocols this means we can't
         # use the assumption stack, that will grow indefinitely.
         # TODO: find a cleaner solution that doesn't involve massive perf impact.
+        # Note: bind_self() cache relies on this, update it if this is changed.
         preserve_type_var_ids=True,
     )
     with type_checker.msg.filter_errors(filter_deprecated=True):
@@ -1581,7 +1583,6 @@ def get_member_flags(name: str, itype: Instance, class_obj: bool = False) -> set
     """
     info = itype.type
     method = info.get_method(name)
-    setattr_meth = info.get_method("__setattr__")
     if method:
         if isinstance(method, Decorator):
             if method.var.is_staticmethod or method.var.is_classmethod:
@@ -1592,7 +1593,7 @@ def get_member_flags(name: str, itype: Instance, class_obj: bool = False) -> set
             assert isinstance(method, OverloadedFuncDef)
             dec = method.items[0]
             assert isinstance(dec, Decorator)
-            if dec.var.is_settable_property or setattr_meth:
+            if dec.var.is_settable_property or info.get_method("__setattr__"):
                 flags = {IS_VAR, IS_SETTABLE}
                 if dec.var.setter_type is not None:
                     flags.add(IS_EXPLICIT_SETTER)
@@ -1602,7 +1603,7 @@ def get_member_flags(name: str, itype: Instance, class_obj: bool = False) -> set
         return set()  # Just a regular method
     node = info.get(name)
     if not node:
-        if setattr_meth:
+        if info.get_method("__setattr__"):
             return {IS_SETTABLE}
         if itype.extra_attrs and name in itype.extra_attrs.attrs:
             flags = set()
@@ -1646,8 +1647,6 @@ def find_node_type(
     """Find type of a variable or method 'node' (maybe also a decorated method).
     Apply type arguments from 'itype', and bind 'self' to 'subtype'.
     """
-    from mypy.typeops import bind_self
-
     if isinstance(node, FuncBase):
         typ: Type | None = mypy.typeops.function_type(
             node, fallback=Instance(itype.type.mro[-1], [])
@@ -1677,8 +1676,10 @@ def find_node_type(
         ):
             # Don't bind instance methods on class objects.
             signature = p_typ
+        elif isinstance(node, (FuncDef, OverloadedFuncDef)) and node.is_trivial_self:
+            signature = mypy.typeops.bind_self_fast(p_typ, subtype)
         else:
-            signature = bind_self(
+            signature = mypy.typeops.bind_self(
                 p_typ, subtype, is_classmethod=isinstance(node, Var) and node.is_classmethod
             )
         if node.is_property and not class_obj:

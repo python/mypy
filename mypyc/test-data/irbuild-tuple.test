@@ -231,11 +231,11 @@ L0:
     r0 = z()
     r1 = x()
     r2 = y()
-    r3 = int_ne r0, r1
-    if r3 goto L1 else goto L3 :: bool
+    r3 = int_eq r0, r1
+    if r3 goto L3 else goto L1 :: bool
 L1:
-    r4 = int_ne r0, r2
-    if r4 goto L2 else goto L3 :: bool
+    r4 = int_eq r0, r2
+    if r4 goto L3 else goto L2 :: bool
 L2:
     r5 = 1
     goto L4
@@ -1042,7 +1042,8 @@ def test():
     r19 :: tuple
     r20, r21 :: native_int
     r22 :: bit
-    r23, x :: object
+    r23 :: object
+    x :: union[str, tuple[str, str], object]
     r24 :: str
     r25 :: native_int
     a :: tuple

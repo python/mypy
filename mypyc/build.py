@@ -843,6 +843,9 @@ def get_cflags(
         cflags += [
             f"-O{opt_level}",
             f"-g{debug_level}",
+            # Native groups exchange functions and data through export capsules.
+            # PyMODINIT_FUNC keeps Python module entry points publicly visible.
+            "-fvisibility=hidden",
             "-Werror",
             "-Wno-unused-function",
             "-Wno-unused-label",

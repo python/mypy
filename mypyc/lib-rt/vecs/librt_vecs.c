@@ -254,7 +254,9 @@ PyTypeObject VecGenericAliasType = {
 static PyObject *extract_optional_item(PyObject *item) {
     PyObject *args = PyObject_GetAttrString(item, "__args__");
     if (args == NULL) {
-        PyErr_Clear();
+        if (PyErr_Occurred() && PyErr_ExceptionMatches(PyExc_AttributeError)) {
+            PyErr_Clear();
+        }
         return NULL;
     }
     if (!PyTuple_CheckExact(args))
@@ -264,9 +266,11 @@ static PyObject *extract_optional_item(PyObject *item) {
     PyObject *item0 = PyTuple_GET_ITEM(args, 0);
     PyObject *item1 = PyTuple_GET_ITEM(args, 1);
     if (item0 == (PyObject *)Py_None->ob_type) {
+        Py_INCREF(item1);
         Py_DECREF(args);
         return item1;
     } else if (item1 == (PyObject *)Py_None->ob_type) {
+        Py_INCREF(item0);
         Py_DECREF(args);
         return item0;
     }
@@ -300,9 +304,14 @@ static PyObject *vec_class_getitem(PyObject *type, PyObject *item)
         size_t depth = 0;
         size_t item_type;
         int optional = 0;
+        PyObject *optional_item = NULL;
         if (!PyObject_TypeCheck(item, &PyType_Type)) {
             PyObject *it = extract_optional_item(item);
+            if (it == NULL && PyErr_Occurred()) {
+                return NULL;
+            }
             if (it != NULL) {
+                optional_item = it;
                 optional = 1;
                 item = it;
                 // Check if this is a specialized value type that doesn't support None
@@ -314,20 +323,20 @@ static PyObject *vec_class_getitem(PyObject *type, PyObject *item)
                     item == (PyObject *)&PyBool_Type) {
                     PyErr_SetString(PyExc_TypeError,
                         "vec does not support optional value types (use vec[object] instead)");
-                    return NULL;
+                    goto error;
                 }
             }
             if (item->ob_type == &VecGenericAliasType) {
                 if (optional) {
                     PyErr_SetString(PyExc_TypeError, "optional type not expected in vec[...]");
-                    return NULL;
+                    goto error;
                 }
                 VecGenericAlias *p = (VecGenericAlias *)item;
                 item_type = p->item_type;
                 depth = p->depth + 1;
             } else if (!PyObject_TypeCheck(item, &PyType_Type)) {
                 PyErr_SetString(PyExc_TypeError, "type object expected in vec[...]");
-                return NULL;
+                goto error;
             } else {
                 item_type = (size_t)item | optional;
             }
@@ -357,17 +366,21 @@ static PyObject *vec_class_getitem(PyObject *type, PyObject *item)
         if (item == (PyObject *)&PyLong_Type) {
             PyErr_Format(PyExc_ValueError, "unsupported type in vec[%s] (use i64, i32, i16, or u8)",
                          ((PyTypeObject *)item)->tp_name);
-            return NULL;
+            goto error;
         }
         VecGenericAlias *p;
         p = PyObject_GC_New(VecGenericAlias, &VecGenericAliasType);
         if (p == NULL)
-            return NULL;
+            goto error;
         Py_INCREF(item);
         p->item_type = item_type;
         p->depth = depth;
         PyObject_GC_Track(p);
+        Py_XDECREF(optional_item);
         return (PyObject *)p;
+    error:
+        Py_XDECREF(optional_item);
+        return NULL;
     }
 }
 

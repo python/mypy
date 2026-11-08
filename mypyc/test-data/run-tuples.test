@@ -383,6 +383,35 @@ def test_tuple_in_non_specialized() -> None:
     assert f_b() not in f_t()
     assert log == ["f_b", "f_t"]
 
+class NeverEqual:
+    def __eq__(self, other: object) -> bool:
+        return False
+
+    def __ne__(self, other: object) -> bool:
+        return False
+
+def test_tuple_and_list_in_identity() -> None:
+    # Membership tests compare identity before equality
+    x = NeverEqual()
+    y = NeverEqual()
+    assert x in (x,)
+    assert x in [x]
+    assert x in (y, x)
+    assert x in [y, x]
+    assert y not in (x,)
+    assert y not in [x]
+    assert y not in (x, x)
+    assert y not in [x, x]
+    assert not (x not in (x,))
+    assert not (x not in [y, x])
+    a: Any = x
+    assert a in (a,)
+    assert a in (y, a)
+    assert not (a not in (y, a))
+    f = float("nan")
+    assert f in (f,)
+    assert f in [1.0, f]
+
 def test_add() -> None:
     res = (1, 2, 3, 4)
     assert (1, 2) + (3, 4) == res

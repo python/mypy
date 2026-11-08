@@ -1,0 +1,302 @@
+From cecd8a28f320ae88ea25387ed3d23c8b3b189486 Mon Sep 17 00:00:00 2001
+From: Marc Mueller <30130371+cdce8p@users.noreply.github.com>
+Date: Thu, 5 Nov 2026 13:08:55 +0100
+Subject: [PATCH] Revert datetime generic tzinfo change
+
+---
+ mypy/typeshed/stdlib/datetime.pyi | 213 ++++--------------------------
+ 1 file changed, 25 insertions(+), 188 deletions(-)
+
+diff --git a/mypy/typeshed/stdlib/datetime.pyi b/mypy/typeshed/stdlib/datetime.pyi
+index 5272e3850..0a21f72b0 100644
+--- a/mypy/typeshed/stdlib/datetime.pyi
++++ b/mypy/typeshed/stdlib/datetime.pyi
+@@ -1,7 +1,7 @@
+ import sys
+ from abc import abstractmethod
+ from time import struct_time
+-from typing import Any, ClassVar, Final, Generic, SupportsIndex, TypeAlias, TypeVar, final, overload, type_check_only
++from typing import ClassVar, Final, SupportsIndex, TypeAlias, final, overload, type_check_only
+ from typing_extensions import CapsuleType, Never, Self, deprecated, disjoint_base
+ 
+ if sys.version_info >= (3, 11):
+@@ -266,28 +266,10 @@ class timedelta:
+     def __bool__(self) -> bool: ...
+     def __hash__(self) -> int: ...
+ 
+-_TzInfoT = TypeVar("_TzInfoT", bound=tzinfo | None, default=Any)
+-
+ @disjoint_base
+-class datetime(date, Generic[_TzInfoT]):
+-    min: ClassVar[datetime[None]]
+-    max: ClassVar[datetime[None]]
+-
+-    @overload
+-    def __new__(
+-        cls,
+-        year: SupportsIndex,
+-        month: SupportsIndex,
+-        day: SupportsIndex,
+-        hour: SupportsIndex = 0,
+-        minute: SupportsIndex = 0,
+-        second: SupportsIndex = 0,
+-        microsecond: SupportsIndex = 0,
+-        tzinfo: None = None,
+-        *,
+-        fold: int = 0,
+-    ) -> datetime[None]: ...
+-    @overload
++class datetime(date):
++    min: ClassVar[datetime]
++    max: ClassVar[datetime]
+     def __new__(
+         cls,
+         year: SupportsIndex,
+@@ -297,25 +279,10 @@ class datetime(date, Generic[_TzInfoT]):
+         minute: SupportsIndex = 0,
+         second: SupportsIndex = 0,
+         microsecond: SupportsIndex = 0,
+-        *,
+-        tzinfo: _TzInfo,
+-        fold: int = 0,
+-    ) -> datetime[_TzInfo]: ...
+-    @overload
+-    def __new__(
+-        cls,
+-        year: SupportsIndex,
+-        month: SupportsIndex,
+-        day: SupportsIndex,
+-        hour: SupportsIndex,
+-        minute: SupportsIndex,
+-        second: SupportsIndex,
+-        microsecond: SupportsIndex,
+-        tzinfo: _TzInfo,
++        tzinfo: _TzInfo | None = None,
+         *,
+         fold: int = 0,
+-    ) -> datetime[_TzInfo]: ...
+-
++    ) -> Self: ...
+     @property
+     def hour(self) -> int: ...
+     @property
+@@ -325,64 +292,32 @@ class datetime(date, Generic[_TzInfoT]):
+     @property
+     def microsecond(self) -> int: ...
+     @property
+-    def tzinfo(self) -> _TzInfoT: ...
++    def tzinfo(self) -> _TzInfo | None: ...
+     @property
+     def fold(self) -> int: ...
+     # On <3.12, the name of the first parameter in the pure-Python implementation
+     # didn't match the name in the C implementation,
+     # meaning it is only *safe* to pass it as a keyword argument on 3.12+
+     if sys.version_info >= (3, 12):
+-        @overload  # type: ignore[override]
+-        @classmethod
+-        def fromtimestamp(cls, timestamp: float, tz: None = None) -> datetime[None]: ...
+-        @overload
+         @classmethod
+-        def fromtimestamp(cls, timestamp: float, tz: _TzInfo) -> datetime[_TzInfo]: ...
+-        @overload
+-        @classmethod
+-        def fromtimestamp(cls, timestamp: float, tz: _TzInfo | None) -> datetime[_TzInfo] | datetime[None]: ...
+-    else:
+-        @overload  # type: ignore[override]
+-        @classmethod
+-        def fromtimestamp(cls, timestamp: float, /, tz: None = None) -> datetime[None]: ...
+-        @overload
+-        @classmethod
+-        def fromtimestamp(cls, timestamp: float, /, tz: _TzInfo) -> datetime[_TzInfo]: ...
+-        @overload
+-        @classmethod
+-        def fromtimestamp(cls, timestamp: float, /, tz: _TzInfo | None) -> datetime[_TzInfo] | datetime[None]: ...
+-
+-    # fromisoformat returns Self, but we can't specialize "Self"
+-    if sys.version_info >= (3, 15):
+-        @classmethod
+-        def fromisoformat(cls, string: str, /) -> datetime[_TzInfo] | datetime[None]: ...  # type: ignore[override]
++        def fromtimestamp(cls, timestamp: float, tz: _TzInfo | None = None) -> Self: ...
+     else:
+         @classmethod
+-        def fromisoformat(cls, date_string: str, /) -> datetime[_TzInfo] | datetime[None]: ...  # type: ignore[override]
+-
+-    @classmethod
+-    @deprecated("Use timezone-aware objects to represent datetimes in UTC; e.g. by calling .fromtimestamp(datetime.UTC)")
+-    def utcfromtimestamp(cls, t: float, /) -> datetime[None]: ...
+-
+-    @overload
+-    @classmethod
+-    def now(cls, tz: None = None) -> datetime[None]: ...
+-    @overload
+-    @classmethod
+-    def now(cls, tz: _TzInfo) -> datetime[_TzInfo]: ...
++        def fromtimestamp(cls, timestamp: float, /, tz: _TzInfo | None = None) -> Self: ...
+ 
+     @classmethod
+-    def today(cls) -> datetime[None]: ...  # type: ignore[override]
++    @deprecated("Use timezone-aware objects to represent datetimes in UTC; e.g. by calling .fromtimestamp(datetime.timezone.utc)")
++    def utcfromtimestamp(cls, t: float, /) -> Self: ...
+     @classmethod
+-    @deprecated("Use timezone-aware objects to represent datetimes in UTC; e.g. by calling .now(datetime.UTC)")
+-    def utcnow(cls) -> datetime[None]: ...
+-
+-    @overload
++    def now(cls, tz: _TzInfo | None = None) -> Self: ...
+     @classmethod
+-    def combine(cls, date: _Date, time: _Time, tzinfo: None = None) -> datetime[None]: ...
+-    @overload
++    @deprecated("Use timezone-aware objects to represent datetimes in UTC; e.g. by calling .now(datetime.timezone.utc)")
++    def utcnow(cls) -> Self: ...
+     @classmethod
+-    def combine(cls, date: _Date, time: _Time, tzinfo: _TzInfo) -> datetime[_TzInfo]: ...
++    def combine(cls, date: _Date, time: _Time, tzinfo: _TzInfo | None = ...) -> Self: ...
++    if sys.version_info >= (3, 15):
++        @classmethod
++        def fromisoformat(cls, string: str, /) -> Self: ...
+ 
+     def timestamp(self) -> float: ...
+     def utctimetuple(self) -> struct_time: ...
+@@ -405,7 +340,6 @@ class datetime(date, Generic[_TzInfoT]):
+             fold: int = ...,
+         ) -> Self: ...
+ 
+-    @overload
+     def replace(
+         self,
+         year: SupportsIndex = ...,
+@@ -415,67 +349,11 @@ class datetime(date, Generic[_TzInfoT]):
+         minute: SupportsIndex = ...,
+         second: SupportsIndex = ...,
+         microsecond: SupportsIndex = ...,
++        tzinfo: _TzInfo | None = ...,
+         *,
+         fold: int = ...,
+     ) -> Self: ...
+-    @overload
+-    def replace(
+-        self,
+-        year: SupportsIndex,
+-        month: SupportsIndex,
+-        day: SupportsIndex,
+-        hour: SupportsIndex,
+-        minute: SupportsIndex,
+-        second: SupportsIndex,
+-        microsecond: SupportsIndex,
+-        tzinfo: _TzInfo,
+-        *,
+-        fold: int = ...,
+-    ) -> datetime[_TzInfo]: ...
+-    @overload
+-    def replace(
+-        self,
+-        year: SupportsIndex = ...,
+-        month: SupportsIndex = ...,
+-        day: SupportsIndex = ...,
+-        hour: SupportsIndex = ...,
+-        minute: SupportsIndex = ...,
+-        second: SupportsIndex = ...,
+-        microsecond: SupportsIndex = ...,
+-        *,
+-        tzinfo: _TzInfo,
+-        fold: int = ...,
+-    ) -> datetime[_TzInfo]: ...
+-    @overload
+-    def replace(
+-        self,
+-        year: SupportsIndex,
+-        month: SupportsIndex,
+-        day: SupportsIndex,
+-        hour: SupportsIndex,
+-        minute: SupportsIndex,
+-        second: SupportsIndex,
+-        microsecond: SupportsIndex,
+-        tzinfo: None,
+-        *,
+-        fold: int = ...,
+-    ) -> datetime[None]: ...
+-    @overload
+-    def replace(
+-        self,
+-        year: SupportsIndex = ...,
+-        month: SupportsIndex = ...,
+-        day: SupportsIndex = ...,
+-        hour: SupportsIndex = ...,
+-        minute: SupportsIndex = ...,
+-        second: SupportsIndex = ...,
+-        microsecond: SupportsIndex = ...,
+-        *,
+-        tzinfo: None,
+-        fold: int = ...,
+-    ) -> datetime[None]: ...
+-
+-    def astimezone(self, tz: _TzInfo | None = None) -> datetime[_TzInfo]: ...
++    def astimezone(self, tz: _TzInfo | None = None) -> Self: ...
+     def isoformat(self, sep: str = "T", timespec: str = "auto") -> str: ...
+ 
+     if sys.version_info >= (3, 15):
+@@ -488,56 +366,15 @@ class datetime(date, Generic[_TzInfoT]):
+     def utcoffset(self) -> timedelta | None: ...
+     def tzname(self) -> str | None: ...
+     def dst(self) -> timedelta | None: ...
+-
+-    @overload  # type: ignore[override]
+-    def __le__(  # type: ignore[overload-overlap]
+-        self: datetime[_TzInfo] | datetime[_TzInfo | None], value: datetime[_TzInfo] | datetime[_TzInfo | None], /
+-    ) -> bool: ...  # type: ignore[misc]
+-    @overload
+-    def __le__(self: datetime[None] | datetime[_TzInfo | None], value: datetime[None] | datetime[_TzInfo | None], /) -> bool: ...  # type: ignore[misc]
+-    @overload
+-    def __le__(self: datetime[Any], value: datetime[Any], /) -> Never: ...
+-
+-    @overload  # type: ignore[override]
+-    def __lt__(  # type: ignore[overload-overlap]
+-        self: datetime[_TzInfo] | datetime[_TzInfo | None], value: datetime[_TzInfo] | datetime[_TzInfo | None], /
+-    ) -> bool: ...  # type: ignore[misc]
+-    @overload
+-    def __lt__(self: datetime[None] | datetime[_TzInfo | None], value: datetime[None] | datetime[_TzInfo | None], /) -> bool: ...  # type: ignore[misc]
+-    @overload
+-    def __lt__(self: datetime[Any], value: datetime[Any], /) -> Never: ...
+-
+-    @overload  # type: ignore[override]
+-    def __ge__(  # type: ignore[overload-overlap]
+-        self: datetime[_TzInfo] | datetime[_TzInfo | None], value: datetime[_TzInfo] | datetime[_TzInfo | None], /
+-    ) -> bool: ...  # type: ignore[misc]
+-    @overload
+-    def __ge__(self: datetime[None] | datetime[_TzInfo | None], value: datetime[None] | datetime[_TzInfo | None], /) -> bool: ...  # type: ignore[misc]
+-    @overload
+-    def __ge__(self: datetime[Any], value: datetime[Any], /) -> Never: ...
+-
+-    @overload  # type: ignore[override]
+-    def __gt__(  # type: ignore[overload-overlap]
+-        self: datetime[_TzInfo] | datetime[_TzInfo | None], value: datetime[_TzInfo] | datetime[_TzInfo | None], /
+-    ) -> bool: ...  # type: ignore[misc]
+-    @overload
+-    def __gt__(self: datetime[None] | datetime[_TzInfo | None], value: datetime[None] | datetime[_TzInfo | None], /) -> bool: ...  # type: ignore[misc]
+-    @overload
+-    def __gt__(self: datetime[Any], value: datetime[Any], /) -> Never: ...
+-
++    def __le__(self, value: datetime, /) -> bool: ...  # type: ignore[override]
++    def __lt__(self, value: datetime, /) -> bool: ...  # type: ignore[override]
++    def __ge__(self, value: datetime, /) -> bool: ...  # type: ignore[override]
++    def __gt__(self, value: datetime, /) -> bool: ...  # type: ignore[override]
+     def __eq__(self, value: object, /) -> bool: ...
+     def __hash__(self) -> int: ...
+ 
+     @overload  # type: ignore[override]
+-    def __sub__(  # type: ignore[overload-overlap]
+-        self: datetime[_TzInfo] | datetime[_TzInfo | None], value: datetime[_TzInfo] | datetime[_TzInfo | None], /
+-    ) -> timedelta: ...
+-    @overload
+-    def __sub__(  # type: ignore[overload-overlap]
+-        self: datetime[None] | datetime[_TzInfo | None], value: datetime[None] | datetime[_TzInfo | None], /
+-    ) -> timedelta: ...
+-    @overload
+-    def __sub__(self: datetime[Any], value: datetime[Any], /) -> Never: ...
++    def __sub__(self, value: Self, /) -> timedelta: ...
+     @overload
+     def __sub__(self, value: timedelta, /) -> Self: ...
+ 
+-- 
+2.56.0
+

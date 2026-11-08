@@ -410,12 +410,8 @@ with ctx_manager() as c:
     raise Exception
   File "native.py", line 10, in generator
     yield 3
-  File "native.py", line 31, in wrapper
-    return (yield from x)
   File "native.py", line 9, in generator
     yield 2
-  File "native.py", line 31, in wrapper
-    return (yield from x)
 caught exception without value
 caught exception with value some string
 caught exception with value some other string

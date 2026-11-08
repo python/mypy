@@ -78,6 +78,9 @@ PyObject *CPyBytes_GetSlice(PyObject *obj, CPyTagged start, CPyTagged end) {
         startn = Clamp(startn, 0, len);
         endn = Clamp(endn, 0, len);
         Py_ssize_t slice_len = endn - startn;
+        if (slice_len < 0) {
+            slice_len = 0;
+        }
         if (PyBytes_Check(obj)) {
             return PyBytes_FromStringAndSize(PyBytes_AS_STRING(obj) + startn, slice_len);
         } else {

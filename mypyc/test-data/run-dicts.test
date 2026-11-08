@@ -230,7 +230,8 @@ c
 
 [case testDictMethods]
 from collections import defaultdict
-from typing import Dict, Optional, List, Set
+from typing import Any, Dict, Optional, List, Set
+from testutil import assertRaises
 
 def test_dict_clear() -> None:
     d = {'a': 1, 'b': 2}
@@ -313,6 +314,56 @@ def test_dict_empty_collection_setdefault() -> None:
     d3.setdefault('b', set()).add('c')
     assert d3['b'] == {'b', 'c'}
     assert d3.setdefault('c', set('d')) == {'d'}
+
+class BadMapping:
+    @property
+    def keys(self) -> Any:
+        raise RuntimeError("keys failed")
+    def __iter__(self) -> Any:
+        raise ValueError("must not fall back to iteration")
+
+class BadKey:
+    def __init__(self, error: Any) -> None:
+        self.error = error
+        self.calls = 0
+    def __hash__(self) -> int:
+        self.calls += 1
+        if self.calls == 1:
+            raise self.error("hash failed")
+        return 0
+
+def convert(obj: Any) -> Dict[Any, Any]:
+    return dict(obj)
+
+def update(d: Dict[Any, Any], obj: Any) -> None:
+    d.update(obj)
+
+def default_list(d: Dict[Any, Any], key: Any) -> List[Any]:
+    return d.setdefault(key, [])
+
+def default_dict(d: Dict[Any, Any], key: Any) -> Dict[Any, Any]:
+    return d.setdefault(key, {})
+
+def default_set(d: Dict[Any, Any], key: Any) -> Set[Any]:
+    return d.setdefault(key, set())
+
+def test_lookup_error_propagation() -> None:
+    with assertRaises(RuntimeError, "keys failed"):
+        convert(BadMapping())
+    d: Dict[Any, Any] = {}
+    with assertRaises(RuntimeError, "keys failed"):
+        update(d, BadMapping())
+    assert d == {}
+
+    for default in (default_list, default_dict, default_set):
+        d = {}
+        for error in (RuntimeError, KeyError):
+            key = BadKey(error)
+            with assertRaises(error):
+                default(d, key)
+            assert key.calls == 1
+            assert d == {}
+        assert default(d, "present") is default(d, "present")
 
 [case testDictToBool]
 from typing import Dict, List
