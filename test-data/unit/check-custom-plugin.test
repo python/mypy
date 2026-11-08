@@ -772,7 +772,7 @@ class BaseManager(_BaseManager):
 
 [builtins fixtures/classmethod.pyi]
 [file mypy.ini]
-\\[mypy]
+\[mypy]
 plugins=<ROOT>/test-data/unit/plugins/dyn_class_from_method.py
 
 [case testBaseClassPluginHookWorksIncremental]
