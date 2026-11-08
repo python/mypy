@@ -3410,6 +3410,48 @@ if int():
     b = a(a)  # E: Incompatible types in assignment (expression has type "A", variable has type "B")
 
 
+[case testSubtypeOfCallableWithSelfReferentialCallAttribute]
+from typing import Callable, Generic, Optional, TypeVar
+from typing_extensions import Self
+
+T = TypeVar("T")
+
+class C:
+    __call__: C
+class D:
+    __call__: Optional[D]
+class S:
+    __call__: Self
+class G(Generic[T]):
+    __call__: G[list[T]]
+class X:
+    __call__: Y
+class Y:
+    __call__: X
+class OK:
+    def __call__(self) -> int: return 1
+
+def h(cb: Callable[[], int]) -> None: ...
+
+h(C())  # E: Argument 1 to "h" has incompatible type "C"; expected "Callable[[], int]" \
+       # N: "C.__call__" has type "C"
+h(D())  # E: Argument 1 to "h" has incompatible type "D"; expected "Callable[[], int]" \
+       # N: "D.__call__" has type "D | None"
+h(S())  # E: Argument 1 to "h" has incompatible type "S"; expected "Callable[[], int]" \
+       # N: "S.__call__" has type "S"
+h(G[int]())  # E: Argument 1 to "h" has incompatible type "G[int]"; expected "Callable[[], int]" \
+            # N: "G[int].__call__" has type "G[list[int]]"
+h(X())  # E: Argument 1 to "h" has incompatible type "X"; expected "Callable[[], int]" \
+       # N: "X.__call__" has type "Y"
+h(Y())  # E: Argument 1 to "h" has incompatible type "Y"; expected "Callable[[], int]" \
+       # N: "Y.__call__" has type "X"
+h(OK())
+x: Callable[[], int] = C()  # E: Incompatible types in assignment (expression has type "C", variable has type "Callable[[], int]") \
+                          # N: "C.__call__" has type "C"
+y: Callable[[], int] = OK()
+[builtins fixtures/list.pyi]
+
+
 -- __new__
 -- --------
 

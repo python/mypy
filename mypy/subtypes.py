@@ -118,6 +118,11 @@ class SubtypeContext:
         self.erase_instances = erase_instances
         self.keep_erased_types = keep_erased_types
         self.options = options
+        # Classes whose "__call__" attribute is currently being followed while deciding
+        # whether an Instance is a subtype of a Callable/Overloaded type. Used to break
+        # infinite recursion when "__call__" refers back to its own class, e.g.
+        # "class C: __call__: C" (see #22398). Shared across a single subtype query.
+        self.resolving_call_types: set[TypeInfo] = set()
 
     def check_context(self, proper_subtype: bool) -> None:
         # Historically proper and non-proper subtypes were defined using different helpers
@@ -658,7 +663,17 @@ class SubtypeVisitor(TypeVisitor[bool]):
             # Special case: Instance can be a subtype of Callable / Overloaded.
             call = find_member("__call__", left, left, is_operator=True)
             if call:
-                return self._is_subtype(call, right)
+                if left.type in self.subtype_context.resolving_call_types:
+                    # "__call__" (transitively) refers back to its own class, e.g.
+                    # "class C: __call__: C". Following it would recurse forever, and
+                    # such an instance cannot be called at runtime either, so it is
+                    # not a subtype of this Callable/Overloaded type (see #22398).
+                    return False
+                self.subtype_context.resolving_call_types.add(left.type)
+                try:
+                    return self._is_subtype(call, right)
+                finally:
+                    self.subtype_context.resolving_call_types.discard(left.type)
             return False
         else:
             return False
