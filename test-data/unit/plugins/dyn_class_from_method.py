@@ -31,22 +31,33 @@ class DynPlugin(Plugin):
 
 
 def add_info_hook(ctx: DynamicClassDefContext) -> None:
+    # Defer until the imported queryset has been fully analysed.
+    fullname = ctx.api.qualified_name(ctx.name)
+    existing = ctx.api.lookup_fully_qualified_or_none(fullname)
+    if existing is not None and isinstance(existing.node, TypeInfo):
+        return
+    assert isinstance(ctx.call.args[0], RefExpr)
+    queryset_fullname = ctx.call.args[0].fullname
+    symbol = (
+        ctx.api.lookup_fully_qualified_or_none(queryset_fullname)
+        if queryset_fullname
+        else None
+    )
+    if symbol is None or not isinstance(symbol.node, TypeInfo) or not symbol.node.mro:
+        assert not ctx.api.final_iteration
+        if existing is None or not isinstance(existing.node, PlaceholderNode):
+            placeholder = PlaceholderNode(fullname, ctx.call, ctx.call.line, becomes_typeinfo=True)
+            ctx.api.add_symbol_table_node(ctx.name, SymbolTableNode(GDEF, placeholder))
+        ctx.api.defer()
+        return
+    queryset_info = symbol.node
     class_def = ClassDef(ctx.name, Block([]))
-    class_def.fullname = ctx.api.qualified_name(ctx.name)
-
+    class_def.fullname = fullname
     info = TypeInfo(SymbolTable(), class_def, ctx.api.cur_mod_id)
     class_def.info = info
-    assert isinstance(ctx.call.args[0], RefExpr)
-    queryset_type_fullname = ctx.call.args[0].fullname
-    queryset_node = ctx.api.lookup_fully_qualified_or_none(queryset_type_fullname)
-    assert queryset_node is not None
-    queryset_info = queryset_node.node
-    assert isinstance(queryset_info, TypeInfo)
-    obj = ctx.api.named_type("builtins.object")
-    info.mro = [info, queryset_info, obj.type]
+    info.mro = [info, *queryset_info.mro]
     info.bases = [Instance(queryset_info, [])]
     ctx.api.add_symbol_table_node(ctx.name, SymbolTableNode(GDEF, info))
-
 
 def as_manager_hook(ctx: DynamicClassDefContext) -> None:
     class_def = ClassDef(ctx.name, Block([]))
