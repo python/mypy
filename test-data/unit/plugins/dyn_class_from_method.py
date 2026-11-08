@@ -9,6 +9,7 @@ from mypy.nodes import (
     IndexExpr,
     MemberExpr,
     NameExpr,
+    PlaceholderNode,
     RefExpr,
     SymbolTable,
     SymbolTableNode,
