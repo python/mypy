@@ -1745,6 +1745,19 @@ class C:
         self.c = 2  # E: Trying to assign name "c" that is not in "__slots__" of type "__main__.C"
 [builtins fixtures/plugin_attrs.pyi]
 
+[case testAttrsGeneratedSlotsClassVariableOverride]
+from typing import ClassVar
+
+import attrs
+
+@attrs.define(slots=True)
+class Base:
+    value: int
+
+class Child(Base):
+    __slots__: ClassVar[tuple[str, ...]] = ()
+[builtins fixtures/plugin_attrs.pyi]
+
 [case testAttrsClassWithSlotsDerivedFromNonSlots]
 import attrs
 
