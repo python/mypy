@@ -273,6 +273,29 @@ def test_contains() -> None:
     assert x not in v2
     assert x + "x" not in v2
 
+class ReplaceItemOnEq:
+    def __init__(self, name: str) -> None:
+        self.name = name
+
+    def __eq__(self, other: object) -> bool:
+        # Drop the reference to self from the vec
+        eq_vec[0] = None
+        # Try to reuse the memory of self, in case it was freed
+        junk = [ReplaceItemOnEq('junk') for i in range(100)]
+        return isinstance(other, ReplaceItemOnEq) and self.name == other.name
+
+eq_vec: vec[Optional[ReplaceItemOnEq]] = vec[Optional[ReplaceItemOnEq]]()
+
+def test_item_replaced_during_comparison() -> None:
+    # Items must not be borrowed while comparing, since __eq__ can replace them
+    global eq_vec
+    eq_vec = vec[Optional[ReplaceItemOnEq]]([ReplaceItemOnEq('x')])
+    assert eq_vec == vec[Optional[ReplaceItemOnEq]]([ReplaceItemOnEq('x')])
+    eq_vec = vec[Optional[ReplaceItemOnEq]]([ReplaceItemOnEq('x')])
+    assert ReplaceItemOnEq('x') in eq_vec
+    eq_vec = vec[Optional[ReplaceItemOnEq]]([ReplaceItemOnEq('x')])
+    assert len(remove(eq_vec, ReplaceItemOnEq('x'))) == 0
+
 def test_slicing() -> None:
     v = vec[str]()
     assert v[:] == vec[str]([])

@@ -481,6 +481,30 @@ def test_contains_subclass() -> None:
     assert StringSubclass('abc') in v
     assert 'xyz' not in v
 
+eq_vec: Any = None
+
+class ReplaceItemOnEq:
+    def __init__(self, name: str) -> None:
+        self.name = name
+
+    def __eq__(self, other: object) -> bool:
+        # Drop the reference to self from the vec
+        eq_vec[0] = None
+        # Try to reuse the memory of self, in case it was freed
+        junk = [ReplaceItemOnEq('junk') for i in range(100)]
+        return isinstance(other, ReplaceItemOnEq) and self.name == other.name
+
+def test_item_replaced_during_comparison() -> None:
+    # Items must not be borrowed while comparing, since __eq__ can replace them
+    global eq_vec
+    t = vec[Optional[ReplaceItemOnEq]]
+    eq_vec = t([ReplaceItemOnEq('x')])
+    assert eq_vec == t([ReplaceItemOnEq('x')])
+    eq_vec = t([ReplaceItemOnEq('x')])
+    assert ReplaceItemOnEq('x') in eq_vec
+    eq_vec = t([ReplaceItemOnEq('x')])
+    assert len(remove(eq_vec, ReplaceItemOnEq('x'))) == 0
+
 def test_remove() -> None:
     a = ['4x', '7x', '9x']
     for i in a:

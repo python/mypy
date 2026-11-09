@@ -488,7 +488,11 @@ VecT VecT_Remove(VecT v, PyObject *arg) {
         if (items[i] == arg)
             match = 1;
         else {
-            int itemcmp = PyObject_RichCompareBool(items[i], arg, Py_EQ);
+            // The comparison can run arbitrary code that replaces the item
+            PyObject *item = items[i];
+            Py_INCREF(item);
+            int itemcmp = PyObject_RichCompareBool(item, arg, Py_EQ);
+            Py_DECREF(item);
             if (itemcmp < 0) {
                 // The input v is being consumed/stolen by this function, so on error
                 // we must decref it to avoid leaking the buffer.

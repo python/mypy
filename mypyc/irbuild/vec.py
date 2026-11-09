@@ -570,7 +570,9 @@ def vec_contains(builder: LowLevelIRBuilder, vec: Value, target: Value, line: in
     for_loop = builder.begin_for(
         items_start, items_end, Integer(step, c_pyssize_t_rprimitive), signed=False
     )
-    item = vec_load_mem_item(builder, for_loop.index, item_type, can_borrow=True)
+    # Don't borrow the item, since the comparison can run arbitrary code that
+    # replaces the item in the vec
+    item = vec_load_mem_item(builder, for_loop.index, item_type)
     comp = builder.binary_op(item, target, "==", line)
     false = BasicBlock()
     builder.add(Branch(comp, true, false, Branch.BOOL))

@@ -494,7 +494,14 @@ PyObject *Vec_GenericRichcompare(Py_ssize_t *len, PyObject **items,
             cmp = 0;
         } else {
             for (Py_ssize_t i = 0; i < *len && i < *other_len; i++) {
-                int itemcmp = PyObject_RichCompareBool(items[i], other_items[i], Py_EQ);
+                // The comparison can run arbitrary code that replaces the items
+                PyObject *x = items[i];
+                PyObject *y = other_items[i];
+                Py_INCREF(x);
+                Py_INCREF(y);
+                int itemcmp = PyObject_RichCompareBool(x, y, Py_EQ);
+                Py_DECREF(x);
+                Py_DECREF(y);
                 if (itemcmp < 0)
                     return NULL;
                 if (!itemcmp) {
