@@ -3079,9 +3079,19 @@ class State:
         # dependency is added back we find out later in the process.
         # Additionally, we need to verify that import following options are
         # same for suppressed dependencies, even if the first check is OK.
+        # NOTE: Compare the dependency lists as sets: load_graph() may
+        # suppress a dependency (State.new_state() raising ModuleNotFound,
+        # e.g. for the parent of a missing submodule of a namespace package)
+        # and the up-suppress pass later re-adds it with add_dependency(),
+        # which appends it at the end of the list.  That reorders the list
+        # without changing its membership, and on a warm run the indirect
+        # dependencies from CacheMetaEx are already merged in, so an
+        # order-sensitive comparison would report the module stale on every
+        # run and re-check it forever (see #22159).  Both lists only ever
+        # contain unique elements (asserted in write_cache()).
         return (
             self.meta is not None
-            and self.dependencies == self.meta.dependencies
+            and set(self.dependencies) == set(self.meta.dependencies)
             and (
                 self.options.fine_grained_incremental
                 or self.meta.suppressed_deps_opts == self.suppressed_deps_opts()
