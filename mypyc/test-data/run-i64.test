@@ -501,6 +501,59 @@ def test_mixed_comparisons_32bit() -> None:
     assert int_smallest_short_i64 > int_small
     assert int_largest_short_i64 < int_big
 
+def truncate_i64(n: int) -> int:
+    n &= (1 << 64) - 1
+    return n - (1 << 64) if n >= (1 << 63) else n
+
+def test_shift_count_out_of_range() -> None:
+    for x in 0, 1, 5, -1, -8, (1 << 63) - 1, -(1 << 63):
+        v: i64 = x
+        for n in 0, 1, 63, 64, 65, 100:
+            c: i64 = n
+            assert v << c == truncate_i64(x << n)
+            assert v >> c == x >> n
+            nn: int = n
+            assert v << nn == truncate_i64(x << n)
+            assert v >> nn == x >> n
+            y = v
+            y <<= c
+            assert y == truncate_i64(x << n)
+            y = v
+            y >>= c
+            assert y == x >> n
+        assert v << 0 == x
+        assert v << 63 == truncate_i64(x << 63)
+        assert v << 64 == 0
+        assert v << 65 == 0
+        assert v << 100 == 0
+        assert v >> 0 == x
+        assert v >> 63 == x >> 63
+        assert v >> 64 == x >> 64
+        assert v >> 65 == x >> 65
+        assert v >> 100 == x >> 100
+        y = v
+        y >>= 64
+        assert y == x >> 64
+        for n in -1, -64, -100:
+            c = n
+            with assertRaises(ValueError, "negative shift count"):
+                y = v << c
+            with assertRaises(ValueError, "negative shift count"):
+                y = v >> c
+            nn = n
+            with assertRaises(ValueError, "negative shift count"):
+                y = v << nn
+            with assertRaises(ValueError, "negative shift count"):
+                y = v >> nn
+        with assertRaises(ValueError, "negative shift count"):
+            y = v << -1
+        with assertRaises(ValueError, "negative shift count"):
+            y = v >> -1
+    for n in 0, 1, 63, 64, 65, 100:
+        c = n
+        assert 3 << c == truncate_i64(3 << n)
+        assert -5 >> c == -5 >> n
+
 def test_mixed_arithmetic_and_bitwise_ops() -> None:
     i64_3: i64 = int() + 3
     int_5 = int() + 5

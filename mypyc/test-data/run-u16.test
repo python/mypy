@@ -175,6 +175,45 @@ def test_mixed_comparisons() -> None:
     with assertRaises(ValueError):
         assert int_too_small < u16_3
 
+def truncate_u16(n: int) -> int:
+    return n & ((1 << 16) - 1)
+
+def test_shift_count_out_of_range() -> None:
+    for x in 0, 1, 5, (1 << 16) - 1:
+        v: u16 = x
+        for n in 0, 1, 15, 16, 17, 64, 100:
+            c: u16 = n
+            assert v << c == truncate_u16(x << n)
+            assert v >> c == x >> n
+            nn: int = n
+            assert v << nn == truncate_u16(x << n)
+            assert v >> nn == x >> n
+            y = v
+            y <<= c
+            assert y == truncate_u16(x << n)
+            y = v
+            y >>= c
+            assert y == x >> n
+        assert v << 0 == x
+        assert v << 15 == truncate_u16(x << 15)
+        assert v << 16 == 0
+        assert v << 17 == 0
+        assert v << 100 == 0
+        assert v >> 0 == x
+        assert v >> 15 == x >> 15
+        assert v >> 16 == x >> 16
+        assert v >> 17 == x >> 17
+        assert v >> 100 == x >> 100
+        y = v
+        y >>= 16
+        assert y == x >> 16
+        assert v << 64 == 0
+        assert v >> 64 == x >> 64
+    for n in 0, 1, 15, 16, 17, 64, 100:
+        c = n
+        assert 3 << c == truncate_u16(3 << n)
+        assert 200 >> c == 200 >> n
+
 def test_mixed_arithmetic_and_bitwise_ops() -> None:
     u16_3: u16 = int() + 3
     int_5 = int() + 5
