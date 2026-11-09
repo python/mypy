@@ -78,6 +78,24 @@ def test_isinstance() -> None:
     assert isinstance(vec[vec[str]](), vec)
     assert isinstance(vec[vec[Optional[str]]](), vec)
 
+class AliasItem:
+    pass
+
+def test_vec_indexing_with_alias_refcount() -> None:
+    getrefcount: Any = getattr(sys, "getrefcount")
+    a = vec[AliasItem]
+    if not is_gil_disabled():
+        before = getrefcount(AliasItem)
+        before_alias = getrefcount(a)
+        t = vec[a]
+        del t
+        assert getrefcount(AliasItem) == before
+        assert getrefcount(a) == before_alias
+    for i in range(1000):
+        vec[a]
+    v = vec[a]([vec[AliasItem]([AliasItem()])])
+    assert type(v[0][0]) is AliasItem
+
 def test_repr() -> None:
     assert str(vec[vec[str]]()) == "vec[vec[str]]([])"
     assert str(vec[vec[Optional[str]]]()) == "vec[vec[str | None]]([])"

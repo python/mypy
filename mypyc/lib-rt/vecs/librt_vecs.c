@@ -372,7 +372,10 @@ static PyObject *vec_class_getitem(PyObject *type, PyObject *item)
         p = PyObject_GC_New(VecGenericAlias, &VecGenericAliasType);
         if (p == NULL)
             goto error;
-        Py_INCREF(item);
+        // Note that 'item' may be a different object than the item type (e.g. vec[t]
+        // alias), so incref the item type, since it will be decref'd on dealloc
+        if (!Vec_IsMagicItemType(item_type))
+            Py_INCREF(VEC_ITEM_TYPE(item_type));
         p->item_type = item_type;
         p->depth = depth;
         PyObject_GC_Track(p);
