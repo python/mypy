@@ -746,6 +746,7 @@ double CPyFloat_Log(double x);
 CPyTagged CPyFloat_Floor(double x);
 CPyTagged CPyFloat_Ceil(double x);
 double CPyFloat_FromTagged(CPyTagged x);
+char CPyFloat_CompareTagged(double x, CPyTagged y, int op);
 bool CPyFloat_IsInf(double x);
 bool CPyFloat_IsNaN(double x);
 double CPyComplex_GetPartSlow(PyObject *o, PyObject *name);

@@ -264,33 +264,57 @@ def f(x: float, y: int) -> None:
 def f(x, y):
     x :: float
     y :: int
-    r0 :: float
-    r1 :: bit
-    r2, r3, z, r4, r5, r6, r7, r8 :: float
-    r9 :: bit
-    r10 :: float
+    r0 :: bool
+    r1, r2, z, r3, r4, r5, r6 :: float
+    r7 :: bool
+    r8 :: float
 L0:
-    r0 = CPyFloat_FromTagged(y)
-    r1 = x < r0
-    if r1 goto L1 else goto L2 :: bool
+    r0 = CPyFloat_CompareTagged(x, y, 0)
+    if r0 goto L1 else goto L2 :: bool
 L1:
-    r2 = CPyFloat_FromTagged(y)
-    r3 = x + r2
-    z = r3
-    r4 = CPyFloat_FromTagged(y)
-    r5 = x - r4
-    x = r5
-    r6 = CPyFloat_FromTagged(y)
-    r7 = r6 + z
-    z = r7
+    r1 = CPyFloat_FromTagged(y)
+    r2 = x + r1
+    z = r2
+    r3 = CPyFloat_FromTagged(y)
+    r4 = x - r3
+    x = r4
+    r5 = CPyFloat_FromTagged(y)
+    r6 = r5 + z
+    z = r6
 L2:
-    r8 = CPyFloat_FromTagged(y)
-    r9 = r8 == x
-    if r9 goto L3 else goto L4 :: bool
+    r7 = CPyFloat_CompareTagged(x, y, 2)
+    if r7 goto L3 else goto L4 :: bool
 L3:
-    r10 = x - 1.0
-    x = r10
+    r8 = x - 1.0
+    x = r8
 L4:
+    return 1
+
+[case testFloatIntComparisons]
+def f(x: float, n: int) -> None:
+    b = x >= n
+    b = n < x
+    b = x == 9007199254740992
+    b = x == 9007199254740993
+    b = 9007199254740993 <= x
+[out]
+def f(x, n):
+    x :: float
+    n :: int
+    r0, b, r1 :: bool
+    r2 :: bit
+    r3, r4 :: bool
+L0:
+    r0 = CPyFloat_CompareTagged(x, n, 5)
+    b = r0
+    r1 = CPyFloat_CompareTagged(x, n, 4)
+    b = r1
+    r2 = x == 9007199254740992.0
+    b = r2
+    r3 = CPyFloat_CompareTagged(x, 18014398509481986, 2)
+    b = r3
+    r4 = CPyFloat_CompareTagged(x, 18014398509481986, 5)
+    b = r4
     return 1
 
 [case testFloatDivideSimple]

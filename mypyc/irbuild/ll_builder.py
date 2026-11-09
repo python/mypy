@@ -145,7 +145,7 @@ from mypyc.primitives.dict_ops import (
     dict_update_in_display_op,
 )
 from mypyc.primitives.exc_ops import err_occurred_op, keep_propagating_op
-from mypyc.primitives.float_ops import copysign_op, int_to_float_op
+from mypyc.primitives.float_ops import copysign_op, float_int_compare_op, int_to_float_op
 from mypyc.primitives.generic_ops import (
     call_fastcall_wrapper_op,
     call_legacy_wrapper_op,
@@ -256,6 +256,19 @@ FIXED_WIDTH_INT_BINARY_OPS: Final = {
 
 # Binary operations on bools that are specialized and don't just promote operands to int
 BOOL_BINARY_OPS: Final = {"&", "&=", "|", "|=", "^", "^=", "==", "!=", "<", "<=", ">", ">="}
+
+# Py_LT etc. values of comparison operators
+py_comparison_op_ids: Final = {"<": 0, "<=": 1, "==": 2, "!=": 3, ">": 4, ">=": 5}
+
+# Comparison operators with swapped operands (x < y is the same as y > x)
+swapped_comparison_ops: Final = {
+    "<": ">",
+    "<=": ">=",
+    "==": "==",
+    "!=": "!=",
+    ">": "<",
+    ">=": "<=",
+}
 
 
 class PendingKeepAlive:
@@ -1845,6 +1858,13 @@ class LowLevelIRBuilder:
                     return self.comparison_op(lreg, rreg, op_id, line)
 
         if is_float_rprimitive(ltype) or is_float_rprimitive(rtype):
+            if op in float_comparison_op_to_id:
+                # Like in CPython, comparisons are exact, so an int can only be converted
+                # to float if this doesn't lose precision (which may require a runtime check)
+                if self.needs_exact_float_compare(lreg):
+                    return self.compare_float_and_int(rreg, lreg, swapped_comparison_ops[op], line)
+                if self.needs_exact_float_compare(rreg):
+                    return self.compare_float_and_int(lreg, rreg, op, line)
             if isinstance(lreg, Integer):
                 lreg = Float(float(lreg.numeric_value()))
             elif isinstance(rreg, Integer):
@@ -2727,6 +2747,23 @@ class LowLevelIRBuilder:
 
     def compare_floats(self, lhs: Value, rhs: Value, op: int, line: int) -> Value:
         return self.add(FloatComparisonOp(lhs, rhs, op, line))
+
+    def needs_exact_float_compare(self, value: Value) -> bool:
+        """Is value an int that may not be exactly representable as a float?"""
+        if isinstance(value, Integer):
+            n = value.numeric_value()
+            return float(n) != n
+        return is_int_rprimitive(value.type)
+
+    def compare_float_and_int(self, lhs: Value, rhs: Value, op: str, line: int) -> Value:
+        """Compare float and int exactly, like CPython."""
+        if isinstance(rhs, Integer):
+            rhs = self.load_int(rhs.numeric_value())
+        return self.primitive_op(
+            float_int_compare_op,
+            [lhs, rhs, Integer(py_comparison_op_ids[op], c_int_rprimitive)],
+            line,
+        )
 
     def int_add(self, lhs: Value, rhs: Value | int) -> Value:
         """Helper to add two native integers.

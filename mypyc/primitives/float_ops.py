@@ -6,6 +6,7 @@ from mypyc.ir.ops import ERR_MAGIC, ERR_MAGIC_OVERLAPPING, ERR_NEVER
 from mypyc.ir.rtypes import (
     bit_rprimitive,
     bool_rprimitive,
+    c_int_rprimitive,
     float_rprimitive,
     int_rprimitive,
     object_rprimitive,
@@ -31,6 +32,15 @@ int_to_float_op = function_op(
     return_type=float_rprimitive,
     c_function_name="CPyFloat_FromTagged",
     error_kind=ERR_MAGIC_OVERLAPPING,
+)
+
+# Exact comparison of float and int (the last argument is Py_LT etc.)
+float_int_compare_op = custom_primitive_op(
+    name="float_int_compare",
+    arg_types=[float_rprimitive, int_rprimitive, c_int_rprimitive],
+    return_type=bool_rprimitive,
+    c_function_name="CPyFloat_CompareTagged",
+    error_kind=ERR_MAGIC,
 )
 
 # float(str)
