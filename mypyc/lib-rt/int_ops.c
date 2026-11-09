@@ -672,7 +672,9 @@ double CPyTagged_TrueDivide(CPyTagged x, CPyTagged y) {
         PyErr_SetString(PyExc_ZeroDivisionError, "division by zero");
         return CPY_FLOAT_ERROR;
     }
-    if (likely(!CPyTagged_CheckLong(x) && !CPyTagged_CheckLong(y))) {
+    // Dividing as doubles is only correctly rounded if both operands can be
+    // represented exactly as doubles (CPython uses the same fast path)
+    if (likely(CPyTagged_FitsInDouble(x) && CPyTagged_FitsInDouble(y))) {
         return (double)((Py_ssize_t)x >> 1) / (double)((Py_ssize_t)y >> 1);
     } else {
         PyObject *xo = CPyTagged_AsExactObject(x);
