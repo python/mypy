@@ -46,6 +46,7 @@ Methods
 * ``s1.find(s2: str, start: int, end: int)``
 * ``s.isalnum()``
 * ``s.isdigit()``
+* ``s.isidentifier()``
 * ``s.isspace()``
 * ``s.lower()``
 * ``s.join(x: Iterable)``

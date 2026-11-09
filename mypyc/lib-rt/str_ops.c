@@ -806,3 +806,21 @@ bool CPyStr_IsDigit(PyObject *str) {
 
 #undef CHECK_ISDIGIT
 }
+
+bool CPyStr_IsIdentifier(PyObject *str) {
+    if (PyUnicode_IS_ASCII(str)) {
+        // ASCII fast path: [A-Za-z_][A-Za-z0-9_]*
+        Py_ssize_t len = PyUnicode_GET_LENGTH(str);
+        if (len == 0) return false;
+        const Py_UCS1 *data = PyUnicode_1BYTE_DATA(str);
+        if (!Py_ISALPHA(data[0]) && data[0] != '_')
+            return false;
+        for (Py_ssize_t i = 1; i < len; i++) {
+            if (!Py_ISALNUM(data[i]) && data[i] != '_')
+                return false;
+        }
+        return true;
+    }
+    // Non-ASCII identifiers need XID_Start/XID_Continue checks (PEP 3131)
+    return PyUnicode_IsIdentifier(str) == 1;
+}
