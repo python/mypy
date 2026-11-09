@@ -290,7 +290,7 @@ L3:
 L4:
     return 1
 
-[case testFloatIntComparisons]
+[case testFloatIntComparisons_64bit]
 def f(x: float, n: int) -> None:
     b = x >= n
     b = n < x
