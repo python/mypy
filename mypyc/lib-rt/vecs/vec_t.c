@@ -23,8 +23,10 @@ static inline VecT vec_error() {
 }
 
 static inline VecTBufObject *alloc_buf(Py_ssize_t size, size_t item_type) {
-    if (Vec_CheckBufSize(&VecTBufType, size) < 0)
+    if (size > VEC_MAX_BUF_ITEMS(VecTBufObject, sizeof(PyObject *))) {
+        PyErr_NoMemory();
         return NULL;
+    }
     VecTBufObject *buf = PyObject_GC_NewVar(VecTBufObject, &VecTBufType, size);
     if (buf == NULL)
         return NULL;
