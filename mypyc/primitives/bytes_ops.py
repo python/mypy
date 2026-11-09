@@ -94,7 +94,6 @@ bytes_slice_op = custom_op(
 )
 
 # bytes[index]
-# bytearray[index]
 method_op(
     name="__getitem__",
     arg_types=[bytes_rprimitive, int_rprimitive],
