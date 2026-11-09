@@ -774,6 +774,72 @@ PyObject *CPyStr_Upper(PyObject *self) {
 #endif
 }
 
+// Apply a case operation to a str object. ASCII strings use ascii_func directly. Other
+// strings fall back to the str method, since the full Unicode case mappings aren't
+// available through the public C API.
+static inline PyObject *CPyStr_CaseOperation(
+        PyObject *self, void (*ascii_func)(const Py_UCS1 *, Py_UCS1 *, Py_ssize_t),
+        PyObject *method_name) {
+    if (!PyUnicode_IS_ASCII(self)) {
+        return PyObject_CallMethodNoArgs(self, method_name);
+    }
+    Py_ssize_t len = PyUnicode_GET_LENGTH(self);
+    PyObject *res = PyUnicode_New(len, 127);
+    if (res == NULL) {
+        return NULL;
+    }
+    ascii_func(PyUnicode_1BYTE_DATA(self), PyUnicode_1BYTE_DATA(res), len);
+    return res;
+}
+
+static void CPy_ASCII_Capitalize(const Py_UCS1 *data, Py_UCS1 *res, Py_ssize_t len) {
+    if (len > 0) {
+        res[0] = Py_TOUPPER(data[0]);
+    }
+    for (Py_ssize_t i = 1; i < len; i++) {
+        res[i] = Py_TOLOWER(data[i]);
+    }
+}
+
+static void CPy_ASCII_Casefold(const Py_UCS1 *data, Py_UCS1 *res, Py_ssize_t len) {
+    for (Py_ssize_t i = 0; i < len; i++) {
+        res[i] = Py_TOLOWER(data[i]);
+    }
+}
+
+static void CPy_ASCII_Swapcase(const Py_UCS1 *data, Py_UCS1 *res, Py_ssize_t len) {
+    for (Py_ssize_t i = 0; i < len; i++) {
+        Py_UCS1 c = data[i];
+        res[i] = Py_ISUPPER(c) ? Py_TOLOWER(c) : Py_TOUPPER(c);
+    }
+}
+
+static void CPy_ASCII_Title(const Py_UCS1 *data, Py_UCS1 *res, Py_ssize_t len) {
+    // Only letters are cased characters in ASCII
+    int previous_is_cased = 0;
+    for (Py_ssize_t i = 0; i < len; i++) {
+        Py_UCS1 c = data[i];
+        res[i] = previous_is_cased ? Py_TOLOWER(c) : Py_TOUPPER(c);
+        previous_is_cased = Py_ISALPHA(c);
+    }
+}
+
+PyObject *CPyStr_Capitalize(PyObject *self) {
+    return CPyStr_CaseOperation(self, CPy_ASCII_Capitalize, mypyc_interned_str.capitalize);
+}
+
+PyObject *CPyStr_Casefold(PyObject *self) {
+    return CPyStr_CaseOperation(self, CPy_ASCII_Casefold, mypyc_interned_str.casefold);
+}
+
+PyObject *CPyStr_Swapcase(PyObject *self) {
+    return CPyStr_CaseOperation(self, CPy_ASCII_Swapcase, mypyc_interned_str.swapcase);
+}
+
+PyObject *CPyStr_Title(PyObject *self) {
+    return CPyStr_CaseOperation(self, CPy_ASCII_Title, mypyc_interned_str.title);
+}
+
 bool CPyStr_IsDigit(PyObject *str) {
     Py_ssize_t len = PyUnicode_GET_LENGTH(str);
     if (len == 0) return false;

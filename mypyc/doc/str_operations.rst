@@ -36,6 +36,8 @@ Operators
 Methods
 -------
 
+* ``s.capitalize()``
+* ``s.casefold()``
 * ``s.encode()``
 * ``s.encode(encoding: str)``
 * ``s.encode(encoding: str, errors: str)``
@@ -72,6 +74,8 @@ Methods
 * ``s.splitlines(keepends: bool)``
 * ``s1.startswith(s2: str)``
 * ``s1.startswith(t: tuple[str, ...])``
+* ``s.swapcase()``
+* ``s.title()``
 * ``s.upper()``
 * ``s.strip()``
 * ``s.strip(chars: str)``

@@ -1518,3 +1518,61 @@ class StrOverride(str):
         return 12345678901234567892
     def upper(self) -> Any:
         return 12345678901234567893
+
+[case testStrCaseMethods]
+from typing import Any, Callable, List
+from strsub import StrSubclass
+
+def capitalize(s: str) -> str:
+    return s.capitalize()
+
+def casefold(s: str) -> str:
+    return s.casefold()
+
+def swapcase(s: str) -> str:
+    return s.swapcase()
+
+def title(s: str) -> str:
+    return s.title()
+
+FUNCS: List[Callable[[str], str]] = [capitalize, casefold, swapcase, title]
+
+STRINGS = [
+    "", "a", "A", "1", " ", "hello world", "HELLO WORLD", "hELLO wORLD", "they're bill's",
+    "o'neil-smith_jr 2nd", "x1y2z3", "123abc", "a\tb\nc", "__init__", "  leading space",
+    # Non-ASCII strings
+    "\xe9cole", "\xc9COLE", "stra\xdfe", "\u03a3\u0391\u03a3", "\u01c5a", "\ufb01ne",
+    "\u0130stanbul", "\u4e2d\u6587 abc", "\U0001f600 hello", "hello \u03a3", "\u1f80",
+]
+
+def check(s: str) -> None:
+    a: Any = s
+    assert capitalize(s) == a.capitalize(), s
+    assert casefold(s) == a.casefold(), s
+    assert swapcase(s) == a.swapcase(), s
+    assert title(s) == a.title(), s
+
+def test_strings() -> None:
+    for s in STRINGS:
+        check(s)
+
+def test_all_ascii_pairs() -> None:
+    chars = [chr(i) for i in range(128)]
+    for c in chars:
+        check(c)
+        for d in chars:
+            check(c + d)
+            check(c + d + c)
+
+def test_result_type() -> None:
+    sub = StrSubclass("hello World")
+    empty = StrSubclass("")
+    for f in FUNCS:
+        assert type(f(sub)) is str
+        assert type(f(empty)) is str
+        assert f(empty) == ""
+    assert title(sub) == "Hello World"
+
+[file strsub.py]
+class StrSubclass(str):
+    pass
