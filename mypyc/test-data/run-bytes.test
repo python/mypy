@@ -567,6 +567,96 @@ def test_bytearray_indexing() -> None:
     with assertRaises(ValueError, "byte must be in range(0, 256)"):
         b2[0] = 256
 
+[case testBytesContains]
+from typing import Any
+from testutil import assertRaises
+from bcsubclass import BytesSubclass, BytesContainsOverride
+
+HAYSTACKS = [
+    b"",
+    b"a",
+    b"abc",
+    b"aaab",
+    b"\x00\x01\x7f\x80\xfe\xff",
+    b"abcabcabd" * 10,
+    bytes(range(256)),
+    b"x" * 40 + b"y",
+]
+
+def outcome(f: Any) -> Any:
+    try:
+        return f()
+    except Exception as e:
+        return type(e), str(e)
+
+def needles(h: bytes) -> list[bytes]:
+    result = [b"", b"z", b"\x00", b"\xff", b"ab", b"abd", b"aab", h, h + b"!", b"!" + h]
+    for i in range(len(h)):
+        for j in range(i + 1, min(len(h), i + 35) + 1):
+            result.append(h[i:j])
+            # Same length, but differs in the last byte
+            result.append(h[i:j - 1] + bytes([(h[j - 1] + 1) % 256]))
+    return result
+
+def test_int_in_bytes() -> None:
+    for h in HAYSTACKS:
+        a: Any = h
+        for n in list(range(-3, 260)) + [2**62, -2**62, 2**100, -2**100]:
+            an: Any = n
+            assert outcome(lambda: n in h) == outcome(lambda: an in a), (h, n)
+            assert outcome(lambda: n not in h) == outcome(lambda: an not in a), (h, n)
+    with assertRaises(ValueError, "byte must be in range(0, 256)"):
+        256 in b"a"
+    with assertRaises(ValueError, "byte must be in range(0, 256)"):
+        -1 not in b"a"
+
+def test_bool_in_bytes() -> None:
+    t = True
+    f = False
+    assert t in b"\x01"
+    assert t not in b"\x00"
+    assert f in b"\x00"
+    assert f not in b"\x01"
+
+def test_bytes_in_bytes() -> None:
+    for h in HAYSTACKS:
+        a: Any = h
+        for x in needles(h):
+            ax: Any = x
+            assert (x in h) == (ax in a), (h, x)
+            assert (x not in h) == (ax not in a), (h, x)
+
+def test_long_needle() -> None:
+    h = b"a" * 100 + b"b"
+    for n in range(30, 40):
+        assert b"a" * n + b"b" in h
+        assert b"a" * n + b"c" not in h
+        assert b"b" + b"a" * n not in h
+
+def test_subclass() -> None:
+    s: bytes = BytesSubclass(b"abc")
+    assert 97 in s
+    assert 100 not in s
+    assert b"bc" in s
+    assert BytesSubclass(b"bc") in b"abc"
+    assert BytesSubclass(b"bd") not in b"abc"
+    assert BytesSubclass(b"") in b""
+
+    o: bytes = BytesContainsOverride(b"abc")
+    assert 1 in o
+    assert 97 not in o
+    assert 1000 in o
+    assert b"zz" in o
+    assert b"ab" not in o
+
+[file bcsubclass.py]
+class BytesSubclass(bytes):
+    pass
+
+class BytesContainsOverride(bytes):
+    def __contains__(self, x: object) -> bool:
+        return x == 1 or x == 1000 or x == b"zz"
+
 [case testBytesJoin]
 from typing import Any
 from testutil import assertRaises

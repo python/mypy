@@ -20,6 +20,7 @@ Operators
 * Slicing (``b[n:m]``, ``b[n:]``, ``b[:m]``)
 * Repetition (``b * n``, ``n * b``)
 * Comparisons (``==``, ``!=``)
+* Containment (``n in b`` where ``n`` is an ``int``, ``b1 in b2``)
 
 .. _bytes-methods:
 

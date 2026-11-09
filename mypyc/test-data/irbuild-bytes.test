@@ -257,6 +257,82 @@ L0:
     r1 = r0 << 1
     return r1
 
+[case testBytesContains]
+def int_in(x: int, b: bytes) -> bool:
+    return x in b
+
+def int_not_in(x: int, b: bytes) -> bool:
+    return x not in b
+
+def bool_in(x: bool, b: bytes) -> bool:
+    return x in b
+
+def bytes_in(x: bytes, b: bytes) -> bool:
+    return x in b
+
+def bytes_not_in(x: bytes, b: bytes) -> bool:
+    return x not in b
+[out]
+def int_in(x, b):
+    x :: int
+    b :: bytes
+    r0 :: i32
+    r1 :: bit
+    r2 :: bool
+L0:
+    r0 = CPyBytes_ContainsInt(b, x)
+    r1 = r0 >= 0 :: signed
+    r2 = truncate r0: i32 to builtins.bool
+    return r2
+def int_not_in(x, b):
+    x :: int
+    b :: bytes
+    r0 :: i32
+    r1 :: bit
+    r2, r3 :: bool
+L0:
+    r0 = CPyBytes_ContainsInt(b, x)
+    r1 = r0 >= 0 :: signed
+    r2 = truncate r0: i32 to builtins.bool
+    r3 = r2 ^ 1
+    return r3
+def bool_in(x, b):
+    x :: bool
+    b :: bytes
+    r0 :: bool
+    r1 :: int
+    r2 :: i32
+    r3 :: bit
+    r4 :: bool
+L0:
+    r0 = x << 1
+    r1 = extend r0: builtins.bool to builtins.int
+    r2 = CPyBytes_ContainsInt(b, r1)
+    r3 = r2 >= 0 :: signed
+    r4 = truncate r2: i32 to builtins.bool
+    return r4
+def bytes_in(x, b):
+    x, b :: bytes
+    r0 :: i32
+    r1 :: bit
+    r2 :: bool
+L0:
+    r0 = CPyBytes_Contains(b, x)
+    r1 = r0 >= 0 :: signed
+    r2 = truncate r0: i32 to builtins.bool
+    return r2
+def bytes_not_in(x, b):
+    x, b :: bytes
+    r0 :: i32
+    r1 :: bit
+    r2, r3 :: bool
+L0:
+    r0 = CPyBytes_Contains(b, x)
+    r1 = r0 >= 0 :: signed
+    r2 = truncate r0: i32 to builtins.bool
+    r3 = r2 ^ 1
+    return r3
+
 [case testBytesFormatting]
 def f(var: bytes, num: int) -> None:
     b1 = b'aaaa%bbbbb%s' % (var, var)

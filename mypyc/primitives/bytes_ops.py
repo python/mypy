@@ -103,6 +103,30 @@ method_op(
     error_kind=ERR_MAGIC,
 )
 
+# int in bytes
+binary_op(
+    name="in",
+    arg_types=[int_rprimitive, bytes_rprimitive],
+    return_type=c_int_rprimitive,
+    c_function_name="CPyBytes_ContainsInt",
+    error_kind=ERR_NEG_INT,
+    truncated_type=bool_rprimitive,
+    ordering=[1, 0],
+    dependencies=[BYTES_EXTRA_OPS],
+)
+
+# bytes in bytes
+binary_op(
+    name="in",
+    arg_types=[bytes_rprimitive, bytes_rprimitive],
+    return_type=c_int_rprimitive,
+    c_function_name="CPyBytes_Contains",
+    error_kind=ERR_NEG_INT,
+    truncated_type=bool_rprimitive,
+    ordering=[1, 0],
+    dependencies=[BYTES_EXTRA_OPS],
+)
+
 # bytes.join(obj)
 method_op(
     name="join",
