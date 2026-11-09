@@ -7,7 +7,7 @@ from typing import Final, Any, Iterable, Optional, Tuple
 from mypy_extensions import i64
 from librt.vecs import vec, append, extend, remove, pop
 
-from testutil import assertRaises
+from testutil import assertRaises, is_64_bit_platform
 
 def test_create_empty() -> None:
     v = vec[str]()
@@ -524,6 +524,15 @@ def test_cap_negative() -> None:
         vec[str](capacity=-1)
     with assertRaises(ValueError):
         vec[str](['x'], capacity=-1)
+
+def test_cap_too_large() -> None:
+    if not is_64_bit_platform():
+        return
+    for n in [i64(2**61), i64(2**63 - 1)]:
+        with assertRaises(MemoryError):
+            vec[str](capacity=n)
+        with assertRaises(MemoryError):
+            vec[str](['x'], capacity=n)
 
 def extend_vec(v: vec[str], v2: vec[str]) -> vec[str]:
     return extend(v, v2)

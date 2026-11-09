@@ -44,10 +44,11 @@ inline static VEC vec_error() {
 static VEC vec_alloc(Py_ssize_t size)
 {
     BUF_OBJECT *buf;
-    /* TODO: Check for overflow */
     if (size == 0) {
         buf = NULL;
     } else {
+        if (Vec_CheckBufSize(&BUF_TYPE, size) < 0)
+            return vec_error();
         buf = PyObject_NewVar(BUF_OBJECT, &BUF_TYPE, size);
         if (buf == NULL)
             return vec_error();
@@ -280,7 +281,10 @@ static PyObject *vec_new(PyTypeObject *self, PyObject *args, PyObject *kw) {
         return NULL;
     }
     if (init == NULL) {
-        return FUNC(Box)(FUNC(New)(0, cap));
+        VEC v = FUNC(New)(0, cap);
+        if (VEC_IS_ERROR(v))
+            return NULL;
+        return FUNC(Box)(v);
     } else {
         VEC v = FUNC(FromIterable)(init, cap);
         if (VEC_IS_ERROR(v))

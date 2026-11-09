@@ -5,7 +5,7 @@ import sys
 from mypy_extensions import i64, i32
 from librt.vecs import vec, append, extend, remove, pop
 
-from testutil import assertRaises
+from testutil import assertRaises, is_64_bit_platform
 
 def test_construct_empty_nested() -> None:
     v = vec[vec[str]]()
@@ -555,6 +555,15 @@ def test_cap_negative() -> None:
         vec[vec[i64]](capacity=-1)
     with assertRaises(ValueError):
         vec[vec[i64]]([vec[i64]([1])], capacity=-1)
+
+def test_cap_too_large() -> None:
+    if not is_64_bit_platform():
+        return
+    for n in [i64(2**61), i64(2**63 - 1)]:
+        with assertRaises(MemoryError):
+            vec[vec[i64]](capacity=n)
+        with assertRaises(MemoryError):
+            vec[vec[i64]]([vec[i64]([1])], capacity=n)
 
 def extend_nested(v: vec[vec[str]], v2: vec[vec[str]]) -> vec[vec[str]]:
     return extend(v, v2)

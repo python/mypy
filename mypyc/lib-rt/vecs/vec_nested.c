@@ -32,6 +32,8 @@ static inline PyObject *box_vec_item_by_index(VecNested v, Py_ssize_t index) {
 // and items. Caller *must* also call vec_track_buffer on the returned vec but only
 // after initializing the items.
 static VecNested vec_alloc(Py_ssize_t size, size_t item_type, size_t depth) {
+    if (Vec_CheckBufSize(&VecNestedBufType, size) < 0)
+        return vec_error();
     VecNestedBufObject *buf = PyObject_GC_NewVar(VecNestedBufObject, &VecNestedBufType, size);
     if (buf == NULL)
         return vec_error();

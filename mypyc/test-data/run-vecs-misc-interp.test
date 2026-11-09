@@ -13,7 +13,7 @@ import typing
 import librt.vecs
 import mypy_extensions
 
-from testutil import assertRaises
+from testutil import assertRaises, is_64_bit_platform
 
 # Access via Any references to force generic operations
 vec: Any = librt.vecs.vec
@@ -521,6 +521,21 @@ def test_cap_negative() -> None:
     for t in ITEM_TYPES:
         with assertRaises(ValueError):
             vec[t](capacity=-1)
+
+def test_cap_too_large() -> None:
+    if not is_64_bit_platform():
+        return
+    # The buffer size calculation must not overflow
+    for n in [2**61, 2**62, 2**63 - 1]:
+        for t in ITEM_TYPES + [str, vec[i64], vec[str]]:
+            with assertRaises(MemoryError):
+                vec[t](capacity=n)
+            with assertRaises(MemoryError):
+                vec[t]([], capacity=n)
+            with assertRaises(MemoryError):
+                vec[t]((), capacity=n)
+            with assertRaises(MemoryError):
+                vec[t](iter([]), capacity=n)
 
 def test_cap_buffer_reuse() -> None:
     # Verify buffer reuse within cap for each type
