@@ -73,6 +73,13 @@ void CPy_RaiseFrom(PyObject *exc, PyObject *cause) {
 void CPy_Reraise(void) {
     PyObject *p_type, *p_value, *p_traceback;
     PyErr_GetExcInfo(&p_type, &p_value, &p_traceback);
+    if (p_value == NULL || Py_IsNone(p_value)) {
+        Py_XDECREF(p_type);
+        Py_XDECREF(p_value);
+        Py_XDECREF(p_traceback);
+        PyErr_SetString(PyExc_RuntimeError, "No active exception to reraise");
+        return;
+    }
     PyErr_Restore(p_type, p_value, p_traceback);
 }
 
