@@ -1,5 +1,5 @@
 from mypyc.ir.deps import LIBRT_RANDOM
-from mypyc.ir.ops import ERR_MAGIC, ERR_NEVER
+from mypyc.ir.ops import ERR_MAGIC, ERR_MAGIC_OVERLAPPING, ERR_NEVER
 from mypyc.ir.rtypes import float_rprimitive, int64_rprimitive, random_rprimitive
 from mypyc.primitives.registry import function_op, method_op
 
@@ -29,7 +29,7 @@ method_op(
     arg_types=[random_rprimitive, int64_rprimitive, int64_rprimitive],
     return_type=int64_rprimitive,
     c_function_name="LibRTRandom_Random_randint_internal",
-    error_kind=ERR_MAGIC,
+    error_kind=ERR_MAGIC_OVERLAPPING,
     dependencies=[LIBRT_RANDOM],
 )
 
@@ -49,7 +49,7 @@ method_op(
     arg_types=[random_rprimitive, int64_rprimitive, int64_rprimitive],
     return_type=int64_rprimitive,
     c_function_name="LibRTRandom_Random_randrange2_internal",
-    error_kind=ERR_MAGIC,
+    error_kind=ERR_MAGIC_OVERLAPPING,
     dependencies=[LIBRT_RANDOM],
 )
 
@@ -89,7 +89,7 @@ function_op(
     arg_types=[int64_rprimitive, int64_rprimitive],
     return_type=int64_rprimitive,
     c_function_name="LibRTRandom_module_randrange2_internal",
-    error_kind=ERR_MAGIC,
+    error_kind=ERR_MAGIC_OVERLAPPING,
     dependencies=[LIBRT_RANDOM],
 )
 
@@ -99,6 +99,6 @@ function_op(
     arg_types=[int64_rprimitive, int64_rprimitive],
     return_type=int64_rprimitive,
     c_function_name="LibRTRandom_module_randint_internal",
-    error_kind=ERR_MAGIC,
+    error_kind=ERR_MAGIC_OVERLAPPING,
     dependencies=[LIBRT_RANDOM],
 )
