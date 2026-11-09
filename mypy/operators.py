@@ -95,6 +95,10 @@ op_methods_that_shortcut: Final = {
     "__xor__",
     "__lshift__",
     "__rshift__",
+    "__lt__",
+    "__le__",
+    "__gt__",
+    "__ge__",
 }
 
 normal_from_reverse_op: Final = {m: n for n, m in reverse_op_methods.items()}
