@@ -2583,7 +2583,7 @@ class C(B): pass
 reveal_type(A() + C())  # N: Revealed type is "builtins.str"
 
 [case testReverseOperatorOrderingForClassObjects]
-from typing import assert_type
+from typing import TypeVar, assert_type
 
 class LeftMeta(type):
     def __mul__(cls, other: object) -> int: return 1
@@ -2601,10 +2601,27 @@ class A(metaclass=LeftMeta): pass
 class B(metaclass=RightMeta): pass
 class C(metaclass=InheritedMeta): pass
 class D(metaclass=OtherMeta): pass
+class OtherD(metaclass=OtherMeta): pass
+class SubA(A, metaclass=RightMeta): pass
 
 assert_type(A * B, str)
 assert_type(A * C, int)
 assert_type(A * D, int)
+assert_type(SubA * B, int)
+D * OtherD  # E: Unsupported left operand type for * ("type[D]")
+
+def check_parameters(a: type[A], b: type[B], c: type[C], d: type[D], sub: type[SubA]) -> None:
+    assert_type(a * b, str)
+    assert_type(A * b, str)
+    assert_type(a * B, str)
+    assert_type(a * c, int)
+    assert_type(a * d, int)
+    assert_type(sub * b, int)
+
+T = TypeVar("T", bound=A)
+
+def check_bound(a: type[T], b: type[B]) -> None:
+    assert_type(a * b, str)
 
 [case testReverseOperatorWithOverloads1]
 from typing import overload

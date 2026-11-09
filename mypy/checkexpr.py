@@ -4304,6 +4304,12 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             if isinstance(right_type, FunctionLike) and right_type.is_type_obj()
             else right_type
         )
+        if isinstance(left_type, TypeType):
+            if info := type_info_from_type(left_type):
+                left_runtime_type = info.metaclass_type or self.named_type("builtins.type")
+        if isinstance(right_type, TypeType):
+            if info := type_info_from_type(right_type):
+                right_runtime_type = info.metaclass_type or self.named_type("builtins.type")
 
         # STEP 2a:
         # We figure out in which order Python will call the operator methods. As it
@@ -4313,7 +4319,9 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         # We store the determined order inside the 'variants_raw' variable,
         # which records tuples containing the method, base type, and the argument.
 
-        if op_name in operators.op_methods_that_shortcut and is_same_type(left_type, right_type):
+        if op_name in operators.op_methods_that_shortcut and is_same_type(
+            left_runtime_type, right_runtime_type
+        ):
             # When we do "A() + A()", for example, Python will only call the __add__ method,
             # never the __radd__ method.
             #
