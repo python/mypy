@@ -7494,6 +7494,22 @@ class B(A):
 
 reveal_type(B())  # N: Revealed type is "__main__.B"
 
+[case testNewReturnTypeGenericSubclass]
+# https://github.com/python/mypy/issues/22395
+from typing import Generic, TypeVar
+
+_S = TypeVar("_S", contravariant=True)
+_G = TypeVar("_G", covariant=True)
+
+class Base(Generic[_S, _G]):
+    def __new__(cls, *, null: bool = False) -> "Base[int | None, int | None]":
+        ...
+
+class Sub(Base[_S, _G]): ...
+
+reveal_type(Base())  # N: Revealed type is "__main__.Base[builtins.int | None, builtins.int | None]"
+reveal_type(Sub())  # N: Revealed type is "__main__.Sub[builtins.int | None, builtins.int | None]"
+
 [case testNewReturnType10]
 # https://github.com/python/mypy/issues/11398
 from typing import Type

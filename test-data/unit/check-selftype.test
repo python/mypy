@@ -767,12 +767,13 @@ class SubP(P[T]):
 
 SubP('no')  # E: No overload variant of "SubP" matches argument type "str" \
             # N: Possible overload variants: \
-            # N:     def [T] SubP(use_str: Literal[True]) -> SubP[T] \
-            # N:     def [T] SubP(use_str: Literal[False]) -> SubP[T]
+            # N:     def [T] SubP(use_str: Literal[True]) -> SubP[str] \
+            # N:     def [T] SubP(use_str: Literal[False]) -> SubP[int]
 
-# This is a bit unfortunate: we don't have a way to map the overloaded __init__ to subtype.
-x = SubP(use_str=True)  # E: Need type annotation for "x"
-reveal_type(x)  # N: Revealed type is "__main__.SubP[Any]"
+# The overloaded __init__ self annotations are mapped to the subclass,
+# so the type argument is solved from the selected overload item.
+x = SubP(use_str=True)
+reveal_type(x)  # N: Revealed type is "__main__.SubP[builtins.str]"
 y: SubP[str] = SubP(use_str=True)
 
 [file lib.pyi]

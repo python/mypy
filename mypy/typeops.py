@@ -329,6 +329,69 @@ def type_object_type_from_function(
         return Overloaded(items)
 
 
+def map_explicit_type_to_class(
+    explicit_type: Type | None, info: TypeInfo, default_ret_type: Type
+) -> Instance | None:
+    """Map an explicit self/return type annotation to the class being constructed.
+
+    If the annotation is an instance of a superclass of `info`, solve the type
+    variables of `info` from it, so that constructing a generic subclass uses
+    the annotation to determine the subclass's type arguments. For example, if
+    ``Base.__init__`` is annotated ``self: Base[int | None, int | None]`` and
+    ``Sub`` inherits from ``Base[_S, _G]``, then ``Sub(null=True)`` should be
+    ``Sub[int | None, int | None]``, not ``Sub[Never, Never]`` (see #22395).
+    The same applies to an explicit ``__new__`` return type (see #21441).
+
+    Return None if the annotation cannot be mapped to `info` (e.g. it is not
+    an instance of a superclass of `info`, or the type variables cannot be
+    solved unambiguously), in which case the caller falls back to the
+    existing behavior.
+    """
+    from mypy.constraints import SUBTYPE_OF, SUPERTYPE_OF, infer_constraints
+    from mypy.solve import solve_constraints
+
+    explicit = get_proper_type(explicit_type)
+    if not isinstance(explicit, Instance):
+        return None
+    default_ret = get_proper_type(default_ret_type)
+    if not isinstance(default_ret, Instance):
+        return None
+    if default_ret.type.is_protocol:
+        return None
+    if explicit.type is info or explicit.type not in info.mro:
+        return None
+    # Map the class being constructed up to the annotated class, giving a
+    # template in terms of the constructed class's type variables, e.g.
+    # Base[_S, _G] for Sub[_S, _G].
+    template = map_instance_to_supertype(default_ret, explicit.type)
+    # Infer constraints in both directions, so that each type variable gets
+    # both a lower and an upper bound, and solving yields the exact type
+    # argument from the annotation regardless of variance.
+    constraints = infer_constraints(template, explicit, SUPERTYPE_OF)
+    constraints.extend(infer_constraints(template, explicit, SUBTYPE_OF))
+    solved, _ = solve_constraints(info.defn.type_vars, constraints)
+    if len(solved) != len(default_ret.args):
+        return None
+    args: list[Type] = []
+    for default_arg, solution in zip(default_ret.args, solved):
+        if solution is None:
+            args.append(default_arg)
+            continue
+        proper_solution = get_proper_type(solution)
+        if isinstance(proper_solution, UninhabitedType) and proper_solution.ambiguous:
+            # No constraint on this type variable; leave it unsolved.
+            args.append(default_arg)
+        else:
+            args.append(solution)
+    mapped = Instance(info, args)
+    # Validate by mapping back up: the solved instance must reproduce the
+    # annotation exactly, otherwise the mapping is ambiguous or impossible
+    # (e.g. the subclass fixes a type variable to a different type).
+    if not mypy.subtypes.is_equivalent(map_instance_to_supertype(mapped, explicit.type), explicit):
+        return None
+    return mapped
+
+
 def class_callable(
     init_type: CallableType,
     info: TypeInfo,
@@ -349,7 +412,23 @@ def class_callable(
     # Default return type in the class where constructor method was defined.
     default_def_ret_type = fill_typevars(def_info) if def_info is not None else default_ret_type
     explicit_type = init_ret_type if is_new else orig_self_type
-    if (
+    # If the explicit self/return annotation is an instance of a superclass of
+    # the class being constructed, map it down to the constructed class by
+    # solving the class's type variables from it (see below). For __new__,
+    # only do this when the annotation refers to the class where __new__ is
+    # defined (ignoring type arguments); otherwise the explicit return type
+    # is used as is, see #21441.
+    mapped_explicit_type: Instance | None = None
+    if not is_new or (
+        explicit_type is not None
+        and mypy.subtypes.is_equivalent(
+            default_def_ret_type, explicit_type, ignore_type_params=True
+        )
+    ):
+        mapped_explicit_type = map_explicit_type_to_class(explicit_type, info, default_ret_type)
+    if mapped_explicit_type is not None:
+        ret_type = mapped_explicit_type
+    elif (
         is_new
         and explicit_type is not None
         # We used to only use the explicit return type of __new__() when it was a subtype

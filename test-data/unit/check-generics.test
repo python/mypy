@@ -3527,6 +3527,31 @@ def foo(x: T):
     reveal_type(C(0, x))  # N: Revealed type is "__main__.C[__main__.Int[T`-1]]"
     reveal_type(C("yes", x))  # N: Revealed type is "__main__.C[__main__.Str[T`-1]]"
 
+[case testSelfAnnotatedInitOverloadGenericSubclass]
+# https://github.com/python/mypy/issues/22395
+from typing import Generic, Literal, overload, TypeVar
+
+_S = TypeVar("_S", contravariant=True)
+_G = TypeVar("_G", covariant=True)
+
+class Base(Generic[_S, _G]):
+    @overload
+    def __init__(self, *, null: Literal[False] = False) -> None: ...
+    @overload
+    def __init__(self: "Base[int | None, int | None]", *, null: Literal[True]) -> None: ...
+    def __init__(self, *, null: bool = False) -> None: ...
+
+class Sub(Base[_S, _G]): ...
+class Fixed(Base[int, _G]): ...
+
+reveal_type(Base(null=True))  # N: Revealed type is "__main__.Base[builtins.int | None, builtins.int | None]"
+reveal_type(Sub(null=True))  # N: Revealed type is "__main__.Sub[builtins.int | None, builtins.int | None]"
+reveal_type(Base())  # N: Revealed type is "__main__.Base[Never, Never]"
+reveal_type(Sub())  # N: Revealed type is "__main__.Sub[Never, Never]"
+# The subclass fixes the first type variable to int, so the annotation
+# Base[int | None, int | None] cannot be satisfied; fall back to Never.
+reveal_type(Fixed(null=True))  # N: Revealed type is "__main__.Fixed[Never]"
+
 [case testInstanceMethodBoundOnClass]
 from typing import TypeVar, Generic
 
