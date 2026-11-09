@@ -157,7 +157,7 @@ def test_unicode() -> None:
     assert ne("\U0001f4a9foo", "\U0001f4a8foo" + str())
 
 [case testStringOps]
-from typing import List, Optional, Tuple
+from typing import Any, List, Optional, Tuple
 from testutil import assertRaises
 
 def do_split(s: str, sep: Optional[str] = None, max_split: Optional[int] = None) -> List[str]:
@@ -246,6 +246,20 @@ def rfind(s: str, substr: str, start: Optional[int] = None, end: Optional[int] =
         return s.rfind(substr, start)
     return s.rfind(substr)
 
+def index(s: str, substr: str, start: Optional[int] = None, end: Optional[int] = None) -> int:
+    if start is not None:
+        if end is not None:
+            return s.index(substr, start, end)
+        return s.index(substr, start)
+    return s.index(substr)
+
+def rindex(s: str, substr: str, start: Optional[int] = None, end: Optional[int] = None) -> int:
+    if start is not None:
+        if end is not None:
+            return s.rindex(substr, start, end)
+        return s.rindex(substr, start)
+    return s.rindex(substr)
+
 s = "abc"
 
 def test_contains() -> None:
@@ -323,6 +337,64 @@ def test_find() -> None:
     assert rfind(s, "b", 3) == 4
     assert rfind(s, "b", 3, 5) == 4
     assert rfind(s, "b", 3, 4) == -1
+
+def test_index() -> None:
+    s = "abcab"
+    assert index(s, "abc") == 0
+    assert index(s, "b") == 1
+    assert index(s, "b", 1) == 1
+    assert index(s, "b", 1, 2) == 1
+    assert index(s, "b", 3) == 4
+    assert index(s, "b", 3, 5) == 4
+    assert index(s, "b", -2) == 4
+    assert index(s, "b", -5, -3) == 1
+    assert index(s, "") == 0
+    assert index(s, "", 5) == 5
+    assert index("\u4e2d\U0001f600a\U0001f600", "\U0001f600a") == 1
+
+    assert rindex(s, "abc") == 0
+    assert rindex(s, "b") == 4
+    assert rindex(s, "b", 1) == 4
+    assert rindex(s, "b", 1, 2) == 1
+    assert rindex(s, "b", 3) == 4
+    assert rindex(s, "b", 3, 5) == 4
+    assert rindex(s, "b", -5, -3) == 1
+    assert rindex(s, "") == 5
+    assert rindex(s, "", 0, 2) == 2
+    assert rindex("\u4e2d\U0001f600a\U0001f600", "\U0001f600") == 3
+
+    for f in (index, rindex):
+        with assertRaises(ValueError, "substring not found"):
+            f(s, "Hello")
+        with assertRaises(ValueError, "substring not found"):
+            f(s, "b", 3, 4)
+        with assertRaises(ValueError, "substring not found"):
+            f(s, "", 6)
+        with assertRaises(ValueError, "substring not found"):
+            f("", "a")
+
+    for sub in ["a", "b", "c", "ab", "ca", "x", ""]:
+        for start in range(-7, 8):
+            for end in range(-7, 8):
+                a: Any = s
+                try:
+                    expected = a.index(sub, start, end)
+                except ValueError:
+                    expected = -1
+                try:
+                    got = index(s, sub, start, end)
+                except ValueError:
+                    got = -1
+                assert got == expected
+                try:
+                    expected = a.rindex(sub, start, end)
+                except ValueError:
+                    expected = -1
+                try:
+                    got = rindex(s, sub, start, end)
+                except ValueError:
+                    got = -1
+                assert got == expected
 
 def str_to_int(s: str, base: Optional[int] = None) -> int:
     if base:

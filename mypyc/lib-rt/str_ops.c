@@ -259,6 +259,21 @@ CPyTagged CPyStr_FindWithEnd(PyObject *str, PyObject *substr, CPyTagged start, C
     return index << 1;
 }
 
+CPyTagged CPyStr_Index(PyObject *str, PyObject *substr, CPyTagged start, int direction) {
+    CPyTagged end = PyUnicode_GET_LENGTH(str) << 1;
+    return CPyStr_IndexWithEnd(str, substr, start, end, direction);
+}
+
+CPyTagged CPyStr_IndexWithEnd(PyObject *str, PyObject *substr, CPyTagged start, CPyTagged end,
+                              int direction) {
+    CPyTagged index = CPyStr_FindWithEnd(str, substr, start, end, direction);
+    if (unlikely(index == CPyTagged_ShortFromSsize_t(-1))) {
+        PyErr_SetString(PyExc_ValueError, "substring not found");
+        return CPY_INT_TAG;
+    }
+    return index;
+}
+
 PyObject *CPyStr_Split(PyObject *str, PyObject *sep, CPyTagged max_split) {
     Py_ssize_t temp_max_split = CPyTagged_AsSsize_t(max_split);
     if (temp_max_split == -1 && PyErr_Occurred()) {

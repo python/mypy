@@ -1008,6 +1008,8 @@ PyObject *CPyStr_GetItem(PyObject *str, CPyTagged index);
 PyObject *CPyStr_GetItemUnsafe(PyObject *str, Py_ssize_t index);
 CPyTagged CPyStr_Find(PyObject *str, PyObject *substr, CPyTagged start, int direction);
 CPyTagged CPyStr_FindWithEnd(PyObject *str, PyObject *substr, CPyTagged start, CPyTagged end, int direction);
+CPyTagged CPyStr_Index(PyObject *str, PyObject *substr, CPyTagged start, int direction);
+CPyTagged CPyStr_IndexWithEnd(PyObject *str, PyObject *substr, CPyTagged start, CPyTagged end, int direction);
 PyObject *CPyStr_Split(PyObject *str, PyObject *sep, CPyTagged max_split);
 PyObject *CPyStr_RSplit(PyObject *str, PyObject *sep, CPyTagged max_split);
 PyObject *_CPyStr_Strip(PyObject *self, int strip_type, PyObject *sep);

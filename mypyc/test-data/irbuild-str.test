@@ -973,6 +973,46 @@ L0:
     r0 = CPyStr_Multiply(s, n)
     return r0
 
+[case testStrIndex]
+def index(s: str, sub: str, start: int, end: int) -> int:
+    a = s.index(sub)
+    b = s.index(sub, start)
+    c = s.index(sub, start, end)
+    return a + b + c
+
+def rindex(s: str, sub: str, start: int, end: int) -> int:
+    a = s.rindex(sub)
+    b = s.rindex(sub, start)
+    c = s.rindex(sub, start, end)
+    return a + b + c
+[out]
+def index(s, sub, start, end):
+    s, sub :: str
+    start, end, r0, a, r1, b, r2, c, r3, r4 :: int
+L0:
+    r0 = CPyStr_Index(s, sub, 0, 1)
+    a = r0
+    r1 = CPyStr_Index(s, sub, start, 1)
+    b = r1
+    r2 = CPyStr_IndexWithEnd(s, sub, start, end, 1)
+    c = r2
+    r3 = CPyTagged_Add(a, b)
+    r4 = CPyTagged_Add(r3, c)
+    return r4
+def rindex(s, sub, start, end):
+    s, sub :: str
+    start, end, r0, a, r1, b, r2, c, r3, r4 :: int
+L0:
+    r0 = CPyStr_Index(s, sub, 0, -1)
+    a = r0
+    r1 = CPyStr_Index(s, sub, start, -1)
+    b = r1
+    r2 = CPyStr_IndexWithEnd(s, sub, start, end, -1)
+    c = r2
+    r3 = CPyTagged_Add(a, b)
+    r4 = CPyTagged_Add(r3, c)
+    return r4
+
 [case testStrLower]
 def do_lower(s: str) -> str:
     return s.lower()
