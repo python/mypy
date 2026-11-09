@@ -124,6 +124,7 @@ from mypyc.ir.rtypes import (
     is_uint8_rprimitive,
     is_uint16_rprimitive,
     is_uint32_rprimitive,
+    is_uint64_rprimitive,
     none_rprimitive,
     object_pointer_rprimitive,
     object_rprimitive,
@@ -172,11 +173,14 @@ from mypyc.primitives.int_ops import (
     int_to_int32_op,
     int_to_int64_op,
     int_to_uint32_op,
+    int_to_uint64_op,
     ssize_t_to_int_op,
     uint8_overflow,
     uint16_overflow,
     uint32_overflow,
     uint32_to_int_op,
+    uint64_overflow,
+    uint64_to_int_op,
 )
 from mypyc.primitives.list_ops import list_build_op, list_extend_op, list_items, new_list_op
 from mypyc.primitives.misc_ops import (
@@ -256,6 +260,24 @@ FIXED_WIDTH_INT_BINARY_OPS: Final = {
 
 # Binary operations on bools that are specialized and don't just promote operands to int
 BOOL_BINARY_OPS: Final = {"&", "&=", "|", "|=", "^", "^=", "==", "!=", "<", "<=", ">", ">="}
+
+
+def int_literal_value(value: Value) -> int | None:
+    """Return the numeric value if value is an int literal, otherwise None.
+
+    Recognize both short int literals (Integer) and literals that are too
+    large for a short int (LoadLiteral of a boxed int).
+    """
+    if isinstance(value, Integer) and is_short_int_rprimitive(value.type):
+        return value.numeric_value()
+    if (
+        isinstance(value, LoadLiteral)
+        and is_int_rprimitive(value.type)
+        and isinstance(value.value, int)
+        and not isinstance(value.value, bool)
+    ):
+        return value.value
+    return None
 
 
 class PendingKeepAlive:
@@ -494,15 +516,12 @@ class LowLevelIRBuilder:
         if (src_type.is_unboxed and target_type.is_unboxed) and not is_runtime_subtype(
             src_type, target_type
         ):
-            if (
-                isinstance(src, Integer)
-                and is_short_int_rprimitive(src_type)
-                and is_fixed_width_rtype(target_type)
-            ):
-                value = src.numeric_value()
+            if is_fixed_width_rtype(target_type) and (value := int_literal_value(src)) is not None:
+                # Integer literal (either a short int or a large one that needs a
+                # boxed int literal).
                 if not check_native_int_range(target_type, value):
                     self.error(f'Value {value} is out of range for "{target_type}"', line)
-                return Integer(src.value >> 1, target_type)
+                return Integer(value, target_type)
             elif is_int_rprimitive(src_type) and is_fixed_width_rtype(target_type):
                 return self.coerce_int_to_fixed_width(src, target_type, line)
             elif is_fixed_width_rtype(src_type) and is_int_rprimitive(target_type):
@@ -587,10 +606,10 @@ class LowLevelIRBuilder:
         self.activate_block(fast)
 
         size = target_type.size
-        needs_unsigned_fast_range_check = not target_type.is_signed and size == int_rprimitive.size
+        needs_unsigned_fast_range_check = not target_type.is_signed and size >= int_rprimitive.size
         if needs_unsigned_fast_range_check:
             # A tagged short int always fits in an unsigned type of the same
-            # width, except for negative values. Don't send those to the slow
+            # width or larger, except for negative values. Don't send those to the slow
             # path, which expects a tagged pointer rather than a short int.
             nonnegative = self.add(ComparisonOp(src, Integer(0, src.type), ComparisonOp.SGE, line))
             valid = BasicBlock()
@@ -616,6 +635,7 @@ class LowLevelIRBuilder:
         self.activate_block(slow)
         if (
             is_int64_rprimitive(target_type)
+            or is_uint64_rprimitive(target_type)
             or (is_int32_rprimitive(target_type) and size == int_rprimitive.size)
             or (is_uint32_rprimitive(target_type) and size == int_rprimitive.size)
         ):
@@ -627,6 +647,8 @@ class LowLevelIRBuilder:
             self.add(Assign(ptr2, ptr))
             if is_int64_rprimitive(target_type):
                 conv_op = int_to_int64_op
+            elif is_uint64_rprimitive(target_type):
+                conv_op = int_to_uint64_op
             elif is_uint32_rprimitive(target_type):
                 conv_op = int_to_uint32_op
             else:
@@ -744,6 +766,8 @@ class LowLevelIRBuilder:
             self.call_c(int32_overflow, [], line)
         elif is_int16_rprimitive(target_type):
             self.call_c(int16_overflow, [], line)
+        elif is_uint64_rprimitive(target_type):
+            self.call_c(uint64_overflow, [], line)
         elif is_uint32_rprimitive(target_type):
             self.call_c(uint32_overflow, [], line)
         elif is_uint16_rprimitive(target_type):
@@ -845,6 +869,8 @@ class LowLevelIRBuilder:
         elif is_int32_rprimitive(src_type):
             assert PLATFORM_SIZE == 4
             conv_op = ssize_t_to_int_op
+        elif is_uint64_rprimitive(src_type):
+            conv_op = uint64_to_int_op
         elif is_uint32_rprimitive(src_type):
             assert PLATFORM_SIZE == 4
             conv_op = uint32_to_int_op
@@ -2782,6 +2808,9 @@ class LowLevelIRBuilder:
                 prim = int32_divide_op
             elif is_int16_rprimitive(type):
                 prim = int16_divide_op
+            elif is_uint64_rprimitive(type):
+                self.check_for_zero_division(rhs, type, line)
+                return self.int_op(type, lhs, rhs, op, line)
             elif is_uint32_rprimitive(type):
                 self.check_for_zero_division(rhs, type, line)
                 return self.int_op(type, lhs, rhs, op, line)
@@ -2808,6 +2837,9 @@ class LowLevelIRBuilder:
                 prim = int32_mod_op
             elif is_int16_rprimitive(type):
                 prim = int16_mod_op
+            elif is_uint64_rprimitive(type):
+                self.check_for_zero_division(rhs, type, line)
+                return self.int_op(type, lhs, rhs, op, line)
             elif is_uint32_rprimitive(type):
                 self.check_for_zero_division(rhs, type, line)
                 return self.int_op(type, lhs, rhs, op, line)

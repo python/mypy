@@ -59,6 +59,15 @@ CPyTagged CPyTagged_FromInt64(int64_t value) {
     }
 }
 
+CPyTagged CPyTagged_FromUInt64(uint64_t value) {
+    if (unlikely(value > CPY_TAGGED_MAX)) {
+        PyObject *object = PyLong_FromUnsignedLongLong(value);
+        return ((CPyTagged)object) | CPY_INT_TAG;
+    } else {
+        return ((CPyTagged)value) << 1;
+    }
+}
+
 CPyTagged CPyTagged_FromUInt32(uint32_t value) {
 #if SIZEOF_SIZE_T == 4
     // Only 32-bit platforms can have values that don't fit in a short int. Doing
@@ -579,6 +588,23 @@ int16_t CPyInt16_Remainder(int16_t x, int16_t y) {
 
 void CPyInt16_Overflow() {
     PyErr_SetString(PyExc_ValueError, "int too large to convert to i16");
+}
+
+// u64 unboxing slow path
+uint64_t CPyLong_AsUInt64_(PyObject *o) {
+    unsigned long long result = PyLong_AsUnsignedLongLong(o);
+    if (result == (unsigned long long)-1 && PyErr_Occurred()) {
+        if (PyErr_ExceptionMatches(PyExc_OverflowError)) {
+            PyErr_Clear();
+            PyErr_SetString(PyExc_ValueError, "int too large or small to convert to u64");
+        }
+        return CPY_LL_UINT_ERROR;
+    }
+    return (uint64_t)result;
+}
+
+void CPyUInt64_Overflow() {
+    PyErr_SetString(PyExc_ValueError, "int too large or small to convert to u64");
 }
 
 // u32 unboxing slow path
