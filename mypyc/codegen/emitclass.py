@@ -339,7 +339,7 @@ def generate_class(
     # Weak references to a dead object must be cleared in tp_dealloc, or they will
     # resurrect freed memory.
     generate_dealloc_slots = (
-        generate_full or managed_dict or needs_builtin_dict_cleanup or has_weakrefs(cl)
+        generate_full or managed_dict or needs_builtin_dict_cleanup or cl.has_weakref_list()
     )
     if generate_dealloc_slots:
         fields["tp_dealloc"] = f"(destructor){name_prefix}_dealloc"
@@ -417,7 +417,7 @@ def generate_class(
         # the base class slots would overlap with fields of our object struct, which
         # doesn't model the layout of the non-native base class at all.
         needs_own_weak_slot = (
-            emitter.capi_version < (3, 12) and has_weakrefs(cl) and not cl.has_weakref_slot()
+            emitter.capi_version < (3, 12) and cl.has_weakref_list() and not cl.has_weakref_slot()
         )
         emitter.emit_lines(
             f"PyMemberDef {members_name}[] = {{",
@@ -537,7 +537,7 @@ def generate_class(
             fields["tp_call"] = "PyVectorcall_Call"
     if managed_dict:
         flags.append("Py_TPFLAGS_MANAGED_DICT")
-        if has_weakrefs(cl) and not cl.has_weakref_slot():
+        if cl.has_weakref_list() and not cl.has_weakref_slot():
             # The pre-header has room for both __dict__ and the weak reference list, so
             # this is free. The flag is usually inherited from the base class, but not
             # if the base class doesn't support weak references (e.g. abc.ABC).
@@ -1175,7 +1175,7 @@ def generate_dealloc_for_class(
             emitter.emit_line("}")
     if not cl.is_acyclic:
         emitter.emit_line("PyObject_GC_UnTrack(self);")
-    if has_weakrefs(cl):
+    if cl.has_weakref_list():
         # Invalidate all weak references to the object, and call their callbacks.
         # This must happen after the finalizer has run, and before any of the
         # attributes are cleared.
@@ -1370,7 +1370,7 @@ def generate_getseters_table(cl: ClassIR, name: str, emitter: Emitter) -> None:
 
     if cl.has_dict:
         emitter.emit_line('{"__dict__", PyObject_GenericGetDict, PyObject_GenericSetDict},')
-    if has_weakrefs(cl):
+    if cl.has_weakref_list():
         # Even if a non-native base class has a __weakref__ descriptor, we can't use it,
         # since it uses the weak reference list offset of the base class.
         emitter.emit_line('{"__weakref__", CPy_GetWeakrefs, NULL},')
@@ -1683,11 +1683,6 @@ def has_managed_dict(cl: ClassIR, emitter: Emitter) -> bool:
         and cl.has_dict
         and cl.builtin_base != "PyBaseExceptionObject"
     )
-
-
-def has_weakrefs(cl: ClassIR) -> bool:
-    """Do instances of a native class have a weak reference list (somewhere)?"""
-    return cl.is_ext_class and not cl.is_trait and cl.supports_weakrefs()
 
 
 def native_class_doc_initializer(cl: ClassIR) -> str:

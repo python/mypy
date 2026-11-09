@@ -329,7 +329,7 @@ class ClassIR:
             or not self.is_generated
             or self.has_dict
             # For the __weakref__ getset
-            or (self.is_ext_class and not self.is_trait and self.supports_weakrefs())
+            or self.has_weakref_list()
         )
 
     def attrs_are_thread_confined(self) -> bool:
@@ -524,6 +524,17 @@ class ClassIR:
         if self.builtin_base:
             return False
         return self.inherits_python or any(ci._weakrefs for ci in self.mro)
+
+    def has_weakref_list(self) -> bool:
+        """Is this a native class with instances that have a weak reference list?
+
+        This is false for non-native classes, even though they support weak
+        references, since CPython manages the list for them. For native classes, the
+        list is either a field of the object struct (see has_weakref_slot()), or
+        it's stored next to __dict__ (at tp_weaklistoffset): either right after the
+        object struct (before 3.12) or in the managed pre-header (3.12+).
+        """
+        return self.is_ext_class and not self.is_trait and self.supports_weakrefs()
 
     def has_weakref_slot(self) -> bool:
         """Is the weak reference list stored in a field of the object struct?
