@@ -415,6 +415,35 @@ method_op(
     error_kind=ERR_MAGIC,
 )
 
+# str.ljust(width), str.rjust(width), str.center(width) and
+# variants with the fillchar argument
+for pad_method in ["ljust", "rjust", "center"]:
+    method_op(
+        name=pad_method,
+        arg_types=[str_rprimitive, int_rprimitive],
+        return_type=str_rprimitive,
+        c_function_name=f"CPyStr_{pad_method.capitalize()}",
+        # This 0 below is implicitly treated as NULL in C.
+        extra_int_constants=[(0, c_int_rprimitive)],
+        error_kind=ERR_MAGIC,
+    )
+    method_op(
+        name=pad_method,
+        arg_types=[str_rprimitive, int_rprimitive, str_rprimitive],
+        return_type=str_rprimitive,
+        c_function_name=f"CPyStr_{pad_method.capitalize()}",
+        error_kind=ERR_MAGIC,
+    )
+
+# str.zfill(width)
+method_op(
+    name="zfill",
+    arg_types=[str_rprimitive, int_rprimitive],
+    return_type=str_rprimitive,
+    c_function_name="CPyStr_Zfill",
+    error_kind=ERR_MAGIC,
+)
+
 method_op(
     name="isspace",
     arg_types=[str_rprimitive],
