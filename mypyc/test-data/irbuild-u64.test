@@ -77,7 +77,9 @@ def out_of_range() -> None:
 
 def f(x: u64) -> None: pass
 [out]
+main:4: error: Value 18446744073709551616 is out of range for "u64"
 main:5: error: Value -1 is out of range for "u64"
+main:6: error: Value 18446744073709551616 is out of range for "u64"
 
 [case testU64BoxAndUnbox]
 from typing import Any
@@ -293,44 +295,28 @@ def f() -> None:
     z = u64(-3)  # Truncate
     zz = u64(4294967298)  # Truncate
     a = u64(18446744073709551615)
+    b = u64(18446744073709551621)  # Truncate
+    c = u64(-18446744073709551615)  # Truncate
 [out]
 def f():
     x, y, z, zz :: u64
     r0 :: int
-    r1 :: native_int
-    r2, r3 :: bit
-    r4, r5 :: u64
-    r6 :: ptr
-    r7 :: c_ptr
-    r8, a :: u64
+    a :: u64
+    r1 :: int
+    b :: u64
+    r2 :: int
+    c :: u64
 L0:
     x = 0
     y = 11
     z = 18446744073709551613
     zz = 4294967298
     r0 = object 18446744073709551615
-    r1 = r0 & 1
-    r2 = r1 == 0
-    if r2 goto L1 else goto L3 :: bool
-L1:
-    r3 = r0 >= 0 :: signed
-    if r3 goto L2 else goto L4 :: bool
-L2:
-    r4 = r0 >> 1
-    r5 = r4
-    goto L5
-L3:
-    r6 = r0 ^ 1
-    r7 = r6
-    r8 = CPyLong_AsUInt64(r7)
-    r5 = r8
-    keep_alive r0
-    goto L5
-L4:
-    CPyUInt64_Overflow()
-    unreachable
-L5:
-    a = r5
+    a = 18446744073709551615
+    r1 = object 18446744073709551621
+    b = 5
+    r2 = object -18446744073709551615
+    c = 1
     return 1
 
 [case testU64FromShortInt_64bit]

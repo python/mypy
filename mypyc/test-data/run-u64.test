@@ -263,6 +263,20 @@ def test_u64_from_large_small_literal() -> None:
     assert x == 18446744073709551615
     x = u64(0)
     assert x == 0
+    x = u64(9223372036854775808)
+    assert x == 9223372036854775808
+
+def test_u64_large_literal_implicit_coercion() -> None:
+    x: u64 = 18446744073709551615
+    assert x == 18446744073709551615
+    assert int(x) == 2**64 - 1
+    x = 9223372036854775808
+    assert x == 2**63
+    assert int(x) == 2**63
+    assert u64_identity(18446744073709551615) == 2**64 - 1
+
+def u64_identity(x: u64) -> u64:
+    return x
 
 def test_u64_truncate_from_i64() -> None:
     large = i64(2**62 + 157 + int())

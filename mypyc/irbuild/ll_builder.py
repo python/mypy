@@ -262,6 +262,24 @@ FIXED_WIDTH_INT_BINARY_OPS: Final = {
 BOOL_BINARY_OPS: Final = {"&", "&=", "|", "|=", "^", "^=", "==", "!=", "<", "<=", ">", ">="}
 
 
+def int_literal_value(value: Value) -> int | None:
+    """Return the numeric value if value is an int literal, otherwise None.
+
+    Recognize both short int literals (Integer) and literals that are too
+    large for a short int (LoadLiteral of a boxed int).
+    """
+    if isinstance(value, Integer) and is_short_int_rprimitive(value.type):
+        return value.numeric_value()
+    if (
+        isinstance(value, LoadLiteral)
+        and is_int_rprimitive(value.type)
+        and isinstance(value.value, int)
+        and not isinstance(value.value, bool)
+    ):
+        return value.value
+    return None
+
+
 class PendingKeepAlive:
     __slots__ = ("value", "scope", "seq")
 
@@ -498,15 +516,12 @@ class LowLevelIRBuilder:
         if (src_type.is_unboxed and target_type.is_unboxed) and not is_runtime_subtype(
             src_type, target_type
         ):
-            if (
-                isinstance(src, Integer)
-                and is_short_int_rprimitive(src_type)
-                and is_fixed_width_rtype(target_type)
-            ):
-                value = src.numeric_value()
+            if is_fixed_width_rtype(target_type) and (value := int_literal_value(src)) is not None:
+                # Integer literal (either a short int or a large one that needs a
+                # boxed int literal).
                 if not check_native_int_range(target_type, value):
                     self.error(f'Value {value} is out of range for "{target_type}"', line)
-                return Integer(src.value >> 1, target_type)
+                return Integer(value, target_type)
             elif is_int_rprimitive(src_type) and is_fixed_width_rtype(target_type):
                 return self.coerce_int_to_fixed_width(src, target_type, line)
             elif is_fixed_width_rtype(src_type) and is_int_rprimitive(target_type):

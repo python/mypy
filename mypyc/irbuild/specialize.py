@@ -113,6 +113,7 @@ from mypyc.irbuild.format_str_tokenizer import (
     join_formatted_strings,
     tokenizer_format_call,
 )
+from mypyc.irbuild.ll_builder import int_literal_value
 from mypyc.irbuild.vec import (
     supports_vec_to_sequence,
     vec_append,
@@ -1198,6 +1199,7 @@ def translate_i64(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value 
         return builder.add(Extend(val, int64_rprimitive, signed=False, line=expr.line))
     elif is_int_rprimitive(arg_type) or is_bool_rprimitive(arg_type):
         val = builder.accept(arg)
+        val = truncate_literal(val, int64_rprimitive)
         return builder.coerce(val, int64_rprimitive, expr.line)
     return None
 
@@ -1379,9 +1381,9 @@ def truncate_literal(value: Value, rtype: RPrimitive) -> Value:
 
     For example, truncate 256 into 0 if rtype is u8.
     """
-    if not isinstance(value, Integer):
+    x = int_literal_value(value)
+    if x is None:
         return value  # Not a literal, nothing to do
-    x = value.numeric_value()
     max_unsigned = (1 << (rtype.size * 8)) - 1
     x = x & max_unsigned
     if rtype.is_signed and x >= (max_unsigned + 1) // 2:
