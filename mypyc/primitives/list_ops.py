@@ -300,6 +300,14 @@ method_op(
     error_kind=ERR_NEG_INT,
 )
 
+# list == list (return -1/0/1)
+list_equal_op = custom_op(
+    arg_types=[list_rprimitive, list_rprimitive],
+    return_type=c_int_rprimitive,
+    c_function_name="CPyList_Equal",
+    error_kind=ERR_NEG_INT,
+)
+
 # list.remove(obj)
 method_op(
     name="remove",

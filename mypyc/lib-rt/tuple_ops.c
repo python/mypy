@@ -40,3 +40,38 @@ PyObject *CPySequenceTuple_GetSlice(PyObject *obj, CPyTagged start, CPyTagged en
     }
     return CPyObject_GetSlice(obj, start, end);
 }
+
+// Compare two tuples for equality. Return 1 if equal, 0 if not equal, -1 on error.
+int CPyTuple_Equal(PyObject *left, PyObject *right) {
+    if (likely(PyTuple_CheckExact(left) && PyTuple_CheckExact(right))) {
+        if (left == right) {
+            // All items are identical, so they compare equal
+            return 1;
+        }
+        Py_ssize_t size = PyTuple_GET_SIZE(left);
+        if (size != PyTuple_GET_SIZE(right)) {
+            return 0;
+        }
+        Py_ssize_t i;
+        for (i = 0; i < size; i++) {
+            PyObject *left_item = PyTuple_GET_ITEM(left, i);
+            PyObject *right_item = PyTuple_GET_ITEM(right, i);
+            if (left_item == right_item) {
+                continue;
+            }
+            int cmp = PyObject_RichCompareBool(left_item, right_item, Py_EQ);
+            if (cmp <= 0) {
+                return cmp;
+            }
+        }
+        return 1;
+    }
+    // Subclasses may override __eq__
+    PyObject *res = PyObject_RichCompare(left, right, Py_EQ);
+    if (res == NULL) {
+        return -1;
+    }
+    int result = PyObject_IsTrue(res);
+    Py_DECREF(res);
+    return result;
+}

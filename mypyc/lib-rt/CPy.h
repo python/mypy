@@ -1000,6 +1000,7 @@ CPyTagged CPyList_Count(PyObject *obj, PyObject *value);
 int CPyList_Insert(PyObject *list, CPyTagged index, PyObject *value);
 PyObject *CPyList_Extend(PyObject *o1, PyObject *o2);
 int CPyList_Remove(PyObject *list, PyObject *obj);
+int CPyList_Equal(PyObject *left, PyObject *right);
 CPyTagged CPyList_Index(PyObject *list, PyObject *obj);
 PyObject *CPySequence_Sort(PyObject *seq);
 PyObject *CPySequence_Concat(PyObject *seq, PyObject *other);
@@ -1134,6 +1135,7 @@ bool CPySet_Remove(PyObject *set, PyObject *key);
 
 PyObject *CPySequenceTuple_GetSlice(PyObject *obj, CPyTagged start, CPyTagged end);
 PyObject *CPySequenceTuple_GetItem_(PyObject *tuple, CPyTagged index);
+int CPyTuple_Equal(PyObject *left, PyObject *right);
 
 static inline PyObject *CPySequenceTuple_GetItem(PyObject *tuple, CPyTagged index)
 {

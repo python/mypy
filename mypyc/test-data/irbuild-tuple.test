@@ -1156,6 +1156,32 @@ L0:
     b = r0
     return 1
 
+[case testVariableLengthTupleEquality]
+from typing import Tuple
+def eq(x: Tuple[int, ...], y: Tuple[int, ...]) -> bool:
+    return x == y
+def neq(x: Tuple[int, ...], y: Tuple[str, ...]) -> bool:
+    return x != y
+[out]
+def eq(x, y):
+    x, y :: tuple
+    r0 :: i32
+    r1, r2 :: bit
+L0:
+    r0 = CPyTuple_Equal(x, y)
+    r1 = r0 >= 0 :: signed
+    r2 = r0 == 1
+    return r2
+def neq(x, y):
+    x, y :: tuple
+    r0 :: i32
+    r1, r2 :: bit
+L0:
+    r0 = CPyTuple_Equal(x, y)
+    r1 = r0 >= 0 :: signed
+    r2 = r0 != 1
+    return r2
+
 [case testTupleFloatElementComparison]
 def f(x: tuple[float], y: tuple[float]) -> bool:
     return x == y
