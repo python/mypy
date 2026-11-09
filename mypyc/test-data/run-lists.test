@@ -855,7 +855,7 @@ class GoodList(list):
 [case testListEquality]
 from typing import Any, List
 from testutil import assertRaises
-from leqsubclass import ListSubclass, ListEqOverride
+from leqsubclass import ListSubclass, ListEqOverride, CaseInsensitiveList, ListNeOverride
 
 def eq(x: List[Any], y: List[Any]) -> bool:
     return x == y
@@ -974,6 +974,17 @@ def test_subclass() -> None:
     x = ListEqOverride([])
     assert not eq(x, x)
     assert ne(x, x)
+    # Only __eq__ is overridden, so != uses list.__ne__
+    ci = CaseInsensitiveList(["A"])
+    assert eq(ci, ["a"])
+    assert ne(ci, ["a"])
+    assert eq(["a"], ci)
+    assert ne(["a"], ci)
+    assert not ne(ci, ["A"])
+    y = ListNeOverride([1])
+    assert eq(y, [1])
+    assert ne(y, [1])
+    assert ne([1], y)
 
 [file leqsubclass.py]
 from typing import Any
@@ -985,5 +996,14 @@ class ListEqOverride(list[Any]):
     def __eq__(self, other: object) -> bool:
         return False
 
+    def __ne__(self, other: object) -> bool:
+        return True
+
+class CaseInsensitiveList(list[str]):
+    def __eq__(self, other: object) -> bool:
+        assert isinstance(other, list)
+        return [s.lower() for s in self] == [s.lower() for s in other]
+
+class ListNeOverride(list[Any]):
     def __ne__(self, other: object) -> bool:
         return True

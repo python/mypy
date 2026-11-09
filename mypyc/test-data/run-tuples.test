@@ -521,7 +521,9 @@ class GoodTuple(tuple):
 [case testVariableLengthTupleEquality]
 from typing import Any, Tuple
 from testutil import assertRaises
-from teqsubclass import TupleSubclass, TupleEqOverride, NT
+from teqsubclass import (
+    TupleSubclass, TupleEqOverride, TupleEqOnlyOverride, TupleNeOverride, NT
+)
 
 def eq(x: Tuple[Any, ...], y: Tuple[Any, ...]) -> bool:
     return x == y
@@ -604,10 +606,32 @@ def test_error() -> None:
         eq((RaisesOnEq(),), (1,))
     with assertRaises(ValueError, "eq"):
         ne((1, RaisesOnEq()), (1, 2))
-    # Lengths differ, so items aren't compared
-    assert not eq((RaisesOnEq(),), (1, 2))
+    # Items are compared even if the lengths differ
+    with assertRaises(ValueError, "eq"):
+        eq((RaisesOnEq(),), (1, 2))
+    with assertRaises(ValueError, "eq"):
+        ne((1, 2), (RaisesOnEq(),))
     # Items are compared in order, and the first mismatch stops the comparison
     assert not eq((1, RaisesOnEq()), (2, 3))
+    assert not eq((1, RaisesOnEq()), (2,))
+
+class CountingEq:
+    def __init__(self) -> None:
+        self.count = 0
+
+    def __eq__(self, other: object) -> bool:
+        self.count += 1
+        return True
+
+def test_different_lengths() -> None:
+    c = CountingEq()
+    assert not eq((c,), (1, 2))
+    assert ne((1, 2, 3), (c,))
+    assert c.count == 2
+    a: Any = (c,)
+    b: Any = (1, 2)
+    assert a != b
+    assert c.count == 3
 
 def test_subclass() -> None:
     assert eq(TupleSubclass((1, 2)), (1, 2))
@@ -622,6 +646,17 @@ def test_subclass() -> None:
     x = TupleEqOverride(())
     assert not eq(x, x)
     assert ne(x, x)
+    # Only __eq__ is overridden, so != uses tuple.__ne__
+    y = TupleEqOnlyOverride((1,))
+    assert eq(y, (2,))
+    assert ne(y, (2,))
+    assert eq((2,), y)
+    assert ne((2,), y)
+    assert not ne(y, (1,))
+    z = TupleNeOverride((1,))
+    assert eq(z, (1,))
+    assert ne(z, (1,))
+    assert ne((1,), z)
 
 [file teqsubclass.py]
 from typing import Any, NamedTuple
@@ -633,6 +668,14 @@ class TupleEqOverride(tuple[Any, ...]):
     def __eq__(self, other: object) -> bool:
         return False
 
+    def __ne__(self, other: object) -> bool:
+        return True
+
+class TupleEqOnlyOverride(tuple[Any, ...]):
+    def __eq__(self, other: object) -> bool:
+        return True
+
+class TupleNeOverride(tuple[Any, ...]):
     def __ne__(self, other: object) -> bool:
         return True
 

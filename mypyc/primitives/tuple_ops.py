@@ -112,8 +112,18 @@ isinstance_tuple = function_op(
 tuple_equal_op = custom_op(
     arg_types=[tuple_rprimitive, tuple_rprimitive],
     return_type=c_int_rprimitive,
-    c_function_name="CPyTuple_Equal",
+    c_function_name="CPyTuple_Compare",
     error_kind=ERR_NEG_INT,
+    extra_int_constants=[(2, c_int_rprimitive)],  # Py_EQ
+)
+
+# tuple != tuple (return -1/0/1)
+tuple_not_equal_op = custom_op(
+    arg_types=[tuple_rprimitive, tuple_rprimitive],
+    return_type=c_int_rprimitive,
+    c_function_name="CPyTuple_Compare",
+    error_kind=ERR_NEG_INT,
+    extra_int_constants=[(3, c_int_rprimitive)],  # Py_NE
 )
 
 # tuple + tuple

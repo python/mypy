@@ -373,7 +373,7 @@ def eq(x, y):
     r0 :: i32
     r1, r2 :: bit
 L0:
-    r0 = CPyList_Equal(x, y)
+    r0 = CPyList_Compare(x, y, 2)
     r1 = r0 >= 0 :: signed
     r2 = r0 == 1
     return r2
@@ -382,9 +382,9 @@ def neq(x, y):
     r0 :: i32
     r1, r2 :: bit
 L0:
-    r0 = CPyList_Equal(x, y)
+    r0 = CPyList_Compare(x, y, 3)
     r1 = r0 >= 0 :: signed
-    r2 = r0 != 1
+    r2 = r0 == 1
     return r2
 
 [case testListInsert]

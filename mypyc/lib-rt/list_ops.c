@@ -495,20 +495,26 @@ static int _CPyList_Equal(PyObject *left, PyObject *right) {
     return Py_SIZE(left) == Py_SIZE(right);
 }
 
-int CPyList_Equal(PyObject *left, PyObject *right) {
+// Compare two lists using == or != (op is Py_EQ or Py_NE). Return 1 if the result is
+// true, 0 if it's false, and -1 on error.
+int CPyList_Compare(PyObject *left, PyObject *right, int op) {
     if (likely(PyList_CheckExact(left) && PyList_CheckExact(right))) {
+        int result;
         if (left == right) {
             // All items are identical, so they compare equal
-            return 1;
+            result = 1;
+        } else {
+            Py_BEGIN_CRITICAL_SECTION2(left, right);
+            result = _CPyList_Equal(left, right);
+            Py_END_CRITICAL_SECTION2();
+            if (result < 0) {
+                return -1;
+            }
         }
-        int result;
-        Py_BEGIN_CRITICAL_SECTION2(left, right);
-        result = _CPyList_Equal(left, right);
-        Py_END_CRITICAL_SECTION2();
-        return result;
+        return op == Py_EQ ? result : !result;
     }
-    // Subclasses may override __eq__
-    PyObject *res = PyObject_RichCompare(left, right, Py_EQ);
+    // Subclasses may override __eq__ and __ne__
+    PyObject *res = PyObject_RichCompare(left, right, op);
     if (res == NULL) {
         return -1;
     }
