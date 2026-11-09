@@ -454,11 +454,13 @@ VecNested VecNested_Remove(VecNested self, VecNestedBufItem arg) {
         }
         if (match) {
             if (i < self.len - 1) {
-                VecNested_ItemCLEAR(self_buf, &items[i]);
+                // Decref the removed item last, since it could run arbitrary code
+                VecNestedBufItem removed = items[i];
                 for (; i < self.len - 1; i++) {
                     items[i] = items[i + 1];
                 }
                 VecNested_ItemXINCREF(self_buf, items[self.len - 1]);
+                VecNested_ItemXDECREF(self_buf, removed);
             }
             self.len--;
             Py_DECREF(boxed_arg);

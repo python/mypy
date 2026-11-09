@@ -499,13 +499,15 @@ VecT VecT_Remove(VecT v, PyObject *arg) {
         }
         if (match) {
             if (i < v.len - 1) {
-                Py_CLEAR(items[i]);
+                // Decref the removed item last, since it could run arbitrary code
+                PyObject *removed = items[i];
                 for (; i < v.len - 1; i++) {
                     items[i] = items[i + 1];
                 }
                 // Keep a duplicate item, since there could be another reference
                 // to the buffer with a longer length, and they expect a valid reference.
                 Py_XINCREF(items[v.len - 1]);
+                Py_XDECREF(removed);
             }
             v.len--;
             // Return the stolen reference without INCREF
