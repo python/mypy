@@ -806,3 +806,59 @@ bool CPyStr_IsDigit(PyObject *str) {
 
 #undef CHECK_ISDIGIT
 }
+
+#define CPY_STR_CHECK_CHARS(TYPE, DATA, LEN, CHECK)        \
+    {                                                      \
+        const TYPE *_data = (const TYPE *)(DATA);          \
+        for (Py_ssize_t _i = 0; _i < (LEN); _i++) {        \
+            if (!CHECK(_data[_i]))                         \
+                return false;                              \
+        }                                                  \
+    }
+
+// Return from the enclosing function whether every character of str satisfies a
+// predicate. ASCII strings are checked using ASCII_CHECK, which avoids Unicode database
+// lookups, and other strings using UNICODE_CHECK. Empty strings return EMPTY_RESULT.
+#define CPY_STR_RETURN_ALL_CHARS(str, ASCII_CHECK, UNICODE_CHECK, EMPTY_RESULT)          \
+    {                                                                                   \
+        Py_ssize_t _len = PyUnicode_GET_LENGTH(str);                                    \
+        if (_len == 0)                                                                  \
+            return (EMPTY_RESULT);                                                      \
+        if (PyUnicode_IS_ASCII(str)) {                                                  \
+            CPY_STR_CHECK_CHARS(Py_UCS1, PyUnicode_1BYTE_DATA(str), _len, ASCII_CHECK); \
+            return true;                                                                \
+        }                                                                               \
+        switch (PyUnicode_KIND(str)) {                                                  \
+        case PyUnicode_1BYTE_KIND:                                                      \
+            CPY_STR_CHECK_CHARS(Py_UCS1, PyUnicode_1BYTE_DATA(str), _len, UNICODE_CHECK); \
+            break;                                                                      \
+        case PyUnicode_2BYTE_KIND:                                                      \
+            CPY_STR_CHECK_CHARS(Py_UCS2, PyUnicode_2BYTE_DATA(str), _len, UNICODE_CHECK); \
+            break;                                                                      \
+        case PyUnicode_4BYTE_KIND:                                                      \
+            CPY_STR_CHECK_CHARS(Py_UCS4, PyUnicode_4BYTE_DATA(str), _len, UNICODE_CHECK); \
+            break;                                                                      \
+        default:                                                                        \
+            Py_UNREACHABLE();                                                           \
+        }                                                                               \
+        return true;                                                                    \
+    }
+
+// Printable ASCII characters are from ' ' (0x20) to '~' (0x7e)
+#define CPY_ASCII_ISPRINTABLE(c) ((c) >= 0x20 && (c) < 0x7f)
+
+bool CPyStr_IsAlpha(PyObject *str) {
+    CPY_STR_RETURN_ALL_CHARS(str, Py_ISALPHA, Py_UNICODE_ISALPHA, false);
+}
+
+bool CPyStr_IsDecimal(PyObject *str) {
+    CPY_STR_RETURN_ALL_CHARS(str, Py_ISDIGIT, Py_UNICODE_ISDECIMAL, false);
+}
+
+bool CPyStr_IsNumeric(PyObject *str) {
+    CPY_STR_RETURN_ALL_CHARS(str, Py_ISDIGIT, Py_UNICODE_ISNUMERIC, false);
+}
+
+bool CPyStr_IsPrintable(PyObject *str) {
+    CPY_STR_RETURN_ALL_CHARS(str, CPY_ASCII_ISPRINTABLE, Py_UNICODE_ISPRINTABLE, true);
+}

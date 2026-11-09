@@ -1043,6 +1043,13 @@ PyObject *CPyStr_Upper(PyObject *str);
 bool CPyStr_IsSpace(PyObject *str);
 bool CPyStr_IsAlnum(PyObject *str);
 bool CPyStr_IsDigit(PyObject *str);
+bool CPyStr_IsAlpha(PyObject *str);
+static inline bool CPyStr_IsAscii(PyObject *str) {
+    return PyUnicode_IS_ASCII(str);
+}
+bool CPyStr_IsDecimal(PyObject *str);
+bool CPyStr_IsNumeric(PyObject *str);
+bool CPyStr_IsPrintable(PyObject *str);
 
 // Bytes operations
 

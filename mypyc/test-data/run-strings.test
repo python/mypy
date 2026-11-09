@@ -1410,6 +1410,108 @@ def test_isdigit_strings() -> None:
     assert not "123\u00e9".isdigit()
     assert not "\U0001d7ce!".isdigit()
 
+[case testStrIsCharClass]
+from typing import Any
+
+def check(s: str) -> None:
+    # Any forces generic dispatch, so we compare our primitives against CPython's
+    a: Any = s
+    assert s.isalpha() == a.isalpha(), f"isalpha mismatch for {s!r}"
+    assert s.isascii() == a.isascii(), f"isascii mismatch for {s!r}"
+    assert s.isdecimal() == a.isdecimal(), f"isdecimal mismatch for {s!r}"
+    assert s.isnumeric() == a.isnumeric(), f"isnumeric mismatch for {s!r}"
+    assert s.isprintable() == a.isprintable(), f"isprintable mismatch for {s!r}"
+
+def test_all_code_points() -> None:
+    # Covers the ASCII, UCS-1, UCS-2 and UCS-4 string kinds
+    for i in range(0x110000):
+        check(chr(i))
+
+def test_strings() -> None:
+    samples = [
+        "", " ", "abc", "ABCxyz", "abc1", "123", "1.5", "-1", "a b", "abc!",
+        "Hello, World! 123 ~", "\t", "a\nb", "\x00", "\x7f",
+        "été", "é²", "²½", " ",
+        "٠١٢", "Ⅷ三", "中文", " ", "​",
+        "abcé", "123٠", "\U00010400\U00010428", "\U0001d7ce\U0001d7cf",
+        "123\U0001d7ce", "\U0001f600", "abc\U0001f600", "abc\U000e0001",
+    ]
+    for s in samples:
+        check(s)
+        check(s * 3)
+
+def test_isalpha() -> None:
+    assert "abc".isalpha()
+    assert "ABCxyz".isalpha()
+    assert not "".isalpha()
+    assert not "abc1".isalpha()
+    assert not "a b".isalpha()
+    assert "été".isalpha()
+    assert "中文".isalpha()
+    assert "\U00010400\U00010428".isalpha()
+    assert not "٠".isalpha()
+    assert not "\U0001d7ce".isalpha()
+
+def test_isascii() -> None:
+    assert "".isascii()
+    assert "abc".isascii()
+    assert "\x00\x7f".isascii()
+    assert not "\x80".isascii()
+    assert not "café".isascii()
+    assert not "中".isascii()
+    assert not "abc\U0001f600".isascii()
+    s = "abcé"
+    assert s[:3].isascii()
+
+def test_isdecimal() -> None:
+    assert "0123456789".isdecimal()
+    assert not "".isdecimal()
+    assert not "12a".isdecimal()
+    assert not "1.5".isdecimal()
+    assert "٠١٢".isdecimal()
+    assert "123\U0001d7ce".isdecimal()
+    assert not "²".isdecimal()
+    assert not "½".isdecimal()
+    assert not "Ⅷ".isdecimal()
+
+def test_isnumeric() -> None:
+    assert "0123456789".isnumeric()
+    assert not "".isnumeric()
+    assert not "12a".isnumeric()
+    assert not "1.5".isnumeric()
+    assert "٠١٢".isnumeric()
+    assert "²½".isnumeric()
+    assert "Ⅷ三".isnumeric()
+    assert "123\U0001d7ce".isnumeric()
+    assert not "é".isnumeric()
+
+def test_isprintable() -> None:
+    assert "".isprintable()
+    assert " ".isprintable()
+    assert "Hello, World! 123 ~".isprintable()
+    assert not "\t".isprintable()
+    assert not "a\nb".isprintable()
+    assert not "\x00".isprintable()
+    assert not "\x7f".isprintable()
+    assert "été".isprintable()
+    assert not " ".isprintable()
+    assert not " ".isprintable()
+    assert "\U0001f600".isprintable()
+    assert not "abc\U000e0001".isprintable()
+
+def test_str_subclass() -> None:
+    from strsubclass import S
+    s: str = S("abc")
+    assert s.isalpha()
+    assert s.isascii()
+    assert not s.isdecimal()
+    assert not s.isnumeric()
+    assert s.isprintable()
+
+[file strsubclass.py]
+class S(str):
+    pass
+
 [case testStrIndexEqLiteralSpecialize]
 from testutil import assertRaises
 
