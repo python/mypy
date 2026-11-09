@@ -1043,6 +1043,9 @@ PyObject *CPyStr_Upper(PyObject *str);
 bool CPyStr_IsSpace(PyObject *str);
 bool CPyStr_IsAlnum(PyObject *str);
 bool CPyStr_IsDigit(PyObject *str);
+bool CPyStr_IsLower(PyObject *str);
+bool CPyStr_IsTitle(PyObject *str);
+bool CPyStr_IsUpper(PyObject *str);
 
 // Bytes operations
 

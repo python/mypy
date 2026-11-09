@@ -46,7 +46,10 @@ Methods
 * ``s1.find(s2: str, start: int, end: int)``
 * ``s.isalnum()``
 * ``s.isdigit()``
+* ``s.islower()``
 * ``s.isspace()``
+* ``s.istitle()``
+* ``s.isupper()``
 * ``s.lower()``
 * ``s.join(x: Iterable)``
 * ``s.lstrip()``
