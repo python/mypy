@@ -1521,7 +1521,7 @@ class StrOverride(str):
 
 [case testStrCaseMethods]
 from typing import Any, Callable, List
-from strsub import StrSubclass
+from strsub import StrOverride, StrSubclass
 
 def capitalize(s: str) -> str:
     return s.capitalize()
@@ -1572,7 +1572,32 @@ def test_result_type() -> None:
         assert type(f(empty)) is str
         assert f(empty) == ""
     assert title(sub) == "Hello World"
+    non_ascii = StrSubclass("\xe9cole \u03a3")
+    for f in FUNCS:
+        assert type(f(non_ascii)) is str
+
+def test_overriding_subclass() -> None:
+    # Overrides aren't used, and the result is always an exact str
+    for s in ["hello", "\xe9cole", "\u03a3\u0391\u03a3"]:
+        sub = StrOverride(s)
+        for f in FUNCS:
+            res = f(sub)
+            assert type(res) is str
+            assert res == f(s)
+            assert len(res) == len(f(s))
 
 [file strsub.py]
+from typing import Any
+
 class StrSubclass(str):
     pass
+
+class StrOverride(str):
+    def capitalize(self) -> Any:
+        return 1
+    def casefold(self) -> Any:
+        return 2
+    def swapcase(self) -> Any:
+        return 3
+    def title(self) -> Any:
+        return 4

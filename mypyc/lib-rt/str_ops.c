@@ -776,12 +776,13 @@ PyObject *CPyStr_Upper(PyObject *self) {
 
 // Apply a case operation to a str object. ASCII strings use ascii_func directly. Other
 // strings fall back to the str method, since the full Unicode case mappings aren't
-// available through the public C API.
+// available through the public C API. The method is looked up on str (not on the type
+// of self), so that the result is always an exact str even if a subclass overrides it.
 static inline PyObject *CPyStr_CaseOperation(
         PyObject *self, void (*ascii_func)(const Py_UCS1 *, Py_UCS1 *, Py_ssize_t),
         PyObject *method_name) {
     if (!PyUnicode_IS_ASCII(self)) {
-        return PyObject_CallMethodNoArgs(self, method_name);
+        return PyObject_CallMethodOneArg((PyObject *)&PyUnicode_Type, method_name, self);
     }
     Py_ssize_t len = PyUnicode_GET_LENGTH(self);
     PyObject *res = PyUnicode_New(len, 127);
