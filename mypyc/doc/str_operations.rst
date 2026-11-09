@@ -92,6 +92,7 @@ A subset of these common string formatting expressions are optimized:
 Functions
 ---------
 
+* ``chr(i: int)``
 * ``len(s: str)``
 * ``ord(s: str)``
 

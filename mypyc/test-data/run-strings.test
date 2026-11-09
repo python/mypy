@@ -809,6 +809,10 @@ def test_format_method_python_doc() -> None:
 
 [case testChr]
 # Some test cases are from https://docs.python.org/3/howto/unicode.html
+import sys
+from typing import Any
+
+from testutil import assertRaises
 
 def try_invalid(x: int) -> bool:
     try:
@@ -845,6 +849,42 @@ def test_chr() -> None:
     assert chr(x + int()) == '𐀁'
     assert try_invalid(-1)
     assert try_invalid(1114112)
+
+def test_chr_all_code_points() -> None:
+    f: Any = chr
+    for i in range(0x110000):
+        c = chr(i)
+        assert c == f(i)
+        assert ord(c) == i
+    # Latin-1 characters are cached singletons, like in CPython
+    assert chr(65 + int()) is chr(65 + int())
+    assert chr(255 + int()) is chr(255 + int())
+
+def test_chr_bool() -> None:
+    t = bool(int() + 1)
+    assert chr(t) == '\x01'
+    assert chr(not t) == '\x00'
+
+def test_chr_errors() -> None:
+    f: Any = chr
+    for n in [-1, 0x110000, 2**31 - 1, 2**31, -2**31, -2**31 - 1, 2**40, -2**40,
+              2**62 - 1, 2**62, -2**62, -2**62 - 1, 2**70, -2**70]:
+        try:
+            f(n)
+        except Exception as e:
+            expected_type = type(e)
+            expected_msg = str(e)
+        else:
+            assert False
+        with assertRaises(expected_type, expected_msg):
+            chr(n + int())
+    _, minor, _, _, _ = sys.version_info
+    if minor >= 13:
+        with assertRaises(ValueError, "chr() arg not in range(0x110000)"):
+            chr(2**70 + int())
+    else:
+        with assertRaises(OverflowError, "Python int too large to convert to C int"):
+            chr(2**70 + int())
 
 [case testOrd]
 from testutil import assertRaises
