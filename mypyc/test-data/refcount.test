@@ -1795,9 +1795,9 @@ L5:
     r7 = r5 * 8
     r8 = r6 + r7
     r9 = borrow load_mem r8 :: builtins.str*
-    dec_ref r9
     inc_ref x
     set_mem r8, x :: builtins.str*
+    dec_ref r9
     return 1
 
 [case testVecTConstructFromListMultiply_64bit]

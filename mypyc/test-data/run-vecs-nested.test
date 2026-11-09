@@ -100,6 +100,21 @@ def test_set_item_error_nested() -> None:
         v[-4] = vec[str]()
     assert repr(v[0]) == 'vec[str]([])'
 
+class ReadVecOnDel:
+    def __del__(self) -> None:
+        del_events.append(set_item_vec[0][0])
+
+del_events: list[Optional[ReadVecOnDel]] = []
+set_item_vec: vec[vec[Optional[ReadVecOnDel]]] = vec[vec[Optional[ReadVecOnDel]]]()
+
+def test_set_item_decref_after_store() -> None:
+    # The old item must be decref'd after the new item is stored, since
+    # __del__ can access the vec
+    global set_item_vec
+    set_item_vec = vec[vec[Optional[ReadVecOnDel]]]([vec[Optional[ReadVecOnDel]]([ReadVecOnDel()])])
+    set_item_vec[0] = vec[Optional[ReadVecOnDel]]([None])
+    assert del_events == [None]
+
 def test_equality() -> None:
     assert vec[vec[str]]() == vec[vec[str]]()
     assert vec[vec[str]]([vec[str](['x'])]) == vec[vec[str]]([vec[str](['x'])])

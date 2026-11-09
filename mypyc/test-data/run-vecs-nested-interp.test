@@ -200,6 +200,21 @@ def test_set_item_negative() -> None:
     with assertRaises(IndexError):
         v[-3] = vec[str](['5'])
 
+del_events: list[object] = []
+set_item_vec: Any = None
+
+class ReadVecOnDel:
+    def __del__(self) -> None:
+        del_events.append(set_item_vec[0][0])
+
+def test_set_item_decref_after_store() -> None:
+    # The old item must be decref'd after the new item is stored, since
+    # __del__ can access the vec
+    global set_item_vec
+    set_item_vec = vec[vec[object]]([vec[object]([ReadVecOnDel()])])
+    set_item_vec[0] = vec[object](['new'])
+    assert del_events == ['new']
+
 def test_equality() -> None:
     assert_eq(vec[vec[str]](), vec[vec[str]]())
     assert_eq(vec[vec[str]]([vec[str](['x'])]), vec[vec[str]]([vec[str](['x'])]))

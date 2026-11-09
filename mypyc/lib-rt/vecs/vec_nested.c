@@ -190,9 +190,10 @@ static int vec_ass_item(PyObject *self, Py_ssize_t i, PyObject *o) {
         if (VecNested_UnboxItem(v, o, &item) < 0)
             return -1;
         VecNestedBufObject *v_buf = VEC_BUF(v);
+        VecNestedBufItem old = v.items[i];
         VecNested_ItemXINCREF(v_buf, item);
-        VecNested_ItemXDECREF(v_buf, v.items[i]);
         v.items[i] = item;
+        VecNested_ItemXDECREF(v_buf, old);
         return 0;
     } else {
         PyErr_SetString(PyExc_IndexError, "index out of range");
@@ -271,8 +272,9 @@ VecNested VecNested_Append(VecNested vec, VecNestedBufItem x) {
     VecNested_ItemXINCREF(vec_buf, x);
     if (vec.len < cap) {
         // Slot may have duplicate ref from prior remove/pop
-        VecNested_ItemXDECREF(vec_buf, vec.items[vec.len]);
+        VecNestedBufItem old = vec.items[vec.len];
         vec.items[vec.len] = x;
+        VecNested_ItemXDECREF(vec_buf, old);
         vec.len++;
         return vec;
     } else {
@@ -369,8 +371,9 @@ VecNested VecNested_ExtendVec(VecNested dst, VecNested src) {
             VecNestedBufItem item = src.items[i];
             VecNested_ItemXINCREF(src_buf, item);
             // Slot may have duplicate ref from prior remove/pop
-            VecNested_ItemXDECREF(dst_buf, dst.items[dst.len + i]);
+            VecNestedBufItem old = dst.items[dst.len + i];
             dst.items[dst.len + i] = item;
+            VecNested_ItemXDECREF(dst_buf, old);
         }
         dst.len = new_len;
         return dst;
