@@ -150,5 +150,12 @@ PyObject *CPyByteArray_GetSlice(PyObject *obj, CPyTagged start, CPyTagged end) {
     }
 
     // Generic path for subclasses and large indexes
-    return CPyObject_GetSlice(obj, start, end);
+    PyObject *result = CPyObject_GetSlice(obj, start, end);
+    if (result != NULL && unlikely(!PyByteArray_Check(result))) {
+        // A subclass may override __getitem__ to return anything
+        CPy_TypeError("bytearray", result);
+        Py_DECREF(result);
+        return NULL;
+    }
+    return result;
 }

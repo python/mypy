@@ -572,7 +572,7 @@ from typing import Any, Callable
 
 from testutil import assertRaises
 
-from basubclass import ByteArraySubclass, ByteArrayOverrides
+from basubclass import ByteArraySubclass, ByteArrayOverrides, WrongSliceType
 
 BIG_INTS = [2**31, 2**62 - 1, 2**62, 2**63, 2**70]
 
@@ -649,7 +649,8 @@ def test_slice() -> None:
     assert bytearray()[1:2] == bytearray()
 
 def test_subclass() -> None:
-    s = ByteArraySubclass(b"abc")
+    # Use bytearray as the static type, so that the primitives are used
+    s: bytearray = ByteArraySubclass(b"abc")
     assert len(s) == 3
     assert s[1] == ord("b")
     assert s[-1] == ord("c")
@@ -661,13 +662,25 @@ def test_subclass() -> None:
     with assertRaises(IndexError, "bytearray index out of range"):
         s[3 + int()]
 
-    o = ByteArrayOverrides(b"abc")
+    overrides = ByteArrayOverrides(b"abc")
+    o: bytearray = overrides
     assert o[0] == 42
     assert o[-1] == 42
     o[1] = 5
-    assert o.last_set == (1, 5)
+    assert overrides.last_set == (1, 5)
     assert o == b"abc"
     assert o[0:2] == b"slice"
+
+    wrong = WrongSliceType(b"abc")
+    w: bytearray = wrong
+    wrong.result = 1.5
+    with assertRaises(TypeError, "bytearray object expected; got float"):
+        w[0:2]
+    wrong.result = b"bc"
+    with assertRaises(TypeError, "bytearray object expected; got bytes"):
+        w[1:]
+    wrong.result = ByteArraySubclass(b"bc")
+    assert w[1:] == b"bc"
 
 [file basubclass.py]
 from typing import Any
@@ -685,6 +698,14 @@ class ByteArrayOverrides(bytearray):
 
     def __setitem__(self, i: Any, v: Any) -> None:
         self.last_set = (i, v)
+
+class WrongSliceType(bytearray):
+    result: Any = None
+
+    def __getitem__(self, i: Any) -> Any:
+        if isinstance(i, slice):
+            return self.result
+        return super().__getitem__(i)
 
 [case testBytesJoin]
 from typing import Any
