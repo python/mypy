@@ -171,7 +171,7 @@ def f(a: List[int], b: List[int]) -> None:
 def f(a, b):
     a, b, r0, c :: list
 L0:
-    r0 = PySequence_Concat(a, b)
+    r0 = CPySequence_Concat(a, b)
     c = r0
     return 1
 
@@ -185,7 +185,7 @@ def f(a, b):
     b :: object
     r0 :: list
 L0:
-    r0 = PySequence_InPlaceConcat(a, b)
+    r0 = CPySequence_InPlaceConcat(a, b)
     a = r0
     return 1
 

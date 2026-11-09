@@ -281,7 +281,14 @@ PyObject *CPyDict_Copy(PyObject *dict) {
     if (PyDict_CheckExact(dict)) {
         return PyDict_Copy(dict);
     }
-    return PyObject_CallMethodNoArgs(dict, mypyc_interned_str.copy);
+    PyObject *res = PyObject_CallMethodNoArgs(dict, mypyc_interned_str.copy);
+    // An overriding method in a subclass can return an arbitrary object
+    if (res != NULL && !PyDict_Check(res)) {
+        CPy_TypeError("dict", res);
+        Py_DECREF(res);
+        return NULL;
+    }
+    return res;
 }
 
 PyObject *CPyDict_GetKeysIter(PyObject *dict) {
