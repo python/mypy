@@ -174,8 +174,20 @@ static inline VEC vec_from_sequence(PyObject *seq, int64_t cap, const int is_lis
     // Tuples are immutable, so fall through to the shared loop below
 #endif
     for (Py_ssize_t i = 0; i < n; i++) {
-        PyObject *item = is_list ? PyList_GET_ITEM(seq, i) : PyTuple_GET_ITEM(seq, i);
+        PyObject *item;
+        if (is_list) {
+            // Unboxing can run arbitrary code (such as __index__) that modifies the list
+            if (i >= PyList_GET_SIZE(seq)) {
+                n = i;
+                break;
+            }
+            item = PyList_GET_ITEM(seq, i);
+        } else {
+            item = PyTuple_GET_ITEM(seq, i);
+        }
+        Py_INCREF(item);
         ITEM_C_TYPE x = UNBOX_ITEM(item);
+        Py_DECREF(item);
         if (IS_UNBOX_ERROR(x)) {
             VEC_DECREF(v);
             return vec_error();

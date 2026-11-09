@@ -14,6 +14,7 @@ import librt.vecs
 import mypy_extensions
 
 from testutil import assertRaises, is_64_bit_platform
+from helpers import ClearListOnUnbox
 
 # Access via Any references to force generic operations
 vec: Any = librt.vecs.vec
@@ -581,6 +582,28 @@ def test_extend_bool() -> None:
     v = vec[bool]([True])
     v = extend(v, [False, True])
     assert v == vec[bool]([True, False, True])
+
+def test_construct_from_list_modified_during_unboxing() -> None:
+    for t in [i64, i32, i16, float]:
+        lst: list[Any] = []
+        lst.append(ClearListOnUnbox(lst))
+        lst.extend([7] * 100)
+        v = vec[t](lst)
+        assert v == vec[t]([1])
+
+[file helpers.py]
+class ClearListOnUnbox:
+    def __init__(self, lst):
+        self.lst = lst
+
+    def __index__(self):
+        self.lst.clear()
+        # Reuse the freed memory
+        junk = [bytearray(64) for _ in range(1000)]
+        return 1
+
+    def __float__(self):
+        return float(self.__index__())
 
 [case testLibrtVecsBufferProtocol_librt]
 import struct
