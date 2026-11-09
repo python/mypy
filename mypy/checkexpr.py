@@ -210,12 +210,7 @@ from mypy.types import (
     remove_dups,
     split_with_prefix_and_suffix,
 )
-from mypy.types_utils import (
-    is_generic_instance,
-    is_overlapping_none,
-    is_self_type_like,
-    remove_optional,
-)
+from mypy.types_utils import is_generic_instance, is_self_type_like, remove_optional
 from mypy.typestate import type_state
 from mypy.typevars import fill_typevars
 from mypy.visitor import ExpressionVisitor
@@ -2151,25 +2146,6 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         # valid results.
         erased_ctx = replace_meta_vars(ctx, ErasedType())
         ret_type = callable.ret_type
-        if is_overlapping_none(ret_type) and is_overlapping_none(ctx):
-            # If both the context and the return type are optional, unwrap the optional,
-            # since in 99% cases this is what a user expects. In other words, we replace
-            #     Optional[T] <: Optional[int]
-            # with
-            #     T <: int
-            # while the former would infer T <: Optional[int].
-            ret_type = remove_optional(ret_type)
-            erased_ctx = remove_optional(erased_ctx)
-            #
-            # TODO: Instead of this hack and the one below, we need to use outer and
-            # inner contexts at the same time. This is however not easy because of two
-            # reasons:
-            #   * We need to support constraints like [1 <: 2, 2 <: X], i.e. with variables
-            #     on both sides. (This is not too hard.)
-            #   * We need to update all the inference "infrastructure", so that all
-            #     variables in an expression are inferred at the same time.
-            #     (And this is hard, also we need to be careful with lambdas that require
-            #     two passes.)
         proper_ret = get_proper_type(ret_type)
         if (
             isinstance(proper_ret, TypeVarType)
