@@ -646,3 +646,72 @@ def test_bit_length() -> None:
         i -= 1
         assert bit_length(i) == bit_length_python(i)
         assert bit_length(-(i)) == bit_length_python(-(i))
+
+[case testIntSubclassOverridesNotCalled]
+# Unboxing keeps a large int subclass instance as is, but int operations
+# shouldn't call the overridden dunders (like they don't for small values).
+from typing import Any
+from intsub import WrongType, Raising
+
+def int_ops(x: int, y: int) -> list[object]:
+    return [
+        x + y, x - y, x * y, x // y, x % y, x / y, -x, abs(x), ~x, x & y, x | y, x ^ y,
+        x << 3, x >> 3, x == y, x != y, x < y, x <= y, x > y, x >= y,
+    ]
+
+def test_int_subclass_overrides_not_called() -> None:
+    vals = [5, -3, 2**70, -(2**70) - 1, 2**64 + 2**63]
+    f: Any = int_ops
+    for cls in WrongType, Raising:
+        for n in vals:
+            for m in vals:
+                expected = int_ops(n, m)
+                assert int_ops(cls(n), m) == expected
+                assert int_ops(n, cls(m)) == expected
+                assert int_ops(cls(n), cls(m)) == expected
+                # Through the wrapper function (unboxing borrows the argument)
+                assert f(cls(n), m) == expected
+                assert f(n, cls(m)) == expected
+                assert f(cls(n), cls(m)) == expected
+
+[file intsub.py]
+class WrongType(int):
+    def __add__(self, o): return "x"
+    def __radd__(self, o): return "x"
+    def __sub__(self, o): return 1.5
+    def __rsub__(self, o): return 1.5
+    def __mul__(self, o): return []
+    def __rmul__(self, o): return []
+    def __floordiv__(self, o): return "x"
+    def __rfloordiv__(self, o): return "x"
+    def __mod__(self, o): return "x"
+    def __rmod__(self, o): return "x"
+    def __truediv__(self, o): return "x"
+    def __rtruediv__(self, o): return "x"
+    def __neg__(self): return [1, 2]
+    def __abs__(self): return "x"
+    def __invert__(self): return "x"
+    def __and__(self, o): return "x"
+    def __rand__(self, o): return "x"
+    def __or__(self, o): return "x"
+    def __ror__(self, o): return "x"
+    def __xor__(self, o): return "x"
+    def __rxor__(self, o): return "x"
+    def __lshift__(self, o): return "x"
+    def __rshift__(self, o): return "x"
+    def __eq__(self, o): return "x"
+    def __ne__(self, o): return "x"
+    def __lt__(self, o): return "x"
+    def __le__(self, o): return "x"
+    def __gt__(self, o): return "x"
+    def __ge__(self, o): return "x"
+
+def _fail(*args):
+    raise RuntimeError("should not be called")
+
+class Raising(int):
+    __add__ = __radd__ = __sub__ = __rsub__ = __mul__ = __rmul__ = _fail
+    __floordiv__ = __rfloordiv__ = __mod__ = __rmod__ = __truediv__ = __rtruediv__ = _fail
+    __neg__ = __abs__ = __invert__ = _fail
+    __and__ = __rand__ = __or__ = __ror__ = __xor__ = __rxor__ = __lshift__ = __rshift__ = _fail
+    __eq__ = __ne__ = __lt__ = __le__ = __gt__ = __ge__ = _fail
