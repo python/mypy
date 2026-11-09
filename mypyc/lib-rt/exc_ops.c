@@ -96,6 +96,29 @@ void CPyErr_SetObjectAndTraceback(PyObject *type, PyObject *value, PyObject *tra
     PyErr_Restore(type, value, traceback);
 }
 
+// Validate the arguments of generator.throw() before resuming the generator, like
+// CPython's _gen_throw. Return false and set an error if they are invalid.
+bool CPyGen_CheckThrowArgs(PyObject *type, PyObject *value, PyObject *traceback) {
+    if (!Py_IsNone(traceback) && !PyTraceBack_Check(traceback)) {
+        PyErr_SetString(PyExc_TypeError, "throw() third argument must be a traceback object");
+        return false;
+    }
+    if (PyExceptionClass_Check(type)) {
+        return true;
+    }
+    if (PyExceptionInstance_Check(type)) {
+        if (!Py_IsNone(value)) {
+            PyErr_SetString(PyExc_TypeError, "instance exception may not have a separate value");
+            return false;
+        }
+        return true;
+    }
+    PyErr_Format(PyExc_TypeError,
+                 "exceptions must be classes or instances deriving from BaseException, not %s",
+                 Py_TYPE(type)->tp_name);
+    return false;
+}
+
 tuple_T3OOO CPy_CatchError(void) {
     // We need to return the existing sys.exc_info() information, so
     // that it can be restored when we finish handling the error we

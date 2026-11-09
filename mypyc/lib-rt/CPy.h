@@ -1140,6 +1140,7 @@ void CPy_Raise(PyObject *exc);
 void CPy_RaiseFrom(PyObject *exc, PyObject *cause);
 void CPy_Reraise(void);
 void CPyErr_SetObjectAndTraceback(PyObject *type, PyObject *value, PyObject *traceback);
+bool CPyGen_CheckThrowArgs(PyObject *type, PyObject *value, PyObject *traceback);
 tuple_T3OOO CPy_CatchError(void);
 void CPy_RestoreExcInfo(tuple_T3OOO info);
 bool CPy_ExceptionMatches(PyObject *type);
