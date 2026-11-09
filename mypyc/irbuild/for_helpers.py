@@ -295,7 +295,7 @@ def sequence_from_generator_preallocate_helper(
     empty_op_llbuilder: Callable[[Value, int], Value],
     set_item_op: Callable[[Value, Value, Value, int], None],
     after_first_init: GenFunc | None = None,
-    append_op: Callable[[Value, Value, int], Value] | None = None,
+    append_op: Callable[[Value, Value, Value, int], Value] | None = None,
     set_size_op: Callable[[Value, Value, int], Value] | None = None,
 ) -> Value | None:
     """Generate a new tuple or list from a simple generator expression.
@@ -321,9 +321,10 @@ def sequence_from_generator_preallocate_helper(
             implementation.
         after_first_init: Optional function that generates instructions to run after the
             sequence has been evaluated (see comprehension_helper).
-        append_op: Optional function that appends an item to a sequence. It's called
-            with Self and New Value, and returns the resulting sequence (which can be
-            a new value, e.g. for vecs).
+        append_op: Optional function that appends an item to a sequence, when the
+            target position is at or after the preallocated length. It's called with
+            Self, Target position and New Value, and returns the resulting sequence
+            (which can be a new value, e.g. for vecs and tuples).
         set_size_op: Optional function that reduces the length of a sequence, dropping
             uninitialized items at the end. It's called with Self and New Length, and
             returns the resulting sequence.
@@ -408,7 +409,7 @@ def sequence_from_generator_preallocate_helper(
             set_item_op(target, item_index, e, line)
             builder.goto(next_block)
             builder.activate_block(append_block)
-            update_target(append_op(target, e, line))
+            update_target(append_op(target, item_index, e, line))
             builder.goto_and_activate(next_block)
 
         index = for_loop_helper_with_index(
@@ -436,8 +437,8 @@ def translate_list_comprehension(
     def set_item(x: Value, y: Value, z: Value, line: int) -> None:
         builder.call_c(new_list_set_item_op, [x, y, z], line)
 
-    def append(x: Value, y: Value, line: int) -> Value:
-        builder.primitive_op(list_append_op, [x, y], line)
+    def append(x: Value, y: Value, z: Value, line: int) -> Value:
+        builder.primitive_op(list_append_op, [x, z], line)
         return x
 
     def set_size(x: Value, y: Value, line: int) -> Value:
@@ -578,8 +579,8 @@ def translate_vec_comprehension(
     def set_item(x: Value, y: Value, z: Value, line: int) -> None:
         vec_init_item_unsafe(builder.builder, x, y, z, line)
 
-    def append(x: Value, y: Value, line: int) -> Value:
-        return vec_append(builder.builder, x, y, line)
+    def append(x: Value, y: Value, z: Value, line: int) -> Value:
+        return vec_append(builder.builder, x, z, line)
 
     def set_size(x: Value, y: Value, line: int) -> Value:
         return vec_set_len_unsafe(builder.builder, x, y, line)

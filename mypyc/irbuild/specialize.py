@@ -175,7 +175,12 @@ from mypyc.primitives.str_ops import (
     str_get_item_unsafe_as_int_op,
     str_range_check_op,
 )
-from mypyc.primitives.tuple_ops import isinstance_tuple, new_tuple_set_item_op
+from mypyc.primitives.tuple_ops import (
+    isinstance_tuple,
+    new_tuple_set_item_grow_op,
+    new_tuple_set_item_op,
+    new_tuple_set_size_op,
+)
 
 # Specializers are attempted before compiling the arguments to the
 # function.  Specializers can return None to indicate that they failed
@@ -476,21 +481,26 @@ def translate_tuple_from_generator_call(
     """Special case for simplest tuple creation from a generator.
 
     For example:
-        tuple(f(x) for x in some_tuple/some_str/some_bytes)
+        tuple(f(x) for x in some_list/some_tuple/some_str/some_bytes)
     'translate_safe_generator_call()' would take care of other cases
-    if this fails. This includes lists, since a tuple can't be resized if
-    the list is modified during iteration.
+    if this fails.
     """
     if (
         len(expr.args) == 1
         and expr.arg_kinds[0] == ARG_POS
         and isinstance(expr.args[0], GeneratorExpr)
-        and can_preallocate_from_generator(builder, expr.args[0])
+        and can_preallocate_from_generator(builder, expr.args[0], resizable=True)
     ):
         gen = expr.args[0]
 
         def set_item(x: Value, y: Value, z: Value, line: int) -> None:
             builder.call_c(new_tuple_set_item_op, [x, y, z], line)
+
+        def set_item_grow(x: Value, y: Value, z: Value, line: int) -> Value:
+            return builder.call_c(new_tuple_set_item_grow_op, [x, y, z], line)
+
+        def set_size(x: Value, y: Value, line: int) -> Value:
+            return builder.call_c(new_tuple_set_size_op, [x, y], line)
 
         with comprehension_scope(builder, gen):
             return sequence_from_generator_preallocate_helper(
@@ -498,6 +508,8 @@ def translate_tuple_from_generator_call(
                 gen,
                 empty_op_llbuilder=builder.builder.new_tuple_with_length,
                 set_item_op=set_item,
+                append_op=set_item_grow,
+                set_size_op=set_size,
             )
     return None
 

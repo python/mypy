@@ -1106,6 +1106,9 @@ static inline void CPySequenceTuple_SetItemUnsafe(PyObject *tuple, Py_ssize_t in
     PyTuple_SET_ITEM(tuple, index, value);
 }
 
+PyObject *CPySequenceTuple_SetItemGrow(PyObject *tuple, Py_ssize_t index, PyObject *value);
+PyObject *CPySequenceTuple_SetSize(PyObject *tuple, Py_ssize_t size);
+
 
 // Exception operations
 
