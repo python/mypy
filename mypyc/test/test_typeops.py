@@ -18,6 +18,7 @@ from mypyc.ir.rtypes import (
     uint8_rprimitive,
     uint16_rprimitive,
     uint32_rprimitive,
+    uint64_rprimitive,
 )
 from mypyc.rt_subtype import is_runtime_subtype
 from mypyc.subtype import is_subtype
@@ -26,7 +27,7 @@ native_int_types = [
     int64_rprimitive,
     int32_rprimitive,
     int16_rprimitive,
-    uint32_rprimitive,
+    uint64_rprimitive,
     uint32_rprimitive,
     uint16_rprimitive,
     uint8_rprimitive,
@@ -68,6 +69,14 @@ class TestSubtype(unittest.TestCase):
         assert not is_subtype(int16_rprimitive, short_int_rprimitive)
         assert not is_subtype(int16_rprimitive, int64_rprimitive)
         assert not is_subtype(int16_rprimitive, int32_rprimitive)
+
+    def test_uint64(self) -> None:
+        assert is_subtype(uint64_rprimitive, uint64_rprimitive)
+        assert is_subtype(uint64_rprimitive, int_rprimitive)
+        assert not is_subtype(uint64_rprimitive, short_int_rprimitive)
+        assert not is_subtype(uint64_rprimitive, int64_rprimitive)
+        assert not is_subtype(uint64_rprimitive, int32_rprimitive)
+        assert not is_subtype(uint64_rprimitive, uint32_rprimitive)
 
     def test_uint32(self) -> None:
         assert is_subtype(uint32_rprimitive, uint32_rprimitive)
