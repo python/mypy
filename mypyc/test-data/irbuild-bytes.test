@@ -333,6 +333,40 @@ L0:
     r3 = r2 ^ 1
     return r3
 
+[case testBytesContainsGeneric]
+from typing import Optional, Union
+
+def optional_operand(x: int, b: Optional[bytes]) -> bool:
+    return x in b  # type: ignore
+
+def union_item(x: Union[int, bytes], b: bytes) -> bool:
+    return x in b
+[out]
+def optional_operand(x, b):
+    x :: int
+    b :: union[bytes, None]
+    r0 :: object
+    r1 :: i32
+    r2 :: bit
+    r3 :: bool
+L0:
+    r0 = box(int, x)
+    r1 = PySequence_Contains(b, r0)
+    r2 = r1 >= 0 :: signed
+    r3 = truncate r1: i32 to builtins.bool
+    return r3
+def union_item(x, b):
+    x :: union[int, bytes]
+    b :: bytes
+    r0 :: i32
+    r1 :: bit
+    r2 :: bool
+L0:
+    r0 = PySequence_Contains(b, x)
+    r1 = r0 >= 0 :: signed
+    r2 = truncate r0: i32 to builtins.bool
+    return r2
+
 [case testBytesFormatting]
 def f(var: bytes, num: int) -> None:
     b1 = b'aaaa%bbbbb%s' % (var, var)
