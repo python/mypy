@@ -19,7 +19,7 @@ replaced with more efficient operations. Examples:
   intermediate single-character string object `s[i]` but just compare
   the character value to `ord('x')`.
 
-* `a + ':' + b` (two string concetenations) can be implemented as
+* `a + ':' + b` (two string concatenations) can be implemented as
   single three-operand concatenation that doesn't construct an
   intermediate object.
 

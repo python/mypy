@@ -1,3 +1,4 @@
+import types
 from typing import Generic, Tuple, TypeVar, Union
 
 T = TypeVar('T')
@@ -26,6 +27,5 @@ class bool(int): pass
 class str:
     def __add__(self, other: 'str') -> 'str': pass
     def __eq__(self, other: 'str') -> bool: pass
-class ellipsis: pass
 class list: ...
 class dict: pass

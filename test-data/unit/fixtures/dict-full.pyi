@@ -1,5 +1,6 @@
 # Builtins stub used in dictionary-related test cases (more complete).
 
+import types
 from _typeshed import SupportsKeysAndGetItem
 import _typeshed
 from typing import (
@@ -13,6 +14,7 @@ KT = TypeVar('KT')
 VT = TypeVar('VT')
 
 class object:
+    __class__: object
     def __init__(self) -> None: pass
     def __init_subclass__(cls) -> None: pass
     def __eq__(self, other: object) -> bool: pass
@@ -31,9 +33,11 @@ class dict(Mapping[KT, VT]):
     def __contains__(self, item: object) -> int: pass
     def update(self, a: SupportsKeysAndGetItem[KT, VT]) -> None: pass
     @overload
-    def get(self, k: KT) -> Optional[VT]: pass
+    def get(self, key: KT, default: None = None, /) -> Optional[VT]: pass
     @overload
-    def get(self, k: KT, default: Union[VT, T]) -> Union[VT, T]: pass
+    def get(self, key: KT, default: VT, /) -> VT: pass
+    @overload
+    def get(self, key: KT, default: T, /) -> Union[VT, T]: pass
     def __len__(self) -> int: ...
 
     # This was actually added in 3.9:
@@ -75,8 +79,6 @@ class float: pass
 class complex: pass
 class bool(int): pass
 
-class ellipsis:
-    __class__: object
 def isinstance(x: object, t: Union[type, Tuple[type, ...]]) -> bool: pass
 class BaseException: pass
 

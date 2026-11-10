@@ -1,12 +1,13 @@
 from __future__ import annotations
 
-from typing import Callable, Final, Optional, TypeVar
+from collections.abc import Callable
+from typing import Final, TypeVar
 
 from mypyc.ir.ops import Value
 from mypyc.irbuild.ll_builder import LowLevelIRBuilder
 
 LowerFunc = Callable[[LowLevelIRBuilder, list[Value], int], Value]
-LowerFuncOpt = Callable[[LowLevelIRBuilder, list[Value], int], Optional[Value]]
+LowerFuncOpt = Callable[[LowLevelIRBuilder, list[Value], int], Value | None]
 
 lowering_registry: Final[dict[str, LowerFuncOpt]] = {}
 
@@ -25,4 +26,4 @@ def lower_primitive_op(name: str) -> Callable[[LF], LF]:
 
 
 # Import various modules that set up global state.
-from mypyc.lower import int_ops, list_ops, misc_ops  # noqa: F401
+from mypyc.lower import int_ops, list_ops, misc_ops, vec_ops  # noqa: F401

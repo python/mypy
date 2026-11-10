@@ -53,8 +53,7 @@ Summary of how this works for certain kinds of differences:
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import Union
-from typing_extensions import TypeAlias as _TypeAlias
+from typing import TypeAlias as _TypeAlias, Union
 
 from mypy.expandtype import expand_type
 from mypy.nodes import (
@@ -114,7 +113,7 @@ from mypy.util import get_prefix
 # For example, the snapshot of the 'int' type is ('Instance', 'builtins.int', ()).
 
 # Type snapshots are strict, they must be hashable and ordered (e.g. for Unions).
-Primitive: _TypeAlias = Union[str, float, int, bool]  # float is for Literal[3.14] support.
+Primitive: _TypeAlias = str | float | int | bool  # float is for Literal[3.14] support.
 SnapshotItem: _TypeAlias = tuple[Union[Primitive, "SnapshotItem"], ...]
 
 # Symbol snapshots can be more lenient.
@@ -471,6 +470,9 @@ class SnapshotTypeVisitor(TypeVisitor[SnapshotItem]):
             typ.is_ellipsis_args,
             snapshot_types(typ.variables),
             typ.is_bound,
+            snapshot_optional_type(typ.type_guard),
+            snapshot_optional_type(typ.type_is),
+            snapshot_optional_type(typ.instance_type),
         )
 
     def normalize_callable_variables(self, typ: CallableType) -> CallableType:
@@ -498,7 +500,7 @@ class SnapshotTypeVisitor(TypeVisitor[SnapshotItem]):
         items = tuple((key, snapshot_type(item_type)) for key, item_type in typ.items.items())
         required = tuple(sorted(typ.required_keys))
         readonly = tuple(sorted(typ.readonly_keys))
-        return ("TypedDictType", items, required, readonly)
+        return ("TypedDictType", items, required, readonly, typ.is_closed)
 
     def visit_literal_type(self, typ: LiteralType) -> SnapshotItem:
         return ("LiteralType", snapshot_type(typ.fallback), typ.value)

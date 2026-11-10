@@ -48,11 +48,7 @@ def virtualenv(python_executable: str = sys.executable) -> Iterator[tuple[str, s
 
 def upgrade_pip(python_executable: str) -> None:
     """Install pip>=21.3.1. Required for editable installs with PEP 660."""
-    if (
-        sys.version_info >= (3, 11)
-        or (3, 10, 3) <= sys.version_info < (3, 11)
-        or (3, 9, 11) <= sys.version_info < (3, 10)
-    ):
+    if sys.version_info >= (3, 11) or (3, 10, 3) <= sys.version_info < (3, 11):
         # Skip for more recent Python releases which come with pip>=21.3.1
         # out of the box - for performance reasons.
         return

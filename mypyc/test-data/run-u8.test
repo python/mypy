@@ -14,10 +14,10 @@ def test_box_and_unbox() -> None:
         o2: Any = x
         assert o == o2
         assert x == i
-    with assertRaises(OverflowError, "int too large or small to convert to u8"):
+    with assertRaises(ValueError, "int too large or small to convert to u8"):
         o = 256
         x2: u8 = o
-    with assertRaises(OverflowError, "int too large or small to convert to u8"):
+    with assertRaises(ValueError, "int too large or small to convert to u8"):
         o = -1
         x3: u8 = o
 
@@ -166,13 +166,13 @@ def test_mixed_comparisons() -> None:
 
     int_too_big = int() + 256
     int_too_small = int() -1
-    with assertRaises(OverflowError):
+    with assertRaises(ValueError):
         assert u8_3 < int_too_big
-    with assertRaises(OverflowError):
+    with assertRaises(ValueError):
         assert int_too_big < u8_3
-    with assertRaises(OverflowError):
+    with assertRaises(ValueError):
         assert u8_3 > int_too_small
-    with assertRaises(OverflowError):
+    with assertRaises(ValueError):
         assert int_too_small < u8_3
 
 def test_mixed_arithmetic_and_bitwise_ops() -> None:
@@ -192,9 +192,9 @@ def test_mixed_arithmetic_and_bitwise_ops() -> None:
 
     int_too_big = int() + 256
     int_too_small = int() - 1
-    with assertRaises(OverflowError):
+    with assertRaises(ValueError):
         assert u8_3 & int_too_big
-    with assertRaises(OverflowError):
+    with assertRaises(ValueError):
         assert int_too_small & u8_3
 
 def test_coerce_to_and_from_int() -> None:
@@ -233,11 +233,11 @@ def test_explicit_conversion_overflow() -> None:
     assert int(y) == min_u8
 
     too_big = int() + 256
-    with assertRaises(OverflowError):
+    with assertRaises(ValueError):
         x = u8(too_big)
 
     too_small = int() - 1
-    with assertRaises(OverflowError):
+    with assertRaises(ValueError):
         x = u8(too_small)
 
 def test_u8_from_large_small_literal() -> None:
@@ -277,9 +277,9 @@ def test_explicit_conversion_from_float() -> None:
     assert from_float(0) == 0
     assert from_float(-0.999) == 0
     # The error message could be better, but this is acceptable
-    with assertRaises(OverflowError, "int too large or small to convert to u8"):
+    with assertRaises(ValueError, "int too large or small to convert to u8"):
         assert from_float(float(256))
-    with assertRaises(OverflowError, "int too large or small to convert to u8"):
+    with assertRaises(ValueError, "int too large or small to convert to u8"):
         # One ulp below the lowest valid i64 value
         from_float(float(-1.0))
 

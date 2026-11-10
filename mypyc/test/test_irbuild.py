@@ -8,7 +8,7 @@ import sys
 from mypy.errors import CompileError
 from mypy.test.config import test_temp_dir
 from mypy.test.data import DataDrivenTestCase
-from mypyc.common import IS_FREE_THREADED, TOP_LEVEL_NAME
+from mypyc.common import TOP_LEVEL_NAME
 from mypyc.ir.pprint import format_func
 from mypyc.test.testutil import (
     ICODE_GEN_BUILTINS,
@@ -36,6 +36,7 @@ files = [
     "irbuild-statements.test",
     "irbuild-nested.test",
     "irbuild-classes.test",
+    "irbuild-final.test",
     "irbuild-optional.test",
     "irbuild-any.test",
     "irbuild-generics.test",
@@ -45,6 +46,13 @@ files = [
     "irbuild-i32.test",
     "irbuild-i16.test",
     "irbuild-u8.test",
+    "irbuild-u64.test",
+    "irbuild-u32.test",
+    "irbuild-u16.test",
+    "irbuild-vec-i64.test",
+    "irbuild-vec-misc.test",
+    "irbuild-vec-t.test",
+    "irbuild-vec-nested.test",
     "irbuild-vectorcall.test",
     "irbuild-unreachable.test",
     "irbuild-isinstance.test",
@@ -54,11 +62,22 @@ files = [
     "irbuild-glue-methods.test",
     "irbuild-math.test",
     "irbuild-weakref.test",
+    "irbuild-librt-strings.test",
+    "irbuild-librt-random.test",
     "irbuild-base64.test",
+    "irbuild-threading.test",
+    "irbuild-time.test",
+    "irbuild-match.test",
 ]
 
-if sys.version_info >= (3, 10):
-    files.append("irbuild-match.test")
+if sys.version_info >= (3, 12):
+    files.append("irbuild-python312.test")
+
+if sys.version_info >= (3, 14):
+    files.append("irbuild-python314.test")
+
+if sys.version_info >= (3, 15):
+    files.append("irbuild-python315.test")
 
 
 class TestGenOps(MypycDataSuite):
@@ -71,9 +90,6 @@ class TestGenOps(MypycDataSuite):
         options = infer_ir_build_options_from_test_name(testcase.name)
         if options is None:
             # Skipped test case
-            return
-        if "_withgil" in testcase.name and IS_FREE_THREADED:
-            # Test case should only run on a non-free-threaded build.
             return
         with use_custom_builtins(os.path.join(self.data_prefix, ICODE_GEN_BUILTINS), testcase):
             expected_output = remove_comment_lines(testcase.output)

@@ -1,4 +1,5 @@
 [case testI64BasicOps]
+import sys
 from typing import List, Any, Tuple, Union
 
 from mypy_extensions import i64, i32, i16
@@ -299,11 +300,11 @@ def test_explicit_conversion_overflow() -> None:
     assert int(y) == min_i64
 
     too_big = int() + 2**63
-    with assertRaises(OverflowError):
+    with assertRaises(ValueError):
         x = i64(too_big)
 
     too_small = int() - 2**63 - 1
-    with assertRaises(OverflowError):
+    with assertRaises(ValueError):
         x = i64(too_small)
 
 def test_i64_from_large_small_literal() -> None:
@@ -311,6 +312,16 @@ def test_i64_from_large_small_literal() -> None:
     assert x == 2**63 - 1
     x = i64(-2**63)
     assert x == -2**63
+    x = i64(9223372036854775807)
+    assert x == 2**63 - 1
+    assert int(x) == 2**63 - 1
+    x = i64(-9223372036854775808)
+    assert x == -2**63
+    assert int(x) == -2**63
+    y: i64 = 9223372036854775807
+    assert y == 2**63 - 1
+    y = -9223372036854775808
+    assert y == -2**63
 
 def from_float(x: float) -> i64:
     return i64(x)
@@ -323,9 +334,9 @@ def test_explicit_conversion_from_float() -> None:
     assert from_float(2**63 - 1024) == 2**63 - 1024
     assert from_float(-2**63) == -2**63
     # The error message could be better, but this is acceptable
-    with assertRaises(OverflowError, "int too large to convert to i64"):
+    with assertRaises(ValueError, "int too large to convert to i64"):
         assert from_float(float(2**63))
-    with assertRaises(OverflowError, "int too large to convert to i64"):
+    with assertRaises(ValueError, "int too large to convert to i64"):
         # One ulp below the lowest valid i64 value
         from_float(float(-2**63 - 2048))
 
@@ -386,6 +397,47 @@ def test_tuple_i64() -> None:
     tt: Tuple[i64, i64] = x
     assert tt == (1, 2)
 
+def as_mixed_i64_tuple(value: Any) -> tuple[str, i64]:
+    return value
+
+def as_i64_pair(value: Any) -> tuple[i64, i64]:
+    return value
+
+def as_nested_i64_tuple(value: Any) -> tuple[str, tuple[i64, i64]]:
+    return value
+
+def as_ref_i64_ref_tuple(value: Any) -> tuple[object, i64, object]:
+    return value
+
+def accept_ref_i64_ref_tuple(value: tuple[object, i64, object]) -> None:
+    pass
+
+def test_tuple_i64_unbox_error() -> None:
+    too_large = 1 << 63
+    message = "int too large to convert to i64"
+    with assertRaises(ValueError, message):
+        as_mixed_i64_tuple(("x", too_large))
+    with assertRaises(ValueError, message):
+        as_i64_pair((0, too_large))
+    with assertRaises(ValueError, message):
+        as_nested_i64_tuple(("x", (0, too_large)))
+
+    getrefcount: Any = getattr(sys, "getrefcount")
+    first = object()
+    last = object()
+    first_refcount = getrefcount(first)
+    last_refcount = getrefcount(last)
+    with assertRaises(ValueError, message):
+        as_ref_i64_ref_tuple((first, too_large, last))
+    assert getrefcount(first) == first_refcount
+    assert getrefcount(last) == last_refcount
+
+    dynamic_accept: Any = accept_ref_i64_ref_tuple
+    with assertRaises(TypeError):
+        dynamic_accept((first, too_large, last))
+    assert getrefcount(first) == first_refcount
+    assert getrefcount(last) == last_refcount
+
 def test_list_set_item() -> None:
     a: List[i64] = [0, 2, 6]
     z: i64 = int()
@@ -430,13 +482,13 @@ def test_mixed_comparisons() -> None:
 
     int_too_big = int() + (1 << 63)
     int_too_small = int() - (1 << 63) - 1
-    with assertRaises(OverflowError):
+    with assertRaises(ValueError):
         assert i64_3 < int_too_big
-    with assertRaises(OverflowError):
+    with assertRaises(ValueError):
         assert int_too_big < i64_3
-    with assertRaises(OverflowError):
+    with assertRaises(ValueError):
         assert i64_3 > int_too_small
-    with assertRaises(OverflowError):
+    with assertRaises(ValueError):
         assert int_too_small < i64_3
 
 def test_mixed_comparisons_32bit() -> None:
@@ -476,9 +528,9 @@ def test_mixed_arithmetic_and_bitwise_ops() -> None:
 
     int_too_big = int() + (1 << 63)
     int_too_small = int() - (1 << 63) - 1
-    with assertRaises(OverflowError):
+    with assertRaises(ValueError):
         assert i64_3 & int_too_big
-    with assertRaises(OverflowError):
+    with assertRaises(ValueError):
         assert int_too_small & i64_3
 
 def test_for_loop() -> None:
@@ -591,10 +643,10 @@ def test_unbox_int_fails() -> None:
     with assertRaises(TypeError, msg):
         x: i64 = o
     o2: Any = 1 << 63
-    with assertRaises(OverflowError, "int too large to convert to i64"):
+    with assertRaises(ValueError, "int too large to convert to i64"):
         y: i64 = o2
     o3: Any = -(1 << 63 + 1)
-    with assertRaises(OverflowError, "int too large to convert to i64"):
+    with assertRaises(ValueError, "int too large to convert to i64"):
         z: i64 = o3
 
 class Uninit:
@@ -1514,3 +1566,74 @@ def test_dunder_arg_check() -> None:
         2**63 in o
     with assertRaises(IndexError):
         1 in o
+
+[case testI64DefinednessAcrossYield]
+from typing import Final, Iterator
+
+from mypy_extensions import i64
+from testutil import assertRaises
+
+MAGIC: Final = -113
+
+def error_value() -> Iterator[i64]:
+    value: i64 = MAGIC
+    yield 0
+    yield value
+
+def conditional(define: bool) -> Iterator[i64]:
+    if define:
+        value: i64 = 5
+    yield 0
+    yield value
+
+def test_i64_definedness_across_yield() -> None:
+    assert list(error_value()) == [0, MAGIC]
+    assert list(conditional(True)) == [0, 5]
+    with assertRaises(AttributeError):
+        list(conditional(False))
+
+[case testI64ListSetErrorOwnership]
+from typing import Any, List
+from mypy_extensions import i64
+def assign(items: List[Any], index: i64, value: Any) -> None:
+    items[index] = value
+
+[file driver.py]
+import gc
+import weakref
+from native import assign
+from testutil import assertRaises
+
+class Sentinel:
+    pass
+
+for index in (1, -2, 2**63 - 1, -2**63):
+    value = Sentinel()
+    ref = weakref.ref(value)
+    try:
+        assign([None], index, value)
+    except (IndexError, OverflowError):
+        pass
+    else:
+        assert False, index
+    del value
+    gc.collect()
+    assert ref() is None, index
+with assertRaises(IndexError):
+    assign([], 0, None)
+items = [None]
+value = Sentinel()
+assign(items, -1, value)
+assert items[0] is value
+assign(items, 0, None)
+assert items == [None]
+
+# Replacing an element may run Python code that mutates the same list.
+class Reentrant:
+    def __del__(self):
+        items.clear()
+
+for index in (0, -1):
+    items = [Reentrant()]
+    assign(items, index, None)
+    assert items == []

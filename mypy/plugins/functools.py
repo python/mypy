@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Final, NamedTuple
+from typing import Final
 
 import mypy.checker
 import mypy.plugin
@@ -43,9 +43,10 @@ _ORDERING_METHODS: Final = {"__lt__", "__le__", "__gt__", "__ge__"}
 PARTIAL: Final = "functools.partial"
 
 
-class _MethodInfo(NamedTuple):
-    is_static: bool
-    type: CallableType
+class _MethodInfo:
+    def __init__(self, is_static: bool, type: CallableType) -> None:
+        self.is_static: Final = is_static
+        self.type: Final = type
 
 
 def functools_total_ordering_maker_callback(
@@ -305,6 +306,9 @@ def handle_partial_with_callee(ctx: mypy.plugin.FunctionContext, callee: Type) -
     if not mypy.checker.is_valid_inferred_type(ret_type, ctx.api.options):
         ret_type = fn_type.ret_type  # same kind of hack as above
 
+    # Technically, we should set definition to None here, since it will not be recovered
+    # on warm cache runs in fixup.py. This however may hide some helpful info in error
+    # messages, so we are keeping it for now. See also issue #20640.
     partially_applied = fn_type.copy_modified(
         arg_types=partial_types,
         arg_kinds=partial_kinds,

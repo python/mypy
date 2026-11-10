@@ -5,7 +5,7 @@ from typing import ClassVar, Literal
 from .. import fixer_base
 from ..pytree import Node
 
-def traverse_imports(names) -> Generator[str, None, None]: ...
+def traverse_imports(names) -> Generator[str]: ...
 
 class FixImport(fixer_base.BaseFix):
     BM_compatible: ClassVar[Literal[True]]

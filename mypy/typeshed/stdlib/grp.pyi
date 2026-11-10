@@ -5,8 +5,7 @@ from typing import Any, Final, final
 if sys.platform != "win32":
     @final
     class struct_group(structseq[Any], tuple[str, str | None, int, list[str]]):
-        if sys.version_info >= (3, 10):
-            __match_args__: Final = ("gr_name", "gr_passwd", "gr_gid", "gr_mem")
+        __match_args__: Final = ("gr_name", "gr_passwd", "gr_gid", "gr_mem")
 
         @property
         def gr_name(self) -> str: ...

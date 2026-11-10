@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 from collections.abc import Iterable, Sequence
-from typing_extensions import TypeAlias as _TypeAlias
+from typing import TypeAlias as _TypeAlias
 
 from mypy.constraints import SUBTYPE_OF, SUPERTYPE_OF, Constraint, infer_constraints, neg_op
 from mypy.expandtype import expand_type
@@ -17,6 +17,7 @@ from mypy.types import (
     AnyType,
     Instance,
     NoneType,
+    Overloaded,
     ParamSpecType,
     ProperType,
     TupleType,
@@ -253,6 +254,9 @@ def _join_sorted_key(t: Type) -> int:
         return -2
     if isinstance(t, NoneType):
         return -1
+
+    if isinstance(t, Overloaded):
+        return 1
     return 0
 
 

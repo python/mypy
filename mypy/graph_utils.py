@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterable, Iterator, Set as AbstractSet
+from collections.abc import Iterator, Set as AbstractSet
 from typing import TypeVar
 
 T = TypeVar("T")
@@ -72,15 +72,20 @@ def prepare_sccs(
     return data
 
 
-def topsort(data: dict[T, set[T]]) -> Iterable[set[T]]:
-    """Topological sort.
+class topsort(Iterator[set[T]]):  # noqa: N801
+    """Topological sort using Kahn's algorithm.
+
+    Uses in-degree counters and a reverse adjacency list, so the total work
+    is O(V + E).
+
+    Implemented as a class rather than a generator for better mypyc
+    compilation.
 
     Args:
       data: A map from vertices to all vertices that it has an edge
-            connecting it to.  NOTE: This data structure
-            is modified in place -- for normalization purposes,
-            self-dependencies are removed and entries representing
-            orphans are added.
+            connecting it to. NOTE: dependency sets in this data
+            structure are modified in place to remove self-dependencies.
+            Orphans are handled internally and are not added to `data`.
 
     Returns:
       An iterator yielding sets of vertices that have an equivalent
@@ -91,27 +96,66 @@ def topsort(data: dict[T, set[T]]) -> Iterable[set[T]]:
 
         {A: {B, C}, B: {D}, C: {D}}
 
-      This is normalized to:
+      The algorithm treats orphan dependencies as if normalized to:
 
         {A: {B, C}, B: {D}, C: {D}, D: {}}
 
-      The algorithm will yield the following values:
+      It will yield the following values:
 
         {D}
         {B, C}
         {A}
-
-    From https://code.activestate.com/recipes/577413/.
     """
-    # TODO: Use a faster algorithm?
-    for k, v in data.items():
-        v.discard(k)  # Ignore self dependencies.
-    for item in set.union(*data.values()) - set(data.keys()):
-        data[item] = set()
-    while True:
-        ready = {item for item, dep in data.items() if not dep}
+
+    def __init__(self, data: dict[T, set[T]]) -> None:
+        # Single pass: remove self-deps, build reverse adjacency list,
+        # compute in-degree counts, detect orphans, and find initial ready set.
+        in_degree: dict[T, int] = {}
+        rev: dict[T, list[T]] = {}
+        ready: set[T] = set()
+        for item, deps in data.items():
+            deps.discard(item)  # Ignore self dependencies.
+            deg = len(deps)
+            in_degree[item] = deg
+            if deg == 0:
+                ready.add(item)
+            if item not in rev:
+                rev[item] = []
+            for dep in deps:
+                if dep in rev:
+                    rev[dep].append(item)
+                else:
+                    rev[dep] = [item]
+                    if dep not in data:
+                        # Orphan: appears as dependency but has no entry in data.
+                        in_degree[dep] = 0
+                        ready.add(dep)
+
+        self.in_degree = in_degree
+        self.rev = rev
+        self.ready = ready
+        self.remaining = len(in_degree) - len(ready)
+
+    def __iter__(self) -> Iterator[set[T]]:
+        return self
+
+    def __next__(self) -> set[T]:
+        ready = self.ready
         if not ready:
-            break
-        yield ready
-        data = {item: (dep - ready) for item, dep in data.items() if item not in ready}
-    assert not data, f"A cyclic dependency exists amongst {data!r}"
+            assert self.remaining == 0, (
+                f"A cyclic dependency exists amongst "
+                f"{[k for k, deg in self.in_degree.items() if deg > 0]!r}"
+            )
+            raise StopIteration
+        in_degree = self.in_degree
+        rev = self.rev
+        new_ready: set[T] = set()
+        for item in ready:
+            for dependent in rev[item]:
+                new_deg = in_degree[dependent] - 1
+                in_degree[dependent] = new_deg
+                if new_deg == 0:
+                    new_ready.add(dependent)
+        self.remaining -= len(new_ready)
+        self.ready = new_ready
+        return ready

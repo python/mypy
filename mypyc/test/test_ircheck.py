@@ -178,8 +178,8 @@ class TestIrcheck(unittest.TestCase):
         assert formatted == [
             "def func_1():",
             "L0:",
-            "    goto L1",
-            "  ERR: Invalid control operation target: 1",
+            " \U0000274c goto L1",
+            "    \U0001f446 ERROR: Invalid control operation target: 1",
         ]
 
     def test_load_address_declares_register(self) -> None:

@@ -22,7 +22,8 @@ below, mypyc.irbuild.builder, and mypyc.irbuild.visitor.
 
 from __future__ import annotations
 
-from typing import Any, Callable, TypeVar, cast
+from collections.abc import Callable
+from typing import Any, TypeVar, cast
 
 from mypy.build import Graph
 from mypy.nodes import ClassDef, Expression, FuncDef, MypyFile
@@ -46,6 +47,7 @@ from mypyc.irbuild.prepare import (
 from mypyc.irbuild.visitor import IRBuilderVisitor
 from mypyc.irbuild.vtable import compute_vtable
 from mypyc.options import CompilerOptions
+from mypyc.transform.generator_spills import promote_generator_registers
 
 # The stubs for callable contextmanagers are busted so cast it to the
 # right type...
@@ -122,6 +124,13 @@ def build_ir(
         result[module.fullname] = module_ir
         class_irs.extend(builder.classes)
 
+    # Generator helper calls are fresh C activations after every suspension.
+    # Move values that must outlive one activation to the private frame before
+    # attribute-definedness and the remaining IR transforms run.
+    for class_ir in class_irs:
+        if class_ir.env_user_function is not None:
+            promote_generator_registers(class_ir.env_user_function, class_ir)
+
     analyze_always_defined_attrs(class_irs)
 
     # Compute vtables.
@@ -152,7 +161,7 @@ def transform_mypy_file(builder: IRBuilder, mypyfile: MypyFile) -> None:
     builder.enter("<module>")
 
     # Make sure we have a builtins import
-    builder.gen_import("builtins", -1)
+    builder.gen_import("builtins", 1)
 
     # Generate ops.
     for node in mypyfile.defs:

@@ -341,7 +341,7 @@ MypyFile:1(
           NameExpr(self [l]))))))
 
 [case testGlobalDefinedInBlock]
-# flags: --allow-redefinition
+# flags: --allow-redefinition-old
 if object:
     x = object()
     x = x

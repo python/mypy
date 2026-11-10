@@ -176,14 +176,14 @@ class A:
 [out]
 main:4: error: ClassVar can only be used for assignments in class body
 
-[case testForIndex]
+[case testForIndex_old_parser]
 from typing import ClassVar
 for i in []:  # type: ClassVar
     pass
 [out]
 main:2: error: ClassVar can only be used for assignments in class body
 
-[case testForIndexInClassBody]
+[case testForIndexInClassBody_old_parser]
 from typing import ClassVar
 class A:
     for i in []:  # type: ClassVar
@@ -191,7 +191,7 @@ class A:
 [out]
 main:3: error: ClassVar can only be used for assignments in class body
 
-[case testWithStmt]
+[case testWithStmt_old_parser]
 from typing import ClassVar
 class A: pass
 with A() as x:  # type: ClassVar
@@ -199,7 +199,7 @@ with A() as x:  # type: ClassVar
 [out]
 main:3: error: ClassVar can only be used for assignments in class body
 
-[case testWithStmtInClassBody]
+[case testWithStmtInClassBody_old_parser]
 from typing import ClassVar
 class A: pass
 class B:

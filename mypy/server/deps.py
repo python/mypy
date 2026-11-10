@@ -158,6 +158,7 @@ from mypy.types import (
     ParamSpecType,
     PartialType,
     ProperType,
+    SentinelValue,
     TupleType,
     Type,
     TypeAliasType,
@@ -671,6 +672,13 @@ class DependencyVisitor(TraverserVisitor):
         if e.kind is not None:
             # Reference to a module attribute
             self.process_global_ref_expr(e)
+            if isinstance(e.expr, RefExpr) and isinstance(e.expr.node, MypyFile):
+                # Also depend on the name as accessed through this module. The
+                # fullname above may point to the original definition (e.g. via
+                # a re-export using "from ... import *"), but we must also
+                # recheck if the name is removed from the accessed module's
+                # namespace.
+                self.add_dependency(make_trigger(e.expr.node.fullname + "." + e.name))
         else:
             # Reference to a non-module (or missing) attribute
             if e.expr not in self.type_map:
@@ -1003,6 +1011,12 @@ class TypeTriggersVisitor(TypeVisitor[list[str]]):
         for arg in typ.arg_types:
             triggers.extend(self.get_type_triggers(arg))
         triggers.extend(self.get_type_triggers(typ.ret_type))
+        if typ.type_guard is not None:
+            triggers.extend(self.get_type_triggers(typ.type_guard))
+        if typ.type_is is not None:
+            triggers.extend(self.get_type_triggers(typ.type_is))
+        if typ.instance_type is not None:
+            triggers.extend(self.get_type_triggers(typ.instance_type))
         # fallback is a metaclass type for class objects, and is
         # processed separately.
         return triggers
@@ -1083,7 +1097,10 @@ class TypeTriggersVisitor(TypeVisitor[list[str]]):
         return triggers
 
     def visit_literal_type(self, typ: LiteralType) -> list[str]:
-        return self.get_type_triggers(typ.fallback)
+        triggers = self.get_type_triggers(typ.fallback)
+        if isinstance(typ.value, SentinelValue):
+            triggers.append(make_trigger(typ.value.fullname))
+        return triggers
 
     def visit_unbound_type(self, typ: UnboundType) -> list[str]:
         return []

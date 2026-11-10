@@ -17,10 +17,13 @@
 
 #if defined(__clang__) || defined(__GNUC__)
 #define CPy_NOINLINE __attribute__((noinline))
+#define CPy_COLD __attribute__((cold))
 #elif defined(_MSC_VER)
 #define CPy_NOINLINE __declspec(noinline)
+#define CPy_COLD
 #else
 #define CPy_NOINLINE
+#define CPy_COLD
 #endif
 
 #ifndef Py_GIL_DISABLED
@@ -47,6 +50,19 @@
 #endif
 
 #endif // Py_GIL_DISABLED
+
+// Helper macro for stringification in _Pragma
+#define CPY_STRINGIFY(x) #x
+
+#if defined(__clang__)
+    #define CPY_UNROLL_LOOP_IMPL(x) _Pragma(CPY_STRINGIFY(x))
+    #define CPY_UNROLL_LOOP(n) CPY_UNROLL_LOOP_IMPL(unroll n)
+#elif defined(__GNUC__) && __GNUC__ >= 8
+    #define CPY_UNROLL_LOOP_IMPL(x) _Pragma(CPY_STRINGIFY(x))
+    #define CPY_UNROLL_LOOP(n) CPY_UNROLL_LOOP_IMPL(GCC unroll n)
+#else
+    #define CPY_UNROLL_LOOP(n)
+#endif
 
 // INCREF and DECREF that assert the pointer is not NULL.
 // asserts are disabled in release builds so there shouldn't be a perf hit.
@@ -117,6 +133,11 @@ typedef size_t CPyPtr;
 
 typedef PyObject CPyModule;
 
+// Module caches use the low bit to distinguish a module that may still be
+// initializing from one whose initialization has been verified. PyObject
+// pointers are aligned, so the low bit is otherwise unused.
+typedef uintptr_t CPyModuleCache;
+
 // Tag bit used for long integers
 #define CPY_INT_TAG 1
 
@@ -129,6 +150,10 @@ typedef PyObject CPyModule;
 // Error value for floats
 #define CPY_FLOAT_ERROR -113.0
 
+// Value for 'None' primitive type
+#define CPY_NONE_ERROR 2
+#define CPY_NONE 1
+
 typedef void (*CPyVTableItem)(void);
 
 static inline CPyTagged CPyTagged_ShortFromInt(int x) {
@@ -139,10 +164,15 @@ static inline CPyTagged CPyTagged_ShortFromSsize_t(Py_ssize_t x) {
     return x << 1;
 }
 
+static inline int CPyTagged_IsNegative(CPyTagged x) {
+    return ((Py_ssize_t)x) < 0;
+}
+
 // Are we targeting Python 3.X or newer?
 #define CPY_3_11_FEATURES (PY_VERSION_HEX >= 0x030b0000)
 #define CPY_3_12_FEATURES (PY_VERSION_HEX >= 0x030c0000)
 #define CPY_3_14_FEATURES (PY_VERSION_HEX >= 0x030e0000)
+#define CPY_3_15_FEATURES (PY_VERSION_HEX >= 0x030f0000)
 
 #if CPY_3_12_FEATURES
 

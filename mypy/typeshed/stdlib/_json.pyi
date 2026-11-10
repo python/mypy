@@ -1,3 +1,4 @@
+import sys
 from collections.abc import Callable
 from typing import Any, final
 from typing_extensions import Self
@@ -36,6 +37,8 @@ class make_encoder:
 
 @final
 class make_scanner:
+    if sys.version_info >= (3, 15):
+        array_hook: Any
     object_hook: Any
     object_pairs_hook: Any
     parse_int: Any
@@ -48,4 +51,9 @@ class make_scanner:
 
 def encode_basestring(s: str, /) -> str: ...
 def encode_basestring_ascii(s: str, /) -> str: ...
-def scanstring(string: str, end: int, strict: bool = True) -> tuple[str, int]: ...
+
+if sys.version_info >= (3, 15):
+    def scanstring(pystr: str, end: int, strict: bool = True, /) -> tuple[str, int]: ...
+
+else:
+    def scanstring(string: str, end: int, strict: bool = True) -> tuple[str, int]: ...

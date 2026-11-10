@@ -195,7 +195,10 @@ class SourceFinder:
             if not name.isidentifier():
                 # in most cases the directory name is invalid, we'll just stop crawling upwards
                 # but if there's an __init__.py in the directory, something is messed up
-                raise InvalidSourceList(f"{name} is not a valid Python package name")
+                raise InvalidSourceList(
+                    f"{name} contains {os.path.basename(init_file)} "
+                    "but is not a valid Python package name"
+                )
             # we're definitely a package, so we always return a non-None value
             mod_prefix, base_dir = self.crawl_up_dir(parent)
             return module_join(mod_prefix, name), base_dir

@@ -8,8 +8,8 @@ import os.path
 import sys
 from typing import TYPE_CHECKING, Any
 
-if sys.version_info < (3, 9, 0):  # noqa: UP036, RUF100
-    sys.stderr.write("ERROR: You need Python 3.9 or later to use mypy.\n")
+if sys.version_info < (3, 10, 0):  # noqa: UP036, RUF100
+    sys.stderr.write("ERROR: You need Python 3.10 or later to use mypy.\n")
     exit(1)
 
 # we'll import stuff from the source tree, let's ensure is on the sys path
@@ -24,7 +24,7 @@ from setuptools.command.build_py import build_py
 from mypy.version import __version__ as version
 
 if TYPE_CHECKING:
-    from typing_extensions import TypeGuard
+    from typing import TypeGuard
 
 
 def is_list_of_setuptools_extension(items: list[Any]) -> TypeGuard[list[Extension]]:
@@ -81,6 +81,7 @@ if USE_MYPYC:
             "__main__.py",
             "pyinfo.py",
             os.path.join("dmypy", "__main__.py"),
+            os.path.join("build_worker", "__main__.py"),
             "exportjson.py",
             # Uses __getattr__/__setattr__
             "split_namespace.py",
@@ -89,6 +90,9 @@ if USE_MYPYC:
             # We don't populate __file__ properly at the top level or something?
             # Also I think there would be problems with how we generate version.py.
             "version.py",
+            # Empty __init__.py files, no benefit from compilation
+            os.path.join("plugins", "__init__.py"),
+            os.path.join("server", "__init__.py"),
             # Skip these to reduce the size of the build
             "stubtest.py",
             "stubgenc.py",
@@ -97,8 +101,10 @@ if USE_MYPYC:
     ) + (
         # Don't want to grab this accidentally
         os.path.join("mypyc", "lib-rt", "setup.py"),
+        os.path.join("mypyc", "lib-rt", "build_setup.py"),
         # Uses __file__ at top level https://github.com/mypyc/mypyc/issues/700
         os.path.join("mypyc", "__main__.py"),
+        os.path.join("mypyc", "build_setup.py"),  # for monkeypatching
     )
 
     everything = [os.path.join("mypy", x) for x in find_package_data("mypy", ["*.py"])] + [
@@ -147,6 +153,7 @@ if USE_MYPYC:
     debug_level = os.getenv("MYPYC_DEBUG_LEVEL", "1")
     force_multifile = os.getenv("MYPYC_MULTI_FILE", "") == "1"
     log_trace = bool(int(os.getenv("MYPYC_LOG_TRACE", "0")))
+    separate = os.getenv("MYPYC_SEPARATE", "") == "1"
     ext_modules = mypycify(
         mypyc_targets + ["--config-file=mypy_bootstrap.ini"],
         opt_level=opt_level,
@@ -155,6 +162,7 @@ if USE_MYPYC:
         # our Appveyor builds run out of memory sometimes.
         multi_file=sys.platform == "win32" or force_multifile,
         log_trace=log_trace,
+        separate=separate,
         # Mypy itself is allowed to use native_internal extension.
         depends_on_librt_internal=True,
     )

@@ -13,6 +13,7 @@ from mypyc.ir.rtypes import (
     object_rprimitive,
     pointer_rprimitive,
     short_int_rprimitive,
+    uint64_rprimitive,
     void_rtype,
 )
 from mypyc.primitives.registry import (
@@ -108,7 +109,28 @@ method_op(
     priority=2,
 )
 
-# list[index] that produces a borrowed result
+# Versions with native int index. A bool index matches every __getitem__ op,
+# so all priorities must be distinct. i64 is preferred for bool indexes.
+list_get_item_int64_op = method_op(
+    name="__getitem__",
+    arg_types=[list_rprimitive, int64_rprimitive],
+    return_type=object_rprimitive,
+    c_function_name="CPyList_GetItemInt64",
+    error_kind=ERR_MAGIC,
+    priority=6,
+)
+
+method_op(
+    name="__getitem__",
+    arg_types=[list_rprimitive, uint64_rprimitive],
+    return_type=object_rprimitive,
+    c_function_name="CPyList_GetItemUInt64",
+    error_kind=ERR_MAGIC,
+    priority=5,
+)
+
+# list[index] that produces a borrowed result. Borrowed variants are unsafe on
+# free-threaded builds (another thread could remove the item and free it).
 method_op(
     name="__getitem__",
     arg_types=[list_rprimitive, int_rprimitive],
@@ -116,6 +138,7 @@ method_op(
     c_function_name="CPyList_GetItemBorrow",
     error_kind=ERR_MAGIC,
     is_borrowed=True,
+    gil_only=True,
     priority=3,
 )
 
@@ -127,31 +150,34 @@ method_op(
     c_function_name="CPyList_GetItemShortBorrow",
     error_kind=ERR_MAGIC,
     is_borrowed=True,
+    gil_only=True,
     priority=4,
 )
 
-# Version with native int index
-method_op(
-    name="__getitem__",
-    arg_types=[list_rprimitive, int64_rprimitive],
-    return_type=object_rprimitive,
-    c_function_name="CPyList_GetItemInt64",
-    error_kind=ERR_MAGIC,
-    priority=5,
-)
-
-# Version with native int index
+# Versions with native int index (see above for why priorities are distinct)
 method_op(
     name="__getitem__",
     arg_types=[list_rprimitive, int64_rprimitive],
     return_type=object_rprimitive,
     c_function_name="CPyList_GetItemInt64Borrow",
     is_borrowed=True,
+    gil_only=True,
     error_kind=ERR_MAGIC,
-    priority=6,
+    priority=8,
 )
 
-# This is unsafe because it assumes that the index is a non-negative short integer
+method_op(
+    name="__getitem__",
+    arg_types=[list_rprimitive, uint64_rprimitive],
+    return_type=object_rprimitive,
+    c_function_name="CPyList_GetItemUInt64Borrow",
+    is_borrowed=True,
+    gil_only=True,
+    error_kind=ERR_MAGIC,
+    priority=7,
+)
+
+# This is unsafe because it assumes that the index is a non-negative integer
 # that is in-bounds for the list.
 list_get_item_unsafe_op = custom_primitive_op(
     name="list_get_item_unsafe",
@@ -176,6 +202,17 @@ method_op(
     arg_types=[list_rprimitive, int64_rprimitive, object_rprimitive],
     return_type=bit_rprimitive,
     c_function_name="CPyList_SetItemInt64",
+    error_kind=ERR_FALSE,
+    steals=[False, False, True],
+    priority=3,
+)
+
+# list[index_u64] = obj (lower priority than i64, since a bool index matches both)
+method_op(
+    name="__setitem__",
+    arg_types=[list_rprimitive, uint64_rprimitive, object_rprimitive],
+    return_type=bit_rprimitive,
+    c_function_name="CPyList_SetItemUInt64",
     error_kind=ERR_FALSE,
     steals=[False, False, True],
     priority=2,
@@ -304,7 +341,7 @@ binary_op(
     name="+",
     arg_types=[list_rprimitive, list_rprimitive],
     return_type=list_rprimitive,
-    c_function_name="PySequence_Concat",
+    c_function_name="CPySequence_Concat",
     error_kind=ERR_MAGIC,
 )
 
@@ -313,7 +350,7 @@ binary_op(
     name="+=",
     arg_types=[list_rprimitive, object_rprimitive],
     return_type=list_rprimitive,
-    c_function_name="PySequence_InPlaceConcat",
+    c_function_name="CPySequence_InPlaceConcat",
     error_kind=ERR_MAGIC,
 )
 
@@ -363,7 +400,7 @@ sequence_get_item = custom_op(
     arg_types=[object_rprimitive, c_pyssize_t_rprimitive],
     return_type=object_rprimitive,
     c_function_name="PySequence_GetItem",
-    error_kind=ERR_NEVER,
+    error_kind=ERR_MAGIC,
 )
 
 sequence_get_slice = custom_op(

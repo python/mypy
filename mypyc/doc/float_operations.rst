@@ -15,6 +15,7 @@ Construction
 * ``float(x: i64)``
 * ``float(x: i32)``
 * ``float(x: i16)``
+* ``float(x: u16)``
 * ``float(x: u8)``
 * ``float(x: str)``
 * ``float(x: float)`` (no-op)
@@ -26,6 +27,15 @@ Operators
 * Comparisons (``==``, ``!=``, ``<``, etc.)
 * Augmented assignment (``x += y``, etc.)
 
+Attributes
+----------
+
+* ``f.real``
+* ``f.imag``
+
+These are fast both for ``complex`` values and for unions such as
+``int | float | complex``.
+
 Functions
 ---------
 
@@ -33,6 +43,7 @@ Functions
 * ``i64(f)`` (convert to 64-bit signed integer)
 * ``i32(f)`` (convert to 32-bit signed integer)
 * ``i16(f)`` (convert to 16-bit signed integer)
+* ``u16(f)`` (convert to 16-bit unsigned integer)
 * ``u8(f)`` (convert to 8-bit unsigned integer)
 * ``abs(f)``
 * ``math.sin(f)``

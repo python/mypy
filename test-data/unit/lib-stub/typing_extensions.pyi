@@ -1,3 +1,6 @@
+# Do not delete this import. Dependency structure of core modules for fixtures should match
+# the real dependency structure, otherwise things like add_typing_extension_aliases() will break.
+import collections
 import typing
 from typing import Any, Callable, Mapping, Iterable, Iterator, NoReturn as NoReturn, Dict, Tuple, Type, Union
 from typing import TYPE_CHECKING as TYPE_CHECKING
@@ -38,6 +41,10 @@ TypeForm: _SpecialForm
 TypeGuard: _SpecialForm
 TypeIs: _SpecialForm
 Never: _SpecialForm
+
+class Sentinel:
+    def __init__(self, name: str, repr: str | None = None) -> None: ...
+sentinel = Sentinel
 
 TypeVarTuple: _SpecialForm
 Unpack: _SpecialForm

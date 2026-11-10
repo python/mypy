@@ -12,8 +12,8 @@ import copy
 import enum
 import functools
 import importlib
-import importlib.machinery
 import inspect
+import keyword
 import os
 import pkgutil
 import re
@@ -26,25 +26,26 @@ import typing
 import typing_extensions
 import warnings
 from collections import defaultdict
-from collections.abc import Iterator, Set as AbstractSet
+from collections.abc import Iterator
 from contextlib import redirect_stderr, redirect_stdout
 from functools import singledispatch
 from pathlib import Path
-from typing import Any, Final, Generic, TypeVar, Union
-from typing_extensions import get_origin, is_typeddict
+from typing import Any, Final, Generic, TypeVar, Union, get_origin
+from typing_extensions import is_typeddict
 
 import mypy.build
 import mypy.checkexpr
-import mypy.checkmember
 import mypy.erasetype
 import mypy.modulefinder
 import mypy.nodes
 import mypy.state
+import mypy.subtypes
 import mypy.types
 import mypy.version
 from mypy import nodes
 from mypy.config_parser import parse_config_file
 from mypy.evalexpr import UNKNOWN, evaluate_expression
+from mypy.maptype import map_instance_to_supertype
 from mypy.options import Options
 from mypy.util import FancyFormatter, bytes_to_human_readable_repr, is_dunder, plural_s
 
@@ -59,7 +60,7 @@ class Missing:
 MISSING: Final = Missing()
 
 T = TypeVar("T")
-MaybeMissing: typing_extensions.TypeAlias = Union[T, Missing]
+MaybeMissing: typing_extensions.TypeAlias = T | Missing
 
 
 class Unrepresentable:
@@ -144,6 +145,11 @@ class Error:
         """Whether or not the error is related to @disjoint_base."""
         # TODO: This is hacky, use error codes or something more resilient
         return "@disjoint_base" in self.message
+
+    def is_private_type_check_only_related(self) -> bool:
+        """Whether or not the error is related to @type_check_only on private types."""
+        # TODO: This is hacky, use error codes or something more resilient
+        return self.message.endswith('Maybe mark it as "@type_check_only"?')
 
     def get_description(self, concise: bool = False) -> str:
         """Returns a description of the error.
@@ -365,11 +371,7 @@ def verify_mypyfile(
         runtime_all_as_set = None
 
     # Check things in the stub
-    to_check = {
-        m
-        for m, o in stub.names.items()
-        if not o.module_hidden and (not is_probably_private(m) or hasattr(runtime, m))
-    }
+    to_check = {m for m, o in stub.names.items() if not o.module_hidden}
 
     def _belongs_to_runtime(r: types.ModuleType, attr: str) -> bool:
         """Heuristics to determine whether a name originates from another module."""
@@ -423,10 +425,31 @@ def verify_mypyfile(
 
     for entry in sorted(to_check):
         stub_entry = stub.names[entry].node if entry in stub.names else MISSING
+        if entry in stub.names:
+            if xref := stub.names[entry].cross_ref:
+                orig_module = xref.rsplit(".", 1)[0]
+            elif isinstance(stub_entry, nodes.SymbolNode) and (name := stub_entry.fullname):
+                orig_module = name.rsplit(".", 1)[0]
+            else:
+                orig_module = None
+
+            if orig_module and orig_module != stub.fullname and orig_module in _all_stubs:
+                # Skip re-exported names whose defining module will be checked separately.
+                continue
+
         if isinstance(stub_entry, nodes.MypyFile):
             # Don't recursively check exported modules, since that leads to infinite recursion
             continue
         assert stub_entry is not None
+        if (
+            is_probably_private(entry)
+            and not hasattr(runtime, entry)
+            and not isinstance(stub_entry, Missing)
+            and not _is_decoratable(stub_entry)
+        ):
+            # Skip private names that don't exist at runtime and which cannot
+            # be marked with @type_check_only.
+            continue
         try:
             runtime_entry = getattr(runtime, entry, MISSING)
         except Exception:
@@ -434,6 +457,19 @@ def verify_mypyfile(
             # from __getattr__ or similar.
             continue
         yield from verify(stub_entry, runtime_entry, object_path + [entry])
+
+
+def _is_decoratable(stub: nodes.SymbolNode) -> bool:
+    if not isinstance(stub, nodes.TypeInfo):
+        return False
+    if stub.is_newtype:
+        return False
+    if stub.typeddict_type is not None:
+        return all(
+            name.isidentifier() and not keyword.iskeyword(name)
+            for name in stub.typeddict_type.items.keys()
+        )
+    return True
 
 
 def _verify_final(
@@ -627,7 +663,10 @@ def verify_typeinfo(
         return
 
     if isinstance(runtime, Missing):
-        yield Error(object_path, "is not present at runtime", stub, runtime, stub_desc=repr(stub))
+        msg = "is not present at runtime"
+        if is_probably_private(stub.name):
+            msg += '. Maybe mark it as "@type_check_only"?'
+        yield Error(object_path, msg, stub, runtime, stub_desc=repr(stub))
         return
     if not isinstance(runtime, type):
         # Yes, some runtime objects can be not types, no way to tell mypy about that.
@@ -646,7 +685,8 @@ def verify_typeinfo(
     # Filter out non-identifier names, as these are (hopefully always?) whacky/fictional things
     # (like __mypy-replace or __mypy-post_init, etc.) that don't exist at runtime,
     # and exist purely for internal mypy reasons
-    to_check = {name for name in stub.names if name.isidentifier()}
+    existing_stub_names = {name for name in stub.names if name.isidentifier()}
+    to_check = existing_stub_names.copy()
     # Check all public things on the runtime class
     to_check.update(
         m for m in vars(runtime) if not is_probably_private(m) and m not in IGNORABLE_CLASS_DUNDERS
@@ -701,11 +741,15 @@ def verify_typeinfo(
         # Do not error for an object missing from the stub
         # If the runtime object is a types.WrapperDescriptorType object
         # and has a non-special dunder name.
-        # The vast majority of these are false positives.
+        # The vast majority of these are false positives, unless the stub gives us
+        # a reason to expect the method.
         if not (
             isinstance(stub_to_verify, Missing)
             and isinstance(runtime_attr, types.WrapperDescriptorType)
             and is_dunder(mangled_entry, exclude_special=True)
+            and not is_expected_dunder(
+                mangled_entry, stub=stub, existing_stub_names=existing_stub_names
+            )
         ):
             yield from verify(stub_to_verify, runtime_attr, object_path + [entry])
 
@@ -819,6 +863,8 @@ def _verify_arg_default_value(
                 and type(runtime_arg.default) is not object
                 # And ellipsis
                 and runtime_arg.default is not ...
+                # And sentinels
+                and not is_sentinel(runtime_type)
                 and not is_subtype_helper(runtime_type, stub_type)
             ):
                 yield (
@@ -867,6 +913,34 @@ def maybe_strip_cls(name: str, args: list[nodes.Argument]) -> list[nodes.Argumen
         if args[0].variable.name == "cls":
             return args[1:]
     return args
+
+
+def expand_unpacked_kwargs(args: list[nodes.Argument]) -> list[nodes.Argument]:
+    """Replace `**kwargs: Unpack[SomeTypedDict]` with a keyword argument per key."""
+    expanded = []
+    for arg in args:
+        if (
+            arg.kind == nodes.ARG_STAR2
+            and arg.variable.type is not None
+            and isinstance(
+                (typed_dict := mypy.types.get_proper_type(arg.variable.type)),
+                mypy.types.TypedDictType,
+            )
+        ):
+            for key_name, key_type in typed_dict.items.items():
+                optional = key_name not in typed_dict.required_keys
+                expanded.append(
+                    nodes.Argument(
+                        nodes.Var(key_name, key_type),
+                        type_annotation=key_type,
+                        initializer=nodes.EllipsisExpr() if optional else None,
+                        kind=nodes.ARG_NAMED_OPT if optional else nodes.ARG_NAMED,
+                        pos_only=False,
+                    )
+                )
+        else:
+            expanded.append(arg)
+    return expanded
 
 
 class Signature(Generic[T]):
@@ -920,7 +994,7 @@ class Signature(Generic[T]):
     @staticmethod
     def from_funcitem(stub: nodes.FuncItem) -> Signature[nodes.Argument]:
         stub_sig: Signature[nodes.Argument] = Signature()
-        stub_args = maybe_strip_cls(stub.name, stub.arguments)
+        stub_args = expand_unpacked_kwargs(maybe_strip_cls(stub.name, stub.arguments))
         for stub_arg in stub_args:
             if stub_arg.kind.is_positional():
                 stub_sig.pos.append(stub_arg)
@@ -969,7 +1043,7 @@ class Signature(Generic[T]):
         is_arg_pos_only: defaultdict[str, set[bool]] = defaultdict(set)
         for func in map(_resolve_funcitem_from_decorator, stub.items):
             assert func is not None, f"Failed to resolve decorated overload of {stub.fullname!r}"
-            args = maybe_strip_cls(stub.name, func.arguments)
+            args = expand_unpacked_kwargs(maybe_strip_cls(stub.name, func.arguments))
             for index, arg in enumerate(args):
                 if (
                     arg.variable.name.startswith("__")
@@ -985,7 +1059,7 @@ class Signature(Generic[T]):
         all_args: dict[str, list[tuple[nodes.Argument, int]]] = {}
         for func in map(_resolve_funcitem_from_decorator, stub.items):
             assert func is not None, f"Failed to resolve decorated overload of {stub.fullname!r}"
-            args = maybe_strip_cls(stub.name, func.arguments)
+            args = expand_unpacked_kwargs(maybe_strip_cls(stub.name, func.arguments))
             for index, arg in enumerate(args):
                 # For positional-only args, we allow overloads to have different names for the same
                 # argument. To accomplish this, we just make up a fake index-based name.
@@ -1068,7 +1142,6 @@ def _verify_signature(
             and not stub_arg.variable.name.startswith("__")
             and stub_arg.variable.name.strip("_") != "self"
             and stub_arg.variable.name.strip("_") != "cls"
-            and not is_dunder(function_name, exclude_special=True)  # noisy for dunder methods
         ):
             yield (
                 f'stub parameter "{stub_arg.variable.name}" should be positional-only '
@@ -1310,6 +1383,14 @@ def verify_var(
                 stub,
                 runtime,
             )
+    elif stub.final_value is not None and stub.final_value != runtime:
+        yield Error(
+            object_path,
+            "is inconsistent, stub value for Final var differs from runtime value",
+            stub,
+            runtime,
+            stub_desc=repr(stub.final_value),
+        )
 
 
 @verify.register(nodes.OverloadedFuncDef)
@@ -1509,14 +1590,14 @@ def _resolve_funcitem_from_decorator(dec: nodes.OverloadPart) -> nodes.FuncItem 
         ):
             return func
         if decorator.fullname == "builtins.classmethod":
-            if func.arguments[0].variable.name not in ("cls", "mcs", "metacls"):
-                raise StubtestFailure(
-                    f"unexpected class parameter name {func.arguments[0].variable.name!r} "
-                    f"in {dec.fullname}"
-                )
+            if not func.arguments or func.arguments[0].kind not in (nodes.ARG_POS, nodes.ARG_OPT):
+                # Nothing to drop, e.g. `def f(*args)`. inspect.signature of the runtime
+                # classmethod keeps the star argument too, so the two already line up.
+                return func
             # FuncItem is written so that copy.copy() actually works, even when compiled
             ret = copy.copy(func)
-            # Remove the cls argument, since it's not present in inspect.signature of classmethods
+            # Remove the cls argument, since it's not present in inspect.signature of classmethods.
+            # It can be given any name, so don't look at the name to decide.
             ret.arguments = ret.arguments[1:]
             return ret
         # Just give up on any other decorators. After excluding properties, we don't run into
@@ -1527,9 +1608,68 @@ def _resolve_funcitem_from_decorator(dec: nodes.OverloadPart) -> nodes.FuncItem 
     for decorator in dec.original_decorators:
         resulting_func = apply_decorator_to_funcitem(decorator, func)
         if resulting_func is None:
+            # We couldn't figure out how to apply the decorator by transforming nodes, so try to
+            # reconstitute a FuncDef from the resulting type of the decorator
+            # This is worse because e.g. we lose the values of defaults
+            dec_type = mypy.types.get_proper_type(dec.type)
+            callable_type = None
+            if isinstance(dec_type, mypy.types.Instance):
+                callable_type = mypy.subtypes.find_member(
+                    "__call__", dec_type, dec_type, is_operator=True
+                )
+            elif isinstance(dec_type, mypy.types.CallableType):
+                callable_type = dec_type
+
+            callable_type = mypy.types.get_proper_type(callable_type)
+            if isinstance(callable_type, mypy.types.CallableType):
+                return _resolve_funcitem_from_callable_type(dec, callable_type)
             return None
+
         func = resulting_func
     return func
+
+
+def _resolve_funcitem_from_callable_type(
+    dec: nodes.Decorator, typ: mypy.types.CallableType
+) -> nodes.FuncDef | None:
+    if (
+        typ.arg_kinds == [nodes.ARG_STAR, nodes.ARG_STAR2]
+        and (var_arg := typ.var_arg()) is not None
+        and isinstance(mypy.types.get_proper_type(var_arg.typ), mypy.types.AnyType)
+        and (var_kwarg := typ.kw_arg()) is not None
+        and isinstance(mypy.types.get_proper_type(var_kwarg.typ), mypy.types.AnyType)
+    ):
+        # There isn't a FuncDef we can invent corresponding to a Callable[..., T]
+        return None
+
+    args: list[nodes.Argument] = []
+    for i, (arg_type, arg_kind, arg_name) in enumerate(
+        zip(typ.arg_types, typ.arg_kinds, typ.arg_names, strict=True)
+    ):
+        var_name = arg_name if arg_name is not None else f"__arg{i}"
+        var = nodes.Var(var_name, arg_type)
+        pos_only = arg_name is None and arg_kind == nodes.ARG_POS
+        args.append(
+            nodes.Argument(
+                variable=var,
+                type_annotation=arg_type,
+                initializer=None,  # CallableType doesn't store the values of defaults
+                kind=arg_kind,
+                pos_only=pos_only,
+            )
+        )
+
+    if dec.func.is_class:
+        if not args:
+            return None
+        # Munge classmethods, similar to logic in _resolve_funcitem_from_decorator
+        if args[0].variable.name not in ("_cls", "cls", "mcs", "metacls"):
+            return None
+        args.pop(0)
+
+    ret = nodes.FuncDef(name=typ.name or "", arguments=args, body=nodes.Block([]), typ=typ)
+    ret.is_class = dec.func.is_class
+    return ret
 
 
 @verify.register(nodes.Decorator)
@@ -1611,9 +1751,7 @@ def verify_typealias(
         return
     if isinstance(stub_target, mypy.types.UnionType):
         # complain if runtime is not a Union or UnionType
-        if runtime_origin is not Union and (
-            not (sys.version_info >= (3, 10) and isinstance(runtime, types.UnionType))
-        ):
+        if runtime_origin is not Union and not isinstance(runtime, types.UnionType):
             yield Error(object_path, "is not a Union", stub, runtime, stub_desc=str(stub_target))
         # could check Union contents here...
         return
@@ -1652,6 +1790,7 @@ IGNORED_MODULE_DUNDERS: Final = frozenset(
         "__loader__",
         "__spec__",
         "__annotations__",
+        "__conditional_annotations__",  # 3.14+
         "__annotate__",
         "__path__",  # mypy adds __path__ to packages, but C packages don't have it
         "__getattr__",  # resulting behaviour might be typed explicitly
@@ -1726,6 +1865,69 @@ IGNORABLE_CLASS_DUNDERS: Final = frozenset(
 )
 
 
+PAIRED_DUNDERS: Final = (
+    ("__add__", "__radd__"),
+    ("__sub__", "__rsub__"),
+    ("__mul__", "__rmul__"),
+    ("__matmul__", "__rmatmul__"),
+    ("__truediv__", "__rtruediv__"),
+    ("__floordiv__", "__rfloordiv__"),
+    ("__mod__", "__rmod__"),
+    ("__divmod__", "__rdivmod__"),
+    ("__pow__", "__rpow__"),
+    ("__lshift__", "__rlshift__"),
+    ("__rshift__", "__rrshift__"),
+    ("__and__", "__rand__"),
+    ("__xor__", "__rxor__"),
+    ("__or__", "__ror__"),
+    ("__lt__", "__gt__"),
+    ("__le__", "__ge__"),
+    ("__enter__", "__exit__"),
+)
+
+
+def is_expected_dunder(name: str, *, stub: nodes.TypeInfo, existing_stub_names: set[str]) -> bool:
+    """
+    Return `True` if we would reasonably "expect" this dunder to be present in the stub,
+    given the presence of other dunders that are already in the stub.
+
+    For example, if the stub has `__add__`, we would expect it to also have `__radd__`,
+    and vice versa.
+
+    We use this to inform our heuristics regarding whether a diagnostic complaining about
+    a missing dunder method is likely to be a false positive or not. In many cases where
+    a runtime dunder is an instance of `WrapperDesriptorType`, the runtime dunder will
+    not actually be callable at runtime, so it's too noisy to complain about them in
+    general. If we would reasonably *expect* the dunder to be present in the stub, however,
+    it may be worth complaining about the missing dunder even if the dunder at runtime is
+    a `WrapperDescriptorType`.
+    """
+    if any(
+        (name == left and right in existing_stub_names)
+        or (name == right and left in existing_stub_names)
+        for left, right in PAIRED_DUNDERS
+    ):
+        return True
+
+    if name == "__le__" and {"__lt__", "__eq__"}.issubset(existing_stub_names):
+        return True
+    if name == "__ge__" and {"__gt__", "__eq__"}.issubset(existing_stub_names):
+        return True
+
+    if (name in ("__or__", "__ror__") and stub.has_base("typing.Mapping")) or (
+        name in ("__mul__", "__rmul__") and stub.has_base("typing.Sequence")
+    ):
+        return True
+
+    # In-place syntax such as `*=` and `|=` can work with immutable types (for example,
+    # tuples or frozensets), but generally delegates to the non-in-place dunder in
+    # these cases. The in-place dunders themselves are generally only defined for
+    # mutable types.
+    return (name == "__ior__" and stub.has_base("typing.MutableMapping")) or (
+        name == "__imul__" and stub.has_base("typing.MutableSequence")
+    )
+
+
 def is_probably_private(name: str) -> bool:
     return name.startswith("_") and not is_dunder(name)
 
@@ -1747,7 +1949,7 @@ def is_probably_a_function(runtime: Any) -> bool:
 
 
 def is_read_only_property(runtime: object) -> bool:
-    return isinstance(runtime, property) and runtime.fset is None
+    return isinstance(runtime, property) and runtime.fset is None and runtime.fdel is None
 
 
 def safe_inspect_signature(runtime: Any) -> inspect.Signature | None:
@@ -1852,10 +2054,39 @@ def describe_runtime_callable(signature: inspect.Signature, *, is_async: bool) -
     return f'{"async " if is_async else ""}def {signature}'
 
 
+class _TypeCheckOnlyBaseMapper(mypy.types.TypeTranslator):
+    """Rewrites @type_check_only instances to the nearest runtime-visible base class."""
+
+    def visit_instance(self, t: mypy.types.Instance, /) -> mypy.types.Type:
+        instance = mypy.types.get_proper_type(super().visit_instance(t))
+        assert isinstance(instance, mypy.types.Instance)
+
+        if instance.type.is_type_check_only:
+            # find the nearest non-@type_check_only base class
+            for base_info in instance.type.mro[1:]:
+                if not base_info.is_type_check_only:
+                    return map_instance_to_supertype(instance, base_info)
+
+            msg = f"all base classes of {instance.type.fullname!r} are @type_check_only"
+            assert False, msg
+
+        return instance
+
+    def visit_type_alias_type(self, t: mypy.types.TypeAliasType, /) -> mypy.types.Type:
+        return t
+
+
+_TYPE_CHECK_ONLY_BASE_MAPPER = _TypeCheckOnlyBaseMapper()
+
+
+def _relax_type_check_only_type(typ: mypy.types.ProperType) -> mypy.types.ProperType:
+    return mypy.types.get_proper_type(typ.accept(_TYPE_CHECK_ONLY_BASE_MAPPER))
+
+
 def is_subtype_helper(left: mypy.types.Type, right: mypy.types.Type) -> bool:
     """Checks whether ``left`` is a subtype of ``right``."""
-    left = mypy.types.get_proper_type(left)
-    right = mypy.types.get_proper_type(right)
+    left = _relax_type_check_only_type(mypy.types.get_proper_type(left))
+    right = _relax_type_check_only_type(mypy.types.get_proper_type(right))
     if (
         isinstance(left, mypy.types.LiteralType)
         and isinstance(left.value, int)
@@ -1873,6 +2104,19 @@ def is_subtype_helper(left: mypy.types.Type, right: mypy.types.Type) -> bool:
 
     with mypy.state.state.strict_optional_set(True):
         return mypy.subtypes.is_subtype(left, right)
+
+
+def is_sentinel(runtime: mypy.types.Type) -> bool:
+    """Checks whether ``runtime`` is the type of a ``sentinel()`` marker object."""
+    runtime = mypy.types.get_proper_type(runtime)
+    return isinstance(runtime, mypy.types.Instance) and runtime.type.fullname in (
+        "builtins.sentinel",
+        "typing_extensions.sentinel",
+        # typing_extensions 4.14.0-4.15.x defined the class as `Sentinel`, with
+        # no lowercase alias; the rename (and `Sentinel = sentinel` alias)
+        # landed in 4.16.0.
+        "typing_extensions.Sentinel",
+    )
 
 
 def get_mypy_node_for_name(module: str, type_name: str) -> mypy.nodes.SymbolNode | None:
@@ -1962,20 +2206,11 @@ def get_mypy_type_of_runtime_value(
                 skip_type_object_type = True
 
     if isinstance(runtime, type) and not skip_type_object_type:
-
-        def _named_type(name: str) -> mypy.types.Instance:
-            parts = name.rsplit(".", maxsplit=1)
-            node = get_mypy_node_for_name(parts[0], parts[1])
-            assert isinstance(node, nodes.TypeInfo)
-            any_type = mypy.types.AnyType(mypy.types.TypeOfAny.special_form)
-            return mypy.types.Instance(node, [any_type] * len(node.defn.type_vars))
-
         # Try and look up a stub for the runtime object itself
         # The logic here is similar to ExpressionChecker.analyze_ref_expr
         type_info = get_mypy_node_for_name(runtime.__module__, runtime.__name__)
         if isinstance(type_info, nodes.TypeInfo):
-            result: mypy.types.Type | None = None
-            result = mypy.typeops.type_object_type(type_info, _named_type)
+            result = mypy.typeops.type_object_type(type_info)
             if mypy.checkexpr.is_type_type_context(type_context):
                 # This is the type in a type[] expression, so substitute type
                 # variables with Any.
@@ -1999,6 +2234,10 @@ def get_mypy_type_of_runtime_value(
         return mypy.types.TupleType(items, fallback)
 
     fallback = mypy.types.Instance(type_info, [anytype() for _ in type_info.type_vars])
+    if type(runtime) != runtime.__class__:
+        # Since `__class__` is redefined for an instance, we can't trust
+        # its `isinstance` checks, it can be dynamic. See #20919
+        return fallback
 
     value: bool | int | str
     if isinstance(runtime, enum.Enum) and isinstance(runtime.name, str):
@@ -2123,30 +2362,8 @@ def get_typeshed_stdlib_modules(
 
 def get_importable_stdlib_modules() -> set[str]:
     """Return all importable stdlib modules at runtime."""
-    all_stdlib_modules: AbstractSet[str]
-    if sys.version_info >= (3, 10):
-        all_stdlib_modules = sys.stdlib_module_names
-    else:
-        all_stdlib_modules = set(sys.builtin_module_names)
-        modules_by_finder: defaultdict[importlib.machinery.FileFinder, set[str]] = defaultdict(set)
-        for m in pkgutil.iter_modules():
-            if isinstance(m.module_finder, importlib.machinery.FileFinder):
-                modules_by_finder[m.module_finder].add(m.name)
-        for finder, module_group in modules_by_finder.items():
-            if (
-                "site-packages" not in Path(finder.path).parts
-                # if "_queue" is present, it's most likely the module finder
-                # for stdlib extension modules;
-                # if "queue" is present, it's most likely the module finder
-                # for pure-Python stdlib modules.
-                # In either case, we'll want to add all the modules that the finder has to offer us.
-                # This is a bit hacky, but seems to work well in a cross-platform way.
-                and {"_queue", "queue"} & module_group
-            ):
-                all_stdlib_modules.update(module_group)
-
     importable_stdlib_modules: set[str] = set()
-    for module_name in all_stdlib_modules:
+    for module_name in sys.stdlib_module_names:
         if module_name in ANNOYING_STDLIB_MODULES:
             continue
 
@@ -2218,6 +2435,7 @@ class _Arguments:
     ignore_missing_stub: bool
     ignore_positional_only: bool
     ignore_disjoint_bases: bool
+    strict_type_check_only: bool
     allowlist: list[str]
     generate_allowlist: bool
     ignore_unused_allowlist: bool
@@ -2272,6 +2490,7 @@ def test_stubs(args: _Arguments, use_builtins_fixtures: bool = False) -> int:
     options.use_builtins_fixtures = use_builtins_fixtures
     options.show_traceback = args.show_traceback
     options.pdb = args.pdb
+    options.pos_only_special_methods = False
 
     if options.config_file:
 
@@ -2312,6 +2531,8 @@ def test_stubs(args: _Arguments, use_builtins_fixtures: bool = False) -> int:
             if args.ignore_positional_only and error.is_positional_only_related():
                 continue
             if args.ignore_disjoint_bases and error.is_disjoint_base_related():
+                continue
+            if not args.strict_type_check_only and error.is_private_type_check_only_related():
                 continue
             if error.object_desc in allowlist:
                 allowlist[error.object_desc] = True
@@ -2408,6 +2629,11 @@ def parse_options(args: list[str]) -> _Arguments:
         "--ignore-disjoint-bases",
         action="store_true",
         help="Disable checks for PEP 800 @disjoint_base classes",
+    )
+    parser.add_argument(
+        "--strict-type-check-only",
+        action="store_true",
+        help="Require @type_check_only on private types that are not present at runtime",
     )
     parser.add_argument(
         "--allowlist",

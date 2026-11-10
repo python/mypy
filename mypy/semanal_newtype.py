@@ -8,6 +8,7 @@ from __future__ import annotations
 from mypy import errorcodes as codes
 from mypy.errorcodes import ErrorCode
 from mypy.exprtotype import TypeTranslationError, expr_to_unanalyzed_type
+from mypy.message_registry import CANNOT_DECLARE_TYPE_OF_SPECIAL_FORM
 from mypy.messages import MessageBuilder, format_type
 from mypy.nodes import (
     ARG_POS,
@@ -67,9 +68,6 @@ class NewTypeAnalyzer:
         name = var_name
         # OK, now we know this is a NewType. But the base type may be not ready yet,
         # add placeholder as we do for ClassDef.
-
-        if self.api.is_func_scope():
-            name += "@" + str(s.line)
         fullname = self.api.qualified_name(name)
 
         if not call.analyzed or isinstance(call.analyzed, NewTypeExpr) and not call.analyzed.info:
@@ -134,8 +132,8 @@ class NewTypeAnalyzer:
         else:
             call.analyzed.info.bases = newtype_class_info.bases
         self.api.add_symbol(var_name, call.analyzed.info, s)
-        if self.api.is_func_scope():
-            self.api.add_symbol_skip_local(name, call.analyzed.info)
+        if self.api.is_nested_within_func_scope():
+            self.api.add_global_symbol(var_name, s, call.analyzed.info)
         newtype_class_info.line = s.line
         return True
 
@@ -152,7 +150,7 @@ class NewTypeAnalyzer:
             name = s.lvalues[0].name
 
             if s.type:
-                self.fail("Cannot declare the type of a NewType declaration", s)
+                self.fail(CANNOT_DECLARE_TYPE_OF_SPECIAL_FORM.format("NewType"), s)
 
             names = self.api.current_symbol_table()
             existing = names.get(name)
@@ -258,7 +256,9 @@ class NewTypeAnalyzer:
             previous_sym = info.names["__init__"].node
             assert isinstance(previous_sym, FuncDef)
             updated = old_type != previous_sym.arguments[1].variable.type
-        info.names["__init__"] = SymbolTableNode(MDEF, init_func)
+        sym = SymbolTableNode(MDEF, init_func)
+        sym.plugin_generated = True
+        info.names["__init__"] = sym
 
         if has_placeholder(old_type):
             self.api.process_placeholder(None, "NewType base", info, force_progress=updated)

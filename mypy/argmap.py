@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
-from typing import TYPE_CHECKING, Callable
+from collections.abc import Callable, Sequence
+from typing import TYPE_CHECKING
 
 from mypy import nodes
 from mypy.maptype import map_instance_to_supertype
@@ -36,8 +36,8 @@ def map_actuals_to_formals(
     The result contains a list of caller argument indexes mapping to each
     callee argument index, indexed by callee index.
 
-    The caller_arg_type argument should evaluate to the type of the actual
-    argument type with the given index.
+    The actual_arg_type argument should evaluate to the type of the actual
+    argument with the given index.
     """
     nformals = len(formal_kinds)
     formal_to_actual: list[list[int]] = [[] for i in range(nformals)]
@@ -233,7 +233,7 @@ class ArgTypeExpander:
                     item = fallback.args[0]
                 return item
             elif isinstance(actual_type, ParamSpecType):
-                # ParamSpec is valid in *args but it can't be unpacked.
+                # ParamSpec is valid in *args, but it can't be unpacked.
                 return actual_type
             else:
                 return AnyType(TypeOfAny.from_error)
@@ -260,7 +260,7 @@ class ArgTypeExpander:
                     1
                 ]
             elif isinstance(actual_type, ParamSpecType):
-                # ParamSpec is valid in **kwargs but it can't be unpacked.
+                # ParamSpec is valid in **kwargs, but it can't be unpacked.
                 return actual_type
             else:
                 return AnyType(TypeOfAny.from_error)

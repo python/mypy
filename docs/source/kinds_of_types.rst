@@ -315,9 +315,8 @@ such as ``int | None``. This is called an *optional type*:
            return None  # Error: None not compatible with int
        return len(s)
 
-To support Python 3.9 and earlier, you can use the :py:data:`~typing.Optional`
-type modifier instead, such as ``Optional[int]`` (``Optional[X]`` is
-the preferred shorthand for ``Union[X, None]``):
+You can also use the :py:data:`~typing.Optional` type modifier, such as
+``Optional[int]`` (``Optional[X]`` is the shorthand for ``Union[X, None]``):
 
 .. code-block:: python
 
@@ -444,7 +443,7 @@ case you should add an explicit ``... | None`` annotation.
    The Python interpreter internally uses the name ``NoneType`` for
    the type of ``None``, but ``None`` is always used in type
    annotations. The latter is shorter and reads better. (``NoneType``
-   is available as :py:data:`types.NoneType` on Python 3.10+, but is
+   is available as :py:class:`types.NoneType` on Python 3.10+, but is
    not exposed at all on earlier versions of Python.)
 
 .. note::
@@ -515,12 +514,11 @@ distinguish them from implicit type aliases:
   it can't be used in contexts which require a class object. For example, it's
   not valid as a base class and it can't be used to construct instances.
 
-There is also use an older syntax for defining explicit type aliases, which was
-introduced in Python 3.10 (:pep:`613`):
+There is also use an older syntax for defining explicit type aliases (:pep:`613`):
 
 .. code-block:: python
 
-   from typing import TypeAlias  # "from typing_extensions" in Python 3.9 and earlier
+   from typing import TypeAlias
 
    AliasType: TypeAlias = list[dict[tuple[int, str], set[int]]] | tuple[str, list[str]]
 
@@ -690,7 +688,7 @@ Generators
 **********
 
 A basic generator that only yields values can be succinctly annotated as having a return
-type of either :py:class:`Iterator[YieldType] <typing.Iterator>` or :py:class:`Iterable[YieldType] <typing.Iterable>`. For example:
+type of either :py:class:`Iterator[YieldType] <collections.abc.Iterator>` or :py:class:`Iterable[YieldType] <collections.abc.Iterable>`. For example:
 
 .. code-block:: python
 
@@ -701,8 +699,8 @@ type of either :py:class:`Iterator[YieldType] <typing.Iterator>` or :py:class:`I
 A good rule of thumb is to annotate functions with the most specific return
 type possible. However, you should also take care to avoid leaking implementation
 details into a function's public API. In keeping with these two principles, prefer
-:py:class:`Iterator[YieldType] <typing.Iterator>` over
-:py:class:`Iterable[YieldType] <typing.Iterable>` as the return-type annotation for a
+:py:class:`Iterator[YieldType] <collections.abc.Iterator>` over
+:py:class:`Iterable[YieldType] <collections.abc.Iterable>` as the return-type annotation for a
 generator function, as it lets mypy know that users are able to call :py:func:`next` on
 the object returned by the function. Nonetheless, bear in mind that ``Iterable`` may
 sometimes be the better option, if you consider it an implementation detail that
@@ -710,7 +708,7 @@ sometimes be the better option, if you consider it an implementation detail that
 
 If you want your generator to accept values via the :py:meth:`~generator.send` method or return
 a value, on the other hand, you should use the
-:py:class:`Generator[YieldType, SendType, ReturnType] <typing.Generator>` generic type instead of
+:py:class:`Generator[YieldType, SendType, ReturnType] <collections.abc.Generator>` generic type instead of
 either ``Iterator`` or ``Iterable``. For example:
 
 .. code-block:: python

@@ -13,11 +13,10 @@ import re
 import subprocess
 import sys
 from enum import Enum, unique
-from typing import Final, Optional, Union
-from typing_extensions import TypeAlias as _TypeAlias
+from typing import Final, TypeAlias as _TypeAlias
 
-from pathspec import PathSpec
-from pathspec.patterns.gitwildmatch import GitWildMatchPatternError
+from pathspec import GitIgnoreSpec
+from pathspec.patterns.gitignore import GitIgnorePatternError
 
 from mypy import pyinfo
 from mypy.errors import CompileError
@@ -60,7 +59,7 @@ OnePackageDir = tuple[str, bool]
 PackageDirs = list[OnePackageDir]
 
 # Minimum and maximum Python versions for modules in stdlib as (major, minor)
-StdlibVersions: _TypeAlias = dict[str, tuple[tuple[int, int], Optional[tuple[int, int]]]]
+StdlibVersions: _TypeAlias = dict[str, tuple[tuple[int, int], tuple[int, int] | None]]
 
 PYTHON_EXTENSIONS: Final = [".pyi", ".py"]
 
@@ -118,7 +117,7 @@ class ModuleNotFoundReason(Enum):
 
 # If we found the module, returns the path to the module as a str.
 # Otherwise, returns the reason why the module wasn't found.
-ModuleSearchResult = Union[str, ModuleNotFoundReason]
+ModuleSearchResult = str | ModuleNotFoundReason
 
 
 class BuildSource:
@@ -472,7 +471,7 @@ class FindModuleCache:
                 if fscache.isdir(path):
                     if fscache.isfile(stub_typed_file):
                         # Stub packages can have a py.typed file, which must include
-                        # 'partial\n' to make the package partial
+                        # 'partial\n' to make the package partial.
                         # Partial here means that mypy should look at the runtime
                         # package if installed.
                         if fscache.read(stub_typed_file).decode().strip() == "partial":
@@ -725,10 +724,18 @@ def matches_gitignore(subpath: str, fscache: FileSystemCache, verbose: bool) -> 
 
 
 @functools.lru_cache
-def find_gitignores(dir: str) -> list[tuple[str, PathSpec]]:
+def find_gitignores(dir: str) -> list[tuple[str, GitIgnoreSpec]]:
     parent_dir = os.path.dirname(dir)
-    if parent_dir == dir:
+    if parent_dir == dir or os.path.exists(os.path.join(dir, ".git")):
         parent_gitignores = []
+        git_info_exclude = os.path.join(dir, ".git", "info", "exclude")
+        if os.path.isfile(git_info_exclude):
+            with open(git_info_exclude) as f:
+                exclude_lines = f.readlines()
+            try:
+                parent_gitignores = [(dir, GitIgnoreSpec.from_lines("gitignore", exclude_lines))]
+            except GitIgnorePatternError:
+                print(f"error: could not parse {git_info_exclude}", file=sys.stderr)
     else:
         parent_gitignores = find_gitignores(parent_dir)
 
@@ -737,8 +744,8 @@ def find_gitignores(dir: str) -> list[tuple[str, PathSpec]]:
         with open(gitignore) as f:
             lines = f.readlines()
         try:
-            return parent_gitignores + [(dir, PathSpec.from_lines("gitwildmatch", lines))]
-        except GitWildMatchPatternError:
+            return parent_gitignores + [(dir, GitIgnoreSpec.from_lines("gitignore", lines))]
+        except GitIgnorePatternError:
             print(f"error: could not parse {gitignore}", file=sys.stderr)
             return parent_gitignores
     return parent_gitignores
@@ -998,6 +1005,4 @@ def parse_version(version: str) -> tuple[int, int]:
 
 def typeshed_py_version(options: Options) -> tuple[int, int]:
     """Return Python version used for checking whether module supports typeshed."""
-    # Typeshed no longer covers Python 3.x versions before 3.9, so 3.9 is
-    # the earliest we can support.
-    return max(options.python_version, (3, 9))
+    return max(options.python_version, (3, 10))

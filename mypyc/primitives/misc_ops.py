@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+from mypyc.ir.deps import LIBRT_BASE64
 from mypyc.ir.ops import ERR_FALSE, ERR_MAGIC, ERR_MAGIC_OVERLAPPING, ERR_NEVER
 from mypyc.ir.rtypes import (
     KNOWN_NATIVE_TYPES,
+    RUnion,
     bit_rprimitive,
     bool_rprimitive,
     bytes_rprimitive,
@@ -29,6 +31,7 @@ from mypyc.primitives.registry import (
     custom_primitive_op,
     function_op,
     load_address_op,
+    load_global_op,
     method_op,
 )
 
@@ -37,6 +40,15 @@ load_address_op(name="builtins.bool", type=object_rprimitive, src="PyBool_Type")
 
 # Get the 'range' type object.
 load_address_op(name="builtins.range", type=object_rprimitive, src="PyRange_Type")
+
+# Get the 'complex' type object.
+load_address_op(name="builtins.complex", type=object_rprimitive, src="PyComplex_Type")
+
+# Get the 'slice' type object.
+load_address_op(name="builtins.slice", type=object_rprimitive, src="PySlice_Type")
+
+# Get the 'memoryview' type object.
+load_address_op(name="builtins.memoryview", type=object_rprimitive, src="PyMemoryView_Type")
 
 # Get the boxed Python 'None' object
 none_object_op = load_address_op(name="Py_None", type=object_rprimitive, src="_Py_NoneStruct")
@@ -50,7 +62,7 @@ not_implemented_op = load_address_op(
 )
 
 # Get the boxed StopAsyncIteration object
-stop_async_iteration_op = load_address_op(
+stop_async_iteration_op = load_global_op(
     name="builtins.StopAsyncIteration", type=object_rprimitive, src="PyExc_StopAsyncIteration"
 )
 
@@ -71,13 +83,15 @@ coro_op = custom_op(
     error_kind=ERR_MAGIC,
 )
 
-# Do obj.send(value), or a next(obj) if second arg is None.
-# (This behavior is to match the PEP 380 spec for yield from.)
-# Like next_raw_op, don't swallow StopIteration,
-# but also don't propagate an error.
-# Can return NULL: see next_op.
+# Do obj.send(value), or a next(obj) if second arg is None, using the
+# PyIter_Send C API. (This behavior is to match the PEP 380 spec for yield from.)
+#
+# Returns the yielded value, or NULL if the iterator completed or raised. On
+# normal completion the return value is stored via the third (PyObject **)
+# argument instead of raising StopIteration. The caller must initialize the
+# pointed-to value to NULL, since it's only assigned on normal completion.
 send_op = custom_op(
-    arg_types=[object_rprimitive, object_rprimitive],
+    arg_types=[object_rprimitive, object_rprimitive, object_pointer_rprimitive],
     return_type=object_rprimitive,
     c_function_name="CPyIter_Send",
     error_kind=ERR_NEVER,
@@ -117,6 +131,14 @@ check_stop_op = custom_op(
     error_kind=ERR_MAGIC,
 )
 
+# Resolve __mro_entries__ in base class expressions before selecting the metaclass.
+py_resolve_bases_op = custom_op(
+    arg_types=[object_rprimitive],
+    return_type=object_rprimitive,
+    c_function_name="CPyType_ResolveBases",
+    error_kind=ERR_MAGIC,
+)
+
 # Determine the most derived metaclass and check for metaclass conflicts.
 # Arguments are (metaclass, bases).
 py_calc_meta_op = custom_op(
@@ -127,12 +149,56 @@ py_calc_meta_op = custom_op(
     is_borrowed=True,
 )
 
-# Import a module (plain)
+# Import a module using the Python import system.
 import_op = custom_op(
     arg_types=[str_rprimitive],
     return_type=object_rprimitive,
     c_function_name="PyImport_Import",
     error_kind=ERR_MAGIC,
+)
+
+# Import a native same-group module directly via C-level init/exec functions.
+native_import_op = custom_op(
+    # (module name, init-only function, exec function, internal module static,
+    #  import cache, import state, compilation-unit lock, shared lib __file__,
+    #  ext suffix, is_package)
+    arg_types=[
+        str_rprimitive,
+        c_pointer_rprimitive,
+        c_pointer_rprimitive,
+        object_pointer_rprimitive,
+        c_pointer_rprimitive,
+        c_pointer_rprimitive,
+        c_pointer_rprimitive,
+        object_rprimitive,
+        str_rprimitive,
+        c_pyssize_t_rprimitive,
+    ],
+    return_type=object_rprimitive,
+    c_function_name="CPyImport_ImportNative",
+    error_kind=ERR_MAGIC,
+)
+
+native_import_is_initialized_op = custom_op(
+    arg_types=[c_pointer_rprimitive],
+    return_type=bit_rprimitive,
+    c_function_name="CPyImport_IsInitialized",
+    error_kind=ERR_NEVER,
+)
+
+import_cache_get_for_import_op = custom_op(
+    arg_types=[c_pointer_rprimitive, str_rprimitive],
+    return_type=object_rprimitive,
+    c_function_name="CPyImport_GetModuleCacheForImport",
+    error_kind=ERR_MAGIC,
+    is_borrowed=True,
+)
+
+import_cache_replace_for_import_op = custom_op(
+    arg_types=[c_pointer_rprimitive, object_rprimitive],
+    return_type=void_rtype,
+    c_function_name="CPyImport_ReplaceModuleCacheForImport",
+    error_kind=ERR_NEVER,
 )
 
 # Table-driven import op.
@@ -155,6 +221,14 @@ import_from_many_op = custom_op(
     arg_types=[object_rprimitive, object_rprimitive, object_rprimitive, object_rprimitive],
     return_type=object_rprimitive,
     c_function_name="CPyImport_ImportFromMany",
+    error_kind=ERR_MAGIC,
+)
+
+# Get attributes from an already-imported native module object and store them in globals.
+get_native_attrs_op = custom_op(
+    arg_types=[object_rprimitive, object_rprimitive, object_rprimitive, object_rprimitive],
+    return_type=object_rprimitive,
+    c_function_name="CPyImport_GetNativeAttrs",
     error_kind=ERR_MAGIC,
 )
 
@@ -207,6 +281,51 @@ isinstance_bool = function_op(
     error_kind=ERR_NEVER,
 )
 
+# isinstance(obj, complex)
+isinstance_complex = custom_primitive_op(
+    name="builtins.isinstance",
+    arg_types=[object_rprimitive],
+    return_type=bit_rprimitive,
+    c_function_name="PyComplex_Check",
+    error_kind=ERR_NEVER,
+)
+
+# isinstance(obj, type)
+isinstance_type = custom_primitive_op(
+    name="builtins.isinstance",
+    arg_types=[object_rprimitive],
+    return_type=bit_rprimitive,
+    c_function_name="PyType_Check",
+    error_kind=ERR_NEVER,
+)
+
+# isinstance(obj, range)
+isinstance_range = custom_primitive_op(
+    name="builtins.isinstance",
+    arg_types=[object_rprimitive],
+    return_type=bit_rprimitive,
+    c_function_name="PyRange_Check",
+    error_kind=ERR_NEVER,
+)
+
+# isinstance(obj, slice)
+isinstance_slice = custom_primitive_op(
+    name="builtins.isinstance",
+    arg_types=[object_rprimitive],
+    return_type=bit_rprimitive,
+    c_function_name="PySlice_Check",
+    error_kind=ERR_NEVER,
+)
+
+# isinstance(obj, memoryview)
+isinstance_memoryview = custom_primitive_op(
+    name="builtins.isinstance",
+    arg_types=[object_rprimitive],
+    return_type=bit_rprimitive,
+    c_function_name="PyMemoryView_Check",
+    error_kind=ERR_NEVER,
+)
+
 # slice(start, stop, step)
 new_slice_op = function_op(
     name="builtins.slice",
@@ -235,6 +354,15 @@ pytype_from_template_op = custom_op(
     return_type=object_rprimitive,
     c_function_name="CPyType_FromTemplate",
     error_kind=ERR_MAGIC,
+)
+
+# Call __init_subclass__ on a type. Separated from CPyType_FromTemplate
+# so that class attributes can be set before __init_subclass__ is called.
+py_init_subclass_op = custom_op(
+    arg_types=[object_rprimitive],
+    return_type=bool_rprimitive,
+    c_function_name="CPy_InitSubclass",
+    error_kind=ERR_FALSE,
 )
 
 # Create a dataclass from an extension class. See
@@ -467,11 +595,109 @@ function_op(
 )
 
 function_op(
+    name="librt.internal.extract_symbol",
+    arg_types=[object_rprimitive],
+    return_type=bytes_rprimitive,
+    c_function_name="extract_symbol_internal",
+    error_kind=ERR_MAGIC,
+)
+
+function_op(
     name="librt.base64.b64encode",
     arg_types=[bytes_rprimitive],
     return_type=bytes_rprimitive,
     c_function_name="LibRTBase64_b64encode_internal",
     error_kind=ERR_MAGIC,
+    extra_int_constants=[(0, bool_rprimitive)],
     experimental=True,
-    capsule="librt.base64",
+    dependencies=[LIBRT_BASE64],
+)
+
+function_op(
+    name="librt.base64.urlsafe_b64encode",
+    arg_types=[bytes_rprimitive],
+    return_type=bytes_rprimitive,
+    c_function_name="LibRTBase64_b64encode_internal",
+    error_kind=ERR_MAGIC,
+    extra_int_constants=[(1, bool_rprimitive)],
+    experimental=True,
+    dependencies=[LIBRT_BASE64],
+)
+
+function_op(
+    name="librt.base64.b64decode",
+    arg_types=[RUnion([bytes_rprimitive, str_rprimitive])],
+    return_type=bytes_rprimitive,
+    c_function_name="LibRTBase64_b64decode_internal",
+    error_kind=ERR_MAGIC,
+    extra_int_constants=[(0, bool_rprimitive)],
+    experimental=True,
+    dependencies=[LIBRT_BASE64],
+)
+
+function_op(
+    name="librt.base64.urlsafe_b64decode",
+    arg_types=[RUnion([bytes_rprimitive, str_rprimitive])],
+    return_type=bytes_rprimitive,
+    c_function_name="LibRTBase64_b64decode_internal",
+    error_kind=ERR_MAGIC,
+    extra_int_constants=[(1, bool_rprimitive)],
+    experimental=True,
+    dependencies=[LIBRT_BASE64],
+)
+
+cpyfunction_get_name = function_op(
+    name="CPyFunction_get_name",
+    arg_types=[object_rprimitive, c_pointer_rprimitive],
+    return_type=object_rprimitive,
+    c_function_name="CPyFunction_get_name",
+    error_kind=ERR_MAGIC,
+)
+
+cpyfunction_set_name = function_op(
+    name="CPyFunction_set_name",
+    arg_types=[object_rprimitive, object_rprimitive, c_pointer_rprimitive],
+    return_type=c_int_rprimitive,
+    c_function_name="CPyFunction_set_name",
+    error_kind=ERR_NEG_INT,
+)
+
+cpyfunction_get_code = function_op(
+    name="CPyFunction_get_code",
+    arg_types=[object_rprimitive, c_pointer_rprimitive],
+    return_type=object_rprimitive,
+    c_function_name="CPyFunction_get_code",
+    error_kind=ERR_MAGIC,
+)
+
+cpyfunction_get_defaults = function_op(
+    name="CPyFunction_get_defaults",
+    arg_types=[object_rprimitive, c_pointer_rprimitive],
+    return_type=object_rprimitive,
+    c_function_name="CPyFunction_get_defaults",
+    error_kind=ERR_MAGIC,
+)
+
+cpyfunction_get_kwdefaults = function_op(
+    name="CPyFunction_get_kwdefaults",
+    arg_types=[object_rprimitive, c_pointer_rprimitive],
+    return_type=object_rprimitive,
+    c_function_name="CPyFunction_get_kwdefaults",
+    error_kind=ERR_MAGIC,
+)
+
+cpyfunction_get_annotations = function_op(
+    name="CPyFunction_get_annotations",
+    arg_types=[object_rprimitive, c_pointer_rprimitive],
+    return_type=object_rprimitive,
+    c_function_name="CPyFunction_get_annotations",
+    error_kind=ERR_MAGIC,
+)
+
+cpyfunction_set_annotations = function_op(
+    name="CPyFunction_set_annotations",
+    arg_types=[object_rprimitive, object_rprimitive, c_pointer_rprimitive],
+    return_type=c_int_rprimitive,
+    c_function_name="CPyFunction_set_annotations",
+    error_kind=ERR_NEG_INT,
 )

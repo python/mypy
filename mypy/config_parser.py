@@ -13,16 +13,17 @@ if sys.version_info >= (3, 11):
 else:
     import tomli as tomllib
 
-from collections.abc import Mapping, MutableMapping, Sequence
-from typing import Any, Callable, Final, TextIO, Union
-from typing_extensions import Never, TypeAlias
+from collections.abc import Callable, Mapping, MutableMapping, Sequence
+from typing import Any, Final, TextIO, TypeAlias
+from typing_extensions import Never
 
 from mypy import defaults
 from mypy.options import PER_MODULE_OPTIONS, Options
+from mypy.util import get_available_threads
 
-_CONFIG_VALUE_TYPES: TypeAlias = Union[
-    str, bool, int, float, dict[str, str], list[str], tuple[int, int]
-]
+_CONFIG_VALUE_TYPES: TypeAlias = (
+    str | bool | int | float | dict[str, str] | list[str] | tuple[int, int]
+)
 _INI_PARSER_CALLABLE: TypeAlias = Callable[[Any], _CONFIG_VALUE_TYPES]
 
 
@@ -56,6 +57,19 @@ def parse_version(v: str | float) -> tuple[int, int]:
             f"Python major version '{major}' out of range (must be 3)"
         )
     return major, minor
+
+
+def parse_num_workers(v: str | int) -> int:
+    value = v.strip() if isinstance(v, str) else v
+    if value == "auto":
+        return min(defaults.MAX_AUTO_WORKERS, get_available_threads())
+
+    try:
+        return int(value)
+    except (TypeError, ValueError) as err:
+        raise argparse.ArgumentTypeError(
+            f"Invalid number of workers '{v}' (expected an integer or 'auto')"
+        ) from err
 
 
 def try_split(v: str | Sequence[str] | object, split_regex: str = ",") -> list[str]:
@@ -207,6 +221,7 @@ ini_config_types: Final[dict[str, _INI_PARSER_CALLABLE]] = {
     "exclude": lambda s: [s.strip()],
     "packages": try_split,
     "modules": try_split,
+    "num_workers": parse_num_workers,
 }
 
 # Reuse the ini_config_types and overwrite the diff
@@ -504,7 +519,12 @@ def parse_section(
 
     for key in section:
         invert = False
+        # Here we use `key` for original config section key, and `options_key` for
+        # the corresponding Options attribute.
         options_key = key
+        # Match aliasing for deprecated config option name.
+        if options_key == "allow_redefinition_new":
+            options_key = "allow_redefinition"
         if key in config_types:
             ct = config_types[key]
         elif key in invalid_options:
@@ -515,7 +535,7 @@ def parse_section(
             )
             continue
         else:
-            dv = getattr(template, key, None)
+            dv = getattr(template, options_key, None)
             if dv is None:
                 if key.endswith("_report"):
                     report_type = key[:-7].replace("_", "-")
@@ -526,17 +546,17 @@ def parse_section(
                     continue
                 if key.startswith("x_"):
                     pass  # Don't complain about `x_blah` flags
-                elif key.startswith("no_") and hasattr(template, key[3:]):
-                    options_key = key[3:]
+                elif key.startswith("no_") and hasattr(template, options_key[3:]):
+                    options_key = options_key[3:]
                     invert = True
-                elif key.startswith("allow") and hasattr(template, "dis" + key):
-                    options_key = "dis" + key
+                elif key.startswith("allow") and hasattr(template, "dis" + options_key):
+                    options_key = "dis" + options_key
                     invert = True
-                elif key.startswith("disallow") and hasattr(template, key[3:]):
-                    options_key = key[3:]
+                elif key.startswith("disallow") and hasattr(template, options_key[3:]):
+                    options_key = options_key[3:]
                     invert = True
-                elif key.startswith("show_") and hasattr(template, "hide_" + key[5:]):
-                    options_key = "hide_" + key[5:]
+                elif key.startswith("show_") and hasattr(template, "hide_" + options_key[5:]):
+                    options_key = "hide_" + options_key[5:]
                     invert = True
                 elif key == "strict":
                     pass  # Special handling below
@@ -546,7 +566,7 @@ def parse_section(
                     dv = getattr(template, options_key, None)
                 else:
                     continue
-            ct = type(dv)
+            ct = type(dv) if dv is not None else None
         v: Any = None
         try:
             if ct is bool:

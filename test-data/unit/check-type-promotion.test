@@ -22,13 +22,73 @@ f(1)
 [builtins fixtures/primitives.pyi]
 
 [case testPromoteBytearrayToByte]
+# flags: --no-strict-bytes
 def f(x: bytes) -> None: pass
 f(bytearray(b''))
 [builtins fixtures/primitives.pyi]
 
 [case testPromoteMemoryviewToBytes]
+# flags: --no-strict-bytes
 def f(x: bytes) -> None: pass
 f(memoryview(b''))
+[builtins fixtures/primitives.pyi]
+
+[case testDisableBytearrayMemoryviewPromotion]
+# flags: --strict-bytes --strict-equality --warn-unreachable
+def f(x: bytes) -> None: ...
+f(bytearray(b"asdf"))  # E: Argument 1 to "f" has incompatible type "bytearray"; expected "bytes"
+f(memoryview(b"asdf"))  # E: Argument 1 to "f" has incompatible type "memoryview"; expected "bytes"
+ba = bytearray(b"")
+if ba == b"":
+    f(ba)  # E: Argument 1 to "f" has incompatible type "bytearray"; expected "bytes"
+if b"" == ba:
+    f(ba)  # E: Argument 1 to "f" has incompatible type "bytearray"; expected "bytes"
+if ba == bytes():
+    f(ba)  # E: Argument 1 to "f" has incompatible type "bytearray"; expected "bytes"
+if bytes() == ba:
+    f(ba)  # E: Argument 1 to "f" has incompatible type "bytearray"; expected "bytes"
+[builtins fixtures/primitives.pyi]
+
+[case testEnableBytearrayMemoryviewPromotion]
+# flags: --no-strict-bytes --strict-equality --warn-unreachable
+def f(x: bytes) -> None: ...
+f(bytearray(b"asdf"))
+f(memoryview(b"asdf"))
+ba = bytearray(b"")
+if ba == b"":
+    f(ba)
+if b"" == ba:
+    f(ba)
+if ba == bytes():
+    f(ba)
+if bytes() == ba:
+    f(ba)
+[builtins fixtures/primitives.pyi]
+
+[case testDisableBytearrayMemoryviewPromotionStrictEquality]
+# flags: --strict-equality --strict-bytes
+def f(x: bytes, y: bytearray, z: memoryview) -> None:
+    x == y
+    y == z
+    x == z
+    97 in x
+    97 in y
+    97 in z
+    x in y
+    x in z
+[builtins fixtures/primitives.pyi]
+
+[case testEnableBytearrayMemoryviewPromotionStrictEquality]
+# flags: --strict-equality --no-strict-bytes
+def f(x: bytes, y: bytearray, z: memoryview) -> None:
+    x == y
+    y == z
+    x == z
+    97 in x
+    97 in y
+    97 in z
+    x in y
+    x in z
 [builtins fixtures/primitives.pyi]
 
 [case testNarrowingDownFromPromoteTargetType]
@@ -73,7 +133,7 @@ if isinstance(y, float):
 else:
     reveal_type(y)  # N: Revealed type is "builtins.int"
 
-reveal_type(y)  # N: Revealed type is "Union[builtins.int, builtins.float]"
+reveal_type(y)  # N: Revealed type is "builtins.int | builtins.float"
 
 if isinstance(y, int):
     reveal_type(y)  # N: Revealed type is "builtins.int"
@@ -86,7 +146,7 @@ else:
 x: complex = 1
 reveal_type(x)  # N: Revealed type is "builtins.complex"
 if isinstance(x, (int, float)):
-    reveal_type(x)  # N: Revealed type is "Union[builtins.int, builtins.float]"
+    reveal_type(x)  # N: Revealed type is "builtins.int | builtins.float"
 else:
     reveal_type(x)  # N: Revealed type is "builtins.complex"
 
@@ -126,8 +186,8 @@ x: Union[float, complex]
 if isinstance(x, int):
     reveal_type(x)  # N: Revealed type is "builtins.int"
 else:
-    reveal_type(x)  # N: Revealed type is "Union[builtins.float, builtins.complex]"
-reveal_type(x)  # N: Revealed type is "Union[builtins.float, builtins.complex]"
+    reveal_type(x)  # N: Revealed type is "builtins.float | builtins.complex"
+reveal_type(x)  # N: Revealed type is "builtins.float | builtins.complex"
 [builtins fixtures/primitives.pyi]
 
 [case testIntersectionUsingPromotion6]
@@ -138,8 +198,8 @@ x: Union[str, complex]
 if isinstance(x, int):
     reveal_type(x)  # N: Revealed type is "builtins.int"
 else:
-    reveal_type(x)  # N: Revealed type is "Union[builtins.str, builtins.complex]"
-reveal_type(x)  # N: Revealed type is "Union[builtins.str, builtins.complex]"
+    reveal_type(x)  # N: Revealed type is "builtins.str | builtins.complex"
+reveal_type(x)  # N: Revealed type is "builtins.str | builtins.complex"
 [builtins fixtures/primitives.pyi]
 
 [case testIntersectionUsingPromotion7]
@@ -150,23 +210,23 @@ x: Union[int, float, complex]
 if isinstance(x, int):
     reveal_type(x)  # N: Revealed type is "builtins.int"
 else:
-    reveal_type(x)  # N: Revealed type is "Union[builtins.float, builtins.complex]"
+    reveal_type(x)  # N: Revealed type is "builtins.float | builtins.complex"
 
-reveal_type(x)  # N: Revealed type is "Union[builtins.int, builtins.float, builtins.complex]"
+reveal_type(x)  # N: Revealed type is "builtins.int | builtins.float | builtins.complex"
 
 if isinstance(x, float):
     reveal_type(x)  # N: Revealed type is "builtins.float"
 else:
-    reveal_type(x)  # N: Revealed type is "Union[builtins.int, builtins.complex]"
+    reveal_type(x)  # N: Revealed type is "builtins.int | builtins.complex"
 
-reveal_type(x)  # N: Revealed type is "Union[builtins.int, builtins.float, builtins.complex]"
+reveal_type(x)  # N: Revealed type is "builtins.int | builtins.float | builtins.complex"
 
 if isinstance(x, complex):
     reveal_type(x)  # N: Revealed type is "builtins.complex"
 else:
-    reveal_type(x)  # N: Revealed type is "Union[builtins.int, builtins.float]"
+    reveal_type(x)  # N: Revealed type is "builtins.int | builtins.float"
 
-reveal_type(x)  # N: Revealed type is "Union[builtins.int, builtins.float, builtins.complex]"
+reveal_type(x)  # N: Revealed type is "builtins.int | builtins.float | builtins.complex"
 [builtins fixtures/primitives.pyi]
 
 [case testIntersectionUsingPromotion8]
@@ -175,15 +235,15 @@ from typing import Union
 
 x: Union[int, float, complex]
 if isinstance(x, (int, float)):
-    reveal_type(x)  # N: Revealed type is "Union[builtins.int, builtins.float]"
+    reveal_type(x)  # N: Revealed type is "builtins.int | builtins.float"
 else:
     reveal_type(x)  # N: Revealed type is "builtins.complex"
 if isinstance(x, (int, complex)):
-    reveal_type(x)  # N: Revealed type is "Union[builtins.int, builtins.complex]"
+    reveal_type(x)  # N: Revealed type is "builtins.int | builtins.complex"
 else:
     reveal_type(x)  # N: Revealed type is "builtins.float"
 if isinstance(x, (float, complex)):
-    reveal_type(x)  # N: Revealed type is "Union[builtins.float, builtins.complex]"
+    reveal_type(x)  # N: Revealed type is "builtins.float | builtins.complex"
 else:
     reveal_type(x)  # N: Revealed type is "builtins.int"
 [builtins fixtures/primitives.pyi]

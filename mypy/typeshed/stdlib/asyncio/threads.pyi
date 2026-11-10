@@ -1,6 +1,5 @@
 from collections.abc import Callable
-from typing import TypeVar
-from typing_extensions import ParamSpec
+from typing import ParamSpec, TypeVar
 
 # Keep asyncio.__all__ updated with any changes to __all__ here
 __all__ = ("to_thread",)

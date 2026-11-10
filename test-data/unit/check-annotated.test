@@ -8,7 +8,7 @@ reveal_type(x)  # N: Revealed type is "builtins.int"
 from typing import Union
 from typing_extensions import Annotated
 x: Annotated[Union[int, str], ...]
-reveal_type(x)  # N: Revealed type is "Union[builtins.int, builtins.str]"
+reveal_type(x)  # N: Revealed type is "builtins.int | builtins.str"
 [builtins fixtures/tuple.pyi]
 
 [case testAnnotated2]
@@ -41,6 +41,11 @@ x: Annotated[int]  # E: Annotated[...] must have exactly one type argument and a
 reveal_type(x)  # N: Revealed type is "Any"
 [builtins fixtures/tuple.pyi]
 
+[case testAnnotatedBadEmptyTupleIndexInTypeApplication]
+from typing_extensions import Annotated
+list[Annotated[()]]  # E: Annotated[...] must have exactly one type argument and at least one annotation
+[builtins fixtures/list.pyi]
+
 [case testAnnotatedNested0]
 from typing_extensions import Annotated
 x: Annotated[Annotated[int, ...], ...]
@@ -51,7 +56,7 @@ reveal_type(x)  # N: Revealed type is "builtins.int"
 from typing import Union
 from typing_extensions import Annotated
 x: Annotated[Annotated[Union[int, str], ...], ...]
-reveal_type(x)  # N: Revealed type is "Union[builtins.int, builtins.str]"
+reveal_type(x)  # N: Revealed type is "builtins.int | builtins.str"
 [builtins fixtures/tuple.pyi]
 
 [case testAnnotatedNestedBadType]
@@ -114,7 +119,7 @@ from typing_extensions import Annotated
 T = TypeVar('T')
 Alias = Annotated[Union[T, str], ...]
 x: Alias[int]
-reveal_type(x)  # N: Revealed type is "Union[builtins.int, builtins.str]"
+reveal_type(x)  # N: Revealed type is "builtins.int | builtins.str"
 [builtins fixtures/tuple.pyi]
 
 [case testAnnotatedSecondParamNonType]

@@ -1,17 +1,9 @@
 from __future__ import annotations
 
 
-def is_module_from_legacy_bundled_package(module: str) -> bool:
-    top_level = module.split(".", 1)[0]
-    return top_level in legacy_bundled_packages
-
-
 def stub_distribution_name(module: str) -> str | None:
     top_level = module.split(".", 1)[0]
 
-    dist = legacy_bundled_packages.get(top_level)
-    if dist:
-        return dist
     dist = non_bundled_packages_flat.get(top_level)
     if dist:
         return dist
@@ -31,10 +23,9 @@ def stub_distribution_name(module: str) -> str | None:
 # Stubs for these third-party packages used to be shipped with mypy.
 #
 # Map package name to PyPI stub distribution name.
-legacy_bundled_packages: dict[str, str] = {
+_legacy_bundled_packages: dict[str, str] = {
     "aiofiles": "types-aiofiles",
     "bleach": "types-bleach",
-    "cachetools": "types-cachetools",
     "click_spinner": "types-click-spinner",
     "croniter": "types-croniter",
     "dateparser": "types-dateparser",
@@ -49,7 +40,6 @@ legacy_bundled_packages: dict[str, str] = {
     "polib": "types-polib",
     "pycurl": "types-pycurl",
     "pymysql": "types-PyMySQL",
-    "pyrfc3339": "types-pyRFC3339",
     "pytz": "types-pytz",
     "requests": "types-requests",
     "retry": "types-retry",
@@ -58,7 +48,6 @@ legacy_bundled_packages: dict[str, str] = {
     "six": "types-six",
     "tabulate": "types-tabulate",
     "toml": "types-toml",
-    "ujson": "types-ujson",
     "waitress": "types-waitress",
     "yaml": "types-PyYAML",
 }
@@ -78,10 +67,10 @@ non_bundled_packages_flat: dict[str, str] = {
     "_win32typing": "types-pywin32",
     "antlr4": "types-antlr4-python3-runtime",
     "assertpy": "types-assertpy",
-    "auth0": "types-auth0-python",
+    "atheris": "types-atheris",
     "authlib": "types-Authlib",
     "aws_xray_sdk": "types-aws-xray-sdk",
-    "binaryornot": "types-binaryornot",
+    "behave": "types-behave",
     "boltons": "types-boltons",
     "braintree": "types-braintree",
     "bugbear": "types-flake8-bugbear",
@@ -94,12 +83,15 @@ non_bundled_packages_flat: dict[str, str] = {
     "click_shell": "types-click-shell",
     "click_web": "types-click-web",
     "colorama": "types-colorama",
+    "colorful": "types-colorful",
     "commctrl": "types-pywin32",
     "consolemenu": "types-console-menu",
     "convertdate": "types-convertdate",
     "cronlog": "types-python-crontab",
     "crontab": "types-python-crontab",
     "crontabs": "types-python-crontab",
+    "cups": "types-pycups",
+    "datauri": "types-datauri",
     "dateparser_data": "types-dateparser",
     "dde": "types-pywin32",
     "defusedxml": "types-defusedxml",
@@ -109,7 +101,8 @@ non_bundled_packages_flat: dict[str, str] = {
     "dockerfile_parse": "types-dockerfile-parse",
     "editdistance": "types-editdistance",
     "entrypoints": "types-entrypoints",
-    "exifread": "types-ExifRead",
+    "ephem": "types-ephem",
+    "et_xmlfile": "types-et_xmlfile",
     "fanstatic": "types-fanstatic",
     "farmhash": "types-pyfarmhash",
     "flake8_builtins": "types-flake8-builtins",
@@ -121,8 +114,8 @@ non_bundled_packages_flat: dict[str, str] = {
     "flask_cors": "types-Flask-Cors",
     "flask_migrate": "types-Flask-Migrate",
     "flask_socketio": "types-Flask-SocketIO",
-    "fpdf": "types-fpdf2",
     "gdb": "types-gdb",
+    "geojson": "types-geojson",
     "geopandas": "types-geopandas",
     "gevent": "types-gevent",
     "greenlet": "types-greenlet",
@@ -131,13 +124,15 @@ non_bundled_packages_flat: dict[str, str] = {
     "grpc_reflection": "types-grpcio-reflection",
     "grpc_status": "types-grpcio-status",
     "grpc": "types-grpcio",
+    "gunicorn": "types-gunicorn",
     "hdbcli": "types-hdbcli",
     "hnswlib": "types-hnswlib",
     "html5lib": "types-html5lib",
     "httplib2": "types-httplib2",
+    "httpretty": "types-httpretty",
     "hvac": "types-hvac",
     "ibm_db": "types-ibm-db",
-    "icalendar": "types-icalendar",
+    "ibm_db_ctx": "types-ibm-db",
     "import_export": "types-django-import-export",
     "inifile": "types-inifile",
     "isapi": "types-pywin32",
@@ -149,6 +144,7 @@ non_bundled_packages_flat: dict[str, str] = {
     "jose": "types-python-jose",
     "jsonschema": "types-jsonschema",
     "jwcrypto": "types-jwcrypto",
+    "kafka": "types-kafka-python",
     "keyboard": "types-keyboard",
     "ldap3": "types-ldap3",
     "lunardate": "types-lunardate",
@@ -174,7 +170,6 @@ non_bundled_packages_flat: dict[str, str] = {
     "openpyxl": "types-openpyxl",
     "opentracing": "types-opentracing",
     "parsimonious": "types-parsimonious",
-    "passlib": "types-passlib",
     "passpy": "types-passpy",
     "peewee": "types-peewee",
     "pep8ext_naming": "types-pep8-naming",
@@ -185,6 +180,7 @@ non_bundled_packages_flat: dict[str, str] = {
     "portpicker": "types-portpicker",
     "psutil": "types-psutil",
     "psycopg2": "types-psycopg2",
+    "punq": "types-punq",
     "pyasn1": "types-pyasn1",
     "pyaudio": "types-pyaudio",
     "pyautogui": "types-PyAutoGUI",
@@ -196,9 +192,10 @@ non_bundled_packages_flat: dict[str, str] = {
     "pyluach": "types-pyluach",
     "pymeeus": "types-PyMeeus",
     "pynput": "types-pynput",
+    "pyogrio": "types-pyogrio",
     "pyperclip": "types-pyperclip",
+    "pyphen": "types-pyphen",
     "pyscreeze": "types-PyScreeze",
-    "pysftp": "types-pysftp",
     "pytest_lazyfixture": "types-pytest-lazy-fixture",
     "python_http_client": "types-python-http-client",
     "pythoncom": "types-pywin32",
@@ -206,22 +203,24 @@ non_bundled_packages_flat: dict[str, str] = {
     "pywintypes": "types-pywin32",
     "qrbill": "types-qrbill",
     "qrcode": "types-qrcode",
+    "rasterio": "types-rasterio",
     "ratelimit": "types-ratelimit",
     "regex": "types-regex",
     "regutil": "types-pywin32",
     "reportlab": "types-reportlab",
     "requests_oauthlib": "types-requests-oauthlib",
+    "resampy": "types-resampy",
     "rfc3339_validator": "types-rfc3339-validator",
     "RPi": "types-RPi.GPIO",
     "s2clientprotocol": "types-s2clientprotocol",
-    "sass": "types-libsass",
-    "sassutils": "types-libsass",
+    "scp": "types-scp",
     "seaborn": "types-seaborn",
     "send2trash": "types-Send2Trash",
     "serial": "types-pyserial",
     "servicemanager": "types-pywin32",
     "setuptools": "types-setuptools",
     "shapely": "types-shapely",
+    "simple_websocket": "types-simple-websocket",
     "slumber": "types-slumber",
     "socks": "types-PySocks",
     "sockshandler": "types-PySocks",
@@ -230,10 +229,13 @@ non_bundled_packages_flat: dict[str, str] = {
     "tensorflow": "types-tensorflow",
     "tgcrypto": "types-TgCrypto",
     "timer": "types-pywin32",
+    "tinycss2": "types-tinycss2",
+    "titlecase": "types-titlecase",
     "toposort": "types-toposort",
     "tqdm": "types-tqdm",
     "translationstring": "types-translationstring",
     "ttkthemes": "types-ttkthemes",
+    "tzdata": "types-tzdata",
     "unidiff": "types-unidiff",
     "untangle": "types-untangle",
     "usersettings": "types-usersettings",
@@ -241,7 +243,9 @@ non_bundled_packages_flat: dict[str, str] = {
     "uwsgidecorators": "types-uWSGI",
     "vobject": "types-vobject",
     "watchpoints": "types-watchpoints",
+    "webencodings": "types-webencodings",
     "webob": "types-WebOb",
+    "webtest": "types-WebTest",
     "whatthepatch": "types-whatthepatch",
     "win2kras": "types-pywin32",
     "win32": "types-pywin32",
@@ -294,10 +298,12 @@ non_bundled_packages_flat: dict[str, str] = {
     "workalendar": "types-workalendar",
     "wtforms": "types-WTForms",
     "wurlitzer": "types-wurlitzer",
+    "www_authenticate": "types-www-authenticate",
     "xdg": "types-pyxdg",
     "xdgenvpy": "types-xdgenvpy",
     "Xlib": "types-python-xlib",
     "xlrd": "types-xlrd",
+    "xmldiff": "types-xmldiff",
     "xmltodict": "types-xmltodict",
     "yt_dlp": "types-yt-dlp",
     "zstd": "types-zstd",
@@ -309,6 +315,7 @@ non_bundled_packages_flat: dict[str, str] = {
     "lxml": "lxml-stubs",  # https://github.com/lxml/lxml-stubs
     "scipy": "scipy-stubs",  # https://github.com/scipy/scipy-stubs
 }
+non_bundled_packages_flat.update(_legacy_bundled_packages)
 
 
 non_bundled_packages_namespace: dict[str, dict[str, str]] = {

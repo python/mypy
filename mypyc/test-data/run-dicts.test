@@ -230,7 +230,8 @@ c
 
 [case testDictMethods]
 from collections import defaultdict
-from typing import Dict, Optional, List, Set
+from typing import Any, Dict, Optional, List, Set
+from testutil import assertRaises
 
 def test_dict_clear() -> None:
     d = {'a': 1, 'b': 2}
@@ -314,6 +315,94 @@ def test_dict_empty_collection_setdefault() -> None:
     assert d3['b'] == {'b', 'c'}
     assert d3.setdefault('c', set('d')) == {'d'}
 
+class BadMapping:
+    @property
+    def keys(self) -> Any:
+        raise RuntimeError("keys failed")
+    def __iter__(self) -> Any:
+        raise ValueError("must not fall back to iteration")
+
+class BadKey:
+    def __init__(self, error: Any) -> None:
+        self.error = error
+        self.calls = 0
+    def __hash__(self) -> int:
+        self.calls += 1
+        if self.calls == 1:
+            raise self.error("hash failed")
+        return 0
+
+def convert(obj: Any) -> Dict[Any, Any]:
+    return dict(obj)
+
+def update(d: Dict[Any, Any], obj: Any) -> None:
+    d.update(obj)
+
+def default_list(d: Dict[Any, Any], key: Any) -> List[Any]:
+    return d.setdefault(key, [])
+
+def default_dict(d: Dict[Any, Any], key: Any) -> Dict[Any, Any]:
+    return d.setdefault(key, {})
+
+def default_set(d: Dict[Any, Any], key: Any) -> Set[Any]:
+    return d.setdefault(key, set())
+
+def test_lookup_error_propagation() -> None:
+    with assertRaises(RuntimeError, "keys failed"):
+        convert(BadMapping())
+    d: Dict[Any, Any] = {}
+    with assertRaises(RuntimeError, "keys failed"):
+        update(d, BadMapping())
+    assert d == {}
+
+    for default in (default_list, default_dict, default_set):
+        d = {}
+        for error in (RuntimeError, KeyError):
+            key = BadKey(error)
+            with assertRaises(error):
+                default(d, key)
+            assert key.calls == 1
+            assert d == {}
+        assert default(d, "present") is default(d, "present")
+
+def test_empty_collection_setdefault_subclass() -> None:
+    from collections import Counter
+    from dictsubclasses import MissingDict, SetDefaultDict
+
+    for default, empty in ((default_list, []), (default_dict, {}), (default_set, set())):
+        # Counter.__missing__ returns 0, but setdefault must still insert
+        d: Dict[Any, Any] = Counter()
+        assert default(d, "x") == empty
+        assert d == {"x": empty}
+        assert default(d, "x") is d["x"]
+
+        # __missing__ isn't used by setdefault
+        d = MissingDict()
+        assert default(d, "x") == empty
+        assert d == {"x": empty}
+
+        sd = SetDefaultDict()
+        assert default(sd, "x") == empty
+        assert sd.calls == [("x", empty)]
+        assert sd == {}
+
+        d = defaultdict(int)
+        assert default(d, "x") == empty
+        assert d == {"x": empty}
+
+[file dictsubclasses.py]
+class MissingDict(dict):
+    def __missing__(self, key):
+        return "missing"
+
+class SetDefaultDict(dict):
+    def __init__(self):
+        self.calls = []
+
+    def setdefault(self, key, default=None):
+        self.calls.append((key, default))
+        return default
+
 [case testDictToBool]
 from typing import Dict, List
 
@@ -368,3 +457,243 @@ class subc(dict[Any, Any]):
 [file userdefineddict.py]
 class dict:
     pass
+
+[case testDunderDictAccessAfterDel]
+from mypy_extensions import mypyc_attr
+
+@mypyc_attr(allow_interpreted_subclasses=True)
+class NormDict(dict[str, str]):
+    def __init__(self, attr: int = 42) -> None:
+        super().__init__()
+        self.attr = attr
+
+class SubNormDict(NormDict):
+    def __init__(self, attr: int = 43) -> None:
+        super().__init__(attr)
+
+def test_dict_access() -> None:
+    n = NormDict(1)
+    d = n.__dict__
+    assert d["attr"] == 1
+    del n
+    assert d["attr"] == 1
+
+def test_subclass_dict_access() -> None:
+    s = SubNormDict(1)
+    d = s.__dict__
+    assert d["attr"] == 1
+    del s
+    assert d["attr"] == 1
+
+[file driver.py]
+from native import NormDict, SubNormDict, test_dict_access, test_subclass_dict_access
+
+
+class InterpretedNormDict(NormDict):
+    pass
+
+def test_dict_access_interpreted() -> None:
+    n = NormDict()
+    d = n.__dict__
+    assert d["attr"] == 42
+    del n
+    assert d["attr"] == 42
+
+def test_subclass_dict_access_interpreted() -> None:
+    s = SubNormDict()
+    d = s.__dict__
+    assert d["attr"] == 43
+    del s
+    assert d["attr"] == 43
+
+def test_allow_interpreted_subclass_dict_access() -> None:
+    s = InterpretedNormDict()
+    d = s.__dict__
+    assert d["attr"] == 42
+    del s
+    assert d["attr"] == 42
+
+test_dict_access()
+test_dict_access_interpreted()
+
+test_subclass_dict_access()
+test_subclass_dict_access_interpreted()
+test_allow_interpreted_subclass_dict_access()
+
+[fixture fixtures/typing-full.pyi]
+
+[case testCycleInDictSubclass]
+import gc
+from mypy_extensions import mypyc_attr
+
+events: list[str] = []
+
+@mypyc_attr(allow_interpreted_subclasses=True)
+class CyclicDict(dict):
+    def __init__(self) -> None:
+        self["self"] = self
+
+    def __del__(self) -> None:
+        events.append("deleted")
+
+class SubCyclicDict(CyclicDict):
+    def __init__(self) -> None:
+        super().__init__()
+
+    def __del__(self) -> None:
+        events.append("sub deleted")
+
+def test_cyclic_dict_cleanup() -> None:
+    global events
+    events = []
+
+    c = CyclicDict()
+    del c
+    gc.collect()
+    assert events == ["deleted"], events
+
+def test_sub_cyclic_dict_cleanup() -> None:
+    global events
+    events = []
+
+    c = SubCyclicDict()
+    del c
+    gc.collect()
+    assert events == ["sub deleted"], events
+
+[file driver.py]
+import gc
+
+import native
+from native import CyclicDict, SubCyclicDict, test_cyclic_dict_cleanup, test_sub_cyclic_dict_cleanup
+
+
+class InterpretedCyclicDict(CyclicDict):
+    def __del__(self) -> None:
+        native.events.append("interpreted deleted")
+
+def test_cyclic_dict_cleanup_interpreted() -> None:
+    native.events = []
+
+    c = CyclicDict()
+    del c
+    gc.collect()
+    assert native.events == ["deleted"], events
+
+def test_sub_cyclic_dict_cleanup_interpreted() -> None:
+    native.events = []
+
+    c = SubCyclicDict()
+    del c
+    gc.collect()
+    assert native.events == ["sub deleted"], events
+
+def test_allow_interpreted_subclass_cyclic_dict_cleanup() -> None:
+    native.events = []
+
+    c = InterpretedCyclicDict()
+    del c
+    gc.collect()
+    assert native.events == ["interpreted deleted"], events
+
+test_cyclic_dict_cleanup()
+test_sub_cyclic_dict_cleanup()
+
+test_cyclic_dict_cleanup_interpreted()
+test_sub_cyclic_dict_cleanup_interpreted()
+test_allow_interpreted_subclass_cyclic_dict_cleanup()
+
+[case testDictListErrorOwnership]
+from typing import Any, Dict, List
+
+def keys(d: Dict[Any, Any]) -> List[Any]:
+    return list(d.keys())
+def values(d: Dict[Any, Any]) -> List[Any]:
+    return list(d.values())
+def items(d: Dict[Any, Any]) -> List[Any]:
+    return list(d.items())
+
+[file driver.py]
+import gc
+import weakref
+from native import keys, values, items
+from testutil import assertRaises
+
+class Sentinel:
+    pass
+
+refs = []
+def failing_iterator():
+    value = Sentinel()
+    refs.append(weakref.ref(value))
+    yield value
+    raise RuntimeError("iteration failed")
+
+class BadDict(dict):
+    def keys(self):
+        return failing_iterator()
+    values = keys
+    items = keys
+
+class BadMethod(dict):
+    def keys(self):
+        raise RuntimeError("method failed")
+    values = keys
+    items = keys
+
+class BadIter:
+    def __iter__(self):
+        raise RuntimeError("iter failed")
+
+class BadLength:
+    def __iter__(self):
+        return self
+    def __next__(self):
+        return None
+    def __length_hint__(self):
+        raise RuntimeError("length failed")
+
+class CustomDict(dict):
+    def __init__(self, result):
+        self.result = result
+    def keys(self):
+        return self.result
+    values = keys
+    items = keys
+
+for convert in (keys, values, items):
+    for d in (BadDict(), BadMethod(), CustomDict(BadIter()), CustomDict(BadLength())):
+        with assertRaises(RuntimeError):
+            convert(d)
+        gc.collect()
+        assert all(ref() is None for ref in refs)
+    assert convert(CustomDict(iter([1, 2]))) == [1, 2]
+
+[case testDictCopyOverridingSubclass]
+from typing import Dict
+from testutil import assertRaises
+from dictsub import BadDict, GoodDict
+
+def copy(d: Dict[int, int]) -> Dict[int, int]:
+    return d.copy()
+
+def test_bad_result_type() -> None:
+    d: Dict[int, int] = BadDict({1: 2})
+    with assertRaises(TypeError, "dict object expected; got int"):
+        copy(d)
+
+def test_override_called() -> None:
+    d: Dict[int, int] = GoodDict({1: 2})
+    assert copy(d) == {1: 2, 3: 4}
+    assert type(copy(d)) is GoodDict
+
+[file dictsub.py]
+from typing import Any
+
+class BadDict(dict):
+    def copy(self) -> Any:
+        return 1
+
+class GoodDict(dict):
+    def copy(self) -> Any:
+        return GoodDict({**self, 3: 4})

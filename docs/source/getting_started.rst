@@ -16,7 +16,7 @@ may not make much sense otherwise.
 Installing and running mypy
 ***************************
 
-Mypy requires Python 3.9 or later to run.  You can install mypy using pip:
+Mypy requires Python 3.10 or later to run.  You can install mypy using pip:
 
 .. code-block:: shell
 
@@ -196,12 +196,6 @@ union type. For example, ``int`` is a subtype of ``int | str``:
            return f'user-{100_000 + user_id}'
        else:
            return user_id
-
-.. note::
-
-    If using Python 3.9 or earlier, use ``typing.Union[int, str]`` instead of
-    ``int | str``, or use ``from __future__ import annotations`` at the top of
-    the file (see :ref:`runtime_troubles`).
 
 The :py:mod:`typing` module contains many other useful types.
 

@@ -94,14 +94,6 @@ In these cases you can give the type explicitly using a type annotation:
    l: list[int] = []       # Create empty list of int
    d: dict[str, int] = {}  # Create empty dictionary (str -> int)
 
-.. note::
-
-   Using type arguments (e.g. ``list[int]``) on builtin collections like
-   :py:class:`list`,  :py:class:`dict`, :py:class:`tuple`, and  :py:class:`set`
-   only works in Python 3.9 and later. For Python 3.8 and earlier, you must use
-   :py:class:`~typing.List` (e.g. ``List[int]``), :py:class:`~typing.Dict`, and
-   so on.
-
 
 Compatibility of container types
 ********************************
@@ -159,7 +151,7 @@ on the declared type of ``arg`` in ``foo``:
 .. code-block:: python
 
     def foo(arg: list[int]) -> None:
-        print('Items:', ''.join(str(a) for a in arg))
+        print('Items:', ', '.join(str(a) for a in arg))
 
     foo([])  # OK
 
@@ -170,7 +162,7 @@ in the following statement:
 .. code-block:: python
 
     def foo(arg: list[int]) -> None:
-        print('Items:', ', '.join(arg))
+        print('Items:', ', '.join(str(a) for a in arg))
 
     a = []  # Error: Need type annotation for "a"
     foo(a)

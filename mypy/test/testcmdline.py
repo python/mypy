@@ -8,10 +8,13 @@ from __future__ import annotations
 
 import os
 import re
+import shlex
 import subprocess
 import sys
+import sysconfig
 
-from mypy.test.config import PREFIX, test_temp_dir
+import mypy
+from mypy.test.config import test_temp_dir
 from mypy.test.data import DataDrivenTestCase, DataSuite
 from mypy.test.helpers import (
     assert_string_arrays_equal,
@@ -20,7 +23,11 @@ from mypy.test.helpers import (
 )
 
 try:
-    import lxml  # type: ignore[import-untyped]
+    if sys.version_info >= (3, 14) and bool(sysconfig.get_config_var("Py_GIL_DISABLED")):
+        # lxml doesn't support free-threading yet
+        lxml = None
+    else:
+        import lxml  # type: ignore[import-untyped]
 except ImportError:
     lxml = None
 
@@ -52,7 +59,7 @@ def test_python_cmdline(testcase: DataDrivenTestCase, step: int) -> None:
     with open(program_path, "w", encoding="utf8") as file:
         for s in testcase.input:
             file.write(f"{s}\n")
-    args = parse_args(testcase.input[0])
+    args = parse_args(normalize_devnull("\n".join(testcase.input)), step)
     custom_cwd = parse_cwd(testcase.input[1]) if len(testcase.input) > 1 else None
     args.append("--show-traceback")
     if "--error-summary" not in args:
@@ -61,14 +68,13 @@ def test_python_cmdline(testcase: DataDrivenTestCase, step: int) -> None:
         args.append("--hide-error-codes")
     if "--disallow-empty-bodies" not in args:
         args.append("--allow-empty-bodies")
-    if "--no-force-union-syntax" not in args:
-        args.append("--force-union-syntax")
     # Type check the program.
     fixed = [python3_path, "-m", "mypy"]
     env = os.environ.copy()
     env.pop("COLUMNS", None)
     extra_path = os.path.join(os.path.abspath(test_temp_dir), "pypath")
-    env["PYTHONPATH"] = PREFIX
+    # Use the same mypy installation as pytest, including the compiled wheel in CI.
+    env["PYTHONPATH"] = os.path.dirname(os.path.abspath(mypy.__path__[0]))
     if os.path.isdir(extra_path):
         env["PYTHONPATH"] += os.pathsep + extra_path
     cwd = os.path.join(test_temp_dir, custom_cwd or "")
@@ -118,21 +124,25 @@ def test_python_cmdline(testcase: DataDrivenTestCase, step: int) -> None:
         )
 
 
-def parse_args(line: str) -> list[str]:
-    """Parse the first line of the program for the command line.
+def parse_args(text: str, step: int) -> list[str]:
+    """Parse the program for the command line.
 
     This should have the form
 
-      # cmd: mypy <options>
+      # cmd[N]: mypy <options>
 
     For example:
 
-      # cmd: mypy pkg/
+      # cmd: mypy pkg/ or # cmd2: mypy pkg/
     """
-    m = re.match("# cmd: mypy (.*)$", line)
+    m = re.search("# cmd: mypy (.*)$", text, flags=re.MULTILINE)
+    if step > 1:
+        alt_m = re.search(f"# cmd{step}: mypy (.*)$", text, flags=re.MULTILINE)
+        if alt_m is not None:
+            m = alt_m
     if not m:
         return []  # No args; mypy will spit out an error.
-    return m.group(1).split()
+    return shlex.split(m.group(1))
 
 
 def parse_cwd(line: str) -> str | None:
@@ -148,3 +158,7 @@ def parse_cwd(line: str) -> str | None:
     """
     m = re.match("# cwd: (.*)$", line)
     return m.group(1) if m else None
+
+
+def normalize_devnull(line: str) -> str:
+    return line.replace("/dev/null", os.devnull)

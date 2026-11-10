@@ -7,7 +7,7 @@ from typing import NamedTuple
 from mypyc.common import PROPSET_PREFIX, JsonDict
 from mypyc.ir.func_ir import FuncDecl, FuncIR, FuncSignature, RuntimeArg
 from mypyc.ir.ops import DeserMaps, Value
-from mypyc.ir.rtypes import RInstance, RType, deserialize_type, object_rprimitive
+from mypyc.ir.rtypes import RInstance, RType, c_int_rprimitive, deserialize_type, object_rprimitive
 from mypyc.namegen import NameGenerator, exported_name
 
 # Some notes on the vtable layout: Each concrete class has a vtable
@@ -105,8 +105,15 @@ class ClassIR:
         # An augmented class has additional methods separate from what mypyc generates.
         # Right now the only one is dataclasses.
         self.is_augmented = False
+        # Does this (non-extension) class have class decorators other than the ones native
+        # classes support? These can replace the class with an arbitrary object, such as a
+        # functools.cache wrapper, so the name of the class may not refer to the class.
+        self.is_decorated = False
         # Does this inherit from a Python class?
         self.inherits_python = False
+        # Is weak reference support explicitly requested via @mypyc_attr(weakrefs=True)?
+        # Use supports_weakrefs() to also consider base classes.
+        self._weakrefs = False
         # Do instances of this class have __dict__?
         self.has_dict = False
         # Do we allow interpreted subclasses? Derived from a mypyc_attr.
@@ -143,8 +150,30 @@ class ClassIR:
             module_name,
             FuncSignature([RuntimeArg("type", object_rprimitive)], RInstance(self)),
         )
+        self.clear = FuncDecl(
+            name + "_clear",
+            None,
+            module_name,
+            FuncSignature([RuntimeArg("self", RInstance(self))], c_int_rprimitive),
+            internal=True,
+        )
+        self.clear_on_completion = FuncDecl(
+            name + "_clear_on_completion",
+            None,
+            module_name,
+            FuncSignature([RuntimeArg("self", RInstance(self))], c_int_rprimitive),
+            internal=True,
+        )
         # Attributes defined in the class (not inherited)
         self.attributes: dict[str, RType] = {}
+        # Attributes that must survive generator/coroutine completion because
+        # escaped nested functions may still read them as closure variables.
+        self.attrs_to_keep_alive_on_completion: set[str] = set()
+        # Final attributes initialized in the __init__ method (not inherited)
+        self.final_attributes: set[str] = set()
+        # Final attributes defined in class body as "X: Final = <value>" (not inherited).
+        # They get no slot in the instance struct. The value lives in a module-level static.
+        self.class_final_attributes: dict[str, RType] = {}
         # Deletable attributes
         self.deletable: list[str] = []
         # We populate method_types with the signatures of every method before
@@ -211,7 +240,8 @@ class ClassIR:
         # value of an attribute is the same as the error value.
         self.bitmap_attrs: list[str] = []
 
-        # If this is a generator environment class, what is the actual method for it
+        # If this class owns a generator helper's compiler-generated spill slots, what is the
+        # actual helper method for it.
         self.env_user_function: FuncIR | None = None
 
         # If True, keep one freed, cleared instance available for immediate reuse to
@@ -220,8 +250,24 @@ class ClassIR:
         # per-type free "list" of up to length 1.
         self.reuse_freed_instance = False
 
+        # If True, the class does not participate in cyclic garbage collection.
+        # This can improve performance but is only safe if instances can never
+        # be part of reference cycles. Derived from @mypyc_attr(acyclic=True).
+        self.is_acyclic = False
+
         # Is this a class inheriting from enum.Enum? Such classes can be special-cased.
         self.is_enum = False
+
+        # Name of the function if this a callable class representing a coroutine.
+        self.coroutine_name: str | None = None
+
+        # Does this generator or coroutine helper serialize execution using an instance flag?
+        self.has_running_flag = False
+
+        # Are this generator object's implementation attributes only accessed while its
+        # running flag is held (or before publication/during destruction)? This also applies
+        # when captured source variables live in a separate environment object.
+        self.has_private_generator_frame = False
 
     def __repr__(self) -> str:
         return (
@@ -259,6 +305,66 @@ class ClassIR:
     def attr_type(self, name: str) -> RType:
         return self.attr_details(name)[0]
 
+    def is_final_attr(self, name: str) -> bool:
+        """Is the (possibly inherited) attribute Final, i.e. never rebound?
+
+        A Final attribute is read-only at runtime (it has no setter) and is assigned
+        exactly once during construction, so it can never be reassigned afterwards.
+        This makes it safe to borrow on free-threaded builds (no concurrent store can
+        invalidate a borrowed reference) and lets reads skip the concurrent-writer
+        guard. Returns False for properties and for attributes this class doesn't have.
+        """
+        for ir in self.mro:
+            if name in ir.attributes:
+                return name in ir.final_attributes
+            if name in ir.property_types:
+                return False
+        return False
+
+    @property
+    def needs_getseters_table(self) -> bool:
+        """Do we generate a tp_getset table exposing the attributes to Python?"""
+        return (
+            self.needs_getseters
+            or not self.is_generated
+            or self.has_dict
+            # For the __weakref__ getset
+            or self.has_weakref_list()
+        )
+
+    def attrs_are_thread_confined(self) -> bool:
+        """Can these attributes safely use plain access in free-threaded builds?
+
+        This requires the attributes to belong to a private generator frame, execution to
+        be serialized by its running flag, and no Python getseters exposing the attributes.
+        Captured locals in a separate environment don't qualify, since nested functions may
+        access them independently.
+        """
+        return (
+            self.has_private_generator_frame
+            and self.has_running_flag
+            and not self.needs_getseters_table
+        )
+
+    def class_final_attr_details(self, name: str) -> tuple[RType, ClassIR] | None:
+        """Look up a (possibly inherited) class-body Final attribute.
+
+        Returns the attribute type and the class that defines it, or None if this
+        class has no such attribute. The defining class is what identifies the
+        static holding the value, so callers need it to build the static's name.
+
+        Deliberately kept out of attr_details()/has_attr(): these attributes have no
+        instance slot, so callers that want to read or write one must not treat them
+        as ordinary attributes.
+        """
+        for ir in self.mro:
+            if name in ir.class_final_attributes:
+                return ir.class_final_attributes[name], ir
+            if name in ir.attributes or name in ir.property_types:
+                # Shadowed by a real attribute or property closer in the MRO.
+                return None
+        return None
+
     def method_decl(self, name: str) -> FuncDecl:
         for ir in self.mro:
             if name in ir.method_decls:
@@ -276,12 +382,21 @@ class ClassIR:
         return True
 
     def is_method_final(self, name: str) -> bool:
+        method_decl: FuncDecl | None = None
+        try:
+            method_decl = self.method_decl(name)
+        except KeyError:
+            pass
+        # A declared @final method cannot be overridden in checked code. Trust
+        # this even when interpreted subclasses cannot be enumerated.
+        if method_decl is not None and method_decl.is_final:
+            return True
+
         subs = self.subclasses()
         if subs is None:
             return self.is_final_class
 
-        if self.has_method(name):
-            method_decl = self.method_decl(name)
+        if method_decl is not None:
             for subc in subs:
                 if subc.method_decl(name) != method_decl:
                     return False
@@ -329,8 +444,31 @@ class ClassIR:
         res = self.get_method_and_class(name, prefer_method=prefer_method)
         return res[0] if res else None
 
+    def get_native_init(self) -> FuncIR | None:
+        """Return the __init__ method that is called natively to initialize instances, if any.
+
+        A decorated __init__ isn't one. Like any decorated method it has no method
+        declaration, since only the decorated callable in the type dict can be called.
+        Instances are then initialized through tp_init, as if __init__ wasn't native.
+        """
+        res = self.get_method_and_class("__init__")
+        if res is None or "__init__" not in res[1].method_decls:
+            return None
+        return res[0]
+
     def has_method_decl(self, name: str) -> bool:
         return any(name in ir.method_decls for ir in self.mro)
+
+    def has_non_native_new(self) -> bool:
+        """Are instances created by a __new__ method that isn't called natively?
+
+        A decorated __new__ is one. Like any decorated method it has no method
+        declaration, since only the decorated callable in the type dict can be called.
+        Instances are then created like instances of a Python class: tp_new looks up
+        __new__ in the type dict, and tp_init calls __init__.
+        """
+        res = self.get_method_and_class("__new__")
+        return res is not None and "__new__" not in res[1].method_decls
 
     def has_no_subclasses(self) -> bool:
         return self.children == [] and not self.allow_interpreted_subclasses
@@ -369,6 +507,49 @@ class ClassIR:
     def is_serializable(self) -> bool:
         return any(ci._serializable for ci in self.mro)
 
+    def supports_weakrefs(self) -> bool:
+        """Can weak references to instances of this class be created?
+
+        Native classes only support weak references if requested using
+        @mypyc_attr(weakrefs=True), since it has a per-instance memory cost. Like
+        Python subclasses, native subclasses of non-native classes always support weak
+        references, whether or not the base class does, since they already have
+        __dict__ storage, and adding weak reference storage next to it is free.
+        Subclasses of built-in types (such as Exception or dict) don't support weak
+        references yet.
+        """
+        if not self.is_ext_class:
+            # Non-native classes are ordinary heap types, so they always work.
+            return True
+        if self.builtin_base:
+            return False
+        return self.inherits_python or any(ci._weakrefs for ci in self.mro)
+
+    def has_weakref_list(self) -> bool:
+        """Is this a native class with instances that have a weak reference list?
+
+        This is false for non-native classes, even though they support weak
+        references, since CPython manages the list for them. For native classes, the
+        list is either a field of the object struct (see has_weakref_slot()), or
+        it's stored next to __dict__ (at tp_weaklistoffset): either right after the
+        object struct (before 3.12) or in the managed pre-header (3.12+).
+        """
+        return self.is_ext_class and not self.is_trait and self.supports_weakrefs()
+
+    def has_weakref_slot(self) -> bool:
+        """Is the weak reference list stored in a field of the object struct?
+
+        Otherwise the list is stored next to __dict__, if weak references are
+        supported. A native base class that uses the field determines the offset of
+        the list in all subclasses.
+        """
+        return (
+            self.is_ext_class
+            and not self.is_trait
+            and not self.builtin_base
+            and any(ci._weakrefs and not ci.inherits_python for ci in self.mro)
+        )
+
     def serialize(self) -> JsonDict:
         return {
             "name": self.name,
@@ -378,16 +559,25 @@ class ClassIR:
             "is_abstract": self.is_abstract,
             "is_generated": self.is_generated,
             "is_augmented": self.is_augmented,
+            "is_decorated": self.is_decorated,
             "is_final_class": self.is_final_class,
             "inherits_python": self.inherits_python,
+            "_weakrefs": self._weakrefs,
             "has_dict": self.has_dict,
             "allow_interpreted_subclasses": self.allow_interpreted_subclasses,
             "needs_getseters": self.needs_getseters,
             "_serializable": self._serializable,
             "builtin_base": self.builtin_base,
             "ctor": self.ctor.serialize(),
+            "clear": self.clear.serialize(),
+            "clear_on_completion": self.clear_on_completion.serialize(),
             # We serialize dicts as lists to ensure order is preserved
             "attributes": [(k, t.serialize()) for k, t in self.attributes.items()],
+            "attrs_to_keep_alive_on_completion": sorted(self.attrs_to_keep_alive_on_completion),
+            "final_attributes": sorted(self.final_attributes),
+            "class_final_attributes": [
+                (k, t.serialize()) for k, t in self.class_final_attributes.items()
+            ],
             # We try to serialize a name reference, but if the decl isn't in methods
             # then we can't be sure that will work so we serialize the whole decl.
             "method_decls": [
@@ -423,7 +613,11 @@ class ClassIR:
             "init_self_leak": self.init_self_leak,
             "env_user_function": self.env_user_function.id if self.env_user_function else None,
             "reuse_freed_instance": self.reuse_freed_instance,
+            "has_running_flag": self.has_running_flag,
+            "has_private_generator_frame": self.has_private_generator_frame,
+            "is_acyclic": self.is_acyclic,
             "is_enum": self.is_enum,
+            "is_coroutine": self.coroutine_name,
         }
 
     @classmethod
@@ -437,15 +631,24 @@ class ClassIR:
         ir.is_abstract = data["is_abstract"]
         ir.is_ext_class = data["is_ext_class"]
         ir.is_augmented = data["is_augmented"]
+        ir.is_decorated = data["is_decorated"]
         ir.is_final_class = data["is_final_class"]
         ir.inherits_python = data["inherits_python"]
+        ir._weakrefs = data["_weakrefs"]
         ir.has_dict = data["has_dict"]
         ir.allow_interpreted_subclasses = data["allow_interpreted_subclasses"]
         ir.needs_getseters = data["needs_getseters"]
         ir._serializable = data["_serializable"]
         ir.builtin_base = data["builtin_base"]
         ir.ctor = FuncDecl.deserialize(data["ctor"], ctx)
+        ir.clear = FuncDecl.deserialize(data["clear"], ctx)
+        ir.clear_on_completion = FuncDecl.deserialize(data["clear_on_completion"], ctx)
         ir.attributes = {k: deserialize_type(t, ctx) for k, t in data["attributes"]}
+        ir.attrs_to_keep_alive_on_completion = set(data["attrs_to_keep_alive_on_completion"])
+        ir.final_attributes = set(data["final_attributes"])
+        ir.class_final_attributes = {
+            k: deserialize_type(t, ctx) for k, t in data["class_final_attributes"]
+        }
         ir.method_decls = {
             k: ctx.functions[v].decl if isinstance(v, str) else FuncDecl.deserialize(v, ctx)
             for k, v in data["method_decls"]
@@ -480,7 +683,11 @@ class ClassIR:
             ctx.functions[data["env_user_function"]] if data["env_user_function"] else None
         )
         ir.reuse_freed_instance = data["reuse_freed_instance"]
+        ir.has_running_flag = data["has_running_flag"]
+        ir.has_private_generator_frame = data["has_private_generator_frame"]
+        ir.is_acyclic = data.get("is_acyclic", False)
         ir.is_enum = data["is_enum"]
+        ir.coroutine_name = data["is_coroutine"]
 
         return ir
 
@@ -492,11 +699,20 @@ class NonExtClassInfo:
     the class annotations dictionary, and the metaclass.
     """
 
-    def __init__(self, dict: Value, bases: Value, anns: Value, metaclass: Value) -> None:
+    def __init__(
+        self,
+        dict: Value,
+        bases: Value,
+        anns: Value,
+        metaclass: Value,
+        orig_bases: Value | None = None,
+    ) -> None:
         self.dict = dict
         self.bases = bases
         self.anns = anns
         self.metaclass = metaclass
+        # Original expressions, before resolving __mro_entries__, if resolution was needed.
+        self.orig_bases = orig_bases
 
 
 def serialize_vtable_entry(entry: VTableMethod) -> JsonDict:

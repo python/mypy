@@ -108,20 +108,25 @@ class MatchVisitor(TraverserVisitor):
         self.builder.add_bool_branch(cond, self.code_block, self.next_block)
 
     def visit_or_pattern(self, pattern: OrPattern) -> None:
-        backup_block = self.next_block
-        self.next_block = BasicBlock()
+        code_block = self.code_block
+        next_block = self.next_block
 
         for p in pattern.patterns:
+            self.code_block = BasicBlock()
+            self.next_block = BasicBlock()
+
             # Hack to ensure the as pattern is bound to each pattern in the
             # "or" pattern, but not every subpattern
             backup = self.as_pattern
             p.accept(self)
             self.as_pattern = backup
 
+            self.builder.activate_block(self.code_block)
+            self.builder.goto(code_block)
             self.builder.activate_block(self.next_block)
-            self.next_block = BasicBlock()
 
-        self.next_block = backup_block
+        self.code_block = code_block
+        self.next_block = next_block
         self.builder.goto(self.next_block)
 
     def visit_class_pattern(self, pattern: ClassPattern) -> None:

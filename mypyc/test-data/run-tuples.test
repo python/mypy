@@ -339,7 +339,7 @@ def test_final_tuple_not_in() -> None:
 
     assert 'x' not in TUP0
 
-log = []
+log: list[str] = []
 
 def f_a() -> str:
     log.append('f_a')
@@ -383,6 +383,35 @@ def test_tuple_in_non_specialized() -> None:
     assert f_b() not in f_t()
     assert log == ["f_b", "f_t"]
 
+class NeverEqual:
+    def __eq__(self, other: object) -> bool:
+        return False
+
+    def __ne__(self, other: object) -> bool:
+        return False
+
+def test_tuple_and_list_in_identity() -> None:
+    # Membership tests compare identity before equality
+    x = NeverEqual()
+    y = NeverEqual()
+    assert x in (x,)
+    assert x in [x]
+    assert x in (y, x)
+    assert x in [y, x]
+    assert y not in (x,)
+    assert y not in [x]
+    assert y not in (x, x)
+    assert y not in [x, x]
+    assert not (x not in (x,))
+    assert not (x not in [y, x])
+    a: Any = x
+    assert a in (a,)
+    assert a in (y, a)
+    assert not (a not in (y, a))
+    f = float("nan")
+    assert f in (f,)
+    assert f in [1.0, f]
+
 def test_add() -> None:
     res = (1, 2, 3, 4)
     assert (1, 2) + (3, 4) == res
@@ -397,6 +426,15 @@ def test_multiply() -> None:
     assert (1,) * 3 == res
     assert 3 * (1,) == res
     assert multiply((1,), 3) == res
+
+# Ref: https://github.com/mypyc/mypyc/issues/1179
+def test_tuple_with_walrus() -> None:
+    i = 0
+    assert (i, (i := i + 1), i, (i := i + 1), i, (i := i + 1), i) == (0, 1, 1, 2, 2, 3, 3)
+
+def test_nested_tuple_with_walrus() -> None:
+    i = 0
+    assert ((i, i), (i := i + 1)) == ((0, 0), 1)
 
 [case testIsInstance]
 from copysubclass import subc
@@ -423,9 +461,59 @@ def test_user_defined() -> None:
 
 [file copysubclass.py]
 from typing import Any
-class subc(tuple[Any]):
+class subc(tuple[Any, ...]):
     pass
 
 [file userdefinedtuple.py]
 class tuple:
     pass
+
+[case testTupleOpsOverridingSubclass]
+from typing import Tuple
+from testutil import assertRaises
+from tuplesub import BadTuple, GoodTuple
+
+def add(a: Tuple[int, ...], b: Tuple[int, ...]) -> Tuple[int, ...]:
+    return a + b
+
+def mul(a: Tuple[int, ...], n: int) -> Tuple[int, ...]:
+    return a * n
+
+def rmul(a: Tuple[int, ...], n: int) -> Tuple[int, ...]:
+    return n * a
+
+def test_bad_result_type() -> None:
+    a: Tuple[int, ...] = BadTuple((1,))
+    with assertRaises(TypeError, "tuple object expected; got int"):
+        add(a, (2,))
+    with assertRaises(TypeError, "tuple object expected; got int"):
+        mul(a, 2)
+    with assertRaises(TypeError, "tuple object expected; got int"):
+        rmul(a, 2)
+
+def test_overrides_called() -> None:
+    a: Tuple[int, ...] = GoodTuple((1,))
+    assert add(a, (2,)) == (1, 2, 0)
+    assert mul(a, 2) == (1, 1, 2)
+    assert rmul(a, 2) == (1, 1, 3)
+    assert type(rmul(a, 2)) is GoodTuple
+    assert rmul((1,), 2) == (1, 1)
+
+[file tuplesub.py]
+from typing import Any
+
+class BadTuple(tuple):
+    def __add__(self, other: Any) -> Any:
+        return 1
+    def __mul__(self, n: Any) -> Any:
+        return 2
+    def __rmul__(self, n: Any) -> Any:
+        return 3
+
+class GoodTuple(tuple):
+    def __add__(self, other: Any) -> Any:
+        return GoodTuple(tuple(self) + other + (0,))
+    def __mul__(self, n: Any) -> Any:
+        return GoodTuple(tuple(self) * n + (2,))
+    def __rmul__(self, n: Any) -> Any:
+        return GoodTuple(tuple(self) * n + (3,))

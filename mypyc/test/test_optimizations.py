@@ -16,6 +16,7 @@ from mypyc.test.testutil import (
     MypycDataSuite,
     assert_test_output,
     build_ir_for_single_file,
+    infer_target_python_from_test_name,
     remove_comment_lines,
     use_custom_builtins,
 )
@@ -33,10 +34,11 @@ class OptimizationSuite(MypycDataSuite):
     base_path = test_temp_dir
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
+        options = CompilerOptions(target_python=infer_target_python_from_test_name(testcase.name))
         with use_custom_builtins(os.path.join(self.data_prefix, ICODE_GEN_BUILTINS), testcase):
             expected_output = remove_comment_lines(testcase.output)
             try:
-                ir = build_ir_for_single_file(testcase.input)
+                ir = build_ir_for_single_file(testcase.input, options)
             except CompileError as e:
                 actual = e.messages
             else:
@@ -44,7 +46,7 @@ class OptimizationSuite(MypycDataSuite):
                 for fn in ir:
                     if fn.name == TOP_LEVEL_NAME and not testcase.name.endswith("_toplevel"):
                         continue
-                    insert_uninit_checks(fn)
+                    insert_uninit_checks(fn, True)
                     self.do_optimizations(fn)
                     actual.extend(format_func(fn))
 
@@ -58,11 +60,11 @@ class TestCopyPropagation(OptimizationSuite):
     files = ["opt-copy-propagation.test"]
 
     def do_optimizations(self, fn: FuncIR) -> None:
-        do_copy_propagation(fn, CompilerOptions())
+        do_copy_propagation(fn, CompilerOptions(strict_traceback_checks=True))
 
 
 class TestFlagElimination(OptimizationSuite):
     files = ["opt-flag-elimination.test"]
 
     def do_optimizations(self, fn: FuncIR) -> None:
-        do_flag_elimination(fn, CompilerOptions())
+        do_flag_elimination(fn, CompilerOptions(strict_traceback_checks=True))

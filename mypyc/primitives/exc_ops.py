@@ -15,6 +15,14 @@ raise_exception_op = custom_op(
     error_kind=ERR_ALWAYS,
 )
 
+# Like raise_exception_op, but also set the cause (raise <exc> from <cause>).
+raise_exception_from_op = custom_op(
+    arg_types=[object_rprimitive, object_rprimitive],
+    return_type=void_rtype,
+    c_function_name="CPy_RaiseFrom",
+    error_kind=ERR_ALWAYS,
+)
+
 # Raise StopIteration exception with the specified value (which can be NULL).
 set_stop_iteration_value = custom_op(
     arg_types=[object_rprimitive],
@@ -30,6 +38,14 @@ raise_exception_with_tb_op = custom_op(
     return_type=void_rtype,
     c_function_name="CPyErr_SetObjectAndTraceback",
     error_kind=ERR_ALWAYS,
+)
+
+# Check that the (type, value, traceback) arguments of generator.throw() are valid.
+check_throw_args_op = custom_op(
+    arg_types=[object_rprimitive, object_rprimitive, object_rprimitive],
+    return_type=bit_rprimitive,
+    c_function_name="CPyGen_CheckThrowArgs",
+    error_kind=ERR_FALSE,
 )
 
 # Reraise the currently raised exception.

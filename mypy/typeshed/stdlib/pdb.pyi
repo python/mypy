@@ -1,14 +1,14 @@
 import signal
 import sys
+from _typeshed import ReadableBuffer
 from bdb import Bdb, _Backend
 from cmd import Cmd
 from collections.abc import Callable, Iterable, Mapping, Sequence
-from inspect import _SourceObjectType
 from linecache import _ModuleGlobals
 from rlcompleter import Completer
 from types import CodeType, FrameType, TracebackType
-from typing import IO, Any, ClassVar, Final, Literal, TypeVar
-from typing_extensions import ParamSpec, Self, TypeAlias
+from typing import IO, Any, ClassVar, Final, Literal, ParamSpec, TypeAlias, TypeVar
+from typing_extensions import Self, deprecated
 
 __all__ = ["run", "pm", "Pdb", "runeval", "runctx", "runcall", "set_trace", "post_mortem", "help"]
 if sys.version_info >= (3, 14):
@@ -22,9 +22,15 @@ line_prefix: Final[str]  # undocumented
 
 class Restart(Exception): ...
 
-def run(statement: str, globals: dict[str, Any] | None = None, locals: Mapping[str, Any] | None = None) -> None: ...
-def runeval(expression: str, globals: dict[str, Any] | None = None, locals: Mapping[str, Any] | None = None) -> Any: ...
-def runctx(statement: str, globals: dict[str, Any], locals: Mapping[str, Any]) -> None: ...
+def run(  # matches `builtins.exec`
+    statement: str | ReadableBuffer | CodeType, globals: dict[str, Any] | None = None, locals: Mapping[str, object] | None = None
+) -> None: ...
+def runctx(  # matches `builtins.exec`
+    statement: str | ReadableBuffer | CodeType, globals: dict[str, Any], locals: Mapping[str, object]
+) -> None: ...
+def runeval(  # matches `builtins.eval`
+    expression: str | ReadableBuffer | CodeType, globals: dict[str, Any] | None = None, locals: Mapping[str, object] | None = None
+) -> Any: ...
 def runcall(func: Callable[_P, _T], *args: _P.args, **kwds: _P.kwargs) -> _T | None: ...
 
 if sys.version_info >= (3, 14):
@@ -60,7 +66,17 @@ class Pdb(Bdb, Cmd):
     stack: list[tuple[FrameType, int]]
     curindex: int
     curframe: FrameType | None
-    curframe_locals: Mapping[str, Any]
+    if sys.version_info >= (3, 13):
+        @property
+        @deprecated("The frame locals reference is no longer cached. Use 'curframe.f_locals' instead.")
+        def curframe_locals(self) -> Mapping[str, Any]: ...
+        @curframe_locals.setter
+        @deprecated(
+            "Setting 'curframe_locals' no longer has any effect as of 3.14. Update the contents of 'curframe.f_locals' instead."
+        )
+        def curframe_locals(self, value: Mapping[str, Any]) -> None: ...
+    else:
+        curframe_locals: Mapping[str, Any]
     if sys.version_info >= (3, 14):
         mode: _Mode | None
         colorize: bool
@@ -120,7 +136,11 @@ class Pdb(Bdb, Cmd):
     else:
         def print_stack_trace(self) -> None: ...
 
-    def print_stack_entry(self, frame_lineno: tuple[FrameType, int], prompt_prefix: str = "\n-> ") -> None: ...
+    if sys.version_info >= (3, 15):
+        def print_stack_entry(self, frame_lineno: tuple[FrameType, int], prompt_prefix: str | None = None) -> None: ...
+    else:
+        def print_stack_entry(self, frame_lineno: tuple[FrameType, int], prompt_prefix: str = "\n-> ") -> None: ...
+
     def lookupmodule(self, filename: str) -> str | None: ...
     if sys.version_info < (3, 11):
         def _runscript(self, filename: str) -> None: ...
@@ -201,8 +221,8 @@ class Pdb(Bdb, Cmd):
         def completenames(self, text: str, line: str, begidx: int, endidx: int) -> list[str]: ...  # type: ignore[override]
     if sys.version_info >= (3, 12):
         def set_convenience_variable(self, frame: FrameType, name: str, value: Any) -> None: ...
-    if sys.version_info >= (3, 13) and sys.version_info < (3, 14):
-        # Added in 3.13.8.
+    if sys.version_info >= (3, 13):
+        # Added in 3.13.8 and 3.14.1
         @property
         def rlcompleter(self) -> type[Completer]: ...
 
@@ -249,10 +269,6 @@ class Pdb(Bdb, Cmd):
 def find_function(funcname: str, filename: str) -> tuple[str, str, int] | None: ...
 def main() -> None: ...
 def help() -> None: ...
-
-if sys.version_info < (3, 10):
-    def getsourcelines(obj: _SourceObjectType) -> tuple[list[str], int]: ...
-
 def lasti2lineno(code: CodeType, lasti: int) -> int: ...
 
 class _rstr(str):

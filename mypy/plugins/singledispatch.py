@@ -1,8 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import NamedTuple, TypeVar, Union
-from typing_extensions import TypeAlias as _TypeAlias
+from typing import NamedTuple, TypeAlias as _TypeAlias, TypeVar
 
 from mypy.messages import format_type
 from mypy.nodes import ARG_POS, Argument, Block, ClassDef, Context, SymbolTable, TypeInfo, Var
@@ -14,7 +13,6 @@ from mypy.subtypes import is_subtype
 from mypy.types import (
     AnyType,
     CallableType,
-    FunctionLike,
     Instance,
     NoneType,
     Overloaded,
@@ -67,7 +65,7 @@ def make_fake_register_class_instance(
     return Instance(info, type_args)
 
 
-PluginContext: _TypeAlias = Union[FunctionContext, MethodContext]
+PluginContext: _TypeAlias = FunctionContext | MethodContext
 
 
 def fail(ctx: PluginContext, msg: str, context: Context | None) -> None:
@@ -127,7 +125,7 @@ def singledispatch_register_callback(ctx: MethodContext) -> Type:
 
         # is_subtype doesn't work when the right type is Overloaded, so we need the
         # actual type
-        register_type = first_arg_type.items[0].ret_type
+        register_type = first_arg_type.items[0].get_instance_type()
         type_args = RegisterCallableInfo(register_type, ctx.type)
         register_callable = make_fake_register_class_instance(ctx.api, type_args)
         return register_callable
@@ -204,7 +202,7 @@ def call_singledispatch_function_after_register_argument(ctx: MethodContext) -> 
     return ctx.default_return_type
 
 
-def call_singledispatch_function_callback(ctx: MethodSigContext) -> FunctionLike:
+def call_singledispatch_function_callback(ctx: MethodSigContext) -> CallableType:
     """Called for functools._SingleDispatchCallable.__call__"""
     if not isinstance(ctx.type, Instance):
         return ctx.default_signature

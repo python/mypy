@@ -28,13 +28,12 @@ import itertools
 import json
 import os
 import sys
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from contextlib import contextmanager
-from typing import Callable, NamedTuple, TypedDict, TypeVar, cast
+from typing import NamedTuple, TypedDict, TypeVar, cast
 
 from mypy.argmap import map_actuals_to_formals
 from mypy.build import Graph, State
-from mypy.checkexpr import has_any_type
 from mypy.find_sources import InvalidSourceList, SourceFinder
 from mypy.join import join_type_list
 from mypy.meet import meet_type_list
@@ -59,6 +58,7 @@ from mypy.options import Options
 from mypy.plugin import FunctionContext, MethodContext, Plugin
 from mypy.server.update import FineGrainedBuildManager
 from mypy.state import state
+from mypy.subtypes import has_any_type
 from mypy.traverser import TraverserVisitor
 from mypy.typeops import bind_self, make_simplified_union
 from mypy.types import (
@@ -891,7 +891,7 @@ class TypeFormatter(TypeStrVisitor):
     def visit_union_type(self, t: UnionType) -> str:
         if len(t.items) == 2 and is_overlapping_none(t):
             s = remove_optional(t).accept(self)
-            return f"{s} | None" if self.options.use_or_syntax() else f"Optional[{s}]"
+            return f"{s} | None"
         else:
             return super().visit_union_type(t)
 

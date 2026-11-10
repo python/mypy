@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import os
 from collections import defaultdict
+from collections.abc import Callable
 from functools import cmp_to_key
-from typing import Callable
 
 from mypy.build import State
 from mypy.messages import format_type
@@ -297,7 +297,7 @@ class InspectionEngine:
         result = {}
         for base in sorted_bases:
             if not combined_attrs[base]:
-                # Skip bases where everytihng was filtered out.
+                # Skip bases where everything was filtered out.
                 continue
             result[base] = combined_attrs[base]
         return result

@@ -1,6 +1,10 @@
 from __future__ import annotations
 
+from collections.abc import Callable
+from typing import TypeAlias as _TypeAlias
+
 from mypy.nodes import (
+    Context,
     ParamSpecExpr,
     SymbolTableNode,
     TypeVarExpr,
@@ -15,26 +19,8 @@ from mypy.types import (
     TypeVarTupleType,
     TypeVarType,
 )
-from mypy.typetraverser import TypeTraverserVisitor
 
-
-class TypeVarLikeNamespaceSetter(TypeTraverserVisitor):
-    """Set namespace for all TypeVarLikeTypes types."""
-
-    def __init__(self, namespace: str) -> None:
-        self.namespace = namespace
-
-    def visit_type_var(self, t: TypeVarType) -> None:
-        t.id.namespace = self.namespace
-        super().visit_type_var(t)
-
-    def visit_param_spec(self, t: ParamSpecType) -> None:
-        t.id.namespace = self.namespace
-        return super().visit_param_spec(t)
-
-    def visit_type_var_tuple(self, t: TypeVarTupleType) -> None:
-        t.id.namespace = self.namespace
-        super().visit_type_var_tuple(t)
+FailFunc: _TypeAlias = Callable[[str, Context], None]
 
 
 class TypeVarLikeScope:
@@ -98,7 +84,9 @@ class TypeVarLikeScope:
         self.func_id -= 1
         return TypeVarId(self.func_id)
 
-    def bind_new(self, name: str, tvar_expr: TypeVarLikeExpr) -> TypeVarLikeType:
+    def bind_new(
+        self, name: str, tvar_expr: TypeVarLikeExpr, fail_func: FailFunc, context: Context
+    ) -> TypeVarLikeType:
         if self.is_class_scope:
             self.class_id += 1
             i = self.class_id
@@ -106,7 +94,6 @@ class TypeVarLikeScope:
             self.func_id -= 1
             i = self.func_id
         namespace = self.namespace
-        tvar_expr.default.accept(TypeVarLikeNamespaceSetter(namespace))
 
         if isinstance(tvar_expr, TypeVarExpr):
             tvar_def: TypeVarLikeType = TypeVarType(

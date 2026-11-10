@@ -1,7 +1,8 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 from functools import partial
-from typing import Callable, Final
+from typing import Final
 
 import mypy.errorcodes as codes
 from mypy import message_registry
@@ -66,7 +67,6 @@ from mypy.types import (
     TPDICT_FB_NAMES,
     AnyType,
     CallableType,
-    FunctionLike,
     Instance,
     LiteralType,
     NoneType,
@@ -104,11 +104,13 @@ class DefaultPlugin(Plugin):
             return partial_new_callback
         elif fullname == "enum.member":
             return enum_member_callback
+        elif fullname == "builtins.len":
+            return len_callback
         return None
 
     def get_function_signature_hook(
         self, fullname: str
-    ) -> Callable[[FunctionSigContext], FunctionLike] | None:
+    ) -> Callable[[FunctionSigContext], CallableType] | None:
         if fullname in ("attr.evolve", "attrs.evolve", "attr.assoc", "attrs.assoc"):
             return evolve_function_sig_callback
         elif fullname in ("attr.fields", "attrs.fields"):
@@ -119,7 +121,7 @@ class DefaultPlugin(Plugin):
 
     def get_method_signature_hook(
         self, fullname: str
-    ) -> Callable[[MethodSigContext], FunctionLike] | None:
+    ) -> Callable[[MethodSigContext], CallableType] | None:
         if fullname == "typing.Mapping.get":
             return typed_dict_get_signature_callback
         elif fullname in TD_SETDEFAULT_NAMES:
@@ -212,6 +214,18 @@ class DefaultPlugin(Plugin):
         return None
 
 
+def len_callback(ctx: FunctionContext) -> Type:
+    """Infer a better return type for 'len'."""
+    if len(ctx.arg_types) == 1 and len(ctx.arg_types[0]) == 1:
+        arg_type = ctx.arg_types[0][0]
+        arg_type = get_proper_type(arg_type)
+        if isinstance(arg_type, Instance) and arg_type.type.fullname == "librt.vecs.vec":
+            # The length of vec is a fixed-width integer, for more
+            # low-level optimization potential.
+            return ctx.api.named_generic_type("mypy_extensions.i64", [])
+    return ctx.default_return_type
+
+
 def typed_dict_get_signature_callback(ctx: MethodSigContext) -> CallableType:
     """Try to infer a better signature type for TypedDict.get.
 
@@ -278,9 +292,10 @@ def typed_dict_get_callback(ctx: MethodContext) -> Type:
         for key in keys:
             value_type: Type | None = ctx.type.items.get(key)
             if value_type is None:
-                return ctx.default_return_type
-
-            if key in ctx.type.required_keys:
+                if not ctx.type.is_closed:
+                    return ctx.default_return_type
+                output_types.append(default_type)
+            elif key in ctx.type.required_keys:
                 output_types.append(value_type)
             else:
                 # HACK to deal with get(key, {})
@@ -478,8 +493,9 @@ def typed_dict_update_signature_callback(ctx: MethodSigContext) -> CallableType:
         arg_type = get_proper_type(signature.arg_types[0])
         if not isinstance(arg_type, TypedDictType):
             return signature
-        arg_type = arg_type.as_anonymous()
-        arg_type = arg_type.copy_modified(required_keys=set())
+        arg_type = ctx.type.copy_modified(
+            fallback=arg_type.create_anonymous_fallback(), required_keys=set()
+        )
         if ctx.args and ctx.args[0]:
             if signature.name in _TP_DICT_MUTATING_METHODS:
                 # If we want to mutate this object in place, we need to set this flag,

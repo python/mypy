@@ -7,8 +7,7 @@ import os
 import os.path
 from collections import Counter
 from collections.abc import Iterable
-from typing import Any, Final
-from typing_extensions import TypeAlias as _TypeAlias
+from typing import Any, Final, TypeAlias as _TypeAlias
 
 ROOT: Final = ".mypy_cache/3.5"
 
