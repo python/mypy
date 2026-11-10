@@ -1522,7 +1522,7 @@ class StrOverride(str):
 [case testStrPadding]
 from typing import Any, Callable, Optional
 from testutil import assertRaises
-from strsub import StrSubclass
+from strsub import StrSubclass, MAXSIZE
 
 def ljust(s: str, width: int, fillchar: Optional[str] = None) -> str:
     if fillchar is None:
@@ -1602,7 +1602,17 @@ def test_errors() -> None:
             f("abc", -2**100)
     with assertRaises(OverflowError, "Python int too large to convert to C ssize_t"):
         zfill("abc", 2**100)
+    for s in ["a", "\u4e2d", "\U0001f600"]:
+        for f in (ljust, rjust, center):
+            with assertRaises(MemoryError):
+                f(s, MAXSIZE)
+        with assertRaises(MemoryError):
+            zfill(s, MAXSIZE)
 
 [file strsub.py]
+import sys
+
+MAXSIZE: int = getattr(sys, "maxsize")
+
 class StrSubclass(str):
     pass

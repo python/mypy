@@ -774,15 +774,6 @@ PyObject *CPyStr_Upper(PyObject *self) {
 #endif
 }
 
-// Convert the width argument of str.ljust() and friends.
-static inline Py_ssize_t CPyStr_PadWidth(CPyTagged width) {
-    Py_ssize_t result = CPyTagged_AsSsize_t(width);
-    if (unlikely(result == -1 && PyErr_Occurred())) {
-        PyErr_SetString(PyExc_OverflowError, CPYTHON_LARGE_INT_ERRMSG);
-    }
-    return result;
-}
-
 // Get the fill character argument of str.ljust() and friends (NULL means a space).
 // Returns (Py_UCS4)-1 on error.
 static inline Py_UCS4 CPyStr_PadFillChar(PyObject *fillchar) {
@@ -837,7 +828,7 @@ static PyObject *CPyStr_Pad(PyObject *self, Py_ssize_t left, Py_ssize_t right, P
 }
 
 PyObject *CPyStr_Ljust(PyObject *self, CPyTagged width, PyObject *fillchar) {
-    Py_ssize_t w = CPyStr_PadWidth(width);
+    Py_ssize_t w = CPyTagged_AsSsize_t(width);
     if (unlikely(w == -1 && PyErr_Occurred())) {
         return NULL;
     }
@@ -850,7 +841,7 @@ PyObject *CPyStr_Ljust(PyObject *self, CPyTagged width, PyObject *fillchar) {
 }
 
 PyObject *CPyStr_Rjust(PyObject *self, CPyTagged width, PyObject *fillchar) {
-    Py_ssize_t w = CPyStr_PadWidth(width);
+    Py_ssize_t w = CPyTagged_AsSsize_t(width);
     if (unlikely(w == -1 && PyErr_Occurred())) {
         return NULL;
     }
@@ -863,7 +854,7 @@ PyObject *CPyStr_Rjust(PyObject *self, CPyTagged width, PyObject *fillchar) {
 }
 
 PyObject *CPyStr_Center(PyObject *self, CPyTagged width, PyObject *fillchar) {
-    Py_ssize_t w = CPyStr_PadWidth(width);
+    Py_ssize_t w = CPyTagged_AsSsize_t(width);
     if (unlikely(w == -1 && PyErr_Occurred())) {
         return NULL;
     }
@@ -882,7 +873,7 @@ PyObject *CPyStr_Center(PyObject *self, CPyTagged width, PyObject *fillchar) {
 }
 
 PyObject *CPyStr_Zfill(PyObject *self, CPyTagged width) {
-    Py_ssize_t w = CPyStr_PadWidth(width);
+    Py_ssize_t w = CPyTagged_AsSsize_t(width);
     if (unlikely(w == -1 && PyErr_Occurred())) {
         return NULL;
     }
