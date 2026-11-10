@@ -562,6 +562,61 @@ def call_method(b: Base, x: int) -> int:
 
 [typing fixtures/typing-full.pyi]
 
+[case testMultiModuleWeakrefs]
+# Base classes are in a module that is prepared after this one (modules are
+# processed in name order), and in another group in separate compilation mode.
+import gc
+import weakref
+from typing import Any
+from mypy_extensions import mypyc_attr
+from other_base import WeakBase, ActionBase
+
+class Sub(WeakBase):
+    def __init__(self) -> None:
+        super().__init__()
+        self.y = 2
+
+# Redundant, but allowed
+@mypyc_attr(weakrefs=True)
+class ExplicitSub(Sub):
+    pass
+
+class ActionSub(ActionBase):
+    def __init__(self) -> None:
+        super().__init__()
+        self.y = 2
+
+def check(cls: Any) -> None:
+    objs = [cls() for i in range(100)]
+    refs = [weakref.ref(o) for o in objs]
+    assert objs[0].x == 1 and objs[0].y == 2
+    assert refs[0]() is objs[0]
+    del objs
+    gc.collect()
+    keep = [cls() for i in range(100)]
+    assert [r() for r in refs] == [None] * 100
+    assert len(keep) == 100
+
+def test_weakrefs() -> None:
+    check(Sub)
+    check(ExplicitSub)
+    check(ActionSub)
+    assert getattr(Sub, "__weakrefoffset__") == getattr(WeakBase, "__weakrefoffset__")
+
+[file other_base.py]
+import argparse
+from mypy_extensions import mypyc_attr
+
+@mypyc_attr(weakrefs=True)
+class WeakBase:
+    def __init__(self) -> None:
+        self.x = 1
+
+class ActionBase(argparse.Action):
+    def __init__(self) -> None:
+        super().__init__(["-x"], "x")
+        self.x = 1
+
 [case testNonNativeImportInPackageFile]
 # The import is really non-native only in separate compilation mode where __init__.py and
 # other_cache.py are in different libraries and the import uses the standard Python procedure.

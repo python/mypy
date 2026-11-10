@@ -67,6 +67,7 @@ from mypyc.ir.rtypes import (
     is_uint8_rprimitive,
     is_uint16_rprimitive,
     is_uint32_rprimitive,
+    is_uint64_rprimitive,
     object_rprimitive,
     optional_value_type,
     vec_api_by_item_type,
@@ -1175,6 +1176,13 @@ class Emitter:
             self.emit_line(f"{dest} = CPyLong_AsUInt32({src});")
             if not isinstance(error, AssignHandler):
                 self.emit_unbox_failure_with_overlapping_error_value(dest, typ, failure)
+        elif is_uint64_rprimitive(typ):
+            assert not optional
+            if declare_dest:
+                self.emit_line(f"uint64_t {dest};")
+            self.emit_line(f"{dest} = CPyLong_AsUInt64({src});")
+            if not isinstance(error, AssignHandler):
+                self.emit_unbox_failure_with_overlapping_error_value(dest, typ, failure)
         elif is_uint16_rprimitive(typ):
             # Whether we are borrowing or not makes no difference.
             assert not optional  # Not supported for overlapping error values
@@ -1348,6 +1356,8 @@ class Emitter:
                 self.emit_inc_ref(dest, object_rprimitive)
         elif is_uint32_rprimitive(typ):
             self.emit_line(f"{declaration}{dest} = PyLong_FromUnsignedLong({src});")
+        elif is_uint64_rprimitive(typ):
+            self.emit_line(f"{declaration}{dest} = PyLong_FromUnsignedLongLong({src});")
         elif (
             is_int32_rprimitive(typ)
             or is_int16_rprimitive(typ)

@@ -13,7 +13,8 @@ import typing
 import librt.vecs
 import mypy_extensions
 
-from testutil import assertRaises
+from testutil import assertRaises, is_64_bit_platform
+from helpers import ClearListOnUnbox
 
 # Access via Any references to force generic operations
 vec: Any = librt.vecs.vec
@@ -522,6 +523,21 @@ def test_cap_negative() -> None:
         with assertRaises(ValueError):
             vec[t](capacity=-1)
 
+def test_cap_too_large() -> None:
+    if not is_64_bit_platform():
+        return
+    # The buffer size calculation must not overflow
+    for n in [2**61, 2**62, 2**63 - 1]:
+        for t in ITEM_TYPES + [str, vec[i64], vec[str]]:
+            with assertRaises(MemoryError):
+                vec[t](capacity=n)
+            with assertRaises(MemoryError):
+                vec[t]([], capacity=n)
+            with assertRaises(MemoryError):
+                vec[t]((), capacity=n)
+            with assertRaises(MemoryError):
+                vec[t](iter([]), capacity=n)
+
 def test_cap_buffer_reuse() -> None:
     # Verify buffer reuse within cap for each type
     v = vec[float]([1.5], capacity=3)
@@ -566,6 +582,28 @@ def test_extend_bool() -> None:
     v = vec[bool]([True])
     v = extend(v, [False, True])
     assert v == vec[bool]([True, False, True])
+
+def test_construct_from_list_modified_during_unboxing() -> None:
+    for t in [i64, i32, i16, float]:
+        lst: list[Any] = []
+        lst.append(ClearListOnUnbox(lst))
+        lst.extend([7] * 100)
+        v = vec[t](lst)
+        assert v == vec[t]([1])
+
+[file helpers.py]
+class ClearListOnUnbox:
+    def __init__(self, lst):
+        self.lst = lst
+
+    def __index__(self):
+        self.lst.clear()
+        # Reuse the freed memory
+        junk = [bytearray(64) for _ in range(1000)]
+        return 1
+
+    def __float__(self):
+        return float(self.__index__())
 
 [case testLibrtVecsBufferProtocol_librt]
 import struct

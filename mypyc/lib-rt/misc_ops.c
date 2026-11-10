@@ -1038,6 +1038,22 @@ done:
 
 }
 
+// Implementation of the '__weakref__' getter of native classes that support weak
+// references. Adapted from subtype_getweakref in CPython's typeobject.c.
+PyObject *CPy_GetWeakrefs(PyObject *obj, void *closure)
+{
+    Py_ssize_t offset = Py_TYPE(obj)->tp_weaklistoffset;
+    if (offset == 0) {
+        PyErr_SetString(PyExc_AttributeError, "This object has no __weakref__");
+        return NULL;
+    }
+    PyObject **weaklistptr = (PyObject **)((char *)obj + offset);
+    if (*weaklistptr == NULL) {
+        return Py_NewRef(Py_None);
+    }
+    return Py_NewRef(*weaklistptr);
+}
+
 // Adapted from ceval.c GET_AITER
 PyObject *CPy_GetAIter(PyObject *obj)
 {

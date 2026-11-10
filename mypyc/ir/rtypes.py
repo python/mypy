@@ -431,9 +431,6 @@ uint8_rprimitive: Final = RPrimitive(
     error_overlap=True,
 )
 
-# The following unsigned native int types (u64) are not
-# exposed to the user. They are for internal use within mypyc only.
-
 uint64_rprimitive: Final = RPrimitive(
     "u64",
     is_unboxed=True,
@@ -633,6 +630,7 @@ def is_fixed_width_rtype(rtype: RType) -> TypeGuard[RPrimitive]:
         is_int64_rprimitive(rtype)
         or is_int32_rprimitive(rtype)
         or is_int16_rprimitive(rtype)
+        or is_uint64_rprimitive(rtype)
         or is_uint32_rprimitive(rtype)
         or is_uint16_rprimitive(rtype)
         or is_uint8_rprimitive(rtype)
@@ -768,6 +766,8 @@ class TupleNameVisitor(RTypeVisitor[str]):
             return "4"  # "4 byte integer"
         elif t._ctype == "int16_t":
             return "2"  # "2 byte integer"
+        elif t._ctype == "uint64_t":
+            return "U8"
         elif t._ctype == "uint32_t":
             return "U4"
         elif t._ctype == "uint16_t":
