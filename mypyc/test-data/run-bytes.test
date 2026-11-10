@@ -744,3 +744,64 @@ def test_optional_ne() -> None:
     assert ne_b_b_opt(b'x', b'y')
     assert ne_b_b_opt(b'y', b'x')
     assert ne_b_b_opt(b'x', None)
+
+[case testBytesOpsOverridingSubclass]
+from testutil import assertRaises
+from bytessub import BadBytes, GoodBytes
+
+def mul(b: bytes, n: int) -> bytes:
+    return b * n
+
+def rmul(b: bytes, n: int) -> bytes:
+    return n * b
+
+def join(b: bytes) -> bytes:
+    return b.join([b'a', b'b'])
+
+def translate(b: bytes, table: bytes) -> bytes:
+    return b.translate(table)
+
+table = bytes(range(256))
+
+def test_bad_result_type() -> None:
+    b: bytes = BadBytes(b'x')
+    with assertRaises(TypeError, "bytes object expected; got int"):
+        mul(b, 2)
+    with assertRaises(TypeError, "bytes object expected; got int"):
+        rmul(b, 2)
+    with assertRaises(TypeError, "bytes object expected; got int"):
+        join(b)
+    with assertRaises(TypeError, "bytes object expected; got int"):
+        translate(b, table)
+
+def test_overrides_called() -> None:
+    b: bytes = GoodBytes(b'x')
+    assert mul(b, 2) == b'xx!'
+    assert rmul(b, 2) == b'xx?'
+    assert type(rmul(b, 2)) is GoodBytes
+    assert join(b) == b'axb.'
+    assert translate(b, table) == b'x#'
+    assert rmul(b'x', 2) == b'xx'
+
+[file bytessub.py]
+from typing import Any
+
+class BadBytes(bytes):
+    def __mul__(self, n: Any) -> Any:
+        return 12345678901234567890
+    def __rmul__(self, n: Any) -> Any:
+        return 12345678901234567891
+    def join(self, it: Any) -> Any:
+        return 12345678901234567892
+    def translate(self, table: Any, delete: Any = b'') -> Any:
+        return 12345678901234567893
+
+class GoodBytes(bytes):
+    def __mul__(self, n: Any) -> Any:
+        return bytes(self) * n + b'!'
+    def __rmul__(self, n: Any) -> Any:
+        return GoodBytes(n * bytes(self) + b'?')
+    def join(self, it: Any) -> Any:
+        return bytes(self).join(it) + b'.'
+    def translate(self, table: Any, delete: Any = b'') -> Any:
+        return bytes(self).translate(table) + b'#'
