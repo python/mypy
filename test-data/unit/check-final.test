@@ -1322,3 +1322,118 @@ class S9(S2, S4):  # E: Class "S9" has incompatible disjoint bases
     pass
 
 [builtins fixtures/tuple.pyi]
+
+[case testFinalModuleLevelLiteralInitializer]
+from typing import Final, Literal
+
+NUM: Final[int] = 1
+NAME: Final[str] = "hi"
+FLAG: Final[bool] = True
+COLOR: Final[Literal["red"]] = "red"
+
+def expect_num(x: Literal[1]) -> None: ...
+def expect_name(x: Literal["hi"]) -> None: ...
+def expect_flag(x: Literal[True]) -> None: ...
+
+reveal_type(NUM)   # N: Revealed type is "Literal[1]?"
+reveal_type(NAME)  # N: Revealed type is "Literal['hi']?"
+reveal_type(FLAG)  # N: Revealed type is "Literal[True]?"
+reveal_type(COLOR) # N: Revealed type is "Literal['red']"
+
+expect_num(NUM)
+expect_name(NAME)
+expect_flag(FLAG)
+[out]
+
+[case testFinalModuleLevelLiteralInitializerReadFromOtherModule]
+import lib
+from lib import FLAG, NAME, NUM
+from typing import Literal
+
+def expect_num(x: Literal[1]) -> None: ...
+def expect_name(x: Literal["hi"]) -> None: ...
+def expect_flag(x: Literal[True]) -> None: ...
+
+expect_num(NUM)
+expect_name(NAME)
+expect_flag(FLAG)
+expect_num(lib.NUM)
+expect_name(lib.NAME)
+expect_flag(lib.FLAG)
+
+reveal_type(NUM)      # N: Revealed type is "Literal[1]?"
+reveal_type(lib.NUM)  # N: Revealed type is "Literal[1]?"
+reveal_type(lib.NAME) # N: Revealed type is "Literal['hi']?"
+reveal_type(lib.FLAG) # N: Revealed type is "Literal[True]?"
+
+[file lib.py]
+from typing import Final
+
+NUM: Final[int] = 1
+NAME: Final[str] = "hi"
+FLAG: Final[bool] = True
+[out]
+
+[case testFinalModuleLevelNonLiteralInitializer]
+from typing import Final
+
+class Base: ...
+class Sent(Base): ...
+
+NO_INFO: Final[Base] = Sent()
+ITEMS: Final[list[int]] = []
+AS_OBJECT: Final[object] = 1
+
+reveal_type(NO_INFO)   # N: Revealed type is "__main__.Base"
+reveal_type(ITEMS)     # N: Revealed type is "builtins.list[builtins.int]"
+reveal_type(AS_OBJECT) # N: Revealed type is "builtins.object"
+[out]
+
+[case testFinalLiteralInitializerNotExposedOutsideModuleScope]
+from typing import Final, Literal
+
+class C:
+    class_num: Final[int] = 1
+
+    def __init__(self) -> None:
+        self.inst_num: Final[int] = 1
+
+def f() -> None:
+    local_num: Final[int] = 1
+
+    def expect_num(x: Literal[1]) -> None: ...
+    expect_num(local_num)  # E: Argument 1 to "expect_num" has incompatible type "int"; expected "Literal[1]"
+    reveal_type(local_num) # N: Revealed type is "builtins.int"
+
+reveal_type(C.class_num) # N: Revealed type is "builtins.int"
+c: C
+reveal_type(c.inst_num)  # N: Revealed type is "builtins.int"
+[out]
+
+[case testFinalModuleLevelStaticallyKnownBoolInitializer]
+# flags: --platform linux --python-version 3.11
+import sys
+from typing import Final, Literal
+
+IS_WIN: Final[bool] = sys.platform == "win32"
+IS_LINUX: Final[bool] = sys.platform.startswith("lin")
+PY312: Final[bool] = sys.version_info >= (3, 12)
+MAYBE_WIN: bool = sys.platform == "win32"
+
+def expect_false(x: Literal[False]) -> None: ...
+def expect_true(x: Literal[True]) -> None: ...
+
+reveal_type(IS_WIN)    # N: Revealed type is "Literal[False]?"
+reveal_type(IS_LINUX)  # N: Revealed type is "Literal[True]?"
+reveal_type(PY312)     # N: Revealed type is "Literal[False]?"
+
+# A plain annotation can be assigned a different value later, so it keeps "bool".
+reveal_type(MAYBE_WIN) # N: Revealed type is "builtins.bool"
+
+expect_false(IS_WIN)
+expect_true(IS_LINUX)
+expect_false(PY312)
+[builtins fixtures/ops.pyi]
+[out]
+
+

@@ -516,11 +516,12 @@ from typing import Final
 
 GOOD: Final = 'c'
 BAD: Final = 'no'
-OK: Final[str] = '...'
+# The value of a module level Final is known, so the placeholder is checked as well.
+NOT_CHAR: Final[str] = '...'
 
 '{:c}'.format(GOOD)
 '{:c}'.format(BAD)  # E: ":c" requires int or char
-'{:c}'.format(OK)
+'{:c}'.format(NOT_CHAR)  # E: ":c" requires int or char
 [builtins fixtures/primitives.pyi]
 
 [case testFormatCallForcedConversions]

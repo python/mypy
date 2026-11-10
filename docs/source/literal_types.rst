@@ -129,6 +129,24 @@ value whenever it's used before performing type checking. This is why the reveal
 type of ``c`` is ``Literal[19]?``: the question mark at the end reflects this
 context-sensitive nature.
 
+A module-level ``Final`` remembers the value of its initializer even when an explicit
+type is given, since it cannot be rebound -- code in another module has no way to
+narrow it back to the assigned value otherwise:
+
+.. code-block:: python
+
+    from typing import Final, Literal
+
+    def expects_literal(x: Literal[19]) -> None: pass
+
+    d: Final[int] = 19
+
+    reveal_type(d)          # Revealed type is "Literal[19]?"
+    expects_literal(d)      # ...and this type checks!
+
+Class attributes, instance attributes and names local to a function keep the declared
+type instead.
+
 For example, mypy will type check the above program almost as if it were written like so:
 
 .. code-block:: python
