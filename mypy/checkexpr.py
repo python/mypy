@@ -2394,6 +2394,42 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                 strict=self.chk.in_checked_function(),
             )
 
+            literal_type_vars: frozenset[TypeVarId] = frozenset()
+            literal_formals = self.get_literal_overload_formals(
+                callee_type, arg_types, formal_to_actual
+            )
+            if literal_formals:
+                # Some protocol arguments are implemented using overloads selected by literal
+                # values. Which overload item matches depends on type variables inferred from
+                # other arguments, so try to use these arguments only in the second pass.
+                deferred = {j for i in literal_formals for j in formal_to_actual[i]}
+                literal_pass1_args = [
+                    None if arg_pass_nums[j] > 1 or j in deferred else arg
+                    for j, arg in enumerate(arg_types)
+                ]
+                literal_inferred_args, _ = infer_function_type_arguments(
+                    callee_type,
+                    literal_pass1_args,
+                    arg_kinds,
+                    arg_names,
+                    formal_to_actual,
+                    context=self.argument_infer_context(),
+                    strict=self.chk.in_checked_function(),
+                )
+                literal_ids = self.get_literal_overload_type_vars(
+                    callee_type,
+                    arg_types,
+                    formal_to_actual,
+                    literal_formals,
+                    literal_inferred_args,
+                )
+                if literal_ids is not None:
+                    inferred_args = literal_inferred_args
+                    literal_type_vars = literal_ids
+                    arg_pass_nums = [
+                        2 if j in deferred else num for j, num in enumerate(arg_pass_nums)
+                    ]
+
             if 2 in arg_pass_nums:
                 # Second pass of type inference.
                 callee_type, inferred_args = self.infer_function_type_arguments_pass2(
@@ -2405,6 +2441,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                     inferred_args,
                     need_refresh,
                     context,
+                    literal_overload_type_vars=literal_type_vars,
                 )
 
             if (
@@ -2496,6 +2533,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         old_inferred_args: Sequence[Type | None],
         need_refresh: bool,
         context: Context,
+        literal_overload_type_vars: frozenset[TypeVarId] = frozenset(),
     ) -> tuple[CallableType, list[Type | None]]:
         """Perform second pass of generic function type argument inference.
 
@@ -2515,6 +2553,15 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         for i, arg in enumerate(get_proper_types(inferred_args)):
             if isinstance(arg, (NoneType, UninhabitedType)) or has_erased_component(arg):
                 inferred_args[i] = None
+            elif (
+                isinstance(arg, Instance)
+                and arg.last_known_value is not None
+                and callee_type.variables[i].id in literal_overload_type_vars
+            ):
+                # The overload items of some protocol member are selected by literal
+                # values, so keep the literal (e.g. `"x"` should be `Literal["x"]`, not
+                # `str`) when applying the first pass solution.
+                inferred_args[i] = arg.last_known_value
         callee_type = self.apply_generic_arguments(callee_type, inferred_args, context)
 
         if not callee_type.is_generic():
@@ -2600,6 +2647,83 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                 for j in formal_to_actual[i]:
                     res[j] = 2
         return res
+
+    def get_literal_overload_formals(
+        self, callee: CallableType, arg_types: list[Type], formal_to_actual: list[list[int]]
+    ) -> list[int]:
+        """Return indices of generic protocol formals that need literal-aware inference.
+
+        These are formals like `SupportsGetItem[K, V]` where an actual argument implements a
+        protocol member using overloads that are selected by literal values (for example
+        `def __getitem__(self, key: Literal["a"]) -> int` and `... Literal["b"]) -> str`).
+        """
+        res = []
+        for i, formal in enumerate(callee.arg_types):
+            p_formal = get_proper_type(formal)
+            if not (
+                isinstance(p_formal, Instance)
+                and p_formal.type.is_protocol
+                and has_type_vars(p_formal)
+            ):
+                continue
+            # Deferring is only useful if some type variable can be inferred from another
+            # argument (for example the key type, if it is given as a literal).
+            tvar_ids = {tv.id for tv in get_type_vars(p_formal)}
+            if not any(
+                tvar_ids.intersection(tv.id for tv in get_type_vars(other))
+                for j, other in enumerate(callee.arg_types)
+                if j != i
+            ):
+                continue
+            if any(
+                has_literal_overloaded_member(p_formal, arg_types[j]) for j in formal_to_actual[i]
+            ):
+                res.append(i)
+        return res
+
+    def get_literal_overload_type_vars(
+        self,
+        callee: CallableType,
+        arg_types: list[Type],
+        formal_to_actual: list[list[int]],
+        literal_formals: list[int],
+        inferred_args: Sequence[Type | None],
+    ) -> frozenset[TypeVarId] | None:
+        """Check if literal values from the first pass can be used for the given formals.
+
+        The inferred arguments must not use the actual arguments for these formals. Return
+        None if literals can't help, i.e. there is no literal value among the type variables
+        of some formal, or the actual arguments are not compatible with the formal after
+        replacing type variables with the first pass solution (for example if the protocol
+        also requires the key to be a `str` in some other method, the literal would only
+        cause errors). Otherwise, return type variables that have a literal value.
+        """
+        solution: dict[TypeVarId, Type] = {}
+        literal_ids: set[TypeVarId] = set()
+        for tvar, arg in zip(callee.variables, inferred_args):
+            p_arg = get_proper_type(arg)
+            if (
+                p_arg is None
+                or isinstance(p_arg, (NoneType, UninhabitedType))
+                or has_erased_component(p_arg)
+            ):
+                continue
+            if isinstance(p_arg, Instance) and p_arg.last_known_value is not None:
+                solution[tvar.id] = p_arg.last_known_value
+                literal_ids.add(tvar.id)
+            else:
+                solution[tvar.id] = p_arg
+                if isinstance(p_arg, LiteralType):
+                    literal_ids.add(tvar.id)
+        for i in literal_formals:
+            formal = callee.arg_types[i]
+            if not any(tv.id in literal_ids for tv in get_type_vars(formal)):
+                return None
+            # Type variables without a solution (such as the result type) are erased to Any.
+            candidate = erasetype.erase_typevars(expand_type(formal, solution))
+            if not all(is_subtype(arg_types[j], candidate) for j in formal_to_actual[i]):
+                return None
+        return frozenset(literal_ids)
 
     def apply_inferred_arguments(
         self, callee_type: CallableType, inferred_args: Sequence[Type | None], context: Context
@@ -6947,6 +7071,29 @@ class ArgInferSecondPassQuery(types.BoolTypeQuery):
     def visit_callable_type(self, t: CallableType) -> bool:
         # TODO: we need to check only for type variables of original callable.
         return self.query_types(t.arg_types) or has_type_vars(t)
+
+
+def has_literal_overloaded_member(protocol: Instance, actual: Type) -> bool:
+    """Is a member required by 'protocol' overloaded in 'actual' with literal parameters?"""
+    actual = get_proper_type(actual)
+    if isinstance(actual, TypedDictType):
+        # Indexing a TypedDict is like using overloads with a literal key for each item.
+        return "__getitem__" in protocol.type.protocol_members and bool(actual.items)
+    if not isinstance(actual, Instance):
+        return False
+    for member in protocol.type.protocol_members:
+        # Look at the symbol first to avoid binding methods in the common case.
+        sym = actual.type.get(member)
+        if sym is None or not isinstance(sym.node, OverloadedFuncDef):
+            continue
+        typ = get_proper_type(find_member(member, actual, actual))
+        if isinstance(typ, Overloaded) and any(
+            isinstance(get_proper_type(arg), LiteralType)
+            for item in typ.items
+            for arg in item.arg_types
+        ):
+            return True
+    return False
 
 
 def has_erased_component(t: Type | None) -> bool:

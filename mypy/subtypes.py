@@ -984,7 +984,19 @@ class SubtypeVisitor(TypeVisitor[bool]):
     def visit_typeddict_type(self, left: TypedDictType) -> bool:
         right = self.right
         if isinstance(right, Instance):
-            return self._is_subtype(left.fallback, right)
+            if self._is_subtype(left.fallback, right):
+                return True
+            if right.type.is_protocol and "__getitem__" in right.type.protocol_members:
+                # Indexing a TypedDict with a literal key gives the type of the corresponding
+                # item, so a protocol with a __getitem__ accepting such a key may still match.
+                return is_protocol_implementation(
+                    left.fallback,
+                    right,
+                    proper_subtype=self.proper_subtype,
+                    options=self.options,
+                    typed_dict=left,
+                )
+            return False
         elif isinstance(right, TypedDictType):
             if left == right:
                 return True  # Fast path
@@ -1273,10 +1285,15 @@ def is_protocol_implementation(
     class_obj: bool = False,
     skip: list[str] | None = None,
     options: Options | None = None,
+    typed_dict: TypedDictType | None = None,
 ) -> bool:
     """Check whether 'left' implements the protocol 'right'.
 
     If 'proper_subtype' is True, then check for a proper subtype.
+
+    If 'typed_dict' is given, 'left' must be its fallback, and __getitem__ is treated as
+    having an overload for every key (see typeddict_getitem_overload()).
+
     Treat recursive protocols by using the 'assuming' structural subtype matrix
     (in sparse representation, i.e. as a list of pairs (subtype, supertype)),
     see also comment in nodes.TypeInfo. When we enter a check for classes
@@ -1327,6 +1344,8 @@ def is_protocol_implementation(
             assert supertype is not None
 
             subtype = get_protocol_member(left, original_left, member, class_obj)
+            if typed_dict is not None and member == "__getitem__":
+                subtype = typeddict_getitem_overload(typed_dict) or subtype
             # Useful for debugging:
             # print(member, 'of', left, 'has type', subtype)
             # print(member, 'of', right, 'has type', supertype)
@@ -1391,8 +1410,40 @@ def is_protocol_implementation(
         subtype_context=SubtypeContext(ignore_pos_arg_names=ignore_names),
         proper_subtype=proper_subtype,
     )
-    type_state.record_subtype_cache_entry(subtype_kind, left, right)
+    if typed_dict is None:
+        # Different TypedDict types can share the same fallback, so the result for a
+        # specific TypedDict can't be cached using only the fallback.
+        type_state.record_subtype_cache_entry(subtype_kind, left, right)
     return True
+
+
+def typeddict_getitem_overload(typed_dict: TypedDictType) -> Type | None:
+    """Return the type of __getitem__ of a TypedDict as seen by protocols.
+
+    This is an overloaded method with an item for each key, accepting a literal key and
+    returning the type of the value, followed by the generic method with a str key. For
+    example, for TypedDict("X", {"a": int, "b": str}) we get:
+
+        @overload
+        def __getitem__(self, key: Literal["a"]) -> int: ...
+        @overload
+        def __getitem__(self, key: Literal["b"]) -> str: ...
+        @overload
+        def __getitem__(self, key: str) -> object: ...
+    """
+    generic = find_member("__getitem__", typed_dict.fallback, typed_dict.fallback)
+    generic = get_proper_type(generic) if generic is not None else None
+    if not isinstance(generic, CallableType) or len(generic.arg_types) != 1:
+        return None
+    key_type = get_proper_type(generic.arg_types[0])
+    if not isinstance(key_type, Instance) or not typed_dict.items:
+        return None
+    items = [
+        generic.copy_modified(arg_types=[LiteralType(key, key_type)], ret_type=value_type)
+        for key, value_type in typed_dict.items.items()
+    ]
+    items.append(generic)
+    return Overloaded(items)
 
 
 def get_protocol_member(

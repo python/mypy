@@ -4865,3 +4865,67 @@ from typing import Callable, TypeVar
 S = TypeVar("S")
 class C:
     def __init_subclass__(cls: type[S], item: Callable[[S], None]) -> None: ...
+
+[case testProtocolInferenceWithLiteralOverloadedMethod]
+from typing import Literal, Protocol, TypeVar, overload
+
+K_contra = TypeVar("K_contra", contravariant=True)
+V_co = TypeVar("V_co", covariant=True)
+K = TypeVar("K")
+V = TypeVar("V")
+
+class GetItem(Protocol[K_contra, V_co]):
+    def __getitem__(self, key: K_contra, /) -> V_co: ...
+
+class Config:
+    @overload
+    def __getitem__(self, key: Literal["name"], /) -> str: ...
+    @overload
+    def __getitem__(self, key: Literal["size"], /) -> int: ...
+    def __getitem__(self, key: str, /) -> object: return key
+
+def get(key: K, obj: GetItem[K, V]) -> V: ...
+def get_swapped(obj: GetItem[K, V], key: K) -> V: ...
+def get_pair(key: K, obj: GetItem[K, V]) -> tuple[K, V]: ...
+def get_kw(*, key: K, obj: GetItem[K, V]) -> V: ...
+
+c = Config()
+reveal_type(get("name", c))  # N: Revealed type is "builtins.str"
+reveal_type(get("size", c))  # N: Revealed type is "builtins.int"
+reveal_type(get_swapped(c, "name"))  # N: Revealed type is "builtins.str"
+reveal_type(get_kw(obj=c, key="size"))  # N: Revealed type is "builtins.int"
+reveal_type(get_pair("size", c))  # N: Revealed type is "tuple[Literal['size'], builtins.int]"
+
+literal_key: Literal["size"]
+reveal_type(get(literal_key, c))  # N: Revealed type is "builtins.int"
+
+get("other", c)  # E: Cannot infer value of type parameter "K" of "get"
+dynamic_key: str
+get(dynamic_key, c)  # E: Cannot infer value of type parameter "K" of "get"
+[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-full.pyi]
+
+[case testProtocolInferenceWithNonLiteralOverloadedMethodUnchanged]
+from typing import Protocol, TypeVar, overload
+
+K_contra = TypeVar("K_contra", contravariant=True)
+V_co = TypeVar("V_co", covariant=True)
+K = TypeVar("K")
+V = TypeVar("V")
+
+class GetItem(Protocol[K_contra, V_co]):
+    def __getitem__(self, key: K_contra, /) -> V_co: ...
+
+class Other:
+    @overload
+    def __getitem__(self, key: int, /) -> str: ...
+    @overload
+    def __getitem__(self, key: str, /) -> int: ...
+    def __getitem__(self, key: object, /) -> object: return key
+
+def get(key: K, obj: GetItem[K, V]) -> tuple[K, V]: ...
+
+# Overloads that are not selected by literal values still use the first matching item.
+reveal_type(get(1, Other()))  # N: Revealed type is "tuple[builtins.int, builtins.str]"
+[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-full.pyi]

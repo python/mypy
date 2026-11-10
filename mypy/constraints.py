@@ -1091,6 +1091,17 @@ class ConstraintBuilderVisitor(TypeVisitor[list[Constraint]]):
                 return []  # See #11020
             # The above is safe since at this point we know that 'instance' is a subtype
             # of (erased) 'template', therefore it defines all protocol members
+            proper_subtype = get_proper_type(subtype)
+            if member == "__getitem__" and isinstance(proper_subtype, TypedDictType):
+                temp_proper = get_proper_type(temp)
+                if (
+                    isinstance(temp_proper, CallableType)
+                    and len(temp_proper.arg_types) == 1
+                    and isinstance(get_proper_type(temp_proper.arg_types[0]), LiteralType)
+                ):
+                    # The protocol asks for a specific literal key (this is usually the result
+                    # of an earlier inference pass), so we can use the type of that item.
+                    inst = mypy.subtypes.typeddict_getitem_overload(proper_subtype) or inst
             if class_obj:
                 # For class objects we must only infer constraints if possible, otherwise it
                 # can lead to confusion between class and instance, for example StrEnum is

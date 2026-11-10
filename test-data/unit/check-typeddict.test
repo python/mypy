@@ -6163,3 +6163,94 @@ def foo(t: T, **kwargs: Unpack[TD[T]]) -> None:
     reveal_type(kwargs)  # N: Revealed type is "TypedDict('__main__.TD', {'x': builtins.int, 'y': builtins.int})" \
                          # N: Revealed type is "TypedDict('__main__.TD', {'x': builtins.int, 'y': builtins.str})"
 [builtins fixtures/dict.pyi]
+
+[case testTypedDictGenericProtocolLiteralKeyInference]
+# flags: --python-version 3.12
+from typing import Literal, NotRequired, Protocol, TypedDict
+
+class X(TypedDict):
+    a: int
+    b: str
+    c: NotRequired[float]
+
+class GetItem[K, V](Protocol):
+    def __getitem__(self, key: K, /) -> V: ...
+
+x: X
+
+def get[K, V](key: K, obj: GetItem[K, V]) -> V: ...
+def get_swapped[K, V](obj: GetItem[K, V], key: K) -> V: ...
+def get_pair[K, V](key: K, obj: GetItem[K, V]) -> tuple[K, V]: ...
+
+reveal_type(x["b"])  # N: Revealed type is "builtins.str"
+reveal_type(get("a", x))  # N: Revealed type is "builtins.int"
+reveal_type(get("b", x))  # N: Revealed type is "builtins.str"
+reveal_type(get("c", x))  # N: Revealed type is "builtins.float"
+reveal_type(get_swapped(x, "b"))  # N: Revealed type is "builtins.str"
+reveal_type(get_pair("a", x))  # N: Revealed type is "tuple[Literal['a'], builtins.int]"
+
+key: Literal["b"]
+reveal_type(get(key, x))  # N: Revealed type is "builtins.str"
+
+# Keys that are not literals or not in the TypedDict are not affected.
+dynamic_key: str
+reveal_type(get(dynamic_key, x))  # N: Revealed type is "builtins.object"
+reveal_type(get("missing", x))  # N: Revealed type is "builtins.object"
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictProtocolLiteralKeySubtyping]
+# flags: --python-version 3.12
+from typing import Literal, Protocol, TypedDict
+
+class X(TypedDict):
+    a: int
+    b: str
+
+class GetItem[K, V](Protocol):
+    def __getitem__(self, key: K, /) -> V: ...
+
+x: X
+ok_b: GetItem[Literal["b"], str] = x
+ok_b_object: GetItem[Literal["b"], object] = x
+ok_str: GetItem[str, object] = x
+ok_missing: GetItem[Literal["missing"], object] = x
+bad_value: GetItem[Literal["b"], int] = x  # E: Incompatible types in assignment (expression has type "X", variable has type "GetItem[Literal['b'], int]") \
+                                           # N: Following member(s) of "X" have conflicts: \
+                                           # N:     Expected: \
+                                           # N:         def __getitem__(self, Literal['b'], /) -> int \
+                                           # N:     Got: \
+                                           # N:         def __getitem__(self, str, /) -> object
+bad_str: GetItem[str, str] = x  # E: Incompatible types in assignment (expression has type "X", variable has type "GetItem[str, str]") \
+                                # N: Following member(s) of "X" have conflicts: \
+                                # N:     Expected: \
+                                # N:         def __getitem__(self, str, /) -> str \
+                                # N:     Got: \
+                                # N:         def __getitem__(self, str, /) -> object
+
+def takes_a(d: GetItem[Literal["a"], int]) -> None: ...
+takes_a(x)
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testTypedDictGenericProtocolLiteralKeyNotUsedIfOtherMethodNeedsStr]
+# flags: --python-version 3.12
+from typing import Iterable, Literal, Protocol, TypedDict
+
+class X(TypedDict):
+    a: int
+
+class KeysAndGetItem[K, V](Protocol):
+    def keys(self) -> Iterable[K]: ...
+    def __getitem__(self, key: K, /) -> V: ...
+
+x: X
+key: Literal["a"]
+
+def get[K, V](key: K, obj: KeysAndGetItem[K, V]) -> V: ...
+
+# The keys() method needs K to be str, so a literal key type is not used here.
+reveal_type(get("a", x))  # N: Revealed type is "builtins.object"
+reveal_type(get(key, x))  # N: Revealed type is "builtins.object"
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
