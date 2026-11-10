@@ -400,7 +400,7 @@ def foo(b: bytes, ba: bytearray) -> None:
 main:7: error: Argument 1 to "bytes_func" has incompatible type "bytearray"; expected "bytes"
 main:8: error: Argument 1 to "bytearray_func" has incompatible type "bytes"; expected "bytearray"
 
-[case testBytesFor]
+[case testBytesFor_64bit]
 def f(b: bytes) -> int:
     t = 0
     for c in b:
