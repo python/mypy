@@ -1435,5 +1435,3 @@ expect_true(IS_LINUX)
 expect_false(PY312)
 [builtins fixtures/ops.pyi]
 [out]
-
-
