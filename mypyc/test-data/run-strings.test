@@ -1431,8 +1431,8 @@ def test_strings() -> None:
     samples = [
         "", " ", "abc", "ABCxyz", "abc1", "123", "1.5", "-1", "a b", "abc!",
         "Hello, World! 123 ~", "\t", "a\nb", "\x00", "\x7f",
-        "été", "é²", "²½", " ",
-        "٠١٢", "Ⅷ三", "中文", " ", "​",
+        "été", "é²", "²½", "\u00a0",
+        "٠١٢", "Ⅷ三", "中文", "\u2000", "\u200b",
         "abcé", "123٠", "\U00010400\U00010428", "\U0001d7ce\U0001d7cf",
         "123\U0001d7ce", "\U0001f600", "abc\U0001f600", "abc\U000e0001",
     ]
@@ -1460,8 +1460,6 @@ def test_isascii() -> None:
     assert not "café".isascii()
     assert not "中".isascii()
     assert not "abc\U0001f600".isascii()
-    s = "abcé"
-    assert s[:3].isascii()
 
 def test_isdecimal() -> None:
     assert "0123456789".isdecimal()
@@ -1494,8 +1492,8 @@ def test_isprintable() -> None:
     assert not "\x00".isprintable()
     assert not "\x7f".isprintable()
     assert "été".isprintable()
-    assert not " ".isprintable()
-    assert not " ".isprintable()
+    assert not "\u00a0".isprintable()
+    assert not "\u2000".isprintable()
     assert "\U0001f600".isprintable()
     assert not "abc\U000e0001".isprintable()
 

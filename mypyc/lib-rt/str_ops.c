@@ -862,3 +862,7 @@ bool CPyStr_IsNumeric(PyObject *str) {
 bool CPyStr_IsPrintable(PyObject *str) {
     CPY_STR_RETURN_ALL_CHARS(str, CPY_ASCII_ISPRINTABLE, Py_UNICODE_ISPRINTABLE, true);
 }
+
+#undef CPY_ASCII_ISPRINTABLE
+#undef CPY_STR_RETURN_ALL_CHARS
+#undef CPY_STR_CHECK_CHARS
