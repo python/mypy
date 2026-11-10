@@ -1002,6 +1002,8 @@ PyObject *CPyList_Extend(PyObject *o1, PyObject *o2);
 int CPyList_Remove(PyObject *list, PyObject *obj);
 CPyTagged CPyList_Index(PyObject *list, PyObject *obj);
 PyObject *CPySequence_Sort(PyObject *seq);
+PyObject *CPySequence_Concat(PyObject *seq, PyObject *other);
+PyObject *CPySequence_InPlaceConcat(PyObject *seq, PyObject *other);
 PyObject *CPySequence_Multiply(PyObject *seq, CPyTagged t_size);
 PyObject *CPySequence_RMultiply(CPyTagged t_size, PyObject *seq);
 PyObject *CPySequence_InPlaceMultiply(PyObject *seq, CPyTagged t_size);

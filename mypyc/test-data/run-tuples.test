@@ -467,3 +467,53 @@ class subc(tuple[Any, ...]):
 [file userdefinedtuple.py]
 class tuple:
     pass
+
+[case testTupleOpsOverridingSubclass]
+from typing import Tuple
+from testutil import assertRaises
+from tuplesub import BadTuple, GoodTuple
+
+def add(a: Tuple[int, ...], b: Tuple[int, ...]) -> Tuple[int, ...]:
+    return a + b
+
+def mul(a: Tuple[int, ...], n: int) -> Tuple[int, ...]:
+    return a * n
+
+def rmul(a: Tuple[int, ...], n: int) -> Tuple[int, ...]:
+    return n * a
+
+def test_bad_result_type() -> None:
+    a: Tuple[int, ...] = BadTuple((1,))
+    with assertRaises(TypeError, "tuple object expected; got int"):
+        add(a, (2,))
+    with assertRaises(TypeError, "tuple object expected; got int"):
+        mul(a, 2)
+    with assertRaises(TypeError, "tuple object expected; got int"):
+        rmul(a, 2)
+
+def test_overrides_called() -> None:
+    a: Tuple[int, ...] = GoodTuple((1,))
+    assert add(a, (2,)) == (1, 2, 0)
+    assert mul(a, 2) == (1, 1, 2)
+    assert rmul(a, 2) == (1, 1, 3)
+    assert type(rmul(a, 2)) is GoodTuple
+    assert rmul((1,), 2) == (1, 1)
+
+[file tuplesub.py]
+from typing import Any
+
+class BadTuple(tuple):
+    def __add__(self, other: Any) -> Any:
+        return 1
+    def __mul__(self, n: Any) -> Any:
+        return 2
+    def __rmul__(self, n: Any) -> Any:
+        return 3
+
+class GoodTuple(tuple):
+    def __add__(self, other: Any) -> Any:
+        return GoodTuple(tuple(self) + other + (0,))
+    def __mul__(self, n: Any) -> Any:
+        return GoodTuple(tuple(self) * n + (2,))
+    def __rmul__(self, n: Any) -> Any:
+        return GoodTuple(tuple(self) * n + (3,))

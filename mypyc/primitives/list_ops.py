@@ -341,7 +341,7 @@ binary_op(
     name="+",
     arg_types=[list_rprimitive, list_rprimitive],
     return_type=list_rprimitive,
-    c_function_name="PySequence_Concat",
+    c_function_name="CPySequence_Concat",
     error_kind=ERR_MAGIC,
 )
 
@@ -350,7 +350,7 @@ binary_op(
     name="+=",
     arg_types=[list_rprimitive, object_rprimitive],
     return_type=list_rprimitive,
-    c_function_name="PySequence_InPlaceConcat",
+    c_function_name="CPySequence_InPlaceConcat",
     error_kind=ERR_MAGIC,
 )
 

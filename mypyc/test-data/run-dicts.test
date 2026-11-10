@@ -668,3 +668,32 @@ for convert in (keys, values, items):
         gc.collect()
         assert all(ref() is None for ref in refs)
     assert convert(CustomDict(iter([1, 2]))) == [1, 2]
+
+[case testDictCopyOverridingSubclass]
+from typing import Dict
+from testutil import assertRaises
+from dictsub import BadDict, GoodDict
+
+def copy(d: Dict[int, int]) -> Dict[int, int]:
+    return d.copy()
+
+def test_bad_result_type() -> None:
+    d: Dict[int, int] = BadDict({1: 2})
+    with assertRaises(TypeError, "dict object expected; got int"):
+        copy(d)
+
+def test_override_called() -> None:
+    d: Dict[int, int] = GoodDict({1: 2})
+    assert copy(d) == {1: 2, 3: 4}
+    assert type(copy(d)) is GoodDict
+
+[file dictsub.py]
+from typing import Any
+
+class BadDict(dict):
+    def copy(self) -> Any:
+        return 1
+
+class GoodDict(dict):
+    def copy(self) -> Any:
+        return GoodDict({**self, 3: 4})
