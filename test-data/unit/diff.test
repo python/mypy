@@ -1036,11 +1036,10 @@ __main__.C.y
 __main__.C.yi
 __main__.C.z
 __main__.C.zi
+__main__.same2
 __main__.v
 __main__.w
-__main__.x
 __main__.y
-__main__.z
 
 [case testFinalFlagsTriggerMethod]
 from typing import final
