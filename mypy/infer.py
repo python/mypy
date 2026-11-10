@@ -63,7 +63,7 @@ def infer_function_type_arguments(
     )
     if extra_constraints:
         constraints += extra_constraints
-        # Combining extra constraints may shadow precise constrains by imprecise ones.
+        # Combining extra constraints may shadow precise constraints by imprecise ones.
         if any(isinstance(v, ParamSpecType) for v in callee_type.variables):
             constraints = filter_imprecise_kinds(constraints)
 

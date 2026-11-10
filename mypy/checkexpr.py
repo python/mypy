@@ -1804,7 +1804,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         #   * Infer constraints from inner (argument) context (pass 1, non-callable arguments).
         #   * Solve the combined constraint set (outer + partial inner).
         #   * Apply the new (more precise) inferred type arguments to initial callable.
-        #   * Re-infer argument types in more precise type cntext
+        #   * Re-infer argument types in more precise type context
         #     (including pass 2, callable arguments).
         #   * Re-infer constraints from inner context (now from all arguments).
         #   * Solve the final constraint set combining outer context and precise inner context.
@@ -2307,7 +2307,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         if all(solid_inferred_type(a, type_vars_set) for a in inferred_args):
             return self.apply_inferred_arguments(initial_callee_type, inferred_args, context)
         # Before giving up, check first pass result. In some cases this may help in situations
-        # where both passes together create a system too tricky for out solver.
+        # where both passes together create a system too tricky for our solver.
         if all(solid_inferred_type(a, type_vars_set) for a in pass1_inferred_args):
             return self.apply_inferred_arguments(initial_callee_type, pass1_inferred_args, context)
         return None
