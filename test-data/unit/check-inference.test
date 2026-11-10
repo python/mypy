@@ -931,7 +931,7 @@ def sub_method(value: Union[S, Iterable[S]]) -> Iterable[S]:
     pass
 
 def method(value: Union[T, Sequence[T]]) -> None:
-    reveal_type(sub_method(value)) # N: Revealed type is "typing.Iterable[Union[builtins.str, typing.Sequence[builtins.int]]]"
+    reveal_type(sub_method(value)) # N: Revealed type is "typing.Iterable[builtins.str | typing.Sequence[builtins.int]]"
 
 
 [case testCallableListJoinInference]
