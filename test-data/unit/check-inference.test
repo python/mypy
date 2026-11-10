@@ -933,6 +933,57 @@ def sub_method(value: Union[S, Iterable[S]]) -> Iterable[S]:
 def method(value: Union[T, Sequence[T]]) -> None:
     reveal_type(sub_method(value)) # N: Revealed type is "typing.Iterable[builtins.str | typing.Sequence[builtins.int]]"
 
+[case testInferenceOfUnionOfIterableOfTypeVarAndTypeVar]
+from typing import Iterable, List, TypeVar, Union
+
+T = TypeVar("T")
+
+def coerce_list(x: Union[Iterable[T], T]) -> List[T]:
+    pass
+
+reveal_type(coerce_list(1)) # N: Revealed type is "builtins.list[builtins.int]"
+reveal_type(coerce_list([1, 2])) # N: Revealed type is "builtins.list[builtins.int]"
+[builtins fixtures/list.pyi]
+
+[case testInferenceOfOptionalUnionOfTypeVarAndSequenceOfTypeVar]
+from typing import List, Optional, Sequence, TypeVar, Union
+
+T = TypeVar("T")
+
+def coerce_list(x: Optional[Union[T, Sequence[T]]]) -> List[T]:
+    pass
+
+reveal_type(coerce_list(1)) # N: Revealed type is "builtins.list[builtins.int]"
+reveal_type(coerce_list([1, 2])) # N: Revealed type is "builtins.list[builtins.int]"
+[builtins fixtures/list.pyi]
+
+[case testInferenceOfUnionOfTypeVarAndMappingToTypeVar]
+from typing import Mapping, TypeVar, Union
+
+K = TypeVar("K")
+V = TypeVar("V")
+
+def get_value(x: Union[V, Mapping[K, V]]) -> V:
+    pass
+
+reveal_type(get_value(1)) # N: Revealed type is "builtins.int"
+reveal_type(get_value({"a": 1})) # N: Revealed type is "builtins.int"
+[builtins fixtures/dict.pyi]
+
+[case testInferenceOfUnionOfTypeVarAndIterableOfTypeVarPrefersIterable]
+from typing import Iterable, List, TypeVar, Union
+
+T = TypeVar("T")
+
+def coerce_list(x: Union[T, Iterable[T]]) -> List[T]:
+    pass
+
+reveal_type(coerce_list("abc")) # N: Revealed type is "builtins.list[builtins.str]"
+reveal_type(coerce_list(b"abc")) # N: Revealed type is "builtins.list[builtins.int]"
+reveal_type(coerce_list({"a": 1})) # N: Revealed type is "builtins.list[builtins.str]"
+reveal_type(coerce_list([[1], [2]])) # N: Revealed type is "builtins.list[builtins.list[builtins.int]]"
+[builtins fixtures/primitives.pyi]
+
 
 [case testCallableListJoinInference]
 from typing import Any, Callable
