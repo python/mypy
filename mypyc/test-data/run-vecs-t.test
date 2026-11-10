@@ -7,7 +7,7 @@ from typing import Final, Any, Iterable, Optional, Tuple
 from mypy_extensions import i64
 from librt.vecs import vec, append, extend, remove, pop
 
-from testutil import assertRaises
+from testutil import assertRaises, is_64_bit_platform
 
 def test_create_empty() -> None:
     v = vec[str]()
@@ -100,6 +100,21 @@ def test_set_item_optional() -> None:
     assert v[1] == "a"
     v[0] = None
     assert v[0] is None
+
+class ReadVecOnDel:
+    def __del__(self) -> None:
+        del_events.append(set_item_vec[0])
+
+del_events: list[Optional[ReadVecOnDel]] = []
+set_item_vec: vec[Optional[ReadVecOnDel]] = vec[Optional[ReadVecOnDel]]()
+
+def test_set_item_decref_after_store() -> None:
+    # The old item must be decref'd after the new item is stored, since
+    # __del__ can access the vec
+    global set_item_vec
+    set_item_vec = vec[Optional[ReadVecOnDel]]([ReadVecOnDel()])
+    set_item_vec[0] = None
+    assert del_events == [None]
 
 def test_box_and_unbox() -> None:
     v = vec[str](["3", "5"])
@@ -258,6 +273,29 @@ def test_contains() -> None:
     assert x not in v2
     assert x + "x" not in v2
 
+class ReplaceItemOnEq:
+    def __init__(self, name: str) -> None:
+        self.name = name
+
+    def __eq__(self, other: object) -> bool:
+        # Drop the reference to self from the vec
+        eq_vec[0] = None
+        # Try to reuse the memory of self, in case it was freed
+        junk = [ReplaceItemOnEq('junk') for i in range(100)]
+        return isinstance(other, ReplaceItemOnEq) and self.name == other.name
+
+eq_vec: vec[Optional[ReplaceItemOnEq]] = vec[Optional[ReplaceItemOnEq]]()
+
+def test_item_replaced_during_comparison() -> None:
+    # Items must not be borrowed while comparing, since __eq__ can replace them
+    global eq_vec
+    eq_vec = vec[Optional[ReplaceItemOnEq]]([ReplaceItemOnEq('x')])
+    assert eq_vec == vec[Optional[ReplaceItemOnEq]]([ReplaceItemOnEq('x')])
+    eq_vec = vec[Optional[ReplaceItemOnEq]]([ReplaceItemOnEq('x')])
+    assert ReplaceItemOnEq('x') in eq_vec
+    eq_vec = vec[Optional[ReplaceItemOnEq]]([ReplaceItemOnEq('x')])
+    assert len(remove(eq_vec, ReplaceItemOnEq('x'))) == 0
+
 def test_slicing() -> None:
     v = vec[str]()
     assert v[:] == vec[str]([])
@@ -323,6 +361,30 @@ def test_remove() -> None:
     s: Any = None
     with assertRaises(TypeError):
         remove(v, s)
+
+class RemoveOnDel:
+    def __init__(self, removed: bool) -> None:
+        self.removed = removed
+
+    def __eq__(self, other: object) -> bool:
+        return True
+
+    def __del__(self) -> None:
+        if self.removed:
+            remove_events.append(remove_vec[0])
+
+remove_events: list[Optional[RemoveOnDel]] = []
+remove_vec: vec[Optional[RemoveOnDel]] = vec[Optional[RemoveOnDel]]()
+
+def test_remove_decref_after_shift() -> None:
+    # The removed item must be decref'd after the items have been shifted, since
+    # __del__ can access the vec through another reference
+    global remove_vec
+    remove_vec = vec[Optional[RemoveOnDel]]([RemoveOnDel(True), None])
+    v = remove(remove_vec, RemoveOnDel(False))
+    assert remove_events == [None]
+    assert len(v) == 1
+    assert v[0] is None
 
 def test_pop_last() -> None:
     v = vec[str](["4", "7", "xyz"])
@@ -524,6 +586,15 @@ def test_cap_negative() -> None:
         vec[str](capacity=-1)
     with assertRaises(ValueError):
         vec[str](['x'], capacity=-1)
+
+def test_cap_too_large() -> None:
+    if not is_64_bit_platform():
+        return
+    for n in [i64(2**61), i64(2**63 - 1)]:
+        with assertRaises(MemoryError):
+            vec[str](capacity=n)
+        with assertRaises(MemoryError):
+            vec[str](['x'], capacity=n)
 
 def extend_vec(v: vec[str], v2: vec[str]) -> vec[str]:
     return extend(v, v2)
