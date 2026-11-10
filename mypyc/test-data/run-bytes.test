@@ -567,6 +567,131 @@ def test_bytearray_indexing() -> None:
     with assertRaises(ValueError, "byte must be in range(0, 256)"):
         b2[0] = 256
 
+[case testBytesIteration]
+from typing import Iterator
+
+def loop(b: bytes) -> list[int]:
+    a = []
+    for c in b:
+        a.append(c)
+    return a
+
+def comprehension(b: bytes) -> list[int]:
+    return [c for c in b]
+
+def test_bytes() -> None:
+    for b in [b'', b'a', b'\x00\x80\xff', bytes(range(256))]:
+        assert loop(b) == list(b)
+        assert comprehension(b) == list(b)
+
+def test_bytes_subclass() -> None:
+    from bytessub import BytesSubclass
+    b = BytesSubclass(b'ab')
+    assert loop(b) == [97, 98]
+    assert comprehension(b) == [97, 98]
+
+[file bytessub.py]
+class BytesSubclass(bytes):
+    pass
+
+[case testBytearrayIteration]
+from typing import Iterator
+
+def loop(b: bytearray) -> list[int]:
+    a = []
+    for c in b:
+        a.append(c)
+    return a
+
+def comprehension(b: bytearray) -> list[int]:
+    return [c + 1 for c in b]
+
+def gen_expr(b: bytearray) -> tuple[int, ...]:
+    return tuple(c * 2 for c in b)
+
+def set_comprehension(b: bytearray) -> set[int]:
+    return {c for c in b}
+
+def enum(b: bytearray) -> list[tuple[int, int]]:
+    return [(i, c) for i, c in enumerate(b)]
+
+def zipped(b: bytearray, s: str) -> list[tuple[int, str]]:
+    return [(c, x) for c, x in zip(b, s)]
+
+def generator(b: bytearray) -> Iterator[int]:
+    for c in b:
+        yield c
+
+def test_basic() -> None:
+    for b in [bytearray(), bytearray(b'a'), bytearray(b'\x00\x80\xff'), bytearray(range(256))]:
+        assert loop(b) == list(b)
+        assert comprehension(b) == [c + 1 for c in list(b)]
+        assert gen_expr(b) == tuple(c * 2 for c in list(b))
+        assert set_comprehension(b) == set(list(b))
+        assert enum(b) == list(enumerate(list(b)))
+        assert zipped(b, 'xyz') == list(zip(list(b), 'xyz'))
+        assert list(generator(b)) == list(b)
+
+def grow(b: bytearray) -> list[int]:
+    a = []
+    for c in b:
+        if len(b) < 5:
+            b.append(c + 10)
+        a.append(c)
+    return a
+
+def grow_comprehension(b: bytearray) -> list[int]:
+    return [append_if_short(b, c) for c in b]
+
+def append_if_short(b: bytearray, c: int) -> int:
+    if len(b) < 5:
+        b.append(c + 10)
+    return c
+
+def shrink(b: bytearray) -> list[int]:
+    a = []
+    for c in b:
+        b.clear()
+        a.append(c)
+    return a
+
+def shrink_comprehension(b: bytearray) -> list[int]:
+    return [clear(b, c) for c in b]
+
+def clear(b: bytearray, c: int) -> int:
+    b.clear()
+    return c
+
+def test_modify_while_iterating() -> None:
+    assert grow(bytearray(b'\x01\x02')) == [1, 2, 11, 12, 21]
+    assert grow_comprehension(bytearray(b'\x01\x02')) == [1, 2, 11, 12, 21]
+    assert shrink(bytearray(b'\x01\x02')) == [1]
+    assert shrink_comprehension(bytearray(b'\x01\x02')) == [1]
+
+def test_subclass() -> None:
+    from bytearraysub import ByteArrayOverride, ByteArrayIterOverride
+    # Like CPython, ignore __len__ and __getitem__ overrides
+    b = ByteArrayOverride(b'ab')
+    assert loop(b) == [97, 98]
+    assert comprehension(b) == [98, 99]
+    b2 = ByteArrayIterOverride(b'ab')
+    assert loop(b2) == [42]
+    assert comprehension(b2) == [43]
+
+[file bytearraysub.py]
+from typing import Iterator
+
+class ByteArrayOverride(bytearray):
+    def __len__(self) -> int:
+        return 1
+
+    def __getitem__(self, i: object) -> int:  # type: ignore[override]
+        return 99
+
+class ByteArrayIterOverride(bytearray):
+    def __iter__(self) -> Iterator[int]:
+        yield 42
+
 [case testBytesJoin]
 from typing import Any
 from testutil import assertRaises

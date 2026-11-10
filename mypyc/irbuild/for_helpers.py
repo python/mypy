@@ -66,6 +66,7 @@ from mypyc.ir.rtypes import (
     c_pyssize_t_rprimitive,
     int_rprimitive,
     is_bool_or_bit_rprimitive,
+    is_bytearray_rprimitive,
     is_dict_rprimitive,
     is_fixed_width_rtype,
     is_immutable_rprimitive,
@@ -257,7 +258,16 @@ def can_preallocate_from_generator(builder: IRBuilder, gen: GeneratorExpr) -> bo
     if isinstance(rtype, RTuple):
         # for_loop_helper_with_index crashes for empty tuples
         return bool(rtype.types)
-    return is_sequence_rprimitive(rtype) or isinstance(rtype, RVec)
+    return is_indexed_sequence_rprimitive(rtype) or isinstance(rtype, RVec)
+
+
+def is_indexed_sequence_rprimitive(rtype: RType) -> bool:
+    """Do we iterate over a primitive sequence by index, instead of using an iterator?
+
+    We use an iterator for bytearray, since there is no fast unsafe item access for it,
+    and since overrides of __len__ and __getitem__ in a subclass must not be used.
+    """
+    return is_sequence_rprimitive(rtype) and not is_bytearray_rprimitive(rtype)
 
 
 def sequence_from_generator_preallocate_helper(
@@ -722,7 +732,7 @@ def make_for_loop_generator(
         return async_obj
 
     rtyp = builder.node_type(expr)
-    if is_sequence_rprimitive(rtyp) or isinstance(rtyp, RVec):
+    if is_indexed_sequence_rprimitive(rtyp) or isinstance(rtyp, RVec):
         # Special case "for x in <seq>" for concrete sequence types.
         expr_reg = accept_loop_state(builder, expr, reassigned)
         target_type = builder.get_sequence_type(expr)
@@ -801,7 +811,7 @@ def make_for_loop_generator(
             expr.callee.fullname == "builtins.reversed"
             and len(expr.args) == 1
             and expr.arg_kinds == [ARG_POS]
-            and is_sequence_rprimitive(builder.node_type(expr.args[0]))
+            and is_indexed_sequence_rprimitive(builder.node_type(expr.args[0]))
         ):
             # Special case "for x in reversed(<list>)".
             expr_reg = accept_loop_state(builder, expr.args[0], reassigned)
