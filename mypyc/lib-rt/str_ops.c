@@ -236,22 +236,30 @@ PyObject *CPyStr_Build(Py_ssize_t len, ...) {
     return res;
 }
 
+// Convert a start or end index to Py_ssize_t. Like CPython, clamp values that don't fit
+// in Py_ssize_t (these are out of range for any string) instead of raising an error.
+static Py_ssize_t CPyStr_AsSliceIndex(CPyTagged x) {
+    if (likely(CPyTagged_CheckShort(x))) {
+        return CPyTagged_ShortAsSsize_t(x);
+    }
+    PyObject *obj = CPyTagged_LongAsObject(x);
+    Py_ssize_t n = PyLong_AsSsize_t(obj);
+    if (n == -1 && PyErr_Occurred()) {
+        // The only possible error is an overflow
+        PyErr_Clear();
+        return PyLong_IsNegative(obj) ? PY_SSIZE_T_MIN : PY_SSIZE_T_MAX;
+    }
+    return n;
+}
+
 CPyTagged CPyStr_Find(PyObject *str, PyObject *substr, CPyTagged start, int direction) {
     CPyTagged end = PyUnicode_GET_LENGTH(str) << 1;
     return CPyStr_FindWithEnd(str, substr, start, end, direction);
 }
 
 CPyTagged CPyStr_FindWithEnd(PyObject *str, PyObject *substr, CPyTagged start, CPyTagged end, int direction) {
-    Py_ssize_t temp_start = CPyTagged_AsSsize_t(start);
-    if (temp_start == -1 && PyErr_Occurred()) {
-        PyErr_SetString(PyExc_OverflowError, CPYTHON_LARGE_INT_ERRMSG);
-        return CPY_INT_TAG;
-    }
-    Py_ssize_t temp_end = CPyTagged_AsSsize_t(end);
-    if (temp_end == -1 && PyErr_Occurred()) {
-        PyErr_SetString(PyExc_OverflowError, CPYTHON_LARGE_INT_ERRMSG);
-        return CPY_INT_TAG;
-    }
+    Py_ssize_t temp_start = CPyStr_AsSliceIndex(start);
+    Py_ssize_t temp_end = CPyStr_AsSliceIndex(end);
     Py_ssize_t index = PyUnicode_Find(str, substr, temp_start, temp_end, direction);
     if (unlikely(index == -2)) {
         return CPY_INT_TAG;
@@ -605,26 +613,14 @@ PyObject *CPy_Encode(PyObject *obj, PyObject *encoding, PyObject *errors) {
 }
 
 Py_ssize_t CPyStr_Count(PyObject *unicode, PyObject *substring, CPyTagged start) {
-    Py_ssize_t temp_start = CPyTagged_AsSsize_t(start);
-    if (temp_start == -1 && PyErr_Occurred()) {
-        PyErr_SetString(PyExc_OverflowError, CPYTHON_LARGE_INT_ERRMSG);
-        return -1;
-    }
+    Py_ssize_t temp_start = CPyStr_AsSliceIndex(start);
     Py_ssize_t end = PyUnicode_GET_LENGTH(unicode);
     return PyUnicode_Count(unicode, substring, temp_start, end);
 }
 
 Py_ssize_t CPyStr_CountFull(PyObject *unicode, PyObject *substring, CPyTagged start, CPyTagged end) {
-    Py_ssize_t temp_start = CPyTagged_AsSsize_t(start);
-    if (temp_start == -1 && PyErr_Occurred()) {
-        PyErr_SetString(PyExc_OverflowError, CPYTHON_LARGE_INT_ERRMSG);
-        return -1;
-    }
-    Py_ssize_t temp_end = CPyTagged_AsSsize_t(end);
-    if (temp_end == -1 && PyErr_Occurred()) {
-        PyErr_SetString(PyExc_OverflowError, CPYTHON_LARGE_INT_ERRMSG);
-        return -1;
-    }
+    Py_ssize_t temp_start = CPyStr_AsSliceIndex(start);
+    Py_ssize_t temp_end = CPyStr_AsSliceIndex(end);
     return PyUnicode_Count(unicode, substring, temp_start, temp_end);
 }
 
