@@ -793,6 +793,46 @@ class C(Generic[T]):
     def __init__(self: C[Tuple[T, ...]], item: T, use_tuple: Literal[True]) -> None: ...
 [builtins fixtures/bool.pyi]
 
+[case testSelfTypeExplicitCallSiteTypeArgsWinOverMapped]
+from typing import Generic, TypeVar, overload
+
+T = TypeVar("T")
+
+class Legacy: ...
+class Real: ...
+
+class B(Generic[T]):
+    @overload
+    def __init__(self: B[T], cls: type[T]) -> None: ...
+    @overload
+    def __init__(self: B[Legacy], *opts: str) -> None: ...
+    def __init__(self, *args, **kwargs) -> None: ...
+
+class D(B[T], Generic[T]): ...
+
+# An explicit type application at the call site takes precedence over the
+# type argument derived by mapping a superclass __init__ annotation down.
+reveal_type(D[Real]())  # N: Revealed type is "__main__.D[__main__.Real]"
+# A bare call still solves the type argument from the annotation.
+reveal_type(D(Real))  # N: Revealed type is "__main__.D[__main__.Real]"
+# Same for a call through a type[...] value.
+cls: type[D[Real]] = D[Real]
+reveal_type(cls())  # N: Revealed type is "__main__.D[__main__.Real]"
+# And for a call through an alias to the type application.
+Alias = D[Real]
+reveal_type(Alias())  # N: Revealed type is "__main__.D[__main__.Real]"
+
+class C(Generic[T]):
+    @overload
+    def __init__(self: C[T], cls: type[T]) -> None: ...
+    @overload
+    def __init__(self: C[Legacy], *opts: str) -> None: ...
+    def __init__(self, *args, **kwargs) -> None: ...
+
+# A same-class explicit self-type keeps its long-standing precedence.
+reveal_type(C[Real]())  # N: Revealed type is "__main__.C[__main__.Legacy]"
+[builtins fixtures/tuple.pyi]
+
 [case testSelfTypeRestrictedMethodOverloadInitFallBacks]
 from lib import PFallBack, PFallBackAny
 

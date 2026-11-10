@@ -153,6 +153,7 @@ from mypy.typeops import (
     custom_special_method,
     erase_to_union_or_bound,
     false_only,
+    fixup_mapped_constructor_ret_type,
     fixup_partial_type,
     freeze_all_type_vars,
     get_all_type_vars,
@@ -2005,6 +2006,12 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             if isinstance(res, CallableType):
                 res = res.copy_modified(from_type_type=True)
             expanded = expand_type_by_instance(res, item)
+            if isinstance(expanded, (CallableType, Overloaded)):
+                # An explicit type application at the call site, e.g.
+                # ``C[Real]()``, takes precedence over type arguments derived
+                # by mapping a superclass constructor annotation down to the
+                # class being constructed (see #22422 primer feedback).
+                expanded = fixup_mapped_constructor_ret_type(expanded, item)
             if isinstance(expanded, CallableType):
                 # Callee of the form Type[...] should never be generic, only
                 # proper class objects can be.
@@ -5077,7 +5084,14 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             item = get_proper_type(item)
             if isinstance(item, Instance):
                 tp = type_object_type(item.type)
-                return self.apply_type_arguments_to_callable(tp, item.args, tapp)
+                result = self.apply_type_arguments_to_callable(tp, item.args, tapp)
+                proper_result = get_proper_type(result)
+                if isinstance(proper_result, (CallableType, Overloaded)):
+                    # Explicit type arguments at the call site take precedence
+                    # over type arguments derived by mapping a superclass
+                    # constructor annotation down (see #22422 primer feedback).
+                    result = fixup_mapped_constructor_ret_type(proper_result, item)
+                return result
             elif isinstance(item, TupleType) and item.partial_fallback.type.is_named_tuple:
                 tp = type_object_type(item.partial_fallback.type)
                 return self.apply_type_arguments_to_callable(tp, item.partial_fallback.args, tapp)
@@ -5092,7 +5106,20 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         if isinstance(tp, (CallableType, Overloaded)):
             if not tp.is_type_obj():
                 self.chk.fail(message_registry.ONLY_CLASS_APPLICATION, tapp)
-            return self.apply_type_arguments_to_callable(tp, tapp.types, tapp)
+            result = self.apply_type_arguments_to_callable(tp, tapp.types, tapp)
+            proper_result = get_proper_type(result)
+            if (
+                tp.is_type_obj()
+                and isinstance(proper_result, (CallableType, Overloaded))
+                and len(tapp.types) == len(tp.type_object().defn.type_vars)
+            ):
+                # Explicit type arguments at the call site take precedence
+                # over type arguments derived by mapping a superclass
+                # constructor annotation down (see #22422 primer feedback).
+                result = fixup_mapped_constructor_ret_type(
+                    proper_result, Instance(tp.type_object(), list(tapp.types))
+                )
+            return result
         if isinstance(tp, AnyType):
             return AnyType(TypeOfAny.from_another_any, source_any=tp)
         return AnyType(TypeOfAny.special_form)
@@ -5150,7 +5177,14 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             tp = type_object_type(item.type)
             if alias.no_args:
                 return tp
-            return self.apply_type_arguments_to_callable(tp, item.args, ctx)
+            result = self.apply_type_arguments_to_callable(tp, item.args, ctx)
+            proper_result = get_proper_type(result)
+            if isinstance(proper_result, (CallableType, Overloaded)):
+                # Explicit type arguments take precedence over type arguments
+                # derived by mapping a superclass constructor annotation down
+                # (see #22422 primer feedback).
+                result = fixup_mapped_constructor_ret_type(proper_result, item)
+            return result
         elif (
             isinstance(item, TupleType)
             and

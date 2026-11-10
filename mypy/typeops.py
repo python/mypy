@@ -36,10 +36,12 @@ from mypy.nodes import (
 )
 from mypy.state import state
 from mypy.types import (
+    ANY_STRATEGY,
     ELLIPSIS_TYPE_NAMES,
     NOT_IMPLEMENTED_TYPE_NAMES,
     SENTINEL_TYPE_NAMES,
     AnyType,
+    BoolTypeQuery,
     CallableType,
     ExtraAttrs,
     FormalArgument,
@@ -60,6 +62,7 @@ from mypy.types import (
     TypeOfAny,
     TypeQuery,
     TypeType,
+    TypeVarId,
     TypeVarLikeType,
     TypeVarTupleType,
     TypeVarType,
@@ -390,6 +393,161 @@ def map_explicit_type_to_class(
     if not mypy.subtypes.is_equivalent(map_instance_to_supertype(mapped, explicit.type), explicit):
         return None
     return mapped
+
+
+class _HasClassTypeVarQuery(BoolTypeQuery):
+    """Does a type contain one of the given type variables (by id)?
+
+    Used to tell whether a type argument written at a call site (e.g. in
+    ``C[Real]()``) already determines a type variable of the class being
+    constructed, as opposed to leaving it to be solved from the
+    constructor's explicit annotation.
+    """
+
+    def __init__(self, ids: set[TypeVarId]) -> None:
+        super().__init__(ANY_STRATEGY)
+        self.ids = ids
+
+    def visit_type_var(self, t: TypeVarType) -> bool:
+        return t.id in self.ids
+
+    def visit_param_spec(self, t: ParamSpecType) -> bool:
+        return t.id in self.ids
+
+    def visit_type_var_tuple(self, t: TypeVarTupleType) -> bool:
+        return t.id in self.ids
+
+
+def constructor_explicit_types(info: TypeInfo) -> list[Type | None] | None:
+    """Return the explicit self/return type of each item of ``info``'s constructor.
+
+    This mirrors the constructor selection in type_object_type(): whichever of
+    ``__init__``/``__new__`` comes first in the MRO is used (``__init__`` wins
+    ties). For ``__init__`` items the explicit ``self`` annotation is returned
+    (None when there is none); for ``__new__`` items the explicit return type,
+    mapped into the constructed class's context, is returned.
+
+    Return None when the constructor cannot be determined.
+    """
+    init_method = info.get("__init__")
+    new_method = info.get("__new__")
+    if init_method is None or new_method is None:
+        return None
+    if not is_valid_constructor(init_method.node) or not is_valid_constructor(new_method.node):
+        return None
+    assert isinstance(init_method.node, (SYMBOL_FUNCBASE_TYPES, Decorator))
+    assert isinstance(new_method.node, (SYMBOL_FUNCBASE_TYPES, Decorator))
+    if info.mro.index(new_method.node.info) < info.mro.index(init_method.node.info):
+        method = new_method.node
+        is_new = True
+    else:
+        method = init_method.node
+        is_new = False
+    def_info = method.info
+    if info.metaclass_type is not None:
+        fallback = info.metaclass_type
+    else:
+        fallback = Instance(lookup_stdlib_typeinfo("builtins.type", modules_state.modules), [])
+    if isinstance(method, FuncBase):
+        signature = function_type(method, fallback)
+    else:
+        assert isinstance(method.type, ProperType)
+        assert isinstance(method.type, FunctionLike)
+        signature = method.type
+    if not is_new and not info.is_newtype:
+        return [get_self_type(item, def_info) for item in signature.items]
+    if is_new:
+        # The explicit return type, mapped into the constructed class's
+        # context, as in type_object_type_from_function().
+        mapped = cast(
+            FunctionLike,
+            map_type_from_supertype(
+                bind_self(
+                    signature,
+                    original_type=fill_typevars(info),
+                    is_classmethod=True,
+                    ignore_instances=True,
+                ),
+                info,
+                def_info,
+            ),
+        )
+        return [get_proper_type(item.ret_type) for item in mapped.items]
+    return [None] * len(signature.items)
+
+
+def fixup_mapped_constructor_ret_type(callee: FunctionLike, item: Instance) -> FunctionLike:
+    """Let explicit call-site type arguments win over mapped constructor types.
+
+    When a class is constructed through an explicit type application, e.g.
+    ``C[Real]()``, the type arguments written at the call site take
+    precedence over type arguments derived by mapping an explicit
+    ``__init__``/``__new__`` annotation of a superclass down to the class
+    being constructed (see map_explicit_type_to_class). The mapping is meant
+    to solve otherwise undetermined type variables, as in ``Sub(null=True)``
+    for #22395; it must not override arguments the caller already fixed.
+    For example, if ``B.__init__`` has an overload annotated
+    ``self: B[Legacy]`` and ``D`` inherits from ``B[T]``, then ``D[Real]()``
+    must be ``D[Real]``, not ``D[Legacy]``.
+
+    Only return types produced by the superclass mapping are adjusted: the
+    corresponding constructor item's explicit type must be an instance of a
+    proper superclass of the constructed class. Same-class explicit
+    self-types keep their long-standing precedence over call-site arguments.
+    """
+    info = item.type
+    if isinstance(callee, Overloaded):
+        items = list(callee.items)
+    elif isinstance(callee, CallableType):
+        items = [callee]
+    else:
+        return callee
+    tvar_ids = {tv.id for tv in info.defn.type_vars}
+    new_items: list[CallableType] | None = None
+    explicit_types: list[Type | None] | None = None
+    for index, callable_item in enumerate(items):
+        ret = get_proper_type(callable_item.ret_type)
+        if not isinstance(ret, Instance) or ret.type is not info:
+            continue
+        if len(ret.args) != len(item.args):
+            continue
+        # Positions where the call site already determined the type argument:
+        # the written argument does not mention one of the class's own type
+        # variables (those are just placeholders for the constructor to solve).
+        overridable = [not arg.accept(_HasClassTypeVarQuery(tvar_ids)) for arg in item.args]
+        if not any(overridable):
+            continue
+        if all(
+            not over or ret_arg is item_arg
+            for over, ret_arg, item_arg in zip(overridable, ret.args, item.args)
+        ):
+            continue
+        if explicit_types is None:
+            explicit_types = constructor_explicit_types(info)
+        if explicit_types is None or index >= len(explicit_types):
+            continue
+        explicit = explicit_types[index]
+        explicit_proper = get_proper_type(explicit) if explicit is not None else None
+        if not isinstance(explicit_proper, Instance):
+            continue
+        if explicit_proper.type is info or explicit_proper.type not in info.mro:
+            # The return type did not come from mapping a superclass
+            # annotation down (e.g. a same-class explicit self-type, which
+            # keeps its long-standing precedence); leave it alone.
+            continue
+        new_args = [
+            item_arg if over else ret_arg
+            for over, ret_arg, item_arg in zip(overridable, ret.args, item.args)
+        ]
+        fixed = callable_item.copy_modified(ret_type=ret.copy_modified(args=new_args))
+        if new_items is None:
+            new_items = list(items)
+        new_items[index] = fixed
+    if new_items is None:
+        return callee
+    if isinstance(callee, Overloaded):
+        return Overloaded(new_items, callee.bound_args)
+    return new_items[0]
 
 
 def class_callable(
