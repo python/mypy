@@ -400,7 +400,7 @@ sequence_get_item = custom_op(
     arg_types=[object_rprimitive, c_pyssize_t_rprimitive],
     return_type=object_rprimitive,
     c_function_name="PySequence_GetItem",
-    error_kind=ERR_NEVER,
+    error_kind=ERR_MAGIC,
 )
 
 sequence_get_slice = custom_op(

@@ -364,6 +364,43 @@ def test_index() -> None:
     else:
         assert False
 
+[case testListCountEqMutatesList]
+from typing import Any
+
+from listcounthelper import X, Y
+
+def count(a: list[Any], x: Any) -> int:
+    return a.count(x)
+
+def test_count_eq_clears_list() -> None:
+    lst: list[Any] = []
+    lst.append(X(lst))
+    y = Y()
+    assert count(lst, y) == 0
+    assert lst == []
+    assert y.seen == ["X"]
+
+[file listcounthelper.py]
+from typing import Any
+
+class X:
+    def __init__(self, lst: list[Any]) -> None:
+        self.lst = lst
+
+    def __eq__(self, other: object) -> bool:
+        # Drop the list's (only) reference to self, then force the reflected
+        # comparison, which receives self as the argument
+        self.lst.clear()
+        return NotImplemented
+
+class Y:
+    def __init__(self) -> None:
+        self.seen: list[str] = []
+
+    def __eq__(self, other: object) -> bool:
+        self.seen.append(type(other).__name__)
+        return False
+
 [case testListOfUserDefinedClass]
 class C:
     x: int
