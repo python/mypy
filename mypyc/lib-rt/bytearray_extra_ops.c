@@ -33,20 +33,14 @@ PyObject *CPyByteArray_FromBytesSlice(PyObject *obj, CPyTagged start, CPyTagged 
 }
 
 // On free-threaded builds, the item array of a bytearray may be resized or freed
-// concurrently, so it must only be accessed while holding the object's lock.
-#ifdef Py_GIL_DISABLED
-#define CPY_BYTEARRAY_LOCK(obj) Py_BEGIN_CRITICAL_SECTION(obj)
-#define CPY_BYTEARRAY_UNLOCK() Py_END_CRITICAL_SECTION()
-#else
-#define CPY_BYTEARRAY_LOCK(obj) {
-#define CPY_BYTEARRAY_UNLOCK() }
-#endif
+// concurrently, so it must only be accessed in a critical section. On other builds,
+// the critical section macros don't do anything.
 
 CPyTagged CPyByteArray_GetItem(PyObject *obj, CPyTagged index) {
     if (likely(PyByteArray_CheckExact(obj) && CPyTagged_CheckShort(index))) {
         Py_ssize_t n = CPyTagged_ShortAsSsize_t(index);
         CPyTagged result = CPY_INT_TAG;
-        CPY_BYTEARRAY_LOCK(obj);
+        Py_BEGIN_CRITICAL_SECTION(obj);
         Py_ssize_t size = PyByteArray_GET_SIZE(obj);
         if (n < 0) {
             n += size;
@@ -56,7 +50,7 @@ CPyTagged CPyByteArray_GetItem(PyObject *obj, CPyTagged index) {
         } else {
             result = (CPyTagged)(unsigned char)PyByteArray_AS_STRING(obj)[n] << 1;
         }
-        CPY_BYTEARRAY_UNLOCK();
+        Py_END_CRITICAL_SECTION();
         return result;
     }
 
@@ -88,7 +82,7 @@ bool CPyByteArray_SetItem(PyObject *obj, CPyTagged index, CPyTagged value) {
             return false;
         }
         bool ok = false;
-        CPY_BYTEARRAY_LOCK(obj);
+        Py_BEGIN_CRITICAL_SECTION(obj);
         Py_ssize_t size = PyByteArray_GET_SIZE(obj);
         if (n < 0) {
             n += size;
@@ -99,7 +93,7 @@ bool CPyByteArray_SetItem(PyObject *obj, CPyTagged index, CPyTagged value) {
             PyByteArray_AS_STRING(obj)[n] = (char)v;
             ok = true;
         }
-        CPY_BYTEARRAY_UNLOCK();
+        Py_END_CRITICAL_SECTION();
         return ok;
     }
 
@@ -125,7 +119,7 @@ PyObject *CPyByteArray_GetSlice(PyObject *obj, CPyTagged start, CPyTagged end) {
         Py_ssize_t startn = CPyTagged_ShortAsSsize_t(start);
         Py_ssize_t endn = CPyTagged_ShortAsSsize_t(end);
         PyObject *result;
-        CPY_BYTEARRAY_LOCK(obj);
+        Py_BEGIN_CRITICAL_SECTION(obj);
         Py_ssize_t size = PyByteArray_GET_SIZE(obj);
         if (startn < 0) {
             startn += size;
@@ -145,7 +139,7 @@ PyObject *CPyByteArray_GetSlice(PyObject *obj, CPyTagged start, CPyTagged end) {
         }
         Py_ssize_t len = endn > startn ? endn - startn : 0;
         result = PyByteArray_FromStringAndSize(PyByteArray_AS_STRING(obj) + startn, len);
-        CPY_BYTEARRAY_UNLOCK();
+        Py_END_CRITICAL_SECTION();
         return result;
     }
 

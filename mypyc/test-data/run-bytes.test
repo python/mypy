@@ -603,7 +603,8 @@ def test_get_item() -> None:
         assert outcome(lambda: b[i]) == outcome(lambda: a[i]), i
     with assertRaises(IndexError, "bytearray index out of range"):
         b[n + int()]
-    assert outcome(lambda: bytearray()[int()]) == outcome(lambda: bytearray(a[:0])[0])
+    with assertRaises(IndexError, "bytearray index out of range"):
+        bytearray()[int()]
 
 def test_set_item() -> None:
     values = [-1, 0, 1, 127, 128, 255, 256] + BIG_INTS + [-x for x in BIG_INTS]
