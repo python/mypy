@@ -2957,3 +2957,48 @@ with assertRaises(MyError):
     pyiter_send(fails(), None)
 
 [typing fixtures/typing-full.pyi]
+
+[case testCallUnboundAsyncMethodWithoutSelf]
+class C:
+    async def m(self) -> int:
+        return 1
+
+    @classmethod
+    async def c(cls) -> str:
+        return cls.__name__
+
+    @staticmethod
+    async def s() -> int:
+        return 2
+
+[file driver.py]
+from typing import Any
+from native import C
+from testutil import assertRaises
+
+def run(coro: Any) -> Any:
+    try:
+        coro.send(None)
+    except StopIteration as e:
+        return e.value
+    assert False
+
+assert run(C().m()) == 1
+assert run(C.m(C())) == 1
+assert run(C.c()) == "C"
+assert run(C().c()) == "C"
+assert run(C.s()) == 2
+
+# Calling the underlying function without self (or cls) used to read out of bounds.
+with assertRaises(TypeError, "unbound method C.m() needs an argument"):
+    C.m()
+with assertRaises(TypeError, "unbound method C.m() needs an argument"):
+    C.__dict__["m"]()
+with assertRaises(TypeError, "unbound method C.m() needs an argument"):
+    C.__dict__["m"].__call__()
+with assertRaises(TypeError, "unbound method C.c() needs an argument"):
+    C.__dict__["c"]()
+with assertRaises(TypeError, "unbound method C.c() needs an argument"):
+    C.__dict__["c"].__call__()
+assert run(C.__dict__["m"](C())) == 1
+assert run(C.__dict__["c"](C)) == "C"
