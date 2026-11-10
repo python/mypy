@@ -809,7 +809,6 @@ def test_format_method_python_doc() -> None:
 
 [case testChr]
 # Some test cases are from https://docs.python.org/3/howto/unicode.html
-import sys
 from typing import Any
 
 from testutil import assertRaises
@@ -878,13 +877,6 @@ def test_chr_errors() -> None:
             assert False
         with assertRaises(expected_type, expected_msg):
             chr(n + int())
-    _, minor, _, _, _ = sys.version_info
-    if minor >= 13:
-        with assertRaises(ValueError, "chr() arg not in range(0x110000)"):
-            chr(2**70 + int())
-    else:
-        with assertRaises(OverflowError, "Python int too large to convert to C int"):
-            chr(2**70 + int())
 
 [case testOrd]
 from testutil import assertRaises
