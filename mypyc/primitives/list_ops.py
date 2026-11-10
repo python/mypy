@@ -5,6 +5,7 @@ from __future__ import annotations
 from mypyc.ir.ops import ERR_FALSE, ERR_MAGIC, ERR_NEVER
 from mypyc.ir.rtypes import (
     bit_rprimitive,
+    bool_rprimitive,
     c_int_rprimitive,
     c_pyssize_t_rprimitive,
     int64_rprimitive,
@@ -13,6 +14,7 @@ from mypyc.ir.rtypes import (
     object_rprimitive,
     pointer_rprimitive,
     short_int_rprimitive,
+    str_rprimitive,
     uint64_rprimitive,
     void_rtype,
 )
@@ -271,6 +273,28 @@ method_op(
     return_type=short_int_rprimitive,
     c_function_name="CPyList_Count",
     error_kind=ERR_MAGIC,
+)
+
+# int in list
+binary_op(
+    name="in",
+    arg_types=[int_rprimitive, list_rprimitive],
+    return_type=c_int_rprimitive,
+    c_function_name="CPySequence_ContainsInt",
+    error_kind=ERR_NEG_INT,
+    truncated_type=bool_rprimitive,
+    ordering=[1, 0],
+)
+
+# str in list
+binary_op(
+    name="in",
+    arg_types=[str_rprimitive, list_rprimitive],
+    return_type=c_int_rprimitive,
+    c_function_name="CPySequence_ContainsStr",
+    error_kind=ERR_NEG_INT,
+    truncated_type=bool_rprimitive,
+    ordering=[1, 0],
 )
 
 # list.insert(index, obj)

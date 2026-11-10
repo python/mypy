@@ -343,22 +343,74 @@ L0:
     return r0
 
 [case testListIn]
-from typing import List
+from typing import List, Optional
 def f(x: List[int], y: int) -> bool:
     return y in x
+def str_in(x: List[str], y: str) -> bool:
+    return y in x
+def not_in(x: List[str], y: str) -> bool:
+    return y not in x
+def generic(x: List[object], y: object, z: Optional[int]) -> bool:
+    return y in x or z in x
 [out]
 def f(x, y):
     x :: list
     y :: int
-    r0 :: object
-    r1 :: i32
-    r2 :: bit
-    r3 :: bool
+    r0 :: i32
+    r1 :: bit
+    r2 :: bool
 L0:
-    r0 = box(int, y)
-    r1 = PySequence_Contains(x, r0)
-    r2 = r1 >= 0 :: signed
-    r3 = truncate r1: i32 to builtins.bool
+    r0 = CPySequence_ContainsInt(x, y)
+    r1 = r0 >= 0 :: signed
+    r2 = truncate r0: i32 to builtins.bool
+    return r2
+def str_in(x, y):
+    x :: list
+    y :: str
+    r0 :: i32
+    r1 :: bit
+    r2 :: bool
+L0:
+    r0 = CPySequence_ContainsStr(x, y)
+    r1 = r0 >= 0 :: signed
+    r2 = truncate r0: i32 to builtins.bool
+    return r2
+def not_in(x, y):
+    x :: list
+    y :: str
+    r0 :: i32
+    r1 :: bit
+    r2, r3 :: bool
+L0:
+    r0 = CPySequence_ContainsStr(x, y)
+    r1 = r0 >= 0 :: signed
+    r2 = truncate r0: i32 to builtins.bool
+    r3 = r2 ^ 1
+    return r3
+def generic(x, y, z):
+    x :: list
+    y :: object
+    z :: union[int, None]
+    r0 :: i32
+    r1 :: bit
+    r2, r3 :: bool
+    r4 :: i32
+    r5 :: bit
+    r6 :: bool
+L0:
+    r0 = PySequence_Contains(x, y)
+    r1 = r0 >= 0 :: signed
+    r2 = truncate r0: i32 to builtins.bool
+    if r2 goto L1 else goto L2 :: bool
+L1:
+    r3 = r2
+    goto L3
+L2:
+    r4 = PySequence_Contains(x, z)
+    r5 = r4 >= 0 :: signed
+    r6 = truncate r4: i32 to builtins.bool
+    r3 = r6
+L3:
     return r3
 
 [case testListInsert]

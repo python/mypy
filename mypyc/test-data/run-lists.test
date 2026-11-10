@@ -851,3 +851,175 @@ class GoodList(list):
         return GoodList(list(self) * n + [4])
     def copy(self) -> Any:
         return GoodList(list(self) + [5])
+
+[case testListAndTupleContains]
+from typing import Any, List, Tuple
+from testutil import assertRaises
+from contains_helpers import (
+    AlwaysEqual, IntSub, IntEqOverride, StrSub, StrEqOverride, ListContainsOverride, TupleContainsOverride,
+    RaisingEq, Shrinker, NAN, DECIMAL_ONE
+)
+
+def int_in_list(x: int, a: List[Any]) -> bool:
+    return x in a
+
+def int_not_in_list(x: int, a: List[Any]) -> bool:
+    return x not in a
+
+def str_in_list(x: str, a: List[Any]) -> bool:
+    return x in a
+
+def str_not_in_list(x: str, a: List[Any]) -> bool:
+    return x not in a
+
+def int_in_tuple(x: int, a: Tuple[Any, ...]) -> bool:
+    return x in a
+
+def str_in_tuple(x: str, a: Tuple[Any, ...]) -> bool:
+    return x in a
+
+BIG = [2**30 - 1, 2**30, 2**31, 2**62 - 1, 2**62, 2**63 - 1, 2**63, 2**64, 2**100]
+INTS = [0, 1, -1, 5, 255, 256, 1000] + BIG + [-x for x in BIG]
+
+def int_lists() -> List[List[Any]]:
+    return [
+        [],
+        [1, 2, 3],
+        [1000, 2000],
+        [int("1000")],
+        list(BIG),
+        [-x for x in BIG],
+        [1.0, 2.5, NAN],
+        [True, False],
+        [IntSub(5), IntSub(1000)],
+        [IntEqOverride(7)],
+        [DECIMAL_ONE],
+        ["1", b"1", None, (1,)],
+        [None, 2**100, 1000],
+    ]
+
+def test_int_in() -> None:
+    for items in int_lists():
+        generic: Any = items
+        for x in INTS:
+            expected = x in generic
+            assert int_in_list(x, items) == expected, (x, items)
+            assert int_not_in_list(x, items) == (not expected), (x, items)
+            assert int_in_tuple(x, tuple(items)) == expected, (x, items)
+    assert int_in_list(1, [AlwaysEqual()])
+    assert int_in_tuple(2**100, (AlwaysEqual(),))
+
+def test_bool_in() -> None:
+    t = bool(int() + 1)
+    for items in int_lists():
+        generic: Any = items
+        assert int_in_list(t, items) == (t in generic), items
+        assert int_in_list(not t, items) == ((not t) in generic), items
+        assert int_in_tuple(t, tuple(items)) == (t in generic), items
+
+STRS = ["", "a", "ab", "abc", "\xe9", "中文", "\U0001f600", "a" * 100]
+
+def str_lists() -> List[List[Any]]:
+    return [
+        [],
+        list(STRS),
+        ["".join(["a", "b"]), "".join(["中", "文"])],
+        [StrSub("ab"), StrSub("x")],
+        [StrEqOverride("zzz")],
+        [b"ab", 1, None],
+        [None, "abc"],
+    ]
+
+def test_str_in() -> None:
+    for items in str_lists():
+        generic: Any = items
+        for s in STRS + ["x", "".join(["a", "b"])]:
+            expected = s in generic
+            assert str_in_list(s, items) == expected, (s, items)
+            assert str_not_in_list(s, items) == (not expected), (s, items)
+            assert str_in_tuple(s, tuple(items)) == expected, (s, items)
+    assert str_in_list("a", [AlwaysEqual()])
+    assert str_in_tuple("a", (AlwaysEqual(),))
+
+def test_str_subclass_needle() -> None:
+    s = StrEqOverride("abc")
+    # The overridden __eq__ of a str subclass is used, like in CPython
+    assert str_in_list(s, ["x"])
+    assert str_in_tuple(s, ("x",))
+    assert not str_in_list(s, [])
+    assert str_in_list(StrSub("abc"), ["abc"])
+    assert not str_in_list(StrSub("abc"), ["ab"])
+
+def test_subclass_contains_override() -> None:
+    assert int_in_list(5, ListContainsOverride())
+    assert str_in_list("x", ListContainsOverride())
+    assert int_in_tuple(5, TupleContainsOverride(()))
+    assert str_in_tuple("x", TupleContainsOverride(()))
+
+def test_eq_error() -> None:
+    with assertRaises(ValueError, "eq"):
+        int_in_list(1, [RaisingEq()])
+    with assertRaises(ValueError, "eq"):
+        int_in_tuple(2**100, (RaisingEq(),))
+    with assertRaises(ValueError, "eq"):
+        str_in_list("a", [RaisingEq()])
+    with assertRaises(ValueError, "eq"):
+        str_in_tuple("a", (RaisingEq(),))
+    # A match before the item with a raising __eq__ is found
+    assert int_in_list(1, [1, RaisingEq()])
+    assert str_in_list("a", ["a", RaisingEq()])
+
+def test_list_modified_during_comparison() -> None:
+    a: List[Any] = []
+    a.extend([Shrinker(a), 1, 2, 3])
+    assert not int_in_list(3, a)
+    assert a == []
+    b: List[Any] = []
+    b.extend([Shrinker(b), "x", "y"])
+    assert not str_in_list("y", b)
+    assert b == []
+
+[file contains_helpers.py]
+from decimal import Decimal
+from typing import Any, List
+
+NAN = float("nan")
+DECIMAL_ONE = Decimal("1")
+
+class AlwaysEqual:
+    def __eq__(self, other: object) -> bool:
+        return True
+
+class IntSub(int):
+    pass
+
+class IntEqOverride(int):
+    def __eq__(self, other: object) -> bool:
+        return True
+
+class StrSub(str):
+    pass
+
+class StrEqOverride(str):
+    def __eq__(self, other: object) -> bool:
+        return True
+
+class ListContainsOverride(list):
+    def __contains__(self, item: object) -> bool:
+        return True
+
+class TupleContainsOverride(tuple):
+    def __contains__(self, item: object) -> bool:
+        return True
+
+class RaisingEq:
+    def __eq__(self, other: object) -> bool:
+        raise ValueError("eq")
+
+class Shrinker:
+    def __init__(self, items: List[Any]) -> None:
+        self.items = items
+
+    def __eq__(self, other: object) -> bool:
+        self.items.clear()
+        return False
