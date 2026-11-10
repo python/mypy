@@ -341,6 +341,31 @@ def g(m: Movie) -> Movie:
 Total      0      14    100.00%
 
 
+[case testAnyExpressionsReportTypeVariablesWithoutDefaults]
+# cmd: mypy --any-exprs-report report n.py
+
+[file n.py]
+from typing import Callable, ParamSpec, TypeVar, TypeVarTuple, Unpack
+T = TypeVar('T')
+P = ParamSpec('P')
+Ts = TypeVarTuple('Ts')
+def identity(value: T) -> T:
+    return value
+def preserve(function: Callable[P, T]) -> Callable[P, T]:
+    def wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
+        return function(*args, **kwargs)
+    return wrapper
+def tuple_identity(*values: Unpack[Ts]) -> tuple[Unpack[Ts]]:
+    return values
+
+[file report/any-exprs.txt]
+[outfile report/types-of-anys.txt]
+ Name   Unannotated   Explicit   Unimported   Omitted Generics   Error   Special Form   Implementation Artifact
+-----------------------------------------------------------------------------------------------------------------
+    n             0          0            0                  0       0              0                         0
+-----------------------------------------------------------------------------------------------------------------
+Total             0          0            0                  0       0              0                         0
+
 [case testAnyExpressionsReportTypesOfAny]
 # cmd: mypy --any-exprs-report report n.py
 

@@ -274,6 +274,66 @@ Name      Lines  Precise  Imprecise  Any  Empty  Unanalyzed
 __main__      5        3          0    1      1           0
 m             3        2          0    1      0           0
 
+[case testLinePrecisionTypeVariablesWithoutDefaults]
+# flags: --lineprecision-report out
+from typing import Callable, ParamSpec, Tuple, TypeVar, TypeVarTuple, Unpack
+T = TypeVar('T')
+P = ParamSpec('P')
+Ts = TypeVarTuple('Ts')
+def identity(value: T) -> T:
+    return value
+def preserve(function: Callable[P, T]) -> Callable[P, T]:
+    def wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
+        return function(*args, **kwargs)
+    return wrapper
+def tuple_identity(*values: Unpack[Ts]) -> Tuple[Unpack[Ts]]:
+    return values
+[builtins fixtures/tuple.pyi]
+[outfile out/lineprecision.txt]
+Name      Lines  Precise  Imprecise  Any  Empty  Unanalyzed
+-------------------------------------------------------------
+__main__     13       11          0    0      2           0
+
+[case testLinePrecisionTypeVariablesWithDefaults]
+# flags: --lineprecision-report out
+from typing import Any, Callable, ParamSpec, Tuple, TypeVar, TypeVarTuple, Unpack
+T = TypeVar('T', default=int)
+A = TypeVar('A', default=Any)
+P = ParamSpec('P', default=[])
+Q = ParamSpec('Q', default=[Any])
+Ts = TypeVarTuple('Ts', default=Unpack[Tuple[int]])
+Us = TypeVarTuple('Us', default=Unpack[Tuple[Any]])
+def precise(value: T) -> T:
+    return value
+def imprecise(value: A) -> A:
+    return value
+def precise_callable(function: Callable[P, int]) -> None: pass
+def imprecise_callable(function: Callable[Q, int]) -> None: pass
+def precise_tuple(*values: Unpack[Ts]) -> None: pass
+def imprecise_tuple(*values: Unpack[Us]) -> None: pass
+[builtins fixtures/tuple.pyi]
+[outfile out/lineprecision.txt]
+Name      Lines  Precise  Imprecise  Any  Empty  Unanalyzed
+-------------------------------------------------------------
+__main__     16       10          3    0      3           0
+
+[case testLinePrecisionTypeVariableAnyBoundsAndPrefixes]
+# flags: --lineprecision-report out
+from typing import Any, Callable, ParamSpec, TypeVar
+from typing_extensions import Concatenate
+T = TypeVar('T', bound=Any)
+P = ParamSpec('P')
+def bounded(value: T) -> T:
+    return value
+def prefixed(function: Callable[Concatenate[Any, P], int], *args: P.args, **kwargs: P.kwargs) -> int:
+    return function(0, *args, **kwargs)
+def omitted(value: list) -> None: pass
+[builtins fixtures/list.pyi]
+[outfile out/lineprecision.txt]
+Name      Lines  Precise  Imprecise  Any  Empty  Unanalyzed
+-------------------------------------------------------------
+__main__     10        4          3    1      2           0
+
 [case testLinePrecisionCallImpreciseArg]
 # flags: --lineprecision-report out
 from m import f

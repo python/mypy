@@ -44,15 +44,18 @@ from mypy.nodes import (
 )
 from mypy.traverser import TraverserVisitor
 from mypy.type_visitor import ANY_STRATEGY, BoolTypeQuery
-from mypy.typeanal import collect_all_inner_types
+from mypy.typeanal import CollectAllInnerTypesQuery
 from mypy.types import (
     AnyType,
     CallableType,
     FunctionLike,
     Instance,
+    ParamSpecType,
     TupleType,
     Type,
     TypeOfAny,
+    TypeVarLikeType,
+    TypeVarTupleType,
     TypeVarType,
     get_proper_type,
     get_proper_types,
@@ -381,7 +384,7 @@ class StatisticsVisitor(TraverserVisitor):
             self.num_precise_exprs += 1
             self.record_line(self.line, TYPE_PRECISE)
 
-        for typ in get_proper_types(collect_all_inner_types(t)) + [t]:
+        for typ in get_proper_types(t.accept(StatisticsTypeCollector())) + [t]:
             if isinstance(typ, AnyType):
                 typ = get_original_any(typ)
                 if is_special_form_any(typ):
@@ -453,12 +456,45 @@ def is_imprecise(t: Type) -> bool:
     return t.accept(HasAnyQuery())
 
 
+def type_var_types_for_statistics(t: TypeVarLikeType) -> list[Type]:
+    # A missing default is represented by Any(from_omitted_generics), but
+    # does not make a bound type variable imprecise. Keep actual defaults.
+    types = [t.upper_bound]
+    if t.has_default():
+        types.append(t.default)
+    if isinstance(t, TypeVarType):
+        types.extend(t.values)
+    elif isinstance(t, ParamSpecType):
+        types.append(t.prefix)
+    return types
+
+
+class StatisticsTypeCollector(CollectAllInnerTypesQuery):
+    def visit_type_var(self, t: TypeVarType) -> list[Type]:
+        return self.query_types(type_var_types_for_statistics(t))
+
+    def visit_param_spec(self, t: ParamSpecType) -> list[Type]:
+        return self.query_types(type_var_types_for_statistics(t))
+
+    def visit_type_var_tuple(self, t: TypeVarTupleType) -> list[Type]:
+        return self.query_types(type_var_types_for_statistics(t))
+
+
 class HasAnyQuery(BoolTypeQuery):
     def __init__(self) -> None:
         super().__init__(ANY_STRATEGY)
 
     def visit_any(self, t: AnyType) -> bool:
         return not is_special_form_any(t)
+
+    def visit_type_var(self, t: TypeVarType) -> bool:
+        return self.query_types(type_var_types_for_statistics(t))
+
+    def visit_param_spec(self, t: ParamSpecType) -> bool:
+        return self.query_types(type_var_types_for_statistics(t))
+
+    def visit_type_var_tuple(self, t: TypeVarTupleType) -> bool:
+        return self.query_types(type_var_types_for_statistics(t))
 
 
 def is_imprecise2(t: Type) -> bool:
