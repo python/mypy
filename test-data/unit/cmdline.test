@@ -771,6 +771,13 @@ some_file.py:1: error: Expected an identifier  [syntax]
                                                         ^
 == Return code: 2
 
+[case testShowSourceCodeSnippetsUnexpectedEOF]
+# cmd: mypy --pretty --show-error-codes _program.py
+typing.Optional[typing.Union[A, B[T]]
+[out]
+_program.py:3: error: Unexpected EOF while parsing  [syntax]
+== Return code: 2
+
 [case testTabRenderingUponError]
 # cmd: mypy --pretty tabs.py
 [file tabs.py]
