@@ -341,8 +341,16 @@ static inline bool CPyTagged_IsSubtractOverflow(CPyTagged diff, CPyTagged left, 
 }
 
 static inline bool CPyTagged_IsMultiplyOverflow(CPyTagged left, CPyTagged right) {
-    // This is conservative -- return false only in a small number of all non-overflow cases
-    return left >= (1U << (CPY_INT_BITS/2 - 1)) || right >= (1U << (CPY_INT_BITS/2 - 1));
+    // This is conservative -- return false only in a small number of all non-overflow cases.
+    // Both operands (as tagged values) have to fit in a signed integer of half the width of
+    // CPyTagged, so the tagged product is at most 2**(N-3) in magnitude (N is CPY_INT_BITS).
+#if SIZEOF_SIZE_T == 4
+    return (Py_ssize_t)(int16_t)left != (Py_ssize_t)left
+        || (Py_ssize_t)(int16_t)right != (Py_ssize_t)right;
+#else
+    return (Py_ssize_t)(int32_t)left != (Py_ssize_t)left
+        || (Py_ssize_t)(int32_t)right != (Py_ssize_t)right;
+#endif
 }
 
 static inline bool CPyTagged_MaybeFloorDivideFault(CPyTagged left, CPyTagged right) {
