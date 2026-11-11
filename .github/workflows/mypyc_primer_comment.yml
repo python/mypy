@@ -1,0 +1,37 @@
+name: Comment with mypyc_primer results
+
+# Only the default-branch reporter runs with write permission. Artifacts from
+# the PR workflow are parsed as bounded JSON, never extracted or executed.
+on:  # zizmor: ignore[dangerous-triggers]
+  workflow_run:
+    workflows: [Run mypyc_primer]
+    types: [completed]
+
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.workflow_run.id }}
+  cancel-in-progress: false
+
+jobs:
+  comment:
+    name: Comment PR with downstream compilation results
+    if: >-
+      github.event.workflow_run.event == 'pull_request' &&
+      github.event.workflow_run.conclusion != 'cancelled'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      actions: read
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          persist-credentials: false
+      - uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        with:
+          script: |
+            const { comment } = require('./.github/scripts/mypyc_primer_comment.cjs');
+            await comment({ github, context, core });

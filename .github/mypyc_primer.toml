@@ -1,0 +1,42 @@
+# Each entry is checked in its own Linux job. Refs are resolved once per run;
+# a target-branch comparison uses the same project revision and dependency versions.
+# setup/build/test are Bash commands, run in order from a fresh checkout.
+# The runner installs the selected mypy/mypyc after setup. Build commands must
+# preserve that installation (in particular, disable pip build isolation).
+# compiled_modules are checked before tests to prevent pure-Python false passes.
+# python_version selects the CI interpreter; local runs use the current interpreter.
+# [env] applies to all projects; [projects.env] overrides individual values.
+
+[env]
+CC = "clang"
+MYPYC_OPT_LEVEL = "0"
+MYPYC_DEBUG_LEVEL = "0"
+
+[[projects]]
+name = "black"
+repository = "https://github.com/psf/black.git"
+ref = "main"
+python_version = "3.14"
+compiled_modules = ["black"]
+setup = [
+    # Black's legacy macOS wheel tag is not supported on Apple Silicon.
+    '''
+python - <<'PY'
+import sys
+from pathlib import Path
+
+if sys.platform == "darwin":
+    path = Path("pyproject.toml")
+    path.write_text(path.read_text().replace("macos-max-compat = true", "macos-max-compat = false"))
+PY
+''',
+    'python -m pip install "hatchling>=1.27.0" "hatch-vcs>=0.3.0" hatch-fancy-pypi-readme "hatch-mypyc>=0.16.0"',
+    'python -m pip install --no-build-isolation ".[d,jupyter]" --group tests',
+]
+build = [
+    'HATCH_BUILD_HOOKS_ENABLE=1 python -m pip wheel --no-build-isolation --no-deps --wheel-dir dist .',
+    'python -m pip install --force-reinstall --no-deps dist/*.whl',
+]
+test = [
+    'python -m pytest tests/test_black.py -k "not incompatible_with_mypyc" -n 2 -v --color=no',
+]

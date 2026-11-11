@@ -46,6 +46,8 @@ include mypy_self_check.ini
 prune misc
 include misc/diff-cache.py
 include misc/apply-cache-diff.py
+include misc/mypyc_primer.py
+include .github/mypyc_primer.toml
 graft test-data
 graft mypy/test
 include conftest.py
