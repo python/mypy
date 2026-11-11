@@ -195,6 +195,97 @@ if int():
 if int():
     b3 = a3  # E: Incompatible types in assignment (expression has type "Invariant3[object]", variable has type "Invariant3[int]")
 
+[case testPEP695InferVarianceWritableCallableAttribute]
+from typing import Callable, Final
+
+class Animal: ...
+class Dog(Animal):
+    def bark(self) -> None: ...
+
+class Handler[T]:
+    def __init__(self, cb: Callable[[T], None]) -> None:
+        self.cb = cb
+
+def handle_dog(h: Handler[Dog]) -> None:
+    h.cb = lambda d: d.bark()
+
+def handle_animal(h: Handler[Animal]) -> None: ...
+
+animal_handler = Handler[Animal](lambda a: None)
+handle_dog(animal_handler)  # E: Argument 1 to "handle_dog" has incompatible type "Handler[Animal]"; expected "Handler[Dog]"
+dog_handler = Handler[Dog](lambda d: None)
+handle_animal(dog_handler)  # E: Argument 1 to "handle_animal" has incompatible type "Handler[Dog]"; expected "Handler[Animal]"
+
+class Invariant1[T]:
+    def __init__(self, cb: Callable[[T], None]) -> None:
+        self.cb: Callable[[T], None] = cb
+
+a1: Invariant1[object]
+b1: Invariant1[int]
+if int():
+    a1 = b1  # E: Incompatible types in assignment (expression has type "Invariant1[int]", variable has type "Invariant1[object]")
+if int():
+    b1 = a1  # E: Incompatible types in assignment (expression has type "Invariant1[object]", variable has type "Invariant1[int]")
+
+class Invariant2[T]:
+    def __init__(self, f: Callable[[], T]) -> None:
+        self.f = f
+
+a2: Invariant2[object]
+b2: Invariant2[int]
+if int():
+    a2 = b2  # E: Incompatible types in assignment (expression has type "Invariant2[int]", variable has type "Invariant2[object]")
+if int():
+    b2 = a2  # E: Incompatible types in assignment (expression has type "Invariant2[object]", variable has type "Invariant2[int]")
+
+class Contravariant1[T]:
+    def __init__(self, cb: Callable[[T], None]) -> None:
+        self.cb: Final = cb
+
+c1: Contravariant1[object]
+d1: Contravariant1[int]
+if int():
+    c1 = d1  # E: Incompatible types in assignment (expression has type "Contravariant1[int]", variable has type "Contravariant1[object]")
+if int():
+    d1 = c1
+
+class Contravariant2[T]:
+    def __init__(self, cb: Callable[[T], None]) -> None:
+        self._cb = cb
+
+c2: Contravariant2[object]
+d2: Contravariant2[int]
+if int():
+    c2 = d2  # E: Incompatible types in assignment (expression has type "Contravariant2[int]", variable has type "Contravariant2[object]")
+if int():
+    d2 = c2
+
+class Contravariant3[T]:
+    def __init__(self, cb: Callable[[T], None]) -> None:
+        self._cb = cb
+
+    @property
+    def cb(self) -> Callable[[T], None]:
+        return self._cb
+
+c3: Contravariant3[object]
+d3: Contravariant3[int]
+if int():
+    c3 = d3  # E: Incompatible types in assignment (expression has type "Contravariant3[int]", variable has type "Contravariant3[object]")
+if int():
+    d3 = c3
+
+class Contravariant4[T]:
+    def f(self, x: T) -> None: ...
+
+c4: Contravariant4[object]
+d4: Contravariant4[int]
+if int():
+    c4 = d4  # E: Incompatible types in assignment (expression has type "Contravariant4[int]", variable has type "Contravariant4[object]")
+if int():
+    d4 = c4
+[builtins fixtures/property.pyi]
+
 [case testPEP695InferVarianceRecursive]
 class Invariant[T]:
     def f(self, x: Invariant[T]) -> Invariant[T]:

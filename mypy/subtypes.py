@@ -2490,6 +2490,10 @@ def infer_variance(info: TypeInfo, i: int) -> bool:
                 typ2 = expand_type(typ, {tvar.id: object_type})
                 if not is_subtype(typ, typ2):
                     co = False
+                    if settable:
+                        # A writable attribute is also used in an input position,
+                        # e.g. "x: Callable[[T], None]" must not be contravariant.
+                        contra = False
                 if not is_subtype(typ2, typ):
                     contra = False
                     if settable:
