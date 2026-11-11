@@ -2469,3 +2469,14 @@ reveal_type(a[0])  # N: Revealed type is "tuple[builtins.int, builtins.str]"
 reveal_type(a[1])  # N: Revealed type is "tuple[builtins.int, builtins.str]"
 reveal_type(a[2])  # N: Revealed type is "builtins.tuple[Any, ...]"
 [builtins fixtures/tuple.pyi]
+
+[case testPEP695ParamSpecAliasUnboundTypeVar]
+from typing import Callable
+
+type Alias[**P, T] = Callable[P, T]
+
+def paramspec_alias[T]() -> Alias[[int], T]: ...
+
+reveal_type(paramspec_alias)  # N: Revealed type is "def () -> def [T] (builtins.int) -> T`-1"
+[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-full.pyi]

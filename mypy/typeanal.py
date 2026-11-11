@@ -484,6 +484,21 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 return special
             if isinstance(node, TypeAlias):
                 self.aliases_used.add(fullname)
+                if (
+                    isinstance(get_proper_type(node.target), CallableType)
+                    and not self.defining_alias
+                    and not self.analyzing_tvar_def
+                    and HasUnboundTypeVar(self.api, self.tvar_scope).query_types(t.args)
+                ):
+                    # A type variable in the arguments of a callable-valued
+                    # alias may belong to the callable itself, as in a literal
+                    # Callable[..., T], rather than to the enclosing scope.
+                    # Expand the alias and analyze the resulting callable, so
+                    # that it binds the type variable. See
+                    # https://github.com/python/mypy/issues/22399.
+                    expanded = self.expand_alias_for_callable(node, t)
+                    if expanded is not None:
+                        return expanded
                 an_args = self.anal_array(
                     t.args,
                     allow_param_spec=True,
@@ -545,6 +560,60 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 return self.analyze_unbound_type_without_type_info(t, sym, defining_literal)
         else:  # sym is None
             return AnyType(TypeOfAny.special_form)
+
+    def expand_alias_for_callable(self, node: TypeAlias, t: UnboundType) -> Type | None:
+        """Expand a callable-valued alias, binding free type variables to the callable.
+
+        When a generic alias over a Callable is applied to arguments containing
+        a type variable that is not bound in the enclosing scope (e.g.
+        ``Alias[[int], T]`` where ``Alias = Callable[P, T]``), the type
+        variable belongs to the callable itself, as in a literal
+        ``Callable[[int], T]``. Analyze the arguments allowing unbound type
+        variables, expand the alias, and analyze the resulting callable, so
+        that it binds the type variable. See
+        https://github.com/python/mypy/issues/22399.
+
+        Return the analyzed callable type, or None if the alias could not be
+        expanded to a callable (in which case the caller falls back to the
+        regular analysis).
+        """
+        old_allow_unbound_tvars = self.allow_unbound_tvars
+        self.allow_unbound_tvars = True
+        try:
+            an_args = self.anal_array(
+                t.args,
+                allow_param_spec=True,
+                allow_param_spec_literals=node.has_param_spec_type,
+                allow_unpack=True,
+            )
+        finally:
+            self.allow_unbound_tvars = old_allow_unbound_tvars
+        if node.has_param_spec_type and len(node.alias_tvars) == 1:
+            an_args = self.pack_paramspec_args(an_args, t.empty_tuple_index)
+        res, _ = instantiate_type_alias(
+            node,
+            an_args,
+            self.fail,
+            self.note,
+            node.no_args,
+            t,
+            self.options,
+            unexpanded_type=t,
+            disallow_any=self.options.disallow_any_generics and not self.is_typeshed_stub,
+            empty_tuple_index=t.empty_tuple_index,
+            analyzing_tvar_def=self.analyzing_tvar_def,
+        )
+        if not isinstance(res, TypeAliasType):
+            return None
+        expanded = get_proper_type(res)
+        if not isinstance(expanded, CallableType):
+            return None
+        analyzed = get_proper_type(expanded.accept(self))
+        assert isinstance(analyzed, CallableType)
+        # Analyzing the callable binds its free type variables, but it does
+        # not resolve occurrences nested inside instances or alias
+        # applications. Replace those with the callable's own type variables.
+        return analyzed.accept(ResolveUnboundTypeVars(analyzed.variables))
 
     def pack_paramspec_args(self, an_args: Sequence[Type], empty_tuple_index: bool) -> list[Type]:
         # "Aesthetic" ParamSpec literals for single ParamSpec: C[int, str] -> C[[int, str]].
@@ -2754,6 +2823,71 @@ def unknown_unpack(t: Type) -> bool:
         if isinstance(unpacked, AnyType) and unpacked.type_of_any == TypeOfAny.special_form:
             return True
     return False
+
+
+class HasUnboundTypeVar(TypeQuery[bool]):
+    """Whether a type contains a reference to an unbound type variable.
+
+    An unbound type variable is represented by an UnboundType node referring
+    to a type variable (or ParamSpec, or TypeVarTuple) that is not bound in
+    the current scope.
+
+    References nested inside another callable type are not reported: a
+    callable binds its own type variables when it is analyzed. References
+    nested inside another alias application are reported: an alias
+    application is analyzed in the enclosing scope, so such a type variable
+    does not belong to the nested alias.
+    This is used to detect type variables in the arguments of a generic
+    alias that expands to a callable, which belong to the callable itself,
+    as in a literal Callable[..., T]. See
+    https://github.com/python/mypy/issues/22399.
+    """
+
+    def __init__(self, api: SemanticAnalyzerCoreInterface, scope: TypeVarLikeScope) -> None:
+        super().__init__()
+        self.api = api
+        self.scope = scope
+
+    def strategy(self, items: list[bool]) -> bool:
+        return any(items)
+
+    def visit_unbound_type(self, t: UnboundType) -> bool:
+        sym = self.api.lookup_qualified(t.name, t, suppress_errors=True)
+        if sym is not None:
+            if isinstance(sym.node, TypeVarLikeExpr) and self.scope.get_binding(sym) is None:
+                return True
+        return self.query_types(t.args)
+
+    def visit_callable_type(self, t: CallableType) -> bool:
+        return False
+
+    def visit_type_alias_type(self, t: TypeAliasType) -> bool:
+        return self.query_types(t.args)
+
+
+class ResolveUnboundTypeVars(TrivialSyntheticTypeTranslator):
+    """Replace unbound type variables with the type variables of a callable.
+
+    When a callable is expanded from a generic alias, analyzing it binds
+    its free type variables, but it does not resolve occurrences nested
+    inside instances or alias applications, since analyzing those does not
+    recurse into them. Replace such occurrences with the callable's own
+    type variables of the same name. See
+    https://github.com/python/mypy/issues/22399.
+    """
+
+    def __init__(self, variables: Sequence[TypeVarLikeType]) -> None:
+        super().__init__()
+        self.variables = {var.name: var for var in variables}
+
+    def visit_unbound_type(self, t: UnboundType) -> Type:
+        var = self.variables.get(t.name)
+        if var is not None and not t.args:
+            return var.copy_modified(id=var.id, line=t.line, column=t.column)
+        return t.copy_modified(args=[arg.accept(self) for arg in t.args])
+
+    def visit_type_alias_type(self, t: TypeAliasType) -> Type:
+        return t.copy_modified(args=[arg.accept(self) for arg in t.args])
 
 
 class FindTypeVarVisitor(SyntheticTypeVisitor[None]):
