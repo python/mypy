@@ -162,6 +162,8 @@ from mypy.types import (
 )
 from mypy.util import decode_python_encoding, hash_digest, unnamed_function
 
+AST_SERIALIZE_CACHE_VERSION: Final = 7
+
 TypeIgnores = list[tuple[int, list[str]]]
 
 # There is no way to create reasonable fallbacks at this stage,
@@ -419,7 +421,7 @@ def parse_to_binary_ast(
             platform=options.platform,
             always_true=options.always_true,
             always_false=options.always_false,
-            cache_version=7,
+            cache_version=AST_SERIALIZE_CACHE_VERSION,
         )
     except ValueError as exc:
         if source is None:
@@ -436,7 +438,7 @@ def parse_to_binary_ast(
                 platform=options.platform,
                 always_true=options.always_true,
                 always_false=options.always_false,
-                cache_version=5,
+                cache_version=AST_SERIALIZE_CACHE_VERSION,
             )
             # Compute hash using original non-UTF-8 bytes, so that
             # incremental mode works correctly.

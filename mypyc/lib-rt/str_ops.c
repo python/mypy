@@ -646,7 +646,9 @@ PyObject *CPyStr_Multiply(PyObject *str, CPyTagged count) {
         PyErr_SetString(PyExc_OverflowError, CPYTHON_LARGE_INT_ERRMSG);
         return NULL;
     }
-    return PySequence_Repeat(str, temp_count);
+    // Use the str implementation directly (like PyUnicode_Concat does for str + str), so
+    // that the result is always an exact str even if a subclass overrides __mul__.
+    return PyUnicode_Type.tp_as_sequence->sq_repeat(str, temp_count);
 }
 
 
@@ -728,7 +730,9 @@ static inline PyObject *CPyStr_ChangeCase(PyObject *self,
 #if CPY_3_13_FEATURES
     // On 3.13+, _PyUnicode_ToLowerFull/ToUpperFull are no longer exported,
     // so fall back to CPython's method implementation for non-ASCII strings.
-    return PyObject_CallMethodNoArgs(self, method_name);
+    // The method is looked up on str (not on the type of self), so that the
+    // result is always an exact str even if a subclass overrides it.
+    return PyObject_CallMethodOneArg((PyObject *)&PyUnicode_Type, method_name, self);
 #else
     // General Unicode: unicode_func handles 1-to-N expansion.
     // Worst case: each codepoint expands to 3 (per Unicode standard).

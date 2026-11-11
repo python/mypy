@@ -50,6 +50,7 @@ files = [
     "run-i32.test",
     "run-i16.test",
     "run-u8.test",
+    "run-u64.test",
     "run-u32.test",
     "run-u16.test",
     "run-floats.test",

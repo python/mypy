@@ -111,6 +111,9 @@ class ClassIR:
         self.is_decorated = False
         # Does this inherit from a Python class?
         self.inherits_python = False
+        # Is weak reference support explicitly requested via @mypyc_attr(weakrefs=True)?
+        # Use supports_weakrefs() to also consider base classes.
+        self._weakrefs = False
         # Do instances of this class have __dict__?
         self.has_dict = False
         # Do we allow interpreted subclasses? Derived from a mypyc_attr.
@@ -321,7 +324,13 @@ class ClassIR:
     @property
     def needs_getseters_table(self) -> bool:
         """Do we generate a tp_getset table exposing the attributes to Python?"""
-        return self.needs_getseters or not self.is_generated or self.has_dict
+        return (
+            self.needs_getseters
+            or not self.is_generated
+            or self.has_dict
+            # For the __weakref__ getset
+            or self.has_weakref_list()
+        )
 
     def attrs_are_thread_confined(self) -> bool:
         """Can these attributes safely use plain access in free-threaded builds?
@@ -498,6 +507,49 @@ class ClassIR:
     def is_serializable(self) -> bool:
         return any(ci._serializable for ci in self.mro)
 
+    def supports_weakrefs(self) -> bool:
+        """Can weak references to instances of this class be created?
+
+        Native classes only support weak references if requested using
+        @mypyc_attr(weakrefs=True), since it has a per-instance memory cost. Like
+        Python subclasses, native subclasses of non-native classes always support weak
+        references, whether or not the base class does, since they already have
+        __dict__ storage, and adding weak reference storage next to it is free.
+        Subclasses of built-in types (such as Exception or dict) don't support weak
+        references yet.
+        """
+        if not self.is_ext_class:
+            # Non-native classes are ordinary heap types, so they always work.
+            return True
+        if self.builtin_base:
+            return False
+        return self.inherits_python or any(ci._weakrefs for ci in self.mro)
+
+    def has_weakref_list(self) -> bool:
+        """Is this a native class with instances that have a weak reference list?
+
+        This is false for non-native classes, even though they support weak
+        references, since CPython manages the list for them. For native classes, the
+        list is either a field of the object struct (see has_weakref_slot()), or
+        it's stored next to __dict__ (at tp_weaklistoffset): either right after the
+        object struct (before 3.12) or in the managed pre-header (3.12+).
+        """
+        return self.is_ext_class and not self.is_trait and self.supports_weakrefs()
+
+    def has_weakref_slot(self) -> bool:
+        """Is the weak reference list stored in a field of the object struct?
+
+        Otherwise the list is stored next to __dict__, if weak references are
+        supported. A native base class that uses the field determines the offset of
+        the list in all subclasses.
+        """
+        return (
+            self.is_ext_class
+            and not self.is_trait
+            and not self.builtin_base
+            and any(ci._weakrefs and not ci.inherits_python for ci in self.mro)
+        )
+
     def serialize(self) -> JsonDict:
         return {
             "name": self.name,
@@ -510,6 +562,7 @@ class ClassIR:
             "is_decorated": self.is_decorated,
             "is_final_class": self.is_final_class,
             "inherits_python": self.inherits_python,
+            "_weakrefs": self._weakrefs,
             "has_dict": self.has_dict,
             "allow_interpreted_subclasses": self.allow_interpreted_subclasses,
             "needs_getseters": self.needs_getseters,
@@ -581,6 +634,7 @@ class ClassIR:
         ir.is_decorated = data["is_decorated"]
         ir.is_final_class = data["is_final_class"]
         ir.inherits_python = data["inherits_python"]
+        ir._weakrefs = data["_weakrefs"]
         ir.has_dict = data["has_dict"]
         ir.allow_interpreted_subclasses = data["allow_interpreted_subclasses"]
         ir.needs_getseters = data["needs_getseters"]

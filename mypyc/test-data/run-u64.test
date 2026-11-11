@@ -1,0 +1,378 @@
+[case testU64BasicOps]
+from typing import Any, Final, Tuple
+
+from mypy_extensions import u64, i16, i32, i64, u8
+
+from testutil import assertRaises
+
+ERROR: Final = 239
+
+def test_box_and_unbox() -> None:
+    for i in [0, 1, 255, 256, 1000, 32767, 65534, 18446744073709551615]:
+        o: Any = i
+        x: u64 = o
+        o2: Any = x
+        assert o == o2
+        assert x == i
+    with assertRaises(ValueError, "int too large or small to convert to u64"):
+        o = 18446744073709551616
+        x2: u64 = o
+    with assertRaises(ValueError, "int too large or small to convert to u64"):
+        o = -1
+        x3: u64 = o
+
+def div_by_7(x: u64) -> u64:
+    return x // 7
+
+def div(x: u64, y: u64) -> u64:
+    return x // y
+
+def test_divide_by_constant() -> None:
+    for i in [0, 1, 100, 1000, 18446744073709551615]:
+        assert div_by_7(i) == i // 7
+
+def test_divide_by_variable() -> None:
+    for x in [0, 1, 255, 256, 1000, 18446744073709551615]:
+        for y in [0, 1, 7, 255, 256, 1000, 18446744073709551615]:
+            if y != 0:
+                assert div(x, y) == x // y
+            else:
+                with assertRaises(ZeroDivisionError, "integer division or modulo by zero"):
+                    div(x, y)
+
+def mod_by_7(x: u64) -> u64:
+    return x % 7
+
+def mod(x: u64, y: u64) -> u64:
+    return x % y
+
+def test_mod_by_constant() -> None:
+    for i in [0, 1, 100, 1000, 18446744073709551615]:
+        assert mod_by_7(i) == i % 7
+
+def test_mod_by_variable() -> None:
+    for x in [0, 1, 255, 256, 1000, 18446744073709551615]:
+        for y in [0, 1, 7, 255, 256, 1000, 18446744073709551615]:
+            if y != 0:
+                assert mod(x, y) == x % y
+            else:
+                with assertRaises(ZeroDivisionError, "integer division or modulo by zero"):
+                    mod(x, y)
+
+def test_simple_arithmetic_ops() -> None:
+    zero: u64 = int()
+    one: u64 = zero + 1
+    two: u64 = one + 1
+    neg_one: u64 = -one
+    assert neg_one == 18446744073709551615
+    assert one + one == 2
+    assert one + two == 3
+    assert one + neg_one == 0
+    assert one - one == 0
+    assert one - two == 18446744073709551615
+    assert one * one == 1
+    assert one * two == 2
+    assert two * two == 4
+    assert two * neg_one == 18446744073709551614
+    assert neg_one * one == 18446744073709551615
+    assert neg_one * neg_one == 1
+    assert two * 0 == 0
+    assert 0 * two == 0
+    assert -one == 18446744073709551615
+    assert -two == 18446744073709551614
+    assert -neg_one == 1
+    assert -zero == 0
+
+def test_bitwise_ops() -> None:
+    x: u64 = 47384 + int()
+    y: u64 = 20239 + int()
+    z: u64 = 28913 + int()
+    zero: u64 = int()
+    one: u64 = zero + 1
+    two: u64 = zero + 2
+    neg_one: u64 = -one
+
+    assert x & y == 2312
+    assert x & z == 12304
+    assert z & z == z
+    assert x & zero == 0
+
+    assert x | y == 65311
+    assert x | z == 63993
+    assert z | z == z
+    assert x | 0 == x
+
+    assert x ^ y == 62999
+    assert x ^ z == 51689
+    assert z ^ z == 0
+    assert z ^ 0 == z
+
+    assert x << one == 94768
+    assert x << two == 189536
+    assert z << two == 115652
+    assert z << 0 == z
+
+    assert x >> one == 23692
+    assert x >> two == 11846
+    assert z >> two == 7228
+    assert z >> 0 == z
+
+    for i in [0, 1, 255, 256, 1000, 32767, 18446744073709551615]:
+        t: u64 = i
+        assert ~t == (~(i + int()) & 0xffffffffffffffff)
+
+def eq(x: u64, y: u64) -> bool:
+    return x == y
+
+def test_eq() -> None:
+    assert eq(int(), int())
+    assert eq(5 + int(), 5 + int())
+    assert not eq(int(), 1 + int())
+    assert not eq(5 + int(), 6 + int())
+
+def test_comparisons() -> None:
+    one: u64 = 1 + int()
+    one2: u64 = 1 + int()
+    two: u64 = 2 + int()
+    assert one < two
+    assert not (one < one2)
+    assert not (two < one)
+    assert two > one
+    assert not (one > one2)
+    assert not (one > two)
+    assert one <= two
+    assert one <= one2
+    assert not (two <= one)
+    assert two >= one
+    assert one >= one2
+    assert not (one >= two)
+    assert one == one2
+    assert not (one == two)
+    assert one != two
+    assert not (one != one2)
+
+def test_mixed_comparisons() -> None:
+    u64_3: u64 = int() + 3
+    int_5 = int() + 5
+    assert u64_3 < int_5
+    assert int_5 > u64_3
+    b = u64_3 > int_5
+    assert not b
+
+    int_largest = int() + 18446744073709551615
+    assert int_largest > u64_3
+    int_smallest = int()
+    assert u64_3 > int_smallest
+
+    int_too_big = int() + 18446744073709551616
+    int_too_small = int() -1
+    with assertRaises(ValueError):
+        assert u64_3 < int_too_big
+    with assertRaises(ValueError):
+        assert int_too_big < u64_3
+    with assertRaises(ValueError):
+        assert u64_3 > int_too_small
+    with assertRaises(ValueError):
+        assert int_too_small < u64_3
+
+def test_mixed_arithmetic_and_bitwise_ops() -> None:
+    u64_3: u64 = int() + 3
+    int_5 = int() + 5
+    assert u64_3 + int_5 == 8
+    assert int_5 - u64_3 == 2
+    assert u64_3 << int_5 == 96
+    assert int_5 << u64_3  == 40
+    assert u64_3 ^ int_5 == 6
+    assert int_5 | u64_3  == 7
+
+    int_largest = int() + 18446744073709551615
+    assert int_largest - u64_3 == 18446744073709551612
+    int_smallest = int()
+    assert int_smallest + u64_3 == 3
+
+    int_too_big = int() + 18446744073709551616
+    int_too_small = int() - 1
+    with assertRaises(ValueError):
+        assert u64_3 & int_too_big
+    with assertRaises(ValueError):
+        assert int_too_small & u64_3
+
+def test_coerce_to_and_from_int() -> None:
+    for n in [0, 1, 255, 256, 1000, 32767, 18446744073709551615]:
+        x: u64 = n
+        m: int = x
+        assert m == n
+
+def test_coerce_from_len_and_negative_int() -> None:
+    a = [1, 2, 3]
+    x: u64 = len(a)
+    assert x == 3
+    n = 0
+    for i in range(-2, 2):
+        if i < 0:
+            with assertRaises(ValueError, "int too large or small to convert to u64"):
+                y: u64 = i
+        else:
+            y = i
+            assert y == i
+            n += 1
+    assert n == 2
+
+def test_explicit_conversion_to_u64() -> None:
+    x = u64(5)
+    assert x == 5
+    y = int() + ERROR
+    x = u64(y)
+    assert x == ERROR
+    n64: i64 = 233
+    x = u64(n64)
+    assert x == 233
+    n32: i32 = 234
+    x = u64(n32)
+    assert x == 234
+    z = u64(x)
+    assert z == 234
+    n16: i16 = 231
+    x = u64(n16)
+    assert x == 231
+    n8: u8 = 232
+    x = u64(n8)
+    assert x == 232
+
+def test_explicit_conversion_overflow() -> None:
+    max_u64 = int() + 18446744073709551615
+    x = u64(max_u64)
+    assert x == 18446744073709551615
+    assert int(x) == max_u64
+
+    min_u64 = int()
+    y = u64(min_u64)
+    assert y == 0
+    assert int(y) == min_u64
+
+    too_big = int() + 18446744073709551616
+    with assertRaises(ValueError):
+        x = u64(too_big)
+
+    too_small = int() - 1
+    with assertRaises(ValueError):
+        x = u64(too_small)
+
+def test_u64_from_large_small_literal() -> None:
+    x = u64(18446744073709551615)
+    assert x == 18446744073709551615
+    x = u64(0)
+    assert x == 0
+    x = u64(9223372036854775808)
+    assert x == 9223372036854775808
+
+def test_u64_large_literal_implicit_coercion() -> None:
+    x: u64 = 18446744073709551615
+    assert x == 18446744073709551615
+    assert int(x) == 2**64 - 1
+    x = 9223372036854775808
+    assert x == 2**63
+    assert int(x) == 2**63
+    assert u64_identity(18446744073709551615) == 2**64 - 1
+
+def u64_identity(x: u64) -> u64:
+    return x
+
+def test_u64_truncate_from_i64() -> None:
+    large = i64(2**62 + 157 + int())
+    x = u64(large)
+    assert x == 2**62 + 157
+    small = i64(-2**62 - 157 + int())
+    x = u64(small)
+    assert x == 13835058055282163555
+    large2 = i64(2**16 + int())
+    x = u64(large2)
+    assert x == 65536
+    small2 = i64(-2**16 - 1 - int())
+    x = u64(small2)
+    assert x == 18446744073709486079
+
+def test_u64_truncate_from_i32() -> None:
+    large = i32(2**20 + 2**16 + 5 + int())
+    assert u64(large) == 1114117
+    small = i32(-2**20 - 2**16 - 1 + int())
+    assert u64(small) == 18446744073708437503
+
+def from_float(x: float) -> u64:
+    return u64(x)
+
+def test_explicit_conversion_from_float() -> None:
+    assert from_float(0.0) == 0
+    assert from_float(1.456) == 1
+    assert from_float(234.567) == 234
+    assert from_float(float(2**63)) == 2**63
+    # Largest float below 2**64
+    assert from_float(float(2**64 - 2048)) == 2**64 - 2048
+    assert from_float(0) == 0
+    assert from_float(-0.999) == 0
+    # The error message could be better, but this is acceptable
+    with assertRaises(ValueError, "int too large or small to convert to u64"):
+        assert from_float(float(18446744073709551616))
+    with assertRaises(ValueError, "int too large or small to convert to u64"):
+        from_float(float(-1.0))
+
+def list_get(a: list[int], i: u64) -> int:
+    return a[i]
+
+def list_get_len(a: list[str], i: u64) -> int:
+    return len(a[i])
+
+def list_set(a: list[int], i: u64, x: int) -> None:
+    a[i] = x
+
+def tuple_get(a: tuple[int, ...], i: u64) -> int:
+    return a[i]
+
+def str_get(s: str, i: u64) -> str:
+    return s[i]
+
+def test_index_with_u64() -> None:
+    a = [1, 2, 3]
+    assert list_get(a, 0) == 1
+    assert list_get(a, 2) == 3
+    assert list_get_len(["ab", "c"], 0) == 2
+    list_set(a, 1, 5)
+    assert a == [1, 5, 3]
+    assert tuple_get((1, 2, 3), 2) == 3
+    assert str_get("abc", 1) == "b"
+    for n in (3, 2**62, 2**63, 2**64 - 1):
+        with assertRaises(IndexError, "list index out of range"):
+            list_get(a, n)
+        with assertRaises(IndexError, "list index out of range"):
+            list_get_len(["x"], n)
+        with assertRaises(IndexError, "list assignment index out of range"):
+            list_set(a, n, 1)
+    assert a == [1, 5, 3]
+    with assertRaises(IndexError):
+        tuple_get((1, 2, 3), 3)
+    with assertRaises(IndexError):
+        str_get("abc", 3)
+    # Index too large for a short int takes the slow conversion path
+    with assertRaises(OverflowError):
+        tuple_get((1, 2, 3), 2**63)
+    with assertRaises(OverflowError):
+        str_get("abc", 2**64 - 1)
+
+def test_tuple_u64() -> None:
+    a: u64 = 1
+    b: u64 = 2
+    t = (a, b)
+    a, b = t
+    assert a == 1
+    assert b == 2
+    x: Any = t
+    tt: Tuple[u64, u64] = x
+    assert tt == (1, 2)
+
+def test_convert_u64_to_native_int() -> None:
+    for i in [0, 1, 255, 1000, 32767]:
+        x: u64 = i
+        assert u8(x) == (i & 0xff)
+        assert i16(x) == (i if i < 32768 else i - 18446744073709551616)
+        assert i32(x) == i
+        assert i64(x) == i
