@@ -164,6 +164,7 @@ from mypyc.primitives.misc_ops import (
     isinstance_slice,
     isinstance_type,
     slow_isinstance_op,
+    type_of_int_op,
 )
 from mypyc.primitives.set_ops import isinstance_frozenset, isinstance_set
 from mypyc.primitives.str_ops import (
@@ -1427,6 +1428,35 @@ def translate_float(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Valu
         # No-op float conversion.
         return builder.accept(arg)
     return None
+
+
+@specialize_function("builtins.type")
+def translate_type(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value | None:
+    """Get the type of an unboxed int, float or bool without boxing it.
+
+    Only these exact types are handled. A union such as 'bool | int' is boxed
+    already, and unboxing it as an int would lose the type of a bool.
+    """
+    if len(expr.args) != 1 or expr.arg_kinds[0] != ARG_POS:
+        return None
+    arg = expr.args[0]
+    arg_type = builder.node_type(arg)
+    if is_int_rprimitive(arg_type):
+        # A long int can be an instance of a subclass of int
+        return builder.primitive_op(type_of_int_op, [builder.accept(arg)], expr.line)
+    if is_bool_rprimitive(arg_type):
+        type_name = "builtins.bool"
+    elif is_float_rprimitive(arg_type):
+        type_name = "builtins.float"
+    elif is_fixed_width_rtype(arg_type):
+        type_name = "builtins.int"
+    else:
+        return None
+    # The type doesn't depend on the value, but the argument can have side effects
+    builder.accept(arg)
+    type_obj = builder.load_builtin(type_name, expr.line)
+    assert type_obj is not None
+    return type_obj
 
 
 @specialize_function("builtins.ord")

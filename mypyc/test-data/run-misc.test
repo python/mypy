@@ -1403,6 +1403,88 @@ def test_range_slice_memoryview() -> None:
     assert is_memoryview(memoryview(b"x")) is True
     assert is_memoryview(b"x") is False
 
+[case testTypeOfUnboxedValue]
+from typing import Any, Union
+
+from mypy_extensions import i64, u16, u32, u64
+from testutil import assertRaises
+
+def type_of_int(x: int) -> type:
+    return type(x)
+def type_of_float(x: float) -> type:
+    return type(x)
+def type_of_bool(x: bool) -> type:
+    return type(x)
+def type_of_i64(x: i64) -> type:
+    return type(x)
+def type_of_u16(x: u16) -> type:
+    return type(x)
+def type_of_u32(x: u32) -> type:
+    return type(x)
+def type_of_u64(x: u64) -> type:
+    return type(x)
+def type_of_bool_or_int(x: Union[bool, int]) -> type:
+    return type(x)
+def is_exact_int(x: int) -> bool:
+    return type(x) is int
+
+def float_arg(log: list[str]) -> float:
+    log.append("float")
+    return 1.5
+def bool_arg(log: list[str]) -> bool:
+    log.append("bool")
+    return True
+def u16_arg(log: list[str]) -> u16:
+    log.append("u16")
+    return 5
+def float_error() -> float:
+    raise ValueError("float")
+def u16_error() -> u16:
+    raise ValueError("u16")
+
+type_: Any = type
+MyInt: Any = type_("MyInt", (int,), {})
+
+def test_type_of_unboxed_value() -> None:
+    big = MyInt(2**100)
+    assert type_of_int(5) is int
+    assert type_of_int(-(2**100)) is int
+    # A long int keeps its object, which can be an instance of a subclass
+    assert type_of_int(big) is MyInt
+    assert is_exact_int(5) and is_exact_int(2**100)
+    assert not is_exact_int(big)
+    assert type_of_float(1.5) is float
+    assert type_of_bool(True) is bool
+    assert type_of_bool(1 > 2) is bool
+    assert type_of_i64(-5) is int
+    assert type_of_i64(-(2**63)) is int
+    assert type_of_u16(2**16 - 1) is int
+    assert type_of_u32(2**32 - 1) is int
+    assert type_of_u64(2**64 - 1) is int
+    n = 2**70
+    assert type(n + 1) is int
+    assert type(n > 1) is bool
+    assert type(n / 2) is float
+
+def test_type_of_union() -> None:
+    # A union is boxed, so a bool or an instance of an int subclass keeps its type
+    small = MyInt(5)
+    assert type_of_bool_or_int(True) is bool
+    assert type_of_bool_or_int(small) is MyInt
+    assert type_of_bool_or_int(5) is int
+
+def test_argument_is_evaluated() -> None:
+    # The value isn't needed for the type of a float, bool or u16, but it's evaluated
+    log: list[str] = []
+    assert type(float_arg(log)) is float
+    assert type(bool_arg(log)) is bool
+    assert type(u16_arg(log)) is int
+    assert log == ["float", "bool", "u16"]
+    with assertRaises(ValueError, "float"):
+        type(float_error())
+    with assertRaises(ValueError, "u16"):
+        type(u16_error())
+
 [case testIsInstanceMixedTuple]
 from typing import Any
 from mypy_extensions import mypyc_attr
