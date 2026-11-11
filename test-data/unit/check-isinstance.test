@@ -2381,7 +2381,7 @@ s: Set[str]
 
 y: Optional[str]
 if y in {'a', 'b', 'c'}:
-    reveal_type(y) # N: Revealed type is "builtins.str"
+    reveal_type(y) # N: Revealed type is "Literal['a']? | Literal['b']? | Literal['c']?"
 else:
     reveal_type(y) # N: Revealed type is "builtins.str | None"
 if y not in s:
