@@ -101,3 +101,59 @@ def f(x, cb):
 L0:
     r0 = PyWeakref_NewProxy(x, cb)
     return r0
+
+[case testWeakrefToNativeClassErrors]
+from typing import Any
+import weakref
+from mypy_extensions import mypyc_attr, trait
+
+class Plain:
+    pass
+
+@mypyc_attr(weakrefs=True)
+class Supported:
+    pass
+
+class SupportedSub(Supported):
+    pass
+
+@mypyc_attr(native_class=False)
+class NonNative:
+    pass
+
+@trait
+class T:
+    pass
+
+def f(a: Plain, b: Supported, c: SupportedSub, d: NonNative, e: T, g: object) -> None:
+    weakref.ref(a)  # E: Cannot create weak reference to instance of native class "__main__.Plain" \
+                    # N: Add "@mypy_extensions.mypyc_attr(weakrefs=True)" to the class definition to enable support for weak references
+    weakref.proxy(a)  # E: Cannot create weak reference to instance of native class "__main__.Plain" \
+                      # N: Add "@mypy_extensions.mypyc_attr(weakrefs=True)" to the class definition to enable support for weak references
+    # These are all fine (or can't be checked statically)
+    weakref.ref(b)
+    weakref.ref(c)
+    weakref.ref(d)
+    weakref.ref(e)
+    weakref.ref(g)
+[out]
+
+[case testWeakrefAttrErrors]
+from mypy_extensions import mypyc_attr, trait
+
+@mypyc_attr(weakrefs=True)  # E: "weakrefs" can't be used with traits
+@trait
+class T:
+    pass
+
+@mypyc_attr(weakrefs=True)  # E: "weakrefs" can't be used in a class that inherits from a built-in type
+class Dict(dict):
+    pass
+
+class Base:
+    pass
+
+@mypyc_attr(weakrefs=True)  # E: "weakrefs" must be used in the base class "Base" as well
+class Sub(Base):
+    pass
+[out]

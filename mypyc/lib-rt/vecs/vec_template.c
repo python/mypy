@@ -44,10 +44,13 @@ inline static VEC vec_error() {
 static VEC vec_alloc(Py_ssize_t size)
 {
     BUF_OBJECT *buf;
-    /* TODO: Check for overflow */
     if (size == 0) {
         buf = NULL;
     } else {
+        if (size > VEC_MAX_BUF_ITEMS(BUF_OBJECT, sizeof(ITEM_C_TYPE))) {
+            PyErr_NoMemory();
+            return vec_error();
+        }
         buf = PyObject_NewVar(BUF_OBJECT, &BUF_TYPE, size);
         if (buf == NULL)
             return vec_error();
@@ -173,8 +176,22 @@ static inline VEC vec_from_sequence(PyObject *seq, int64_t cap, const int is_lis
     // Tuples are immutable, so fall through to the shared loop below
 #endif
     for (Py_ssize_t i = 0; i < n; i++) {
-        PyObject *item = is_list ? PyList_GET_ITEM(seq, i) : PyTuple_GET_ITEM(seq, i);
-        ITEM_C_TYPE x = UNBOX_ITEM(item);
+        ITEM_C_TYPE x;
+        if (is_list) {
+            // Unboxing can run arbitrary code (such as __index__) that modifies the list,
+            // so recheck the size and hold a reference to the item
+            if (i >= PyList_GET_SIZE(seq)) {
+                n = i;
+                break;
+            }
+            PyObject *item = PyList_GET_ITEM(seq, i);
+            Py_INCREF(item);
+            x = UNBOX_ITEM(item);
+            Py_DECREF(item);
+        } else {
+            // Tuples are immutable, so a borrowed reference is fine
+            x = UNBOX_ITEM(PyTuple_GET_ITEM(seq, i));
+        }
         if (IS_UNBOX_ERROR(x)) {
             VEC_DECREF(v);
             return vec_error();
@@ -280,7 +297,10 @@ static PyObject *vec_new(PyTypeObject *self, PyObject *args, PyObject *kw) {
         return NULL;
     }
     if (init == NULL) {
-        return FUNC(Box)(FUNC(New)(0, cap));
+        VEC v = FUNC(New)(0, cap);
+        if (VEC_IS_ERROR(v))
+            return NULL;
+        return FUNC(Box)(v);
     } else {
         VEC v = FUNC(FromIterable)(init, cap);
         if (VEC_IS_ERROR(v))

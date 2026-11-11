@@ -481,6 +481,30 @@ def test_contains_subclass() -> None:
     assert StringSubclass('abc') in v
     assert 'xyz' not in v
 
+eq_vec: Any = None
+
+class ReplaceItemOnEq:
+    def __init__(self, name: str) -> None:
+        self.name = name
+
+    def __eq__(self, other: object) -> bool:
+        # Drop the reference to self from the vec
+        eq_vec[0] = None
+        # Try to reuse the memory of self, in case it was freed
+        junk = [ReplaceItemOnEq('junk') for i in range(100)]
+        return isinstance(other, ReplaceItemOnEq) and self.name == other.name
+
+def test_item_replaced_during_comparison() -> None:
+    # Items must not be borrowed while comparing, since __eq__ can replace them
+    global eq_vec
+    t = vec[Optional[ReplaceItemOnEq]]
+    eq_vec = t([ReplaceItemOnEq('x')])
+    assert eq_vec == t([ReplaceItemOnEq('x')])
+    eq_vec = t([ReplaceItemOnEq('x')])
+    assert ReplaceItemOnEq('x') in eq_vec
+    eq_vec = t([ReplaceItemOnEq('x')])
+    assert len(remove(eq_vec, ReplaceItemOnEq('x'))) == 0
+
 def test_remove() -> None:
     a = ['4x', '7x', '9x']
     for i in a:
@@ -520,6 +544,29 @@ def test_remove_optional() -> None:
     assert str(v) == "vec[str | None]([None])"
     v = remove(v, None)
     assert str(v) == "vec[str | None]([])"
+
+remove_events: list[object] = []
+remove_vec: Any = None
+
+class RemoveOnDel:
+    def __init__(self, removed: bool) -> None:
+        self.removed = removed
+
+    def __eq__(self, other: object) -> bool:
+        return True
+
+    def __del__(self) -> None:
+        if self.removed:
+            remove_events.append(remove_vec[0])
+
+def test_remove_decref_after_shift() -> None:
+    # The removed item must be decref'd after the items have been shifted, since
+    # __del__ can access the vec through another reference
+    global remove_vec
+    remove_vec = vec[Optional[RemoveOnDel]]([RemoveOnDel(True), None])
+    v = remove(remove_vec, RemoveOnDel(False))
+    assert remove_events == [None]
+    assert v == vec[Optional[RemoveOnDel]]([None])
 
 def test_pop_last() -> None:
     v = vec[str](['4', '7', '9'])

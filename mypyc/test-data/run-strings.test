@@ -1470,3 +1470,51 @@ def test_out_of_range_raises_indexerror() -> None:
         eq_comma(s, 3)
     with assertRaises(IndexError):
         eq_comma(s, -4)
+
+[case testStrOpsOverridingSubclass]
+from strsub import StrOverride
+
+def mul(s: str, n: int) -> str:
+    return s * n
+
+def rmul(s: str, n: int) -> str:
+    return n * s
+
+def lower(s: str) -> str:
+    return s.lower()
+
+def upper(s: str) -> str:
+    return s.upper()
+
+def test_multiply() -> None:
+    # Overrides aren't used, and the result is always an exact str
+    for s in ["", "a", "ab\xe9"]:
+        sub: str = StrOverride(s)
+        for n in [-1, 0, 1, 3]:
+            for res in [mul(sub, n), rmul(sub, n)]:
+                assert type(res) is str
+                assert res == s * n
+                assert len(res) == len(s * n)
+
+def test_lower_upper() -> None:
+    for s in ["Hello", "\xc9cole Σ", "İ", "\xdf"]:
+        sub: str = StrOverride(s)
+        assert type(lower(sub)) is str
+        assert lower(sub) == s.lower()
+        assert len(lower(sub)) == len(s.lower())
+        assert type(upper(sub)) is str
+        assert upper(sub) == s.upper()
+        assert len(upper(sub)) == len(s.upper())
+
+[file strsub.py]
+from typing import Any
+
+class StrOverride(str):
+    def __mul__(self, n: Any) -> Any:
+        return 12345678901234567890
+    def __rmul__(self, n: Any) -> Any:
+        return 12345678901234567891
+    def lower(self) -> Any:
+        return 12345678901234567892
+    def upper(self) -> Any:
+        return 12345678901234567893

@@ -300,6 +300,42 @@ def test_wide_i64_randrange_python_api() -> None:
         assert lo <= val < hi
 
 #
+# Results equal to the i64 error value (-113)
+#
+
+def test_randint_overlapping_error_value() -> None:
+    r = Random(0)
+    assert r.randint(-113, -113) == -113
+    assert method_randint(r, -113, -113) == -113
+    assert randint(-113, -113) == -113
+    assert module_randint(-113, -113) == -113
+    seen = set()
+    for i in range(1000):
+        val = r.randint(-114, -112)
+        assert -114 <= val <= -112
+        seen.add(val)
+        val = randint(-114, -112)
+        assert -114 <= val <= -112
+        seen.add(val)
+    assert -113 in seen
+
+def test_randrange_overlapping_error_value() -> None:
+    r = Random(0)
+    assert r.randrange(-113, -112) == -113
+    assert method_randrange(r, -113, -112) == -113
+    assert randrange(-113, -112) == -113
+    assert module_randrange(-113, -112) == -113
+    seen = set()
+    for i in range(1000):
+        val = r.randrange(-114, -111)
+        assert -114 <= val < -111
+        seen.add(val)
+        val = randrange(-114, -111)
+        assert -114 <= val < -111
+        seen.add(val)
+    assert -113 in seen
+
+#
 # Error handling
 #
 

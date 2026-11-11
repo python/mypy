@@ -1653,6 +1653,79 @@ L0:
     z = -3
     return 1
 
+[case testI64ExplicitConversionFromLargeLiteral_64bit]
+from mypy_extensions import i64
+
+def f() -> None:
+    a = i64(9223372036854775807)
+    b = i64(-9223372036854775808)
+    c = i64(9223372036854775808)  # Truncate
+    d = i64(18446744073709551621)  # Truncate
+[out]
+def f():
+    r0 :: int
+    a :: i64
+    r1 :: int
+    b :: i64
+    r2 :: int
+    c :: i64
+    r3 :: int
+    d :: i64
+L0:
+    r0 = object 9223372036854775807
+    a = 9223372036854775807
+    r1 = object -9223372036854775808
+    b = -9223372036854775808
+    r2 = object 9223372036854775808
+    c = -9223372036854775808
+    r3 = object 18446744073709551621
+    d = 5
+    return 1
+
+[case testI64InitializeFromLargeLiteral_64bit]
+from mypy_extensions import i64
+
+def f() -> None:
+    a: i64 = 9223372036854775807
+    b: i64 = -9223372036854775808
+    g(9223372036854775807)
+
+def g(x: i64) -> None: pass
+[out]
+def f():
+    r0 :: int
+    a :: i64
+    r1 :: int
+    b :: i64
+    r2 :: int
+    r3 :: None
+L0:
+    r0 = object 9223372036854775807
+    a = 9223372036854775807
+    r1 = object -9223372036854775808
+    b = -9223372036854775808
+    r2 = object 9223372036854775807
+    r3 = g(9223372036854775807)
+    return 1
+def g(x):
+    x :: i64
+L0:
+    return 1
+
+[case testI64DetectOutOfRangeLiterals_64bit]
+from mypy_extensions import i64
+
+def out_of_range() -> None:
+    a: i64 = 9223372036854775808
+    b: i64 = -9223372036854775809
+    g(9223372036854775808)
+
+def g(x: i64) -> None: pass
+[out]
+main:4: error: Value 9223372036854775808 is out of range for "i64"
+main:5: error: Value -9223372036854775809 is out of range for "i64"
+main:6: error: Value 9223372036854775808 is out of range for "i64"
+
 [case testI64ForLoopOverRange]
 from mypy_extensions import i64
 
