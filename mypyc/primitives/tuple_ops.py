@@ -105,7 +105,7 @@ binary_op(
     name="+",
     arg_types=[tuple_rprimitive, tuple_rprimitive],
     return_type=tuple_rprimitive,
-    c_function_name="PySequence_Concat",
+    c_function_name="CPySequence_Concat",
     error_kind=ERR_MAGIC,
 )
 

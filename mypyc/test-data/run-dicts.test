@@ -365,6 +365,44 @@ def test_lookup_error_propagation() -> None:
             assert d == {}
         assert default(d, "present") is default(d, "present")
 
+def test_empty_collection_setdefault_subclass() -> None:
+    from collections import Counter
+    from dictsubclasses import MissingDict, SetDefaultDict
+
+    for default, empty in ((default_list, []), (default_dict, {}), (default_set, set())):
+        # Counter.__missing__ returns 0, but setdefault must still insert
+        d: Dict[Any, Any] = Counter()
+        assert default(d, "x") == empty
+        assert d == {"x": empty}
+        assert default(d, "x") is d["x"]
+
+        # __missing__ isn't used by setdefault
+        d = MissingDict()
+        assert default(d, "x") == empty
+        assert d == {"x": empty}
+
+        sd = SetDefaultDict()
+        assert default(sd, "x") == empty
+        assert sd.calls == [("x", empty)]
+        assert sd == {}
+
+        d = defaultdict(int)
+        assert default(d, "x") == empty
+        assert d == {"x": empty}
+
+[file dictsubclasses.py]
+class MissingDict(dict):
+    def __missing__(self, key):
+        return "missing"
+
+class SetDefaultDict(dict):
+    def __init__(self):
+        self.calls = []
+
+    def setdefault(self, key, default=None):
+        self.calls.append((key, default))
+        return default
+
 [case testDictToBool]
 from typing import Dict, List
 
@@ -630,3 +668,32 @@ for convert in (keys, values, items):
         gc.collect()
         assert all(ref() is None for ref in refs)
     assert convert(CustomDict(iter([1, 2]))) == [1, 2]
+
+[case testDictCopyOverridingSubclass]
+from typing import Dict
+from testutil import assertRaises
+from dictsub import BadDict, GoodDict
+
+def copy(d: Dict[int, int]) -> Dict[int, int]:
+    return d.copy()
+
+def test_bad_result_type() -> None:
+    d: Dict[int, int] = BadDict({1: 2})
+    with assertRaises(TypeError, "dict object expected; got int"):
+        copy(d)
+
+def test_override_called() -> None:
+    d: Dict[int, int] = GoodDict({1: 2})
+    assert copy(d) == {1: 2, 3: 4}
+    assert type(copy(d)) is GoodDict
+
+[file dictsub.py]
+from typing import Any
+
+class BadDict(dict):
+    def copy(self) -> Any:
+        return 1
+
+class GoodDict(dict):
+    def copy(self) -> Any:
+        return GoodDict({**self, 3: 4})

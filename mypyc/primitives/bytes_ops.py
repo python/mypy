@@ -80,9 +80,8 @@ binary_op(
     name="*",
     arg_types=[int_rprimitive, bytes_rprimitive],
     return_type=bytes_rprimitive,
-    c_function_name="CPyBytes_Multiply",
+    c_function_name="CPyBytes_RMultiply",
     error_kind=ERR_MAGIC,
-    ordering=[1, 0],
 )
 
 # bytes[begin:end]

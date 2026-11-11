@@ -290,6 +290,13 @@ class TestNativeParserCustomEncoding(unittest.TestCase):
         with temp_source(source, encoding="latin1") as fnam:
             parse_to_binary_ast(fnam, Options())
 
+    def test_latin1_function(self) -> None:
+        source = "# coding: latin1\nJérôme = False\ndef f(): pass"
+        with temp_source(source, encoding="latin1") as fnam:
+            b, _, _, _, _, _, _, _, _ = parse_to_binary_ast(fnam, Options())
+            data = ReadBuffer(b)
+            read_statements(State(Options()), data, read_int(data))
+
     def test_latin1_broken(self) -> None:
         source = "# coding: ascii\nJérôme = False"
         with temp_source(source, encoding="latin1") as fnam:
