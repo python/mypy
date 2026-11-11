@@ -607,7 +607,7 @@ def generate_get_wrapper(cl: ClassIR, fn: FuncIR, emitter: Emitter) -> str:
 def generate_hash_wrapper(cl: ClassIR, fn: FuncIR, emitter: Emitter) -> str:
     """Generates a wrapper for native __hash__ methods."""
     name = f"{DUNDER_PREFIX}{fn.name}{cl.name_prefix(emitter.names)}"
-    emitter.emit_line(f"static Py_ssize_t {name}(PyObject *self) {{")
+    emitter.emit_line(f"static Py_hash_t {name}(PyObject *self) {{")
     emitter.emit_line(
         "{}retval = {}{}{}(self);".format(
             emitter.ctype_spaced(fn.ret_type),
@@ -618,13 +618,20 @@ def generate_hash_wrapper(cl: ClassIR, fn: FuncIR, emitter: Emitter) -> str:
     )
     emitter.emit_error_check("retval", fn.ret_type, "return -1;")
     if is_int_rprimitive(fn.ret_type):
-        emitter.emit_line("Py_ssize_t val = CPyTagged_AsSsize_t(retval);")
+        emitter.emit_line("if (likely(CPyTagged_CheckShort(retval))) {")
+        # A short int always fits in Py_hash_t, but -1 is reserved for errors
+        emitter.emit_line("Py_hash_t val = CPyTagged_ShortAsSsize_t(retval);")
+        emitter.emit_line("return val == -1 ? -2 : val;")
+        emitter.emit_line("}")
+        emitter.emit_line("Py_hash_t val = CPy_HashFromResult(CPyTagged_LongAsObject(retval));")
+        emitter.emit_dec_ref("retval", fn.ret_type)
     else:
-        emitter.emit_line("Py_ssize_t val = PyLong_AsSsize_t(retval);")
-    emitter.emit_dec_ref("retval", fn.ret_type)
-    emitter.emit_line("if (PyErr_Occurred()) return -1;")
-    # We can't return -1 from a hash function..
-    emitter.emit_line("if (val == -1) return -2;")
+        # CPy_HashFromResult() takes an object, so box other unboxed types such as i64
+        emitter.emit_box("retval", "retbox", fn.ret_type, declare_dest=True)
+        if fn.ret_type.is_unboxed:
+            emitter.emit_line("if (unlikely(retbox == NULL)) return -1;")
+        emitter.emit_line("Py_hash_t val = CPy_HashFromResult(retbox);")
+        emitter.emit_dec_ref("retbox", object_rprimitive)
     emitter.emit_line("return val;")
     emitter.emit_line("}")
 
