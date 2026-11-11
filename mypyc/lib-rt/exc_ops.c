@@ -73,6 +73,13 @@ void CPy_RaiseFrom(PyObject *exc, PyObject *cause) {
 void CPy_Reraise(void) {
     PyObject *p_type, *p_value, *p_traceback;
     PyErr_GetExcInfo(&p_type, &p_value, &p_traceback);
+    if (p_value == NULL || Py_IsNone(p_value)) {
+        Py_XDECREF(p_type);
+        Py_XDECREF(p_value);
+        Py_XDECREF(p_traceback);
+        PyErr_SetString(PyExc_RuntimeError, "No active exception to reraise");
+        return;
+    }
     PyErr_Restore(p_type, p_value, p_traceback);
 }
 
@@ -94,6 +101,29 @@ void CPyErr_SetObjectAndTraceback(PyObject *type, PyObject *value, PyObject *tra
         Py_INCREF(traceback);
     }
     PyErr_Restore(type, value, traceback);
+}
+
+// Validate the arguments of generator.throw() before resuming the generator, like
+// CPython's _gen_throw. Return false and set an error if they are invalid.
+bool CPyGen_CheckThrowArgs(PyObject *type, PyObject *value, PyObject *traceback) {
+    if (!Py_IsNone(traceback) && !PyTraceBack_Check(traceback)) {
+        PyErr_SetString(PyExc_TypeError, "throw() third argument must be a traceback object");
+        return false;
+    }
+    if (PyExceptionClass_Check(type)) {
+        return true;
+    }
+    if (PyExceptionInstance_Check(type)) {
+        if (!Py_IsNone(value)) {
+            PyErr_SetString(PyExc_TypeError, "instance exception may not have a separate value");
+            return false;
+        }
+        return true;
+    }
+    PyErr_Format(PyExc_TypeError,
+                 "exceptions must be classes or instances deriving from BaseException, not %s",
+                 Py_TYPE(type)->tp_name);
+    return false;
 }
 
 tuple_T3OOO CPy_CatchError(void) {

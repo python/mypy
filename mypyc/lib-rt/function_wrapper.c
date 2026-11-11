@@ -198,6 +198,14 @@ static PyObject* CPyFunction_Vectorcall(PyObject *func, PyObject *const *args, s
 
     self = ((PyCFunctionObject *)f)->m_self;
     if (!self) {
+        if (unlikely(nargs < 1)) {
+            PyObject *name = CPyFunction_get_name(func, NULL);
+            if (name != NULL) {
+                PyErr_Format(PyExc_TypeError, "unbound method %U() needs an argument", name);
+                Py_DECREF(name);
+            }
+            return NULL;
+        }
         self = args[0];
         args += 1;
         nargs -= 1;

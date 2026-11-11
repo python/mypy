@@ -1101,11 +1101,11 @@ def f(a, b):
     r2 :: object
     r3, d :: tuple
 L0:
-    r0 = PySequence_Concat(a, b)
+    r0 = CPySequence_Concat(a, b)
     c = r0
     r1 = (2, 4)
     r2 = box(tuple[int, int], r1)
-    r3 = PySequence_Concat(a, r2)
+    r3 = CPySequence_Concat(a, r2)
     d = r3
     return 1
 def g(a, b):
@@ -1116,7 +1116,7 @@ def g(a, b):
 L0:
     r0 = box(tuple[int, int], a)
     r1 = box(tuple[int, int], b)
-    r2 = PySequence_Concat(r0, r1)
+    r2 = CPySequence_Concat(r0, r1)
     r3 = unbox(tuple[int, int, int, int], r2)
     c = r3
     return 1

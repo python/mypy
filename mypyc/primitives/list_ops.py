@@ -341,7 +341,7 @@ binary_op(
     name="+",
     arg_types=[list_rprimitive, list_rprimitive],
     return_type=list_rprimitive,
-    c_function_name="PySequence_Concat",
+    c_function_name="CPySequence_Concat",
     error_kind=ERR_MAGIC,
 )
 
@@ -350,7 +350,7 @@ binary_op(
     name="+=",
     arg_types=[list_rprimitive, object_rprimitive],
     return_type=list_rprimitive,
-    c_function_name="PySequence_InPlaceConcat",
+    c_function_name="CPySequence_InPlaceConcat",
     error_kind=ERR_MAGIC,
 )
 
@@ -400,7 +400,7 @@ sequence_get_item = custom_op(
     arg_types=[object_rprimitive, c_pyssize_t_rprimitive],
     return_type=object_rprimitive,
     c_function_name="PySequence_GetItem",
-    error_kind=ERR_NEVER,
+    error_kind=ERR_MAGIC,
 )
 
 sequence_get_slice = custom_op(
