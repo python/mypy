@@ -10,6 +10,7 @@ from mypyc.ir.ops import ERR_MAGIC, ERR_NEVER
 from mypyc.ir.rtypes import (
     bit_rprimitive,
     c_pyssize_t_rprimitive,
+    c_size_t_rprimitive,
     int_rprimitive,
     list_rprimitive,
     object_rprimitive,
@@ -133,4 +134,43 @@ tuple_slice_op = custom_op(
     return_type=object_rprimitive,
     c_function_name="CPySequenceTuple_GetSlice",
     error_kind=ERR_MAGIC,
+)
+
+# The steps of hash() for a fixed-length tuple (RTuple), which combine the C hashes
+# of its items without building a tuple object (see CPyTupleHash_Start in CPy.h)
+tuple_hash_start_op = custom_op(
+    arg_types=[],
+    return_type=c_size_t_rprimitive,
+    c_function_name="CPyTupleHash_Start",
+    error_kind=ERR_NEVER,
+)
+
+tuple_hash_add_op = custom_op(
+    arg_types=[c_size_t_rprimitive, c_pyssize_t_rprimitive],
+    return_type=c_size_t_rprimitive,
+    c_function_name="CPyTupleHash_Add",
+    error_kind=ERR_NEVER,
+)
+
+tuple_hash_finish_op = custom_op(
+    arg_types=[c_size_t_rprimitive, c_pyssize_t_rprimitive],
+    return_type=c_pyssize_t_rprimitive,
+    c_function_name="CPyTupleHash_Finish",
+    error_kind=ERR_NEVER,
+)
+
+# The C hash of an int item
+tuple_hash_int_op = custom_op(
+    arg_types=[int_rprimitive],
+    return_type=c_pyssize_t_rprimitive,
+    c_function_name="CPyTupleHash_Int",
+    error_kind=ERR_NEVER,
+)
+
+# The C hash of any other item, which is -1 on error (the caller checks for it)
+tuple_hash_object_op = custom_op(
+    arg_types=[object_rprimitive],
+    return_type=c_pyssize_t_rprimitive,
+    c_function_name="PyObject_Hash",
+    error_kind=ERR_NEVER,
 )
