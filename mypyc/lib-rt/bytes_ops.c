@@ -87,7 +87,7 @@ PyObject *CPyBytes_GetSlice(PyObject *obj, CPyTagged start, CPyTagged end) {
             return PyByteArray_FromStringAndSize(PyByteArray_AS_STRING(obj) + startn, slice_len);
         }
     }
-    return CPyObject_GetSlice(obj, start, end);
+    return CPyBytes_CheckResult(CPyObject_GetSlice(obj, start, end));
 }
 
 // An overriding method in a bytes subclass can return an arbitrary object. Check that

@@ -761,6 +761,11 @@ def join(b: bytes) -> bytes:
 def translate(b: bytes, table: bytes) -> bytes:
     return b.translate(table)
 
+def get_slice(b: bytes, start: int, end: int) -> bytes:
+    return b[start:end]
+
+BIG = 1 << 70
+
 table = bytes(range(256))
 
 def test_bad_result_type() -> None:
@@ -773,6 +778,10 @@ def test_bad_result_type() -> None:
         join(b)
     with assertRaises(TypeError, "bytes object expected; got int"):
         translate(b, table)
+    with assertRaises(TypeError, "bytes object expected; got int"):
+        get_slice(b, 0, BIG)
+    with assertRaises(TypeError, "bytes object expected; got int"):
+        get_slice(b, -BIG, 1)
 
 def test_overrides_called() -> None:
     b: bytes = GoodBytes(b'x')
@@ -781,6 +790,7 @@ def test_overrides_called() -> None:
     assert type(rmul(b, 2)) is GoodBytes
     assert join(b) == b'axb.'
     assert translate(b, table) == b'x#'
+    assert get_slice(b, 0, BIG) == b'x^'
     assert rmul(b'x', 2) == b'xx'
 
 [file bytessub.py]
@@ -795,6 +805,8 @@ class BadBytes(bytes):
         return 12345678901234567892
     def translate(self, table: Any, delete: Any = b'') -> Any:
         return 12345678901234567893
+    def __getitem__(self, i: Any) -> Any:
+        return 12345678901234567894
 
 class GoodBytes(bytes):
     def __mul__(self, n: Any) -> Any:
@@ -805,3 +817,5 @@ class GoodBytes(bytes):
         return bytes(self).join(it) + b'.'
     def translate(self, table: Any, delete: Any = b'') -> Any:
         return bytes(self).translate(table) + b'#'
+    def __getitem__(self, i: Any) -> Any:
+        return bytes(self)[i] + b'^'
