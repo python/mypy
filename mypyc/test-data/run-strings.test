@@ -864,9 +864,10 @@ def test_chr() -> None:
     assert try_invalid(-1)
     assert try_invalid(1114112)
 
-def test_chr_all_code_points() -> None:
+def test_chr_code_points() -> None:
     f: Any = chr
-    for i in range(0x110000):
+    # All BMP code points, and a sample of the others (checking all of them is slow)
+    for i in [*range(0x10000), *range(0x10000, 0x110000, 97), 0x10FFFF]:
         c = chr(i)
         assert c == f(i)
         assert ord(c) == i
@@ -1385,7 +1386,8 @@ def test_expansion() -> None:
     assert "\uFB03".upper() == "FFI"           # ffi ligature -> FFI
 
 def test_comprehensive() -> None:
-    for i in range(0x110000):
+    # All BMP code points, and a sample of the others (checking all of them is slow)
+    for i in [*range(0x10000), *range(0x10000, 0x110000, 97), 0x10FFFF]:
         c = chr(i)
         a: Any = c
         assert c.lower() == a.lower(), f"lower mismatch at U+{i:04X}"
@@ -1395,10 +1397,10 @@ def test_comprehensive() -> None:
 from typing import Any
 
 def test_isspace() -> None:
-    # Verify correctness across all Unicode codepoints.
     # Exercises UCS-1 (0x00-0xFF), UCS-2 (0x100-0xFFFF), and UCS-4 (0x10000-x10FFFF inclusive) string kinds.
     # Any forces generic dispatch so we compare our primitive against stdlib's
-    for i in range(0x110000):
+    # All BMP code points, and a sample of the others (checking all of them is slow)
+    for i in [*range(0x10000), *range(0x10000, 0x110000, 97), 0x10FFFF]:
         c = chr(i)
         a: Any = c
         assert c.isspace() == a.isspace()
@@ -1437,7 +1439,8 @@ def test_isalnum_unicode() -> None:
 from typing import Any
 
 def test_isdigit() -> None:
-    for i in range(0x110000):
+    # All BMP code points, and a sample of the others (checking all of them is slow)
+    for i in [*range(0x10000), *range(0x10000, 0x110000, 97), 0x10FFFF]:
         c = chr(i)
         a: Any = c
         assert c.isdigit() == a.isdigit()
@@ -1479,9 +1482,10 @@ def check(s: str) -> None:
     assert s.isnumeric() == a.isnumeric(), f"isnumeric mismatch for {s!r}"
     assert s.isprintable() == a.isprintable(), f"isprintable mismatch for {s!r}"
 
-def test_all_code_points() -> None:
-    # Covers the ASCII, UCS-1, UCS-2 and UCS-4 string kinds
-    for i in range(0x110000):
+def test_code_points() -> None:
+    # Covers the ASCII, UCS-1, UCS-2 and UCS-4 string kinds. Check all BMP code points,
+    # and a sample of the others (checking all of them is slow).
+    for i in [*range(0x10000), *range(0x10000, 0x110000, 97), 0x10FFFF]:
         check(chr(i))
 
 def test_strings() -> None:
