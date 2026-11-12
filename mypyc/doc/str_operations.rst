@@ -45,7 +45,12 @@ Methods
 * ``s1.find(s2: str, start: int)``
 * ``s1.find(s2: str, start: int, end: int)``
 * ``s.isalnum()``
+* ``s.isalpha()``
+* ``s.isascii()``
+* ``s.isdecimal()``
 * ``s.isdigit()``
+* ``s.isnumeric()``
+* ``s.isprintable()``
 * ``s.isspace()``
 * ``s.lower()``
 * ``s.join(x: Iterable)``

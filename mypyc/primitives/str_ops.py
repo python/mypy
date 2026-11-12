@@ -439,6 +439,51 @@ method_op(
     error_kind=ERR_NEVER,
 )
 
+# str.isalpha()
+method_op(
+    name="isalpha",
+    arg_types=[str_rprimitive],
+    return_type=bool_rprimitive,
+    c_function_name="CPyStr_IsAlpha",
+    error_kind=ERR_NEVER,
+)
+
+# str.isascii()
+method_op(
+    name="isascii",
+    arg_types=[str_rprimitive],
+    return_type=bool_rprimitive,
+    c_function_name="CPyStr_IsAscii",
+    error_kind=ERR_NEVER,
+)
+
+# str.isdecimal()
+method_op(
+    name="isdecimal",
+    arg_types=[str_rprimitive],
+    return_type=bool_rprimitive,
+    c_function_name="CPyStr_IsDecimal",
+    error_kind=ERR_NEVER,
+)
+
+# str.isnumeric()
+method_op(
+    name="isnumeric",
+    arg_types=[str_rprimitive],
+    return_type=bool_rprimitive,
+    c_function_name="CPyStr_IsNumeric",
+    error_kind=ERR_NEVER,
+)
+
+# str.isprintable()
+method_op(
+    name="isprintable",
+    arg_types=[str_rprimitive],
+    return_type=bool_rprimitive,
+    c_function_name="CPyStr_IsPrintable",
+    error_kind=ERR_NEVER,
+)
+
 
 # obj.decode()
 method_op(

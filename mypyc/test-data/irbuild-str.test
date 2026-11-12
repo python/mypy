@@ -1026,6 +1026,61 @@ L0:
     r0 = CPyStr_IsDigit(x)
     return r0
 
+[case testStrIsAlpha]
+def is_alpha(x: str) -> bool:
+    return x.isalpha()
+[out]
+def is_alpha(x):
+    x :: str
+    r0 :: bool
+L0:
+    r0 = CPyStr_IsAlpha(x)
+    return r0
+
+[case testStrIsAscii]
+def is_ascii(x: str) -> bool:
+    return x.isascii()
+[out]
+def is_ascii(x):
+    x :: str
+    r0 :: bool
+L0:
+    r0 = CPyStr_IsAscii(x)
+    return r0
+
+[case testStrIsDecimal]
+def is_decimal(x: str) -> bool:
+    return x.isdecimal()
+[out]
+def is_decimal(x):
+    x :: str
+    r0 :: bool
+L0:
+    r0 = CPyStr_IsDecimal(x)
+    return r0
+
+[case testStrIsNumeric]
+def is_numeric(x: str) -> bool:
+    return x.isnumeric()
+[out]
+def is_numeric(x):
+    x :: str
+    r0 :: bool
+L0:
+    r0 = CPyStr_IsNumeric(x)
+    return r0
+
+[case testStrIsPrintable]
+def is_printable(x: str) -> bool:
+    return x.isprintable()
+[out]
+def is_printable(x):
+    x :: str
+    r0 :: bool
+L0:
+    r0 = CPyStr_IsPrintable(x)
+    return r0
+
 [case testStrIndexEqLiteral_64bit]
 def is_comma(s: str, i: int) -> bool:
     return s[i] == ","
