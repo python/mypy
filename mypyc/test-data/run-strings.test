@@ -1578,8 +1578,9 @@ def check(s: str) -> None:
     assert s.istitle() == a.istitle(), f"istitle mismatch for {s!r}"
 
 def test_all_code_points() -> None:
-    # Covers the ASCII, UCS-1, UCS-2 and UCS-4 string kinds
-    for i in range(0x110000):
+    # Covers the ASCII, UCS-1, UCS-2 and UCS-4 string kinds. Check all BMP code points,
+    # and a sample of the others (checking all of them is slow).
+    for i in [*range(0x10000), *range(0x10000, 0x110000, 97), 0x10FFFF]:
         c = chr(i)
         check(c)
         check(c + "a")
