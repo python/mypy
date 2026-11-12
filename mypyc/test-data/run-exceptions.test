@@ -694,3 +694,50 @@ def gen() -> Iterator[str]:
 
 def test_generator() -> None:
     assert list(gen()) == ["KeyError('z')"]
+
+[case testBareRaiseWithoutActiveException]
+from testutil import assertRaises
+
+def reraise() -> None:
+    raise
+
+def reraise_caught() -> str:
+    try:
+        raise
+    except RuntimeError as e:
+        return str(e)
+
+def test_no_active_exception() -> None:
+    with assertRaises(RuntimeError, "No active exception to reraise"):
+        reraise()
+    assert reraise_caught() == "No active exception to reraise"
+
+def test_after_handled_exception() -> None:
+    try:
+        raise ValueError("x")
+    except ValueError:
+        pass
+    with assertRaises(RuntimeError, "No active exception to reraise"):
+        reraise()
+
+def test_active_exception() -> None:
+    try:
+        raise ValueError("x")
+    except ValueError:
+        with assertRaises(ValueError, "x"):
+            reraise()
+
+[file driver.py]
+import sys
+import native
+
+native.test_no_active_exception()
+native.test_after_handled_exception()
+native.test_active_exception()
+assert sys.exc_info() == (None, None, None)
+try:
+    native.reraise()
+except RuntimeError as e:
+    assert str(e) == "No active exception to reraise"
+else:
+    assert False

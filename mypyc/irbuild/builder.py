@@ -119,7 +119,6 @@ from mypyc.ir.rtypes import (
     RVec,
     bitmap_rprimitive,
     bool_rprimitive,
-    bytes_rprimitive,
     c_pointer_rprimitive,
     c_pyssize_t_rprimitive,
     dict_rprimitive,
@@ -1159,7 +1158,8 @@ class IRBuilder:
             if target_type.type.fullname == "builtins.str":
                 return str_rprimitive
             elif target_type.type.fullname == "builtins.bytes":
-                return bytes_rprimitive
+                # Items of bytes objects are ints
+                return int_rprimitive
             try:
                 return self.type_to_rtype(target_type.args[0])
             except IndexError:

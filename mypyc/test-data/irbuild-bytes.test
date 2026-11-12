@@ -348,7 +348,7 @@ def i_times_b(s, n):
     n :: int
     r0 :: bytes
 L0:
-    r0 = CPyBytes_Multiply(s, n)
+    r0 = CPyBytes_RMultiply(n, s)
     return r0
 
 [case testBytesTranslate]
@@ -399,3 +399,112 @@ def foo(b: bytes, ba: bytearray) -> None:
 [out]
 main:7: error: Argument 1 to "bytes_func" has incompatible type "bytearray"; expected "bytes"
 main:8: error: Argument 1 to "bytearray_func" has incompatible type "bytes"; expected "bytearray"
+
+[case testBytesFor_64bit]
+def f(b: bytes) -> int:
+    t = 0
+    for c in b:
+        t += c
+    return t
+[out]
+def f(b):
+    b :: bytes
+    t :: int
+    r0, r1 :: native_int
+    r2, r3, r4 :: bit
+    r5, r6, r7, r8, c, r9 :: int
+    r10 :: native_int
+L0:
+    t = 0
+    r0 = var_object_size b
+    r1 = 0
+L1:
+    r2 = r1 < r0 :: signed
+    if r2 goto L2 else goto L8 :: bool
+L2:
+    r3 = r1 <= 4611686018427387903 :: signed
+    if r3 goto L3 else goto L4 :: bool
+L3:
+    r4 = r1 >= -4611686018427387904 :: signed
+    if r4 goto L5 else goto L4 :: bool
+L4:
+    r5 = CPyTagged_FromInt64(r1)
+    r6 = r5
+    goto L6
+L5:
+    r7 = r1 << 1
+    r6 = r7
+L6:
+    r8 = CPyBytes_GetItem(b, r6)
+    c = r8
+    r9 = CPyTagged_Add(t, c)
+    t = r9
+L7:
+    r10 = r1 + 1
+    r1 = r10
+    goto L1
+L8:
+    return t
+
+[case testBytearrayFor]
+def f(b: bytearray) -> int:
+    t = 0
+    for c in b:
+        t += c
+    return t
+[out]
+def f(b):
+    b :: bytearray
+    t :: int
+    r0, r1 :: object
+    r2, c, r3 :: int
+    r4 :: bit
+L0:
+    t = 0
+    r0 = PyObject_GetIter(b)
+L1:
+    r1 = PyIter_Next(r0)
+    if is_error(r1) goto L4 else goto L2
+L2:
+    r2 = unbox(int, r1)
+    c = r2
+    r3 = CPyTagged_Add(t, c)
+    t = r3
+L3:
+    goto L1
+L4:
+    r4 = CPy_NoErrOccurred()
+L5:
+    return t
+
+[case testBytearrayComprehension]
+def f(b: bytearray) -> list[int]:
+    return [c + 1 for c in b]
+[out]
+def f(b):
+    b :: bytearray
+    r0 :: list
+    r1, r2 :: object
+    r3, c, r4 :: int
+    r5 :: object
+    r6 :: i32
+    r7, r8 :: bit
+L0:
+    r0 = PyList_New(0)
+    r1 = PyObject_GetIter(b)
+L1:
+    r2 = PyIter_Next(r1)
+    if is_error(r2) goto L4 else goto L2
+L2:
+    r3 = unbox(int, r2)
+    c = r3
+    r4 = CPyTagged_Add(c, 2)
+    r5 = box(int, r4)
+    r6 = PyList_Append(r0, r5)
+    r7 = r6 >= 0 :: signed
+L3:
+    goto L1
+L4:
+    r8 = CPy_NoErrOccurred()
+L5:
+    return r0

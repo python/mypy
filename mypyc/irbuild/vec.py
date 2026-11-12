@@ -367,11 +367,13 @@ def vec_set_item(
     item_type = vtype.item_type
     item = builder.coerce(item, item_type, line)
     if item_type.is_refcounted:
-        # Read an unborrowed reference to cause a decref to be
-        # generated for the old item.
+        # Decref the old item only after the new item has been stored, since
+        # the decref can run arbitrary code (such as __del__) that accesses the vec.
         old_item = vec_load_mem_item(builder, item_addr, item_type, can_borrow=True)
+        vec_set_mem_item(builder, item_addr, item_type, item)
         builder.add(DecRef(old_item))
-    vec_set_mem_item(builder, item_addr, item_type, item)
+    else:
+        vec_set_mem_item(builder, item_addr, item_type, item)
     builder.keep_alive([base], line)
 
 
@@ -568,7 +570,9 @@ def vec_contains(builder: LowLevelIRBuilder, vec: Value, target: Value, line: in
     for_loop = builder.begin_for(
         items_start, items_end, Integer(step, c_pyssize_t_rprimitive), signed=False
     )
-    item = vec_load_mem_item(builder, for_loop.index, item_type, can_borrow=True)
+    # Don't borrow the item, since the comparison can run arbitrary code that
+    # replaces the item in the vec
+    item = vec_load_mem_item(builder, for_loop.index, item_type)
     comp = builder.binary_op(item, target, "==", line)
     false = BasicBlock()
     builder.add(Branch(comp, true, false, Branch.BOOL))
