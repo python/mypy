@@ -507,6 +507,28 @@ L0:
     r6 = unbox(int, r5)
     return r6
 
+[case testChr]
+def f(x: int) -> str:
+    return chr(x)
+def g(x: bool) -> str:
+    return chr(x)
+[out]
+def f(x):
+    x :: int
+    r0 :: str
+L0:
+    r0 = CPyStr_Chr(x)
+    return r0
+def g(x):
+    x, r0 :: bool
+    r1 :: int
+    r2 :: str
+L0:
+    r0 = x << 1
+    r1 = extend r0: builtins.bool to builtins.int
+    r2 = CPyStr_Chr(r1)
+    return r2
+
 [case testOrdOfStrIndex_64bit]
 from mypy_extensions import i64, i32, i16, u8
 def ord_str_index(s: str, i: int) -> int:
@@ -1024,6 +1046,61 @@ def is_digit(x):
     r0 :: bool
 L0:
     r0 = CPyStr_IsDigit(x)
+    return r0
+
+[case testStrIsAlpha]
+def is_alpha(x: str) -> bool:
+    return x.isalpha()
+[out]
+def is_alpha(x):
+    x :: str
+    r0 :: bool
+L0:
+    r0 = CPyStr_IsAlpha(x)
+    return r0
+
+[case testStrIsAscii]
+def is_ascii(x: str) -> bool:
+    return x.isascii()
+[out]
+def is_ascii(x):
+    x :: str
+    r0 :: bool
+L0:
+    r0 = CPyStr_IsAscii(x)
+    return r0
+
+[case testStrIsDecimal]
+def is_decimal(x: str) -> bool:
+    return x.isdecimal()
+[out]
+def is_decimal(x):
+    x :: str
+    r0 :: bool
+L0:
+    r0 = CPyStr_IsDecimal(x)
+    return r0
+
+[case testStrIsNumeric]
+def is_numeric(x: str) -> bool:
+    return x.isnumeric()
+[out]
+def is_numeric(x):
+    x :: str
+    r0 :: bool
+L0:
+    r0 = CPyStr_IsNumeric(x)
+    return r0
+
+[case testStrIsPrintable]
+def is_printable(x: str) -> bool:
+    return x.isprintable()
+[out]
+def is_printable(x):
+    x :: str
+    r0 :: bool
+L0:
+    r0 = CPyStr_IsPrintable(x)
     return r0
 
 [case testStrIndexEqLiteral_64bit]

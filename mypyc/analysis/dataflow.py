@@ -44,6 +44,7 @@ from mypyc.ir.ops import (
     OpVisitor,
     PrimitiveOp,
     RaiseStandardError,
+    Register,
     RegisterOp,
     Return,
     SetAttr,
@@ -386,7 +387,9 @@ def analyze_must_defined_regs(
         initial=initial_defined,
         backward=False,
         kind=MUST_ANALYSIS,
-        universe=set(regs),
+        # Only registers can be undefined (temporaries are always defined before use),
+        # so leave everything else out of the universe to keep the sets small.
+        universe={r for r in regs if isinstance(r, Register)},
     )
 
 

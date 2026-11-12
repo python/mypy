@@ -24,6 +24,7 @@ from mypyc.ir.rtypes import (
     bytes_rprimitive,
     c_pyssize_t_rprimitive,
     float_rprimitive,
+    int8_rprimitive,
     int16_rprimitive,
     int32_rprimitive,
     int64_rprimitive,
@@ -51,6 +52,7 @@ for int_name in (
     "mypy_extensions.i64",
     "mypy_extensions.i32",
     "mypy_extensions.i16",
+    "mypy_extensions.i8",
     "mypy_extensions.u64",
     "mypy_extensions.u32",
     "mypy_extensions.u16",
@@ -276,6 +278,20 @@ int16_mod_op = custom_op(
     error_kind=ERR_MAGIC_OVERLAPPING,
 )
 
+int8_divide_op = custom_op(
+    arg_types=[int8_rprimitive, int8_rprimitive],
+    return_type=int8_rprimitive,
+    c_function_name="CPyInt8_Divide",
+    error_kind=ERR_MAGIC_OVERLAPPING,
+)
+
+int8_mod_op = custom_op(
+    arg_types=[int8_rprimitive, int8_rprimitive],
+    return_type=int8_rprimitive,
+    c_function_name="CPyInt8_Remainder",
+    error_kind=ERR_MAGIC_OVERLAPPING,
+)
+
 # Convert tagged int (as PyObject *) to i64
 int_to_int64_op = custom_op(
     arg_types=[object_rprimitive],
@@ -348,6 +364,10 @@ int16_overflow = custom_op(
     return_type=void_rtype,
     c_function_name="CPyInt16_Overflow",
     error_kind=ERR_ALWAYS,
+)
+
+int8_overflow = custom_op(
+    arg_types=[], return_type=void_rtype, c_function_name="CPyInt8_Overflow", error_kind=ERR_ALWAYS
 )
 
 uint32_overflow = custom_op(

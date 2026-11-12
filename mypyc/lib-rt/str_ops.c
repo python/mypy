@@ -236,22 +236,30 @@ PyObject *CPyStr_Build(Py_ssize_t len, ...) {
     return res;
 }
 
+// Convert a start or end index to Py_ssize_t. Like CPython, clamp values that don't fit
+// in Py_ssize_t (these are out of range for any string) instead of raising an error.
+static Py_ssize_t CPyStr_AsSliceIndex(CPyTagged x) {
+    if (likely(CPyTagged_CheckShort(x))) {
+        return CPyTagged_ShortAsSsize_t(x);
+    }
+    PyObject *obj = CPyTagged_LongAsObject(x);
+    Py_ssize_t n = PyLong_AsSsize_t(obj);
+    if (n == -1 && PyErr_Occurred()) {
+        // The only possible error is an overflow
+        PyErr_Clear();
+        return PyLong_IsNegative(obj) ? PY_SSIZE_T_MIN : PY_SSIZE_T_MAX;
+    }
+    return n;
+}
+
 CPyTagged CPyStr_Find(PyObject *str, PyObject *substr, CPyTagged start, int direction) {
     CPyTagged end = PyUnicode_GET_LENGTH(str) << 1;
     return CPyStr_FindWithEnd(str, substr, start, end, direction);
 }
 
 CPyTagged CPyStr_FindWithEnd(PyObject *str, PyObject *substr, CPyTagged start, CPyTagged end, int direction) {
-    Py_ssize_t temp_start = CPyTagged_AsSsize_t(start);
-    if (temp_start == -1 && PyErr_Occurred()) {
-        PyErr_SetString(PyExc_OverflowError, CPYTHON_LARGE_INT_ERRMSG);
-        return CPY_INT_TAG;
-    }
-    Py_ssize_t temp_end = CPyTagged_AsSsize_t(end);
-    if (temp_end == -1 && PyErr_Occurred()) {
-        PyErr_SetString(PyExc_OverflowError, CPYTHON_LARGE_INT_ERRMSG);
-        return CPY_INT_TAG;
-    }
+    Py_ssize_t temp_start = CPyStr_AsSliceIndex(start);
+    Py_ssize_t temp_end = CPyStr_AsSliceIndex(end);
     Py_ssize_t index = PyUnicode_Find(str, substr, temp_start, temp_end, direction);
     if (unlikely(index == -2)) {
         return CPY_INT_TAG;
@@ -605,26 +613,14 @@ PyObject *CPy_Encode(PyObject *obj, PyObject *encoding, PyObject *errors) {
 }
 
 Py_ssize_t CPyStr_Count(PyObject *unicode, PyObject *substring, CPyTagged start) {
-    Py_ssize_t temp_start = CPyTagged_AsSsize_t(start);
-    if (temp_start == -1 && PyErr_Occurred()) {
-        PyErr_SetString(PyExc_OverflowError, CPYTHON_LARGE_INT_ERRMSG);
-        return -1;
-    }
+    Py_ssize_t temp_start = CPyStr_AsSliceIndex(start);
     Py_ssize_t end = PyUnicode_GET_LENGTH(unicode);
     return PyUnicode_Count(unicode, substring, temp_start, end);
 }
 
 Py_ssize_t CPyStr_CountFull(PyObject *unicode, PyObject *substring, CPyTagged start, CPyTagged end) {
-    Py_ssize_t temp_start = CPyTagged_AsSsize_t(start);
-    if (temp_start == -1 && PyErr_Occurred()) {
-        PyErr_SetString(PyExc_OverflowError, CPYTHON_LARGE_INT_ERRMSG);
-        return -1;
-    }
-    Py_ssize_t temp_end = CPyTagged_AsSsize_t(end);
-    if (temp_end == -1 && PyErr_Occurred()) {
-        PyErr_SetString(PyExc_OverflowError, CPYTHON_LARGE_INT_ERRMSG);
-        return -1;
-    }
+    Py_ssize_t temp_start = CPyStr_AsSliceIndex(start);
+    Py_ssize_t temp_end = CPyStr_AsSliceIndex(end);
     return PyUnicode_Count(unicode, substring, temp_start, temp_end);
 }
 
@@ -638,6 +634,30 @@ CPyTagged CPyStr_Ord(PyObject *obj) {
     PyErr_Format(
         PyExc_TypeError, "ord() expected a character, but a string of length %zd found", s);
     return CPY_INT_TAG;
+}
+
+PyObject *CPyStr_Chr(CPyTagged n) {
+    if (likely(CPyTagged_CheckShort(n))) {
+        Py_ssize_t v = CPyTagged_ShortAsSsize_t(n);
+        if (likely(v >= 0 && v <= 0x10ffff)) {
+            return PyUnicode_FromOrdinal((int)v);
+        }
+    }
+#if CPY_3_13_FEATURES
+    // Python 3.13+ raises ValueError for all out-of-range values
+    PyErr_SetString(PyExc_ValueError, "chr() arg not in range(0x110000)");
+    return NULL;
+#else
+    // Older Python versions convert the argument to a C int first. Note that on
+    // 32-bit platforms some values that fit in a C int aren't short ints.
+    Py_ssize_t v = CPyTagged_AsSsize_t(n);
+    if ((v == -1 && PyErr_Occurred()) || v < INT_MIN || v > INT_MAX) {
+        PyErr_SetString(PyExc_OverflowError, "Python int too large to convert to C int");
+        return NULL;
+    }
+    // This raises ValueError, since the value is out of range
+    return PyUnicode_FromOrdinal((int)v);
+#endif
 }
 
 PyObject *CPyStr_Multiply(PyObject *str, CPyTagged count) {
@@ -810,3 +830,63 @@ bool CPyStr_IsDigit(PyObject *str) {
 
 #undef CHECK_ISDIGIT
 }
+
+#define CPY_STR_CHECK_CHARS(TYPE, DATA, LEN, CHECK)        \
+    {                                                      \
+        const TYPE *_data = (const TYPE *)(DATA);          \
+        for (Py_ssize_t _i = 0; _i < (LEN); _i++) {        \
+            if (!CHECK(_data[_i]))                         \
+                return false;                              \
+        }                                                  \
+    }
+
+// Return from the enclosing function whether every character of str satisfies a
+// predicate. ASCII strings are checked using ASCII_CHECK, which avoids Unicode database
+// lookups, and other strings using UNICODE_CHECK. Empty strings return EMPTY_RESULT.
+#define CPY_STR_RETURN_ALL_CHARS(str, ASCII_CHECK, UNICODE_CHECK, EMPTY_RESULT)          \
+    {                                                                                   \
+        Py_ssize_t _len = PyUnicode_GET_LENGTH(str);                                    \
+        if (_len == 0)                                                                  \
+            return (EMPTY_RESULT);                                                      \
+        if (PyUnicode_IS_ASCII(str)) {                                                  \
+            CPY_STR_CHECK_CHARS(Py_UCS1, PyUnicode_1BYTE_DATA(str), _len, ASCII_CHECK); \
+            return true;                                                                \
+        }                                                                               \
+        switch (PyUnicode_KIND(str)) {                                                  \
+        case PyUnicode_1BYTE_KIND:                                                      \
+            CPY_STR_CHECK_CHARS(Py_UCS1, PyUnicode_1BYTE_DATA(str), _len, UNICODE_CHECK); \
+            break;                                                                      \
+        case PyUnicode_2BYTE_KIND:                                                      \
+            CPY_STR_CHECK_CHARS(Py_UCS2, PyUnicode_2BYTE_DATA(str), _len, UNICODE_CHECK); \
+            break;                                                                      \
+        case PyUnicode_4BYTE_KIND:                                                      \
+            CPY_STR_CHECK_CHARS(Py_UCS4, PyUnicode_4BYTE_DATA(str), _len, UNICODE_CHECK); \
+            break;                                                                      \
+        default:                                                                        \
+            Py_UNREACHABLE();                                                           \
+        }                                                                               \
+        return true;                                                                    \
+    }
+
+// Printable ASCII characters are from ' ' (0x20) to '~' (0x7e)
+#define CPY_ASCII_ISPRINTABLE(c) ((c) >= 0x20 && (c) < 0x7f)
+
+bool CPyStr_IsAlpha(PyObject *str) {
+    CPY_STR_RETURN_ALL_CHARS(str, Py_ISALPHA, Py_UNICODE_ISALPHA, false);
+}
+
+bool CPyStr_IsDecimal(PyObject *str) {
+    CPY_STR_RETURN_ALL_CHARS(str, Py_ISDIGIT, Py_UNICODE_ISDECIMAL, false);
+}
+
+bool CPyStr_IsNumeric(PyObject *str) {
+    CPY_STR_RETURN_ALL_CHARS(str, Py_ISDIGIT, Py_UNICODE_ISNUMERIC, false);
+}
+
+bool CPyStr_IsPrintable(PyObject *str) {
+    CPY_STR_RETURN_ALL_CHARS(str, CPY_ASCII_ISPRINTABLE, Py_UNICODE_ISPRINTABLE, true);
+}
+
+#undef CPY_ASCII_ISPRINTABLE
+#undef CPY_STR_RETURN_ALL_CHARS
+#undef CPY_STR_CHECK_CHARS
