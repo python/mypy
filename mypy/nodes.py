@@ -1460,6 +1460,7 @@ class Var(SymbolNode):
         "invalid_partial_type",
         "is_argument",
         "is_sentinel",
+        "is_init_to_none",
     )
 
     __match_args__ = ("name", "type", "final_value")
@@ -1524,6 +1525,8 @@ class Var(SymbolNode):
         self.is_argument = False
         # Was this variable created by PEP 661 sentinel()/Sentinel() syntax?
         self.is_sentinel = False
+        # Is this variable initialized to None? (May be not set for ad-hoc vars)
+        self.is_init_to_none = False
 
     @property
     def name(self) -> str:

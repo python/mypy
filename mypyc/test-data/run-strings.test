@@ -324,6 +324,21 @@ def test_find() -> None:
     assert rfind(s, "b", 3, 5) == 4
     assert rfind(s, "b", 3, 4) == -1
 
+def test_find_huge_indices() -> None:
+    # Indices that don't fit in Py_ssize_t are clamped, like in CPython
+    s = "abcab"
+    assert find(s, "b", 2**62) == -1
+    assert find(s, "b", 2**63) == -1
+    assert find(s, "b", -2**63 - 1) == 1
+    assert find(s, "b", 0, 2**100) == 1
+    assert find(s, "b", 0, -2**100) == -1
+    assert find(s, "", -2**100) == 0
+    assert find("", "", 2**63) == -1
+    assert rfind(s, "b", -2**100) == 4
+    assert rfind(s, "b", 0, 2**100) == 4
+    assert rfind(s, "", 0, 2**100) == 5
+    assert rfind(s, "b", 2**100, -2**100) == -1
+
 def str_to_int(s: str, base: Optional[int] = None) -> int:
     if base:
         return int(s, base)
@@ -809,6 +824,9 @@ def test_format_method_python_doc() -> None:
 
 [case testChr]
 # Some test cases are from https://docs.python.org/3/howto/unicode.html
+from typing import Any
+
+from testutil import assertRaises
 
 def try_invalid(x: int) -> bool:
     try:
@@ -845,6 +863,36 @@ def test_chr() -> None:
     assert chr(x + int()) == '𐀁'
     assert try_invalid(-1)
     assert try_invalid(1114112)
+
+def test_chr_code_points() -> None:
+    f: Any = chr
+    # All BMP code points, and a sample of the others (checking all of them is slow)
+    for i in [*range(0x10000), *range(0x10000, 0x110000, 97), 0x10FFFF]:
+        c = chr(i)
+        assert c == f(i)
+        assert ord(c) == i
+    # Latin-1 characters are cached singletons, like in CPython
+    assert chr(65 + int()) is chr(65 + int())
+    assert chr(255 + int()) is chr(255 + int())
+
+def test_chr_bool() -> None:
+    t = bool(int() + 1)
+    assert chr(t) == '\x01'
+    assert chr(not t) == '\x00'
+
+def test_chr_errors() -> None:
+    f: Any = chr
+    for n in [-1, 0x110000, 2**31 - 1, 2**31, -2**31, -2**31 - 1, 2**40, -2**40,
+              2**62 - 1, 2**62, -2**62, -2**62 - 1, 2**70, -2**70]:
+        try:
+            f(n)
+        except Exception as e:
+            expected_type = type(e)
+            expected_msg = str(e)
+        else:
+            assert False
+        with assertRaises(expected_type, expected_msg):
+            chr(n + int())
 
 [case testOrd]
 from testutil import assertRaises
@@ -1214,6 +1262,16 @@ def test_count_multi_start_end_emoji() -> None:
     assert string.count("😴😴😴", 0, 12) == 1, string.count("😴😴😴", 0, 12)
     assert string.count("🚀🚀🚀", 0, 12) == 2, string.count("🚀🚀🚀", 0, 12)
     assert string.count("ñññ", 0, 12) == 1, string.count("ñññ", 0, 12)
+def test_count_huge_indices() -> None:
+    # Indices that don't fit in Py_ssize_t are clamped, like in CPython
+    string = "abcbcb"
+    assert string.count("b", 2**62) == 0
+    assert string.count("b", 2**63) == 0
+    assert string.count("b", -2**100) == 3
+    assert string.count("b", 0, 2**100) == 3
+    assert string.count("b", -2**100, -2**100) == 0
+    assert string.count("", 2**62) == 0
+    assert string.count("", -2**100, 2**100) == 7
 
 [case testIsInstance]
 from copysubclass import subc
@@ -1328,7 +1386,8 @@ def test_expansion() -> None:
     assert "\uFB03".upper() == "FFI"           # ffi ligature -> FFI
 
 def test_comprehensive() -> None:
-    for i in range(0x110000):
+    # All BMP code points, and a sample of the others (checking all of them is slow)
+    for i in [*range(0x10000), *range(0x10000, 0x110000, 97), 0x10FFFF]:
         c = chr(i)
         a: Any = c
         assert c.lower() == a.lower(), f"lower mismatch at U+{i:04X}"
@@ -1338,10 +1397,10 @@ def test_comprehensive() -> None:
 from typing import Any
 
 def test_isspace() -> None:
-    # Verify correctness across all Unicode codepoints.
     # Exercises UCS-1 (0x00-0xFF), UCS-2 (0x100-0xFFFF), and UCS-4 (0x10000-x10FFFF inclusive) string kinds.
     # Any forces generic dispatch so we compare our primitive against stdlib's
-    for i in range(0x110000):
+    # All BMP code points, and a sample of the others (checking all of them is slow)
+    for i in [*range(0x10000), *range(0x10000, 0x110000, 97), 0x10FFFF]:
         c = chr(i)
         a: Any = c
         assert c.isspace() == a.isspace()
@@ -1380,7 +1439,8 @@ def test_isalnum_unicode() -> None:
 from typing import Any
 
 def test_isdigit() -> None:
-    for i in range(0x110000):
+    # All BMP code points, and a sample of the others (checking all of them is slow)
+    for i in [*range(0x10000), *range(0x10000, 0x110000, 97), 0x10FFFF]:
         c = chr(i)
         a: Any = c
         assert c.isdigit() == a.isdigit()
@@ -1409,6 +1469,107 @@ def test_isdigit_strings() -> None:
     assert not "\u00e9\u00e8".isdigit()
     assert not "123\u00e9".isdigit()
     assert not "\U0001d7ce!".isdigit()
+
+[case testStrIsCharClass]
+from typing import Any
+
+def check(s: str) -> None:
+    # Any forces generic dispatch, so we compare our primitives against CPython's
+    a: Any = s
+    assert s.isalpha() == a.isalpha(), f"isalpha mismatch for {s!r}"
+    assert s.isascii() == a.isascii(), f"isascii mismatch for {s!r}"
+    assert s.isdecimal() == a.isdecimal(), f"isdecimal mismatch for {s!r}"
+    assert s.isnumeric() == a.isnumeric(), f"isnumeric mismatch for {s!r}"
+    assert s.isprintable() == a.isprintable(), f"isprintable mismatch for {s!r}"
+
+def test_code_points() -> None:
+    # Covers the ASCII, UCS-1, UCS-2 and UCS-4 string kinds. Check all BMP code points,
+    # and a sample of the others (checking all of them is slow).
+    for i in [*range(0x10000), *range(0x10000, 0x110000, 97), 0x10FFFF]:
+        check(chr(i))
+
+def test_strings() -> None:
+    samples = [
+        "", " ", "abc", "ABCxyz", "abc1", "123", "1.5", "-1", "a b", "abc!",
+        "Hello, World! 123 ~", "\t", "a\nb", "\x00", "\x7f",
+        "été", "é²", "²½", "\u00a0",
+        "٠١٢", "Ⅷ三", "中文", "\u2000", "\u200b",
+        "abcé", "123٠", "\U00010400\U00010428", "\U0001d7ce\U0001d7cf",
+        "123\U0001d7ce", "\U0001f600", "abc\U0001f600", "abc\U000e0001",
+    ]
+    for s in samples:
+        check(s)
+        check(s * 3)
+
+def test_isalpha() -> None:
+    assert "abc".isalpha()
+    assert "ABCxyz".isalpha()
+    assert not "".isalpha()
+    assert not "abc1".isalpha()
+    assert not "a b".isalpha()
+    assert "été".isalpha()
+    assert "中文".isalpha()
+    assert "\U00010400\U00010428".isalpha()
+    assert not "٠".isalpha()
+    assert not "\U0001d7ce".isalpha()
+
+def test_isascii() -> None:
+    assert "".isascii()
+    assert "abc".isascii()
+    assert "\x00\x7f".isascii()
+    assert not "\x80".isascii()
+    assert not "café".isascii()
+    assert not "中".isascii()
+    assert not "abc\U0001f600".isascii()
+
+def test_isdecimal() -> None:
+    assert "0123456789".isdecimal()
+    assert not "".isdecimal()
+    assert not "12a".isdecimal()
+    assert not "1.5".isdecimal()
+    assert "٠١٢".isdecimal()
+    assert "123\U0001d7ce".isdecimal()
+    assert not "²".isdecimal()
+    assert not "½".isdecimal()
+    assert not "Ⅷ".isdecimal()
+
+def test_isnumeric() -> None:
+    assert "0123456789".isnumeric()
+    assert not "".isnumeric()
+    assert not "12a".isnumeric()
+    assert not "1.5".isnumeric()
+    assert "٠١٢".isnumeric()
+    assert "²½".isnumeric()
+    assert "Ⅷ三".isnumeric()
+    assert "123\U0001d7ce".isnumeric()
+    assert not "é".isnumeric()
+
+def test_isprintable() -> None:
+    assert "".isprintable()
+    assert " ".isprintable()
+    assert "Hello, World! 123 ~".isprintable()
+    assert not "\t".isprintable()
+    assert not "a\nb".isprintable()
+    assert not "\x00".isprintable()
+    assert not "\x7f".isprintable()
+    assert "été".isprintable()
+    assert not "\u00a0".isprintable()
+    assert not "\u2000".isprintable()
+    assert "\U0001f600".isprintable()
+    assert not "abc\U000e0001".isprintable()
+
+def test_str_subclass() -> None:
+    from strsubclass import S
+    s: str = S("abc")
+    assert s.isalpha()
+    assert s.isascii()
+    assert not s.isdecimal()
+    assert not s.isnumeric()
+    assert s.isprintable()
+
+[file strsubclass.py]
+class S(str):
+    pass
 
 [case testStrIndexEqLiteralSpecialize]
 from testutil import assertRaises

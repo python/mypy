@@ -1232,3 +1232,63 @@ L3:
 L4:
     r7 = PyList_AsTuple(r0)
     return r7
+
+[case testTupleHash_64bit]
+from typing import Any
+
+def f(a: int, b: bool, c: Any) -> int:
+    return hash((a, b, c))
+[out]
+def f(a, b, c):
+    a :: int
+    b :: bool
+    c :: object
+    r0 :: int
+    r1 :: bool
+    r2 :: object
+    r3 :: tuple[int, bool, object]
+    r4 :: u64
+    r5 :: int
+    r6 :: native_int
+    r7 :: u64
+    r8 :: bool
+    r9 :: native_int
+    r10 :: u64
+    r11 :: object
+    r12 :: native_int
+    r13 :: bit
+    r14 :: u64
+    r15 :: native_int
+    r16, r17 :: bit
+    r18, r19, r20 :: int
+L0:
+    r0 = a
+    r1 = b
+    r2 = c
+    r3 = (r0, r1, r2)
+    r4 = CPyTupleHash_Start()
+    r5 = r3[0]
+    r6 = CPyTupleHash_Int(r5)
+    r7 = CPyTupleHash_Add(r4, r6)
+    r8 = r3[1]
+    r9 = extend r8: builtins.bool to native_int
+    r10 = CPyTupleHash_Add(r7, r9)
+    r11 = r3[2]
+    r12 = PyObject_Hash(r11)
+    r13 = r12 != -1
+    r14 = CPyTupleHash_Add(r10, r12)
+    r15 = CPyTupleHash_Finish(r14, 3)
+    r16 = r15 <= 4611686018427387903 :: signed
+    if r16 goto L1 else goto L2 :: bool
+L1:
+    r17 = r15 >= -4611686018427387904 :: signed
+    if r17 goto L3 else goto L2 :: bool
+L2:
+    r18 = CPyTagged_FromInt64(r15)
+    r19 = r18
+    goto L4
+L3:
+    r20 = r15 << 1
+    r19 = r20
+L4:
+    return r19
