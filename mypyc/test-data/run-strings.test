@@ -324,6 +324,21 @@ def test_find() -> None:
     assert rfind(s, "b", 3, 5) == 4
     assert rfind(s, "b", 3, 4) == -1
 
+def test_find_huge_indices() -> None:
+    # Indices that don't fit in Py_ssize_t are clamped, like in CPython
+    s = "abcab"
+    assert find(s, "b", 2**62) == -1
+    assert find(s, "b", 2**63) == -1
+    assert find(s, "b", -2**63 - 1) == 1
+    assert find(s, "b", 0, 2**100) == 1
+    assert find(s, "b", 0, -2**100) == -1
+    assert find(s, "", -2**100) == 0
+    assert find("", "", 2**63) == -1
+    assert rfind(s, "b", -2**100) == 4
+    assert rfind(s, "b", 0, 2**100) == 4
+    assert rfind(s, "", 0, 2**100) == 5
+    assert rfind(s, "b", 2**100, -2**100) == -1
+
 def str_to_int(s: str, base: Optional[int] = None) -> int:
     if base:
         return int(s, base)
@@ -1214,6 +1229,16 @@ def test_count_multi_start_end_emoji() -> None:
     assert string.count("😴😴😴", 0, 12) == 1, string.count("😴😴😴", 0, 12)
     assert string.count("🚀🚀🚀", 0, 12) == 2, string.count("🚀🚀🚀", 0, 12)
     assert string.count("ñññ", 0, 12) == 1, string.count("ñññ", 0, 12)
+def test_count_huge_indices() -> None:
+    # Indices that don't fit in Py_ssize_t are clamped, like in CPython
+    string = "abcbcb"
+    assert string.count("b", 2**62) == 0
+    assert string.count("b", 2**63) == 0
+    assert string.count("b", -2**100) == 3
+    assert string.count("b", 0, 2**100) == 3
+    assert string.count("b", -2**100, -2**100) == 0
+    assert string.count("", 2**62) == 0
+    assert string.count("", -2**100, 2**100) == 7
 
 [case testIsInstance]
 from copysubclass import subc
