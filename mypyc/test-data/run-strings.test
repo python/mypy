@@ -1577,8 +1577,9 @@ def check(s: str) -> None:
 
 def test_all_code_points() -> None:
     # Covers the ASCII, UCS-1, UCS-2 and UCS-4 string kinds, and both the start
-    # and continuation positions
-    for i in range(0x110000):
+    # and continuation positions. Check all BMP code points, and a sample of the
+    # others (checking all of them is slow).
+    for i in [*range(0x10000), *range(0x10000, 0x110000, 97), 0x10FFFF]:
         c = chr(i)
         check(c)
         check("a" + c)
