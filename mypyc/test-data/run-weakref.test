@@ -50,3 +50,292 @@ def test_weakref_proxy_with_callback() -> None:
     with assertRaises(ReferenceError):
         p.some_meth()
     assert _callback_called_cache["proxy"] is True
+
+[case testWeakrefNativeClass]
+import argparse
+import gc
+import weakref
+from abc import ABC, abstractmethod
+from typing import Any, Optional
+from mypy_extensions import mypyc_attr
+from testutil import assertRaises
+
+@mypyc_attr(weakrefs=True)
+class C:
+    def __init__(self, x: int) -> None:
+        self.x = x
+
+    def meth(self) -> int:
+        return self.x
+
+class Sub(C):
+    def __init__(self) -> None:
+        super().__init__(5)
+        self.y = 6
+
+@mypyc_attr(weakrefs=True, acyclic=True)
+class Acyclic:
+    def __init__(self) -> None:
+        self.x = 1
+
+@mypyc_attr(weakrefs=True, free_list_len=1)
+class FreeList:
+    def __init__(self) -> None:
+        self.x = 1
+
+@mypyc_attr(weakrefs=True)
+class WithDel:
+    def __del__(self) -> None:
+        deleted.append(1)
+
+deleted: list[int] = []
+
+def test_ref() -> None:
+    obj: Optional[C] = C(3)
+    r = weakref.ref(obj)
+    assert r() is obj
+    assert obj is not None and obj.meth() == 3
+    obj = None
+    gc.collect()
+    assert r() is None
+
+def test_ref_with_callback() -> None:
+    called = []
+    obj: Optional[C] = C(3)
+    r = weakref.ref(obj, lambda x: called.append(1))
+    assert r() is obj
+    obj = None
+    gc.collect()
+    assert r() is None
+    assert called == [1]
+
+def test_proxy() -> None:
+    obj: Optional[C] = C(4)
+    p = weakref.proxy(obj)
+    assert p.meth() == 4
+    assert p.x == 4
+    # Note: 'obj' must be read here, since mypyc frees a local as soon as it is
+    # no longer read, and the referent would otherwise be dead already above.
+    assert obj is not None
+    obj = None
+    gc.collect()
+    with assertRaises(ReferenceError):
+        p.meth()
+
+def test_multiple_refs() -> None:
+    obj: Optional[C] = C(1)
+    refs = [weakref.ref(obj) for _ in range(10)]
+    assert all(r() is obj for r in refs)
+    obj = None
+    gc.collect()
+    assert all(r() is None for r in refs)
+
+def test_dunder_weakref() -> None:
+    # Note: mypy doesn't know about '__weakref__', so use getattr().
+    obj = C(1)
+    assert getattr(obj, "__weakref__") is None
+    r = weakref.ref(obj)
+    assert getattr(obj, "__weakref__") is r
+
+def test_subclass_inherits_support() -> None:
+    obj: Optional[Sub] = Sub()
+    r = weakref.ref(obj)
+    assert r() is obj
+    # Attribute offsets must not be perturbed by the weakref slot.
+    assert obj is not None and obj.x == 5 and obj.y == 6 and obj.meth() == 5
+    obj = None
+    gc.collect()
+    assert r() is None
+
+def test_acyclic() -> None:
+    obj: Optional[Acyclic] = Acyclic()
+    r = weakref.ref(obj)
+    assert r() is obj
+    obj = None
+    assert r() is None
+
+def test_free_list() -> None:
+    # A recycled instance must not inherit the previous instance's weakrefs.
+    refs = []
+    for i in range(100):
+        obj: Optional[FreeList] = FreeList()
+        refs.append(weakref.ref(obj))
+        obj = None
+    gc.collect()
+    assert [r() for r in refs] == [None] * 100
+
+def test_del() -> None:
+    obj: Optional[WithDel] = WithDel()
+    r = weakref.ref(obj)
+    obj = None
+    gc.collect()
+    assert deleted == [1]
+    assert r() is None
+
+def test_no_dangling_refs() -> None:
+    # Regression test: weakrefs to dead objects used to resurrect freed memory.
+    refs = []
+    for i in range(1000):
+        obj: Optional[C] = C(i)
+        refs.append(weakref.ref(obj))
+        obj = None
+    gc.collect()
+    # Allocate more objects so freed memory gets reused.
+    keep = [C(i) for i in range(1000)]
+    assert [r() for r in refs] == [None] * 1000
+    assert len(keep) == 1000
+
+# Native subclasses of non-native classes always support weak references, even if
+# the base class doesn't (ABC defines empty __slots__).
+class Abstract(ABC):
+    @abstractmethod
+    def meth(self) -> int: ...
+
+class Impl(Abstract):
+    def __init__(self) -> None:
+        self.x = 1
+
+    def meth(self) -> int:
+        return self.x
+
+# The attribute is redundant here, but it's allowed
+@mypyc_attr(weakrefs=True)
+class ExplicitAbstract(ABC):
+    pass
+
+# argparse.Action is an interpreted class, but it's defined in a stub. Use several
+# attributes so that a weak reference list at a wrong offset would overwrite one.
+class Action(argparse.Action):
+    def __init__(self) -> None:
+        super().__init__(["-x"], "x")
+        self.a = 1
+        self.b = "b"
+        self.c = [1]
+
+    def __call__(self, *args: Any) -> None:
+        pass
+
+@mypyc_attr(weakrefs=True)
+class ExplicitAction(Action):
+    pass
+
+class SubAction(Action):
+    def __init__(self) -> None:
+        super().__init__()
+        self.d = 2
+
+def check(cls: Any) -> None:
+    objs = [cls() for i in range(100)]
+    refs = [weakref.ref(o) for o in objs]
+    o: Any = objs[0]
+    o.extra = 5
+    assert o.extra == 5
+    assert getattr(o, "__weakref__") is refs[0]
+    weakref.proxy(o)
+    assert refs[0]() is o
+    del o, objs
+    gc.collect()
+    keep = [cls() for i in range(100)]
+    assert [r() for r in refs] == [None] * 100
+    assert len(keep) == 100
+
+def test_abc_base() -> None:
+    check(Impl)
+    check(ExplicitAbstract)
+    obj: Optional[Impl] = Impl()
+    r = weakref.ref(obj)
+    assert obj is not None and obj.meth() == 1
+    obj = None
+    gc.collect()
+    assert r() is None
+
+def test_stub_interpreted_base() -> None:
+    check(Action)
+    check(ExplicitAction)
+    check(SubAction)
+    obj = SubAction()
+    weakref.ref(obj)
+    assert (obj.a, obj.b, obj.c, obj.d) == (1, "b", [1], 2)
+    assert obj.dest == "x"
+
+class NoWeakrefs:
+    pass
+
+class DictSub(dict):
+    pass
+
+def test_native_class_without_weakref_support() -> None:
+    # The static check is best effort, so it doesn't fire for 'object' values.
+    o: object = NoWeakrefs()
+    with assertRaises(TypeError, "cannot create weak reference to 'NoWeakrefs' object"):
+        weakref.ref(o)
+    d: object = DictSub()
+    with assertRaises(TypeError):
+        weakref.ref(d)
+
+[case testWeakrefWithInterpretedBaseClass]
+import gc
+import weakref
+from typing import Optional
+from mypy_extensions import mypyc_attr
+
+from interpbase import Base
+
+class Native(Base):
+    def __init__(self) -> None:
+        super().__init__()
+        self.x = 1
+
+@mypyc_attr(allow_interpreted_subclasses=True, weakrefs=True)
+class Open:
+    def __init__(self) -> None:
+        self.x = 1
+
+def test_implicit_weakref_support() -> None:
+    obj: Optional[Native] = Native()
+    r = weakref.ref(obj)
+    assert r() is obj
+    # Note: mypy doesn't know about '__weakref__', so use getattr().
+    assert getattr(obj, "__weakref__") is r
+    assert obj is not None and obj.x == 1 and obj.y == 2
+    obj = None
+    gc.collect()
+    assert r() is None
+
+def test_no_dangling_refs() -> None:
+    # Regression test: mypyc's tp_dealloc didn't clear the weakref list inherited
+    # from an interpreted base class, which resurrected freed memory.
+    refs = []
+    for i in range(1000):
+        obj: Optional[Native] = Native()
+        refs.append(weakref.ref(obj))
+        obj = None
+    gc.collect()
+    keep = [Native() for i in range(1000)]
+    assert [r() for r in refs] == [None] * 1000
+    assert len(keep) == 1000
+
+[file interpbase.py]
+class Base:
+    def __init__(self) -> None:
+        self.y = 2
+
+[file driver.py]
+import gc
+import weakref
+from native import Open, test_implicit_weakref_support, test_no_dangling_refs
+
+test_implicit_weakref_support()
+test_no_dangling_refs()
+
+# An interpreted subclass of a native class with weakref support shares the slot.
+class ISub(Open):
+    pass
+
+assert ISub.__weakrefoffset__ == Open.__weakrefoffset__
+obj = ISub()
+r = weakref.ref(obj)
+assert r() is obj
+del obj
+gc.collect()
+assert r() is None

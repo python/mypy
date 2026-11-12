@@ -19,7 +19,7 @@ from mypy.checker_shared import ExpressionCheckerSharedApi
 from mypy.checkmember import analyze_member_access, has_operator
 from mypy.checkstrformat import StringFormatterChecker
 from mypy.constant_fold import constant_fold_expr
-from mypy.constraints import Constraint
+from mypy.constraints import Constraint, infer_constraints_for_callable
 from mypy.erasetype import erase_type, remove_instance_last_known_values, replace_meta_vars
 from mypy.errors import ErrorInfo, ErrorWatcher, report_internal_error
 from mypy.expandtype import (
@@ -121,6 +121,7 @@ from mypy.plugin import (
     Plugin,
 )
 from mypy.semanal_enum import ENUM_BASES
+from mypy.solve import solve_constraints
 from mypy.state import state
 from mypy.subtypes import (
     common_type,
@@ -1796,6 +1797,21 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         initial_callee = callee
         initial_formal_to_actual = None
         constraints: list[Constraint] = []
+        # The general flow of type inference is the following:
+        #   * Infer constraints from outer (return) context and solve them.
+        #   * Apply the inferred type arguments to the callable.
+        #   * Infer argument types in this partial context.
+        #   * Infer constraints from inner (argument) context (pass 1, non-callable arguments).
+        #   * Solve the combined constraint set (outer + partial inner).
+        #   * Apply the new (more precise) inferred type arguments to initial callable.
+        #   * Re-infer argument types in more precise type context
+        #     (including pass 2, callable arguments).
+        #   * Re-infer constraints from inner context (now from all arguments).
+        #   * Solve the final constraint set combining outer context and precise inner context.
+        #     Apply the inferred final type arguments to the initial generic callable.
+        #   * If we cannot solve (likely an error), we repeat the process starting from outer
+        #     context. Now progressively applying inferred type arguments after each step,
+        #     to give consistent error messages.
         if callee.is_generic():
             initial_formal_to_actual = map_actuals_to_formals(
                 arg_kinds,
@@ -2218,6 +2234,84 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             constraints,
         )
 
+    def infer_function_type_arguments_both_sides(
+        self,
+        initial_callee_type: CallableType,
+        ret_constraints: list[Constraint],
+        args: list[Expression],
+        pass1_arg_types: list[Type | None],
+        arg_pass_nums: list[int],
+        arg_kinds: list[ArgKind],
+        arg_names: Sequence[str | None] | None,
+        formal_to_actual: list[list[int]],
+        initial_formal_to_actual: list[list[int]],
+        need_refresh: bool,
+        context: Context,
+    ) -> CallableType | None:
+        """Infer type arguments of a generic callable by combining outer and inner contexts."""
+        # Inline infer_function_type_arguments() to get access to argument-side constraints.
+        constraints = infer_constraints_for_callable(
+            initial_callee_type,
+            pass1_arg_types,
+            arg_kinds,
+            arg_names,
+            initial_formal_to_actual,
+            self.argument_infer_context(),
+        )
+        constraints += ret_constraints
+
+        type_vars = initial_callee_type.variables
+        type_vars_set = set(type_vars)
+        inferred_args, _ = solve_constraints(
+            type_vars, constraints, strict=self.chk.in_checked_function()
+        )
+
+        pass1_inferred_args = inferred_args
+        if 2 in arg_pass_nums:
+            # This is an adjusted version of logic in infer_function_type_arguments_pass2().
+            # Here we proceed even if first pass inferred all type arguments, since
+            # second pass may infer narrower types in presence of wide outer context.
+            solid_inferred_args = list(inferred_args)
+            for i, arg in enumerate(inferred_args):
+                if not solid_inferred_type(arg, type_vars_set):
+                    solid_inferred_args[i] = None
+            pass2_callee_type = self.apply_generic_arguments(
+                initial_callee_type, solid_inferred_args, context
+            )
+            if need_refresh:
+                formal_to_actual = map_actuals_to_formals(
+                    arg_kinds,
+                    arg_names,
+                    pass2_callee_type.arg_kinds,
+                    pass2_callee_type.arg_names,
+                    lambda a: self.accept(args[a]),
+                )
+
+            # (Re-)infer argument types in the more precise type context (for lambdas).
+            with self.msg.filter_errors():
+                arg_types = self.infer_arg_types_in_context(
+                    pass2_callee_type, args, arg_kinds, formal_to_actual
+                )
+            inferred_args, _ = infer_function_type_arguments(
+                initial_callee_type,
+                arg_types,
+                arg_kinds,
+                arg_names,
+                initial_formal_to_actual,
+                context=self.argument_infer_context(),
+                extra_constraints=constraints,
+            )
+
+        # Only use two-side inference if it is fully successful,
+        # otherwise, fallback to return type context as a tiebreaker.
+        if all(solid_inferred_type(a, type_vars_set) for a in inferred_args):
+            return self.apply_inferred_arguments(initial_callee_type, inferred_args, context)
+        # Before giving up, check first pass result. In some cases this may help in situations
+        # where both passes together create a system too tricky for our solver.
+        if all(solid_inferred_type(a, type_vars_set) for a in pass1_inferred_args):
+            return self.apply_inferred_arguments(initial_callee_type, pass1_inferred_args, context)
+        return None
+
     def infer_function_type_arguments(
         self,
         callee_type: CallableType,
@@ -2270,28 +2364,21 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                 # recursive types (because values can never be recursive).
                 and not type_state.infer_unions
             ):
-                inferred_args, _ = infer_function_type_arguments(
+                inferred_callee = self.infer_function_type_arguments_both_sides(
                     initial_callee_type,
+                    ret_constraints,
+                    args,
                     pass1_args,
+                    arg_pass_nums,
                     arg_kinds,
                     arg_names,
+                    formal_to_actual,
                     initial_formal_to_actual,
-                    context=self.argument_infer_context(),
-                    strict=self.chk.in_checked_function(),
-                    extra_constraints=ret_constraints,
+                    need_refresh,
+                    context,
                 )
-                # Only use two-side inference if it is fully successful,
-                # otherwise, fallback to return type context as a tiebreaker.
-                if not any(
-                    a is None
-                    or isinstance(get_proper_type(a), UninhabitedType)
-                    or has_erased_component(a)
-                    or set(get_type_vars(a)) & set(callee_type.variables)
-                    for a in inferred_args
-                ):
-                    return self.apply_inferred_arguments(
-                        initial_callee_type, inferred_args, context
-                    )
+                if inferred_callee is not None:
+                    return inferred_callee
 
             if not callee_type.is_generic():
                 # Fast path: return context inferred all type arguments.
@@ -6902,6 +6989,20 @@ class HasAmbiguousUninhabitedComponentsQuery(types.BoolTypeQuery):
 
     def visit_uninhabited_type(self, t: UninhabitedType) -> bool:
         return t.ambiguous
+
+
+def solid_inferred_type(typ: Type | None, type_vars: set[TypeVarLikeType]) -> bool:
+    """Are we sure this is a good inferred type argument for a generic callable?"""
+    if typ is None:
+        return False
+    if isinstance(get_proper_type(typ), UninhabitedType):
+        return False
+    if has_erased_component(typ):
+        return False
+    # Make sure there are no type variable leaks in the type.
+    if set(get_type_vars(typ)) & type_vars:
+        return False
+    return True
 
 
 def arg_approximate_similarity(actual: Type, formal: Type) -> bool:
