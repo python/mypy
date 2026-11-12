@@ -692,6 +692,147 @@ class ByteArrayIterOverride(bytearray):
     def __iter__(self) -> Iterator[int]:
         yield 42
 
+[case testBytearrayPrimitivesMatchGeneric]
+from typing import Any, Callable
+
+from testutil import assertRaises
+
+from basubclass import ByteArraySubclass, ByteArrayOverrides, WrongSliceType
+
+BIG_INTS = [2**31, 2**62 - 1, 2**62, 2**63, 2**70]
+
+def outcome(f: Callable[[], object]) -> object:
+    try:
+        return f()
+    except Exception as e:
+        return (type(e), str(e))
+
+def test_len() -> None:
+    b = bytearray()
+    a: Any = b
+    for i in range(20):
+        assert len(b) == len(a) == i
+        a.append(i)
+    del a[3:7]
+    assert len(b) == len(a) == 16
+    a.extend(b"xyz")
+    assert len(b) == len(a) == 19
+    a.clear()
+    assert len(b) == len(a) == 0
+
+def test_get_item() -> None:
+    b = bytearray(b"\x00\x7f\x80\xfe\xff")
+    a: Any = b
+    n = len(b)
+    for i in list(range(-n - 2, n + 2)) + BIG_INTS + [-x for x in BIG_INTS]:
+        assert outcome(lambda: b[i]) == outcome(lambda: a[i]), i
+    with assertRaises(IndexError, "bytearray index out of range"):
+        b[n + int()]
+    with assertRaises(IndexError, "bytearray index out of range"):
+        bytearray()[int()]
+
+def test_set_item() -> None:
+    values = [-1, 0, 1, 127, 128, 255, 256] + BIG_INTS + [-x for x in BIG_INTS]
+    n = 4
+    for i in list(range(-n - 2, n + 2)) + BIG_INTS + [-x for x in BIG_INTS]:
+        for v in values:
+            b = bytearray(b"abcd")
+            a: Any = bytearray(b"abcd")
+
+            def set_native() -> None:
+                b[i] = v
+
+            def set_generic() -> None:
+                a[i] = v
+
+            assert outcome(set_native) == outcome(set_generic), (i, v)
+            assert b == a, (i, v)
+    b = bytearray(b"abcd")
+    # The value is checked before the index, like in CPython
+    with assertRaises(ValueError, "byte must be in range(0, 256)"):
+        b[10 + int()] = 256
+    with assertRaises(IndexError, "bytearray index out of range"):
+        b[10 + int()] = 255
+    b[1] += 1
+    b[-1] -= 2
+    assert b == b"accb"
+
+def test_slice() -> None:
+    b = bytearray(b"abcdefg")
+    a: Any = b
+    n = len(b)
+    bounds = list(range(-n - 2, n + 3)) + BIG_INTS + [-x for x in BIG_INTS]
+    for i in bounds:
+        assert b[i:] == a[i:], i
+        assert b[:i] == a[:i], i
+        for j in bounds:
+            assert b[i:j] == a[i:j], (i, j)
+            assert type(b[i:j]) is bytearray
+    c = b[:]
+    assert c == b and c is not b
+    c[0] = ord("z")
+    assert b == b"abcdefg"
+    assert bytearray()[1:2] == bytearray()
+
+def test_subclass() -> None:
+    # Use bytearray as the static type, so that the primitives are used
+    s: bytearray = ByteArraySubclass(b"abc")
+    assert len(s) == 3
+    assert s[1] == ord("b")
+    assert s[-1] == ord("c")
+    s[0] = ord("x")
+    assert s == b"xbc"
+    t = s[1:]
+    assert t == b"bc"
+    assert type(t) is bytearray
+    with assertRaises(IndexError, "bytearray index out of range"):
+        s[3 + int()]
+
+    overrides = ByteArrayOverrides(b"abc")
+    o: bytearray = overrides
+    assert o[0] == 42
+    assert o[-1] == 42
+    o[1] = 5
+    assert overrides.last_set == (1, 5)
+    assert o == b"abc"
+    assert o[0:2] == b"slice"
+
+    wrong = WrongSliceType(b"abc")
+    w: bytearray = wrong
+    wrong.result = 1.5
+    with assertRaises(TypeError, "bytearray object expected; got float"):
+        w[0:2]
+    wrong.result = b"bc"
+    with assertRaises(TypeError, "bytearray object expected; got bytes"):
+        w[1:]
+    wrong.result = ByteArraySubclass(b"bc")
+    assert w[1:] == b"bc"
+
+[file basubclass.py]
+from typing import Any
+
+class ByteArraySubclass(bytearray):
+    pass
+
+class ByteArrayOverrides(bytearray):
+    last_set: Any = None
+
+    def __getitem__(self, i: Any) -> Any:
+        if isinstance(i, slice):
+            return bytearray(b"slice")
+        return 42
+
+    def __setitem__(self, i: Any, v: Any) -> None:
+        self.last_set = (i, v)
+
+class WrongSliceType(bytearray):
+    result: Any = None
+
+    def __getitem__(self, i: Any) -> Any:
+        if isinstance(i, slice):
+            return self.result
+        return super().__getitem__(i)
+
 [case testBytesJoin]
 from typing import Any
 from testutil import assertRaises

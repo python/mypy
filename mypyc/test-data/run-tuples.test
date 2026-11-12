@@ -517,3 +517,72 @@ class GoodTuple(tuple):
         return GoodTuple(tuple(self) * n + (2,))
     def __rmul__(self, n: Any) -> Any:
         return GoodTuple(tuple(self) * n + (3,))
+
+[case testTupleHash]
+from typing import Any, Tuple
+
+from mypy_extensions import i64, u16, u32, u64
+from testutil import assertRaises
+
+def boxed(t: Any) -> int:
+    # hash() of a tuple object
+    return hash(t)
+
+INTS = [0, 1, -1, -2, 2**30, -(2**30), 2**61 - 1, 2**61, -(2**61), -(2**61) - 1, 2**62 - 1,
+        -(2**62), 2**62, 2**63, -(2**100)]
+
+def test_ints() -> None:
+    for a in INTS:
+        for b in INTS:
+            assert hash((a, b)) == boxed((a, b))
+        assert hash((a,)) == boxed((a,))
+        assert hash((a, a, a, a, a)) == boxed((a, a, a, a, a))
+
+def test_fixed_width_ints() -> None:
+    for x in [0, 1, -1, -2, 2**62 - 1, 2**62, -(2**62) - 1, 2**63 - 1, -(2**63)]:
+        n: i64 = x
+        assert hash((n, x)) == boxed((n, x))
+    for x in [0, 1, 2**62 - 1, 2**62, 2**63, 2**64 - 1]:
+        n64: u64 = x
+        assert hash((n64, 1)) == boxed((n64, 1))
+    for x in [0, 2**31, 2**32 - 1]:
+        n32: u32 = x
+        assert hash((n32, 1)) == boxed((n32, 1))
+    for x in [0, 2**16 - 1]:
+        n16: u16 = x
+        assert hash((n16, 1)) == boxed((n16, 1))
+
+def test_other_items() -> None:
+    assert hash(()) == boxed(())
+    for b in [True, False]:
+        assert hash((b, 1 > 2)) == boxed((b, 1 > 2))
+    for f in [0.0, -0.0, 1.5, float("inf")]:
+        assert hash((f, "x", None)) == boxed((f, "x", None))
+    for o in [None, 5]:
+        assert hash((o, 1)) == boxed((o, 1))
+    assert hash((1, (2, (3, "a")), ())) == boxed((1, (2, (3, "a")), ()))
+
+def hash_arg(t: Tuple[int, str]) -> int:
+    return hash(t)
+
+class Point:
+    def __init__(self, x: int, y: int, label: str) -> None:
+        self.x = x
+        self.y = y
+        self.label = label
+
+    def __hash__(self) -> int:
+        return hash((self.x, self.y, self.label))
+
+def test_tuple_values() -> None:
+    assert hash_arg((3, "x")) == boxed((3, "x"))
+    assert hash(Point(3, -4, "p")) == boxed((3, -4, "p"))
+
+def test_unhashable_item() -> None:
+    a: Any = []
+    with assertRaises(TypeError, "unhashable type: 'list'"):
+        hash((1, a))
+    with assertRaises(TypeError, "unhashable type: 'list'"):
+        hash((a, 1))
+    with assertRaises(TypeError, "unhashable type: 'list'"):
+        hash((1, (2, a)))

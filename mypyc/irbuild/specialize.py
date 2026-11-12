@@ -40,8 +40,10 @@ from mypy.nodes import (
 from mypy.types import AnyType, TypeOfAny
 from mypyc.ir.class_ir import ClassIR
 from mypyc.ir.ops import (
+    ERR_FALSE,
     BasicBlock,
     Call,
+    ComparisonOp,
     Extend,
     Integer,
     LoadErrorValue,
@@ -50,6 +52,7 @@ from mypyc.ir.ops import (
     Register,
     SetAttr,
     Truncate,
+    TupleGet,
     Unreachable,
     Value,
 )
@@ -63,17 +66,21 @@ from mypyc.ir.rtypes import (
     bytes_rprimitive,
     bytes_writer_rprimitive,
     c_int_rprimitive,
+    c_pyssize_t_rprimitive,
     dict_rprimitive,
+    int8_rprimitive,
     int16_rprimitive,
     int32_rprimitive,
     int64_rprimitive,
     int_rprimitive,
     is_any_int,
+    is_bool_or_bit_rprimitive,
     is_bool_rprimitive,
     is_bytes_rprimitive,
     is_dict_rprimitive,
     is_fixed_width_rtype,
     is_float_rprimitive,
+    is_int8_rprimitive,
     is_int16_rprimitive,
     is_int32_rprimitive,
     is_int64_rprimitive,
@@ -183,6 +190,11 @@ from mypyc.primitives.tuple_ops import (
     new_tuple_set_item_grow_op,
     new_tuple_set_item_op,
     new_tuple_set_size_op,
+    tuple_hash_add_op,
+    tuple_hash_finish_op,
+    tuple_hash_int_op,
+    tuple_hash_object_op,
+    tuple_hash_start_op,
 )
 
 # Specializers are attempted before compiling the arguments to the
@@ -317,6 +329,50 @@ def apply_dunder_specialization(
     return None
 
 
+@specialize_function("builtins.hash")
+def translate_hash(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value | None:
+    """Hash a fixed-length tuple without boxing it (and its items) into a tuple object."""
+    if len(expr.args) == 1 and expr.arg_kinds == [ARG_POS]:
+        if isinstance(builder.node_type(expr.args[0]), RTuple):
+            t = builder.accept(expr.args[0])
+            return builder.coerce(tuple_hash(builder, t, expr.line), int_rprimitive, expr.line)
+    return None
+
+
+def tuple_hash(builder: IRBuilder, t: Value, line: int) -> Value:
+    """Return the hash of an unboxed tuple as a C Py_hash_t, like hash() of the boxed tuple."""
+    assert isinstance(t.type, RTuple)
+    acc = builder.call_c(tuple_hash_start_op, [], line)
+    for i in range(len(t.type.types)):
+        item_hash = tuple_item_hash(builder, builder.add(TupleGet(t, i, line)), line)
+        acc = builder.call_c(tuple_hash_add_op, [acc, item_hash], line)
+    length = Integer(len(t.type.types), c_pyssize_t_rprimitive, line)
+    return builder.call_c(tuple_hash_finish_op, [acc, length], line)
+
+
+def tuple_item_hash(builder: IRBuilder, item: Value, line: int) -> Value:
+    """Return the hash of a tuple item as a C Py_hash_t."""
+    typ = item.type
+    if isinstance(typ, RTuple):
+        return tuple_hash(builder, item, line)
+    if is_bool_or_bit_rprimitive(typ):
+        # hash(False) is 0 and hash(True) is 1
+        return builder.add(Extend(item, c_pyssize_t_rprimitive, signed=False, line=line))
+    if is_tagged(typ) or is_fixed_width_rtype(typ):
+        # A fixed-width int hashes like the int object it boxes to
+        value = builder.coerce(item, int_rprimitive, line)
+        return builder.call_c(tuple_hash_int_op, [value], line)
+    obj = builder.coerce(item, object_rprimitive, line)
+    item_hash = builder.call_c(tuple_hash_object_op, [obj], line)
+    # -1 means that the item couldn't be hashed
+    check = ComparisonOp(
+        item_hash, Integer(-1, c_pyssize_t_rprimitive, line), ComparisonOp.NEQ, line
+    )
+    check.error_kind = ERR_FALSE
+    builder.add(check)
+    return item_hash
+
+
 @specialize_function("builtins.globals")
 def translate_globals(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value | None:
     if len(expr.args) == 0:
@@ -331,6 +387,7 @@ def translate_globals(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Va
 @specialize_function("mypy_extensions.i64")
 @specialize_function("mypy_extensions.i32")
 @specialize_function("mypy_extensions.i16")
+@specialize_function("mypy_extensions.i8")
 @specialize_function("mypy_extensions.u64")
 @specialize_function("mypy_extensions.u32")
 @specialize_function("mypy_extensions.u16")
@@ -346,7 +403,7 @@ def translate_builtins_with_unary_dunder(
         arg = expr.args[0]
         arg_typ = builder.node_type(arg)
         shortname = callee.fullname.split(".")[1]
-        if shortname in ("i64", "i32", "i16", "u64", "u32", "u16", "u8"):
+        if shortname in ("i64", "i32", "i16", "i8", "u64", "u32", "u16", "u8"):
             method = "__int__"
         else:
             method = f"__{shortname}__"
@@ -1195,7 +1252,11 @@ def translate_i64(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value 
     arg_type = builder.node_type(arg)
     if is_int64_rprimitive(arg_type):
         return builder.accept(arg)
-    elif is_int32_rprimitive(arg_type) or is_int16_rprimitive(arg_type):
+    elif (
+        is_int32_rprimitive(arg_type)
+        or is_int16_rprimitive(arg_type)
+        or is_int8_rprimitive(arg_type)
+    ):
         val = builder.accept(arg)
         return builder.add(Extend(val, int64_rprimitive, signed=True, line=expr.line))
     elif is_uint64_rprimitive(arg_type):
@@ -1228,7 +1289,7 @@ def translate_i32(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value 
     elif is_int64_rprimitive(arg_type):
         val = builder.accept(arg)
         return builder.add(Truncate(val, int32_rprimitive, line=expr.line))
-    elif is_int16_rprimitive(arg_type):
+    elif is_int16_rprimitive(arg_type) or is_int8_rprimitive(arg_type):
         val = builder.accept(arg)
         return builder.add(Extend(val, int32_rprimitive, signed=True, line=expr.line))
     elif is_uint64_rprimitive(arg_type):
@@ -1273,10 +1334,43 @@ def translate_i16(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value 
     elif is_uint8_rprimitive(arg_type):
         val = builder.accept(arg)
         return builder.add(Extend(val, int16_rprimitive, signed=False, line=expr.line))
+    elif is_int8_rprimitive(arg_type):
+        val = builder.accept(arg)
+        return builder.add(Extend(val, int16_rprimitive, signed=True, line=expr.line))
     elif is_int_rprimitive(arg_type) or is_bool_rprimitive(arg_type):
         val = builder.accept(arg)
         val = truncate_literal(val, int16_rprimitive)
         return builder.coerce(val, int16_rprimitive, expr.line)
+    return None
+
+
+@specialize_function("mypy_extensions.i8")
+def translate_i8(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value | None:
+    if len(expr.args) != 1 or expr.arg_kinds[0] != ARG_POS:
+        return None
+    arg = expr.args[0]
+    arg_type = builder.node_type(arg)
+    if is_int8_rprimitive(arg_type):
+        return builder.accept(arg)
+    elif (
+        is_int16_rprimitive(arg_type)
+        or is_int32_rprimitive(arg_type)
+        or is_int64_rprimitive(arg_type)
+    ):
+        val = builder.accept(arg)
+        return builder.add(Truncate(val, int8_rprimitive, line=expr.line))
+    elif (
+        is_uint64_rprimitive(arg_type)
+        or is_uint32_rprimitive(arg_type)
+        or is_uint16_rprimitive(arg_type)
+        or is_uint8_rprimitive(arg_type)
+    ):
+        val = builder.accept(arg)
+        return builder.add(Truncate(val, int8_rprimitive, line=expr.line))
+    elif is_int_rprimitive(arg_type) or is_bool_rprimitive(arg_type):
+        val = builder.accept(arg)
+        val = truncate_literal(val, int8_rprimitive)
+        return builder.coerce(val, int8_rprimitive, expr.line)
     return None
 
 
@@ -1291,7 +1385,11 @@ def translate_u64(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value 
     elif is_int64_rprimitive(arg_type):
         val = builder.accept(arg)
         return builder.add(Truncate(val, uint64_rprimitive, line=expr.line))
-    elif is_int32_rprimitive(arg_type) or is_int16_rprimitive(arg_type):
+    elif (
+        is_int32_rprimitive(arg_type)
+        or is_int16_rprimitive(arg_type)
+        or is_int8_rprimitive(arg_type)
+    ):
         val = builder.accept(arg)
         return builder.add(Extend(val, uint64_rprimitive, signed=True, line=expr.line))
     elif (
@@ -1318,6 +1416,7 @@ def translate_u32(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value 
         return builder.accept(arg)
     elif (
         is_int16_rprimitive(arg_type)
+        or is_int8_rprimitive(arg_type)
         or is_int32_rprimitive(arg_type)
         or is_int64_rprimitive(arg_type)
         or is_uint64_rprimitive(arg_type)
@@ -1327,7 +1426,7 @@ def translate_u32(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value 
         val = builder.accept(arg)
         if is_uint16_rprimitive(arg_type) or is_uint8_rprimitive(arg_type):
             return builder.add(Extend(val, uint32_rprimitive, signed=False, line=expr.line))
-        if is_int16_rprimitive(arg_type):
+        if is_int16_rprimitive(arg_type) or is_int8_rprimitive(arg_type):
             return builder.add(Extend(val, uint32_rprimitive, signed=True, line=expr.line))
         return builder.add(Truncate(val, uint32_rprimitive, line=expr.line))
     elif is_int_rprimitive(arg_type) or is_bool_rprimitive(arg_type):
@@ -1347,6 +1446,7 @@ def translate_u16(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value 
         return builder.accept(arg)
     elif (
         is_int16_rprimitive(arg_type)
+        or is_int8_rprimitive(arg_type)
         or is_int32_rprimitive(arg_type)
         or is_int64_rprimitive(arg_type)
         or is_uint64_rprimitive(arg_type)
@@ -1356,6 +1456,8 @@ def translate_u16(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value 
         val = builder.accept(arg)
         if is_uint8_rprimitive(arg_type):
             return builder.add(Extend(val, uint16_rprimitive, signed=False, line=expr.line))
+        if is_int8_rprimitive(arg_type):
+            return builder.add(Extend(val, uint16_rprimitive, signed=True, line=expr.line))
         return builder.add(Truncate(val, uint16_rprimitive, line=expr.line))
     elif is_int_rprimitive(arg_type) or is_bool_rprimitive(arg_type):
         val = builder.accept(arg)
@@ -1373,7 +1475,8 @@ def translate_u8(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value |
     if is_uint8_rprimitive(arg_type):
         return builder.accept(arg)
     elif (
-        is_int16_rprimitive(arg_type)
+        is_int8_rprimitive(arg_type)
+        or is_int16_rprimitive(arg_type)
         or is_int32_rprimitive(arg_type)
         or is_int64_rprimitive(arg_type)
         or is_uint64_rprimitive(arg_type)
