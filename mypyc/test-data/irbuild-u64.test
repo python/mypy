@@ -1,0 +1,430 @@
+# Test cases for u64 native ints. Focus on things that are different from u8; no need to
+# duplicate all u8 test cases here.
+
+[case testU64BinaryOp]
+from mypy_extensions import u64
+
+def add_op(x: u64, y: u64) -> u64:
+    x = y + x
+    y = x + 5
+    y += x
+    y += 7
+    x = 5 + y
+    return x
+def compare(x: u64, y: u64) -> None:
+    a = x == y
+    b = x == 5
+    c = x < y
+    d = x < 5
+    e = 5 == x
+    f = 5 < x
+[out]
+def add_op(x, y):
+    x, y, r0, r1, r2, r3, r4 :: u64
+L0:
+    r0 = y + x
+    x = r0
+    r1 = x + 5
+    y = r1
+    r2 = y + x
+    y = r2
+    r3 = y + 7
+    y = r3
+    r4 = 5 + y
+    x = r4
+    return x
+def compare(x, y):
+    x, y :: u64
+    r0 :: bit
+    a :: bool
+    r1 :: bit
+    b :: bool
+    r2 :: bit
+    c :: bool
+    r3 :: bit
+    d :: bool
+    r4 :: bit
+    e :: bool
+    r5 :: bit
+    f :: bool
+L0:
+    r0 = x == y
+    a = r0
+    r1 = x == 5
+    b = r1
+    r2 = x < y :: unsigned
+    c = r2
+    r3 = x < 5 :: unsigned
+    d = r3
+    r4 = 5 == x
+    e = r4
+    r5 = 5 < x :: unsigned
+    f = r5
+    return 1
+
+[case testU64DetectMoreOutOfRangeLiterals]
+from mypy_extensions import u64
+
+def out_of_range() -> None:
+    a: u64 = 18446744073709551616
+    b: u64 = -1
+    f(18446744073709551616)
+    # The following are ok
+    c: u64 = 0
+    d: u64 = 18446744073709551615
+    f(0)
+    f(18446744073709551615)
+
+def f(x: u64) -> None: pass
+[out]
+main:4: error: Value 18446744073709551616 is out of range for "u64"
+main:5: error: Value -1 is out of range for "u64"
+main:6: error: Value 18446744073709551616 is out of range for "u64"
+
+[case testU64BoxAndUnbox]
+from typing import Any
+from mypy_extensions import u64
+
+def f(x: Any) -> Any:
+    y: u64 = x
+    return y
+[out]
+def f(x):
+    x :: object
+    r0, y :: u64
+    r1 :: object
+L0:
+    r0 = unbox(u64, x)
+    y = r0
+    r1 = box(u64, y)
+    return r1
+
+[case testU64ConvertToInt_64bit]
+from mypy_extensions import u64
+
+def u64_to_int(a: u64) -> int:
+    return a
+[out]
+def u64_to_int(a):
+    a :: u64
+    r0 :: bit
+    r1, r2, r3 :: int
+L0:
+    r0 = a <= 4611686018427387903 :: unsigned
+    if r0 goto L2 else goto L1 :: bool
+L1:
+    r1 = CPyTagged_FromUInt64(a)
+    r2 = r1
+    goto L3
+L2:
+    r3 = a << 1
+    r2 = r3
+L3:
+    return r2
+
+[case testU64ExplicitConversionFromNativeInt]
+from mypy_extensions import i64, i32, i16, u8, u64
+
+def from_u64(x: u64) -> u64:
+    return u64(x)
+
+def from_u8(x: u8) -> u64:
+    return u64(x)
+
+def from_i16(x: i16) -> u64:
+    return u64(x)
+
+def from_i32(x: i32) -> u64:
+    return u64(x)
+
+def from_i64(x: i64) -> u64:
+    return u64(x)
+[out]
+def from_u64(x):
+    x :: u64
+L0:
+    return x
+def from_u8(x):
+    x :: u8
+    r0 :: u64
+L0:
+    r0 = extend x: u8 to u64
+    return r0
+def from_i16(x):
+    x :: i16
+    r0 :: u64
+L0:
+    r0 = extend signed x: i16 to u64
+    return r0
+def from_i32(x):
+    x :: i32
+    r0 :: u64
+L0:
+    r0 = extend signed x: i32 to u64
+    return r0
+def from_i64(x):
+    x :: i64
+    r0 :: u64
+L0:
+    r0 = truncate x: i64 to u64
+    return r0
+
+[case testU64ExplicitConversionToNativeInt]
+from mypy_extensions import i64, i32, i16, u8, u64
+
+def to_u8(x: u64) -> u8:
+    return u8(x)
+
+def to_i16(x: u64) -> i16:
+    return i16(x)
+
+def to_i32(x: u64) -> i32:
+    return i32(x)
+
+def to_i64(x: u64) -> i64:
+    return i64(x)
+[out]
+def to_u8(x):
+    x :: u64
+    r0 :: u8
+L0:
+    r0 = truncate x: u64 to u8
+    return r0
+def to_i16(x):
+    x :: u64
+    r0 :: i16
+L0:
+    r0 = truncate x: u64 to i16
+    return r0
+def to_i32(x):
+    x :: u64
+    r0 :: i32
+L0:
+    r0 = truncate x: u64 to i32
+    return r0
+def to_i64(x):
+    x :: u64
+    r0 :: i64
+L0:
+    r0 = truncate x: u64 to i64
+    return r0
+
+[case testU64ExplicitConversionFromInt_64bit]
+from mypy_extensions import u64
+
+def f(x: int) -> u64:
+    return u64(x)
+[out]
+def f(x):
+    x :: int
+    r0 :: native_int
+    r1, r2 :: bit
+    r3, r4 :: u64
+    r5 :: ptr
+    r6 :: c_ptr
+    r7 :: u64
+L0:
+    r0 = x & 1
+    r1 = r0 == 0
+    if r1 goto L1 else goto L3 :: bool
+L1:
+    r2 = x >= 0 :: signed
+    if r2 goto L2 else goto L4 :: bool
+L2:
+    r3 = x >> 1
+    r4 = r3
+    goto L5
+L3:
+    r5 = x ^ 1
+    r6 = r5
+    r7 = CPyLong_AsUInt64(r6)
+    r4 = r7
+    keep_alive x
+    goto L5
+L4:
+    CPyUInt64_Overflow()
+    unreachable
+L5:
+    return r4
+
+[case testU64ExplicitConversionFromInt_32bit]
+from mypy_extensions import u64
+
+def f(x: int) -> u64:
+    return u64(x)
+[out]
+def f(x):
+    x :: int
+    r0 :: native_int
+    r1, r2 :: bit
+    r3, r4, r5 :: u64
+    r6 :: ptr
+    r7 :: c_ptr
+    r8 :: u64
+L0:
+    r0 = x & 1
+    r1 = r0 == 0
+    if r1 goto L1 else goto L3 :: bool
+L1:
+    r2 = x >= 0 :: signed
+    if r2 goto L2 else goto L4 :: bool
+L2:
+    r3 = extend signed x: builtins.int to u64
+    r4 = r3 >> 1
+    r5 = r4
+    goto L5
+L3:
+    r6 = x ^ 1
+    r7 = r6
+    r8 = CPyLong_AsUInt64(r7)
+    r5 = r8
+    keep_alive x
+    goto L5
+L4:
+    CPyUInt64_Overflow()
+    unreachable
+L5:
+    return r5
+
+[case testU64ExplicitConversionFromLiteral_64bit]
+from mypy_extensions import u64
+
+def f() -> None:
+    x = u64(0)
+    y = u64(11)
+    z = u64(-3)  # Truncate
+    zz = u64(4294967298)  # Truncate
+    a = u64(18446744073709551615)
+    b = u64(18446744073709551621)  # Truncate
+    c = u64(-18446744073709551615)  # Truncate
+[out]
+def f():
+    x, y, z, zz :: u64
+    r0 :: int
+    a :: u64
+    r1 :: int
+    b :: u64
+    r2 :: int
+    c :: u64
+L0:
+    x = 0
+    y = 11
+    z = 18446744073709551613
+    zz = 4294967298
+    r0 = object 18446744073709551615
+    a = 18446744073709551615
+    r1 = object 18446744073709551621
+    b = 5
+    r2 = object -18446744073709551615
+    c = 1
+    return 1
+
+[case testU64FromShortInt_64bit]
+from mypy_extensions import u64
+
+def g(a: list[int]) -> u64:
+    x: u64 = len(a)
+    return x
+[out]
+def g(a):
+    a :: list
+    r0 :: native_int
+    r1 :: short_int
+    r2 :: bit
+    r3, x :: u64
+L0:
+    r0 = var_object_size a
+    r1 = r0 << 1
+    r2 = r1 >= 0 :: signed
+    if r2 goto L2 else goto L1 :: bool
+L1:
+    CPyUInt64_Overflow()
+    unreachable
+L2:
+    r3 = r1 >> 1
+    x = r3
+    return x
+
+[case testU64ListGetSetItem]
+from typing import List
+from mypy_extensions import u64
+
+def get(a: List[int], i: u64) -> int:
+    return a[i]
+
+def set(a: List[int], i: u64, x: int) -> None:
+    a[i] = x
+[out]
+def get(a, i):
+    a :: list
+    i :: u64
+    r0 :: object
+    r1 :: int
+L0:
+    r0 = CPyList_GetItemUInt64(a, i)
+    r1 = unbox(int, r0)
+    return r1
+def set(a, i, x):
+    a :: list
+    i :: u64
+    x :: int
+    r0 :: object
+    r1 :: bit
+L0:
+    r0 = box(int, x)
+    r1 = CPyList_SetItemUInt64(a, i, r0)
+    return 1
+
+[case testListGetSetItemBoolIndexNotAmbiguous]
+# Bool matches both the i64 and u64 index ops; the i64 op must win
+from typing import List
+
+class C:
+    s: str
+
+def get(a: List[int], b: bool) -> int:
+    return a[b]
+
+def get_borrow(a: List[C], b: bool) -> str:
+    return a[b].s
+
+def set(a: List[int], b: bool, x: int) -> None:
+    a[b] = x
+[out]
+def get(a, b):
+    a :: list
+    b :: bool
+    r0 :: i64
+    r1 :: object
+    r2 :: int
+L0:
+    r0 = extend b: builtins.bool to i64
+    r1 = CPyList_GetItemInt64(a, r0)
+    r2 = unbox(int, r1)
+    return r2
+def get_borrow(a, b):
+    a :: list
+    b :: bool
+    r0 :: i64
+    r1 :: object
+    r2 :: __main__.C
+    r3 :: str
+L0:
+    r0 = extend b: builtins.bool to i64
+    r1 = CPyList_GetItemInt64Borrow(a, r0)
+    r2 = borrow cast(__main__.C, r1)
+    r3 = r2.s
+    keep_alive a, r0, r1
+    return r3
+def set(a, b, x):
+    a :: list
+    b :: bool
+    x :: int
+    r0 :: i64
+    r1 :: object
+    r2 :: bit
+L0:
+    r0 = extend b: builtins.bool to i64
+    r1 = box(int, x)
+    r2 = CPyList_SetItemInt64(a, r0, r1)
+    return 1

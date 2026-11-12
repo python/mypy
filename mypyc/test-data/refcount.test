@@ -1795,10 +1795,54 @@ L5:
     r7 = r5 * 8
     r8 = r6 + r7
     r9 = borrow load_mem r8 :: builtins.str*
-    dec_ref r9
     inc_ref x
     set_mem r8, x :: builtins.str*
+    dec_ref r9
     return 1
+
+[case testVecTContains_64bit]
+from librt.vecs import vec
+
+def f(v: vec[str], x: str) -> bool:
+    return x in v
+[out]
+def f(v, x):
+    v :: vec[str]
+    x :: str
+    r0 :: native_int
+    r1 :: ptr
+    r2 :: native_int
+    r3, r4 :: ptr
+    r5 :: bit
+    r6 :: str
+    r7 :: bool
+    r8 :: ptr
+    r9 :: bool
+L0:
+    r0 = v.len
+    r1 = v.items
+    r2 = r0 * 8
+    r3 = r1 + r2
+    r4 = r1
+L1:
+    r5 = r4 < r3 :: unsigned
+    if r5 goto L2 else goto L4 :: bool
+L2:
+    r6 = load_mem r4 :: builtins.str*
+    r7 = CPyStr_Equal(r6, x)
+    dec_ref r6
+    if r7 goto L5 else goto L3 :: bool
+L3:
+    r8 = r4 + 8
+    r4 = r8
+    goto L1
+L4:
+    r9 = 0
+    goto L6
+L5:
+    r9 = 1
+L6:
+    return r9
 
 [case testVecTConstructFromListMultiply_64bit]
 from typing import Optional

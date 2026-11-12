@@ -46,6 +46,7 @@ files = [
     "irbuild-i32.test",
     "irbuild-i16.test",
     "irbuild-u8.test",
+    "irbuild-u64.test",
     "irbuild-u32.test",
     "irbuild-u16.test",
     "irbuild-vec-i64.test",

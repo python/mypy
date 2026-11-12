@@ -40,6 +40,14 @@ raise_exception_with_tb_op = custom_op(
     error_kind=ERR_ALWAYS,
 )
 
+# Check that the (type, value, traceback) arguments of generator.throw() are valid.
+check_throw_args_op = custom_op(
+    arg_types=[object_rprimitive, object_rprimitive, object_rprimitive],
+    return_type=bit_rprimitive,
+    c_function_name="CPyGen_CheckThrowArgs",
+    error_kind=ERR_FALSE,
+)
+
 # Reraise the currently raised exception.
 reraise_exception_op = custom_op(
     arg_types=[], return_type=void_rtype, c_function_name="CPy_Reraise", error_kind=ERR_ALWAYS

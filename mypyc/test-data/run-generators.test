@@ -1581,3 +1581,84 @@ g2 = gen_delegate(reenter())
 box.append(g2)
 assert pyiter_send(g2, None) == (PYGEN_NEXT, 2)
 assert pyiter_send(g2, None) == (PYGEN_RETURN, None)
+
+[case testGeneratorThrowInvalidArguments]
+from typing import Any, Generator
+
+from testutil import assertRaises
+
+def gen() -> Generator[Any, None, None]:
+    while True:
+        try:
+            yield 1
+        except BaseException as e:
+            yield "caught " + type(e).__name__
+
+async def coro() -> int:
+    return 1
+
+def started() -> Any:
+    g = gen()
+    assert next(g) == 1
+    return g
+
+def test_valid_arguments() -> None:
+    g = started()
+    assert g.throw(ValueError) == "caught ValueError"
+    assert next(g) == 1
+    assert g.throw(ValueError, "x") == "caught ValueError"
+    assert next(g) == 1
+    assert g.throw(ValueError("x"), None) == "caught ValueError"
+    assert next(g) == 1
+    try:
+        raise KeyError
+    except KeyError as e:
+        tb = getattr(e, "__traceback__")
+    assert g.throw(ValueError, ValueError("x"), tb) == "caught ValueError"
+    assert next(g) == 1
+    assert g.throw(ValueError("x"), None, None) == "caught ValueError"
+
+# The errors must be raised by throw() without resuming the generator, so the except
+# clause in gen() doesn't see them.
+
+def test_invalid_traceback() -> None:
+    g = started()
+    with assertRaises(TypeError, "throw() third argument must be a traceback object"):
+        g.throw(ValueError, None, 42)
+    assert next(g) == 1
+
+def test_instance_with_separate_value() -> None:
+    g = started()
+    with assertRaises(TypeError, "instance exception may not have a separate value"):
+        g.throw(ValueError("x"), 5)
+    assert next(g) == 1
+
+def test_non_exception_class() -> None:
+    g = started()
+    with assertRaises(
+        TypeError, "exceptions must be classes or instances deriving from BaseException, not type"
+    ):
+        g.throw(int)
+    assert next(g) == 1
+
+def test_non_exception_instance() -> None:
+    g = started()
+    msg = "exceptions must be classes or instances deriving from BaseException, not "
+    with assertRaises(TypeError, msg + "int"):
+        g.throw(5)
+    with assertRaises(TypeError, msg + "object"):
+        g.throw(object())
+    assert next(g) == 1
+
+    # Not yet started
+    g2: Any = gen()
+    with assertRaises(TypeError, msg + "int"):
+        g2.throw(5)
+    assert next(g2) == 1
+
+def test_coroutine() -> None:
+    c: Any = coro()
+    with assertRaises(TypeError, "exceptions must be classes or instances"):
+        c.throw(5)
+    with assertRaises(StopIteration):
+        c.send(None)
