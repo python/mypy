@@ -636,6 +636,30 @@ CPyTagged CPyStr_Ord(PyObject *obj) {
     return CPY_INT_TAG;
 }
 
+PyObject *CPyStr_Chr(CPyTagged n) {
+    if (likely(CPyTagged_CheckShort(n))) {
+        Py_ssize_t v = CPyTagged_ShortAsSsize_t(n);
+        if (likely(v >= 0 && v <= 0x10ffff)) {
+            return PyUnicode_FromOrdinal((int)v);
+        }
+    }
+#if CPY_3_13_FEATURES
+    // Python 3.13+ raises ValueError for all out-of-range values
+    PyErr_SetString(PyExc_ValueError, "chr() arg not in range(0x110000)");
+    return NULL;
+#else
+    // Older Python versions convert the argument to a C int first. Note that on
+    // 32-bit platforms some values that fit in a C int aren't short ints.
+    Py_ssize_t v = CPyTagged_AsSsize_t(n);
+    if ((v == -1 && PyErr_Occurred()) || v < INT_MIN || v > INT_MAX) {
+        PyErr_SetString(PyExc_OverflowError, "Python int too large to convert to C int");
+        return NULL;
+    }
+    // This raises ValueError, since the value is out of range
+    return PyUnicode_FromOrdinal((int)v);
+#endif
+}
+
 PyObject *CPyStr_Multiply(PyObject *str, CPyTagged count) {
     Py_ssize_t temp_count = CPyTagged_AsSsize_t(count);
     if (temp_count == -1 && PyErr_Occurred()) {

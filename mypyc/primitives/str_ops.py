@@ -599,6 +599,15 @@ function_op(
     error_kind=ERR_MAGIC,
 )
 
+# chr(int)
+function_op(
+    name="builtins.chr",
+    arg_types=[int_rprimitive],
+    return_type=str_rprimitive,
+    c_function_name="CPyStr_Chr",
+    error_kind=ERR_MAGIC,
+)
+
 # Optimized str indexing for ord(s[i])
 
 # str index adjustment - convert negative index to positive
