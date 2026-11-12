@@ -40,8 +40,10 @@ from mypy.nodes import (
 from mypy.types import AnyType, TypeOfAny
 from mypyc.ir.class_ir import ClassIR
 from mypyc.ir.ops import (
+    ERR_FALSE,
     BasicBlock,
     Call,
+    ComparisonOp,
     Extend,
     Integer,
     LoadErrorValue,
@@ -50,6 +52,7 @@ from mypyc.ir.ops import (
     Register,
     SetAttr,
     Truncate,
+    TupleGet,
     Unreachable,
     Value,
 )
@@ -63,6 +66,7 @@ from mypyc.ir.rtypes import (
     bytes_rprimitive,
     bytes_writer_rprimitive,
     c_int_rprimitive,
+    c_pyssize_t_rprimitive,
     dict_rprimitive,
     int8_rprimitive,
     int16_rprimitive,
@@ -70,6 +74,7 @@ from mypyc.ir.rtypes import (
     int64_rprimitive,
     int_rprimitive,
     is_any_int,
+    is_bool_or_bit_rprimitive,
     is_bool_rprimitive,
     is_bytes_rprimitive,
     is_dict_rprimitive,
@@ -180,7 +185,15 @@ from mypyc.primitives.str_ops import (
     str_get_item_unsafe_as_int_op,
     str_range_check_op,
 )
-from mypyc.primitives.tuple_ops import isinstance_tuple, new_tuple_set_item_op
+from mypyc.primitives.tuple_ops import (
+    isinstance_tuple,
+    new_tuple_set_item_op,
+    tuple_hash_add_op,
+    tuple_hash_finish_op,
+    tuple_hash_int_op,
+    tuple_hash_object_op,
+    tuple_hash_start_op,
+)
 
 # Specializers are attempted before compiling the arguments to the
 # function.  Specializers can return None to indicate that they failed
@@ -312,6 +325,50 @@ def apply_dunder_specialization(
             if val is not None:
                 return val
     return None
+
+
+@specialize_function("builtins.hash")
+def translate_hash(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value | None:
+    """Hash a fixed-length tuple without boxing it (and its items) into a tuple object."""
+    if len(expr.args) == 1 and expr.arg_kinds == [ARG_POS]:
+        if isinstance(builder.node_type(expr.args[0]), RTuple):
+            t = builder.accept(expr.args[0])
+            return builder.coerce(tuple_hash(builder, t, expr.line), int_rprimitive, expr.line)
+    return None
+
+
+def tuple_hash(builder: IRBuilder, t: Value, line: int) -> Value:
+    """Return the hash of an unboxed tuple as a C Py_hash_t, like hash() of the boxed tuple."""
+    assert isinstance(t.type, RTuple)
+    acc = builder.call_c(tuple_hash_start_op, [], line)
+    for i in range(len(t.type.types)):
+        item_hash = tuple_item_hash(builder, builder.add(TupleGet(t, i, line)), line)
+        acc = builder.call_c(tuple_hash_add_op, [acc, item_hash], line)
+    length = Integer(len(t.type.types), c_pyssize_t_rprimitive, line)
+    return builder.call_c(tuple_hash_finish_op, [acc, length], line)
+
+
+def tuple_item_hash(builder: IRBuilder, item: Value, line: int) -> Value:
+    """Return the hash of a tuple item as a C Py_hash_t."""
+    typ = item.type
+    if isinstance(typ, RTuple):
+        return tuple_hash(builder, item, line)
+    if is_bool_or_bit_rprimitive(typ):
+        # hash(False) is 0 and hash(True) is 1
+        return builder.add(Extend(item, c_pyssize_t_rprimitive, signed=False, line=line))
+    if is_tagged(typ) or is_fixed_width_rtype(typ):
+        # A fixed-width int hashes like the int object it boxes to
+        value = builder.coerce(item, int_rprimitive, line)
+        return builder.call_c(tuple_hash_int_op, [value], line)
+    obj = builder.coerce(item, object_rprimitive, line)
+    item_hash = builder.call_c(tuple_hash_object_op, [obj], line)
+    # -1 means that the item couldn't be hashed
+    check = ComparisonOp(
+        item_hash, Integer(-1, c_pyssize_t_rprimitive, line), ComparisonOp.NEQ, line
+    )
+    check.error_kind = ERR_FALSE
+    builder.add(check)
+    return item_hash
 
 
 @specialize_function("builtins.globals")

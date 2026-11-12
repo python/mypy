@@ -1205,6 +1205,59 @@ static inline void CPySequenceTuple_SetItemUnsafe(PyObject *tuple, Py_ssize_t in
     PyTuple_SET_ITEM(tuple, index, value);
 }
 
+// hash() of a fixed-length tuple, worked out from the hashes of its items without
+// building a tuple object. These are the steps of the tuple hash in CPython's
+// Objects/tupleobject.c (with the constants in Include/internal/pycore_tuple.h on
+// 3.14 and later), which has been the same since Python 3.8.
+
+#if SIZEOF_PY_UHASH_T > 4
+#define CPY_TUPLE_HASH_XXPRIME_1 ((Py_uhash_t)11400714785074694791ULL)
+#define CPY_TUPLE_HASH_XXPRIME_2 ((Py_uhash_t)14029467366897019727ULL)
+#define CPY_TUPLE_HASH_XXPRIME_5 ((Py_uhash_t)2870177450012600261ULL)
+#define CPY_TUPLE_HASH_XXROTATE(x) (((x) << 31) | ((x) >> 33))  // Rotate left 31 bits
+#else
+#define CPY_TUPLE_HASH_XXPRIME_1 ((Py_uhash_t)2654435761UL)
+#define CPY_TUPLE_HASH_XXPRIME_2 ((Py_uhash_t)2246822519UL)
+#define CPY_TUPLE_HASH_XXPRIME_5 ((Py_uhash_t)374761393UL)
+#define CPY_TUPLE_HASH_XXROTATE(x) (((x) << 13) | ((x) >> 19))  // Rotate left 13 bits
+#endif
+
+static inline Py_uhash_t CPyTupleHash_Start(void) {
+    return CPY_TUPLE_HASH_XXPRIME_5;
+}
+
+static inline Py_uhash_t CPyTupleHash_Add(Py_uhash_t acc, Py_hash_t item_hash) {
+    acc += (Py_uhash_t)item_hash * CPY_TUPLE_HASH_XXPRIME_2;
+    acc = CPY_TUPLE_HASH_XXROTATE(acc);
+    return acc * CPY_TUPLE_HASH_XXPRIME_1;
+}
+
+static inline Py_hash_t CPyTupleHash_Finish(Py_uhash_t acc, Py_ssize_t len) {
+    // Add the length, mangled to keep the historical value of hash(())
+    acc += len ^ (CPY_TUPLE_HASH_XXPRIME_5 ^ 3527539UL);
+    if (acc == (Py_uhash_t)-1) {
+        return 1546275796;
+    }
+    return (Py_hash_t)acc;
+}
+
+// The hash of an int item, the same as hash() gives for an int object
+static inline Py_hash_t CPyTupleHash_Int(CPyTagged x) {
+    if (likely(CPyTagged_CheckShort(x))) {
+        // An int hashes to its value modulo PyHASH_MODULUS, keeping its sign, except that
+        // -1 (which signals an error) becomes -2
+        Py_ssize_t value = CPyTagged_ShortAsSsize_t(x);
+        Py_uhash_t magnitude = value < 0 ? -(Py_uhash_t)value : (Py_uhash_t)value;
+        if (unlikely(magnitude >= PyHASH_MODULUS)) {
+            magnitude %= PyHASH_MODULUS;
+        }
+        Py_hash_t h = value < 0 ? -(Py_hash_t)magnitude : (Py_hash_t)magnitude;
+        return h == -1 ? -2 : h;
+    }
+    // This can't fail for an int
+    return PyObject_Hash(CPyTagged_LongAsObject(x));
+}
+
 
 // Exception operations
 

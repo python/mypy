@@ -33,3 +33,4 @@ Functions
 ---------
 
 * ``len(tup: tuple)``
+* ``hash(tup)`` (for fixed-length tuples)
