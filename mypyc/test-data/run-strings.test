@@ -411,6 +411,19 @@ def test_index() -> None:
                     got = -1
                 assert got == expected
 
+def test_index_huge_indices() -> None:
+    # Indices that don't fit in Py_ssize_t are clamped, like in CPython
+    s = "abcab"
+    assert index(s, "b", 0, 2**100) == 1
+    assert index(s, "b", -2**100) == 1
+    assert rindex(s, "b", -2**100) == 4
+    assert rindex(s, "b", 0, 2**100) == 4
+    for f in (index, rindex):
+        with assertRaises(ValueError, "substring not found"):
+            f(s, "b", 2**63)
+        with assertRaises(ValueError, "substring not found"):
+            f(s, "b", 0, -2**100)
+
 def str_to_int(s: str, base: Optional[int] = None) -> int:
     if base:
         return int(s, base)
