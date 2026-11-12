@@ -1,0 +1,64 @@
+[case testI8BasicOps]
+from typing import Any
+
+from mypy_extensions import i8, i16, i32, i64, u8, u16, u32, u64
+from testutil import assertRaises
+
+def div(x: i8, y: i8) -> i8:
+    return x // y
+
+def mod(x: i8, y: i8) -> i8:
+    return x % y
+
+def to_i8(x: i16) -> i8:
+    return i8(x)
+
+def widen(x: i8) -> tuple[i16, i32, i64]:
+    return i16(x), i32(x), i64(x)
+
+def from_u8(x: u8) -> i8:
+    return i8(x)
+
+def to_unsigned(x: i8) -> tuple[u8, u16, u32, u64]:
+    return u8(x), u16(x), u32(x), u64(x)
+
+def test_box_unbox_and_divmod() -> None:
+    for value in range(-128, 128):
+        o: Any = value
+        x: i8 = o
+        assert x == value
+    for value in (-129, 128):
+        with assertRaises(ValueError, "int too large to convert to i8"):
+            o = value
+            x = o
+    for x in range(-128, 128):
+        for y in range(-128, 128):
+            if y == 0:
+                with assertRaises(ZeroDivisionError):
+                    div(x, y)
+                    mod(x, y)
+            elif x == -128 and y == -1:
+                with assertRaises(OverflowError, "integer division overflow"):
+                    div(x, y)
+                assert mod(x, y) == 0
+            else:
+                assert div(x, y) == x // y
+                assert mod(x, y) == x % y
+
+def test_operations() -> None:
+    x: i8 = 65 + int()
+    y: i8 = -12 + int()
+    assert x + y == 53
+    assert x * y == -12
+    assert x << 1 == -126
+    assert y >> 2 == -3
+    assert ~x == -66
+
+def test_conversions() -> None:
+    assert to_i8(127) == 127
+    assert to_i8(128) == -128
+    assert widen(-128) == (-128, -128, -128)
+    assert from_u8(255) == -1
+    assert to_unsigned(5) == (5, 5, 5, 5)
+    assert to_unsigned(-1) == (255, 2**16 - 1, 2**32 - 1, 2**64 - 1)
+    assert to_unsigned(-128) == (128, 2**16 - 128, 2**32 - 128, 2**64 - 128)
