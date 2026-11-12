@@ -301,41 +301,14 @@ def test_u64(b, n, x, i):
     i :: i64
     r0 :: None
     r1 :: int
-    r2 :: native_int
-    r3, r4 :: bit
-    r5, r6 :: u64
-    r7 :: ptr
-    r8 :: c_ptr
-    r9 :: u64
-    r10 :: None
-    r11 :: u64
+    r2 :: None
+    r3 :: u64
 L0:
     r0 = CPyBytesWriter_WriteU64LE(b, n)
     r1 = object 18446744073709551615
-    r2 = r1 & 1
-    r3 = r2 == 0
-    if r3 goto L1 else goto L3 :: bool
-L1:
-    r4 = r1 >= 0 :: signed
-    if r4 goto L2 else goto L4 :: bool
-L2:
-    r5 = r1 >> 1
-    r6 = r5
-    goto L5
-L3:
-    r7 = r1 ^ 1
-    r8 = r7
-    r9 = CPyLong_AsUInt64(r8)
-    r6 = r9
-    keep_alive r1
-    goto L5
-L4:
-    CPyUInt64_Overflow()
-    unreachable
-L5:
-    r10 = CPyBytesWriter_WriteU64LE(b, r6)
-    r11 = CPyBytes_ReadU64BE(x, i)
-    return r11
+    r2 = CPyBytesWriter_WriteU64LE(b, 18446744073709551615)
+    r3 = CPyBytes_ReadU64BE(x, i)
+    return r3
 
 [case testLibrtStrings_StringWriter_64bit]
 from librt.strings import StringWriter
