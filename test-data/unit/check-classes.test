@@ -116,11 +116,7 @@ class Base:
     __hash__: None = None
 
 class Derived(Base):
-    def __hash__(self) -> int:  # E: Signature of "__hash__" incompatible with supertype "Base" \
-                                # N:      Superclass: \
-                                # N:          None \
-                                # N:      Subclass: \
-                                # N:          def __hash__(self) -> int
+    def __hash__(self) -> int:
         pass
 
 # Correct:
@@ -146,6 +142,63 @@ class Base:
 
 class Derived(Base):
     __hash__ = 1  # E: Incompatible types in assignment (expression has type "int", base class "Base" defined the type as "Callable[[], int]")
+
+[case testEqWithoutHash]
+class A:
+    def __eq__(self, other) -> bool: ...
+
+reveal_type(A.__hash__)  # N: Revealed type is "None"
+[builtins fixtures/primitives.pyi]
+
+[case testHashNoneOverride]
+class A:
+    __hash__ = None
+
+class B(A):
+    def __hash__(self) -> int:
+        return 0
+
+class C(A):
+    __hash__ = object.__hash__
+
+class D(A):
+    def __hash__(self, x: int) -> str:  # E: Signature of "__hash__" incompatible with supertype "builtins.object" \
+                                        # N:      Superclass: \
+                                        # N:          def __hash__(self) -> int \
+                                        # N:      Subclass: \
+                                        # N:          def __hash__(self, x: int) -> str
+        return ''
+
+def bad_hash(x: E, y: str) -> str:
+    return y
+
+class E(A):
+    __hash__ = bad_hash  # E: Incompatible types in assignment (expression has type "Callable[[str], str]", base class "object" defined the type as "Callable[[], int]")
+
+
+
+
+[builtins fixtures/primitives.pyi]
+
+[case testHashNoneBadOverride]
+class A:
+    def __hash__(self) -> int: return 0
+
+class B(A):
+    __hash__ = None  # E: Incompatible types in assignment (expression has type "None", base class "A" defined the type as "Callable[[], int]")
+[builtins fixtures/primitives.pyi]
+
+[case testHashOverrideInMultipleInheritance]
+class Foo:
+    def __eq__(self, other: "Foo") -> bool: ...
+
+class Bar:
+    def __hash__(self) -> int: ...
+
+class BadChild(Foo, Bar): ...  # E: Definition of "__hash__" in base class "Foo" is incompatible with definition in base class "Bar"
+class GoodChild(Bar, Foo): ...
+[builtins fixtures/tuple.pyi]
+
 
 [case testOverridePartialAttributeWithMethod]
 # This was crashing: https://github.com/python/mypy/issues/11686.
