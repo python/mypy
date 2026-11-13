@@ -924,6 +924,7 @@ static void CPy_LogGetAttr(const char *method, PyObject *obj, PyObject *attr) {
      PyObject_GetAttr((obj), (attr)))
 
 CPyTagged CPyObject_Hash(PyObject *o);
+Py_hash_t CPy_HashFromResult(PyObject *res);
 
 // Default identity-based hash (same as object.__hash__), used as tp_hash
 static inline Py_hash_t CPy_DefaultHash(PyObject *o) {
