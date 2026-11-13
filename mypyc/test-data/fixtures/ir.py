@@ -184,6 +184,7 @@ class complex:
     def __mul__(self, n: complex) -> complex: pass
     def __truediv__(self, n: complex) -> complex: pass
     def __neg__(self) -> complex: pass
+    def __abs__(self) -> float: pass
     @property
     def real(self) -> float: ...
     @property

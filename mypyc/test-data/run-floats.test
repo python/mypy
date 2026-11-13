@@ -726,3 +726,109 @@ class BadIntReal(int):
     @property
     def real(self) -> Any:
         return "x"
+
+[case testComplexAbs]
+from typing import Any
+from testutil import assertRaises, float_vals, FLOAT_MAGIC
+from complexabs import (
+    OverrideAbs, OverrideFloatAbs, PlainComplex, IntAbs, MagicAbs, BadAbs, RaisingAbs,
+)
+
+def complex_abs(z: complex) -> float:
+    return abs(z)
+
+def union_abs(x: float | complex) -> float:
+    return abs(x)
+
+def number_abs(x: int | complex) -> float:
+    return abs(x)
+
+def generic_abs(x: Any) -> Any:
+    return abs(x)
+
+def same(a: object, b: object) -> bool:
+    # Unlike ==, this distinguishes -0.0 from 0.0 and treats nan as equal to itself
+    return repr(a) == repr(b)
+
+def test_complex() -> None:
+    for re in float_vals:
+        for im in float_vals:
+            z = complex(re, im)
+            try:
+                expected = generic_abs(z)
+            except OverflowError:
+                for f in (complex_abs, union_abs, number_abs):
+                    with assertRaises(OverflowError, "absolute value too large"):
+                        f(z)
+            else:
+                assert same(complex_abs(z), expected)
+                assert same(union_abs(z), expected)
+                assert same(number_abs(z), expected)
+    assert complex_abs(3 - 4j) + 1.0 == 6.0
+    for z in [complex(1.5e308, 1.5e308), complex(-1.7e308, 1e308)]:
+        with assertRaises(OverflowError, "absolute value too large"):
+            complex_abs(z)
+        with assertRaises(OverflowError, "absolute value too large"):
+            union_abs(z)
+
+def test_float() -> None:
+    for x in float_vals:
+        assert same(complex_abs(x), generic_abs(x))
+        assert same(union_abs(x), generic_abs(x))
+
+def test_int() -> None:
+    # An int can be used where a complex is expected
+    for n in [0, 1, -1, -113, -(2**62), 2**100]:
+        assert complex_abs(n) == abs(n)
+        assert union_abs(n) == abs(n)
+        assert number_abs(n) == abs(n)
+    assert complex_abs(True) == 1
+
+def test_subclasses() -> None:
+    # Subclasses could override __abs__, so they call it
+    for f in (complex_abs, union_abs, number_abs):
+        assert same(f(OverrideAbs(1, 2)), 42.0)
+        assert same(f(PlainComplex(3, 4)), 5.0)
+        assert same(f(OverrideFloatAbs(-2.0)), 7.5)
+        assert f(IntAbs(1, 1)) == 3
+        # This result is the same as the error value of a C double
+        assert same(f(MagicAbs(1, 1)), FLOAT_MAGIC)
+
+def test_errors() -> None:
+    with assertRaises(ValueError, "no abs"):
+        complex_abs(RaisingAbs(1, 1))
+    # The result is converted to a float like when unboxing it
+    with assertRaises(TypeError, "float object expected; got str"):
+        complex_abs(BadAbs(1, 1))
+    with assertRaises(TypeError, "float object expected; got int"):
+        complex_abs(10**400)
+
+[file complexabs.py]
+from typing import Any
+
+class OverrideAbs(complex):
+    def __abs__(self) -> float:
+        return 42.0
+
+class OverrideFloatAbs(float):
+    def __abs__(self) -> float:
+        return 7.5
+
+class PlainComplex(complex):
+    pass
+
+class IntAbs(complex):
+    def __abs__(self) -> Any:
+        return 3
+
+class MagicAbs(complex):
+    def __abs__(self) -> float:
+        return -113.0
+
+class BadAbs(complex):
+    def __abs__(self) -> Any:
+        return "x"
+
+class RaisingAbs(complex):
+    def __abs__(self) -> float:
+        raise ValueError("no abs")
