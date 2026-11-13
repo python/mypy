@@ -39,6 +39,7 @@ from mypy.nodes import (
     SymbolTableNode,
     TempNode,
     TupleExpr,
+    TypeAlias,
     TypeApplication,
     TypeInfo,
     TypeVarExpr,
@@ -458,8 +459,8 @@ def _analyze_class(
             if isinstance(node, PlaceholderNode):
                 # This node is not ready yet.
                 continue
-            assert isinstance(node, Var), node
-            node.is_initialized_in_class = False
+            if isinstance(node, Var):
+                node.is_initialized_in_class = False
 
     # Traverse the MRO and collect attributes from the parents.
     taken_attr_names = set(own_attrs)
@@ -571,6 +572,18 @@ def _attributes_from_assignment(
                 if attr:
                     yield attr
             elif auto_attribs and stmt.type and stmt.new_syntax and not is_class_var(lhs):
+                name = unmangle(lhs.name)
+                sym = ctx.cls.info.names.get(name)
+                if sym is not None:
+                    node = sym.node
+                    if isinstance(node, TypeAlias):
+                        ctx.api.fail(
+                            "Type aliases inside attrs class definitions are not supported at runtime",
+                            node,
+                        )
+                        continue
+                    if not isinstance(node, Var):
+                        continue
                 yield _attribute_from_auto_attrib(ctx, class_kw_only, lhs, rvalue, stmt)
 
 
@@ -629,6 +642,14 @@ def _attribute_from_attrib_maker(
     stmt: AssignmentStmt,
 ) -> Attribute | None:
     """Return an Attribute from the assignment or None if you can't make one."""
+    name = unmangle(lhs.name)
+    sym = ctx.cls.info.names.get(name)
+    if sym is not None and isinstance(sym.node, TypeAlias):
+        ctx.api.fail(
+            "Type aliases inside attrs class definitions are not supported at runtime", sym.node
+        )
+        return None
+
     if auto_attribs and not stmt.new_syntax:
         # auto_attribs requires an annotation on *every* attr.ib.
         assert lhs.node is not None
