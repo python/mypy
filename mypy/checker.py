@@ -1040,6 +1040,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
             return
 
         max_overload_count = 50
+        max_expanded_count = 200
         if len(defn.items) >= max_overload_count:
             # Since the following is quadratic, we limit the size of the inner loop
             self.fail(message_registry.TOO_MANY_OVERLOADS, defn)
@@ -1058,20 +1059,37 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
             # decorator or if the implementation is untyped -- we gave up on the types.
             impl_type = self.extract_callable_type(inner_type, defn.impl)
 
+        current_class = self.scope.active_class()
+        type_vars = current_class.defn.type_vars if current_class else []
+        signatures: list[CallableType | None] = []
+        expanded_signatures: list[list[CallableType] | None] = []
+        expanded_count = 0
+        with state.strict_optional_set(True):
+            for item in defn.items:
+                assert isinstance(item, Decorator)
+                sig = self.extract_callable_type(item.var.type, item)
+                signatures.append(sig)
+                if sig is None:
+                    expanded_signatures.append(None)
+                    continue
+                sig_expanded = expand_callable_variants(detach_callable(sig, type_vars))
+                expanded_signatures.append(sig_expanded)
+                expanded_count += len(sig_expanded)
+        del item
+
+        if expanded_count >= max_expanded_count:
+            self.fail(message_registry.TOO_MANY_OVERLOADS, defn)
+
         is_descriptor_get = defn.info and defn.name == "__get__"
-        for i, item in enumerate(defn.items):
-            assert isinstance(item, Decorator)
-            sig1 = self.extract_callable_type(item.var.type, item)
+        for i, sig1 in enumerate(signatures):
             if sig1 is None:
                 continue
 
-            for j, item2 in enumerate(defn.items[i + 1 :]):
+            for j, sig2 in enumerate(signatures[i + 1 :]):
                 if j >= max_overload_count:
                     # Avoid quadratic blowup for large numbers of overloads.
                     break
 
-                assert isinstance(item2, Decorator)
-                sig2 = self.extract_callable_type(item2.var.type, item2)
                 if sig2 is None:
                     continue
 
@@ -1079,8 +1097,10 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                     continue
 
                 if overload_can_never_match(sig1, sig2):
-                    self.msg.overloaded_signature_will_never_match(i + 1, i + j + 2, item2.func)
-                elif not is_descriptor_get:
+                    ctx_item = defn.items[i + j + 1]
+                    assert isinstance(ctx_item, Decorator)
+                    self.msg.overloaded_signature_will_never_match(i + 1, i + j + 2, ctx_item.func)
+                elif not is_descriptor_get and expanded_count < max_expanded_count:
                     # Note: we force mypy to check overload signatures in strict-optional mode
                     # so we don't incorrectly report errors when a user tries typing an overload
                     # that happens to have a 'if the argument is None' fallback.
@@ -1094,19 +1114,22 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                     #     def foo(x: str) -> str: ...
                     #
                     # See Python 2's map function for a concrete example of this kind of overload.
-                    current_class = self.scope.active_class()
-                    type_vars = current_class.defn.type_vars if current_class else []
                     with state.strict_optional_set(True):
-                        if is_unsafe_overlapping_overload_signatures(sig1, sig2, type_vars):
+                        esig1 = expanded_signatures[i]
+                        esig2 = expanded_signatures[i + j + 1]
+                        assert esig1 is not None and esig2 is not None
+                        if is_unsafe_overlapping_overload_signatures(esig1, esig2, type_vars):
                             flip_note = (
                                 j == 0
                                 and not is_unsafe_overlapping_overload_signatures(
-                                    sig2, sig1, type_vars
+                                    esig2, esig1, type_vars
                                 )
                                 and not overload_can_never_match(sig2, sig1)
                             )
+                            ctx_item = defn.items[i]
+                            assert isinstance(ctx_item, Decorator)
                             self.msg.overloaded_signatures_overlap(
-                                i + 1, i + j + 2, flip_note, item.func
+                                i + 1, i + j + 2, flip_note, ctx_item.func
                             )
 
             if impl_type is not None:
@@ -9242,6 +9265,10 @@ def are_argument_counts_overlapping(t: CallableType, s: CallableType) -> bool:
 
 def expand_callable_variants(c: CallableType) -> list[CallableType]:
     """Expand a generic callable using all combinations of type variables' values/bounds."""
+    if not c.is_generic():
+        # Fast path.
+        return [c]
+
     for tv in c.variables:
         # We need to expand self-type before other variables, because this is the only
         # type variable that can have other type variables in the upper bound.
@@ -9250,10 +9277,6 @@ def expand_callable_variants(c: CallableType) -> list[CallableType]:
                 variables=[v for v in c.variables if not v.id.is_self()]
             )
             break
-
-    if not c.is_generic():
-        # Fast path.
-        return [c]
 
     tvar_values = []
     for tvar in c.variables:
@@ -9270,8 +9293,8 @@ def expand_callable_variants(c: CallableType) -> list[CallableType]:
 
 
 def is_unsafe_overlapping_overload_signatures(
-    signature: CallableType,
-    other: CallableType,
+    signature: CallableType | list[CallableType],
+    other: CallableType | list[CallableType],
     class_type_vars: list[TypeVarLikeType],
     partial_only: bool = True,
 ) -> bool:
@@ -9299,14 +9322,21 @@ def is_unsafe_overlapping_overload_signatures(
     # Try detaching callables from the containing class so that all TypeVars
     # are treated as being free, i.e. the signature is as seen from inside the class,
     # where "self" is not yet bound to anything.
-    signature = detach_callable(signature, class_type_vars)
-    other = detach_callable(other, class_type_vars)
+    if isinstance(signature, list):
+        signature_expanded = signature
+    else:
+        signature = detach_callable(signature, class_type_vars)
+        signature_expanded = expand_callable_variants(signature)
+
+    if isinstance(other, list):
+        other_expanded = other
+    else:
+        other = detach_callable(other, class_type_vars)
+        other_expanded = expand_callable_variants(other)
 
     # Note: We repeat this check twice in both directions compensate for slight
     # asymmetries in 'is_callable_compatible'.
-
-    other_expanded = expand_callable_variants(other)
-    for sig_variant in expand_callable_variants(signature):
+    for sig_variant in signature_expanded:
         for other_variant in other_expanded:
             # Using only expanded callables may cause false negatives, we can add
             # more variants (e.g. using inference between callables) in the future.
