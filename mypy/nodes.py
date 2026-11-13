@@ -2201,7 +2201,7 @@ class WithStmt(Statement):
 
 
 class MatchStmt(Statement):
-    __slots__ = ("subject", "subject_dummy", "patterns", "guards", "bodies")
+    __slots__ = ("subject", "subject_dummy", "patterns", "guards", "bodies", "is_exhaustive")
 
     __match_args__ = ("subject", "patterns", "guards", "bodies")
 
@@ -2210,6 +2210,10 @@ class MatchStmt(Statement):
     patterns: list[ConcretePattern]
     guards: list[Expression | None]
     bodies: list[Block]
+    # (Type checking may modify this flag repeatedly to indicate whether the match is
+    # exhaustive, i.e. whether the implicit fall-through after the last case is unreachable,
+    # considering the current type information.)
+    is_exhaustive: bool
 
     def __init__(
         self,
@@ -2225,6 +2229,7 @@ class MatchStmt(Statement):
         self.patterns = patterns
         self.guards = guards
         self.bodies = bodies
+        self.is_exhaustive = False
 
     def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_match_stmt(self)

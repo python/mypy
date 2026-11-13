@@ -424,6 +424,9 @@ class PossiblyUndefinedVariableVisitor(ExtendedTraverserVisitor):
             is_catchall = infer_pattern_value(pattern) == ALWAYS_TRUE
             if not is_catchall:
                 self.tracker.next_branch()
+                if o.is_exhaustive and i == len(o.patterns) - 1:
+                    # The match is exhaustive, so the implicit fall-through is unreachable.
+                    self.tracker.skip_branch()
         self.tracker.end_branch_statement()
 
     def visit_func_def(self, o: FuncDef) -> None:
