@@ -428,3 +428,16 @@ main:4:17: error: "list" expects 1 type argument, but 2 given
 main:5:10: error: "list" expects 1 type argument, but 2 given
     x2: list[list[int, int]]
              ^~~~~~~~~~~~~~
+
+[case testColumnNestedSubscriptArityErrorLine_old_parser]
+# The error must be reported at the nested subscript's line, matching the
+# native parser (https://github.com/python/mypy/issues/21480).
+from typing import List
+def foo() -> List[
+    str,
+    List[int, int],
+]:
+    return []
+[out]
+main:4:14: error: "list" expects 1 type argument, but 2 given
+main:6:5: error: "list" expects 1 type argument, but 2 given
