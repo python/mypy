@@ -623,3 +623,40 @@ L0:
     r3 = cast(union[int, float], r2)
     r4 = (r1, r3)
     return r4
+
+[case testComplexAbs]
+from typing import Any
+
+def complex_abs(z: complex) -> float:
+    return abs(z)
+def union_abs(x: float | complex) -> float:
+    return abs(x)
+def float_abs(x: float) -> float:
+    return abs(x)
+def any_abs(x: Any) -> float:
+    return abs(x)
+[out]
+def complex_abs(z):
+    z :: object
+    r0 :: float
+L0:
+    r0 = CPyComplex_Abs(z)
+    return r0
+def union_abs(x):
+    x :: union[float, object]
+    r0 :: float
+L0:
+    r0 = CPyComplex_Abs(x)
+    return r0
+def float_abs(x):
+    x, r0 :: float
+L0:
+    r0 = fabs(x)
+    return r0
+def any_abs(x):
+    x, r0 :: object
+    r1 :: float
+L0:
+    r0 = PyNumber_Absolute(x)
+    r1 = unbox(float, r0)
+    return r1
