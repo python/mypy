@@ -1979,6 +1979,43 @@ def b(value: bool) -> int:
         case False:
             return 3
 
+[case testMatchBoolLiteralSubjectExhaustive]
+# flags: --strict-equality --warn-unreachable
+def f() -> int:
+    match False:
+        case True:
+            return 1  # E: Statement is unreachable
+        case False:
+            return 0
+
+def g(c: bool) -> int:
+    match True if c else False:
+        case True:
+            return 1
+        case False:
+            return 0
+
+def h() -> int:
+    match False:
+        case True:
+            return 1  # E: Statement is unreachable
+        case False:
+            return 0
+        case other:
+            reveal_type(other)  # E: Statement is unreachable
+            return 2
+
+[case testBoolFinalFlagTruthinessNotNarrowedToKnownValue]
+# flags: --warn-unreachable
+from typing import Final
+
+DEBUG: Final = False
+
+def f() -> None:
+    if DEBUG:
+        x = 1
+[builtins fixtures/bool.pyi]
+
 [case testMatchMiscNonExhaustiveReturn]
 # flags: --strict-equality --warn-unreachable
 class C:
