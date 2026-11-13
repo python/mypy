@@ -484,6 +484,33 @@ method_op(
     error_kind=ERR_NEVER,
 )
 
+# str.islower()
+method_op(
+    name="islower",
+    arg_types=[str_rprimitive],
+    return_type=bool_rprimitive,
+    c_function_name="CPyStr_IsLower",
+    error_kind=ERR_NEVER,
+)
+
+# str.istitle()
+method_op(
+    name="istitle",
+    arg_types=[str_rprimitive],
+    return_type=bool_rprimitive,
+    c_function_name="CPyStr_IsTitle",
+    error_kind=ERR_NEVER,
+)
+
+# str.isupper()
+method_op(
+    name="isupper",
+    arg_types=[str_rprimitive],
+    return_type=bool_rprimitive,
+    c_function_name="CPyStr_IsUpper",
+    error_kind=ERR_NEVER,
+)
+
 
 # obj.decode()
 method_op(

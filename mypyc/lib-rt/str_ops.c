@@ -890,3 +890,98 @@ bool CPyStr_IsPrintable(PyObject *str) {
 #undef CPY_ASCII_ISPRINTABLE
 #undef CPY_STR_RETURN_ALL_CHARS
 #undef CPY_STR_CHECK_CHARS
+
+// Shared implementation of str.islower() and str.isupper(), mirroring CPython. There
+// must be at least one cased character, and no character may be titlecase or have
+// the opposite case.
+static inline bool CPyStr_IsCase(PyObject *str, bool lower) {
+    Py_ssize_t len = PyUnicode_GET_LENGTH(str);
+    bool cased = false;
+
+    // ASCII fast path (there are no titlecase characters in ASCII)
+    if (PyUnicode_IS_ASCII(str)) {
+        const Py_UCS1 *data = PyUnicode_1BYTE_DATA(str);
+        for (Py_ssize_t i = 0; i < len; i++) {
+            Py_UCS1 ch = data[i];
+            if (lower ? Py_ISUPPER(ch) : Py_ISLOWER(ch))
+                return false;
+            if (lower ? Py_ISLOWER(ch) : Py_ISUPPER(ch))
+                cased = true;
+        }
+        return cased;
+    }
+
+    int kind = PyUnicode_KIND(str);
+    const void *data = PyUnicode_DATA(str);
+    if (len == 1) {
+        Py_UCS4 ch = PyUnicode_READ(kind, data, 0);
+        return lower ? Py_UNICODE_ISLOWER(ch) : Py_UNICODE_ISUPPER(ch);
+    }
+    for (Py_ssize_t i = 0; i < len; i++) {
+        Py_UCS4 ch = PyUnicode_READ(kind, data, i);
+        if (Py_UNICODE_ISTITLE(ch) || (lower ? Py_UNICODE_ISUPPER(ch) : Py_UNICODE_ISLOWER(ch)))
+            return false;
+        if (!cased && (lower ? Py_UNICODE_ISLOWER(ch) : Py_UNICODE_ISUPPER(ch)))
+            cased = true;
+    }
+    return cased;
+}
+
+bool CPyStr_IsLower(PyObject *str) {
+    return CPyStr_IsCase(str, true);
+}
+
+bool CPyStr_IsUpper(PyObject *str) {
+    return CPyStr_IsCase(str, false);
+}
+
+// Mirrors CPython's str.istitle(). Uppercase and titlecase characters may only follow
+// uncased characters, lowercase characters may only follow cased characters, and
+// there must be at least one cased character.
+bool CPyStr_IsTitle(PyObject *str) {
+    Py_ssize_t len = PyUnicode_GET_LENGTH(str);
+    bool cased = false;
+    bool previous_is_cased = false;
+
+    // ASCII fast path (there are no titlecase characters in ASCII)
+    if (PyUnicode_IS_ASCII(str)) {
+        const Py_UCS1 *data = PyUnicode_1BYTE_DATA(str);
+        for (Py_ssize_t i = 0; i < len; i++) {
+            Py_UCS1 ch = data[i];
+            if (Py_ISUPPER(ch)) {
+                if (previous_is_cased)
+                    return false;
+                previous_is_cased = cased = true;
+            } else if (Py_ISLOWER(ch)) {
+                if (!previous_is_cased)
+                    return false;
+                previous_is_cased = cased = true;
+            } else {
+                previous_is_cased = false;
+            }
+        }
+        return cased;
+    }
+
+    int kind = PyUnicode_KIND(str);
+    const void *data = PyUnicode_DATA(str);
+    if (len == 1) {
+        Py_UCS4 ch = PyUnicode_READ(kind, data, 0);
+        return Py_UNICODE_ISTITLE(ch) || Py_UNICODE_ISUPPER(ch);
+    }
+    for (Py_ssize_t i = 0; i < len; i++) {
+        Py_UCS4 ch = PyUnicode_READ(kind, data, i);
+        if (Py_UNICODE_ISUPPER(ch) || Py_UNICODE_ISTITLE(ch)) {
+            if (previous_is_cased)
+                return false;
+            previous_is_cased = cased = true;
+        } else if (Py_UNICODE_ISLOWER(ch)) {
+            if (!previous_is_cased)
+                return false;
+            previous_is_cased = cased = true;
+        } else {
+            previous_is_cased = false;
+        }
+    }
+    return cased;
+}

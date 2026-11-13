@@ -1154,6 +1154,9 @@ static inline bool CPyStr_IsAscii(PyObject *str) {
 bool CPyStr_IsDecimal(PyObject *str);
 bool CPyStr_IsNumeric(PyObject *str);
 bool CPyStr_IsPrintable(PyObject *str);
+bool CPyStr_IsLower(PyObject *str);
+bool CPyStr_IsTitle(PyObject *str);
+bool CPyStr_IsUpper(PyObject *str);
 
 // Bytes operations
 

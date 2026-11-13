@@ -185,8 +185,8 @@ def dict_set_item(d: Dict[str, str]) -> None:
 def startswith(x: str) -> bool:
     return x.startswith('foo')
 
-def islower(x: str) -> bool:
-    return x.islower()  # A: Call non-native method "islower" (it may be defined in a non-native class, or decorated).
+def expandtabs(x: str) -> str:
+    return x.expandtabs()  # A: Call non-native method "expandtabs" (it may be defined in a non-native class, or decorated).
 
 [case testAnnotateSpecificStdlibFeatures]
 import functools
