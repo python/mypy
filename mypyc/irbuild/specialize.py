@@ -187,7 +187,9 @@ from mypyc.primitives.str_ops import (
 )
 from mypyc.primitives.tuple_ops import (
     isinstance_tuple,
+    new_tuple_set_item_grow_op,
     new_tuple_set_item_op,
+    new_tuple_set_size_op,
     tuple_hash_add_op,
     tuple_hash_finish_op,
     tuple_hash_int_op,
@@ -548,12 +550,18 @@ def translate_tuple_from_generator_call(
         len(expr.args) == 1
         and expr.arg_kinds[0] == ARG_POS
         and isinstance(expr.args[0], GeneratorExpr)
-        and can_preallocate_from_generator(builder, expr.args[0])
+        and can_preallocate_from_generator(builder, expr.args[0], resizable=True)
     ):
         gen = expr.args[0]
 
         def set_item(x: Value, y: Value, z: Value, line: int) -> None:
             builder.call_c(new_tuple_set_item_op, [x, y, z], line)
+
+        def set_item_grow(x: Value, y: Value, z: Value, line: int) -> Value:
+            return builder.call_c(new_tuple_set_item_grow_op, [x, y, z], line)
+
+        def set_size(x: Value, y: Value, line: int) -> Value:
+            return builder.call_c(new_tuple_set_size_op, [x, y], line)
 
         with comprehension_scope(builder, gen):
             return sequence_from_generator_preallocate_helper(
@@ -561,6 +569,8 @@ def translate_tuple_from_generator_call(
                 gen,
                 empty_op_llbuilder=builder.builder.new_tuple_with_length,
                 set_item_op=set_item,
+                append_op=set_item_grow,
+                set_size_op=set_size,
             )
     return None
 

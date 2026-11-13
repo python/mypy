@@ -1024,6 +1024,13 @@ PyObject *CPyList_GetItemShortBorrow(PyObject *list, CPyTagged index);
 PyObject *CPyList_GetItemInt64Borrow(PyObject *list, int64_t index);
 PyObject *CPyList_GetItemUInt64Borrow(PyObject *list, uint64_t index);
 void CPyList_SetItemUnsafe(PyObject *list, Py_ssize_t index, PyObject *value);
+
+// Reduce the size of a list that is being built using CPyList_SetItemUnsafe.
+// Items at or after the new size must not have been set.
+static inline void CPyList_SetSizeUnsafe(PyObject *list, Py_ssize_t size) {
+    Py_SET_SIZE(list, size);
+}
+
 PyObject *CPyList_Build(Py_ssize_t len, ...);
 PyObject *CPyList_PopLast(PyObject *obj);
 PyObject *CPyList_Pop(PyObject *obj, CPyTagged index);
@@ -1204,6 +1211,9 @@ static inline void CPySequenceTuple_SetItemUnsafe(PyObject *tuple, Py_ssize_t in
 {
     PyTuple_SET_ITEM(tuple, index, value);
 }
+
+PyObject *CPySequenceTuple_SetItemGrow(PyObject *tuple, Py_ssize_t index, PyObject *value);
+PyObject *CPySequenceTuple_SetSize(PyObject *tuple, Py_ssize_t size);
 
 // hash() of a fixed-length tuple, worked out from the hashes of its items without
 // building a tuple object. These are the steps of the tuple hash in CPython's

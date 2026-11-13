@@ -73,6 +73,27 @@ new_tuple_set_item_op = custom_op(
     steals=[False, False, True],
 )
 
+# Like new_tuple_set_item_op, but grow the tuple if the index is out of range.
+# Items before the index must have been set. Returns the resulting tuple.
+new_tuple_set_item_grow_op = custom_op(
+    arg_types=[tuple_rprimitive, c_pyssize_t_rprimitive, object_rprimitive],
+    return_type=tuple_rprimitive,
+    c_function_name="CPySequenceTuple_SetItemGrow",
+    error_kind=ERR_MAGIC,
+    steals=[True, False, True],
+)
+
+# Set the size of a tuple built using new_tuple_set_item_op or new_tuple_set_item_grow_op.
+# Items before the new size must have been set, and items after it must not have been set.
+# Returns the resulting tuple.
+new_tuple_set_size_op = custom_op(
+    arg_types=[tuple_rprimitive, c_pyssize_t_rprimitive],
+    return_type=tuple_rprimitive,
+    c_function_name="CPySequenceTuple_SetSize",
+    error_kind=ERR_MAGIC,
+    steals=[True, False],
+)
+
 # Construct tuple from a list.
 list_tuple_op = function_op(
     name="builtins.tuple",
