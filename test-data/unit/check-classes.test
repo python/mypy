@@ -9370,6 +9370,111 @@ a.foo = 1  # E: Incompatible types in assignment (expression has type "int", var
 reveal_type(a.foo)  # N: Revealed type is "builtins.int"
 [builtins fixtures/property.pyi]
 
+[case testPropertySetterTypeOperatorAssignment]
+from typing import Union
+
+class P:
+    def __iadd__(self, x: int) -> "P": ...
+class Q:
+    def __iadd__(self, x: int) -> "Q": ...
+
+class N:
+    @property
+    def a(self) -> P: ...
+    @a.setter
+    def a(self, v: P) -> None: ...
+
+    @property
+    def b(self) -> P: ...
+    @b.setter
+    def b(self, v: Union[P, Q]) -> None: ...
+
+    c: P
+
+    @property
+    def d(self) -> P: ...
+
+n = N()
+n.a += 1
+n.b += 1
+n.c += 1
+n.d += 1  # E: Property "d" defined in "N" is read-only
+n.a += ""  # E: Argument 1 to "__iadd__" of "P" has incompatible type "str"; expected "int"
+n.b += ""  # E: Argument 1 to "__iadd__" of "P" has incompatible type "str"; expected "int"
+[builtins fixtures/property.pyi]
+
+[case testPropertySetterTypeOperatorAssignmentInplaceMethodOnSetterType]
+class P:
+    def __iadd__(self, x: str) -> "P": ...
+class Q:
+    def __iadd__(self, x: int) -> "Q": ...
+
+class N:
+    @property
+    def a(self) -> P: ...
+    @a.setter
+    def a(self, v: Q) -> None: ...
+
+n = N()
+n.a += "x"  # E: Result type of + incompatible in assignment
+n.a += 1  # E: Result type of + incompatible in assignment \
+          # E: Argument 1 to "__iadd__" of "P" has incompatible type "int"; expected "str"
+[builtins fixtures/property.pyi]
+
+[case testPropertySetterTypeOperatorAssignmentNoInplaceMethod]
+class P:
+    def __add__(self, x: int) -> "P": ...
+class Q:
+    def __iadd__(self, x: int) -> "Q": ...
+
+class N:
+    @property
+    def a(self) -> P: ...
+    @a.setter
+    def a(self, v: P) -> None: ...
+
+    @property
+    def b(self) -> P: ...
+    @b.setter
+    def b(self, v: Q) -> None: ...
+
+n = N()
+n.a += 1
+n.b += 1  # E: Incompatible types in assignment (expression has type "P", variable has type "Q")
+[builtins fixtures/property.pyi]
+
+[case testDescriptorSetTypeOperatorAssignment]
+from typing import Any, Union, overload
+
+class P:
+    def __iadd__(self, x: int) -> "P": ...
+class Q: ...
+
+class Desc:
+    @overload
+    def __get__(self, obj: None, owner: Any) -> "Desc": ...
+    @overload
+    def __get__(self, obj: "M", owner: Any) -> P: ...
+    def __get__(self, obj: Union["M", None], owner: Any) -> Union[P, "Desc"]: ...
+    def __set__(self, obj: "M", v: Union[P, Q]) -> None: ...
+
+class Desc2:
+    @overload
+    def __get__(self, obj: None, owner: Any) -> "Desc2": ...
+    @overload
+    def __get__(self, obj: "M", owner: Any) -> P: ...
+    def __get__(self, obj: Union["M", None], owner: Any) -> Union[P, "Desc2"]: ...
+    def __set__(self, obj: "M", v: Q) -> None: ...
+
+class M:
+    d = Desc()
+    e = Desc2()
+
+m = M()
+m.d += 1
+m.e += 1  # E: Result type of + incompatible in assignment
+[builtins fixtures/property.pyi]
+
 [case testPropertyDeleterNoSetterOK]
 class C:
     @property
