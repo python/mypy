@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections import defaultdict
 from collections.abc import Callable, Sequence
 from typing import TYPE_CHECKING
 
@@ -167,7 +168,7 @@ class ArgTypeExpander:
         # Next tuple *args index to use.
         self.tuple_index = 0
         # Keyword arguments in TypedDict **kwargs used.
-        self.kwargs_used: set[str] | None = None
+        self.kwargs_used = defaultdict[TypedDictType, set[str]](set)
         # Type context for `*` and `**` arg kinds.
         self.context = context
 
@@ -241,15 +242,17 @@ class ArgTypeExpander:
             from mypy.subtypes import is_subtype
 
             if isinstance(actual_type, TypedDictType):
-                if self.kwargs_used is None:
-                    self.kwargs_used = set()
+                kwargs_used = self.kwargs_used[actual_type]
                 if formal_kind != nodes.ARG_STAR2 and formal_name in actual_type.items:
                     # Lookup type based on keyword argument name.
                     assert formal_name is not None
                 else:
-                    # Pick an arbitrary item if no specified keyword is expected.
-                    formal_name = (set(actual_type.items.keys()) - self.kwargs_used).pop()
-                self.kwargs_used.add(formal_name)
+                    try:
+                        # Pick an arbitrary item if no specified keyword is expected.
+                        formal_name = (set(actual_type.items.keys()) - kwargs_used).pop()
+                    except KeyError:
+                        return AnyType(TypeOfAny.from_error)
+                kwargs_used.add(formal_name)
                 return actual_type.items[formal_name]
             elif isinstance(actual_type, Instance) and is_subtype(
                 actual_type, self.context.mapping_type

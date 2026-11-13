@@ -965,6 +965,18 @@ class MessageBuilder:
             return
         self.fail(msg, context)
 
+    def duplicate_arguments_from_typed_dict(
+        self, callee: CallableType, names: Collection[str], context: Context
+    ) -> None:
+        if len(names) == 1:
+            msg = f'Duplicate argument "{next(iter(names))}"'
+        else:
+            args = '", "'.join(sorted(names))
+            msg = f'Duplicate arguments "{args}"'
+
+        msg += " from **args" + for_function(callee)
+        self.fail(msg, context)
+
     def too_many_positional_arguments(self, callee: CallableType, context: Context) -> None:
         if self.prefer_simple_messages():
             msg = "Too many positional arguments"

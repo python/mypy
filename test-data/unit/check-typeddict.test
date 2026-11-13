@@ -2048,14 +2048,19 @@ from typing import TypedDict
 
 A = TypedDict('A', {'x': int, 'y': str})
 B = TypedDict('B', {'x': str, 'y': str})
+C = TypedDict('C', {'x': str})
 
 def f(**kwargs: str) -> None: ...
 def g(x: int, **kwargs: str) -> None: ...
 
 a: A
 b: B
+c: C
 f(**a) # E: Argument 1 to "f" has incompatible type "**A"; expected "str"
 f(**b)
+f(**a, **a) # E: Duplicate arguments "x", "y" from **args for "f" \
+            # E: Argument 1 to "f" has incompatible type "**A"; expected "str"
+f(**b, **c) # E: Duplicate argument "x" from **args for "f"
 g(**a)
 g(**b) # E: Argument "x" to "g" has incompatible type "str"; expected "int"
 g(1, **a) # E: "g" gets multiple values for keyword argument "x"
