@@ -1812,6 +1812,27 @@ reveal_type(f(d))  # N: Revealed type is "builtins.list[builtins.int]"
 
 [builtins fixtures/list.pyi]
 
+[case testOverloadWithNestedAnyNotCausingAmbiguity]
+from typing import Any, Generic, TypeVar, overload
+T = TypeVar('T')
+
+class Box(Generic[T]): pass
+class SubBox(Box[T]): pass
+
+@overload
+def choose(value: SubBox[T]) -> SubBox[T]: ...
+@overload
+def choose(value: Box[T]) -> Box[T]: ...
+def choose(value): pass
+
+value: SubBox[Any]
+reveal_type(choose(value))  # N: Revealed type is "__main__.SubBox[Any]"
+reveal_type(choose(value=value))  # N: Revealed type is "__main__.SubBox[Any]"
+nested: SubBox[Box[Any]]
+reveal_type(choose(nested))  # N: Revealed type is "__main__.SubBox[__main__.Box[Any]]"
+any_value: Any
+reveal_type(choose(any_value))  # N: Revealed type is "Any"
+
 [case testOverloadWithOverlappingItemsAndAnyArgument10]
 from typing import overload, Any
 
