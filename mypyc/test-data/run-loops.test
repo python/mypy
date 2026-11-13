@@ -646,6 +646,43 @@ def test_nested_loop_same_index() -> None:
     nested_list()
     assert list(nested_yield()) == [0, 1, 2, 2, 0, 1, 2, 2, 0, 1, 2, 2]
 
+[case testForReversedAny]
+from typing import Any, NewType
+
+Numbers = NewType("Numbers", list[int])
+
+def reverse_list(values: list[Any]) -> list[Any]:
+    result: list[Any] = []
+    for item in reversed(values):
+        result.append(item)
+    return result
+
+def reverse_tuple(values: tuple[Any, ...]) -> list[Any]:
+    return [item for item in reversed(values)]
+
+def reverse_pairs(values: list[tuple[int, Any]]) -> list[tuple[int, Any]]:
+    return [(index, item) for index, item in reversed(values)]
+
+def reverse_dict(values: list[Any]) -> dict[Any, int]:
+    return {item: index for index, item in reversed(list(enumerate(values)))}
+
+def reverse_numbers(values: Numbers) -> list[int]:
+    result: list[int] = []
+    for item in reversed(values):
+        result.append(item)
+    return result
+
+def test_reversed_any() -> None:
+    assert reverse_list([1, "x", None]) == [None, "x", 1]
+    assert reverse_list([]) == []
+    assert reverse_tuple((1, "x", None)) == [None, "x", 1]
+    assert reverse_pairs([(1, "x"), (2, None)]) == [(2, None), (1, "x")]
+    assert reverse_dict(["a", "b"]) == {"b": 1, "a": 0}
+
+def test_reversed_newtype() -> None:
+    assert reverse_numbers(Numbers([1, 2, 3])) == [3, 2, 1]
+    assert reverse_numbers(Numbers([])) == []
+
 [case testLoopVariableAfterLoop]
 from typing import Iterator
 from mypy_extensions import i64

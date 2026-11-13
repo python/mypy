@@ -907,7 +907,9 @@ def make_for_loop_generator(
         ):
             # Special case "for x in reversed(<list>)".
             expr_reg = accept_loop_state(builder, expr.args[0], reassigned)
-            target_type = builder.get_sequence_type(expr)
+            # Analyze iterable item since reversed() may have type Any.
+            item_type = builder._analyze_iterable_item_type(expr)
+            target_type = builder.type_to_rtype(item_type)
 
             for_list = ForSequence(builder, index, body_block, loop_exit, line, nested)
             for_list.init(expr_reg, target_type, reverse=True)
