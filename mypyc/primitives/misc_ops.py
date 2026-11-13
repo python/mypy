@@ -344,6 +344,17 @@ type_op = function_op(
     error_kind=ERR_NEVER,
 )
 
+# type(x) for an int, without boxing x first. This is used by translate_type() in
+# irbuild/specialize.py, which checks for the exact type. As a function op it would
+# also match a union such as 'bool | int' and unbox it, so that type(True) would give int.
+type_of_int_op = custom_primitive_op(
+    name="builtins.type",
+    arg_types=[int_rprimitive],
+    c_function_name="CPyTagged_Type",
+    return_type=object_rprimitive,
+    error_kind=ERR_NEVER,
+)
+
 # Get 'builtins.type' (base class of all classes)
 type_object_op = load_address_op(name="builtins.type", type=object_rprimitive, src="PyType_Type")
 

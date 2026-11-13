@@ -1368,6 +1368,17 @@ static inline PyObject *CPy_TYPE(PyObject *obj) {
     return result;
 }
 
+// type() of an int, without boxing it
+static inline PyObject *CPyTagged_Type(CPyTagged x) {
+    // A short int boxes to an exact int, but a long int is an object that can
+    // be an instance of a subclass of int
+    if (likely(CPyTagged_CheckShort(x))) {
+        Py_INCREF(&PyLong_Type);
+        return (PyObject *)&PyLong_Type;
+    }
+    return CPy_TYPE(CPyTagged_LongAsObject(x));
+}
+
 PyObject *CPy_CalculateMetaclass(PyObject *type, PyObject *o);
 PyObject *CPyType_ResolveBases(PyObject *bases);
 PyObject *CPy_GetCoro(PyObject *obj);
