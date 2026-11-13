@@ -2282,6 +2282,19 @@ if isinstance(x, tuple):
 [builtins fixtures/tuple.pyi]
 [typing fixtures/typing-full.pyi]
 
+[case testPEP695TypeAliasUnionErrorDeduplicatesOverlappingItems]
+# Regression test for https://github.com/python/mypy/issues/22194
+# Overlapping aliases should not render as e.g. "str | str | None".
+type TextInput = str
+type ImageInput = str | None
+type SingleInput = TextInput | ImageInput
+
+def f(x: SingleInput) -> None: ...
+
+f(1)  # E: Argument 1 to "f" has incompatible type "int"; expected "str | None"
+[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-full.pyi]
+
 [case testPEP695MultipleTypeVarTuples]
 from typing import Generic
 from typing_extensions import TypeVarTuple, Unpack
