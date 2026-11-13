@@ -646,8 +646,7 @@ def _attribute_from_attrib_maker(
     sym = ctx.cls.info.names.get(name)
     if sym is not None and isinstance(sym.node, TypeAlias):
         ctx.api.fail(
-            "Type aliases inside attrs class definitions are not supported at runtime",
-            sym.node,
+            "Type aliases inside attrs class definitions are not supported at runtime", sym.node
         )
         return None
 
