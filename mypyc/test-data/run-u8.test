@@ -82,6 +82,9 @@ def test_simple_arithmetic_ops() -> None:
     assert -two == 254
     assert -neg_one == 1
     assert -zero == 0
+    assert abs(one) == 1
+    assert abs(neg_one) == 255
+    assert abs(zero) == 0
 
 def test_bitwise_ops() -> None:
     x: u8 = 184 + int()
