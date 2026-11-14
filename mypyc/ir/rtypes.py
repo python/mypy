@@ -278,7 +278,7 @@ class RPrimitive(RType):
         self.dependencies = dependencies
         if ctype == "CPyTagged":
             self.c_undefined = "CPY_INT_TAG"
-        elif ctype in ("int16_t", "int32_t", "int64_t"):
+        elif ctype in ("int8_t", "int16_t", "int32_t", "int64_t"):
             # This is basically an arbitrary value that is pretty
             # unlikely to overlap with a real value.
             self.c_undefined = "-113"
@@ -370,6 +370,16 @@ short_int_rprimitive: Final = RPrimitive(
 
 # Low level integer types (correspond to C integer types)
 
+int8_rprimitive: Final = RPrimitive(
+    "i8",
+    is_unboxed=True,
+    is_refcounted=False,
+    is_native_int=True,
+    is_signed=True,
+    ctype="int8_t",
+    size=1,
+    error_overlap=True,
+)
 int16_rprimitive: Final = RPrimitive(
     "i16",
     is_unboxed=True,
@@ -430,9 +440,6 @@ uint8_rprimitive: Final = RPrimitive(
     size=1,
     error_overlap=True,
 )
-
-# The following unsigned native int types (u64) are not
-# exposed to the user. They are for internal use within mypyc only.
 
 uint64_rprimitive: Final = RPrimitive(
     "u64",
@@ -616,6 +623,10 @@ def is_int16_rprimitive(rtype: RType) -> TypeGuard[RPrimitive]:
     return rtype is int16_rprimitive
 
 
+def is_int8_rprimitive(rtype: RType) -> TypeGuard[RPrimitive]:
+    return rtype is int8_rprimitive
+
+
 def is_int32_rprimitive(rtype: RType) -> TypeGuard[RPrimitive]:
     return rtype is int32_rprimitive or (
         rtype is c_pyssize_t_rprimitive and rtype._ctype == "int32_t"
@@ -633,6 +644,8 @@ def is_fixed_width_rtype(rtype: RType) -> TypeGuard[RPrimitive]:
         is_int64_rprimitive(rtype)
         or is_int32_rprimitive(rtype)
         or is_int16_rprimitive(rtype)
+        or is_int8_rprimitive(rtype)
+        or is_uint64_rprimitive(rtype)
         or is_uint32_rprimitive(rtype)
         or is_uint16_rprimitive(rtype)
         or is_uint8_rprimitive(rtype)
@@ -768,6 +781,10 @@ class TupleNameVisitor(RTypeVisitor[str]):
             return "4"  # "4 byte integer"
         elif t._ctype == "int16_t":
             return "2"  # "2 byte integer"
+        elif t._ctype == "int8_t":
+            return "1"  # "1 byte integer"
+        elif t._ctype == "uint64_t":
+            return "U8"
         elif t._ctype == "uint32_t":
             return "U4"
         elif t._ctype == "uint16_t":

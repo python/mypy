@@ -18,10 +18,11 @@ into a regular, owned reference that needs to freed before return.
 
 from __future__ import annotations
 
-from collections.abc import Iterable
+from collections.abc import Iterable, Set as AbstractSet
 
 from mypyc.analysis.dataflow import (
     AnalysisDict,
+    BitIndex,
     analyze_borrowed_arguments,
     analyze_live_regs,
     analyze_must_defined_regs,
@@ -67,9 +68,13 @@ def insert_ref_count_opcodes(ir: FuncIR) -> None:
 
     borrowed = {value for value in values if value.is_borrowed}
     args: set[Value] = set(ir.arg_regs)
-    live = analyze_live_regs(ir.blocks, cfg)
-    borrow = analyze_borrowed_arguments(ir.blocks, cfg, borrowed)
-    defined = analyze_must_defined_regs(ir.blocks, cfg, args, values, strict_errors=True)
+    # Share bit positions between the analyses, since we combine their results.
+    index: BitIndex[Value] = BitIndex()
+    live = analyze_live_regs(ir.blocks, cfg, index)
+    borrow = analyze_borrowed_arguments(ir.blocks, cfg, borrowed, index)
+    defined = analyze_must_defined_regs(
+        ir.blocks, cfg, args, values, strict_errors=True, index=index
+    )
     ordering = make_value_ordering(ir)
     cache: BlockCache = {}
     for block in ir.blocks.copy():
@@ -89,7 +94,7 @@ def insert_ref_count_opcodes(ir: FuncIR) -> None:
     cleanup_cfg(ir.blocks)
 
 
-def is_maybe_undefined(post_must_defined: set[Value], src: Value) -> bool:
+def is_maybe_undefined(post_must_defined: AbstractSet[Value], src: Value) -> bool:
     return (isinstance(src, Register) and src not in post_must_defined) or (
         isinstance(src, CallC) and src.returns_null
     )
@@ -211,9 +216,9 @@ def insert_branch_inc_and_decrefs(
 def after_branch_decrefs(
     label: BasicBlock,
     pre_live: AnalysisDict[Value],
-    source_defined: set[Value],
-    source_borrowed: set[Value],
-    source_live_regs: set[Value],
+    source_defined: AbstractSet[Value],
+    source_borrowed: AbstractSet[Value],
+    source_live_regs: AbstractSet[Value],
     ordering: dict[Value, int],
     omitted: Iterable[Value],
 ) -> tuple[tuple[Value, bool], ...]:
@@ -232,7 +237,7 @@ def after_branch_increfs(
     label: BasicBlock,
     pre_live: AnalysisDict[Value],
     pre_borrow: AnalysisDict[Value],
-    source_borrowed: set[Value],
+    source_borrowed: AbstractSet[Value],
     ordering: dict[Value, int],
 ) -> tuple[Value, ...]:
     target_pre_live = pre_live[label, 0]

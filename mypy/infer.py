@@ -9,12 +9,13 @@ from mypy.constraints import (
     SUBTYPE_OF,
     SUPERTYPE_OF,
     Constraint,
+    filter_imprecise_kinds,
     infer_constraints,
     infer_constraints_for_callable,
 )
 from mypy.nodes import ArgKind
 from mypy.solve import solve_constraints
-from mypy.types import CallableType, Instance, Type, TypeVarLikeType
+from mypy.types import CallableType, Instance, ParamSpecType, Type, TypeVarLikeType
 
 
 class ArgumentInferContext:
@@ -62,6 +63,9 @@ def infer_function_type_arguments(
     )
     if extra_constraints:
         constraints += extra_constraints
+        # Combining extra constraints may shadow precise constraints by imprecise ones.
+        if any(isinstance(v, ParamSpecType) for v in callee_type.variables):
+            constraints = filter_imprecise_kinds(constraints)
 
     # Solve constraints.
     type_vars = callee_type.variables

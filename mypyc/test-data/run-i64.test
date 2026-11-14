@@ -312,6 +312,16 @@ def test_i64_from_large_small_literal() -> None:
     assert x == 2**63 - 1
     x = i64(-2**63)
     assert x == -2**63
+    x = i64(9223372036854775807)
+    assert x == 2**63 - 1
+    assert int(x) == 2**63 - 1
+    x = i64(-9223372036854775808)
+    assert x == -2**63
+    assert int(x) == -2**63
+    y: i64 = 9223372036854775807
+    assert y == 2**63 - 1
+    y = -9223372036854775808
+    assert y == -2**63
 
 def from_float(x: float) -> i64:
     return i64(x)

@@ -59,6 +59,15 @@ CPyTagged CPyTagged_FromInt64(int64_t value) {
     }
 }
 
+CPyTagged CPyTagged_FromUInt64(uint64_t value) {
+    if (unlikely(value > CPY_TAGGED_MAX)) {
+        PyObject *object = PyLong_FromUnsignedLongLong(value);
+        return ((CPyTagged)object) | CPY_INT_TAG;
+    } else {
+        return ((CPyTagged)value) << 1;
+    }
+}
+
 CPyTagged CPyTagged_FromUInt32(uint32_t value) {
 #if SIZEOF_SIZE_T == 4
     // Only 32-bit platforms can have values that don't fit in a short int. Doing
@@ -524,6 +533,60 @@ void CPyInt32_Overflow() {
     PyErr_SetString(PyExc_ValueError, "int too large to convert to i32");
 }
 
+// i8 unboxing slow path
+int8_t CPyLong_AsInt8_(PyObject *o) {
+    int overflow;
+    long result = PyLong_AsLongAndOverflow(o, &overflow);
+    if (result > 0x7f || result < -0x80) {
+        overflow = 1;
+        result = -1;
+    }
+    if (result == -1) {
+        if (PyErr_Occurred()) {
+            return CPY_LL_INT_ERROR;
+        } else if (overflow) {
+            PyErr_SetString(PyExc_ValueError, "int too large to convert to i8");
+            return CPY_LL_INT_ERROR;
+        }
+    }
+    return result;
+}
+
+int8_t CPyInt8_Divide(int8_t x, int8_t y) {
+    if (y == 0) {
+        PyErr_SetString(PyExc_ZeroDivisionError, "integer division or modulo by zero");
+        return CPY_LL_INT_ERROR;
+    }
+    if (y == -1 && x == INT8_MIN) {
+        PyErr_SetString(PyExc_OverflowError, "integer division overflow");
+        return CPY_LL_INT_ERROR;
+    }
+    int8_t d = x / y;
+    if (((x < 0) != (y < 0)) && d * y != x) {
+        d--;
+    }
+    return d;
+}
+
+int8_t CPyInt8_Remainder(int8_t x, int8_t y) {
+    if (y == 0) {
+        PyErr_SetString(PyExc_ZeroDivisionError, "integer division or modulo by zero");
+        return CPY_LL_INT_ERROR;
+    }
+    if (y == -1 && x == INT8_MIN) {
+        return 0;
+    }
+    int8_t d = x % y;
+    if (((x < 0) != (y < 0)) && d != 0) {
+        d += y;
+    }
+    return d;
+}
+
+void CPyInt8_Overflow() {
+    PyErr_SetString(PyExc_ValueError, "int too large to convert to i8");
+}
+
 // i16 unboxing slow path
 int16_t CPyLong_AsInt16_(PyObject *o) {
     int overflow;
@@ -579,6 +642,23 @@ int16_t CPyInt16_Remainder(int16_t x, int16_t y) {
 
 void CPyInt16_Overflow() {
     PyErr_SetString(PyExc_ValueError, "int too large to convert to i16");
+}
+
+// u64 unboxing slow path
+uint64_t CPyLong_AsUInt64_(PyObject *o) {
+    unsigned long long result = PyLong_AsUnsignedLongLong(o);
+    if (result == (unsigned long long)-1 && PyErr_Occurred()) {
+        if (PyErr_ExceptionMatches(PyExc_OverflowError)) {
+            PyErr_Clear();
+            PyErr_SetString(PyExc_ValueError, "int too large or small to convert to u64");
+        }
+        return CPY_LL_UINT_ERROR;
+    }
+    return (uint64_t)result;
+}
+
+void CPyUInt64_Overflow() {
+    PyErr_SetString(PyExc_ValueError, "int too large or small to convert to u64");
 }
 
 // u32 unboxing slow path

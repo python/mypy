@@ -168,6 +168,23 @@ static inline size_t CPy_FindAttrOffset(PyTypeObject *trait, CPyVTableItem *vtab
 #define CPY_GET_METHOD_TRAIT(obj, trait, vtable_index, object_type, method_type) \
     ((method_type)(CPy_FindTraitVtable(trait, ((object_type *)obj)->vtable)[vtable_index]))
 
+// Clear the weak reference list of an object being deallocated, when the
+// weakreflist field is at a statically known location. Must be called from
+// tp_dealloc after PyObject_GC_UnTrack() and after running the finalizer.
+static inline void CPy_ClearWeakrefs(PyObject *obj, PyObject **weakreflist) {
+#ifdef Py_GIL_DISABLED
+    // The list can't be inspected without holding the per-object weakref lock,
+    // and PyObject_ClearWeakRefs() has its own fast path for an empty list.
+    (void)weakreflist;
+    PyObject_ClearWeakRefs(obj);
+#else
+    if (*weakreflist != NULL)
+        PyObject_ClearWeakRefs(obj);
+#endif
+}
+
+PyObject *CPy_GetWeakrefs(PyObject *obj, void *closure);
+
 
 // Int operations
 
@@ -175,6 +192,7 @@ static inline size_t CPy_FindAttrOffset(PyTypeObject *trait, CPyVTableItem *vtab
 CPyTagged CPyTagged_FromSsize_t(Py_ssize_t value);
 CPyTagged CPyTagged_FromVoidPtr(void *ptr);
 CPyTagged CPyTagged_FromInt64(int64_t value);
+CPyTagged CPyTagged_FromUInt64(uint64_t value);
 CPyTagged CPyTagged_FromUInt32(uint32_t value);
 PyObject *CPyTagged_AsObject(CPyTagged x);
 PyObject *CPyTagged_StealAsObject(CPyTagged x);
@@ -215,10 +233,16 @@ int32_t CPyLong_AsInt32_(PyObject *o);
 int32_t CPyInt32_Divide(int32_t x, int32_t y);
 int32_t CPyInt32_Remainder(int32_t x, int32_t y);
 void CPyInt32_Overflow(void);
+int8_t CPyLong_AsInt8_(PyObject *o);
+int8_t CPyInt8_Divide(int8_t x, int8_t y);
+int8_t CPyInt8_Remainder(int8_t x, int8_t y);
+void CPyInt8_Overflow(void);
 int16_t CPyLong_AsInt16_(PyObject *o);
 int16_t CPyInt16_Divide(int16_t x, int16_t y);
 int16_t CPyInt16_Remainder(int16_t x, int16_t y);
 void CPyInt16_Overflow(void);
+uint64_t CPyLong_AsUInt64_(PyObject *o);
+void CPyUInt64_Overflow(void);
 uint32_t CPyLong_AsUInt32_(PyObject *o);
 void CPyUInt32_Overflow(void);
 uint16_t CPyLong_AsUInt16_(PyObject *o);
@@ -462,6 +486,33 @@ static inline int16_t CPyLong_AsInt16(PyObject *o) {
     return CPyLong_AsInt16_(o);
 }
 
+static inline int8_t CPyLong_AsInt8(PyObject *o) {
+    if (likely(PyLong_Check(o))) {
+    #if CPY_3_12_FEATURES
+        PyLongObject *lobj = (PyLongObject *)o;
+        size_t tag = CPY_LONG_TAG(lobj);
+        if (likely(tag == (1 << CPY_NON_SIZE_BITS))) {
+            digit x = CPY_LONG_DIGIT(lobj, 0);
+            if (x < 0x80)
+                return x;
+        } else if (likely(tag == CPY_SIGN_ZERO)) {
+            return 0;
+        }
+    #else
+        PyLongObject *lobj = (PyLongObject *)o;
+        Py_ssize_t size = lobj->ob_base.ob_size;
+        if (likely(size == 1)) {
+            digit x = lobj->ob_digit[0];
+            if (x < 0x80)
+                return x;
+        } else if (likely(size == 0)) {
+            return 0;
+        }
+    #endif
+    }
+    return CPyLong_AsInt8_(o);
+}
+
 static inline uint32_t CPyLong_AsUInt32(PyObject *o) {
     if (likely(PyLong_Check(o))) {
     #if CPY_3_12_FEATURES
@@ -486,6 +537,29 @@ static inline uint32_t CPyLong_AsUInt32(PyObject *o) {
     }
     // Slow path
     return CPyLong_AsUInt32_(o);
+}
+
+static inline uint64_t CPyLong_AsUInt64(PyObject *o) {
+    if (likely(PyLong_Check(o))) {
+    #if CPY_3_12_FEATURES
+        PyLongObject *lobj = (PyLongObject *)o;
+        size_t tag = CPY_LONG_TAG(lobj);
+        if (likely(tag == (1 << CPY_NON_SIZE_BITS))) {
+            return CPY_LONG_DIGIT(lobj, 0);
+        } else if (likely(tag == CPY_SIGN_ZERO)) {
+            return 0;
+        }
+    #else
+        PyLongObject *lobj = (PyLongObject *)o;
+        Py_ssize_t size = lobj->ob_base.ob_size;
+        if (likely(size == 1)) {
+            return lobj->ob_digit[0];
+        } else if (likely(size == 0)) {
+            return 0;
+        }
+    #endif
+    }
+    return CPyLong_AsUInt64_(o);
 }
 
 static inline uint16_t CPyLong_AsUInt16(PyObject *o) {
@@ -850,6 +924,7 @@ static void CPy_LogGetAttr(const char *method, PyObject *obj, PyObject *attr) {
      PyObject_GetAttr((obj), (attr)))
 
 CPyTagged CPyObject_Hash(PyObject *o);
+Py_hash_t CPy_HashFromResult(PyObject *res);
 
 // Default identity-based hash (same as object.__hash__), used as tp_hash
 static inline Py_hash_t CPy_DefaultHash(PyObject *o) {
@@ -876,6 +951,8 @@ PyObject *CPyList_GetItemShort(PyObject *list, CPyTagged index);
 PyObject *CPyList_GetItemInt64(PyObject *list, int64_t index);
 bool CPyList_SetItem(PyObject *list, CPyTagged index, PyObject *value);
 bool CPyList_SetItemInt64(PyObject *list, int64_t index, PyObject *value);
+PyObject *CPyList_GetItemUInt64(PyObject *list, uint64_t index);
+bool CPyList_SetItemUInt64(PyObject *list, uint64_t index, PyObject *value);
 
 #else
 
@@ -924,12 +1001,37 @@ static inline bool CPyList_SetItemInt64(PyObject *list, int64_t index, PyObject 
     return PyList_SetItem(list, index, value) >= 0;
 }
 
+static inline PyObject *CPyList_GetItemUInt64(PyObject *list, uint64_t index) {
+    if (unlikely(index > (uint64_t)PY_SSIZE_T_MAX)) {
+        PyErr_SetString(PyExc_IndexError, "list index out of range");
+        return NULL;
+    }
+    return PyList_GetItemRef(list, (Py_ssize_t)index);
+}
+
+static inline bool CPyList_SetItemUInt64(PyObject *list, uint64_t index, PyObject *value) {
+    if (unlikely(index > (uint64_t)PY_SSIZE_T_MAX)) {
+        Py_DECREF(value);
+        PyErr_SetString(PyExc_IndexError, "list assignment index out of range");
+        return false;
+    }
+    return PyList_SetItem(list, (Py_ssize_t)index, value) >= 0;
+}
+
 #endif
 
 PyObject *CPyList_GetItemBorrow(PyObject *list, CPyTagged index);
 PyObject *CPyList_GetItemShortBorrow(PyObject *list, CPyTagged index);
 PyObject *CPyList_GetItemInt64Borrow(PyObject *list, int64_t index);
+PyObject *CPyList_GetItemUInt64Borrow(PyObject *list, uint64_t index);
 void CPyList_SetItemUnsafe(PyObject *list, Py_ssize_t index, PyObject *value);
+
+// Reduce the size of a list that is being built using CPyList_SetItemUnsafe.
+// Items at or after the new size must not have been set.
+static inline void CPyList_SetSizeUnsafe(PyObject *list, Py_ssize_t size) {
+    Py_SET_SIZE(list, size);
+}
+
 PyObject *CPyList_Build(Py_ssize_t len, ...);
 PyObject *CPyList_PopLast(PyObject *obj);
 PyObject *CPyList_Pop(PyObject *obj, CPyTagged index);
@@ -939,6 +1041,8 @@ PyObject *CPyList_Extend(PyObject *o1, PyObject *o2);
 int CPyList_Remove(PyObject *list, PyObject *obj);
 CPyTagged CPyList_Index(PyObject *list, PyObject *obj);
 PyObject *CPySequence_Sort(PyObject *seq);
+PyObject *CPySequence_Concat(PyObject *seq, PyObject *other);
+PyObject *CPySequence_InPlaceConcat(PyObject *seq, PyObject *other);
 PyObject *CPySequence_Multiply(PyObject *seq, CPyTagged t_size);
 PyObject *CPySequence_RMultiply(CPyTagged t_size, PyObject *seq);
 PyObject *CPySequence_InPlaceMultiply(PyObject *seq, CPyTagged t_size);
@@ -1037,12 +1141,23 @@ PyObject *CPy_Encode(PyObject *obj, PyObject *encoding, PyObject *errors);
 Py_ssize_t CPyStr_Count(PyObject *unicode, PyObject *substring, CPyTagged start);
 Py_ssize_t CPyStr_CountFull(PyObject *unicode, PyObject *substring, CPyTagged start, CPyTagged end);
 CPyTagged CPyStr_Ord(PyObject *obj);
+PyObject *CPyStr_Chr(CPyTagged n);
 PyObject *CPyStr_Multiply(PyObject *str, CPyTagged count);
 PyObject *CPyStr_Lower(PyObject *str);
 PyObject *CPyStr_Upper(PyObject *str);
 bool CPyStr_IsSpace(PyObject *str);
 bool CPyStr_IsAlnum(PyObject *str);
 bool CPyStr_IsDigit(PyObject *str);
+bool CPyStr_IsAlpha(PyObject *str);
+static inline bool CPyStr_IsAscii(PyObject *str) {
+    return PyUnicode_IS_ASCII(str);
+}
+bool CPyStr_IsDecimal(PyObject *str);
+bool CPyStr_IsNumeric(PyObject *str);
+bool CPyStr_IsPrintable(PyObject *str);
+bool CPyStr_IsLower(PyObject *str);
+bool CPyStr_IsTitle(PyObject *str);
+bool CPyStr_IsUpper(PyObject *str);
 
 // Bytes operations
 
@@ -1054,6 +1169,8 @@ PyObject *CPyBytes_Concat(PyObject *a, PyObject *b);
 PyObject *CPyBytes_Join(PyObject *sep, PyObject *iter);
 CPyTagged CPyBytes_Ord(PyObject *obj);
 PyObject *CPyBytes_Multiply(PyObject *bytes, CPyTagged count);
+PyObject *CPyBytes_RMultiply(CPyTagged count, PyObject *bytes);
+PyObject *CPyBytes_CheckResult(PyObject *res);
 int CPyBytes_Startswith(PyObject *self, PyObject *subobj);
 int CPyBytes_Endswith(PyObject *self, PyObject *subobj);
 int CPyBytes_Compare(PyObject *left, PyObject *right);
@@ -1099,6 +1216,62 @@ static inline void CPySequenceTuple_SetItemUnsafe(PyObject *tuple, Py_ssize_t in
     PyTuple_SET_ITEM(tuple, index, value);
 }
 
+PyObject *CPySequenceTuple_SetItemGrow(PyObject *tuple, Py_ssize_t index, PyObject *value);
+PyObject *CPySequenceTuple_SetSize(PyObject *tuple, Py_ssize_t size);
+
+// hash() of a fixed-length tuple, worked out from the hashes of its items without
+// building a tuple object. These are the steps of the tuple hash in CPython's
+// Objects/tupleobject.c (with the constants in Include/internal/pycore_tuple.h on
+// 3.14 and later), which has been the same since Python 3.8.
+
+#if SIZEOF_PY_UHASH_T > 4
+#define CPY_TUPLE_HASH_XXPRIME_1 ((Py_uhash_t)11400714785074694791ULL)
+#define CPY_TUPLE_HASH_XXPRIME_2 ((Py_uhash_t)14029467366897019727ULL)
+#define CPY_TUPLE_HASH_XXPRIME_5 ((Py_uhash_t)2870177450012600261ULL)
+#define CPY_TUPLE_HASH_XXROTATE(x) (((x) << 31) | ((x) >> 33))  // Rotate left 31 bits
+#else
+#define CPY_TUPLE_HASH_XXPRIME_1 ((Py_uhash_t)2654435761UL)
+#define CPY_TUPLE_HASH_XXPRIME_2 ((Py_uhash_t)2246822519UL)
+#define CPY_TUPLE_HASH_XXPRIME_5 ((Py_uhash_t)374761393UL)
+#define CPY_TUPLE_HASH_XXROTATE(x) (((x) << 13) | ((x) >> 19))  // Rotate left 13 bits
+#endif
+
+static inline Py_uhash_t CPyTupleHash_Start(void) {
+    return CPY_TUPLE_HASH_XXPRIME_5;
+}
+
+static inline Py_uhash_t CPyTupleHash_Add(Py_uhash_t acc, Py_hash_t item_hash) {
+    acc += (Py_uhash_t)item_hash * CPY_TUPLE_HASH_XXPRIME_2;
+    acc = CPY_TUPLE_HASH_XXROTATE(acc);
+    return acc * CPY_TUPLE_HASH_XXPRIME_1;
+}
+
+static inline Py_hash_t CPyTupleHash_Finish(Py_uhash_t acc, Py_ssize_t len) {
+    // Add the length, mangled to keep the historical value of hash(())
+    acc += len ^ (CPY_TUPLE_HASH_XXPRIME_5 ^ 3527539UL);
+    if (acc == (Py_uhash_t)-1) {
+        return 1546275796;
+    }
+    return (Py_hash_t)acc;
+}
+
+// The hash of an int item, the same as hash() gives for an int object
+static inline Py_hash_t CPyTupleHash_Int(CPyTagged x) {
+    if (likely(CPyTagged_CheckShort(x))) {
+        // An int hashes to its value modulo PyHASH_MODULUS, keeping its sign, except that
+        // -1 (which signals an error) becomes -2
+        Py_ssize_t value = CPyTagged_ShortAsSsize_t(x);
+        Py_uhash_t magnitude = value < 0 ? -(Py_uhash_t)value : (Py_uhash_t)value;
+        if (unlikely(magnitude >= PyHASH_MODULUS)) {
+            magnitude %= PyHASH_MODULUS;
+        }
+        Py_hash_t h = value < 0 ? -(Py_hash_t)magnitude : (Py_hash_t)magnitude;
+        return h == -1 ? -2 : h;
+    }
+    // This can't fail for an int
+    return PyObject_Hash(CPyTagged_LongAsObject(x));
+}
+
 
 // Exception operations
 
@@ -1140,6 +1313,7 @@ void CPy_Raise(PyObject *exc);
 void CPy_RaiseFrom(PyObject *exc, PyObject *cause);
 void CPy_Reraise(void);
 void CPyErr_SetObjectAndTraceback(PyObject *type, PyObject *value, PyObject *traceback);
+bool CPyGen_CheckThrowArgs(PyObject *type, PyObject *value, PyObject *traceback);
 tuple_T3OOO CPy_CatchError(void);
 void CPy_RestoreExcInfo(tuple_T3OOO info);
 bool CPy_ExceptionMatches(PyObject *type);
