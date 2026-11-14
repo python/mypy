@@ -1136,6 +1136,17 @@ L0:
     r0 = CPyStr_IsUpper(x)
     return r0
 
+[case testStrIsIdentifier]
+def is_identifier(x: str) -> bool:
+    return x.isidentifier()
+[out]
+def is_identifier(x):
+    x :: str
+    r0 :: bool
+L0:
+    r0 = CPyStr_IsIdentifier(x)
+    return r0
+
 [case testStrIndexEqLiteral_64bit]
 def is_comma(s: str, i: int) -> bool:
     return s[i] == ","

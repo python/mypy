@@ -1158,6 +1158,7 @@ bool CPyStr_IsPrintable(PyObject *str);
 bool CPyStr_IsLower(PyObject *str);
 bool CPyStr_IsTitle(PyObject *str);
 bool CPyStr_IsUpper(PyObject *str);
+bool CPyStr_IsIdentifier(PyObject *str);
 
 // Bytes operations
 

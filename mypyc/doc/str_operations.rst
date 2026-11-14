@@ -49,6 +49,7 @@ Methods
 * ``s.isascii()``
 * ``s.isdecimal()``
 * ``s.isdigit()``
+* ``s.isidentifier()``
 * ``s.islower()``
 * ``s.isnumeric()``
 * ``s.isprintable()``

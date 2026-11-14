@@ -1668,6 +1668,61 @@ def test_str_subclass() -> None:
 class S(str):
     pass
 
+[case testStrIsIdentifier]
+from typing import Any
+
+def check(s: str) -> None:
+    # Any forces generic dispatch, so we compare our primitive against CPython's
+    a: Any = s
+    assert s.isidentifier() == a.isidentifier(), f"isidentifier mismatch for {s!r}"
+
+def test_all_code_points() -> None:
+    # Covers the ASCII, UCS-1, UCS-2 and UCS-4 string kinds, and both the start
+    # and continuation positions. Check all BMP code points, and a sample of the
+    # others (checking all of them is slow).
+    for i in [*range(0x10000), *range(0x10000, 0x110000, 97), 0x10FFFF]:
+        c = chr(i)
+        check(c)
+        check("a" + c)
+
+def test_strings() -> None:
+    samples = [
+        "", "_", "__", "a", "abc", "ABC", "_abc_123", "abc_", "class", "None", "1", "1abc",
+        "abc-def", "a b", "abc!", "abc\n", "\u00e9t\u00e9", "\u00e9", "\u4e2d\u6587", "x\u0660",
+        "\u0660x", "x\u00b2", "\u2167", "\u212e", "\U00010400abc", "abc\U00010400",
+        "\U0001f600", "abc\u2000", "abc\u00a0",
+    ]
+    for s in samples:
+        check(s)
+        check(s + s)
+
+def test_isidentifier() -> None:
+    assert "abc".isidentifier()
+    assert "_".isidentifier()
+    assert "_abc_123".isidentifier()
+    assert "ABC".isidentifier()
+    assert "class".isidentifier()  # Keywords are identifiers
+    assert not "".isidentifier()
+    assert not "1abc".isidentifier()
+    assert not "abc-def".isidentifier()
+    assert not "a b".isidentifier()
+    assert "\u00e9t\u00e9".isidentifier()
+    assert "\u4e2d\u6587".isidentifier()
+    assert "x\u0660".isidentifier()
+    assert not "\u0660x".isidentifier()
+    assert "\U00010400abc".isidentifier()
+    assert not "\U0001f600".isidentifier()
+    assert not "abc\u2000".isidentifier()
+
+def test_str_subclass() -> None:
+    from strsubclass import S
+    assert S("abc").isidentifier()
+    assert not S("1abc").isidentifier()
+
+[file strsubclass.py]
+class S(str):
+    pass
+
 [case testStrIndexEqLiteralSpecialize]
 from testutil import assertRaises
 
