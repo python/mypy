@@ -85,6 +85,8 @@ from mypyc.ir.rtypes import (
     RType,
     RVec,
     is_bool_or_bit_rprimitive,
+    is_int8_rprimitive,
+    is_int16_rprimitive,
     is_int32_rprimitive,
     is_int64_rprimitive,
     is_int_rprimitive,
@@ -1191,6 +1193,10 @@ class FunctionEmitterVisitor(OpVisitor[None]):
             return "(uint32_t)"
         elif is_int64_rprimitive(type):
             return "(uint64_t)"
+        elif is_int16_rprimitive(type):
+            return "(uint16_t)"
+        elif is_int8_rprimitive(type):
+            return "(uint8_t)"
         else:
             return ""
 

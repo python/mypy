@@ -66,6 +66,8 @@ from mypyc.ir.rtypes import (
     c_pointer_rprimitive,
     cstring_rprimitive,
     dict_rprimitive,
+    int8_rprimitive,
+    int16_rprimitive,
     int32_rprimitive,
     int64_rprimitive,
     int_rprimitive,
@@ -1050,6 +1052,16 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
             ComparisonOp(self.i64, self.i64_1, ComparisonOp.ULT, 1),
             """cpy_r_r0 = (uint64_t)cpy_r_i64 < (uint64_t)cpy_r_i64_1;""",
         )
+        i8 = Register(int8_rprimitive, "i8")
+        i16 = Register(int16_rprimitive, "i16")
+        self.assert_emit(
+            ComparisonOp(i8, Integer(5, int8_rprimitive), ComparisonOp.ULT, 1),
+            """cpy_r_r0 = (uint8_t)cpy_r_i8 < (uint8_t)5;""",
+        )
+        self.assert_emit(
+            ComparisonOp(i16, Integer(5, int16_rprimitive), ComparisonOp.UGE, 1),
+            """cpy_r_r0 = (uint16_t)cpy_r_i16 >= (uint16_t)5;""",
+        )
 
         # object type
         self.assert_emit(
@@ -1233,6 +1245,15 @@ else {
 
     def test_extend(self) -> None:
         a = Register(int32_rprimitive, "a")
+        i8 = Register(int8_rprimitive, "i8")
+        self.assert_emit(Extend(i8, int64_rprimitive, signed=True), """cpy_r_r0 = cpy_r_i8;""")
+        self.assert_emit(
+            Extend(i8, int64_rprimitive, signed=False), """cpy_r_r0 = (uint8_t)cpy_r_i8;"""
+        )
+        i16 = Register(int16_rprimitive, "i16")
+        self.assert_emit(
+            Extend(i16, int32_rprimitive, signed=False), """cpy_r_r0 = (uint16_t)cpy_r_i16;"""
+        )
         self.assert_emit(Extend(a, int64_rprimitive, signed=True), """cpy_r_r0 = cpy_r_a;""")
         self.assert_emit(
             Extend(a, int64_rprimitive, signed=False), """cpy_r_r0 = (uint32_t)cpy_r_a;"""
