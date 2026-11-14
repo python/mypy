@@ -3387,7 +3387,13 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
 
             self.accept(s)
             # Clear expression caches after each statement to avoid unlimited growth.
-            self.expr_checker.reset()
+            # Don't do this for statements in a lambda body: a lambda is often checked
+            # several times as an argument of an enclosing generic call, and clearing the
+            # caches there makes checking nested calls with lambda arguments exponential.
+            # This is safe: the expression cache is never used inside lambdas, and the
+            # freshen cache is meant to be reused for the same call within a statement.
+            if not self.expr_checker.in_lambda_expr:
+                self.expr_checker.reset()
 
     def should_report_unreachable_issues(self) -> bool:
         return (

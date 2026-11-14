@@ -3104,8 +3104,8 @@ reveal_type(dec3(lambda x: x[0]))  # N: Revealed type is "def [S] (S`6) -> S`6"
 reveal_type(dec4(lambda x: [x]))  # N: Revealed type is "def [S] (S`9) -> S`9"
 reveal_type(dec1(lambda x: 1))  # N: Revealed type is "def (builtins.int) -> builtins.list[builtins.int]"
 reveal_type(dec5(lambda x: x))  # N: Revealed type is "def (builtins.int) -> builtins.list[builtins.int]"
-reveal_type(dec3(lambda x: x))  # N: Revealed type is "def [S] (S`17) -> builtins.list[S`17]"
-reveal_type(dec4(lambda x: x))  # N: Revealed type is "def [T] (builtins.list[T`21]) -> T`21"
+reveal_type(dec3(lambda x: x))  # N: Revealed type is "def [S] (S`15) -> builtins.list[S`15]"
+reveal_type(dec4(lambda x: x))  # N: Revealed type is "def [T] (builtins.list[T`19]) -> T`19"
 dec4_bound(lambda x: x)  # E: Value of type variable "I" of "dec4_bound" cannot be "list[T]"
 [builtins fixtures/list.pyi]
 
@@ -3789,3 +3789,21 @@ class C:
 # The type variable id below must be small (say under a hundred).
 reveal_type(C().meth)  # N: Revealed type is "def [S] (x: S`91) -> S`91"
 [builtins fixtures/tuple.pyi]
+
+[case testExpressionCacheWorksInNestedCallWithLambdas]
+from typing import Callable, Optional, TypeVar
+
+T = TypeVar("T")
+S = TypeVar("S")
+
+def r(xs: list[T], fn: Callable[[T], S]) -> list[S]: ...
+
+x: list[Optional[object]] = r(r(r(r(r(r(r(r([1], lambda a: a), lambda a: a), lambda a: a), lambda a: a), lambda a: a), lambda a: a), lambda a: a), lambda a: a)
+reveal_type(r(r(r(r(r(r(r(r([1], lambda a: a), lambda a: a), lambda a: a), lambda a: a), lambda a: a), lambda a: a), lambda a: a), lambda a: a))  # N: Revealed type is "builtins.list[builtins.int]"
+
+class C:
+    def meth(self, x: S) -> S: ...
+
+# The type variable id below must be small (say under a hundred).
+reveal_type(C().meth)  # N: Revealed type is "def [S] (x: S`35) -> S`35"
+[builtins fixtures/list.pyi]
