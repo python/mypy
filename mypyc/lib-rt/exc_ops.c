@@ -292,7 +292,6 @@ void CPy_TypeError(const char *expected, PyObject *value) {
 // which is available in all the versions we support.
 // We're continuing to use this because we'll probably optimize this later.
 void CPy_AddTraceback(const char *filename, const char *funcname, int line, PyObject *globals) {
-    PyObject *exc, *val, *tb;
     PyThreadState *thread_state = PyThreadState_GET();
     PyFrameObject *frame_obj;
 
@@ -302,7 +301,12 @@ void CPy_AddTraceback(const char *filename, const char *funcname, int line, PyOb
     // needs to do it because it decodes the filename according to the
     // FS encoding, which could have a decoder in Python. We don't do
     // that so *that* doesn't apply to us.)
+#if CPY_3_12_FEATURES
+    PyObject *exc = PyErr_GetRaisedException();
+#else
+    PyObject *exc, *val, *tb;
     PyErr_Fetch(&exc, &val, &tb);
+#endif
     PyCodeObject *code_obj = PyCode_NewEmpty(filename, funcname, line);
     if (code_obj == NULL) {
         goto error;
@@ -314,7 +318,11 @@ void CPy_AddTraceback(const char *filename, const char *funcname, int line, PyOb
         goto error;
     }
     frame_obj->f_lineno = line;
+#if CPY_3_12_FEATURES
+    PyErr_SetRaisedException(exc);
+#else
     PyErr_Restore(exc, val, tb);
+#endif
     PyTraceBack_Here(frame_obj);
     Py_DECREF(code_obj);
     Py_DECREF(frame_obj);

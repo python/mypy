@@ -741,3 +741,45 @@ except RuntimeError as e:
     assert str(e) == "No active exception to reraise"
 else:
     assert False
+
+[case testTracebackFrameCreationError]
+# Adding a traceback entry fails if looking up "__builtins__" in the module
+# globals raises. The original exception must then be the context of the new one.
+from typing import Any
+
+from traceback_helper import BadKey
+
+def raise_value_error() -> None:
+    raise ValueError("x")
+
+def call_with_bad_global() -> BaseException:
+    g: Any = globals()
+    key = BadKey()
+    g[key] = 1
+    try:
+        raise_value_error()
+    except Exception as e:
+        return e
+    finally:
+        del g[key]
+    assert False
+
+def test_original_exception_is_context() -> None:
+    e = call_with_bad_global()
+    assert isinstance(e, RuntimeError)
+    chain = []
+    c: BaseException | None = e
+    while c is not None:
+        chain.append(c)
+        c = c.__context__
+    assert all(isinstance(x, BaseException) for x in chain)
+    assert isinstance(chain[-1], ValueError)
+    assert str(chain[-1]) == "x"
+
+[file traceback_helper.py]
+class BadKey:
+    def __hash__(self) -> int:
+        return hash("__builtins__")
+
+    def __eq__(self, other: object) -> bool:
+        raise RuntimeError("eq")
