@@ -1953,6 +1953,8 @@ def check_weakref_target(builder: IRBuilder, expr: CallExpr, callee: RefExpr) ->
     Native classes only support weak references if requested explicitly, so a
     weakref.ref() or weakref.proxy() call would fail at runtime. This is best effort:
     we only detect calls where the argument has a precise native class type.
+    Interpreted subclasses always support weak references, so the call may succeed
+    if the class allows interpreted subclasses.
 
     This doesn't generate any code, so translation continues as usual.
     """
@@ -1962,6 +1964,7 @@ def check_weakref_target(builder: IRBuilder, expr: CallExpr, callee: RefExpr) ->
             isinstance(rtype, RInstance)
             and not rtype.class_ir.is_trait
             and not rtype.class_ir.supports_weakrefs()
+            and not rtype.class_ir.allow_interpreted_subclasses
         ):
             builder.error(
                 "Cannot create weak reference to instance of native class "
