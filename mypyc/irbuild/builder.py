@@ -1405,9 +1405,10 @@ class IRBuilder:
         """
         if final_var.final_value is not None:  # this is safe even for non-native names
             value = final_var.final_value
-            if isinstance(value, int):
+            if isinstance(value, int) and not isinstance(value, bool):
                 # mypy evaluates Final initializers such as "-X" using int semantics,
-                # but unsigned native ints wrap around
+                # but unsigned native ints wrap around. (Skip bools, since the helper
+                # returns a plain int when compiled.)
                 value = wrap_unsigned_native_int(self.type_to_rtype(typ), value)
             return self.load_literal_value(value, line)
         elif is_native and not is_local and module_prefix(self.graph, fullname):
