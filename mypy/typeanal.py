@@ -2915,6 +2915,16 @@ class TypeVarDefaultTranslator(TrivialSyntheticTypeTranslator):
         return t
 
 
+# Native int types that librt.vecs supports as vec item types (there is a specialized
+# vec type for each of these)
+VEC_NATIVE_INT_ITEM_NAMES: Final = (
+    "mypy_extensions.i64",
+    "mypy_extensions.i32",
+    "mypy_extensions.i16",
+    "mypy_extensions.u8",
+)
+
+
 def check_vec_type_args(
     args: tuple[Type, ...] | list[Type], ctx: Context, api: SemanticAnalyzerCoreInterface
 ) -> bool:
@@ -2930,6 +2940,13 @@ def check_vec_type_args(
         if isinstance(arg, Instance):
             if arg.type.fullname == "builtins.int":
                 # A fixed-width integer such as 'i64' must be used instead of plain 'int'
+                ok = False
+            elif (
+                arg.type.fullname in MYPYC_NATIVE_INT_NAMES
+                and arg.type.fullname not in VEC_NATIVE_INT_ITEM_NAMES
+            ):
+                # librt.vecs has no specialized vec for this native int type, and
+                # a generic vec can't hold its values
                 ok = False
         elif isinstance(arg, UnionType):
             non_optional = None

@@ -38,6 +38,8 @@ for these *value item types*:
 
 ``int`` is not a valid item type, since it has an arbitrary precision, and vec is an
 efficiency-focused type. Use one of the fixed-length integer types instead.
+The other native integer types (``i8``, ``u16``, ``u32`` and ``u64``) aren't supported
+as item types yet.
 
 Class item types (e.g. ``str`` or ``MyNativeClass``) are represented as regular object references.
 Optional class item types (e.g. ``str | None``) are supported for convenience, but arbitrary

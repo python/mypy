@@ -403,6 +403,27 @@ main:5: error: Invalid item type for "vec"
 main:6: error: Invalid item type for "vec"
 main:7: error: Invalid item type for "vec"
 
+[case testVecTCheckNativeIntItemType]
+from librt.vecs import vec
+from mypy_extensions import i64, i32, i16, i8, u64, u32, u16, u8
+
+def bad1(v: vec[i8]) -> None: pass
+def bad2(v: vec[u16]) -> None: pass
+def bad3(v: vec[u32]) -> None: pass
+def bad4(v: vec[u64]) -> None: pass
+def bad5(v: vec[vec[u64]]) -> None: pass
+def bad6() -> None:
+    vec[u64]()
+
+def ok1(v: vec[i64], v2: vec[i32], v3: vec[i16], v4: vec[u8]) -> None: pass
+[out]
+main:4: error: Invalid item type for "vec"
+main:5: error: Invalid item type for "vec"
+main:6: error: Invalid item type for "vec"
+main:7: error: Invalid item type for "vec"
+main:8: error: Invalid item type for "vec"
+main:10: error: Invalid item type for "vec"
+
 [case testVecTCreateWithCap_64bit]
 from librt.vecs import vec
 from mypy_extensions import i64
