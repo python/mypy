@@ -158,7 +158,7 @@ def test_unicode() -> None:
 
 [case testStringOps]
 from typing import List, Optional, Tuple
-from testutil import assertRaises
+from testutil import assertRaises, SSIZE_T_LONG, SSIZE_T_MAX
 
 def do_split(s: str, sep: Optional[str] = None, max_split: Optional[int] = None) -> List[str]:
     if sep is not None:
@@ -269,7 +269,7 @@ def test_getitem() -> None:
         getitem(s, 4)
     with assertRaises(IndexError, "string index out of range"):
         getitem(s, -4)
-    for n in (2**62, -2**62 - 1, 2**63 - 1, -2**63):
+    for n in (SSIZE_T_LONG, -SSIZE_T_LONG - 1, SSIZE_T_MAX, -SSIZE_T_MAX - 1):
         with assertRaises(IndexError, "string index out of range"):
             getitem(s, n)
     for n in (2**63, -2**63 - 1, 2**100, -2**100):
@@ -901,7 +901,7 @@ def test_chr_errors() -> None:
             chr(n + int())
 
 [case testOrd]
-from testutil import assertRaises
+from testutil import assertRaises, SSIZE_T_LONG, SSIZE_T_MAX
 from mypy_extensions import i64, i32, i16, u8
 
 def test_ord() -> None:
@@ -975,7 +975,7 @@ def test_ord_str_index() -> None:
     with assertRaises(IndexError, "string index out of range"):
         ord(s_empty[-1 + int()])
 
-    for n in (2**62, -2**62 - 1, 2**63 - 1, -2**63):
+    for n in (SSIZE_T_LONG, -SSIZE_T_LONG - 1, SSIZE_T_MAX, -SSIZE_T_MAX - 1):
         with assertRaises(IndexError, "string index out of range"):
             ord(s1[n + int()])
     for n in (2**63, -2**63 - 1, 2**100, -2**100):
@@ -1686,7 +1686,7 @@ class S(str):
     pass
 
 [case testStrIndexEqLiteralSpecialize]
-from testutil import assertRaises
+from testutil import assertRaises, SSIZE_T_LONG, SSIZE_T_MAX
 
 # The specializer fires on the AST shape `IndexExpr == StrLiteral` (or the
 # symmetric swap, and `!=`). The literal has to be a real source-level
@@ -1745,7 +1745,7 @@ def test_out_of_range_raises_indexerror() -> None:
         eq_comma(s, 3)
     with assertRaises(IndexError):
         eq_comma(s, -4)
-    for n in (2**62, -2**62 - 1, 2**63 - 1, -2**63):
+    for n in (SSIZE_T_LONG, -SSIZE_T_LONG - 1, SSIZE_T_MAX, -SSIZE_T_MAX - 1):
         with assertRaises(IndexError, "string index out of range"):
             eq_comma(s, n)
     for n in (2**63, -2**63 - 1, 2**100, -2**100):
