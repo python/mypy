@@ -331,6 +331,9 @@ def tuple_get(a: tuple[int, ...], i: u64) -> int:
 def str_get(s: str, i: u64) -> str:
     return s[i]
 
+def bytes_get(b: bytes, i: u64) -> int:
+    return b[i]
+
 def test_index_with_u64() -> None:
     a = [1, 2, 3]
     assert list_get(a, 0) == 1
@@ -357,6 +360,14 @@ def test_index_with_u64() -> None:
         tuple_get((1, 2, 3), 2**63)
     with assertRaises(OverflowError):
         str_get("abc", 2**64 - 1)
+    assert bytes_get(b"abc", 0) == 97
+    assert bytes_get(b"abc", 2) == 99
+    for n in (3, 2**63 - 1):
+        with assertRaises(IndexError, "index out of range"):
+            bytes_get(b"abc", n)
+    for n in (2**63, 2**64 - 1):
+        with assertRaises(ValueError, "int too large to convert to i64"):
+            bytes_get(b"abc", n)
 
 def test_tuple_u64() -> None:
     a: u64 = 1

@@ -229,6 +229,7 @@ PyObject *CPyBool_Str(bool b);
 int64_t CPyLong_AsInt64_(PyObject *o);
 int64_t CPyInt64_Divide(int64_t x, int64_t y);
 int64_t CPyInt64_Remainder(int64_t x, int64_t y);
+void CPyInt64_Overflow(void);
 int32_t CPyLong_AsInt32_(PyObject *o);
 int32_t CPyInt32_Divide(int32_t x, int32_t y);
 int32_t CPyInt32_Remainder(int32_t x, int32_t y);

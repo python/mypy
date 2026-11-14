@@ -174,6 +174,7 @@ from mypyc.primitives.int_ops import (
     int32_overflow,
     int64_divide_op,
     int64_mod_op,
+    int64_overflow,
     int64_to_int_op,
     int_to_int32_op,
     int_to_int64_op,
@@ -547,6 +548,15 @@ class LowLevelIRBuilder:
                 else:
                     # Extend to larger type
                     return self.add(Extend(src, target_type, target_type.is_signed, line))
+            elif (
+                isinstance(src_type, RPrimitive)
+                and isinstance(target_type, RPrimitive)
+                and src_type.is_native_int
+                and target_type.is_native_int
+                and not src_type.is_signed
+                and target_type.is_signed
+            ):
+                return self.coerce_unsigned_to_signed(src, target_type, line)
             elif is_int64_rprimitive(src_type) and is_c_py_ssize_t_rprimitive(target_type):
                 return self.coerce_i64_to_ssize_t(src, line)
             elif is_bool_or_bit_rprimitive(src_type) and is_tagged(target_type):
@@ -767,7 +777,9 @@ class LowLevelIRBuilder:
 
     def emit_fixed_width_overflow_error(self, target_type: RType, line: int) -> None:
         """Emit overflow error for fixed-width type conversion."""
-        if is_int32_rprimitive(target_type):
+        if is_int64_rprimitive(target_type):
+            self.call_c(int64_overflow, [], line)
+        elif is_int32_rprimitive(target_type):
             self.call_c(int32_overflow, [], line)
         elif is_int16_rprimitive(target_type):
             self.call_c(int16_overflow, [], line)
@@ -925,6 +937,26 @@ class LowLevelIRBuilder:
 
         self.activate_block(end)
         return res
+
+    def coerce_unsigned_to_signed(self, src: Value, target_type: RPrimitive, line: int) -> Value:
+        """Coerce an unsigned native int to a signed native int, preserving the value.
+
+        Raise ValueError if the value doesn't fit in the target type.
+        """
+        assert isinstance(src.type, RPrimitive), src.type
+        if src.type.size < target_type.size:
+            # Every value fits in the target type
+            return self.add(Extend(src, target_type, signed=False, line=line))
+        max_value = (1 << (target_type.size * 8 - 1)) - 1
+        overflow, end = BasicBlock(), BasicBlock()
+        in_range = self.add(
+            ComparisonOp(src, Integer(max_value, src.type), ComparisonOp.ULE, line)
+        )
+        self.add(Branch(in_range, end, overflow, Branch.BOOL, line))
+        self.activate_block(overflow)
+        self.emit_fixed_width_overflow_error(target_type, line)
+        self.activate_block(end)
+        return self.add(Truncate(src, target_type, line))
 
     def coerce_nullable(self, src: Value, target_type: RType, line: int) -> Value:
         """Generate a coercion from a potentially null value."""

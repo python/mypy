@@ -301,6 +301,16 @@ def test_explicit_conversion_from_float() -> None:
         # One ulp below the lowest valid i64 value
         from_float(float(-1.0))
 
+def bytes_get(b: bytes, i: u32) -> int:
+    return b[i]
+
+def test_bytes_index_with_u32() -> None:
+    assert bytes_get(b"abc", 0) == 97
+    assert bytes_get(b"abc", 2) == 99
+    for n in (3, 2**31, 2**32 - 1):
+        with assertRaises(IndexError, "index out of range"):
+            bytes_get(b"abc", n)
+
 def test_tuple_u32() -> None:
     a: u32 = 1
     b: u32 = 2
