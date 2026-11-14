@@ -2124,6 +2124,30 @@ class C:
         reveal_type(self.x)  # N: Revealed type is "builtins.int | None"
         reveal_type(self.y)  # N: Revealed type is "builtins.int | None"
 
+[case testPartialNoneTypeNonLiteralNone]
+x = None if bool() else None
+y = (z := None)
+for w in [None]: pass
+
+def f() -> None:
+    global x, y, z, w
+    if bool():
+        x = y = z = w = 1
+    reveal_type(x)  # N: Revealed type is "builtins.int | None"
+    reveal_type(y)  # N: Revealed type is "builtins.int | None"
+    reveal_type(z)  # N: Revealed type is "builtins.int | None"
+    reveal_type(w)  # N: Revealed type is "builtins.int | None"
+
+class C:
+    x = None if bool() else None
+    y = (t := None)
+    def f(self) -> None:
+        if bool():
+            self.x = self.y = 1
+        reveal_type(self.x)  # N: Revealed type is "builtins.int | None"
+        reveal_type(self.y)  # N: Revealed type is "builtins.int | None"
+[builtins fixtures/list.pyi]
+
 [case testAttributePartiallyInitializedToNone]
 class A:
     def f(self) -> None:
