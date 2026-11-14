@@ -1574,6 +1574,7 @@ def translate_ord(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value 
                     str_adjust_index_op,
                     str_range_check_op,
                     str_get_item_unsafe_as_int_op,
+                    "string index out of range",
                 )
                 return result
 
@@ -1750,6 +1751,7 @@ def translate_getitem_with_bounds_check(
     adjust_index_op: PrimitiveDescription,
     range_check_op: PrimitiveDescription,
     get_item_unsafe_op: PrimitiveDescription,
+    index_error_msg: str = "index out of range",
 ) -> Value | None:
     """Shared helper for optimized __getitem__ with bounds checking.
 
@@ -1797,9 +1799,7 @@ def translate_getitem_with_bounds_check(
 
     # Handle invalid index - raise IndexError
     builder.activate_block(invalid_block)
-    builder.add(
-        RaiseStandardError(RaiseStandardError.INDEX_ERROR, "index out of range", ctx_expr.line)
-    )
+    builder.add(RaiseStandardError(RaiseStandardError.INDEX_ERROR, index_error_msg, ctx_expr.line))
     builder.add(Unreachable())
 
     # Handle valid index - get the item
@@ -1822,6 +1822,7 @@ def translate_bytes_writer_get_item(
         bytes_writer_adjust_index_op,
         bytes_writer_range_check_op,
         bytes_writer_get_item_unsafe_op,
+        "BytesWriter index out of range",
     )
 
 
@@ -1862,7 +1863,9 @@ def translate_bytes_writer_set_item(
     # Handle invalid index - raise IndexError
     builder.activate_block(invalid_block)
     builder.add(
-        RaiseStandardError(RaiseStandardError.INDEX_ERROR, "index out of range", ctx_expr.line)
+        RaiseStandardError(
+            RaiseStandardError.INDEX_ERROR, "BytesWriter index out of range", ctx_expr.line
+        )
     )
     builder.add(Unreachable())
 
@@ -1888,6 +1891,7 @@ def translate_string_writer_get_item(
         string_writer_adjust_index_op,
         string_writer_range_check_op,
         string_writer_get_item_unsafe_op,
+        "StringWriter index out of range",
     )
 
 

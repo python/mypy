@@ -960,23 +960,23 @@ def test_ord_str_index() -> None:
     assert ord(s5[-2 + int()]) == 128512
     assert ord(s5[-3 + int()]) == 97
 
-    with assertRaises(IndexError, "index out of range"):
+    with assertRaises(IndexError, "string index out of range"):
         ord(s1[5 + int()])
-    with assertRaises(IndexError, "index out of range"):
+    with assertRaises(IndexError, "string index out of range"):
         ord(s1[100 + int()])
-    with assertRaises(IndexError, "index out of range"):
+    with assertRaises(IndexError, "string index out of range"):
         ord(s1[-6 + int()])
-    with assertRaises(IndexError, "index out of range"):
+    with assertRaises(IndexError, "string index out of range"):
         ord(s1[-100 + int()])
 
     s_empty = ""
-    with assertRaises(IndexError, "index out of range"):
+    with assertRaises(IndexError, "string index out of range"):
         ord(s_empty[0 + int()])
-    with assertRaises(IndexError, "index out of range"):
+    with assertRaises(IndexError, "string index out of range"):
         ord(s_empty[-1 + int()])
 
     for n in (2**62, -2**62 - 1, 2**63 - 1, -2**63):
-        with assertRaises(IndexError, "index out of range"):
+        with assertRaises(IndexError, "string index out of range"):
             ord(s1[n + int()])
     for n in (2**63, -2**63 - 1, 2**100, -2**100):
         with assertRaises(IndexError, "cannot fit 'int' into an index-sized integer"):
@@ -996,11 +996,11 @@ def test_ord_str_index_i64() -> None:
     assert ord(s[idx_i64_neg]) == 111  # 'o'
 
     idx_overflow: i64 = 10 + int()
-    with assertRaises(IndexError, "index out of range"):
+    with assertRaises(IndexError, "string index out of range"):
         ord(s[idx_overflow])
 
     idx_underflow: i64 = -10 + int()
-    with assertRaises(IndexError, "index out of range"):
+    with assertRaises(IndexError, "string index out of range"):
         ord(s[idx_underflow])
 
 def test_ord_str_index_unicode_mix() -> None:
@@ -1746,7 +1746,7 @@ def test_out_of_range_raises_indexerror() -> None:
     with assertRaises(IndexError):
         eq_comma(s, -4)
     for n in (2**62, -2**62 - 1, 2**63 - 1, -2**63):
-        with assertRaises(IndexError, "index out of range"):
+        with assertRaises(IndexError, "string index out of range"):
             eq_comma(s, n)
     for n in (2**63, -2**63 - 1, 2**100, -2**100):
         with assertRaises(IndexError, "cannot fit 'int' into an index-sized integer"):
