@@ -599,8 +599,21 @@ class LowLevelIRBuilder:
             return tmp
         return src
 
-    def coerce_int_to_fixed_width(self, src: Value, target_type: RType, line: int) -> Value:
+    def coerce_int_to_fixed_width(
+        self,
+        src: Value,
+        target_type: RType,
+        line: int,
+        *,
+        slow_path_op: CFunctionDescription | None = None,
+    ) -> Value:
+        """Coerce a tagged int to a fixed-width native int.
+
+        If slow_path_op is given, use it instead of the default primitive to convert
+        an int that isn't a short int (only supported for i64 targets).
+        """
         assert is_fixed_width_rtype(target_type), target_type
+        assert slow_path_op is None or is_int64_rprimitive(target_type), target_type
         assert isinstance(target_type, RPrimitive), target_type
 
         fast, slow, overflow, end = BasicBlock(), BasicBlock(), BasicBlock(), BasicBlock()
@@ -650,7 +663,9 @@ class LowLevelIRBuilder:
             )
             ptr2 = Register(c_pointer_rprimitive)
             self.add(Assign(ptr2, ptr))
-            if is_int64_rprimitive(target_type):
+            if slow_path_op is not None:
+                conv_op = slow_path_op
+            elif is_int64_rprimitive(target_type):
                 conv_op = int_to_int64_op
             elif is_uint64_rprimitive(target_type):
                 conv_op = int_to_uint64_op

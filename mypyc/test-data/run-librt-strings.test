@@ -100,6 +100,14 @@ def test_bytes_writer_get_item() -> None:
         w[1 << 50]
     with assertRaises(IndexError):
         w[-(1 << 50)]
+    for n in (1 << 62, -(1 << 62) - 1):
+        with assertRaises(IndexError, "index out of range"):
+            w[n + int()]
+    for n in (1 << 63, -(1 << 63) - 1, 1 << 100):
+        with assertRaises(IndexError, "cannot fit 'int' into an index-sized integer"):
+            w[n + int()]
+    with assertRaises(IndexError, "cannot fit 'int' into an index-sized integer"):
+        w[1 << 63]
 
 def test_bytes_writer_set_item() -> None:
     w = BytesWriter()
@@ -118,6 +126,14 @@ def test_bytes_writer_set_item() -> None:
         w[1 << 50] = 0
     with assertRaises(IndexError):
         w[-(1 << 50)] = 0
+    for n in (1 << 62, -(1 << 62) - 1):
+        with assertRaises(IndexError, "index out of range"):
+            w[n + int()] = 0
+    for n in (1 << 63, -(1 << 63) - 1, 1 << 100):
+        with assertRaises(IndexError, "cannot fit 'int' into an index-sized integer"):
+            w[n + int()] = 0
+    with assertRaises(IndexError, "cannot fit 'int' into an index-sized integer"):
+        w[1 << 63] = 0
 
     with assertRaises(ValueError):
         w[0] = int() - 1
@@ -1146,6 +1162,12 @@ def test_string_writer_get_item() -> None:
         w[1 << 50]
     with assertRaises(IndexError):
         w[-(1 << 50)]
+    for n in (1 << 62, -(1 << 62) - 1):
+        with assertRaises(IndexError, "index out of range"):
+            w[n + int()]
+    for n in (1 << 63, -(1 << 63) - 1, 1 << 100):
+        with assertRaises(IndexError, "cannot fit 'int' into an index-sized integer"):
+            w[n + int()]
 
     # Kind 2 (UCS-2)
     w2 = StringWriter()

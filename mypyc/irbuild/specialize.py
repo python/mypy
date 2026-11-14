@@ -149,6 +149,7 @@ from mypyc.primitives.generic_ops import generic_setattr, setup_object
 from mypyc.primitives.int_ops import (
     int_to_big_endian_op,
     int_to_bytes_op,
+    int_to_index_op,
     int_to_little_endian_op,
     isinstance_int,
 )
@@ -1730,6 +1731,17 @@ def specialize_int_to_bytes(builder: IRBuilder, expr: CallExpr, callee: RefExpr)
     )
 
 
+def coerce_int_index_to_int64(builder: IRBuilder, index: Value, line: int) -> Value:
+    """Coerce an int index to i64 for the specialized item access primitives.
+
+    Like CPython, raise IndexError (instead of ValueError, as a regular
+    coercion would) if the index doesn't fit in Py_ssize_t.
+    """
+    return builder.builder.coerce_int_to_fixed_width(
+        index, int64_rprimitive, line, slow_path_op=int_to_index_op
+    )
+
+
 def translate_getitem_with_bounds_check(
     builder: IRBuilder,
     base_expr: Expression,
@@ -1768,6 +1780,8 @@ def translate_getitem_with_bounds_check(
 
     # Get the index argument
     index = builder.accept(args[0])
+    if is_int_rprimitive(index.type):
+        index = coerce_int_index_to_int64(builder, index, ctx_expr.line)
 
     # Adjust the index (handle negative indices)
     adjusted_index = builder.primitive_op(adjust_index_op, [obj, index], ctx_expr.line)
@@ -1826,6 +1840,8 @@ def translate_bytes_writer_set_item(
     # Get the index and value arguments
     index = builder.accept(args[0])
     value = builder.accept(args[1])
+    if is_int_rprimitive(index.type):
+        index = coerce_int_index_to_int64(builder, index, ctx_expr.line)
 
     # Adjust the index (handle negative indices)
     adjusted_index = builder.primitive_op(

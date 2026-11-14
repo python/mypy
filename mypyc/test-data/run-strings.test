@@ -269,6 +269,12 @@ def test_getitem() -> None:
         getitem(s, 4)
     with assertRaises(IndexError, "string index out of range"):
         getitem(s, -4)
+    for n in (2**62, -2**62 - 1, 2**63 - 1, -2**63):
+        with assertRaises(IndexError, "string index out of range"):
+            getitem(s, n)
+    for n in (2**63, -2**63 - 1, 2**100, -2**100):
+        with assertRaises(IndexError, "cannot fit 'int' into an index-sized integer"):
+            getitem(s, n)
 
 def test_getitem_unicode() -> None:
     # ASCII - cached by CPython's Latin-1 table
@@ -968,6 +974,17 @@ def test_ord_str_index() -> None:
         ord(s_empty[0 + int()])
     with assertRaises(IndexError, "index out of range"):
         ord(s_empty[-1 + int()])
+
+    for n in (2**62, -2**62 - 1, 2**63 - 1, -2**63):
+        with assertRaises(IndexError, "index out of range"):
+            ord(s1[n + int()])
+    for n in (2**63, -2**63 - 1, 2**100, -2**100):
+        with assertRaises(IndexError, "cannot fit 'int' into an index-sized integer"):
+            ord(s1[n + int()])
+    with assertRaises(IndexError, "cannot fit 'int' into an index-sized integer"):
+        ord(s1[2**63])
+    with assertRaises(IndexError, "cannot fit 'int' into an index-sized integer"):
+        ord(s1[-2**63 - 1])
 
 def test_ord_str_index_i64() -> None:
     s = "hello"
@@ -1728,6 +1745,12 @@ def test_out_of_range_raises_indexerror() -> None:
         eq_comma(s, 3)
     with assertRaises(IndexError):
         eq_comma(s, -4)
+    for n in (2**62, -2**62 - 1, 2**63 - 1, -2**63):
+        with assertRaises(IndexError, "index out of range"):
+            eq_comma(s, n)
+    for n in (2**63, -2**63 - 1, 2**100, -2**100):
+        with assertRaises(IndexError, "cannot fit 'int' into an index-sized integer"):
+            eq_comma(s, n)
 
 [case testStrOpsOverridingSubclass]
 from strsub import StrOverride

@@ -353,10 +353,15 @@ def test_index_with_u64() -> None:
     with assertRaises(IndexError):
         str_get("abc", 3)
     # Index too large for a short int takes the slow conversion path
-    with assertRaises(OverflowError):
-        tuple_get((1, 2, 3), 2**63)
-    with assertRaises(OverflowError):
-        str_get("abc", 2**64 - 1)
+    with assertRaises(IndexError, "tuple index out of range"):
+        tuple_get((1, 2, 3), 2**62)
+    with assertRaises(IndexError, "string index out of range"):
+        str_get("abc", 2**62)
+    for n in (2**63, 2**64 - 1):
+        with assertRaises(IndexError, "cannot fit 'int' into an index-sized integer"):
+            tuple_get((1, 2, 3), n)
+        with assertRaises(IndexError, "cannot fit 'int' into an index-sized integer"):
+            str_get("abc", n)
 
 def test_tuple_u64() -> None:
     a: u64 = 1
