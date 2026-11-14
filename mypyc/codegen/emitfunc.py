@@ -1189,14 +1189,14 @@ class FunctionEmitterVisitor(OpVisitor[None]):
             return ""
 
     def emit_unsigned_int_cast(self, type: RType) -> str:
-        if is_int32_rprimitive(type):
+        if is_int8_rprimitive(type):
+            return "(uint8_t)"
+        elif is_int16_rprimitive(type):
+            return "(uint16_t)"
+        elif is_int32_rprimitive(type):
             return "(uint32_t)"
         elif is_int64_rprimitive(type):
             return "(uint64_t)"
-        elif is_int16_rprimitive(type):
-            return "(uint16_t)"
-        elif is_int8_rprimitive(type):
-            return "(uint8_t)"
         else:
             return ""
 
