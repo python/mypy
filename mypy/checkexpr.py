@@ -211,11 +211,7 @@ from mypy.types import (
     remove_dups,
     split_with_prefix_and_suffix,
 )
-from mypy.types_utils import (
-    is_overlapping_none,
-    is_self_type_like,
-    remove_optional,
-)
+from mypy.types_utils import is_overlapping_none, is_self_type_like, remove_optional
 from mypy.typestate import type_state
 from mypy.typevars import fill_typevars
 from mypy.visitor import ExpressionVisitor
