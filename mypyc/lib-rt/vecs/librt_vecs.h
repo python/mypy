@@ -264,31 +264,31 @@ typedef struct _VecNestedObject {
 } VecNestedObject;
 
 
-#ifndef MYPYC_DECLARED_tuple_T2V88
-#define MYPYC_DECLARED_tuple_T2V88
-typedef struct tuple_T2V88 {
+#ifndef MYPYC_DECLARED_tuple_T2VS8S8
+#define MYPYC_DECLARED_tuple_T2VS8S8
+typedef struct tuple_T2VS8S8 {
     VecI64 f0;
     int64_t f1;
-} tuple_T2V88;
-static tuple_T2V88 tuple_undefined_T2V88 = { { -1, NULL } , 0 };
+} tuple_T2VS8S8;
+static tuple_T2VS8S8 tuple_undefined_T2VS8S8 = { { -1, NULL } , 0 };
 #endif
 
-#ifndef MYPYC_DECLARED_tuple_T2V44
-#define MYPYC_DECLARED_tuple_T2V44
-typedef struct tuple_T2V44 {
+#ifndef MYPYC_DECLARED_tuple_T2VS4S4
+#define MYPYC_DECLARED_tuple_T2VS4S4
+typedef struct tuple_T2VS4S4 {
     VecI32 f0;
     int32_t f1;
-} tuple_T2V44;
-static tuple_T2V44 tuple_undefined_T2V44 = { { -1, NULL } , 0 };
+} tuple_T2VS4S4;
+static tuple_T2VS4S4 tuple_undefined_T2VS4S4 = { { -1, NULL } , 0 };
 #endif
 
-#ifndef MYPYC_DECLARED_tuple_T2V22
-#define MYPYC_DECLARED_tuple_T2V22
-typedef struct tuple_T2V22 {
+#ifndef MYPYC_DECLARED_tuple_T2VS2S2
+#define MYPYC_DECLARED_tuple_T2VS2S2
+typedef struct tuple_T2VS2S2 {
     VecI16 f0;
     int16_t f1;
-} tuple_T2V22;
-static tuple_T2V22 tuple_undefined_T2V22 = { { -1, NULL } , 0 };
+} tuple_T2VS2S2;
+static tuple_T2VS2S2 tuple_undefined_T2VS2S2 = { { -1, NULL } , 0 };
 #endif
 
 #ifndef MYPYC_DECLARED_tuple_T2VU1U1
@@ -318,9 +318,9 @@ typedef struct tuple_T2VCC {
 static tuple_T2VCC tuple_undefined_T2VCC = { { -1, NULL } , 0 };
 #endif
 
-typedef tuple_T2V88 VecI64PopResult;
-typedef tuple_T2V44 VecI32PopResult;
-typedef tuple_T2V22 VecI16PopResult;
+typedef tuple_T2VS8S8 VecI64PopResult;
+typedef tuple_T2VS4S4 VecI32PopResult;
+typedef tuple_T2VS2S2 VecI16PopResult;
 typedef tuple_T2VU1U1 VecU8PopResult;
 typedef tuple_T2VFF VecFloatPopResult;
 typedef tuple_T2VCC VecBoolPopResult;
