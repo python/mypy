@@ -284,6 +284,34 @@ def test_negate_literal() -> None:
     assert div_neg_literal(65535) == 1
     assert div_neg_literal(5) == 0
 
+ONE_FINAL: Final[u16] = 1
+MAX_FINAL: Final[u16] = 65535
+NEG_ONE_FINAL: Final[u16] = -ONE_FINAL
+
+class FinalAttrs:
+    TWO: Final[u16] = 2
+
+def neg_final() -> u16:
+    return -ONE_FINAL
+
+def neg_final_to_int() -> int:
+    return -ONE_FINAL
+
+def test_final_wraparound() -> None:
+    one: u16 = 1 + int()
+    max_val: u16 = 65535 + int()
+    assert -ONE_FINAL == -one == 65535
+    assert neg_final() == 65535
+    assert neg_final_to_int() == 65535
+    assert ONE_FINAL - 2 == one - 2 == 65535
+    assert ~ONE_FINAL == ~one == 65534
+    assert MAX_FINAL + 1 == max_val + 1 == 0
+    assert MAX_FINAL * 2 == max_val * 2 == 65534
+    assert (ONE_FINAL - 2) // 2 == (one - 2) // 2 == 32767
+    assert -ONE_FINAL >> 1 == -one >> 1 == 32767
+    assert -FinalAttrs.TWO == -(one * 2) == 65534
+    assert NEG_ONE_FINAL == 65535
+
 def test_u16_truncate_from_i64() -> None:
     large = i64(2**32 + 65536 + 157 + int())
     x = u16(large)

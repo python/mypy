@@ -134,6 +134,7 @@ from mypyc.ir.rtypes import (
     pointer_rprimitive,
     short_int_rprimitive,
     str_rprimitive,
+    wrap_unsigned_native_int,
 )
 from mypyc.irbuild.util import concrete_arg_kind
 from mypyc.irbuild.vec import vec_contains, vec_get_item, vec_len_native
@@ -2181,11 +2182,7 @@ class LowLevelIRBuilder:
         typ = value.type
         if isinstance(value, Integer):
             # TODO: Signed overflow?
-            result = -value.numeric_value()
-            if is_fixed_width_rtype(typ) and not typ.is_signed:
-                # Unsigned negation wraps around, like at runtime
-                result &= (1 << (typ.size * 8)) - 1
-            return Integer(result, typ, line)
+            return Integer(wrap_unsigned_native_int(typ, -value.numeric_value()), typ, line)
         elif isinstance(value, Float):
             return Float(-value.value, line)
         elif is_fixed_width_rtype(typ):

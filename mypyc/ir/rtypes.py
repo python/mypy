@@ -1416,6 +1416,18 @@ def check_native_int_range(rtype: RPrimitive, n: int) -> bool:
         return -limit <= n < limit
 
 
+def wrap_unsigned_native_int(rtype: RType, n: int) -> int:
+    """Wrap n around to the range of rtype if it's an unsigned native int type.
+
+    Unsigned native int arithmetic wraps around on overflow at runtime, so
+    compile-time evaluation must do the same (e.g. -u64(1) is 2**64 - 1).
+    Return n unchanged for other types.
+    """
+    if is_fixed_width_rtype(rtype) and not rtype.is_signed:
+        return n & ((1 << (8 * rtype.size)) - 1)
+    return n
+
+
 # Buffers for vec item types that have a packed representation
 #
 # Note that the 'items' fields are variable-length arrays, and mypyc IR isn't

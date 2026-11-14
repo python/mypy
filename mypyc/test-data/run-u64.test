@@ -313,6 +313,34 @@ def test_negate_literal() -> None:
     assert div_neg_literal(18446744073709551615) == 1
     assert div_neg_literal(5) == 0
 
+ONE_FINAL: Final[u64] = 1
+MAX_FINAL: Final[u64] = 18446744073709551615
+NEG_ONE_FINAL: Final[u64] = -ONE_FINAL
+
+class FinalAttrs:
+    TWO: Final[u64] = 2
+
+def neg_final() -> u64:
+    return -ONE_FINAL
+
+def neg_final_to_int() -> int:
+    return -ONE_FINAL
+
+def test_final_wraparound() -> None:
+    one: u64 = 1 + int()
+    max_val: u64 = 18446744073709551615 + int()
+    assert -ONE_FINAL == -one == 18446744073709551615
+    assert neg_final() == 18446744073709551615
+    assert neg_final_to_int() == 18446744073709551615
+    assert ONE_FINAL - 2 == one - 2 == 18446744073709551615
+    assert ~ONE_FINAL == ~one == 18446744073709551614
+    assert MAX_FINAL + 1 == max_val + 1 == 0
+    assert MAX_FINAL * 2 == max_val * 2 == 18446744073709551614
+    assert (ONE_FINAL - 2) // 2 == (one - 2) // 2 == 9223372036854775807
+    assert -ONE_FINAL >> 1 == -one >> 1 == 9223372036854775807
+    assert -FinalAttrs.TWO == -(one * 2) == 18446744073709551614
+    assert NEG_ONE_FINAL == 18446744073709551615
+
 def test_u64_truncate_from_i64() -> None:
     large = i64(2**62 + 157 + int())
     x = u64(large)

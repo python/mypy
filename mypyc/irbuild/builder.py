@@ -133,6 +133,7 @@ from mypyc.ir.rtypes import (
     object_pointer_rprimitive,
     object_rprimitive,
     str_rprimitive,
+    wrap_unsigned_native_int,
 )
 from mypyc.irbuild.constant_fold import constant_fold_expr
 from mypyc.irbuild.context import FuncInfo, ImplicitClass
@@ -1403,7 +1404,12 @@ class IRBuilder:
             is_local: whether the name is a local variable
         """
         if final_var.final_value is not None:  # this is safe even for non-native names
-            return self.load_literal_value(final_var.final_value, line)
+            value = final_var.final_value
+            if isinstance(value, int):
+                # mypy evaluates Final initializers such as "-X" using int semantics,
+                # but unsigned native ints wrap around
+                value = wrap_unsigned_native_int(self.type_to_rtype(typ), value)
+            return self.load_literal_value(value, line)
         elif is_native and not is_local and module_prefix(self.graph, fullname):
             # A local final variable isn't stored in a static (its fullname is just the
             # bare name, which could also be the name of a module), but a literal value

@@ -281,6 +281,34 @@ def test_negate_literal() -> None:
     assert div_neg_literal(255) == 1
     assert div_neg_literal(5) == 0
 
+ONE_FINAL: Final[u8] = 1
+MAX_FINAL: Final[u8] = 255
+NEG_ONE_FINAL: Final[u8] = -ONE_FINAL
+
+class FinalAttrs:
+    TWO: Final[u8] = 2
+
+def neg_final() -> u8:
+    return -ONE_FINAL
+
+def neg_final_to_int() -> int:
+    return -ONE_FINAL
+
+def test_final_wraparound() -> None:
+    one: u8 = 1 + int()
+    max_val: u8 = 255 + int()
+    assert -ONE_FINAL == -one == 255
+    assert neg_final() == 255
+    assert neg_final_to_int() == 255
+    assert ONE_FINAL - 2 == one - 2 == 255
+    assert ~ONE_FINAL == ~one == 254
+    assert MAX_FINAL + 1 == max_val + 1 == 0
+    assert MAX_FINAL * 2 == max_val * 2 == 254
+    assert (ONE_FINAL - 2) // 2 == (one - 2) // 2 == 127
+    assert -ONE_FINAL >> 1 == -one >> 1 == 127
+    assert -FinalAttrs.TWO == -(one * 2) == 254
+    assert NEG_ONE_FINAL == 255
+
 def test_u8_truncate_from_i64() -> None:
     large = i64(2**32 + 256 + 157 + int())
     x = u8(large)
