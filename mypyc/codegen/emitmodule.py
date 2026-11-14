@@ -79,7 +79,13 @@ from mypyc.ir.rtypes import RType
 from mypyc.irbuild.main import build_ir
 from mypyc.irbuild.mapper import Mapper
 from mypyc.irbuild.prepare import load_type_map
-from mypyc.irbuild.util import get_mypyc_attrs, is_decorated_class, is_extension_class, is_trait
+from mypyc.irbuild.util import (
+    MypycAttrs,
+    get_mypyc_attrs,
+    is_decorated_class,
+    is_extension_class,
+    is_trait,
+)
 from mypyc.namegen import NameGenerator, exported_name
 from mypyc.options import CompilerOptions
 from mypyc.transform.borrow_generator_attrs import borrow_generator_attrs
@@ -118,6 +124,9 @@ Groups = list[Group]
 # A list of (file name, file contents) pairs.
 FileContents = list[tuple[str, str]]
 
+# The kind of a class that other modules depend on (see class_kinds).
+ClassKind = tuple[str, bool, bool, bool, bool, bool, bool]
+
 
 class MarkedDeclaration:
     """Add a mark, useful for topological sort."""
@@ -142,8 +151,10 @@ class MypycPlugin(Plugin):
         @trait decide what kind of class mypyc generates, and a decorator
         that can replace the class changes what its name refers to (see
         ClassIR.is_decorated). @mypyc_attr(weakrefs=True) changes the object
-        layout of subclasses. So we make the kinds of a module's classes part
-        of its interface.
+        layout of subclasses, @mypyc_attr(serializable=True) is inherited by
+        subclasses and changes how they are constructed, and
+        @mypyc_attr(acyclic=True) decides whether subclasses can be acyclic.
+        So we make the kinds of a module's classes part of its interface.
     """
 
     def __init__(
@@ -161,7 +172,7 @@ class MypycPlugin(Plugin):
 
     def report_config_data(
         self, ctx: ReportConfigContext
-    ) -> tuple[str | None, list[str], list[tuple[str, bool, bool, bool, bool]]] | None:
+    ) -> tuple[str | None, list[str], list[ClassKind]] | None:
         # The config data we report is the group map entry for the module,
         # followed by the kinds of its classes (see class_kinds).
         # If the data is being used to check validity, we do additional checks
@@ -213,7 +224,15 @@ class MypycPlugin(Plugin):
         # The module hasn't been parsed yet, so take the class kinds from the
         # cached IR. It was built from the source the cache is for.
         kinds = sorted(
-            (c["name"], c["is_ext_class"], c["is_trait"], c["is_decorated"], c["_weakrefs"])
+            (
+                c["name"],
+                c["is_ext_class"],
+                c["is_trait"],
+                c["is_decorated"],
+                c["_weakrefs"],
+                c["_serializable"],
+                c.get("is_acyclic", False),
+            )
             for c in ir_data["ir"]["classes"]
             if not c["is_generated"]
         )
@@ -246,11 +265,13 @@ class MypycPlugin(Plugin):
         return mods
 
 
-def class_kinds(tree: MypyFile, options: Options) -> list[tuple[str, bool, bool, bool, bool]]:
-    """Return (name, is_ext_class, is_trait, is_decorated, weakrefs) for each class in a module.
+def class_kinds(tree: MypyFile, options: Options) -> list[ClassKind]:
+    """Return the kind of each class in a module.
 
-    These match the ClassIR flags that build_type_map sets (weakrefs is
-    ClassIR._weakrefs, which prepare_class_def sets).
+    The kind of a class is (name, is_ext_class, is_trait, is_decorated,
+    weakrefs, serializable, acyclic). These match the ClassIR flags that
+    build_type_map sets, and the ClassIR flags _weakrefs, _serializable and
+    is_acyclic, which prepare_class_def sets for native classes.
     """
     # Any errors are reported when the module is compiled.
     errors = Errors(options)
@@ -259,12 +280,18 @@ def class_kinds(tree: MypyFile, options: Options) -> list[tuple[str, bool, bool,
         if isinstance(node, ClassDef):
             ext_class = is_extension_class(tree.path, node, errors)
             trait = is_trait(node)
-            weakrefs = (
-                ext_class
-                and not trait
-                and get_mypyc_attrs(node, tree.path, errors)[0].get("weakrefs") is True
+            attrs: MypycAttrs = get_mypyc_attrs(node, tree.path, errors)[0] if ext_class else {}
+            kinds.append(
+                (
+                    node.name,
+                    ext_class,
+                    trait,
+                    is_decorated_class(node),
+                    not trait and attrs.get("weakrefs") is True,
+                    attrs.get("serializable") is True,
+                    attrs.get("acyclic") is True,
+                )
             )
-            kinds.append((node.name, ext_class, trait, is_decorated_class(node), weakrefs))
     return sorted(kinds)
 
 
