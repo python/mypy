@@ -64,6 +64,7 @@ from mypyc.ir.rtypes import (
     RVec,
     bool_rprimitive,
     c_pyssize_t_rprimitive,
+    check_native_int_range,
     int_rprimitive,
     is_bool_or_bit_rprimitive,
     is_bytearray_rprimitive,
@@ -1468,10 +1469,16 @@ class ForRange(ForGenerator):
         self.end_target = end_reg
         if is_short_int_rprimitive(start_reg.type) and is_short_int_rprimitive(end_reg.type):
             index_type: RType = short_int_rprimitive
-        elif is_fixed_width_rtype(end_reg.type):
+        elif is_fixed_width_rtype(end_reg.type) and check_native_int_range(
+            end_reg.type, abs(step)
+        ):
             index_type = end_reg.type
         else:
             index_type = int_rprimitive
+            if is_fixed_width_rtype(end_reg.type):
+                # The step doesn't fit in the native int type, so use arbitrary
+                # precision ints instead.
+                self.end_target = builder.coerce(end_reg, int_rprimitive, self.line)
         index_reg = Register(index_type, line=self.line)
         builder.assign(index_reg, start_reg, self.line)
         self.index_reg = index_reg
@@ -1532,12 +1539,54 @@ class ForRange(ForGenerator):
                 IntOp.ADD,
                 line,
             )
-
+        elif is_fixed_width_rtype(self.index_reg.type):
+            self.gen_fixed_width_step()
+            return
         else:
             new_val = builder.binary_op(
                 builder.read(self.index_reg, line), Integer(self.step), "+", line
             )
         builder.assign(self.index_reg, new_val, line)
+
+    def gen_fixed_width_step(self) -> None:
+        builder = self.builder
+        line = self.line
+        index_type = self.index_reg.type
+        assert is_fixed_width_rtype(index_type)
+        step = abs(self.step)
+        op = IntOp.ADD if self.step > 0 else IntOp.SUB
+        done = None
+        if step > 1:
+            # The index is known to be less than the end value (or greater, if
+            # the step is negative), so stepping by 1 can't overflow, but a larger
+            # step can. If stepping would go past the bounds of the native int type,
+            # it would also go past the end value, so end the loop by setting the
+            # index to the end value instead.
+            bits = index_type.size * 8
+            if self.step > 0:
+                if index_type.is_signed:
+                    limit = (1 << (bits - 1)) - 1 - step
+                else:
+                    limit = (1 << bits) - 1 - step
+                cmp = ">"
+            else:
+                limit = (-(1 << (bits - 1)) if index_type.is_signed else 0) + step
+                cmp = "<"
+            overflow = builder.binary_op(
+                builder.read(self.index_reg, line), Integer(limit, index_type), cmp, line
+            )
+            overflow_block, step_block, done = BasicBlock(), BasicBlock(), BasicBlock()
+            builder.add_bool_branch(overflow, overflow_block, step_block)
+            builder.activate_block(overflow_block)
+            builder.assign(self.index_reg, builder.read(self.end_target, line), line)
+            builder.goto(done)
+            builder.activate_block(step_block)
+        new_val = builder.int_op(
+            index_type, builder.read(self.index_reg, line), Integer(step, index_type), op, line
+        )
+        builder.assign(self.index_reg, new_val, line)
+        if done is not None:
+            builder.goto_and_activate(done)
 
 
 class ForInfiniteCounter(ForGenerator):
