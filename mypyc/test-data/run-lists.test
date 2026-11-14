@@ -985,3 +985,159 @@ class GoodList(list):
         return GoodList(list(self) * n + [4])
     def copy(self) -> Any:
         return GoodList(list(self) + [5])
+
+[case testListEquality]
+from typing import Any, List
+from testutil import assertRaises
+from leqsubclass import ListSubclass, ListEqOverride, CaseInsensitiveList, ListNeOverride
+
+def eq(x: List[Any], y: List[Any]) -> bool:
+    return x == y
+
+def ne(x: List[Any], y: List[Any]) -> bool:
+    return x != y
+
+class AlwaysEqual:
+    def __eq__(self, other: object) -> bool:
+        return True
+
+class NeverEqual:
+    def __eq__(self, other: object) -> bool:
+        return False
+
+class RaisesOnEq:
+    def __eq__(self, other: object) -> bool:
+        raise ValueError("eq")
+
+class FalsyEq:
+    def __eq__(self, other: object) -> Any:
+        return 0
+
+class TruthyEq:
+    def __eq__(self, other: object) -> Any:
+        return "yes"
+
+def test_basic() -> None:
+    nested = [[1, 2], [3]]
+    values: List[List[Any]] = [
+        [],
+        [1],
+        [1, 2],
+        [1, 2, 3],
+        [2, 1],
+        [1, 2, 4],
+        ["a", "b"],
+        [1.0, 2.0],
+        [True, 2],
+        [[1, 2], [3]],
+        nested,
+        [[1, 2], [4]],
+        [None],
+        [(1, 2)],
+        [(1, 2), (3,)],
+    ]
+    for x in values:
+        for y in values:
+            a: Any = x
+            b: Any = y
+            assert eq(x, y) == (a == b), (x, y)
+            assert ne(x, y) == (a != b), (x, y)
+            assert eq(x, list(y)) == (a == b), (x, y)
+            assert ne(x, list(y)) == (a != b), (x, y)
+
+def test_identity() -> None:
+    nan: Any = float("nan")
+    x = [nan]
+    assert eq(x, x)
+    assert not ne(x, x)
+    assert eq(x, [nan])
+    assert not eq(x, [float("nan")])
+    assert ne(x, [float("nan")])
+    y = [NeverEqual()]
+    assert eq(y, y)
+    assert not eq(y, [NeverEqual()])
+
+def test_custom_eq() -> None:
+    assert eq([AlwaysEqual()], [1])
+    assert eq([1], [AlwaysEqual()])
+    assert not eq([AlwaysEqual()], [1, 2])
+    assert ne([NeverEqual()], [NeverEqual()])
+    assert not eq([FalsyEq()], [1])
+    assert ne([FalsyEq()], [1])
+    assert eq([TruthyEq()], [1])
+    assert not ne([TruthyEq()], [1])
+
+def test_error() -> None:
+    with assertRaises(ValueError, "eq"):
+        eq([RaisesOnEq()], [1])
+    with assertRaises(ValueError, "eq"):
+        ne([1, RaisesOnEq()], [1, 2])
+    # Lengths differ, so items aren't compared
+    assert not eq([RaisesOnEq()], [1, 2])
+    # Items are compared in order, and the first mismatch stops the comparison
+    assert not eq([1, RaisesOnEq()], [2, 3])
+
+class ClearOnEq:
+    def __init__(self, target: List[Any]) -> None:
+        self.target = target
+
+    def __eq__(self, other: object) -> bool:
+        self.target.clear()
+        return True
+
+def test_mutation_during_comparison() -> None:
+    a: List[Any] = []
+    a.extend([ClearOnEq(a), 1, 2])
+    assert not eq(a, [0, 1, 2])
+    assert a == []
+    a.append(ClearOnEq(a))
+    assert not eq(a, [0])
+    b: List[Any] = [0, 1]
+    b.append(ClearOnEq(b))
+    assert not eq([0, 1, 2], b)
+    assert b == []
+
+def test_subclass() -> None:
+    assert eq(ListSubclass([1, 2]), [1, 2])
+    assert eq([1, 2], ListSubclass([1, 2]))
+    assert ne(ListSubclass([1, 2]), [1])
+    assert not eq(ListEqOverride([1]), [1])
+    assert not eq([1], ListEqOverride([1]))
+    assert ne(ListEqOverride([1]), [1])
+    assert ne([1], ListEqOverride([1]))
+    x = ListEqOverride([])
+    assert not eq(x, x)
+    assert ne(x, x)
+    # Only __eq__ is overridden, so != uses list.__ne__
+    ci = CaseInsensitiveList(["A"])
+    assert eq(ci, ["a"])
+    assert ne(ci, ["a"])
+    assert eq(["a"], ci)
+    assert ne(["a"], ci)
+    assert not ne(ci, ["A"])
+    y = ListNeOverride([1])
+    assert eq(y, [1])
+    assert ne(y, [1])
+    assert ne([1], y)
+
+[file leqsubclass.py]
+from typing import Any
+
+class ListSubclass(list[Any]):
+    pass
+
+class ListEqOverride(list[Any]):
+    def __eq__(self, other: object) -> bool:
+        return False
+
+    def __ne__(self, other: object) -> bool:
+        return True
+
+class CaseInsensitiveList(list[str]):
+    def __eq__(self, other: object) -> bool:
+        assert isinstance(other, list)
+        return [s.lower() for s in self] == [s.lower() for s in other]
+
+class ListNeOverride(list[Any]):
+    def __ne__(self, other: object) -> bool:
+        return True

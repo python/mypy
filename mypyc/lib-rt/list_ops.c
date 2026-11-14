@@ -468,6 +468,61 @@ CPyTagged CPyList_Index(PyObject *list, PyObject *obj) {
     return retval;
 }
 
+// Compare two lists for equality. Return 1 if equal, 0 if not equal, -1 on error.
+//
+// The caller must hold a critical section on both lists.
+static int _CPyList_Equal(PyObject *left, PyObject *right) {
+    if (Py_SIZE(left) != Py_SIZE(right)) {
+        return 0;
+    }
+    Py_ssize_t i;
+    for (i = 0; i < Py_SIZE(left) && i < Py_SIZE(right); i++) {
+        PyObject *left_item = PyList_GET_ITEM(left, i);
+        PyObject *right_item = PyList_GET_ITEM(right, i);
+        if (left_item == right_item) {
+            continue;
+        }
+        Py_INCREF(left_item);
+        Py_INCREF(right_item);
+        int cmp = PyObject_RichCompareBool(left_item, right_item, Py_EQ);
+        Py_DECREF(left_item);
+        Py_DECREF(right_item);
+        if (cmp <= 0) {
+            return cmp;
+        }
+    }
+    // An item comparison may have changed the lengths
+    return Py_SIZE(left) == Py_SIZE(right);
+}
+
+// Compare two lists using == or != (op is Py_EQ or Py_NE). Return 1 if the result is
+// true, 0 if it's false, and -1 on error.
+int CPyList_Compare(PyObject *left, PyObject *right, int op) {
+    if (likely(PyList_CheckExact(left) && PyList_CheckExact(right))) {
+        int result;
+        if (left == right) {
+            // All items are identical, so they compare equal
+            result = 1;
+        } else {
+            Py_BEGIN_CRITICAL_SECTION2(left, right);
+            result = _CPyList_Equal(left, right);
+            Py_END_CRITICAL_SECTION2();
+            if (result < 0) {
+                return -1;
+            }
+        }
+        return op == Py_EQ ? result : !result;
+    }
+    // Subclasses may override __eq__ and __ne__
+    PyObject *res = PyObject_RichCompare(left, right, op);
+    if (res == NULL) {
+        return -1;
+    }
+    int result = PyObject_IsTrue(res);
+    Py_DECREF(res);
+    return result;
+}
+
 PyObject *CPySequence_Sort(PyObject *seq) {
     PyObject *newlist = PySequence_List(seq);
     if (newlist == NULL)

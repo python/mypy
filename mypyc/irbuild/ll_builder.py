@@ -187,7 +187,14 @@ from mypyc.primitives.int_ops import (
     uint64_overflow,
     uint64_to_int_op,
 )
-from mypyc.primitives.list_ops import list_build_op, list_extend_op, list_items, new_list_op
+from mypyc.primitives.list_ops import (
+    list_build_op,
+    list_equal_op,
+    list_extend_op,
+    list_items,
+    list_not_equal_op,
+    new_list_op,
+)
 from mypyc.primitives.misc_ops import (
     bool_op,
     buf_init_item,
@@ -222,6 +229,8 @@ from mypyc.primitives.tuple_ops import (
     new_tuple_op,
     new_tuple_with_length_op,
     sequence_tuple_op,
+    tuple_equal_op,
+    tuple_not_equal_op,
 )
 from mypyc.rt_expandtype import expand_rtype
 from mypyc.rt_subtype import is_runtime_subtype
@@ -2020,6 +2029,27 @@ class LowLevelIRBuilder:
         op_type = ComparisonOp.EQ if op == "==" else ComparisonOp.NEQ
         return self.add(ComparisonOp(compare_result, Integer(1, c_int_rprimitive), op_type, line))
 
+    def compare_sequences(
+        self,
+        equal_op: CFunctionDescription,
+        not_equal_op: CFunctionDescription,
+        lhs: Value,
+        rhs: Value,
+        op: str,
+        line: int,
+    ) -> Value:
+        """Compare two lists or two variable-length tuples for (in)equality.
+
+        The ops return 1 if the comparison is true, 0 if it's false and -1 on error.
+        Use a separate op for != instead of negating ==, since a subclass may
+        override __ne__ (or inherit it while overriding only __eq__).
+        """
+        compare_op = equal_op if op == "==" else not_equal_op
+        compare_result = self.call_c(compare_op, [lhs, rhs], line)
+        return self.add(
+            ComparisonOp(compare_result, Integer(1, c_int_rprimitive), ComparisonOp.EQ, line)
+        )
+
     def compare_tuples(self, lhs: Value, rhs: Value, op: str, line: int = -1) -> Value:
         """Compare two tuples item by item"""
         # type cast to pass mypy check
@@ -3156,6 +3186,14 @@ class LowLevelIRBuilder:
             return self.compare_strings(lreg, rreg, expr_op, line)
         if is_bytes_rprimitive(ltype) and is_bytes_rprimitive(rtype):
             return self.compare_bytes(lreg, rreg, expr_op, line)
+        if is_list_rprimitive(ltype) and is_list_rprimitive(rtype):
+            return self.compare_sequences(
+                list_equal_op, list_not_equal_op, lreg, rreg, expr_op, line
+            )
+        if is_tuple_rprimitive(ltype) and is_tuple_rprimitive(rtype):
+            return self.compare_sequences(
+                tuple_equal_op, tuple_not_equal_op, lreg, rreg, expr_op, line
+            )
 
         lopt = optional_value_type(ltype)
         ropt = optional_value_type(rtype)
