@@ -458,9 +458,7 @@ VecNested VecNested_Remove(VecNested self, VecNestedBufItem arg) {
             if (i < self.len - 1) {
                 // Decref the removed item last, since it could run arbitrary code
                 VecNestedBufItem removed = items[i];
-                for (; i < self.len - 1; i++) {
-                    items[i] = items[i + 1];
-                }
+                memmove(&items[i], &items[i + 1], (self.len - 1 - i) * sizeof(VecNestedBufItem));
                 VecNested_ItemXINCREF(self_buf, items[self.len - 1]);
                 VecNested_ItemXDECREF(self_buf, removed);
             }
@@ -499,8 +497,7 @@ VecNestedPopResult VecNested_Pop(VecNested v, Py_ssize_t index) {
     VecNestedBufItem *items = v.items;
     VecNestedBufObject *v_buf = VEC_BUF(v);
     result.f1 = items[index];
-    for (Py_ssize_t i = index; i < v.len - 1; i++)
-        items[i] = items[i + 1];
+    memmove(&items[index], &items[index + 1], (v.len - 1 - index) * sizeof(VecNestedBufItem));
     if (v.len > 0)
         VecNested_ItemXINCREF(v_buf, items[v.len - 1]);
     v.len--;
