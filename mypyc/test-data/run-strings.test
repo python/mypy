@@ -894,6 +894,41 @@ def test_chr_errors() -> None:
         with assertRaises(expected_type, expected_msg):
             chr(n + int())
 
+[case testStrSingleCharItems]
+def test_index_and_iterate() -> None:
+    # Cover Latin-1, the range of cached single-character strings (U+0100..U+0FFF)
+    # and some code points beyond it
+    cps = [*range(0x1100), 0xFFFF, 0x10000, 0x10FFFF]
+    s = "".join([chr(cp) for cp in cps])
+    # The second round reuses cached strings
+    for _ in range(2):
+        i = 0
+        for c in s:
+            assert len(c) == 1
+            assert ord(c) == cps[i]
+            x = s[i]
+            assert ord(x) == cps[i]
+            assert x == c == chr(cps[i])
+            y = s[i - len(s)]
+            assert y == c
+            i += 1
+        assert i == len(cps)
+
+def test_cached_char_not_modified() -> None:
+    s = "\u0400\u0fff"
+    c = s[0]
+    c += "x"
+    assert c == "\u0400x"
+    assert s[0] == "\u0400"
+    d = chr(0xFFF + int())
+    d += "y"
+    assert d == "\u0fffy"
+    assert chr(0xFFF + int()) == "\u0fff"
+    for e in s:
+        e += "z"
+        assert len(e) == 2
+    assert [e for e in s] == ["\u0400", "\u0fff"]
+
 [case testOrd]
 from testutil import assertRaises
 from mypy_extensions import i64, i32, i16, u8

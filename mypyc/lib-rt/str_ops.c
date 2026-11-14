@@ -95,6 +95,53 @@ char CPyStr_EqualLiteral(PyObject *str, PyObject *literal_str, Py_ssize_t litera
     return _CPyStr_Equal_NoIdentCheck(str, literal_str, literal_length);
 }
 
+// CPython caches single-character Latin-1 strings, but iterating over or indexing
+// text in most other alphabetic scripts allocates a new object for every character.
+// Cache single-character strings for U+0100..U+0FFF as well (Latin Extended, Greek,
+// Cyrillic, Hebrew, Arabic, Indic scripts, Thai, Georgian, etc.). Entries are created
+// on first use and never evicted, so the cache costs nothing for text that doesn't use
+// these characters. Larger code points (such as CJK) would need a much bigger cache.
+//
+// Free-threaded builds don't use the cache, since the slots would need atomic access.
+// Compiled modules don't support multiple interpreters, so a static cache is fine.
+#define CPY_CHAR_CACHE_LIMIT 0x1000
+#ifndef Py_GIL_DISABLED
+static PyObject *CPyStr_CharCache[CPY_CHAR_CACHE_LIMIT - 256];
+#endif
+
+static PyObject *CPyStr_FromCodePoint(Py_UCS4 ch) {
+    if (ch < 256) {
+        // Latin-1 single-char strings are cached by CPython, so
+        // PyUnicode_FromOrdinal returns the cached object (with a
+        // new reference) instead of allocating a new string each time.
+        return PyUnicode_FromOrdinal(ch);
+    }
+#ifndef Py_GIL_DISABLED
+    PyObject **slot = NULL;
+    if (ch < CPY_CHAR_CACHE_LIMIT) {
+        slot = &CPyStr_CharCache[ch - 256];
+        if (*slot != NULL) {
+            return Py_NewRef(*slot);
+        }
+    }
+#endif
+    PyObject *unicode = PyUnicode_New(1, ch);
+    if (unicode == NULL)
+        return NULL;
+    if (PyUnicode_KIND(unicode) == PyUnicode_2BYTE_KIND) {
+        PyUnicode_2BYTE_DATA(unicode)[0] = (Py_UCS2)ch;
+    } else {
+        assert(PyUnicode_KIND(unicode) == PyUnicode_4BYTE_KIND);
+        PyUnicode_4BYTE_DATA(unicode)[0] = ch;
+    }
+#ifndef Py_GIL_DISABLED
+    if (slot != NULL) {
+        *slot = Py_NewRef(unicode);
+    }
+#endif
+    return unicode;
+}
+
 PyObject *CPyStr_GetItem(PyObject *str, CPyTagged index) {
     if (PyUnicode_READY(str) != -1) {
         if (CPyTagged_CheckShort(index)) {
@@ -109,22 +156,7 @@ PyObject *CPyStr_GetItem(PyObject *str, CPyTagged index) {
             enum PyUnicode_Kind kind = (enum PyUnicode_Kind)PyUnicode_KIND(str);
             void *data = PyUnicode_DATA(str);
             Py_UCS4 ch = PyUnicode_READ(kind, data, n);
-            if (ch < 256) {
-                // Latin-1 single-char strings are cached by CPython, so
-                // PyUnicode_FromOrdinal returns the cached object (with a
-                // new reference) instead of allocating a new string each time.
-                return PyUnicode_FromOrdinal(ch);
-            }
-            PyObject *unicode = PyUnicode_New(1, ch);
-            if (unicode == NULL)
-                return NULL;
-            if (PyUnicode_KIND(unicode) == PyUnicode_2BYTE_KIND) {
-                PyUnicode_2BYTE_DATA(unicode)[0] = (Py_UCS2)ch;
-            } else {
-                assert(PyUnicode_KIND(unicode) == PyUnicode_4BYTE_KIND);
-                PyUnicode_4BYTE_DATA(unicode)[0] = ch;
-            }
-            return unicode;
+            return CPyStr_FromCodePoint(ch);
         } else {
             PyErr_SetString(PyExc_OverflowError, CPYTHON_LARGE_INT_ERRMSG);
             return NULL;
@@ -640,7 +672,7 @@ PyObject *CPyStr_Chr(CPyTagged n) {
     if (likely(CPyTagged_CheckShort(n))) {
         Py_ssize_t v = CPyTagged_ShortAsSsize_t(n);
         if (likely(v >= 0 && v <= 0x10ffff)) {
-            return PyUnicode_FromOrdinal((int)v);
+            return CPyStr_FromCodePoint((Py_UCS4)v);
         }
     }
 #if CPY_3_13_FEATURES
