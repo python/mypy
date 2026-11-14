@@ -507,9 +507,7 @@ VecT VecT_Remove(VecT v, PyObject *arg) {
             if (i < v.len - 1) {
                 // Decref the removed item last, since it could run arbitrary code
                 PyObject *removed = items[i];
-                for (; i < v.len - 1; i++) {
-                    items[i] = items[i + 1];
-                }
+                memmove(&items[i], &items[i + 1], (v.len - 1 - i) * sizeof(PyObject *));
                 // Keep a duplicate item, since there could be another reference
                 // to the buffer with a longer length, and they expect a valid reference.
                 Py_XINCREF(items[v.len - 1]);
@@ -546,8 +544,7 @@ VecTPopResult VecT_Pop(VecT v, Py_ssize_t index) {
 
     PyObject **items = v.items;
     result.f1 = items[index];
-    for (Py_ssize_t i = index; i < v.len - 1; i++)
-        items[i] = items[i + 1];
+    memmove(&items[index], &items[index + 1], (v.len - 1 - index) * sizeof(PyObject *));
     // Keep duplicate item, since there could be another reference
     // to the buffer with a longer length, and they expect a valid reference.
     Py_XINCREF(items[v.len - 1]);

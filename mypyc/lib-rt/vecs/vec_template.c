@@ -645,9 +645,7 @@ PyObject *FUNC(ToTuple)(VEC v) {
 VEC FUNC(Remove)(VEC v, ITEM_C_TYPE x) {
     for (Py_ssize_t i = 0; i < v.len; i++) {
         if (v.items[i] == x) {
-            for (; i < v.len - 1; i++) {
-                v.items[i] = v.items[i + 1];
-            }
+            memmove(&v.items[i], &v.items[i + 1], (v.len - 1 - i) * sizeof(ITEM_C_TYPE));
             v.len--;
             // Return the stolen reference without INCREF
             return v;
@@ -678,9 +676,7 @@ NAME(PopResult) FUNC(Pop)(VEC v, Py_ssize_t index) {
     }
 
     result.f1 = v.items[index];
-    for (Py_ssize_t i = index; i < v.len - 1; i++) {
-        v.items[i] = v.items[i + 1];
-    }
+    memmove(&v.items[index], &v.items[index + 1], (v.len - 1 - index) * sizeof(ITEM_C_TYPE));
 
     v.len--;
     // Return the stolen reference without INCREF
