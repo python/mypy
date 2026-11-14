@@ -862,7 +862,7 @@ def find_attr_initializers(
         return set(), []
 
     attrs_with_defaults: set[str] = set()
-    default_assignments: list[tuple[AssignmentStmt, str]] = []
+    default_assignments: dict[str, tuple[AssignmentStmt, str]] = {}
 
     # TODO: Support nested statements
     if builder.options.separate:
@@ -882,9 +882,11 @@ def find_attr_initializers(
             if name is None:
                 continue
             attrs_with_defaults.add(name)
-            default_assignments.append((stmt, info.module_name))
+            # Keep only the last default per name: initializer stores don't free an earlier value.
+            default_assignments.pop(name, None)
+            default_assignments[name] = (stmt, info.module_name)
 
-    return attrs_with_defaults, default_assignments
+    return attrs_with_defaults, list(default_assignments.values())
 
 
 def generate_attr_defaults_init(
@@ -901,8 +903,8 @@ def generate_attr_defaults_init(
     in filename order, so this class may be IR-built before its base, and a
     method_decls lookup that depended on the base having been IR-built first
     would miss. Without separate compilation, find_attr_initializers has
-    already collected the full MRO's defaults into default_assignments, so
-    we inline them all as before.
+    already collected the full MRO's defaults into default_assignments, one
+    per attribute name, so we inline them all as before.
     """
     cls = builder.mapper.type_to_ir[cdef.info]
     if cls.builtin_base:
