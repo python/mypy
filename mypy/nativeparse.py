@@ -367,7 +367,9 @@ def native_parse_type_string(
     If parsing fails, a RawExpressionType will be returned.
     """
     ast_bytes = ast_serialize.parse_type_string(
-        expr_string, (line, column, end_line, end_column), cache_version=5
+        expr_string,
+        (line, column, end_line, end_column),
+        cache_version=AST_SERIALIZE_CACHE_VERSION,
     )
     state = State(options)
     data = ReadBuffer(ast_bytes)
