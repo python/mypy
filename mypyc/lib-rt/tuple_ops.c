@@ -20,7 +20,7 @@ PyObject *CPySequenceTuple_GetItem_(PyObject *tuple, CPyTagged index) {
         Py_INCREF(result);
         return result;
     } else {
-        PyErr_SetString(PyExc_OverflowError, CPYTHON_LARGE_INT_ERRMSG);
+        CPy_LargeIndexError(index, "tuple index out of range");
         return NULL;
     }
 }

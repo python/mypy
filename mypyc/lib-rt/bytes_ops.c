@@ -44,7 +44,7 @@ CPyTagged CPyBytes_GetItem(PyObject *o, CPyTagged index) {
                                              : ((PyByteArrayObject *)o)->ob_bytes[n];
         return num << 1;
     } else {
-        PyErr_SetString(PyExc_OverflowError, CPYTHON_LARGE_INT_ERRMSG);
+        CPy_LargeIndexError(index, "index out of range");
         return CPY_INT_TAG;
     }
 }

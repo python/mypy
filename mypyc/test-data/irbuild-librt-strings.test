@@ -408,7 +408,7 @@ L1:
 L2:
     r4 = i ^ 1
     r5 = r4
-    r6 = CPyLong_AsInt64(r5)
+    r6 = CPyLong_AsIndex(r5)
     r3 = r6
     keep_alive i
 L3:

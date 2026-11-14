@@ -189,11 +189,12 @@ def test_get_item() -> None:
         a[zero + 3]
     with assertRaises(IndexError):
         a[zero - 4]
-    # TODO: Raise IndexError?
-    with assertRaises(OverflowError):
-        a[zero + 2**90]
-    with assertRaises(OverflowError):
-        a[zero - 2**90]
+    for n in (2**62, -2**62 - 1, 2**63 - 1, -2**63):
+        with assertRaises(IndexError, "list index out of range"):
+            a[zero + n]
+    for n in (2**63, -2**63 - 1, 2**90, -2**90):
+        with assertRaises(IndexError, "cannot fit 'int' into an index-sized integer"):
+            a[zero + n]
 
 def test_get_item_literal() -> None:
     assert a[0].s == "a"
@@ -206,10 +207,15 @@ def test_get_item_literal() -> None:
         a[3]
     with assertRaises(IndexError):
         a[-4]
-    # TODO: Raise IndexError?
-    with assertRaises(OverflowError):
+    with assertRaises(IndexError, "list index out of range"):
+        a[2**62]
+    with assertRaises(IndexError, "cannot fit 'int' into an index-sized integer"):
+        a[2**63]
+    with assertRaises(IndexError, "cannot fit 'int' into an index-sized integer"):
+        a[-2**63 - 1]
+    with assertRaises(IndexError, "cannot fit 'int' into an index-sized integer"):
         a[2**90]
-    with assertRaises(OverflowError):
+    with assertRaises(IndexError, "cannot fit 'int' into an index-sized integer"):
         a[-2**90]
 
 def test_set_item() -> None:
@@ -228,10 +234,12 @@ def test_set_item() -> None:
         a[zero + 3] = C("z")
     with assertRaises(IndexError):
         a[zero - 4] = C("z")
-    with assertRaises(OverflowError):
-        a[zero + 2**90] = C("z")
-    with assertRaises(OverflowError):
-        a[zero - 2**90] = C("z")
+    for n in (2**62, -2**62 - 1, 2**63 - 1, -2**63):
+        with assertRaises(IndexError, "list assignment index out of range"):
+            a[zero + n] = C("z")
+    for n in (2**63, -2**63 - 1, 2**90, -2**90):
+        with assertRaises(IndexError, "cannot fit 'int' into an index-sized integer"):
+            a[zero + n] = C("z")
 
 def test_append() -> None:
     l = [1, 2]
@@ -284,10 +292,16 @@ def test_pop_index_errors() -> None:
         l.pop()
     with assertRaises(IndexError, "pop from empty list"):
         l.pop(0)
-    with assertRaises(OverflowError):
-        l.pop(1 << 100)
-    with assertRaises(OverflowError):
-        l.pop(-(1 << 100))
+    with assertRaises(IndexError, "pop from empty list"):
+        l.pop(1 << 62)
+    l.append(int() + 1000)
+    for n in (1 << 62, -(1 << 62) - 1, (1 << 63) - 1, -(1 << 63)):
+        with assertRaises(IndexError, "pop index out of range"):
+            l.pop(n)
+    for n in (1 << 63, -(1 << 63) - 1, 1 << 100, -(1 << 100)):
+        with assertRaises(OverflowError, "Python int too large to convert to C ssize_t"):
+            l.pop(n)
+    assert l == [1000]
 
 def test_count() -> None:
     l = [1, 3]
@@ -309,7 +323,14 @@ def test_insert() -> None:
     assert l == [1, 3, 5]
     l.insert(-100, 6)
     assert l == [6, 1, 3, 5]
-    for long_int in 1 << 100, -(1 << 100):
+    l.insert(1 << 62, 7)
+    assert l == [6, 1, 3, 5, 7]
+    l.insert(-(1 << 62) - 1, 8)
+    assert l == [8, 6, 1, 3, 5, 7]
+    l.insert((1 << 63) - 1, 9)
+    l.insert(-(1 << 63), 10)
+    assert l == [10, 8, 6, 1, 3, 5, 7, 9]
+    for long_int in 1 << 63, -(1 << 63) - 1, 1 << 100, -(1 << 100):
         try:
             l.insert(long_int, 5)
         except Exception as e:
@@ -783,6 +804,8 @@ def test_next() -> None:
 [case testListGetItemWithBorrow]
 from typing import List
 
+from testutil import assertRaises
+
 class D:
     def __init__(self, n: int) -> None:
         self.n = n
@@ -803,6 +826,18 @@ def test_index_with_literal() -> None:
     assert d is d2
     d = a[-2].d
     assert d is d1
+
+def get_n(a: List[C], i: int) -> int:
+    return a[i].d.n
+
+def test_large_index() -> None:
+    a = [C(D(1))]
+    for n in (2**62, -2**62 - 1):
+        with assertRaises(IndexError, "list index out of range"):
+            get_n(a, n)
+    for n in (2**63, -2**63 - 1, 2**100):
+        with assertRaises(IndexError, "cannot fit 'int' into an index-sized integer"):
+            get_n(a, n)
 
 [case testSorted]
 from typing import List
@@ -872,12 +907,12 @@ from testutil import assertRaises
 class Sentinel:
     pass
 
-for index in (1, -2, 2**100, -2**100):
+for index in (1, -2, 2**62, 2**63, 2**100, -2**100):
     value = Sentinel()
     ref = weakref.ref(value)
     try:
         assign([None], index, value)
-    except (IndexError, OverflowError):
+    except IndexError:
         pass
     else:
         assert False, index

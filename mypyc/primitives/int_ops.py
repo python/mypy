@@ -300,6 +300,15 @@ int_to_int64_op = custom_op(
     error_kind=ERR_MAGIC_OVERLAPPING,
 )
 
+# Convert tagged int (as PyObject *) used as a sequence index to i64
+# (raise IndexError if it doesn't fit in Py_ssize_t, like CPython)
+int_to_index_op = custom_op(
+    arg_types=[object_rprimitive],
+    return_type=int64_rprimitive,
+    c_function_name="CPyLong_AsIndex",
+    error_kind=ERR_MAGIC_OVERLAPPING,
+)
+
 ssize_t_to_int_op = custom_op(
     arg_types=[c_pyssize_t_rprimitive],
     return_type=int_rprimitive,

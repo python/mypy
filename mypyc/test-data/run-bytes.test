@@ -66,6 +66,16 @@ def test_indexing() -> None:
         b[-5]
     with assertRaises(IndexError, "index out of range"):
         b[2**26]
+    for n in (2**62, -2**62 - 1, 2**63 - 1, -2**63):
+        with assertRaises(IndexError, "index out of range"):
+            b[n + int()]
+    for n in (2**63, -2**63 - 1, 2**100, -2**100):
+        with assertRaises(IndexError, "cannot fit 'int' into an index-sized integer"):
+            b[n + int()]
+    with assertRaises(IndexError, "cannot fit 'int' into an index-sized integer"):
+        b[2**63]
+    with assertRaises(IndexError, "cannot fit 'int' into an index-sized integer"):
+        b[-2**63 - 1]
 
 def test_concat() -> None:
     b1 = b'123' + bytes()

@@ -203,6 +203,21 @@ def f5(x: List[int]) -> int:
 def test_sequence_tuple() -> None:
     assert f5([1,2,3,4]) == 2
 
+def tuple_get(t: Tuple[int, ...], i: int) -> int:
+    return t[i]
+
+def test_sequence_tuple_large_index() -> None:
+    t = (1, 2, 3)
+    assert tuple_get(t, -1) == 3
+    for n in (2**62, -2**62 - 1, 2**63 - 1, -2**63):
+        with assertRaises(IndexError, "tuple index out of range"):
+            tuple_get(t, n)
+    for n in (2**63, -2**63 - 1, 2**100, -2**100):
+        with assertRaises(IndexError, "cannot fit 'int' into an index-sized integer"):
+            tuple_get(t, n)
+    with assertRaises(IndexError, "cannot fit 'int' into an index-sized integer"):
+        t[2**63]
+
 def f6(x: List[int]) -> int:
     return len(tuple(x))
 
