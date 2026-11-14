@@ -1,7 +1,7 @@
 [case testU8BasicOps]
-from typing import Any, Final, Tuple
+from typing import Any, Final, Tuple, cast
 
-from mypy_extensions import u8, i16, i32, i64
+from mypy_extensions import u8, i8, i16, i32, i64
 
 from testutil import assertRaises
 
@@ -283,6 +283,16 @@ def test_explicit_conversion_from_float() -> None:
         # One ulp below the lowest valid i64 value
         from_float(float(-1.0))
 
+def bytes_get(b: bytes, i: u8) -> int:
+    return b[i]
+
+def test_bytes_index_with_u8() -> None:
+    assert bytes_get(b"abc", 0) == 97
+    assert bytes_get(b"abc", 2) == 99
+    for n in (3, 255):
+        with assertRaises(IndexError, "index out of range"):
+            bytes_get(b"abc", n)
+
 def test_tuple_u8() -> None:
     a: u8 = 1
     b: u8 = 2
@@ -300,3 +310,36 @@ def test_convert_u8_to_native_int() -> None:
         assert i16(x) == i
         assert i32(x) == i
         assert i64(x) == i
+
+def i64_to_u8(x: i64) -> u8:
+    return cast(u8, x)
+
+def i32_to_u8(x: i32) -> u8:
+    return cast(u8, x)
+
+def i16_to_u8(x: i16) -> u8:
+    return cast(u8, x)
+
+def i8_to_u8(x: i8) -> u8:
+    return cast(u8, x)
+
+def test_coerce_from_signed_native_int() -> None:
+    for n in (0, 1, 127, 128, 255):
+        assert i64_to_u8(n) == n
+        assert i32_to_u8(n) == n
+        assert i16_to_u8(n) == n
+    for n in (0, 1, 127):
+        assert i8_to_u8(n) == n
+    msg = "int too large or small to convert to u8"
+    for n in (-1, 256, 2**63 - 1, -2**63):
+        with assertRaises(ValueError, msg):
+            i64_to_u8(n)
+    for n in (-1, 256, 2**31 - 1, -2**31):
+        with assertRaises(ValueError, msg):
+            i32_to_u8(n)
+    for n in (-1, 256, 32767, -32768):
+        with assertRaises(ValueError, msg):
+            i16_to_u8(n)
+    for n in (-1, -128):
+        with assertRaises(ValueError, msg):
+            i8_to_u8(n)

@@ -352,6 +352,13 @@ int_to_int32_op = custom_op(
     error_kind=ERR_MAGIC_OVERLAPPING,
 )
 
+int64_overflow = custom_op(
+    arg_types=[],
+    return_type=void_rtype,
+    c_function_name="CPyInt64_Overflow",
+    error_kind=ERR_ALWAYS,
+)
+
 int32_overflow = custom_op(
     arg_types=[],
     return_type=void_rtype,

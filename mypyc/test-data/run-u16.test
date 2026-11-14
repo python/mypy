@@ -1,7 +1,7 @@
 [case testU16BasicOps]
-from typing import Any, Final, Tuple
+from typing import Any, Final, Tuple, cast
 
-from mypy_extensions import u16, i16, i32, i64, u8
+from mypy_extensions import u16, i8, i16, i32, i64, u8
 
 from testutil import assertRaises
 
@@ -304,3 +304,37 @@ def test_convert_u16_to_native_int() -> None:
         assert i16(x) == (i if i < 32768 else i - 65536)
         assert i32(x) == i
         assert i64(x) == i
+
+def i64_to_u16(x: i64) -> u16:
+    return cast(u16, x)
+
+def i32_to_u16(x: i32) -> u16:
+    return cast(u16, x)
+
+def i16_to_u16(x: i16) -> u16:
+    return cast(u16, x)
+
+def i8_to_u16(x: i8) -> u16:
+    return cast(u16, x)
+
+def test_coerce_from_signed_native_int() -> None:
+    for n in (0, 1, 255, 32767, 65535):
+        assert i64_to_u16(n) == n
+        assert i32_to_u16(n) == n
+    for n in (0, 1, 255, 32767):
+        assert i16_to_u16(n) == n
+    for n in (0, 1, 127):
+        assert i8_to_u16(n) == n
+    msg = "int too large or small to convert to u16"
+    for n in (-1, 65536, 2**63 - 1, -2**63):
+        with assertRaises(ValueError, msg):
+            i64_to_u16(n)
+    for n in (-1, 65536, 2**31 - 1, -2**31):
+        with assertRaises(ValueError, msg):
+            i32_to_u16(n)
+    for n in (-1, -32768):
+        with assertRaises(ValueError, msg):
+            i16_to_u16(n)
+    for n in (-1, -128):
+        with assertRaises(ValueError, msg):
+            i8_to_u16(n)

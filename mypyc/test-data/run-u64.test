@@ -1,7 +1,7 @@
 [case testU64BasicOps]
-from typing import Any, Final, Tuple
+from typing import Any, Final, Tuple, cast
 
-from mypy_extensions import u64, i16, i32, i64, u8
+from mypy_extensions import u64, i8, i16, i32, i64, u8
 
 from testutil import assertRaises
 
@@ -331,6 +331,15 @@ def tuple_get(a: tuple[int, ...], i: u64) -> int:
 def str_get(s: str, i: u64) -> str:
     return s[i]
 
+def bytes_get(b: bytes, i: u64) -> int:
+    return b[i]
+
+def str_ord(s: str, i: u64) -> int:
+    return ord(s[i])
+
+def str_index_eq(s: str, i: u64) -> bool:
+    return s[i] == "c"
+
 def test_index_with_u64() -> None:
     a = [1, 2, 3]
     assert list_get(a, 0) == 1
@@ -357,6 +366,18 @@ def test_index_with_u64() -> None:
         tuple_get((1, 2, 3), 2**63)
     with assertRaises(OverflowError):
         str_get("abc", 2**64 - 1)
+    assert bytes_get(b"abc", 0) == 97
+    assert bytes_get(b"abc", 2) == 99
+    assert str_ord("abc", 1) == 98
+    assert str_index_eq("abc", 2)
+    assert not str_index_eq("abc", 0)
+    for n in (3, 2**63 - 1, 2**63, 2**64 - 3, 2**64 - 1):
+        with assertRaises(IndexError, "index out of range"):
+            bytes_get(b"abc", n)
+        with assertRaises(IndexError, "index out of range"):
+            str_ord("abc", n)
+        with assertRaises(IndexError, "index out of range"):
+            str_index_eq("abc", n)
 
 def test_tuple_u64() -> None:
     a: u64 = 1
@@ -376,3 +397,30 @@ def test_convert_u64_to_native_int() -> None:
         assert i16(x) == (i if i < 32768 else i - 18446744073709551616)
         assert i32(x) == i
         assert i64(x) == i
+
+def i64_to_u64(x: i64) -> u64:
+    return cast(u64, x)
+
+def i32_to_u64(x: i32) -> u64:
+    return cast(u64, x)
+
+def i8_to_u64(x: i8) -> u64:
+    return cast(u64, x)
+
+def test_coerce_from_signed_native_int() -> None:
+    for n in (0, 1, 2**31 - 1, 2**31, 2**63 - 1):
+        assert i64_to_u64(n) == n
+    for n in (0, 1, 2**31 - 1):
+        assert i32_to_u64(n) == n
+    for n in (0, 1, 127):
+        assert i8_to_u64(n) == n
+    msg = "int too large or small to convert to u64"
+    for n in (-1, -2**31, -2**63):
+        with assertRaises(ValueError, msg):
+            i64_to_u64(n)
+    for n in (-1, -2**31):
+        with assertRaises(ValueError, msg):
+            i32_to_u64(n)
+    for n in (-1, -128):
+        with assertRaises(ValueError, msg):
+            i8_to_u64(n)
