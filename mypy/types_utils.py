@@ -117,11 +117,6 @@ def is_union_with_any(tp: Type) -> bool:
     return any(is_union_with_any(t) for t in get_proper_types(tp.items))
 
 
-def is_generic_instance(tp: Type) -> bool:
-    tp = get_proper_type(tp)
-    return isinstance(tp, Instance) and bool(tp.args)
-
-
 def is_overlapping_none(t: Type) -> bool:
     t = get_proper_type(t)
     return isinstance(t, NoneType) or (

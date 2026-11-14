@@ -212,7 +212,6 @@ from mypy.types import (
     split_with_prefix_and_suffix,
 )
 from mypy.types_utils import (
-    is_generic_instance,
     is_overlapping_none,
     is_self_type_like,
     remove_optional,
@@ -2186,37 +2185,6 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             #     variables in an expression are inferred at the same time.
             #     (And this is hard, also we need to be careful with lambdas that require
             #     two passes.)
-        proper_ret = get_proper_type(ret_type)
-        if (
-            isinstance(proper_ret, TypeVarType)
-            or isinstance(proper_ret, UnionType)
-            and all(isinstance(get_proper_type(u), TypeVarType) for u in proper_ret.items)
-        ):
-            # Another special case: the return type is a type variable. If it's unrestricted,
-            # we could infer a too general type for the type variable if we use context,
-            # and this could result in confusing and spurious type errors elsewhere.
-            #
-            # So we give up and just use function arguments for type inference, with just two
-            # exceptions:
-            #
-            # 1. If the context is a generic instance type, actually use it as context, as
-            #    this *seems* to usually be the reasonable thing to do.
-            #
-            #    See also github issues #462 and #360.
-            #
-            # 2. If the context is some literal type, we want to "propagate" that information
-            #    down so that we infer a more precise type for literal expressions. For example,
-            #    the expression `3` normally has an inferred type of `builtins.int`: but if it's
-            #    in a literal context like below, we want it to infer `Literal[3]` instead.
-            #
-            #        def expects_literal(x: Literal[3]) -> None: pass
-            #        def identity(x: T) -> T: return x
-            #
-            #        expects_literal(identity(3))  # Should type-check
-            # TODO: we may want to add similar exception if all arguments are lambdas, since
-            # in this case external context is almost everything we have.
-            if not is_generic_instance(ctx) and not is_literal_type_like(ctx):
-                return callable.copy_modified(), []
         args, constraints = infer_type_arguments(
             callable.variables, ret_type, erased_ctx, skip_unsatisfied=True
         )

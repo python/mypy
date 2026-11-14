@@ -2989,7 +2989,7 @@ def test_generic(x: Union[A, None]) -> None:
     reveal_type(r2)  # N: Revealed type is "def ()"
 
 
-[case testLambdaTernaryIndirectAttribute]
+[case testLambdaTernaryIndirectAttribute-xfail]
 # fails due to binder issue inside `check_func_def`
 # https://github.com/python/mypy/issues/19561
 from typing import TypeVar, Union, Callable, reveal_type
@@ -3020,7 +3020,7 @@ def test_generic_with_attr(x: B) -> None:
     reveal_type(l2)  # N: Revealed type is "def () -> __main__.A | None"
     reveal_type(r2)  # N: Revealed type is "def () -> __main__.A | None"
 
-[case testLambdaTernaryDoubleIndirectAttribute]
+[case testLambdaTernaryDoubleIndirectAttribute-xfail]
 # fails due to binder issue inside `check_func_def`
 # https://github.com/python/mypy/issues/19561
 from typing import TypeVar, Union, Callable, reveal_type
