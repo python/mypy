@@ -557,6 +557,15 @@ class LowLevelIRBuilder:
                 and target_type.is_signed
             ):
                 return self.coerce_unsigned_to_signed(src, target_type, line)
+            elif (
+                isinstance(src_type, RPrimitive)
+                and isinstance(target_type, RPrimitive)
+                and src_type.is_native_int
+                and target_type.is_native_int
+                and src_type.is_signed
+                and not target_type.is_signed
+            ):
+                return self.coerce_signed_to_unsigned(src, target_type, line)
             elif is_int64_rprimitive(src_type) and is_c_py_ssize_t_rprimitive(target_type):
                 return self.coerce_i64_to_ssize_t(src, line)
             elif is_bool_or_bit_rprimitive(src_type) and is_tagged(target_type):
@@ -956,6 +965,33 @@ class LowLevelIRBuilder:
         self.activate_block(overflow)
         self.emit_fixed_width_overflow_error(target_type, line)
         self.activate_block(end)
+        return self.add(Truncate(src, target_type, line))
+
+    def coerce_signed_to_unsigned(self, src: Value, target_type: RPrimitive, line: int) -> Value:
+        """Coerce a signed native int to an unsigned native int, preserving the value.
+
+        Raise ValueError if the value is negative or doesn't fit in the target type.
+        """
+        assert isinstance(src.type, RPrimitive), src.type
+        overflow, end = BasicBlock(), BasicBlock()
+        non_negative = self.add(ComparisonOp(src, Integer(0, src.type), ComparisonOp.SGE, line))
+        if src.type.size > target_type.size:
+            # Large non-negative values don't fit in the target type
+            max_value = (1 << (target_type.size * 8)) - 1
+            check_max = BasicBlock()
+            self.add(Branch(non_negative, check_max, overflow, Branch.BOOL, line))
+            self.activate_block(check_max)
+            in_range = self.add(
+                ComparisonOp(src, Integer(max_value, src.type), ComparisonOp.SLE, line)
+            )
+            self.add(Branch(in_range, end, overflow, Branch.BOOL, line))
+        else:
+            self.add(Branch(non_negative, end, overflow, Branch.BOOL, line))
+        self.activate_block(overflow)
+        self.emit_fixed_width_overflow_error(target_type, line)
+        self.activate_block(end)
+        if src.type.size < target_type.size:
+            return self.add(Extend(src, target_type, signed=False, line=line))
         return self.add(Truncate(src, target_type, line))
 
     def coerce_nullable(self, src: Value, target_type: RType, line: int) -> Value:

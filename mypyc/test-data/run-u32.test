@@ -1,7 +1,7 @@
 [case testU32BasicOps]
-from typing import Any, Final, Tuple
+from typing import Any, Final, Tuple, cast
 
-from mypy_extensions import u32, i16, i32, i64, u8
+from mypy_extensions import u32, i8, i16, i32, i64, u8
 
 from testutil import assertRaises
 
@@ -358,3 +358,30 @@ def test_high_bit_conversions() -> None:
     assert u32(n32) == 2**31
     assert big > 1
     assert big >> 1 == 2**30
+
+def i64_to_u32(x: i64) -> u32:
+    return cast(u32, x)
+
+def i32_to_u32(x: i32) -> u32:
+    return cast(u32, x)
+
+def i8_to_u32(x: i8) -> u32:
+    return cast(u32, x)
+
+def test_coerce_from_signed_native_int() -> None:
+    for n in (0, 1, 2**31 - 1, 2**31, 2**32 - 1):
+        assert i64_to_u32(n) == n
+    for n in (0, 1, 2**31 - 1):
+        assert i32_to_u32(n) == n
+    for n in (0, 1, 127):
+        assert i8_to_u32(n) == n
+    msg = "int too large or small to convert to u32"
+    for n in (-1, 2**32, 2**63 - 1, -2**63):
+        with assertRaises(ValueError, msg):
+            i64_to_u32(n)
+    for n in (-1, -2**31):
+        with assertRaises(ValueError, msg):
+            i32_to_u32(n)
+    for n in (-1, -128):
+        with assertRaises(ValueError, msg):
+            i8_to_u32(n)

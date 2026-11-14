@@ -406,6 +406,42 @@ L4:
     r5 = CPyBytes_GetItemUnsafe(b, r2)
     return r5
 
+[case testCoerceSignedToU64]
+from typing import cast
+from mypy_extensions import i32, i64, u64
+
+def from_i64(x: i64) -> u64:
+    return cast(u64, x)
+def from_i32(x: i32) -> u64:
+    return cast(u64, x)
+[out]
+def from_i64(x):
+    x :: i64
+    r0 :: bit
+    r1 :: u64
+L0:
+    r0 = x >= 0 :: signed
+    if r0 goto L2 else goto L1 :: bool
+L1:
+    CPyUInt64_Overflow()
+    unreachable
+L2:
+    r1 = truncate x: i64 to u64
+    return r1
+def from_i32(x):
+    x :: i32
+    r0 :: bit
+    r1 :: u64
+L0:
+    r0 = x >= 0 :: signed
+    if r0 goto L2 else goto L1 :: bool
+L1:
+    CPyUInt64_Overflow()
+    unreachable
+L2:
+    r1 = extend x: i32 to u64
+    return r1
+
 [case testListGetSetItemBoolIndexNotAmbiguous]
 # Bool matches both the i64 and u64 index ops; the i64 op must win
 from typing import List

@@ -574,3 +574,42 @@ L1:
 L2:
     r4 = CPyBytes_GetItemUnsafe(b, r1)
     return r4
+
+[case testCoerceSignedToU8]
+from typing import cast
+from mypy_extensions import i8, i64, u8
+
+def from_i64(x: i64) -> u8:
+    return cast(u8, x)
+def from_i8(x: i8) -> u8:
+    return cast(u8, x)
+[out]
+def from_i64(x):
+    x :: i64
+    r0, r1 :: bit
+    r2 :: u8
+L0:
+    r0 = x >= 0 :: signed
+    if r0 goto L1 else goto L2 :: bool
+L1:
+    r1 = x <= 255 :: signed
+    if r1 goto L3 else goto L2 :: bool
+L2:
+    CPyUInt8_Overflow()
+    unreachable
+L3:
+    r2 = truncate x: i64 to u8
+    return r2
+def from_i8(x):
+    x :: i8
+    r0 :: bit
+    r1 :: u8
+L0:
+    r0 = x >= 0 :: signed
+    if r0 goto L2 else goto L1 :: bool
+L1:
+    CPyUInt8_Overflow()
+    unreachable
+L2:
+    r1 = truncate x: i8 to u8
+    return r1
