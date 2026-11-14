@@ -102,12 +102,14 @@ from mypyc.ir.rtypes import (
     int64_rprimitive,
     int_rprimitive,
     is_bool_or_bit_rprimitive,
+    is_bytearray_rprimitive,
     is_bytes_rprimitive,
     is_c_py_ssize_t_rprimitive,
     is_dict_rprimitive,
     is_fixed_width_rtype,
     is_float_rprimitive,
     is_frozenset_rprimitive,
+    is_int8_rprimitive,
     is_int16_rprimitive,
     is_int32_rprimitive,
     is_int64_rprimitive,
@@ -161,6 +163,9 @@ from mypyc.primitives.generic_ops import (
     py_vectorcall_op,
 )
 from mypyc.primitives.int_ops import (
+    int8_divide_op,
+    int8_mod_op,
+    int8_overflow,
     int16_divide_op,
     int16_mod_op,
     int16_overflow,
@@ -766,6 +771,8 @@ class LowLevelIRBuilder:
             self.call_c(int32_overflow, [], line)
         elif is_int16_rprimitive(target_type):
             self.call_c(int16_overflow, [], line)
+        elif is_int8_rprimitive(target_type):
+            self.call_c(int8_overflow, [], line)
         elif is_uint64_rprimitive(target_type):
             self.call_c(uint64_overflow, [], line)
         elif is_uint32_rprimitive(target_type):
@@ -822,6 +829,7 @@ class LowLevelIRBuilder:
         if (
             (is_int32_rprimitive(src.type) and PLATFORM_SIZE == 8)
             or is_int16_rprimitive(src.type)
+            or is_int8_rprimitive(src.type)
             or (is_uint32_rprimitive(src.type) and PLATFORM_SIZE == 8)
             or is_uint16_rprimitive(src.type)
             or is_uint8_rprimitive(src.type)
@@ -2808,6 +2816,8 @@ class LowLevelIRBuilder:
                 prim = int32_divide_op
             elif is_int16_rprimitive(type):
                 prim = int16_divide_op
+            elif is_int8_rprimitive(type):
+                prim = int8_divide_op
             elif is_uint64_rprimitive(type):
                 self.check_for_zero_division(rhs, type, line)
                 return self.int_op(type, lhs, rhs, op, line)
@@ -2837,6 +2847,8 @@ class LowLevelIRBuilder:
                 prim = int32_mod_op
             elif is_int16_rprimitive(type):
                 prim = int16_mod_op
+            elif is_int8_rprimitive(type):
+                prim = int8_mod_op
             elif is_uint64_rprimitive(type):
                 self.check_for_zero_division(rhs, type, line)
                 return self.int_op(type, lhs, rhs, op, line)
@@ -2925,7 +2937,12 @@ class LowLevelIRBuilder:
         """
         typ = val.type
         size_value = None
-        if is_list_rprimitive(typ) or is_tuple_rprimitive(typ) or is_bytes_rprimitive(typ):
+        if (
+            is_list_rprimitive(typ)
+            or is_tuple_rprimitive(typ)
+            or is_bytes_rprimitive(typ)
+            or is_bytearray_rprimitive(typ)
+        ):
             size_value = self.primitive_op(var_object_size, [val], line)
         elif is_set_rprimitive(typ) or is_frozenset_rprimitive(typ):
             elem_address = self.add(GetElementPtr(val, PySetObject, "used"))

@@ -47,8 +47,16 @@ Methods
 * ``s1.find(s2: str, start: int)``
 * ``s1.find(s2: str, start: int, end: int)``
 * ``s.isalnum()``
+* ``s.isalpha()``
+* ``s.isascii()``
+* ``s.isdecimal()``
 * ``s.isdigit()``
+* ``s.islower()``
+* ``s.isnumeric()``
+* ``s.isprintable()``
 * ``s.isspace()``
+* ``s.istitle()``
+* ``s.isupper()``
 * ``s.lower()``
 * ``s.join(x: Iterable)``
 * ``s.lstrip()``
@@ -96,6 +104,7 @@ A subset of these common string formatting expressions are optimized:
 Functions
 ---------
 
+* ``chr(i: int)``
 * ``len(s: str)``
 * ``ord(s: str)``
 

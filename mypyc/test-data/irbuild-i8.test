@@ -1,0 +1,82 @@
+# Test cases for i8 native ints. Focus on things that are different from i16; no need to
+# duplicate all i16 test cases here.
+
+[case testI8Operations]
+from mypy_extensions import i8
+
+def ops(x: i8, y: i8) -> i8:
+    return (x // y) + (x % y)
+[out]
+def ops(x, y):
+    x, y, r0, r1, r2 :: i8
+L0:
+    r0 = CPyInt8_Divide(x, y)
+    r1 = CPyInt8_Remainder(x, y)
+    r2 = r0 + r1
+    return r2
+
+[case testI8BoxAndUnbox]
+from typing import Any
+from mypy_extensions import i8
+
+def f(x: Any) -> Any:
+    y: i8 = x
+    return y
+[out]
+def f(x):
+    x :: object
+    r0, y :: i8
+    r1 :: object
+L0:
+    r0 = unbox(i8, x)
+    y = r0
+    r1 = box(i8, y)
+    return r1
+
+[case testI8ConvertToInt]
+from mypy_extensions import i8
+
+def f(x: i8) -> int:
+    return int(x)
+[out]
+def f(x):
+    x :: i8
+    r0 :: native_int
+    r1 :: int
+L0:
+    r0 = extend signed x: i8 to native_int
+    r1 = r0 << 1
+    return r1
+
+[case testI8ConvertFromInt]
+from mypy_extensions import i8
+
+def f(x: int) -> i8:
+    return i8(x)
+[out]
+def f(x):
+    x :: int
+    r0 :: native_int
+    r1, r2, r3 :: bit
+    r4 :: native_int
+    r5, r6 :: i8
+L0:
+    r0 = x & 1
+    r1 = r0 == 0
+    if r1 goto L1 else goto L4 :: bool
+L1:
+    r2 = x < 256 :: signed
+    if r2 goto L2 else goto L4 :: bool
+L2:
+    r3 = x >= -256 :: signed
+    if r3 goto L3 else goto L4 :: bool
+L3:
+    r4 = x >> 1
+    r5 = truncate r4: native_int to i8
+    r6 = r5
+    goto L5
+L4:
+    CPyInt8_Overflow()
+    unreachable
+L5:
+    return r6

@@ -635,6 +635,140 @@ def test_from_gen_unknown_length() -> None:
     empty: list[int] = []
     assert list(x for x in empty) == []
 
+[case testListBuiltFromModifiedList]
+import asyncio
+from typing import List
+
+from testutil import assertRaises
+
+def grow(a: List[str], x: str) -> str:
+    if len(a) < 6:
+        a.append(x + "!")
+    return x
+
+def shrink(a: List[str], x: str) -> str:
+    a.pop()
+    return x
+
+def clear(a: List[str], x: str) -> str:
+    a.clear()
+    return x
+
+def replace(a: List[str], x: str) -> str:
+    if x == "a":
+        a.clear()
+        a.extend(["p", "q", "r", "s", "t"])
+    return x
+
+def fail(a: List[str], x: str) -> str:
+    if len(a) > 3:
+        raise ValueError(x)
+    a.append(x)
+    return x
+
+GROWN = ["a", "b", "a!", "b!", "a!!", "b!!"]
+
+def test_list_comprehension() -> None:
+    a = ["a", "b"]
+    assert [grow(a, x) for x in a] == GROWN
+    a = ["a", "b", "c", "d"]
+    assert [shrink(a, x) for x in a] == ["a", "b"]
+    a = ["a", "b", "c", "d"]
+    assert [clear(a, x) for x in a] == ["a"]
+    a = ["a", "b"]
+    assert [replace(a, x) for x in a] == ["a", "q", "r", "s", "t"]
+    a = ["a", "b"]
+    assert [x + "?" for x in a] == ["a?", "b?"]
+    a = ["a", "b"]
+    with assertRaises(ValueError, "a"):
+        [fail(a, x) for x in a]
+
+def test_list_from_generator() -> None:
+    a = ["a", "b"]
+    assert list(grow(a, x) for x in a) == GROWN
+    a = ["a", "b", "c", "d"]
+    assert list(shrink(a, x) for x in a) == ["a", "b"]
+    a = ["a", "b"]
+    assert list(x + "?" for x in a) == ["a?", "b?"]
+
+def test_tuple_from_generator() -> None:
+    a = ["a", "b"]
+    assert tuple(grow(a, x) for x in a) == tuple(GROWN)
+    a = ["a", "b", "c", "d"]
+    assert tuple(shrink(a, x) for x in a) == ("a", "b")
+    a = ["a", "b"]
+    assert tuple(x + "?" for x in a) == ("a?", "b?")
+    a = ["a", "b", "c", "d"]
+    assert tuple(clear(a, x) for x in a) == ("a",)
+    a = ["a", "b"]
+    assert tuple(replace(a, x) for x in a) == ("a", "q", "r", "s", "t")
+    a = ["a", "b"]
+    with assertRaises(ValueError, "a"):
+        tuple(fail(a, x) for x in a)
+
+def grow_many(a: List[int], x: int) -> int:
+    if len(a) < 1000:
+        a.append(x + 1)
+    return x * 2
+
+def grow_many_reference(a: List[int]) -> List[int]:
+    result = []
+    i = 0
+    while i < len(a):
+        result.append(grow_many(a, a[i]))
+        i += 1
+    return result
+
+def test_tuple_from_generator_grow_many() -> None:
+    # The tuple is resized several times
+    for n in range(5):
+        expected = tuple(grow_many_reference(list(range(n))))
+        assert len(expected) == (1000 if n else 0)
+        a = list(range(n))
+        assert tuple(grow_many(a, x) for x in a) == expected, n
+
+def test_sorted_from_generator() -> None:
+    a = ["b", "a"]
+    assert sorted(grow(a, x) for x in a) == ["a", "a!", "a!!", "b", "b!", "b!!"]
+    a = ["d", "c", "b", "a"]
+    assert sorted(shrink(a, x) for x in a) == ["c", "d"]
+    a = ["b", "a"]
+    assert sorted(x + "?" for x in a) == ["a?", "b?"]
+
+def test_join_from_generator() -> None:
+    a = ["a", "b"]
+    assert ",".join(grow(a, x) for x in a) == "a,b,a!,b!,a!!,b!!"
+    a = ["a", "b", "c", "d"]
+    assert ",".join(shrink(a, x) for x in a) == "a,b"
+    a = ["a", "b"]
+    assert ",".join(x + "?" for x in a) == "a?,b?"
+
+async def async_grow(a: List[str], x: str) -> str:
+    await asyncio.sleep(0)
+    return grow(a, x)
+
+async def async_shrink(a: List[str], x: str) -> str:
+    await asyncio.sleep(0)
+    return shrink(a, x)
+
+async def async_grow_comprehension(a: List[str]) -> List[str]:
+    return [await async_grow(a, x) for x in a]
+
+async def async_shrink_comprehension(a: List[str]) -> List[str]:
+    return [await async_shrink(a, x) for x in a]
+
+def test_async_comprehension() -> None:
+    assert asyncio.run(async_grow_comprehension(["a", "b"])) == GROWN
+    assert asyncio.run(async_shrink_comprehension(["a", "b", "c", "d"])) == ["a", "b"]
+
+[file asyncio/__init__.pyi]
+from typing import Any, Awaitable, TypeVar
+T = TypeVar("T")
+async def sleep(t: float) -> None: ...
+def run(x: Awaitable[T]) -> T: ...
+
+[typing fixtures/typing-full.pyi]
+
 [case testNext]
 from typing import List
 
