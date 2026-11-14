@@ -1036,6 +1036,8 @@ PyObject *CPyList_Build(Py_ssize_t len, ...);
 PyObject *CPyList_PopLast(PyObject *obj);
 PyObject *CPyList_Pop(PyObject *obj, CPyTagged index);
 CPyTagged CPyList_Count(PyObject *obj, PyObject *value);
+int CPySequence_ContainsInt(PyObject *seq, CPyTagged value);
+int CPySequence_ContainsStr(PyObject *seq, PyObject *str);
 int CPyList_Insert(PyObject *list, CPyTagged index, PyObject *value);
 PyObject *CPyList_Extend(PyObject *o1, PyObject *o2);
 int CPyList_Remove(PyObject *list, PyObject *obj);

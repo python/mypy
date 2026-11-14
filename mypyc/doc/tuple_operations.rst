@@ -23,6 +23,7 @@ Operators
 * ``tup[n:m]``, ``tup[n:]``, ``tup[:m]`` (slicing)
 * ``tup1 + tup2``
 * ``tup * n``, ``n * tup``
+* ``obj in tup``
 
 Statements
 ----------
