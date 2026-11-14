@@ -278,6 +278,41 @@ def test_u64_large_literal_implicit_coercion() -> None:
 def u64_identity(x: u64) -> u64:
     return x
 
+def neg_literal_to_int() -> int:
+    return -u64(1)
+
+def eq_neg_literal(x: u64) -> bool:
+    return x == -u64(1)
+
+def gt_neg_literal(x: u64) -> bool:
+    return x > -u64(5)
+
+def and_neg_literal(x: u64) -> u64:
+    return x & -u64(8)
+
+def div_neg_literal(x: u64) -> u64:
+    return x // -u64(5)
+
+def test_negate_literal() -> None:
+    assert -u64(0) == 0
+    assert -u64(1) == 18446744073709551615
+    assert int(-u64(1)) == 2**64 - 1
+    assert neg_literal_to_int() == 2**64 - 1
+    assert str(-u64(1)) == "18446744073709551615"
+    assert -u64(18446744073709551615) == 1
+    assert 0 - u64(1) == 18446744073709551615
+    assert ~u64(0) == 18446744073709551615
+    one: u64 = 1 + int()
+    assert -u64(1) == -one
+    assert -u64(5) == -(one * 5)
+    assert eq_neg_literal(18446744073709551615)
+    assert not eq_neg_literal(1)
+    assert gt_neg_literal(18446744073709551615)
+    assert not gt_neg_literal(18446744073709551611)
+    assert and_neg_literal(18446744073709551615) == 18446744073709551608
+    assert div_neg_literal(18446744073709551615) == 1
+    assert div_neg_literal(5) == 0
+
 def test_u64_truncate_from_i64() -> None:
     large = i64(2**62 + 157 + int())
     x = u64(large)

@@ -2180,8 +2180,12 @@ class LowLevelIRBuilder:
         """Perform unary '-'."""
         typ = value.type
         if isinstance(value, Integer):
-            # TODO: Overflow? Unsigned?
-            return Integer(-value.numeric_value(), typ, line)
+            # TODO: Signed overflow?
+            result = -value.numeric_value()
+            if is_fixed_width_rtype(typ) and not typ.is_signed:
+                # Unsigned negation wraps around, like at runtime
+                result &= (1 << (typ.size * 8)) - 1
+            return Integer(result, typ, line)
         elif isinstance(value, Float):
             return Float(-value.value, line)
         elif is_fixed_width_rtype(typ):

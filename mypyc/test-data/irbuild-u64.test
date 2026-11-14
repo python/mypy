@@ -319,6 +319,22 @@ L0:
     c = 1
     return 1
 
+[case testU64NegateLiteral]
+from mypy_extensions import u64
+
+def f() -> None:
+    a = -u64(0)
+    b = -u64(1)
+    c = -u64(5)
+[out]
+def f():
+    a, b, c :: u64
+L0:
+    a = 0
+    b = 18446744073709551615
+    c = 18446744073709551611
+    return 1
+
 [case testU64FromShortInt_64bit]
 from mypy_extensions import u64
 

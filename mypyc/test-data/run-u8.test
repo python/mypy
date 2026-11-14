@@ -246,6 +246,41 @@ def test_u8_from_large_small_literal() -> None:
     x = u8(0)
     assert x == 0
 
+def neg_literal_to_int() -> int:
+    return -u8(1)
+
+def eq_neg_literal(x: u8) -> bool:
+    return x == -u8(1)
+
+def gt_neg_literal(x: u8) -> bool:
+    return x > -u8(5)
+
+def and_neg_literal(x: u8) -> u8:
+    return x & -u8(8)
+
+def div_neg_literal(x: u8) -> u8:
+    return x // -u8(5)
+
+def test_negate_literal() -> None:
+    assert -u8(0) == 0
+    assert -u8(1) == 255
+    assert int(-u8(1)) == 2**8 - 1
+    assert neg_literal_to_int() == 2**8 - 1
+    assert str(-u8(1)) == "255"
+    assert -u8(255) == 1
+    assert 0 - u8(1) == 255
+    assert ~u8(0) == 255
+    one: u8 = 1 + int()
+    assert -u8(1) == -one
+    assert -u8(5) == -(one * 5)
+    assert eq_neg_literal(255)
+    assert not eq_neg_literal(1)
+    assert gt_neg_literal(255)
+    assert not gt_neg_literal(251)
+    assert and_neg_literal(255) == 248
+    assert div_neg_literal(255) == 1
+    assert div_neg_literal(5) == 0
+
 def test_u8_truncate_from_i64() -> None:
     large = i64(2**32 + 256 + 157 + int())
     x = u8(large)

@@ -81,6 +81,22 @@ L0:
     y = x
     return y
 
+[case testU8NegateLiteral]
+from mypy_extensions import u8
+
+def f() -> None:
+    a = -u8(0)
+    b = -u8(1)
+    c = -u8(5)
+[out]
+def f():
+    a, b, c :: u8
+L0:
+    a = 0
+    b = 255
+    c = 251
+    return 1
+
 [case testU8DivisionByConstant]
 from mypy_extensions import u8
 
