@@ -4535,12 +4535,12 @@ class SemanticAnalyzer(
                 is_final,
                 escape_comprehensions,
                 has_explicit_value=has_explicit_value,
-                is_init_to_none=is_none_expr(rvalue),
+                is_init_to_none=may_be_none_expr(rvalue),
                 is_index_var=is_index_var,
             )
         elif isinstance(lval, MemberExpr):
             self.analyze_member_lvalue(
-                lval, explicit_type, is_final, has_explicit_value, is_none_expr(rvalue)
+                lval, explicit_type, is_final, has_explicit_value, may_be_none_expr(rvalue)
             )
             if explicit_type and not self.is_self_member_ref(lval):
                 self.fail("Type cannot be declared in assignment to non-self attribute", lval)
@@ -8641,8 +8641,21 @@ def erase_func_annotations(func: FuncDef) -> None:
     func.unanalyzed_type = None
 
 
-def is_none_expr(expr: Expression | None) -> bool:
-    return isinstance(expr, NameExpr) and expr.name == "None"
+def may_be_none_expr(expr: Expression | None) -> bool:
+    """Can an assignment with this rvalue infer a (partial) None type?
+
+    If rvalue is None, it is unknown (e.g. for loop index or assignment expression
+    target), so we assume it may be None. Otherwise we only look for syntactic None
+    values. In particular, calls are not considered, since assigning the result of
+    a function returning None is already an error.
+    """
+    if expr is None or isinstance(expr, NameExpr) and expr.name == "None":
+        return True
+    if isinstance(expr, ConditionalExpr):
+        return may_be_none_expr(expr.if_expr) or may_be_none_expr(expr.else_expr)
+    if isinstance(expr, AssignmentExpr):
+        return may_be_none_expr(expr.value)
+    return False
 
 
 def mark_as_top_level(func: FuncBase) -> None:
