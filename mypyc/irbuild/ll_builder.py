@@ -827,6 +827,13 @@ class LowLevelIRBuilder:
         return res
 
     def coerce_fixed_width_to_int(self, src: Value, line: int) -> Value:
+        if isinstance(src, Integer):
+            value = src.numeric_value()
+            if not (MIN_SHORT_INT <= value <= MAX_SHORT_INT):
+                # The constant doesn't fit in a short int, so load it as an int literal.
+                # The fast path below would be unreachable, and C compilers may reject
+                # it, since it would truncate the constant (e.g. u64 on 32-bit platforms).
+                return self.load_int(value, line)
         if (
             (is_int32_rprimitive(src.type) and PLATFORM_SIZE == 8)
             or is_int16_rprimitive(src.type)
