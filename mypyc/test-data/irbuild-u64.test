@@ -62,6 +62,32 @@ L0:
     f = r5
     return 1
 
+[case testU64ForLoopOverRangeWithNegativeStep]
+from mypy_extensions import u64
+
+def f(a: u64, b: u64) -> None:
+    for x in range(a, b, -1):
+        y = x
+[out]
+def f(a, b):
+    a, b, r0 :: u64
+    r1 :: bit
+    x, y, r2 :: u64
+L0:
+    r0 = a
+L1:
+    r1 = r0 > b :: signed
+    if r1 goto L2 else goto L4 :: bool
+L2:
+    x = r0
+    y = x
+L3:
+    r2 = r0 - 1
+    r0 = r2
+    goto L1
+L4:
+    return 1
+
 [case testU64DetectMoreOutOfRangeLiterals]
 from mypy_extensions import u64
 

@@ -186,6 +186,158 @@ class Index:
     def __index__(self) -> int:
         return self.n
 
+[case testForRangeNativeIntStep]
+from itertools import islice
+from typing import Callable
+from mypy_extensions import i8, i16, i32, i64, u8, u64
+
+# Each loop gives up after a few hundred iterations, in case it doesn't terminate.
+LIMIT = 300
+
+def u8_up2(start: u8, end: u8) -> list[int]:
+    result = []
+    for i in range(start, end, 2):
+        result.append(i)
+        if len(result) > LIMIT:
+            break
+    return result
+
+def u8_up200(start: u8, end: u8) -> list[int]:
+    result = []
+    for i in range(start, end, 200):
+        result.append(i)
+        if len(result) > LIMIT:
+            break
+    return result
+
+def u8_down1(start: u8, end: u8) -> list[int]:
+    result = []
+    for i in range(start, end, -1):
+        result.append(i)
+        if len(result) > LIMIT:
+            break
+    return result
+
+def u8_down3(start: u8, end: u8) -> list[int]:
+    result = []
+    for i in range(start, end, -3):
+        result.append(i)
+        if len(result) > LIMIT:
+            break
+    return result
+
+def i8_up2(start: i8, end: i8) -> list[int]:
+    result = []
+    for i in range(start, end, 2):
+        result.append(i)
+        if len(result) > LIMIT:
+            break
+    return result
+
+def i8_up200(start: i8, end: i8) -> list[int]:
+    result = []
+    for i in range(start, end, 200):
+        result.append(i)
+        if len(result) > LIMIT:
+            break
+    return result
+
+def i8_down3(start: i8, end: i8) -> list[int]:
+    result = []
+    for i in range(start, end, -3):
+        result.append(i)
+        if len(result) > LIMIT:
+            break
+    return result
+
+def i16_up5(start: i16, end: i16) -> list[int]:
+    result = []
+    for i in range(start, end, 5):
+        result.append(i)
+        if len(result) > LIMIT:
+            break
+    return result
+
+def i32_down2(start: i32, end: i32) -> list[int]:
+    result = []
+    for i in range(start, end, -2):
+        result.append(i)
+        if len(result) > LIMIT:
+            break
+    return result
+
+def i64_up2(start: i64, end: i64) -> list[int]:
+    result = []
+    for i in range(start, end, 2):
+        result.append(i)
+        if len(result) > LIMIT:
+            break
+    return result
+
+def i64_down2(start: i64, end: i64) -> list[int]:
+    result = []
+    for i in range(start, end, -2):
+        result.append(i)
+        if len(result) > LIMIT:
+            break
+    return result
+
+def u64_up2(start: u64, end: u64) -> list[int]:
+    result = []
+    for i in range(start, end, 2):
+        result.append(i)
+        if len(result) > LIMIT:
+            break
+    return result
+
+def u64_down1(start: u64, end: u64) -> list[int]:
+    result = []
+    for i in range(start, end, -1):
+        result.append(i)
+        if len(result) > LIMIT:
+            break
+    return result
+
+def u64_down2(start: u64, end: u64) -> list[int]:
+    result = []
+    for i in range(start, end, -2):
+        result.append(i)
+        if len(result) > LIMIT:
+            break
+    return result
+
+def check(f: Callable[[int, int], list[int]], step: int, values: list[int]) -> None:
+    for start in values:
+        for end in values:
+            expected = list(islice(range(start, end, step), LIMIT + 1))
+            assert f(start, end) == expected, (start, end, step)
+
+def test_unsigned() -> None:
+    values = [0, 1, 2, 3, 4, 100, 251, 252, 253, 254, 255]
+    check(u8_up2, 2, values)
+    check(u8_up200, 200, values)
+    check(u8_down1, -1, values)
+    check(u8_down3, -3, values)
+    m = 2**64
+    values = [0, 1, 2, 3, 2**63, m - 4, m - 3, m - 2, m - 1]
+    check(u64_up2, 2, values)
+    check(u64_down1, -1, values)
+    check(u64_down2, -2, values)
+
+def test_signed() -> None:
+    values = [-128, -127, -126, -125, -1, 0, 1, 124, 125, 126, 127]
+    check(i8_up2, 2, values)
+    check(i8_up200, 200, values)
+    check(i8_down3, -3, values)
+    n = 2**15
+    check(i16_up5, 5, [-n, -n + 4, -n + 5, 0, n - 6, n - 5, n - 4, n - 1])
+    n = 2**31
+    check(i32_down2, -2, [-n, -n + 1, -n + 2, -n + 3, 0, n - 2, n - 1])
+    n = 2**63
+    values = [-n, -n + 1, -n + 2, -n + 3, -1, 0, 1, n - 4, n - 3, n - 2, n - 1]
+    check(i64_up2, 2, values)
+    check(i64_down2, -2, values)
+
 [case testForSequences]
 from collections.abc import Iterable, Iterator
 from typing import Any, NamedTuple, Optional
