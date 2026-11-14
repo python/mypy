@@ -1903,6 +1903,88 @@ print(call(D()))
 [rechecked2 native]
 [rechecked3 native, other]
 
+[case testIncrementalCompilationTogglingWeakrefs]
+# Mypy also ignores @mypyc_attr(weakrefs=True). It adds a weak reference list
+# to the object struct of A, which moves the attributes of subclasses, so
+# native.py must be recompiled to give B a layout that matches.
+# In step 3 other.py is unchanged, so it must stay fresh.
+from other import A
+
+class B(A):
+    def __init__(self) -> None:
+        super().__init__()
+        self.y = 2
+        self.t = "b"
+
+[file other.py]
+from mypy_extensions import mypyc_attr
+
+class A:
+    def __init__(self) -> None:
+        self.x = 1
+        self.s = "a"
+
+def get_x(a: A) -> int:
+    return a.x
+
+[file other.py.2]
+from mypy_extensions import mypyc_attr
+
+@mypyc_attr(weakrefs=True)
+class A:
+    def __init__(self) -> None:
+        self.x = 1
+        self.s = "a"
+
+def get_x(a: A) -> int:
+    return a.x
+
+[file native.py.3]
+from other import A
+
+class B(A):
+    def __init__(self) -> None:
+        super().__init__()
+        self.y = 3
+        self.t = "b"
+
+[file other.py.4]
+from mypy_extensions import mypyc_attr
+
+class A:
+    def __init__(self) -> None:
+        self.x = 1
+        self.s = "a"
+
+def get_x(a: A) -> int:
+    return a.x
+
+[file driver.py]
+import weakref
+from native import B
+from other import get_x
+
+b = B()
+try:
+    r = weakref.ref(b)
+except TypeError:
+    weak = False
+else:
+    weak = r() is b
+print(get_x(b), b.x, b.s, b.y, b.t, weak)
+[out]
+1 1 a 2 b False
+[out2]
+1 1 a 2 b True
+[out3]
+1 1 a 3 b True
+[out4]
+1 1 a 3 b False
+
+[rechecked native, other]
+[rechecked2 native]
+[rechecked3 native, other]
+
 [case testExtraLibRtSourceFileDep]
 table_list = list(range(256))
 table_list[ord('A')] = ord('B')
