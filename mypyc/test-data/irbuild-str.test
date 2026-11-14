@@ -1015,6 +1015,51 @@ L0:
     r0 = CPyStr_Upper(s)
     return r0
 
+[case testStrPadding]
+def ljust(s: str, n: int, c: str) -> str:
+    return s.ljust(n) + s.ljust(n, c)
+def rjust(s: str, n: int, c: str) -> str:
+    return s.rjust(n) + s.rjust(n, c)
+def center(s: str, n: int, c: str) -> str:
+    return s.center(n) + s.center(n, c)
+def zfill(s: str, n: int) -> str:
+    return s.zfill(n)
+[out]
+def ljust(s, n, c):
+    s :: str
+    n :: int
+    c, r0, r1, r2 :: str
+L0:
+    r0 = CPyStr_Ljust(s, n, 0)
+    r1 = CPyStr_Ljust(s, n, c)
+    r2 = PyUnicode_Concat(r0, r1)
+    return r2
+def rjust(s, n, c):
+    s :: str
+    n :: int
+    c, r0, r1, r2 :: str
+L0:
+    r0 = CPyStr_Rjust(s, n, 0)
+    r1 = CPyStr_Rjust(s, n, c)
+    r2 = PyUnicode_Concat(r0, r1)
+    return r2
+def center(s, n, c):
+    s :: str
+    n :: int
+    c, r0, r1, r2 :: str
+L0:
+    r0 = CPyStr_Center(s, n, 0)
+    r1 = CPyStr_Center(s, n, c)
+    r2 = PyUnicode_Concat(r0, r1)
+    return r2
+def zfill(s, n):
+    s :: str
+    n :: int
+    r0 :: str
+L0:
+    r0 = CPyStr_Zfill(s, n)
+    return r0
+
 [case testStrIsSpace]
 def is_space(x: str) -> bool:
     return x.isspace()

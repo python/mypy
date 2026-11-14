@@ -794,6 +794,129 @@ PyObject *CPyStr_Upper(PyObject *self) {
 #endif
 }
 
+// Get the fill character argument of str.ljust() and friends (NULL means a space).
+// Returns (Py_UCS4)-1 on error.
+static inline Py_UCS4 CPyStr_PadFillChar(PyObject *fillchar) {
+    if (fillchar == NULL) {
+        return ' ';
+    }
+    if (unlikely(PyUnicode_GET_LENGTH(fillchar) != 1)) {
+        PyErr_SetString(PyExc_TypeError,
+                        "The fill character must be exactly one character long");
+        return (Py_UCS4)-1;
+    }
+    return PyUnicode_READ_CHAR(fillchar, 0);
+}
+
+// Based on pad() in cpython.git:Objects/unicodeobject.c. The caller ensures that
+// left and right are non-negative and that left + len(self) + right fits in Py_ssize_t.
+static PyObject *CPyStr_Pad(PyObject *self, Py_ssize_t left, Py_ssize_t right, Py_UCS4 fill) {
+    Py_ssize_t len = PyUnicode_GET_LENGTH(self);
+    if (left == 0 && right == 0) {
+        // Like CPython, return the object itself if it's an exact str
+        return PyUnicode_Substring(self, 0, len);
+    }
+    Py_UCS4 maxchar = PyUnicode_MAX_CHAR_VALUE(self);
+    if (fill > maxchar) {
+        maxchar = fill;
+    }
+    PyObject *res = PyUnicode_New(left + len + right, maxchar);
+    if (res == NULL) {
+        return NULL;
+    }
+    int kind = PyUnicode_KIND(res);
+    void *data = PyUnicode_DATA(res);
+    if (kind == PyUnicode_1BYTE_KIND) {
+        Py_UCS1 *p = (Py_UCS1 *)data;
+        memset(p, (int)fill, left);
+        memset(p + left + len, (int)fill, right);
+    } else {
+        for (Py_ssize_t i = 0; i < left; i++) {
+            PyUnicode_WRITE(kind, data, i, fill);
+        }
+        for (Py_ssize_t i = left + len; i < left + len + right; i++) {
+            PyUnicode_WRITE(kind, data, i, fill);
+        }
+    }
+    if (PyUnicode_KIND(self) == kind) {
+        memcpy((char *)data + kind * left, PyUnicode_DATA(self), kind * len);
+    } else if (PyUnicode_CopyCharacters(res, left, self, 0, len) < 0) {
+        Py_DECREF(res);
+        return NULL;
+    }
+    return res;
+}
+
+PyObject *CPyStr_Ljust(PyObject *self, CPyTagged width, PyObject *fillchar) {
+    Py_ssize_t w = CPyTagged_AsSsize_t(width);
+    if (unlikely(w == -1 && PyErr_Occurred())) {
+        return NULL;
+    }
+    Py_UCS4 fill = CPyStr_PadFillChar(fillchar);
+    if (unlikely(fill == (Py_UCS4)-1)) {
+        return NULL;
+    }
+    Py_ssize_t len = PyUnicode_GET_LENGTH(self);
+    return CPyStr_Pad(self, 0, w > len ? w - len : 0, fill);
+}
+
+PyObject *CPyStr_Rjust(PyObject *self, CPyTagged width, PyObject *fillchar) {
+    Py_ssize_t w = CPyTagged_AsSsize_t(width);
+    if (unlikely(w == -1 && PyErr_Occurred())) {
+        return NULL;
+    }
+    Py_UCS4 fill = CPyStr_PadFillChar(fillchar);
+    if (unlikely(fill == (Py_UCS4)-1)) {
+        return NULL;
+    }
+    Py_ssize_t len = PyUnicode_GET_LENGTH(self);
+    return CPyStr_Pad(self, w > len ? w - len : 0, 0, fill);
+}
+
+PyObject *CPyStr_Center(PyObject *self, CPyTagged width, PyObject *fillchar) {
+    Py_ssize_t w = CPyTagged_AsSsize_t(width);
+    if (unlikely(w == -1 && PyErr_Occurred())) {
+        return NULL;
+    }
+    Py_UCS4 fill = CPyStr_PadFillChar(fillchar);
+    if (unlikely(fill == (Py_UCS4)-1)) {
+        return NULL;
+    }
+    Py_ssize_t len = PyUnicode_GET_LENGTH(self);
+    if (len >= w) {
+        return CPyStr_Pad(self, 0, 0, fill);
+    }
+    Py_ssize_t marg = w - len;
+    // This matches the rounding used by CPython
+    Py_ssize_t left = marg / 2 + (marg & w & 1);
+    return CPyStr_Pad(self, left, marg - left, fill);
+}
+
+PyObject *CPyStr_Zfill(PyObject *self, CPyTagged width) {
+    Py_ssize_t w = CPyTagged_AsSsize_t(width);
+    if (unlikely(w == -1 && PyErr_Occurred())) {
+        return NULL;
+    }
+    Py_ssize_t len = PyUnicode_GET_LENGTH(self);
+    if (len >= w) {
+        return CPyStr_Pad(self, 0, 0, '0');
+    }
+    Py_ssize_t fill = w - len;
+    PyObject *res = CPyStr_Pad(self, fill, 0, '0');
+    if (res == NULL) {
+        return NULL;
+    }
+    int kind = PyUnicode_KIND(res);
+    void *data = PyUnicode_DATA(res);
+    Py_UCS4 ch = PyUnicode_READ(kind, data, fill);
+    if (ch == '+' || ch == '-') {
+        // Move the sign to the beginning
+        PyUnicode_WRITE(kind, data, 0, ch);
+        PyUnicode_WRITE(kind, data, fill, '0');
+    }
+    return res;
+}
+
 bool CPyStr_IsDigit(PyObject *str) {
     Py_ssize_t len = PyUnicode_GET_LENGTH(str);
     if (len == 0) return false;

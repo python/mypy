@@ -1776,3 +1776,101 @@ class StrOverride(str):
         return 12345678901234567892
     def upper(self) -> Any:
         return 12345678901234567893
+
+[case testStrPadding]
+from typing import Any, Callable, Optional
+from testutil import assertRaises
+from strsub import StrSubclass, MAXSIZE
+
+def ljust(s: str, width: int, fillchar: Optional[str] = None) -> str:
+    if fillchar is None:
+        return s.ljust(width)
+    return s.ljust(width, fillchar)
+
+def rjust(s: str, width: int, fillchar: Optional[str] = None) -> str:
+    if fillchar is None:
+        return s.rjust(width)
+    return s.rjust(width, fillchar)
+
+def center(s: str, width: int, fillchar: Optional[str] = None) -> str:
+    if fillchar is None:
+        return s.center(width)
+    return s.center(width, fillchar)
+
+def zfill(s: str, width: int) -> str:
+    return s.zfill(width)
+
+STRINGS = ["", "a", "ab", "abc", "\xe9t\xe9", "\u4e2d\u6587", "\U0001f600x", "-", "+", "-42",
+           "+42", "--1", "42-", "-\u4e2d", "+\U0001f600"]
+FILLCHARS = [None, " ", "*", "0", "\xe9", "\u4e2d", "\U0001f600"]
+
+def check(f: Callable[[str, int, Optional[str]], str], name: str) -> None:
+    for s in STRINGS:
+        a: Any = s
+        for width in range(-3, 12):
+            for fillchar in FILLCHARS:
+                if fillchar is None:
+                    expected = getattr(a, name)(width)
+                else:
+                    expected = getattr(a, name)(width, fillchar)
+                assert f(s, width, fillchar) == expected, (name, s, width, fillchar)
+
+def test_ljust() -> None:
+    check(ljust, "ljust")
+
+def test_rjust() -> None:
+    check(rjust, "rjust")
+
+def test_center() -> None:
+    check(center, "center")
+
+def test_zfill() -> None:
+    for s in STRINGS:
+        a: Any = s
+        for width in range(-3, 12):
+            assert zfill(s, width) == a.zfill(width), (s, width)
+    assert zfill("-1", 4) == "-001"
+    assert zfill("+\u4e2d", 3) == "+0\u4e2d"
+    assert zfill("1-", 4) == "001-"
+
+def test_unchanged() -> None:
+    s = "".join(["a", "bc"])
+    assert ljust(s, 3) is s
+    assert rjust(s, 2, "*") is s
+    assert center(s, -1) is s
+    assert zfill(s, 0) is s
+    sub = StrSubclass("abc")
+    for res in [ljust(sub, 3), rjust(sub, 2, "*"), center(sub, -1), zfill(sub, 0)]:
+        assert type(res) is str
+        assert res == "abc"
+    assert type(ljust(sub, 5)) is str
+    assert ljust(sub, 5) == "abc  "
+
+def test_errors() -> None:
+    for f in (ljust, rjust, center):
+        for fillchar in ["", "ab", "\U0001f600\U0001f600"]:
+            with assertRaises(TypeError, "The fill character must be exactly one character long"):
+                f("abc", 5, fillchar)
+        # The fill character is checked even if no padding is needed
+        with assertRaises(TypeError, "The fill character must be exactly one character long"):
+            f("abc", 1, "ab")
+        with assertRaises(OverflowError, "Python int too large to convert to C ssize_t"):
+            f("abc", 2**100)
+        with assertRaises(OverflowError, "Python int too large to convert to C ssize_t"):
+            f("abc", -2**100)
+    with assertRaises(OverflowError, "Python int too large to convert to C ssize_t"):
+        zfill("abc", 2**100)
+    for s in ["a", "\u4e2d", "\U0001f600"]:
+        for f in (ljust, rjust, center):
+            with assertRaises(MemoryError):
+                f(s, MAXSIZE)
+        with assertRaises(MemoryError):
+            zfill(s, MAXSIZE)
+
+[file strsub.py]
+import sys
+
+MAXSIZE: int = getattr(sys, "maxsize")
+
+class StrSubclass(str):
+    pass
