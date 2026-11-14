@@ -54,6 +54,35 @@ double CPyFloat_FromTagged(CPyTagged x) {
     return result;
 }
 
+// Compare a float and an int (op is Py_LT etc.). Like in CPython, the comparison is
+// exact, so the int can only be converted to a double if this doesn't lose precision.
+// Return 2 on error.
+char CPyFloat_CompareTagged(double x, CPyTagged y, int op) {
+    if (likely(CPyTagged_FitsInDouble(y))) {
+        double yf = (double)CPyTagged_ShortAsSsize_t(y);
+        switch (op) {
+        case Py_LT: return x < yf;
+        case Py_LE: return x <= yf;
+        case Py_EQ: return x == yf;
+        case Py_NE: return x != yf;
+        case Py_GT: return x > yf;
+        default: return x >= yf;
+        }
+    }
+    PyObject *xo = PyFloat_FromDouble(x);
+    if (xo == NULL) {
+        return 2;
+    }
+    PyObject *yo = CPyTagged_AsObject(y);
+    int result = PyObject_RichCompareBool(xo, yo, op);
+    Py_DECREF(xo);
+    Py_DECREF(yo);
+    if (result < 0) {
+        return 2;
+    }
+    return result;
+}
+
 double CPyFloat_Sin(double x) {
     double v = sin(x);
     if (unlikely(isnan(v)) && !isnan(x)) {

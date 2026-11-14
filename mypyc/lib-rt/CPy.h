@@ -322,6 +322,16 @@ static inline CPyTagged CPyTagged_BorrowFromObject(PyObject *object) {
     }
 }
 
+// Can x be converted to a double exactly? This is true for short ints with an
+// absolute value of at most 2**53 (always true on 32-bit platforms).
+static inline bool CPyTagged_FitsInDouble(CPyTagged x) {
+    if (CPyTagged_CheckLong(x)) {
+        return false;
+    }
+    int64_t value = CPyTagged_ShortAsSsize_t(x);
+    return value >= -((int64_t)1 << 53) && value <= ((int64_t)1 << 53);
+}
+
 static inline bool CPyTagged_TooBig(Py_ssize_t value) {
     // Micro-optimized for the common case where it fits.
     return (size_t)value > CPY_TAGGED_MAX
@@ -810,6 +820,7 @@ double CPyFloat_Log(double x);
 CPyTagged CPyFloat_Floor(double x);
 CPyTagged CPyFloat_Ceil(double x);
 double CPyFloat_FromTagged(CPyTagged x);
+char CPyFloat_CompareTagged(double x, CPyTagged y, int op);
 bool CPyFloat_IsInf(double x);
 bool CPyFloat_IsNaN(double x);
 double CPyComplex_GetPartSlow(PyObject *o, PyObject *name);
