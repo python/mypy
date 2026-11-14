@@ -3002,3 +3002,50 @@ with assertRaises(TypeError, "unbound method C.c() needs an argument"):
     C.__dict__["c"].__call__()
 assert run(C.__dict__["m"](C())) == 1
 assert run(C.__dict__["c"](C)) == "C"
+
+[case testRunAsyncListComprehensionWithAwait_librt]
+import asyncio
+from typing import List
+
+from mypy_extensions import i64
+from librt.vecs import vec
+
+async def ident(x: str) -> str:
+    await asyncio.sleep(0)
+    return x
+
+async def ident_int(x: int) -> int:
+    await asyncio.sleep(0)
+    return x
+
+async def grow(a: List[str], x: str) -> str:
+    await asyncio.sleep(0)
+    if len(a) < 4:
+        a.append(x + "!")
+    return x
+
+async def shrink(a: List[str], x: str) -> str:
+    await asyncio.sleep(0)
+    a.pop()
+    return x
+
+async def test_list() -> None:
+    a = ["a", "b"]
+    assert [await ident(x) for x in a] == ["a", "b"]
+    assert [await grow(a, x) for x in a] == ["a", "b", "a!", "b!"]
+    a = ["a", "b", "c", "d"]
+    assert [await shrink(a, x) for x in a] == ["a", "b"]
+
+async def test_vec() -> None:
+    a = ["a", "b"]
+    assert vec[str]([await ident(x) for x in a]) == vec[str](["a", "b"])
+    assert vec[str]([await grow(a, x) for x in a]) == vec[str](["a", "b", "a!", "b!"])
+    a = ["a", "b", "c", "d"]
+    assert vec[str]([await shrink(a, x) for x in a]) == vec[str](["a", "b"])
+    n = [1, 2, 3]
+    assert vec[i64]([await ident_int(x) for x in n]) == vec[i64]([1, 2, 3])
+
+[file asyncio/__init__.pyi]
+async def sleep(delay: float) -> None: ...
+
+[typing fixtures/typing-full.pyi]

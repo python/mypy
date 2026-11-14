@@ -2906,34 +2906,47 @@ L0:
 def f(a):
     a :: list
     r0 :: native_int
-    r1 :: list
-    r2, r3 :: native_int
-    r4 :: bit
-    r5 :: object
-    r6, x :: __main__.C
-    r7 :: str
-    r8 :: native_int
+    r1, r2 :: list
+    r3, r4 :: native_int
+    r5 :: bit
+    r6 :: object
+    r7, x :: __main__.C
+    r8 :: str
+    r9 :: bit
+    r10 :: i32
+    r11 :: bit
+    r12 :: native_int
 L0:
     r0 = var_object_size a
     r1 = PyList_New(r0)
-    r2 = 0
+    r2 = r1
+    r3 = 0
 L1:
-    r3 = var_object_size a
-    r4 = r2 < r3 :: signed
-    if r4 goto L2 else goto L4 :: bool
+    r4 = var_object_size a
+    r5 = r3 < r4 :: signed
+    if r5 goto L2 else goto L6 :: bool
 L2:
-    r5 = list_get_item_unsafe a, r2
-    r6 = cast(__main__.C, r5)
-    x = r6
-    r7 = x.s
+    r6 = list_get_item_unsafe a, r3
+    r7 = cast(__main__.C, r6)
+    x = r7
+    r8 = x.s
     dec_ref x
-    CPyList_SetItemUnsafe(r1, r2, r7)
+    r9 = r3 < r0 :: signed
+    if r9 goto L3 else goto L4 :: bool
 L3:
-    r8 = r2 + 1
-    r2 = r8
-    goto L1
+    CPyList_SetItemUnsafe(r2, r3, r8)
+    goto L5
 L4:
-    return r1
+    r10 = PyList_Append(r2, r8)
+    dec_ref r8
+    r11 = r10 >= 0 :: signed
+L5:
+    r12 = r3 + 1
+    r3 = r12
+    goto L1
+L6:
+    CPyList_SetSizeUnsafe(r2, r3)
+    return r2
 
 [case testBorrowedFinalInSetComprehension_withgil]
 from typing import Final
