@@ -175,6 +175,31 @@ def test_construct_from_list_comprehension() -> None:
         for j in range(i):
             assert v[j] == str(j * j + 5)
 
+def grow_list(a: list[str], x: str) -> str:
+    if len(a) < 6:
+        a.append(x + "!")
+    return x
+
+def shrink_list(a: list[str], x: str) -> str:
+    a.pop()
+    return x
+
+def test_construct_from_modified_list_comprehension() -> None:
+    a = ["a", "b"]
+    assert vec[str]([grow_list(a, x) for x in a]) == vec[str](["a", "b", "a!", "b!", "a!!", "b!!"])
+    a = ["a", "b", "c", "d"]
+    assert vec[str]([shrink_list(a, x) for x in a]) == vec[str](["a", "b"])
+    a = ["a", "b", "c", "d"]
+    v = vec[str]([shrink_list(a, x) for x in a], capacity=10)
+    assert v == vec[str](["a", "b"])
+    v = append(v, "x")
+    assert v == vec[str](["a", "b", "x"])
+    a = ["a"]
+    v = vec[str]([grow_list(a, x) for x in a], capacity=3)
+    assert v == vec[str](["a", "a!", "a!!", "a!!!", "a!!!!", "a!!!!!"])
+    a = ["a", "b"]
+    assert vec[str]([x + "?" for x in a]) == vec[str](["a?", "b?"])
+
 def test_construct_from_list() -> None:
     a: list[str] = []
     assert vec[str](a) == vec[str]()

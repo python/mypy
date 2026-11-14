@@ -6,6 +6,7 @@ from mypyc.ir.rtypes import (
     bytes_rprimitive,
     bytes_writer_rprimitive,
     float_rprimitive,
+    int8_rprimitive,
     int16_rprimitive,
     int32_rprimitive,
     int64_rprimitive,
@@ -14,6 +15,9 @@ from mypyc.ir.rtypes import (
     str_rprimitive,
     string_writer_rprimitive,
     uint8_rprimitive,
+    uint16_rprimitive,
+    uint32_rprimitive,
+    uint64_rprimitive,
     void_rtype,
 )
 from mypyc.primitives.registry import custom_primitive_op, function_op, method_op
@@ -118,6 +122,26 @@ bytes_writer_set_item_unsafe_op = custom_primitive_op(
     return_type=void_rtype,
     c_function_name="CPyBytesWriter_SetItem",
     error_kind=ERR_NEVER,
+    dependencies=[LIBRT_STRINGS, BYTES_WRITER_EXTRA_OPS],
+)
+
+# i8 write/read functions
+
+function_op(
+    name="librt.strings.write_i8",
+    arg_types=[bytes_writer_rprimitive, int8_rprimitive],
+    return_type=none_rprimitive,
+    c_function_name="CPyBytesWriter_WriteI8",
+    error_kind=ERR_MAGIC,
+    dependencies=[LIBRT_STRINGS, BYTES_WRITER_EXTRA_OPS],
+)
+
+function_op(
+    name="librt.strings.read_i8",
+    arg_types=[bytes_rprimitive, int64_rprimitive],
+    return_type=int8_rprimitive,
+    c_function_name="CPyBytes_ReadI8",
+    error_kind=ERR_MAGIC_OVERLAPPING,
     dependencies=[LIBRT_STRINGS, BYTES_WRITER_EXTRA_OPS],
 )
 
@@ -231,6 +255,120 @@ function_op(
     arg_types=[bytes_rprimitive, int64_rprimitive],
     return_type=int64_rprimitive,
     c_function_name="CPyBytes_ReadI64BE",
+    error_kind=ERR_MAGIC_OVERLAPPING,
+    dependencies=[LIBRT_STRINGS, BYTES_WRITER_EXTRA_OPS],
+)
+
+# u16 write/read functions
+
+function_op(
+    name="librt.strings.write_u16_le",
+    arg_types=[bytes_writer_rprimitive, uint16_rprimitive],
+    return_type=none_rprimitive,
+    c_function_name="CPyBytesWriter_WriteU16LE",
+    error_kind=ERR_MAGIC,
+    dependencies=[LIBRT_STRINGS, BYTES_WRITER_EXTRA_OPS],
+)
+
+function_op(
+    name="librt.strings.write_u16_be",
+    arg_types=[bytes_writer_rprimitive, uint16_rprimitive],
+    return_type=none_rprimitive,
+    c_function_name="CPyBytesWriter_WriteU16BE",
+    error_kind=ERR_MAGIC,
+    dependencies=[LIBRT_STRINGS, BYTES_WRITER_EXTRA_OPS],
+)
+
+function_op(
+    name="librt.strings.read_u16_le",
+    arg_types=[bytes_rprimitive, int64_rprimitive],
+    return_type=uint16_rprimitive,
+    c_function_name="CPyBytes_ReadU16LE",
+    error_kind=ERR_MAGIC_OVERLAPPING,
+    dependencies=[LIBRT_STRINGS, BYTES_WRITER_EXTRA_OPS],
+)
+
+function_op(
+    name="librt.strings.read_u16_be",
+    arg_types=[bytes_rprimitive, int64_rprimitive],
+    return_type=uint16_rprimitive,
+    c_function_name="CPyBytes_ReadU16BE",
+    error_kind=ERR_MAGIC_OVERLAPPING,
+    dependencies=[LIBRT_STRINGS, BYTES_WRITER_EXTRA_OPS],
+)
+
+# u32 write/read functions
+
+function_op(
+    name="librt.strings.write_u32_le",
+    arg_types=[bytes_writer_rprimitive, uint32_rprimitive],
+    return_type=none_rprimitive,
+    c_function_name="CPyBytesWriter_WriteU32LE",
+    error_kind=ERR_MAGIC,
+    dependencies=[LIBRT_STRINGS, BYTES_WRITER_EXTRA_OPS],
+)
+
+function_op(
+    name="librt.strings.write_u32_be",
+    arg_types=[bytes_writer_rprimitive, uint32_rprimitive],
+    return_type=none_rprimitive,
+    c_function_name="CPyBytesWriter_WriteU32BE",
+    error_kind=ERR_MAGIC,
+    dependencies=[LIBRT_STRINGS, BYTES_WRITER_EXTRA_OPS],
+)
+
+function_op(
+    name="librt.strings.read_u32_le",
+    arg_types=[bytes_rprimitive, int64_rprimitive],
+    return_type=uint32_rprimitive,
+    c_function_name="CPyBytes_ReadU32LE",
+    error_kind=ERR_MAGIC_OVERLAPPING,
+    dependencies=[LIBRT_STRINGS, BYTES_WRITER_EXTRA_OPS],
+)
+
+function_op(
+    name="librt.strings.read_u32_be",
+    arg_types=[bytes_rprimitive, int64_rprimitive],
+    return_type=uint32_rprimitive,
+    c_function_name="CPyBytes_ReadU32BE",
+    error_kind=ERR_MAGIC_OVERLAPPING,
+    dependencies=[LIBRT_STRINGS, BYTES_WRITER_EXTRA_OPS],
+)
+
+# u64 write/read functions
+
+function_op(
+    name="librt.strings.write_u64_le",
+    arg_types=[bytes_writer_rprimitive, uint64_rprimitive],
+    return_type=none_rprimitive,
+    c_function_name="CPyBytesWriter_WriteU64LE",
+    error_kind=ERR_MAGIC,
+    dependencies=[LIBRT_STRINGS, BYTES_WRITER_EXTRA_OPS],
+)
+
+function_op(
+    name="librt.strings.write_u64_be",
+    arg_types=[bytes_writer_rprimitive, uint64_rprimitive],
+    return_type=none_rprimitive,
+    c_function_name="CPyBytesWriter_WriteU64BE",
+    error_kind=ERR_MAGIC,
+    dependencies=[LIBRT_STRINGS, BYTES_WRITER_EXTRA_OPS],
+)
+
+function_op(
+    name="librt.strings.read_u64_le",
+    arg_types=[bytes_rprimitive, int64_rprimitive],
+    return_type=uint64_rprimitive,
+    c_function_name="CPyBytes_ReadU64LE",
+    error_kind=ERR_MAGIC_OVERLAPPING,
+    dependencies=[LIBRT_STRINGS, BYTES_WRITER_EXTRA_OPS],
+)
+
+function_op(
+    name="librt.strings.read_u64_be",
+    arg_types=[bytes_rprimitive, int64_rprimitive],
+    return_type=uint64_rprimitive,
+    c_function_name="CPyBytes_ReadU64BE",
     error_kind=ERR_MAGIC_OVERLAPPING,
     dependencies=[LIBRT_STRINGS, BYTES_WRITER_EXTRA_OPS],
 )

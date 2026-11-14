@@ -8,7 +8,7 @@ NOTE: Most of these should be added to bytearray_extra_ops.c, which requires the
 from __future__ import annotations
 
 from mypyc.ir.deps import BYTEARRAY_EXTRA_OPS
-from mypyc.ir.ops import ERR_MAGIC, ERR_NEVER
+from mypyc.ir.ops import ERR_FALSE, ERR_MAGIC, ERR_NEVER
 from mypyc.ir.rtypes import (
     bit_rprimitive,
     bytearray_rprimitive,
@@ -16,7 +16,7 @@ from mypyc.ir.rtypes import (
     int_rprimitive,
     object_rprimitive,
 )
-from mypyc.primitives.registry import custom_primitive_op, function_op, load_address_op
+from mypyc.primitives.registry import custom_primitive_op, function_op, load_address_op, method_op
 
 # Get the 'bytearray' type object.
 load_address_op(name="builtins.bytearray", type=object_rprimitive, src="PyByteArray_Type")
@@ -58,4 +58,34 @@ isinstance_bytearray = custom_primitive_op(
     return_type=bit_rprimitive,
     c_function_name="PyByteArray_Check",
     error_kind=ERR_NEVER,
+)
+
+# bytearray[index]
+method_op(
+    name="__getitem__",
+    arg_types=[bytearray_rprimitive, int_rprimitive],
+    return_type=int_rprimitive,
+    c_function_name="CPyByteArray_GetItem",
+    error_kind=ERR_MAGIC,
+    dependencies=[BYTEARRAY_EXTRA_OPS],
+)
+
+# bytearray[index] = value
+method_op(
+    name="__setitem__",
+    arg_types=[bytearray_rprimitive, int_rprimitive, int_rprimitive],
+    return_type=bit_rprimitive,
+    c_function_name="CPyByteArray_SetItem",
+    error_kind=ERR_FALSE,
+    dependencies=[BYTEARRAY_EXTRA_OPS],
+)
+
+# bytearray[begin:end]
+bytearray_slice_op = custom_primitive_op(
+    name="bytearray_slice",
+    arg_types=[bytearray_rprimitive, int_rprimitive, int_rprimitive],
+    return_type=bytearray_rprimitive,
+    c_function_name="CPyByteArray_GetSlice",
+    error_kind=ERR_MAGIC,
+    dependencies=[BYTEARRAY_EXTRA_OPS],
 )

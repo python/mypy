@@ -1796,10 +1796,10 @@ class SetElement(RegisterOp):
         self.field = field
 
     def sources(self) -> list[Value]:
-        return [self.src]
+        return [self.src, self.item]
 
     def set_sources(self, new: list[Value]) -> None:
-        (self.src,) = new
+        self.src, self.item = new
 
     def stolen(self) -> list[Value]:
         return [self.src]

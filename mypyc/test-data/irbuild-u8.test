@@ -349,7 +349,7 @@ L0:
     return 1
 
 [case testU8ExplicitConversionFromNativeInt]
-from mypy_extensions import i64, i32, i16, u8
+from mypy_extensions import i64, i32, i16, i8, u8
 
 def from_u8(x: u8) -> u8:
     return u8(x)
@@ -361,6 +361,9 @@ def from_i32(x: i32) -> u8:
     return u8(x)
 
 def from_i64(x: i64) -> u8:
+    return u8(x)
+
+def from_i8(x: i8) -> u8:
     return u8(x)
 [out]
 def from_u8(x):
@@ -384,6 +387,12 @@ def from_i64(x):
     r0 :: u8
 L0:
     r0 = truncate x: i64 to u8
+    return r0
+def from_i8(x):
+    x :: i8
+    r0 :: u8
+L0:
+    r0 = truncate x: i8 to u8
     return r0
 
 [case testU8ExplicitConversionToNativeInt]

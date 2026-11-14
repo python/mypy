@@ -864,9 +864,10 @@ def test_chr() -> None:
     assert try_invalid(-1)
     assert try_invalid(1114112)
 
-def test_chr_all_code_points() -> None:
+def test_chr_code_points() -> None:
     f: Any = chr
-    for i in range(0x110000):
+    # All BMP code points, and a sample of the others (checking all of them is slow)
+    for i in [*range(0x10000), *range(0x10000, 0x110000, 97), 0x10FFFF]:
         c = chr(i)
         assert c == f(i)
         assert ord(c) == i
@@ -1385,7 +1386,8 @@ def test_expansion() -> None:
     assert "\uFB03".upper() == "FFI"           # ffi ligature -> FFI
 
 def test_comprehensive() -> None:
-    for i in range(0x110000):
+    # All BMP code points, and a sample of the others (checking all of them is slow)
+    for i in [*range(0x10000), *range(0x10000, 0x110000, 97), 0x10FFFF]:
         c = chr(i)
         a: Any = c
         assert c.lower() == a.lower(), f"lower mismatch at U+{i:04X}"
@@ -1395,10 +1397,10 @@ def test_comprehensive() -> None:
 from typing import Any
 
 def test_isspace() -> None:
-    # Verify correctness across all Unicode codepoints.
     # Exercises UCS-1 (0x00-0xFF), UCS-2 (0x100-0xFFFF), and UCS-4 (0x10000-x10FFFF inclusive) string kinds.
     # Any forces generic dispatch so we compare our primitive against stdlib's
-    for i in range(0x110000):
+    # All BMP code points, and a sample of the others (checking all of them is slow)
+    for i in [*range(0x10000), *range(0x10000, 0x110000, 97), 0x10FFFF]:
         c = chr(i)
         a: Any = c
         assert c.isspace() == a.isspace()
@@ -1437,7 +1439,8 @@ def test_isalnum_unicode() -> None:
 from typing import Any
 
 def test_isdigit() -> None:
-    for i in range(0x110000):
+    # All BMP code points, and a sample of the others (checking all of them is slow)
+    for i in [*range(0x10000), *range(0x10000, 0x110000, 97), 0x10FFFF]:
         c = chr(i)
         a: Any = c
         assert c.isdigit() == a.isdigit()
@@ -1479,9 +1482,10 @@ def check(s: str) -> None:
     assert s.isnumeric() == a.isnumeric(), f"isnumeric mismatch for {s!r}"
     assert s.isprintable() == a.isprintable(), f"isprintable mismatch for {s!r}"
 
-def test_all_code_points() -> None:
-    # Covers the ASCII, UCS-1, UCS-2 and UCS-4 string kinds
-    for i in range(0x110000):
+def test_code_points() -> None:
+    # Covers the ASCII, UCS-1, UCS-2 and UCS-4 string kinds. Check all BMP code points,
+    # and a sample of the others (checking all of them is slow).
+    for i in [*range(0x10000), *range(0x10000, 0x110000, 97), 0x10FFFF]:
         check(chr(i))
 
 def test_strings() -> None:
@@ -1562,6 +1566,103 @@ def test_str_subclass() -> None:
     assert not s.isdecimal()
     assert not s.isnumeric()
     assert s.isprintable()
+
+[file strsubclass.py]
+class S(str):
+    pass
+
+[case testStrIsCased]
+from typing import Any
+
+def check(s: str) -> None:
+    # Any forces generic dispatch, so we compare our primitives against CPython's
+    a: Any = s
+    assert s.islower() == a.islower(), f"islower mismatch for {s!r}"
+    assert s.isupper() == a.isupper(), f"isupper mismatch for {s!r}"
+    assert s.istitle() == a.istitle(), f"istitle mismatch for {s!r}"
+
+def test_all_code_points() -> None:
+    # Covers the ASCII, UCS-1, UCS-2 and UCS-4 string kinds. Check all BMP code points,
+    # and a sample of the others (checking all of them is slow).
+    for i in [*range(0x10000), *range(0x10000, 0x110000, 97), 0x10FFFF]:
+        c = chr(i)
+        check(c)
+        check(c + "a")
+        check("A" + c)
+
+def test_strings() -> None:
+    samples = [
+        "", " ", "a", "A", "abc", "ABC", "Abc", "aBC", "abC", "123", "abc 123!", "ABC 123!",
+        "Hello World", "Hello world", "hello World", "HEllo", "Hello-World", "Hello World 123!",
+        "été", "Été", "ÉTÉ", "ÉtÉ",
+        "абв", "АБВ", "Абв Гд",
+        "Ǆ", "ǅ", "ǆ", "ǅa", "ǅA", "Ǆǅ", "aǅ",
+        "中文", "abc中", "ABC中", "Abc中",
+        "\U00010400", "\U00010428", "abc\U00010428", "ABC\U00010400", "abc\U00010400",
+        "\U00010400\U00010428", "\U0001f600", "A\U0001f600",
+    ]
+    for s in samples:
+        check(s)
+        check(s + " " + s)
+
+def test_islower() -> None:
+    assert "abc".islower()
+    assert "abc 123!".islower()
+    assert not "".islower()
+    assert not "123".islower()
+    assert not "Abc".islower()
+    assert not "abC".islower()
+    assert "été".islower()
+    assert not "Été".islower()
+    assert "абв".islower()
+    assert not "ǅa".islower()  # Titlecase character
+    assert "abc\U00010428".islower()
+    assert not "abc\U00010400".islower()
+    assert not "中文".islower()
+
+def test_isupper() -> None:
+    assert "ABC".isupper()
+    assert "ABC 123!".isupper()
+    assert not "".isupper()
+    assert not "123".isupper()
+    assert not "aBC".isupper()
+    assert not "ABc".isupper()
+    assert "ÉTÉ".isupper()
+    assert not "ÉtÉ".isupper()
+    assert "АБВ".isupper()
+    assert not "ǅA".isupper()  # Titlecase character
+    assert "ABC\U00010400".isupper()
+    assert not "ABC\U00010428".isupper()
+    assert not "中文".isupper()
+
+def test_istitle() -> None:
+    assert "Hello".istitle()
+    assert "Hello World".istitle()
+    assert "Hello World 123!".istitle()
+    assert "A".istitle()
+    assert "Hello-World".istitle()
+    assert not "".istitle()
+    assert not "123".istitle()
+    assert not "hello".istitle()
+    assert not "Hello world".istitle()
+    assert not "HEllo".istitle()
+    assert not "HELLO".istitle()
+    assert "Été".istitle()
+    assert not "été".istitle()
+    assert "Абв Гд".istitle()
+    assert "ǅ".istitle()  # Titlecase character
+    assert "ǅa".istitle()
+    assert not "Ǆǅ".istitle()
+    assert "\U00010400\U00010428".istitle()
+    assert not "\U00010428".istitle()
+    assert not "中文".istitle()
+
+def test_str_subclass() -> None:
+    from strsubclass import S
+    assert S("abc").islower()
+    assert not S("abc").isupper()
+    assert not S("abc").istitle()
+    assert S("Abc").istitle()
 
 [file strsubclass.py]
 class S(str):

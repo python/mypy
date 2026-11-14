@@ -302,15 +302,17 @@ def test():
     r4 :: ptr
     source :: list
     r5 :: native_int
-    r6 :: tuple
-    r7, r8 :: native_int
-    r9 :: bit
-    r10 :: object
-    r11, x :: int
-    r12 :: bool
-    r13 :: object
-    r14 :: native_int
-    a :: tuple
+    r6, r7 :: tuple
+    r8, r9 :: native_int
+    r10 :: bit
+    r11 :: object
+    r12, x :: int
+    r13 :: bool
+    r14 :: bit
+    r15, r16 :: object
+    r17 :: tuple
+    r18 :: native_int
+    r19, a :: tuple
 L0:
     r0 = PyList_New(3)
     r1 = object 1
@@ -324,24 +326,36 @@ L0:
     source = r0
     r5 = var_object_size source
     r6 = PyTuple_New(r5)
-    r7 = 0
+    r7 = r6
+    r8 = 0
 L1:
-    r8 = var_object_size source
-    r9 = r7 < r8 :: signed
-    if r9 goto L2 else goto L4 :: bool
+    r9 = var_object_size source
+    r10 = r8 < r9 :: signed
+    if r10 goto L2 else goto L7 :: bool
 L2:
-    r10 = list_get_item_unsafe source, r7
-    r11 = unbox(int, r10)
-    x = r11
-    r12 = f(x)
-    r13 = box(bool, r12)
-    CPySequenceTuple_SetItemUnsafe(r6, r7, r13)
+    r11 = list_get_item_unsafe source, r8
+    r12 = unbox(int, r11)
+    x = r12
+    r13 = f(x)
+    r14 = r8 < r5 :: signed
+    if r14 goto L3 else goto L4 :: bool
 L3:
-    r14 = r7 + 1
-    r7 = r14
-    goto L1
+    r15 = box(bool, r13)
+    CPySequenceTuple_SetItemUnsafe(r7, r8, r15)
+    goto L5
 L4:
-    a = r6
+    r16 = box(bool, r13)
+    r17 = CPySequenceTuple_SetItemGrow(r7, r8, r16)
+    r7 = r17
+L5:
+L6:
+    r18 = r8 + 1
+    r8 = r18
+    goto L1
+L7:
+    r19 = CPySequenceTuple_SetSize(r7, r8)
+    r7 = r19
+    a = r7
     return 1
 
 [case testTupleBuiltFromStr]
@@ -1232,3 +1246,63 @@ L3:
 L4:
     r7 = PyList_AsTuple(r0)
     return r7
+
+[case testTupleHash_64bit]
+from typing import Any
+
+def f(a: int, b: bool, c: Any) -> int:
+    return hash((a, b, c))
+[out]
+def f(a, b, c):
+    a :: int
+    b :: bool
+    c :: object
+    r0 :: int
+    r1 :: bool
+    r2 :: object
+    r3 :: tuple[int, bool, object]
+    r4 :: u64
+    r5 :: int
+    r6 :: native_int
+    r7 :: u64
+    r8 :: bool
+    r9 :: native_int
+    r10 :: u64
+    r11 :: object
+    r12 :: native_int
+    r13 :: bit
+    r14 :: u64
+    r15 :: native_int
+    r16, r17 :: bit
+    r18, r19, r20 :: int
+L0:
+    r0 = a
+    r1 = b
+    r2 = c
+    r3 = (r0, r1, r2)
+    r4 = CPyTupleHash_Start()
+    r5 = r3[0]
+    r6 = CPyTupleHash_Int(r5)
+    r7 = CPyTupleHash_Add(r4, r6)
+    r8 = r3[1]
+    r9 = extend r8: builtins.bool to native_int
+    r10 = CPyTupleHash_Add(r7, r9)
+    r11 = r3[2]
+    r12 = PyObject_Hash(r11)
+    r13 = r12 != -1
+    r14 = CPyTupleHash_Add(r10, r12)
+    r15 = CPyTupleHash_Finish(r14, 3)
+    r16 = r15 <= 4611686018427387903 :: signed
+    if r16 goto L1 else goto L2 :: bool
+L1:
+    r17 = r15 >= -4611686018427387904 :: signed
+    if r17 goto L3 else goto L2 :: bool
+L2:
+    r18 = CPyTagged_FromInt64(r15)
+    r19 = r18
+    goto L4
+L3:
+    r20 = r15 << 1
+    r19 = r20
+L4:
+    return r19

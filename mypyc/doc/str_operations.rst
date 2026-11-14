@@ -50,9 +50,12 @@ Methods
 * ``s.isdecimal()``
 * ``s.isdigit()``
 * ``s.isidentifier()``
+* ``s.islower()``
 * ``s.isnumeric()``
 * ``s.isprintable()``
 * ``s.isspace()``
+* ``s.istitle()``
+* ``s.isupper()``
 * ``s.lower()``
 * ``s.join(x: Iterable)``
 * ``s.lstrip()``
