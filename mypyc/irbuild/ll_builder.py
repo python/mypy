@@ -2864,7 +2864,59 @@ class LowLevelIRBuilder:
             else:
                 assert False, type
             return self.call_c(prim, [lhs, rhs], line)
+        if op in (IntOp.LEFT_SHIFT, IntOp.RIGHT_SHIFT):
+            return self.fixed_width_int_shift(type, lhs, rhs, op, line)
         return self.int_op(type, lhs, rhs, op, line)
+
+    def fixed_width_int_shift(
+        self, type: RPrimitive, lhs: Value, rhs: Value, op: int, line: int
+    ) -> Value:
+        """Generate a native int shift (<< or >>) using Python semantics.
+
+        A C shift by a negative count or by at least the bit width is undefined
+        behavior, so only use a plain shift when the count is in range. A negative
+        count raises ValueError. A larger count produces 0 (or -1 for a right shift
+        of a negative signed value).
+        """
+        bits = type.size * 8
+        if isinstance(rhs, Integer):
+            count = rhs.numeric_value()
+            if 0 <= count < bits:
+                return self.int_op(type, lhs, rhs, op, line)
+            if count < 0:
+                self.check_for_negative_shift_count(rhs, type, line)
+            return self.large_shift_result(type, lhs, op, line)
+        res = Register(type)
+        in_range, out_of_range, done = BasicBlock(), BasicBlock(), BasicBlock()
+        # Unsigned comparison also catches negative counts
+        ok = self.add(ComparisonOp(rhs, Integer(bits, type), ComparisonOp.ULT, line))
+        self.add(Branch(ok, in_range, out_of_range, Branch.BOOL))
+        self.activate_block(in_range)
+        self.add(Assign(res, self.int_op(type, lhs, rhs, op, line)))
+        self.add(Goto(done))
+        self.activate_block(out_of_range)
+        if type.is_signed:
+            self.check_for_negative_shift_count(rhs, type, line)
+        self.add(Assign(res, self.large_shift_result(type, lhs, op, line)))
+        self.add(Goto(done))
+        self.activate_block(done)
+        return res
+
+    def large_shift_result(self, type: RPrimitive, lhs: Value, op: int, line: int) -> Value:
+        """Return the result of lhs << n or lhs >> n, when n >= bit width."""
+        if op == IntOp.RIGHT_SHIFT and type.is_signed:
+            # Either 0 or -1, depending on the sign of lhs
+            return self.int_op(type, lhs, Integer(type.size * 8 - 1, type), op, line)
+        return Integer(0, type)
+
+    def check_for_negative_shift_count(self, rhs: Value, type: RType, line: int) -> None:
+        err, ok = BasicBlock(), BasicBlock()
+        is_negative = self.add(ComparisonOp(rhs, Integer(0, type), ComparisonOp.SLT, line))
+        self.add(Branch(is_negative, err, ok, Branch.BOOL))
+        self.activate_block(err)
+        self.add(RaiseStandardError(RaiseStandardError.VALUE_ERROR, "negative shift count", line))
+        self.add(Unreachable())
+        self.activate_block(ok)
 
     def check_for_zero_division(self, rhs: Value, type: RType, line: int) -> None:
         err, ok = BasicBlock(), BasicBlock()

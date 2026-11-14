@@ -85,6 +85,8 @@ from mypyc.ir.rtypes import (
     RType,
     RVec,
     is_bool_or_bit_rprimitive,
+    is_int8_rprimitive,
+    is_int16_rprimitive,
     is_int32_rprimitive,
     is_int64_rprimitive,
     is_int_rprimitive,
@@ -937,6 +939,15 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         dest = self.reg(op)
         lhs = self.reg(op.lhs)
         rhs = self.reg(op.rhs)
+        if (
+            op.op in (IntOp.LEFT_SHIFT, IntOp.RIGHT_SHIFT)
+            and isinstance(op.lhs, Integer)
+            and isinstance(op.type, RPrimitive)
+            and op.type.is_native_int
+        ):
+            # The type of a C shift is the (promoted) type of the left operand,
+            # so cast an integer literal to get e.g. a 64-bit shift.
+            lhs = f"({self.ctype(op.type)}){lhs}"
         if op.op == IntOp.RIGHT_SHIFT:
             # Signed right shift
             lhs = self.emit_signed_int_cast(op.lhs.type) + lhs
@@ -1191,6 +1202,10 @@ class FunctionEmitterVisitor(OpVisitor[None]):
             return "(uint32_t)"
         elif is_int64_rprimitive(type):
             return "(uint64_t)"
+        elif is_int16_rprimitive(type):
+            return "(uint16_t)"
+        elif is_int8_rprimitive(type):
+            return "(uint8_t)"
         else:
             return ""
 

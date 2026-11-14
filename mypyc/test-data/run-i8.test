@@ -54,6 +54,61 @@ def test_operations() -> None:
     assert y >> 2 == -3
     assert ~x == -66
 
+def truncate_i8(n: int) -> int:
+    n &= (1 << 8) - 1
+    return n - (1 << 8) if n >= (1 << 7) else n
+
+def test_shift_count_out_of_range() -> None:
+    for x in 0, 1, 5, -1, -8, (1 << 7) - 1, -(1 << 7):
+        v: i8 = x
+        for n in 0, 1, 7, 8, 9, 64, 100:
+            c: i8 = n
+            assert v << c == truncate_i8(x << n)
+            assert v >> c == x >> n
+            nn: int = n
+            assert v << nn == truncate_i8(x << n)
+            assert v >> nn == x >> n
+            y = v
+            y <<= c
+            assert y == truncate_i8(x << n)
+            y = v
+            y >>= c
+            assert y == x >> n
+        assert v << 0 == x
+        assert v << 7 == truncate_i8(x << 7)
+        assert v << 8 == 0
+        assert v << 9 == 0
+        assert v << 100 == 0
+        assert v >> 0 == x
+        assert v >> 7 == x >> 7
+        assert v >> 8 == x >> 8
+        assert v >> 9 == x >> 9
+        assert v >> 100 == x >> 100
+        y = v
+        y >>= 8
+        assert y == x >> 8
+        assert v << 64 == 0
+        assert v >> 64 == x >> 64
+        for n in -1, -8, -100:
+            c = n
+            with assertRaises(ValueError, "negative shift count"):
+                y = v << c
+            with assertRaises(ValueError, "negative shift count"):
+                y = v >> c
+            nn = n
+            with assertRaises(ValueError, "negative shift count"):
+                y = v << nn
+            with assertRaises(ValueError, "negative shift count"):
+                y = v >> nn
+        with assertRaises(ValueError, "negative shift count"):
+            y = v << -1
+        with assertRaises(ValueError, "negative shift count"):
+            y = v >> -1
+    for n in 0, 1, 7, 8, 9, 64, 100:
+        c = n
+        assert 3 << c == truncate_i8(3 << n)
+        assert -5 >> c == -5 >> n
+
 def test_conversions() -> None:
     assert to_i8(127) == 127
     assert to_i8(128) == -128

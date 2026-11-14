@@ -148,6 +148,60 @@ L4:
     r5 = a % y
     return r5
 
+[case testU8ShiftByVariable]
+from mypy_extensions import u8
+
+def shift(x: u8, y: u8) -> u8:
+    a = x << y
+    return a >> y
+[out]
+def shift(x, y):
+    x, y :: u8
+    r0 :: bit
+    r1, r2, a :: u8
+    r3 :: bit
+    r4, r5 :: u8
+L0:
+    r0 = y < 8 :: unsigned
+    if r0 goto L1 else goto L2 :: bool
+L1:
+    r1 = x << y
+    r2 = r1
+    goto L3
+L2:
+    r2 = 0
+L3:
+    a = r2
+    r3 = y < 8 :: unsigned
+    if r3 goto L4 else goto L5 :: bool
+L4:
+    r4 = a >> y
+    r5 = r4
+    goto L6
+L5:
+    r5 = 0
+L6:
+    return r5
+
+[case testU8ShiftByConstant]
+from mypy_extensions import u8
+
+def shift(x: u8) -> u8:
+    a = x << 7
+    b = x << 8
+    c = x >> 7
+    return c >> 100
+[out]
+def shift(x):
+    x, r0, a, b, r1, c :: u8
+L0:
+    r0 = x << 7
+    a = r0
+    b = 0
+    r1 = x >> 7
+    c = r1
+    return 0
+
 [case testU8BinaryOperationWithOutOfRangeOperand]
 from mypy_extensions import u8
 
