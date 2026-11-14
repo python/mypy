@@ -134,6 +134,7 @@ from mypyc.ir.rtypes import (
     pointer_rprimitive,
     short_int_rprimitive,
     str_rprimitive,
+    wrap_unsigned_native_int,
 )
 from mypyc.irbuild.util import concrete_arg_kind
 from mypyc.irbuild.vec import vec_contains, vec_get_item, vec_len_native
@@ -826,6 +827,13 @@ class LowLevelIRBuilder:
         return res
 
     def coerce_fixed_width_to_int(self, src: Value, line: int) -> Value:
+        if isinstance(src, Integer):
+            value = src.numeric_value()
+            if not (MIN_SHORT_INT <= value <= MAX_SHORT_INT):
+                # The constant doesn't fit in a short int, so load it as an int literal.
+                # The fast path below would be unreachable, and C compilers may reject
+                # it, since it would truncate the constant (e.g. u64 on 32-bit platforms).
+                return self.load_int(value, line)
         if (
             (is_int32_rprimitive(src.type) and PLATFORM_SIZE == 8)
             or is_int16_rprimitive(src.type)
@@ -2180,8 +2188,8 @@ class LowLevelIRBuilder:
         """Perform unary '-'."""
         typ = value.type
         if isinstance(value, Integer):
-            # TODO: Overflow? Unsigned?
-            return Integer(-value.numeric_value(), typ, line)
+            # TODO: Signed overflow?
+            return Integer(wrap_unsigned_native_int(typ, -value.numeric_value()), typ, line)
         elif isinstance(value, Float):
             return Float(-value.value, line)
         elif is_fixed_width_rtype(typ):
