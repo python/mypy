@@ -415,6 +415,16 @@ method_op(
     error_kind=ERR_MAGIC,
 )
 
+# str.capitalize(), str.casefold(), str.swapcase() and str.title()
+for case_method in ["capitalize", "casefold", "swapcase", "title"]:
+    method_op(
+        name=case_method,
+        arg_types=[str_rprimitive],
+        return_type=str_rprimitive,
+        c_function_name=f"CPyStr_{case_method.capitalize()}",
+        error_kind=ERR_MAGIC,
+    )
+
 method_op(
     name="isspace",
     arg_types=[str_rprimitive],

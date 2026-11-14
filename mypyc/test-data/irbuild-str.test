@@ -1015,6 +1015,37 @@ L0:
     r0 = CPyStr_Upper(s)
     return r0
 
+[case testStrCaseMethods]
+def capitalize(s: str) -> str:
+    return s.capitalize()
+def casefold(s: str) -> str:
+    return s.casefold()
+def swapcase(s: str) -> str:
+    return s.swapcase()
+def title(s: str) -> str:
+    return s.title()
+[out]
+def capitalize(s):
+    s, r0 :: str
+L0:
+    r0 = CPyStr_Capitalize(s)
+    return r0
+def casefold(s):
+    s, r0 :: str
+L0:
+    r0 = CPyStr_Casefold(s)
+    return r0
+def swapcase(s):
+    s, r0 :: str
+L0:
+    r0 = CPyStr_Swapcase(s)
+    return r0
+def title(s):
+    s, r0 :: str
+L0:
+    r0 = CPyStr_Title(s)
+    return r0
+
 [case testStrIsSpace]
 def is_space(x: str) -> bool:
     return x.isspace()
