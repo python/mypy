@@ -617,6 +617,37 @@ class ActionBase(argparse.Action):
         super().__init__(["-x"], "x")
         self.x = 1
 
+[case testMultiModuleCallInSubclassOnly]
+# The base class is in another group in separate compilation mode, and only the
+# subclass defines __call__.
+from other_call_base import CallBase, call_base_x
+
+class CallSub(CallBase):
+    def __init__(self, x: str) -> None:
+        super().__init__(x)
+        self.y = "y"
+
+    def __call__(self, a: int) -> str:
+        return self.x + self.y + str(a)
+
+def test_call_in_subclass() -> None:
+    c = CallSub("x")
+    assert c.get_x() == "x"
+    assert call_base_x(c) == "x"
+    assert c.x == "x" and c.y == "y"
+    assert c(1) == "xy1"
+
+[file other_call_base.py]
+class CallBase:
+    def __init__(self, x: str) -> None:
+        self.x = x
+
+    def get_x(self) -> str:
+        return self.x
+
+def call_base_x(b: CallBase) -> str:
+    return b.x
+
 [case testNonNativeImportInPackageFile]
 # The import is really non-native only in separate compilation mode where __init__.py and
 # other_cache.py are in different libraries and the import uses the standard Python procedure.

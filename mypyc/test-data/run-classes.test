@@ -4659,6 +4659,139 @@ class Derived(Base):
 def test_inherited() -> None:
     assert Derived()() == 1
 
+[case testClassWith__call__InSubclassOnly]
+import gc
+import weakref
+from typing import Any
+from mypy_extensions import i64, mypyc_attr
+
+class Base:
+    def __init__(self, x: str, n: i64) -> None:
+        self.x = x
+        self.n = n
+        self.b = True
+
+    def get_x(self) -> str:
+        return self.x
+
+    def get_n(self) -> i64:
+        return self.n
+
+    def set_x(self, x: str) -> None:
+        self.x = x
+
+class CallSub(Base):
+    def __init__(self, x: str, n: i64) -> None:
+        super().__init__(x, n)
+        self.y = "y"
+
+    def __call__(self, a: int) -> str:
+        return f"{self.x}:{self.n}:{self.y}:{a}"
+
+class CallSubSub(CallSub):
+    def __init__(self, x: str, n: i64) -> None:
+        super().__init__(x, n)
+        self.z = "z"
+
+    def __call__(self, a: int) -> str:
+        return f"{self.x}:{self.y}:{self.z}:{a}"
+
+class Mid(Base):
+    def __init__(self, x: str, n: i64) -> None:
+        super().__init__(x, n)
+        self.m = "m"
+
+class CallSubOfMid(Mid):
+    def __call__(self) -> str:
+        return self.x + self.m
+
+@mypyc_attr(weakrefs=True)
+class WeakBase:
+    def __init__(self, x: str) -> None:
+        self.x = x
+
+    def get_x(self) -> str:
+        return self.x
+
+class WeakCallSub(WeakBase):
+    def __init__(self, x: str) -> None:
+        super().__init__(x)
+        self.y = "y"
+
+    def __call__(self) -> str:
+        return self.x + self.y
+
+@mypyc_attr(allow_interpreted_subclasses=True)
+class OpenBase:
+    def __init__(self, x: str) -> None:
+        self.x = x
+
+    def get_x(self) -> str:
+        return self.x
+
+@mypyc_attr(allow_interpreted_subclasses=True)
+class OpenCallSub(OpenBase):
+    def __init__(self, x: str) -> None:
+        super().__init__(x)
+        self.y = "y"
+
+    def __call__(self) -> str:
+        return self.x + self.y
+
+def get_x(b: Base) -> str:
+    return b.x
+
+def test_subclass_defines_call() -> None:
+    c = CallSub("x", 5)
+    assert c.get_x() == "x"
+    assert c.get_n() == 5
+    assert get_x(c) == "x"
+    assert c.x == "x" and c.n == 5 and c.b and c.y == "y"
+    c.set_x("xx")
+    assert c.x == "xx"
+    assert c(1) == "xx:5:y:1"
+    o: Any = c
+    assert o(2) == "xx:5:y:2"
+    assert o.get_x() == "xx"
+
+def test_call_overridden_in_subclass() -> None:
+    c = CallSubSub("x", -3)
+    assert c.get_x() == "x" and c.get_n() == -3 and get_x(c) == "x"
+    assert c.y == "y" and c.z == "z"
+    assert c(1) == "x:y:z:1"
+    s: CallSub = c
+    assert s(2) == "x:y:z:2"
+    o: Any = c
+    assert o(3) == "x:y:z:3"
+
+def test_call_in_indirect_subclass() -> None:
+    c = CallSubOfMid("x", 7)
+    assert c.get_x() == "x" and c.get_n() == 7 and get_x(c) == "x"
+    assert c.m == "m"
+    assert c() == "xm"
+
+def test_call_with_weakrefs() -> None:
+    c = WeakCallSub("x")
+    assert c.get_x() == "x" and c.y == "y"
+    assert c() == "xy"
+    r = weakref.ref(c)
+    assert r() is c
+    del c
+    gc.collect()
+    assert r() is None
+
+def test_interpreted_subclass() -> None:
+    type2: Any = type
+    Sub = type2("Sub", (OpenCallSub,), {})
+    c = Sub("x")
+    c.z = "z"
+    assert c.get_x() == "x" and c.y == "y" and c.z == "z"
+    assert c() == "xy"
+    CallSub2 = type2("CallSub2", (OpenBase,), {"__call__": lambda self: self.get_x() + "!"})
+    d = CallSub2("x")
+    assert d.get_x() == "x"
+    assert d() == "x!"
+
 [case testCallTypeObjectOfNativeClass]
 from abc import ABC, abstractmethod
 from typing import Any, overload
