@@ -1686,6 +1686,29 @@ def test_write_via_any() -> None:
         with assertRaises(TypeError):
             write_func(w)
 
+class Index:
+    def __init__(self, n: int) -> None:
+        self.n = n
+
+    def __index__(self) -> int:
+        return self.n
+
+def test_write_via_any_index_and_non_int() -> None:
+    for write_func, fmt, bits in WRITE_FUNCS:
+        values = [0, 5, 239, (1 << bits) - 1]
+        w: Any = BytesWriter()
+        for v in values:
+            write_func(w, Index(v))
+        assert w.getvalue() == b"".join(struct.pack(fmt, v) for v in values)
+
+        msg = f"int too large or small to convert to u{bits}"
+        with assertRaises(ValueError, msg):
+            write_func(w, Index(1 << bits))
+        with assertRaises(ValueError, msg):
+            write_func(w, Index(-1))
+        with assertRaises(TypeError, "'float' object cannot be interpreted as an integer"):
+            write_func(w, 1.0)
+
 def test_read_via_any() -> None:
     for read_func, fmt, bits in READ_FUNCS:
         values = [0, 239, (1 << bits) - 1, 1 << (bits - 1)]
