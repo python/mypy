@@ -1571,6 +1571,103 @@ def test_str_subclass() -> None:
 class S(str):
     pass
 
+[case testStrIsCased]
+from typing import Any
+
+def check(s: str) -> None:
+    # Any forces generic dispatch, so we compare our primitives against CPython's
+    a: Any = s
+    assert s.islower() == a.islower(), f"islower mismatch for {s!r}"
+    assert s.isupper() == a.isupper(), f"isupper mismatch for {s!r}"
+    assert s.istitle() == a.istitle(), f"istitle mismatch for {s!r}"
+
+def test_all_code_points() -> None:
+    # Covers the ASCII, UCS-1, UCS-2 and UCS-4 string kinds. Check all BMP code points,
+    # and a sample of the others (checking all of them is slow).
+    for i in [*range(0x10000), *range(0x10000, 0x110000, 97), 0x10FFFF]:
+        c = chr(i)
+        check(c)
+        check(c + "a")
+        check("A" + c)
+
+def test_strings() -> None:
+    samples = [
+        "", " ", "a", "A", "abc", "ABC", "Abc", "aBC", "abC", "123", "abc 123!", "ABC 123!",
+        "Hello World", "Hello world", "hello World", "HEllo", "Hello-World", "Hello World 123!",
+        "été", "Été", "ÉTÉ", "ÉtÉ",
+        "абв", "АБВ", "Абв Гд",
+        "Ǆ", "ǅ", "ǆ", "ǅa", "ǅA", "Ǆǅ", "aǅ",
+        "中文", "abc中", "ABC中", "Abc中",
+        "\U00010400", "\U00010428", "abc\U00010428", "ABC\U00010400", "abc\U00010400",
+        "\U00010400\U00010428", "\U0001f600", "A\U0001f600",
+    ]
+    for s in samples:
+        check(s)
+        check(s + " " + s)
+
+def test_islower() -> None:
+    assert "abc".islower()
+    assert "abc 123!".islower()
+    assert not "".islower()
+    assert not "123".islower()
+    assert not "Abc".islower()
+    assert not "abC".islower()
+    assert "été".islower()
+    assert not "Été".islower()
+    assert "абв".islower()
+    assert not "ǅa".islower()  # Titlecase character
+    assert "abc\U00010428".islower()
+    assert not "abc\U00010400".islower()
+    assert not "中文".islower()
+
+def test_isupper() -> None:
+    assert "ABC".isupper()
+    assert "ABC 123!".isupper()
+    assert not "".isupper()
+    assert not "123".isupper()
+    assert not "aBC".isupper()
+    assert not "ABc".isupper()
+    assert "ÉTÉ".isupper()
+    assert not "ÉtÉ".isupper()
+    assert "АБВ".isupper()
+    assert not "ǅA".isupper()  # Titlecase character
+    assert "ABC\U00010400".isupper()
+    assert not "ABC\U00010428".isupper()
+    assert not "中文".isupper()
+
+def test_istitle() -> None:
+    assert "Hello".istitle()
+    assert "Hello World".istitle()
+    assert "Hello World 123!".istitle()
+    assert "A".istitle()
+    assert "Hello-World".istitle()
+    assert not "".istitle()
+    assert not "123".istitle()
+    assert not "hello".istitle()
+    assert not "Hello world".istitle()
+    assert not "HEllo".istitle()
+    assert not "HELLO".istitle()
+    assert "Été".istitle()
+    assert not "été".istitle()
+    assert "Абв Гд".istitle()
+    assert "ǅ".istitle()  # Titlecase character
+    assert "ǅa".istitle()
+    assert not "Ǆǅ".istitle()
+    assert "\U00010400\U00010428".istitle()
+    assert not "\U00010428".istitle()
+    assert not "中文".istitle()
+
+def test_str_subclass() -> None:
+    from strsubclass import S
+    assert S("abc").islower()
+    assert not S("abc").isupper()
+    assert not S("abc").istitle()
+    assert S("Abc").istitle()
+
+[file strsubclass.py]
+class S(str):
+    pass
+
 [case testStrIndexEqLiteralSpecialize]
 from testutil import assertRaises
 

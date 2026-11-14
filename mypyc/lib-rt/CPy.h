@@ -924,6 +924,7 @@ static void CPy_LogGetAttr(const char *method, PyObject *obj, PyObject *attr) {
      PyObject_GetAttr((obj), (attr)))
 
 CPyTagged CPyObject_Hash(PyObject *o);
+Py_hash_t CPy_HashFromResult(PyObject *res);
 
 // Default identity-based hash (same as object.__hash__), used as tp_hash
 static inline Py_hash_t CPy_DefaultHash(PyObject *o) {
@@ -1024,6 +1025,13 @@ PyObject *CPyList_GetItemShortBorrow(PyObject *list, CPyTagged index);
 PyObject *CPyList_GetItemInt64Borrow(PyObject *list, int64_t index);
 PyObject *CPyList_GetItemUInt64Borrow(PyObject *list, uint64_t index);
 void CPyList_SetItemUnsafe(PyObject *list, Py_ssize_t index, PyObject *value);
+
+// Reduce the size of a list that is being built using CPyList_SetItemUnsafe.
+// Items at or after the new size must not have been set.
+static inline void CPyList_SetSizeUnsafe(PyObject *list, Py_ssize_t size) {
+    Py_SET_SIZE(list, size);
+}
+
 PyObject *CPyList_Build(Py_ssize_t len, ...);
 PyObject *CPyList_PopLast(PyObject *obj);
 PyObject *CPyList_Pop(PyObject *obj, CPyTagged index);
@@ -1148,6 +1156,9 @@ static inline bool CPyStr_IsAscii(PyObject *str) {
 bool CPyStr_IsDecimal(PyObject *str);
 bool CPyStr_IsNumeric(PyObject *str);
 bool CPyStr_IsPrintable(PyObject *str);
+bool CPyStr_IsLower(PyObject *str);
+bool CPyStr_IsTitle(PyObject *str);
+bool CPyStr_IsUpper(PyObject *str);
 
 // Bytes operations
 
@@ -1206,6 +1217,9 @@ static inline void CPySequenceTuple_SetItemUnsafe(PyObject *tuple, Py_ssize_t in
 {
     PyTuple_SET_ITEM(tuple, index, value);
 }
+
+PyObject *CPySequenceTuple_SetItemGrow(PyObject *tuple, Py_ssize_t index, PyObject *value);
+PyObject *CPySequenceTuple_SetSize(PyObject *tuple, Py_ssize_t size);
 
 // hash() of a fixed-length tuple, worked out from the hashes of its items without
 // building a tuple object. These are the steps of the tuple hash in CPython's

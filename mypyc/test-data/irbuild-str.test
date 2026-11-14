@@ -1103,6 +1103,39 @@ L0:
     r0 = CPyStr_IsPrintable(x)
     return r0
 
+[case testStrIsLower]
+def is_lower(x: str) -> bool:
+    return x.islower()
+[out]
+def is_lower(x):
+    x :: str
+    r0 :: bool
+L0:
+    r0 = CPyStr_IsLower(x)
+    return r0
+
+[case testStrIsTitle]
+def is_title(x: str) -> bool:
+    return x.istitle()
+[out]
+def is_title(x):
+    x :: str
+    r0 :: bool
+L0:
+    r0 = CPyStr_IsTitle(x)
+    return r0
+
+[case testStrIsUpper]
+def is_upper(x: str) -> bool:
+    return x.isupper()
+[out]
+def is_upper(x):
+    x :: str
+    r0 :: bool
+L0:
+    r0 = CPyStr_IsUpper(x)
+    return r0
+
 [case testStrIndexEqLiteral_64bit]
 def is_comma(s: str, i: int) -> bool:
     return s[i] == ","

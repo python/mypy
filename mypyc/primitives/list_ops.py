@@ -228,6 +228,15 @@ new_list_set_item_op = custom_op(
     steals=[False, False, True],
 )
 
+# Reduce the size of a list built using new_list_set_item_op. Items at or after
+# the new size must not have been set.
+new_list_set_size_op = custom_op(
+    arg_types=[list_rprimitive, c_pyssize_t_rprimitive],
+    return_type=void_rtype,
+    c_function_name="CPyList_SetSizeUnsafe",
+    error_kind=ERR_NEVER,
+)
+
 # list.append(obj)
 list_append_op = method_op(
     name="append",

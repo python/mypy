@@ -49,9 +49,12 @@ Methods
 * ``s.isascii()``
 * ``s.isdecimal()``
 * ``s.isdigit()``
+* ``s.islower()``
 * ``s.isnumeric()``
 * ``s.isprintable()``
 * ``s.isspace()``
+* ``s.istitle()``
+* ``s.isupper()``
 * ``s.lower()``
 * ``s.join(x: Iterable)``
 * ``s.lstrip()``

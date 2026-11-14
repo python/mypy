@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from abc import abstractmethod
-from collections.abc import Iterable, Iterator, Set as AbstractSet
+from collections.abc import Collection, Iterable, Iterator, Set as AbstractSet
 from typing import Any, Generic, TypeVar
 
 from mypyc.ir.ops import (
@@ -163,8 +163,136 @@ def cleanup_cfg(blocks: list[BasicBlock]) -> None:
 
 
 T = TypeVar("T")
+S = TypeVar("S")
 
-AnalysisDict = dict[tuple[BasicBlock, int], set[T]]
+
+class BitIndex(Generic[T]):
+    """Assign bit positions to values, for use with BitSet."""
+
+    def __init__(self) -> None:
+        self.positions: dict[T, int] = {}
+        self.values: list[T] = []
+
+    def mask(self, values: Collection[T]) -> int:
+        """Return a bit mask for values, assigning positions to new values."""
+        positions = self.positions
+        if len(values) > 8:
+            for value in values:
+                if value not in positions:
+                    positions[value] = len(self.values)
+                    self.values.append(value)
+            return self.known_mask(values)
+        # Gen and kill sets usually have only one or two items.
+        result = 0
+        for value in values:
+            pos = positions.get(value)
+            if pos is None:
+                pos = len(self.values)
+                positions[value] = pos
+                self.values.append(value)
+            result |= 1 << pos
+        return result
+
+    def known_mask(self, values: Iterable[object]) -> int:
+        """Return a bit mask for those values that have a position (others are ignored)."""
+        positions: dict[Any, int] = self.positions
+        found = [pos for pos in map(positions.get, values) if pos is not None]
+        if len(found) <= 8:
+            result = 0
+            for pos in found:
+                result |= 1 << pos
+            return result
+        buf = bytearray((len(self.values) + 7) // 8)
+        for pos in found:
+            buf[pos >> 3] |= 1 << (pos & 7)
+        return int.from_bytes(buf, "little")
+
+
+class BitSet(AbstractSet[T]):
+    """Immutable set of values represented as a bit mask.
+
+    Bit i is set if index.values[i] is in the set. All the sets produced by a
+    single analysis share the same index, so set operations between them are
+    cheap integer operations. This uses much less memory than a set object:
+    one bit per value that the analysis knows about instead of a hash table
+    entry per element.
+    """
+
+    def __init__(self, bits: int, index: BitIndex[T]) -> None:
+        self.bits = bits
+        self.index = index
+
+    def __contains__(self, value: object) -> bool:
+        positions: dict[Any, int] = self.index.positions
+        pos = positions.get(value)
+        return pos is not None and (self.bits >> pos) & 1 == 1
+
+    def positions(self) -> list[int]:
+        """Return the positions of the set bits (in increasing order)."""
+        # Least significant bit first, so that index i is position i.
+        digits = bin(self.bits)[:1:-1]
+        result = []
+        pos = digits.find("1")
+        while pos >= 0:
+            result.append(pos)
+            pos = digits.find("1", pos + 1)
+        return result
+
+    def __iter__(self) -> Iterator[T]:
+        values = self.index.values
+        return iter([values[pos] for pos in self.positions()])
+
+    def __len__(self) -> int:
+        return self.bits.bit_count()
+
+    def __bool__(self) -> bool:
+        return self.bits != 0
+
+    def _mask_of(self, other: AbstractSet[Any]) -> int:
+        """Return a mask of the values in both self and other."""
+        if isinstance(other, BitSet) and other.index is self.index:
+            return self.bits & other.bits
+        if len(self) <= len(other):
+            # Like set operations, iterate over the smaller operand.
+            values = self.index.values
+            return self.index.known_mask(
+                [values[pos] for pos in self.positions() if values[pos] in other]
+            )
+        return self.bits & self.index.known_mask(other)
+
+    def __sub__(self, other: AbstractSet[Any]) -> AbstractSet[T]:
+        return BitSet(self.bits & ~self._mask_of(other), self.index)
+
+    def __and__(self, other: AbstractSet[Any]) -> AbstractSet[T]:
+        return BitSet(self._mask_of(other), self.index)
+
+    def __or__(self, other: AbstractSet[S]) -> AbstractSet[T | S]:
+        if isinstance(other, BitSet) and other.index is self.index:
+            return BitSet(self.bits | other.bits, self.index)
+        result: set[T | S] = set(self)
+        result.update(other)
+        return result
+
+    # The reflected operations are used when the left operand is a set. They must
+    # return a set, since that's the type that the operation has with a set on the
+    # left according to typeshed, and compiled code checks this.
+
+    def __rand__(self, other: AbstractSet[S]) -> AbstractSet[S]:
+        return {value for value in other if value in self}
+
+    def __ror__(self, other: AbstractSet[S]) -> AbstractSet[T | S]:
+        result: set[T | S] = set(other)
+        result.update(self)
+        return result
+
+    def __rsub__(self, other: AbstractSet[S]) -> AbstractSet[S]:
+        return {value for value in other if value not in self}
+
+    def __repr__(self) -> str:
+        return repr(set(self))
+
+
+AnalysisDict = dict[tuple[BasicBlock, int], AbstractSet[T]]
 
 
 class AnalysisResult(Generic[T]):
@@ -370,6 +498,7 @@ def analyze_must_defined_regs(
     initial_defined: set[Value],
     regs: Iterable[Value],
     strict_errors: bool = False,
+    index: BitIndex[Value] | None = None,
 ) -> AnalysisResult[Value]:
     """Calculate always defined registers at each CFG location.
 
@@ -383,6 +512,7 @@ def analyze_must_defined_regs(
     return run_analysis(
         blocks=blocks,
         cfg=cfg,
+        index=index,
         gen_and_kill=DefinedVisitor(strict_errors=strict_errors),
         initial=initial_defined,
         backward=False,
@@ -422,7 +552,7 @@ class BorrowedArgumentsVisitor(BaseAnalysisVisitor[Value]):
 
 
 def analyze_borrowed_arguments(
-    blocks: list[BasicBlock], cfg: CFG, borrowed: set[Value]
+    blocks: list[BasicBlock], cfg: CFG, borrowed: set[Value], index: BitIndex[Value] | None = None
 ) -> AnalysisResult[Value]:
     """Calculate arguments that can use references borrowed from the caller.
 
@@ -436,6 +566,7 @@ def analyze_borrowed_arguments(
         backward=False,
         kind=MUST_ANALYSIS,
         universe=borrowed,
+        index=index,
     )
 
 
@@ -506,7 +637,9 @@ class LivenessVisitor(BaseAnalysisVisitor[Value]):
         return _EMPTY
 
 
-def analyze_live_regs(blocks: list[BasicBlock], cfg: CFG) -> AnalysisResult[Value]:
+def analyze_live_regs(
+    blocks: list[BasicBlock], cfg: CFG, index: BitIndex[Value] | None = None
+) -> AnalysisResult[Value]:
     """Calculate live registers at each CFG location.
 
     A register is live at a location if it can be read along some CFG path starting
@@ -519,6 +652,7 @@ def analyze_live_regs(blocks: list[BasicBlock], cfg: CFG) -> AnalysisResult[Valu
         initial=set(),
         backward=True,
         kind=MAYBE_ANALYSIS,
+        index=index,
     )
 
 
@@ -584,6 +718,7 @@ def run_analysis(
     kind: int,
     backward: bool,
     universe: set[T] | None = None,
+    index: BitIndex[T] | None = None,
 ) -> AnalysisResult[T]:
     """Run a general set-based data flow analysis.
 
@@ -599,31 +734,45 @@ def run_analysis(
             value for the work list algorithm, which will narrow this down until reaching a
             fixed point. For a maybe analysis the iteration always starts from an empty set
             and this argument is ignored.
+        index: Bit positions to use for the result sets (see BitSet). Set operations
+            between results of analyses that share an index are fast.
 
     Return analysis results: (before, after)
     """
+    # Sets are represented as bit masks (see BitSet), since a large function can
+    # have thousands of values and blocks, and we need a set for each of them.
+    if index is None:
+        index = BitIndex()
+    initial_bits = index.mask(initial)
+    universe_bits = index.mask(universe) if universe is not None else 0
+
+    # Calculate gen and kill masks for each op, and for entire basic blocks.
+    op_gen_and_kill: dict[BasicBlock, list[tuple[int, int]]] = {}
     block_gen = {}
     block_kill = {}
-
-    # Calculate kill and gen sets for entire basic blocks.
     for block in blocks:
-        gen: set[T] = set()
-        kill: set[T] = set()
+        op_masks = []
+        gen = 0
+        kill = 0
         ops = block.ops
         if backward:
             ops = list(reversed(ops))
         for op in ops:
-            opgen, opkill = op.accept(gen_and_kill)
+            opgen_set, opkill_set = op.accept(gen_and_kill)
+            opgen = index.mask(opgen_set) if opgen_set else 0
+            opkill = index.mask(opkill_set) if opkill_set else 0
+            op_masks.append((opgen, opkill))
             if opkill:
-                gen -= opkill
+                gen &= ~opkill
 
             if opgen:
                 gen |= opgen
-                kill -= opgen
+                kill &= ~opgen
 
             if opkill:
                 kill |= opkill
 
+        op_gen_and_kill[block] = op_masks
         block_gen[block] = gen
         block_kill[block] = kill
 
@@ -632,16 +781,16 @@ def run_analysis(
     if not backward:
         worklist.reverse()  # Reverse for a small performance improvement
     workset = set(worklist)
-    before: dict[BasicBlock, set[T]] = {}
-    after: dict[BasicBlock, set[T]] = {}
+    before: dict[BasicBlock, int] = {}
+    after: dict[BasicBlock, int] = {}
+    if kind == MAYBE_ANALYSIS:
+        start = 0
+    else:
+        assert universe is not None, "Universe must be defined for a must analysis"
+        start = universe_bits
     for block in blocks:
-        if kind == MAYBE_ANALYSIS:
-            before[block] = set()
-            after[block] = set()
-        else:
-            assert universe is not None, "Universe must be defined for a must analysis"
-            before[block] = set(universe)
-            after[block] = set(universe)
+        before[block] = start
+        after[block] = start
 
     if backward:
         pred_map = cfg.succ
@@ -654,20 +803,18 @@ def run_analysis(
     while worklist:
         label = worklist.pop()
         workset.remove(label)
-        if pred_map[label]:
-            new_before: set[T] | None = None
-            for pred in pred_map[label]:
-                if new_before is None:
-                    new_before = set(after[pred])
-                elif kind == MAYBE_ANALYSIS:
+        preds = pred_map[label]
+        if preds:
+            new_before = after[preds[0]]
+            for pred in preds[1:]:
+                if kind == MAYBE_ANALYSIS:
                     new_before |= after[pred]
                 else:
                     new_before &= after[pred]
-            assert new_before is not None
         else:
-            new_before = set(initial)
+            new_before = initial_bits
         before[label] = new_before
-        new_after = (new_before - block_kill[label]) | block_gen[label]
+        new_after = (new_before & ~block_kill[label]) | block_gen[label]
         if new_after != after[label]:
             for succ in succ_map[label]:
                 if succ not in workset:
@@ -676,22 +823,21 @@ def run_analysis(
         after[label] = new_after
 
     # Run algorithm for each basic block to generate opcode-level sets.
-    op_before: dict[tuple[BasicBlock, int], set[T]] = {}
-    op_after: dict[tuple[BasicBlock, int], set[T]] = {}
+    op_before: dict[tuple[BasicBlock, int], AbstractSet[T]] = {}
+    op_after: dict[tuple[BasicBlock, int], AbstractSet[T]] = {}
     for block in blocks:
         label = block
         cur = before[label]
-        ops_enum: Iterator[tuple[int, Op]] = enumerate(block.ops)
-        if backward:
-            ops_enum = reversed(list(ops_enum))
-        for idx, op in ops_enum:
-            op_before[label, idx] = cur
-            opgen, opkill = op.accept(gen_and_kill)
-            if opkill:
-                cur = cur - opkill
-            if opgen:
-                cur = cur | opgen
-            op_after[label, idx] = cur
+        cur_set = BitSet(cur, index)
+        n = len(block.ops)
+        for i, (opgen, opkill) in enumerate(op_gen_and_kill[block]):
+            # The masks are in reverse op order for a backward analysis.
+            idx = n - 1 - i if backward else i
+            op_before[label, idx] = cur_set
+            if opkill or opgen:
+                cur = (cur & ~opkill) | opgen
+                cur_set = BitSet(cur, index)
+            op_after[label, idx] = cur_set
     if backward:
         op_after, op_before = op_before, op_after
 
