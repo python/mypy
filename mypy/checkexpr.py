@@ -5257,7 +5257,14 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             if alias_definition:
                 return AnyType(TypeOfAny.special_form)
             # The _SpecialForm type can be used in some runtime contexts (e.g. it may have __or__).
-            return self.named_type("typing._SpecialForm")
+            special_form = self.named_type("typing._SpecialForm")
+            if not alias.no_args:
+                # Parameterized special forms such as Literal[...] expose __args__ at runtime.
+                any_type = AnyType(TypeOfAny.special_form)
+                return special_form.copy_with_extra_attr(
+                    "__args__", self.chk.named_generic_type("builtins.tuple", [any_type])
+                )
+            return special_form
 
     def split_for_callable(
         self, t: CallableType, args: Sequence[Type], ctx: Context

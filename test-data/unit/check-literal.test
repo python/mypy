@@ -3164,3 +3164,15 @@ bar: Literal[
 ]
 reveal_type(bar)  # N: Revealed type is "Literal['duration[s][pyarrow]'] | Literal['duration[ms][pyarrow]']"
 [builtins fixtures/primitives.pyi]
+
+[case testLiteralArgsAttribute]
+from typing import Literal
+
+Key = Literal["a", "b", "c"]
+reveal_type(Key.__args__)  # N: Revealed type is "builtins.tuple[Any, ...]"
+for key in Key.__args__:
+    reveal_type(key)  # N: Revealed type is "Any"
+Key.__bogus__  # E: "<typing special form>" has no attribute "__bogus__"
+Literal.__args__  # E: "<typing special form>" has no attribute "__args__"
+[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-full.pyi]
