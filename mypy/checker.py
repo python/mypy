@@ -214,6 +214,7 @@ from mypy.options import PRECISE_TUPLE_TYPES, Options
 from mypy.patterns import AsPattern, StarredPattern
 from mypy.plugin import Plugin
 from mypy.plugins import dataclasses as dataclasses_plugin
+from mypy.reachability import ALWAYS_FALSE, ALWAYS_TRUE, infer_condition_value
 from mypy.scope import Scope
 from mypy.semanal import is_trivial_body, refers_to_fullname, set_callable_name
 from mypy.semanal_enum import ENUM_BASES, ENUM_SPECIAL_PROPS
@@ -274,6 +275,7 @@ from mypy.types import (
     FunctionLike,
     Instance,
     LiteralType,
+    LiteralValue,
     NoneType,
     Overloaded,
     PartialType,
@@ -3483,6 +3485,58 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
             alias_type = self.expr_checker.accept(s.rvalue)
         self.store_type(s.lvalues[-1], alias_type)
 
+    def expose_module_final_literal_type(
+        self, lvalue: Lvalue, rvalue: Expression, rvalue_type: Type
+    ) -> None:
+        """Remember the initializer value of a module-level Final in its type.
+
+        A module-level Final cannot be rebound, so the value of its initializer is the
+        value of every read of the variable. Code flow narrowing gives the same result
+        within the defining module, but a read from another module has no narrowing, so
+        a statically known value (for example a platform check stored in a Final[bool])
+        would otherwise be lost.
+        """
+        if not isinstance(lvalue, NameExpr) or lvalue.kind != GDEF:
+            return
+        if self.scope.top_level_function() is not None:
+            return
+        if not isinstance(lvalue.node, Var):
+            return
+        var = lvalue.node
+        # A class body or instance Final can still be assigned in a constructor.
+        if not var.is_final or var.info:
+            return
+        declared = get_proper_type(var.type)
+        if not isinstance(declared, Instance) or declared.last_known_value is not None:
+            return
+        literal_value = self.module_final_initializer_literal_value(declared, rvalue, rvalue_type)
+        if literal_value is not None:
+            var.type = declared.copy_modified(
+                last_known_value=LiteralType(value=literal_value, fallback=declared)
+            )
+
+    def module_final_initializer_literal_value(
+        self, declared: Instance, rvalue: Expression, rvalue_type: Type
+    ) -> LiteralValue | None:
+        proper_type = get_proper_type(rvalue_type)
+        if (
+            isinstance(proper_type, Instance)
+            and proper_type.last_known_value is not None
+            and proper_type.type is declared.type
+        ):
+            return proper_type.last_known_value.value
+        if declared.type.fullname != "builtins.bool":
+            return None
+        # A platform or version check has an exact value for the current options, but
+        # only values that also hold at runtime qualify: "TYPE_CHECKING" and friends
+        # are true for mypy alone.
+        truth_value = infer_condition_value(rvalue, self.options)
+        if truth_value == ALWAYS_TRUE:
+            return True
+        if truth_value == ALWAYS_FALSE:
+            return False
+        return None
+
     def check_assignment(
         self, lvalue: Lvalue, rvalue: Expression, infer_lvalue_type: bool = True
     ) -> None:
@@ -3604,6 +3658,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                     # The above call may update inferred variable type. Prevent further
                     # inference.
                     inferred = None
+                    self.expose_module_final_literal_type(lvalue, rvalue, rvalue_type)
 
                 # Special case: only non-abstract non-protocol classes can be assigned to
                 # variables with explicit type `Type[A]`, where A is protocol or abstract.
@@ -3662,6 +3717,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                 ):
                     rvalue_type = remove_instance_last_known_values(rvalue_type)
                 self.infer_variable_type(inferred, lvalue, rvalue_type, rvalue)
+                self.expose_module_final_literal_type(lvalue, rvalue, rvalue_type)
             self.check_assignment_to_slots(lvalue)
             if (
                 isinstance(lvalue, RefExpr)
