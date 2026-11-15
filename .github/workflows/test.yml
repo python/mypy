@@ -174,7 +174,7 @@ jobs:
           sudo apt-get update -q
           sudo apt-get install -q -y --no-install-recommends \
             build-essential gdb lcov libbz2-dev libffi-dev libgdbm-dev liblzma-dev libncurses5-dev \
-            libreadline6-dev libsqlite3-dev libssl-dev lzma lzma-dev tk-dev uuid-dev zlib1g-dev
+            libreadline6-dev libsqlite3-dev libssl-dev tk-dev uuid-dev zlib1g-dev
           ./configure --prefix=/opt/pythondev
           make -j$(nproc)
           sudo make install
@@ -191,7 +191,7 @@ jobs:
           sudo apt-get update -q
           sudo apt-get install -q -y --no-install-recommends \
             build-essential gdb lcov libbz2-dev libffi-dev libgdbm-dev liblzma-dev libncurses5-dev \
-            libreadline6-dev libsqlite3-dev libssl-dev lzma lzma-dev tk-dev uuid-dev zlib1g-dev
+            libreadline6-dev libsqlite3-dev libssl-dev tk-dev uuid-dev zlib1g-dev
           ./configure CFLAGS="-DPy_DEBUG -DPy_TRACE_REFS -DPYMALLOC_DEBUG" --with-pydebug -with-trace-refs --prefix=/opt/pythondev
           make -j$(nproc)
           sudo make install
