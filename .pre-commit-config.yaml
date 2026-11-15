@@ -29,7 +29,7 @@ repos:
           - --ignore-words-list=HAX,Nam,ccompiler,keep-alives,ot,statics,whet,zar
         exclude: ^(mypy/test/|mypy/typeshed/|mypyc/test-data/|test-data/).+$
   - repo: https://github.com/rhysd/actionlint
-    rev: 03d0035246f3e81f36aed592ffb4bebf33a03106  # frozen: v1.7.7
+    rev: 914e7df21a07ef503a81201c76d2b11c789d3fca  # frozen: v1.7.12
     hooks:
       - id: actionlint
         args: [
