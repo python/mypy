@@ -97,15 +97,12 @@ jobs:
           toxenv: py
           tox_extra_args: "-n 3 mypyc/test/test_run.py mypyc/test/test_external.py"
 
-        # This is broken. See
-        # - https://github.com/python/mypy/issues/17819
-        # - https://github.com/python/mypy/pull/17822
-        # - name: mypyc runtime tests with py310-debug-build-ubuntu
-        #   python: '3.10'
-        #   os: ubuntu-latest
-        #   toxenv: py
-        #   tox_extra_args: "-n 4 mypyc/test/test_run.py mypyc/test/test_external.py"
-        #   debug_build: true
+        - name: mypyc tests with py314-debug-build-ubuntu
+          python: '3.14'
+          os: ubuntu-latest
+          toxenv: py
+          tox_extra_args: "-n 4 mypyc/test"
+          debug_build: true
 
         - name: Parallel tests with py314-ubuntu, interpreted
           python: '3.14'
@@ -192,7 +189,7 @@ jobs:
           sudo apt-get install -q -y --no-install-recommends \
             build-essential gdb lcov libbz2-dev libffi-dev libgdbm-dev liblzma-dev libncurses5-dev \
             libreadline6-dev libsqlite3-dev libssl-dev lzma lzma-dev tk-dev uuid-dev zlib1g-dev
-          ./configure CFLAGS="-DPy_DEBUG -DPy_TRACE_REFS -DPYMALLOC_DEBUG" --with-pydebug -with-trace-refs --prefix=/opt/pythondev
+          ./configure --with-pydebug --prefix=/opt/pythondev
           make -j$(nproc)
           sudo make install
           sudo ln -s /opt/pythondev/bin/python3 /opt/pythondev/bin/python
@@ -226,6 +223,10 @@ jobs:
     - name: Setup tox environment
       run: |
         tox run -e ${{ matrix.toxenv }} --notest
+    - name: Verify debug interpreter in tox
+      if: ${{ matrix.debug_build }}
+      run: |
+        tox exec -e ${{ matrix.toxenv }} --skip-pkg-install -- python -c 'import sysconfig; assert sysconfig.get_config_var("Py_DEBUG")'
     - name: Test
       run: tox run -e ${{ matrix.toxenv }} --skip-pkg-install -- ${{ matrix.tox_extra_args }}
       continue-on-error: ${{ matrix.allow_failure == 'true' }}
