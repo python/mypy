@@ -334,3 +334,105 @@ def to_bytes(v):
 L0:
     r0 = CPyVecU8_ToBytes(v)
     return r0
+
+[case testVecMiscNewNativeIntTypes_64bit]
+from typing import Any
+from librt.vecs import vec, append, pop
+
+from mypy_extensions import i8, u16, u32, u64, i64
+
+def append_i8(v: vec[i8]) -> vec[i8]:
+    return append(v, -5)
+
+def append_u16(v: vec[u16]) -> vec[u16]:
+    return append(v, 65535)
+
+def append_u32(v: vec[u32], x: u32) -> vec[u32]:
+    return append(v, x)
+
+def append_u64(v: vec[u64]) -> vec[u64]:
+    return append(v, 18446744073709551615)
+
+def get_u64(v: vec[u64], i: i64) -> u64:
+    return v[i]
+
+def pop_u16(v: vec[u16]) -> tuple[vec[u16], u16]:
+    return pop(v)
+
+def unbox_u32(a: Any) -> vec[u32]:
+    return a
+
+def nested_i8() -> vec[vec[i8]]:
+    return vec[vec[i8]]()
+[out]
+def append_i8(v):
+    v, r0 :: vec[i8]
+L0:
+    r0 = VecI8Api.append(v, -5)
+    return r0
+def append_u16(v):
+    v, r0 :: vec[u16]
+L0:
+    r0 = VecU16Api.append(v, 65535)
+    return r0
+def append_u32(v, x):
+    v :: vec[u32]
+    x :: u32
+    r0 :: vec[u32]
+L0:
+    r0 = VecU32Api.append(v, x)
+    return r0
+def append_u64(v):
+    v :: vec[u64]
+    r0 :: int
+    r1 :: vec[u64]
+L0:
+    r0 = object 18446744073709551615
+    r1 = VecU64Api.append(v, 18446744073709551615)
+    return r1
+def get_u64(v, i):
+    v :: vec[u64]
+    i :: i64
+    r0 :: native_int
+    r1 :: bit
+    r2 :: i64
+    r3 :: bit
+    r4 :: bool
+    r5 :: i64
+    r6 :: u64
+L0:
+    r0 = v.len
+    r1 = i < r0 :: unsigned
+    if r1 goto L4 else goto L1 :: bool
+L1:
+    r2 = i + r0
+    r3 = r2 < r0 :: unsigned
+    if r3 goto L3 else goto L2 :: bool
+L2:
+    r4 = raise IndexError
+    unreachable
+L3:
+    r5 = r2
+    goto L5
+L4:
+    r5 = i
+L5:
+    r6 = vec_get_item_unsafe[u64] v, r5
+    return r6
+def pop_u16(v):
+    v :: vec[u16]
+    r0 :: tuple[vec[u16], u16]
+L0:
+    r0 = VecU16Api.pop(v, -1)
+    return r0
+def unbox_u32(a):
+    a :: object
+    r0 :: vec[u32]
+L0:
+    r0 = unbox(vec[u32], a)
+    return r0
+def nested_i8():
+    r0 :: vec[vec[i8]]
+L0:
+    r0 = VecNestedApi.alloc(0, 0, 26, 1)
+    return r0

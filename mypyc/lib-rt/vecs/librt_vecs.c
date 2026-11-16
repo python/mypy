@@ -77,6 +77,10 @@
 PyTypeObject *LibRTVecs_I64TypeObj;
 PyTypeObject *LibRTVecs_I32TypeObj;
 PyTypeObject *LibRTVecs_I16TypeObj;
+PyTypeObject *LibRTVecs_I8TypeObj;
+PyTypeObject *LibRTVecs_U64TypeObj;
+PyTypeObject *LibRTVecs_U32TypeObj;
+PyTypeObject *LibRTVecs_U16TypeObj;
 PyTypeObject *LibRTVecs_U8TypeObj;
 
 
@@ -155,6 +159,12 @@ PyObject *Vec_TypeToStr(size_t item_type, size_t depth) {
     if (depth == 0) {
         if ((item_type & ~1) == VEC_ITEM_TYPE_I64) {
             item = PyUnicode_FromFormat("i64");
+        } else if ((item_type & ~1) == VEC_ITEM_TYPE_U64) {
+            item = PyUnicode_FromFormat("u64");
+        } else if ((item_type & ~1) == VEC_ITEM_TYPE_U32) {
+            item = PyUnicode_FromFormat("u32");
+        } else if ((item_type & ~1) == VEC_ITEM_TYPE_U16) {
+            item = PyUnicode_FromFormat("u16");
         } else if ((item_type & ~1) == VEC_ITEM_TYPE_U8) {
             item = PyUnicode_FromFormat("u8");
         } else if ((item_type & ~1) == VEC_ITEM_TYPE_FLOAT) {
@@ -163,6 +173,8 @@ PyObject *Vec_TypeToStr(size_t item_type, size_t depth) {
             item = PyUnicode_FromFormat("i32");
         } else if ((item_type & ~1) == VEC_ITEM_TYPE_I16) {
             item = PyUnicode_FromFormat("i16");
+        } else if ((item_type & ~1) == VEC_ITEM_TYPE_I8) {
+            item = PyUnicode_FromFormat("i8");
         } else if ((item_type & ~1) == VEC_ITEM_TYPE_BOOL) {
             item = PyUnicode_FromFormat("bool");
         } else {
@@ -285,6 +297,15 @@ static PyObject *vec_class_getitem(PyObject *type, PyObject *item)
     if (item == (PyObject *)LibRTVecs_I64TypeObj) {
         Py_INCREF(&VecI64Type);
         return (PyObject *)&VecI64Type;
+    } else if (item == (PyObject *)LibRTVecs_U64TypeObj) {
+        Py_INCREF(&VecU64Type);
+        return (PyObject *)&VecU64Type;
+    } else if (item == (PyObject *)LibRTVecs_U32TypeObj) {
+        Py_INCREF(&VecU32Type);
+        return (PyObject *)&VecU32Type;
+    } else if (item == (PyObject *)LibRTVecs_U16TypeObj) {
+        Py_INCREF(&VecU16Type);
+        return (PyObject *)&VecU16Type;
     } else if (item == (PyObject *)LibRTVecs_U8TypeObj) {
         Py_INCREF(&VecU8Type);
         return (PyObject *)&VecU8Type;
@@ -297,6 +318,9 @@ static PyObject *vec_class_getitem(PyObject *type, PyObject *item)
     } else if (item == (PyObject *)LibRTVecs_I16TypeObj) {
         Py_INCREF(&VecI16Type);
         return (PyObject *)&VecI16Type;
+    } else if (item == (PyObject *)LibRTVecs_I8TypeObj) {
+        Py_INCREF(&VecI8Type);
+        return (PyObject *)&VecI8Type;
     } else if (item == (PyObject *)&PyBool_Type) {
         Py_INCREF(&VecBoolType);
         return (PyObject *)&VecBoolType;
@@ -316,10 +340,14 @@ static PyObject *vec_class_getitem(PyObject *type, PyObject *item)
                 item = it;
                 // Check if this is a specialized value type that doesn't support None
                 if (item == (PyObject *)LibRTVecs_I64TypeObj ||
+                    item == (PyObject *)LibRTVecs_U64TypeObj ||
+                    item == (PyObject *)LibRTVecs_U32TypeObj ||
+                    item == (PyObject *)LibRTVecs_U16TypeObj ||
                     item == (PyObject *)LibRTVecs_U8TypeObj ||
                     item == (PyObject *)&PyFloat_Type ||
                     item == (PyObject *)LibRTVecs_I32TypeObj ||
                     item == (PyObject *)LibRTVecs_I16TypeObj ||
+                    item == (PyObject *)LibRTVecs_I8TypeObj ||
                     item == (PyObject *)&PyBool_Type) {
                     PyErr_SetString(PyExc_TypeError,
                         "vec does not support optional value types (use vec[object] instead)");
@@ -344,6 +372,15 @@ static PyObject *vec_class_getitem(PyObject *type, PyObject *item)
             if (item == (PyObject *)&VecI64Type) {
                 item_type = VEC_ITEM_TYPE_I64;
                 depth = 1;
+            } else if (item == (PyObject *)&VecU64Type) {
+                item_type = VEC_ITEM_TYPE_U64;
+                depth = 1;
+            } else if (item == (PyObject *)&VecU32Type) {
+                item_type = VEC_ITEM_TYPE_U32;
+                depth = 1;
+            } else if (item == (PyObject *)&VecU16Type) {
+                item_type = VEC_ITEM_TYPE_U16;
+                depth = 1;
             } else if (item == (PyObject *)&VecU8Type) {
                 item_type = VEC_ITEM_TYPE_U8;
                 depth = 1;
@@ -356,6 +393,9 @@ static PyObject *vec_class_getitem(PyObject *type, PyObject *item)
             } else if (item == (PyObject *)&VecI16Type) {
                 item_type = VEC_ITEM_TYPE_I16;
                 depth = 1;
+            } else if (item == (PyObject *)&VecI8Type) {
+                item_type = VEC_ITEM_TYPE_I8;
+                depth = 1;
             } else if (item == (PyObject *)&VecBoolType) {
                 item_type = VEC_ITEM_TYPE_BOOL;
                 depth = 1;
@@ -364,7 +404,7 @@ static PyObject *vec_class_getitem(PyObject *type, PyObject *item)
             }
         }
         if (item == (PyObject *)&PyLong_Type) {
-            PyErr_Format(PyExc_ValueError, "unsupported type in vec[%s] (use i64, i32, i16, or u8)",
+            PyErr_Format(PyExc_ValueError, "unsupported type in vec[%s] (use a native integer type such as i64)",
                          ((PyTypeObject *)item)->tp_name);
             goto error;
         }
@@ -592,6 +632,39 @@ static PyObject *vec_append(PyObject *self, PyObject *args)
         if (VEC_IS_ERROR(v))
             return NULL;
         return VecI64_Box(v);
+    } else if (VecU64_Check(vec)) {
+        uint64_t x = VecU64_UnboxItem(item);
+        if (VecU64_IsUnboxError(x)) {
+            return NULL;
+        }
+        VecU64 v = ((VecU64Object *)vec)->vec;
+        VEC_U64_INCREF(v);
+        v = VecU64_Append(v, x);
+        if (VEC_IS_ERROR(v))
+            return NULL;
+        return VecU64_Box(v);
+    } else if (VecU32_Check(vec)) {
+        uint32_t x = VecU32_UnboxItem(item);
+        if (VecU32_IsUnboxError(x)) {
+            return NULL;
+        }
+        VecU32 v = ((VecU32Object *)vec)->vec;
+        VEC_U32_INCREF(v);
+        v = VecU32_Append(v, x);
+        if (VEC_IS_ERROR(v))
+            return NULL;
+        return VecU32_Box(v);
+    } else if (VecU16_Check(vec)) {
+        uint16_t x = VecU16_UnboxItem(item);
+        if (VecU16_IsUnboxError(x)) {
+            return NULL;
+        }
+        VecU16 v = ((VecU16Object *)vec)->vec;
+        VEC_U16_INCREF(v);
+        v = VecU16_Append(v, x);
+        if (VEC_IS_ERROR(v))
+            return NULL;
+        return VecU16_Box(v);
     } else if (VecU8_Check(vec)) {
         uint8_t x = VecU8_UnboxItem(item);
         if (VecU8_IsUnboxError(x)) {
@@ -636,6 +709,17 @@ static PyObject *vec_append(PyObject *self, PyObject *args)
         if (VEC_IS_ERROR(v))
             return NULL;
         return VecI16_Box(v);
+    } else if (VecI8_Check(vec)) {
+        int8_t x = VecI8_UnboxItem(item);
+        if (VecI8_IsUnboxError(x)) {
+            return NULL;
+        }
+        VecI8 v = ((VecI8Object *)vec)->vec;
+        VEC_I8_INCREF(v);
+        v = VecI8_Append(v, x);
+        if (VEC_IS_ERROR(v))
+            return NULL;
+        return VecI8_Box(v);
     } else if (VecBool_Check(vec)) {
         double x = VecBool_UnboxItem(item);
         if (VecBool_IsUnboxError(x)) {
@@ -693,6 +777,39 @@ static PyObject *vec_remove(PyObject *self, PyObject *args)
         if (VEC_IS_ERROR(v))
             return NULL;
         return VecI64_Box(v);
+    } else if (VecU64_Check(vec)) {
+        uint64_t x = VecU64_UnboxItem(item);
+        if (VecU64_IsUnboxError(x)) {
+            return NULL;
+        }
+        VecU64 v = ((VecU64Object *)vec)->vec;
+        VEC_U64_INCREF(v);
+        v = VecU64_Remove(v, x);
+        if (VEC_IS_ERROR(v))
+            return NULL;
+        return VecU64_Box(v);
+    } else if (VecU32_Check(vec)) {
+        uint32_t x = VecU32_UnboxItem(item);
+        if (VecU32_IsUnboxError(x)) {
+            return NULL;
+        }
+        VecU32 v = ((VecU32Object *)vec)->vec;
+        VEC_U32_INCREF(v);
+        v = VecU32_Remove(v, x);
+        if (VEC_IS_ERROR(v))
+            return NULL;
+        return VecU32_Box(v);
+    } else if (VecU16_Check(vec)) {
+        uint16_t x = VecU16_UnboxItem(item);
+        if (VecU16_IsUnboxError(x)) {
+            return NULL;
+        }
+        VecU16 v = ((VecU16Object *)vec)->vec;
+        VEC_U16_INCREF(v);
+        v = VecU16_Remove(v, x);
+        if (VEC_IS_ERROR(v))
+            return NULL;
+        return VecU16_Box(v);
     } else if (VecU8_Check(vec)) {
         uint8_t x = VecU8_UnboxItem(item);
         if (VecU8_IsUnboxError(x)) {
@@ -737,6 +854,17 @@ static PyObject *vec_remove(PyObject *self, PyObject *args)
         if (VEC_IS_ERROR(v))
             return NULL;
         return VecI16_Box(v);
+    } else if (VecI8_Check(vec)) {
+        int8_t x = VecI8_UnboxItem(item);
+        if (VecI8_IsUnboxError(x)) {
+            return NULL;
+        }
+        VecI8 v = ((VecI8Object *)vec)->vec;
+        VEC_I8_INCREF(v);
+        v = VecI8_Remove(v, x);
+        if (VEC_IS_ERROR(v))
+            return NULL;
+        return VecI8_Box(v);
     } else if (VecBool_Check(vec)) {
         char x = VecBool_UnboxItem(item);
         if (VecBool_IsUnboxError(x)) {
@@ -796,6 +924,36 @@ static PyObject *vec_pop(PyObject *self, PyObject *args)
         if ((result_item0 = VecI64_Box(r.f0)) == NULL)
             return NULL;
         result_item1 = VecI64_BoxItem(r.f1);
+    } else if (VecU64_Check(vec)) {
+        VecU64 v = ((VecU64Object *)vec)->vec;
+        VEC_U64_INCREF(v);
+        VecU64PopResult r;
+        r = VecU64_Pop(v, index);
+        if (VEC_IS_ERROR(r.f0))
+            return NULL;
+        if ((result_item0 = VecU64_Box(r.f0)) == NULL)
+            return NULL;
+        result_item1 = VecU64_BoxItem(r.f1);
+    } else if (VecU32_Check(vec)) {
+        VecU32 v = ((VecU32Object *)vec)->vec;
+        VEC_U32_INCREF(v);
+        VecU32PopResult r;
+        r = VecU32_Pop(v, index);
+        if (VEC_IS_ERROR(r.f0))
+            return NULL;
+        if ((result_item0 = VecU32_Box(r.f0)) == NULL)
+            return NULL;
+        result_item1 = VecU32_BoxItem(r.f1);
+    } else if (VecU16_Check(vec)) {
+        VecU16 v = ((VecU16Object *)vec)->vec;
+        VEC_U16_INCREF(v);
+        VecU16PopResult r;
+        r = VecU16_Pop(v, index);
+        if (VEC_IS_ERROR(r.f0))
+            return NULL;
+        if ((result_item0 = VecU16_Box(r.f0)) == NULL)
+            return NULL;
+        result_item1 = VecU16_BoxItem(r.f1);
     } else if (VecU8_Check(vec)) {
         VecU8 v = ((VecU8Object *)vec)->vec;
         VEC_U8_INCREF(v);
@@ -836,6 +994,16 @@ static PyObject *vec_pop(PyObject *self, PyObject *args)
         if ((result_item0 = VecI16_Box(r.f0)) == NULL)
             return NULL;
         result_item1 = VecI16_BoxItem(r.f1);
+    } else if (VecI8_Check(vec)) {
+        VecI8 v = ((VecI8Object *)vec)->vec;
+        VEC_I8_INCREF(v);
+        VecI8PopResult r;
+        r = VecI8_Pop(v, index);
+        if (VEC_IS_ERROR(r.f0))
+            return NULL;
+        if ((result_item0 = VecI8_Box(r.f0)) == NULL)
+            return NULL;
+        result_item1 = VecI8_BoxItem(r.f1);
     } else if (VecBool_Check(vec)) {
         VecBool v = ((VecBoolObject *)vec)->vec;
         VEC_BOOL_INCREF(v);
@@ -917,6 +1085,27 @@ static PyObject *vec_extend(PyObject *self, PyObject *args)
         if (VEC_IS_ERROR(v))
             return NULL;
         return VecI64_Box(v);
+    } else if (VecU64_Check(vec)) {
+        VecU64 v = ((VecU64Object *)vec)->vec;
+        VEC_U64_INCREF(v);
+        v = VecU64_Extend(v, iterable);
+        if (VEC_IS_ERROR(v))
+            return NULL;
+        return VecU64_Box(v);
+    } else if (VecU32_Check(vec)) {
+        VecU32 v = ((VecU32Object *)vec)->vec;
+        VEC_U32_INCREF(v);
+        v = VecU32_Extend(v, iterable);
+        if (VEC_IS_ERROR(v))
+            return NULL;
+        return VecU32_Box(v);
+    } else if (VecU16_Check(vec)) {
+        VecU16 v = ((VecU16Object *)vec)->vec;
+        VEC_U16_INCREF(v);
+        v = VecU16_Extend(v, iterable);
+        if (VEC_IS_ERROR(v))
+            return NULL;
+        return VecU16_Box(v);
     } else if (VecU8_Check(vec)) {
         VecU8 v = ((VecU8Object *)vec)->vec;
         VEC_U8_INCREF(v);
@@ -945,6 +1134,13 @@ static PyObject *vec_extend(PyObject *self, PyObject *args)
         if (VEC_IS_ERROR(v))
             return NULL;
         return VecI16_Box(v);
+    } else if (VecI8_Check(vec)) {
+        VecI8 v = ((VecI8Object *)vec)->vec;
+        VEC_I8_INCREF(v);
+        v = VecI8_Extend(v, iterable);
+        if (VEC_IS_ERROR(v))
+            return NULL;
+        return VecI8_Box(v);
     } else if (VecBool_Check(vec)) {
         VecBool v = ((VecBoolObject *)vec)->vec;
         VEC_BOOL_INCREF(v);
@@ -1001,6 +1197,10 @@ static VecCapsule Capsule = {
     &Vec_FloatAPI,
     &Vec_BoolAPI,
     get_vec_type,
+    &Vec_I8API,
+    &Vec_U64API,
+    &Vec_U32API,
+    &Vec_U16API,
 };
 
 static PyMethodDef VecsMethods[] = {
@@ -1020,6 +1220,7 @@ librt_vecs_module_exec(PyObject *m)
     }
 
     PyTypeObject *i64 = NULL, *i32 = NULL, *i16 = NULL, *u8 = NULL;
+    PyTypeObject *i8 = NULL, *u64 = NULL, *u32 = NULL, *u16 = NULL;
 
     i64 = (PyTypeObject *)PyObject_GetAttrString(ext, "i64");
     if (i64 == NULL) {
@@ -1043,6 +1244,58 @@ librt_vecs_module_exec(PyObject *m)
     }
     if (!PyType_Check(i16)) {
         PyErr_SetString(PyExc_TypeError, "mypy_extensions.i16 is not a type");
+        goto error;
+    }
+    i8 = (PyTypeObject *)PyObject_GetAttrString(ext, "i8");
+    if (i8 == NULL) {
+        if (PyErr_ExceptionMatches(PyExc_AttributeError)) {
+            PyErr_SetString(PyExc_ImportError,
+                            "mypy_extensions.i8 not found "
+                            "(hint: upgrade to mypy-extensions 1.2.0 or newer)");
+        }
+        goto error;
+    }
+    if (!PyType_Check(i8)) {
+        PyErr_SetString(PyExc_TypeError, "mypy_extensions.i8 is not a type");
+        goto error;
+    }
+    u64 = (PyTypeObject *)PyObject_GetAttrString(ext, "u64");
+    if (u64 == NULL) {
+        if (PyErr_ExceptionMatches(PyExc_AttributeError)) {
+            PyErr_SetString(PyExc_ImportError,
+                            "mypy_extensions.u64 not found "
+                            "(hint: upgrade to mypy-extensions 1.2.0 or newer)");
+        }
+        goto error;
+    }
+    if (!PyType_Check(u64)) {
+        PyErr_SetString(PyExc_TypeError, "mypy_extensions.u64 is not a type");
+        goto error;
+    }
+    u32 = (PyTypeObject *)PyObject_GetAttrString(ext, "u32");
+    if (u32 == NULL) {
+        if (PyErr_ExceptionMatches(PyExc_AttributeError)) {
+            PyErr_SetString(PyExc_ImportError,
+                            "mypy_extensions.u32 not found "
+                            "(hint: upgrade to mypy-extensions 1.2.0 or newer)");
+        }
+        goto error;
+    }
+    if (!PyType_Check(u32)) {
+        PyErr_SetString(PyExc_TypeError, "mypy_extensions.u32 is not a type");
+        goto error;
+    }
+    u16 = (PyTypeObject *)PyObject_GetAttrString(ext, "u16");
+    if (u16 == NULL) {
+        if (PyErr_ExceptionMatches(PyExc_AttributeError)) {
+            PyErr_SetString(PyExc_ImportError,
+                            "mypy_extensions.u16 not found "
+                            "(hint: upgrade to mypy-extensions 1.2.0 or newer)");
+        }
+        goto error;
+    }
+    if (!PyType_Check(u16)) {
+        PyErr_SetString(PyExc_TypeError, "mypy_extensions.u16 is not a type");
         goto error;
     }
     u8 = (PyTypeObject *)PyObject_GetAttrString(ext, "u8");
@@ -1091,6 +1344,30 @@ librt_vecs_module_exec(PyObject *m)
         goto error;
     if (PyType_Ready(&VecI16IterType) < 0)
         goto error;
+    if (PyType_Ready(&VecI8Type) < 0)
+        goto error;
+    if (PyType_Ready(&VecI8BufType) < 0)
+        goto error;
+    if (PyType_Ready(&VecI8IterType) < 0)
+        goto error;
+    if (PyType_Ready(&VecU64Type) < 0)
+        goto error;
+    if (PyType_Ready(&VecU64BufType) < 0)
+        goto error;
+    if (PyType_Ready(&VecU64IterType) < 0)
+        goto error;
+    if (PyType_Ready(&VecU32Type) < 0)
+        goto error;
+    if (PyType_Ready(&VecU32BufType) < 0)
+        goto error;
+    if (PyType_Ready(&VecU32IterType) < 0)
+        goto error;
+    if (PyType_Ready(&VecU16Type) < 0)
+        goto error;
+    if (PyType_Ready(&VecU16BufType) < 0)
+        goto error;
+    if (PyType_Ready(&VecU16IterType) < 0)
+        goto error;
     if (PyType_Ready(&VecU8Type) < 0)
         goto error;
     if (PyType_Ready(&VecU8BufType) < 0)
@@ -1128,6 +1405,10 @@ librt_vecs_module_exec(PyObject *m)
     Py_XSETREF(LibRTVecs_I64TypeObj, i64);
     Py_XSETREF(LibRTVecs_I32TypeObj, i32);
     Py_XSETREF(LibRTVecs_I16TypeObj, i16);
+    Py_XSETREF(LibRTVecs_I8TypeObj, i8);
+    Py_XSETREF(LibRTVecs_U64TypeObj, u64);
+    Py_XSETREF(LibRTVecs_U32TypeObj, u32);
+    Py_XSETREF(LibRTVecs_U16TypeObj, u16);
     Py_XSETREF(LibRTVecs_U8TypeObj, u8);
     Py_DECREF(ext);
     return 0;
@@ -1136,6 +1417,10 @@ error:
     Py_XDECREF(i64);
     Py_XDECREF(i32);
     Py_XDECREF(i16);
+    Py_XDECREF(i8);
+    Py_XDECREF(u64);
+    Py_XDECREF(u32);
+    Py_XDECREF(u16);
     Py_XDECREF(u8);
     Py_DECREF(ext);
     return -1;

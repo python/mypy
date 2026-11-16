@@ -81,6 +81,55 @@ L0:
     y = x
     return y
 
+[case testU8NegateLiteral]
+from mypy_extensions import u8
+
+def f() -> None:
+    a = -u8(0)
+    b = -u8(1)
+    c = -u8(5)
+[out]
+def f():
+    a, b, c :: u8
+L0:
+    a = 0
+    b = 255
+    c = 251
+    return 1
+
+[case testU8FinalWraparound]
+from typing import Final
+from mypy_extensions import u8
+
+X: Final[u8] = 1
+Y: Final[u8] = -X
+
+def f() -> None:
+    a = -X
+    b = X - 2
+    c = ~X
+    d = (X - 2) // 2
+    e = Y
+def g() -> str:
+    return "%d" % (-X,)
+[typing fixtures/typing-full.pyi]
+[out]
+def f():
+    a, b, c, d, e :: u8
+L0:
+    a = 255
+    b = 255
+    c = 254
+    d = 127
+    e = 255
+    return 1
+def g():
+    r0, r1 :: str
+L0:
+    r0 = '255'
+    r1 = CPyStr_Build(1, r0)
+    return r1
+
 [case testU8DivisionByConstant]
 from mypy_extensions import u8
 
