@@ -3,7 +3,7 @@
 [case testForRange]
 from typing import Any
 
-from mypy_extensions import i64, i16, u8
+from mypy_extensions import i64, i16, u8, u64
 from testutil import assertRaises
 
 def count(n: int) -> list[int]:
@@ -89,6 +89,20 @@ def range_up_u8(a: u8, b: u8) -> list[int]:
             break
     return result
 
+def range_down_u8(a: u8, b: u8) -> list[int]:
+    result = []
+    for i in range(a, b, -5):
+        result.append(int(i))
+        if len(result) > 10:
+            break
+    return result
+
+def range_down_u64_by_one(a: u64, b: u64) -> list[int]:
+    result = []
+    for i in range(a, b, -1):
+        result.append(int(i))
+    return result
+
 def range_up_i16_constant_end(a: i16) -> list[int]:
     result = []
     for i in range(a, i16(32766), 3):
@@ -123,6 +137,10 @@ def test_range_step_near_native_int_limits() -> None:
             a = 255 - d1
             b = 255 - d2
             assert range_up_u8(a, b) == list(range(a, b, 5)), (a, b)
+            assert range_down_u8(d1, d2) == list(range(d1, d2, -5)), (d1, d2)
+    assert range_down_u8(255, 240) == [255, 250, 245]
+    assert range_down_u64_by_one(3, 0) == [3, 2, 1]
+    assert range_down_u64_by_one(2**64 - 1, 2**64 - 3) == [2**64 - 1, 2**64 - 2]
     for a in range(32755, 32767):
         assert range_up_i16_constant_end(a) == list(range(a, 32766, 3)), a
         assert range_up_i16_constant_end_no_check(a) == list(range(a, 32765, 3)), a

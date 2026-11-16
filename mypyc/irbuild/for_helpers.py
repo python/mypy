@@ -1537,7 +1537,11 @@ class ForRange(ForGenerator):
             )
         elif is_fixed_width_rtype(index_type):
             self.gen_fixed_width_overflow_check(index)
-            new_val = builder.binary_op(index, Integer(self.step), "+", line)
+            if self.step < 0 and not index_type.is_signed:
+                # A negative step isn't a valid unsigned value, so subtract its magnitude
+                new_val = builder.binary_op(index, Integer(-self.step), "-", line)
+            else:
+                new_val = builder.binary_op(index, Integer(self.step), "+", line)
         else:
             # Tagged int arithmetic can't overflow. The step may not fit in a short int.
             new_val = builder.binary_op(index, builder.load_int(self.step, line), "+", line)
