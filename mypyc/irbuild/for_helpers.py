@@ -1561,21 +1561,19 @@ class ForRange(ForGenerator):
         assert isinstance(index_type, RPrimitive), index_type
         lo, hi = native_int_bounds(index_type)
         end = self.end_target
+        # Overflow if index > hi - step (or index < lo - step, if the step is negative)
+        limit = (hi if step > 0 else lo) - step
+        if not lo <= limit <= hi:
+            # The step doesn't fit in the index type. This is reported as an error elsewhere.
+            return
         if isinstance(end, Integer) and not range_step_may_overflow(
             end.numeric_value(), step, lo, hi
         ):
             return
         if step > 0:
-            # Overflow if index > hi - step
-            limit = hi - step
             op = ComparisonOp.SGT if index_type.is_signed else ComparisonOp.UGT
         else:
-            # Overflow if index < lo - step
-            limit = lo - step
             op = ComparisonOp.SLT if index_type.is_signed else ComparisonOp.ULT
-        if not lo <= limit <= hi:
-            # The step doesn't fit in the index type. This is reported as an error elsewhere.
-            return
         builder = self.builder
         line = self.line
         overflow = builder.add(ComparisonOp(index, Integer(limit, index_type, line), op, line))
