@@ -44,6 +44,9 @@ Methods
 * ``s1.find(s2: str)``
 * ``s1.find(s2: str, start: int)``
 * ``s1.find(s2: str, start: int, end: int)``
+* ``s1.index(s2: str)``
+* ``s1.index(s2: str, start: int)``
+* ``s1.index(s2: str, start: int, end: int)``
 * ``s.isalnum()``
 * ``s.isalpha()``
 * ``s.isascii()``
@@ -67,6 +70,9 @@ Methods
 * ``s1.rfind(s2: str)``
 * ``s1.rfind(s2: str, start: int)``
 * ``s1.rfind(s2: str, start: int, end: int)``
+* ``s1.rindex(s2: str)``
+* ``s1.rindex(s2: str, start: int)``
+* ``s1.rindex(s2: str, start: int, end: int)``
 * ``s.rpartition(sep: str)``
 * ``s.rsplit()``
 * ``s.rsplit(sep: str)``
