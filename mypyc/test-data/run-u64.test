@@ -82,6 +82,9 @@ def test_simple_arithmetic_ops() -> None:
     assert -two == 18446744073709551614
     assert -neg_one == 1
     assert -zero == 0
+    assert abs(one) == 1
+    assert abs(neg_one) == 18446744073709551615
+    assert abs(zero) == 0
 
 def test_bitwise_ops() -> None:
     x: u64 = 47384 + int()
