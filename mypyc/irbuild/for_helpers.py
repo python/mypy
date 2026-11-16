@@ -1536,7 +1536,7 @@ class ForRange(ForGenerator):
                 short_int_rprimitive, index, Integer(self.step), IntOp.ADD, line
             )
         elif is_fixed_width_rtype(index_type):
-            self.gen_fixed_width_overflow_check(index)
+            self.gen_fixed_width_overflow_check(index, index_type)
             if self.step < 0 and not index_type.is_signed:
                 # A negative step isn't a valid unsigned value, so subtract its magnitude
                 new_val = builder.binary_op(index, Integer(-self.step), "-", line)
@@ -1547,7 +1547,7 @@ class ForRange(ForGenerator):
             new_val = builder.binary_op(index, builder.load_int(self.step, line), "+", line)
         builder.assign(self.index_reg, new_val, line)
 
-    def gen_fixed_width_overflow_check(self, index: Value) -> None:
+    def gen_fixed_width_overflow_check(self, index: Value, index_type: RPrimitive) -> None:
         """Exit the loop if adding the step to a native int index would overflow.
 
         If index + step doesn't fit in the index type, it's past the end of the range,
@@ -1557,8 +1557,6 @@ class ForRange(ForGenerator):
         step = self.step
         if step in (1, -1):
             return
-        index_type = self.index_reg.type
-        assert isinstance(index_type, RPrimitive), index_type
         lo, hi = native_int_bounds(index_type)
         end = self.end_target
         # Overflow if index > hi - step (or index < lo - step, if the step is negative)
