@@ -1587,15 +1587,13 @@ def short_int_range_step_may_overflow(end: Value, step: int) -> bool:
     are far from the short int limits. Assume that the magnitude of a non-literal end
     value is at most MAX_SHORT_INT // 2. The check is exact for a literal end.
     """
-    max_short: int = MAX_SHORT_INT
-    min_short: int = MIN_SHORT_INT
-    if not min_short <= step <= max_short:
+    if not MIN_SHORT_INT <= step <= MAX_SHORT_INT:
         return True
     if isinstance(end, Integer):
         end_value = end.numeric_value()
     else:
-        end_value = max_short // 2 if step > 0 else -(max_short // 2)
-    return range_step_may_overflow(end_value, step, min_short, max_short)
+        end_value = MAX_SHORT_INT // 2 if step > 0 else -(MAX_SHORT_INT // 2)
+    return range_step_may_overflow(end_value, step, MIN_SHORT_INT, MAX_SHORT_INT)
 
 
 def range_step_may_overflow(end: int, step: int, lo: int, hi: int) -> bool:
