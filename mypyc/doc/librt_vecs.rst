@@ -32,6 +32,10 @@ for these *value item types*:
 * ``mypy_extensions.i64`` (signed 64-bit integer)
 * ``mypy_extensions.i32`` (signed 32-bit integer)
 * ``mypy_extensions.i16`` (signed 16-bit integer)
+* ``mypy_extensions.i8`` (signed 8-bit integer)
+* ``mypy_extensions.u64`` (unsigned 64-bit integer)
+* ``mypy_extensions.u32`` (unsigned 32-bit integer)
+* ``mypy_extensions.u16`` (unsigned 16-bit integer)
 * ``mypy_extensions.u8`` (unsigned byte)
 * ``float`` (64-bit float)
 * ``bool``

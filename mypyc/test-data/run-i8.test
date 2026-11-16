@@ -53,6 +53,8 @@ def test_operations() -> None:
     assert x << 1 == -126
     assert y >> 2 == -3
     assert ~x == -66
+    assert abs(x) == 65
+    assert abs(y) == 12
 
 def test_conversions() -> None:
     assert to_i8(127) == 127

@@ -22,17 +22,21 @@ append: Any = librt.vecs.append
 remove: Any = librt.vecs.remove
 pop: Any = librt.vecs.pop
 extend: Any = librt.vecs.extend
-u8: Any = mypy_extensions.u8
-i16: Any = mypy_extensions.i16
-i32: Any = mypy_extensions.i32
 i64: Any = mypy_extensions.i64
+i32: Any = mypy_extensions.i32
+i16: Any = mypy_extensions.i16
+i8: Any = mypy_extensions.i8
+u64: Any = mypy_extensions.u64
+u32: Any = mypy_extensions.u32
+u16: Any = mypy_extensions.u16
+u8: Any = mypy_extensions.u8
 
 # Work around test stub limitations
 Optional: Any = getattr(getattr(sys, "modules")["typing"], "Optional")
 
 # TODO: Add some nested vec tests
 
-ITEM_TYPES = [i64, u8, i16, i32, float, bool]
+ITEM_TYPES = [i64, i32, i16, i8, u64, u32, u16, u8, float, bool]
 
 # Common tests for all item types
 
@@ -97,16 +101,18 @@ def test_isinstance() -> None:
     assert not isinstance(vec, vec)
 
 def test_basic_int_operations() -> None:
-    # All of the non-bool item types support int values 0 to 255
+    # All of the non-bool item types support int values 0 to 127, and all
+    # except i8 support 0 to 255
     for t in ITEM_TYPES:
         if t is bool:
             continue
-        v = vec[t]([0, 4, 255])
+        hi = 127 if t is i8 else 255
+        v = vec[t]([0, 4, hi])
         assert len(v) == 3
         assert v[0] == 0
         assert v[1] == 4
-        assert v[2] == 255
-        assert v[-1] == 255
+        assert v[2] == hi
+        assert v[-1] == hi
         assert v[-2] == 4
         assert v[-3] == 0
         for bad_index in 3, -4, 1 << 100, -1 << 100:
@@ -584,7 +590,7 @@ def test_extend_bool() -> None:
     assert v == vec[bool]([True, False, True])
 
 def test_construct_from_list_modified_during_unboxing() -> None:
-    for t in [i64, i32, i16, float]:
+    for t in [i64, i32, i16, i8, float]:
         lst: list[Any] = []
         lst.append(ClearListOnUnbox(lst))
         lst.extend([7] * 100)
@@ -706,3 +712,151 @@ def test_buffer_extend_from_shared_buffer() -> None:
     v = extend(old, memoryview_(new))
     assert v == vec[u8]([1, 2, 1, 2, 3])
     assert new == vec[u8]([1, 2, 3])
+
+[case testLibrtVecsNewNativeIntItemTypesInterpreted_librt]
+# Test vec[i8], vec[u16], vec[u32] and vec[u64] using generic operations, which
+# simulates use from interpreted code.
+
+import array
+import struct
+from typing import Any
+
+import librt.vecs
+import mypy_extensions
+
+from testutil import assertRaises
+
+vec: Any = librt.vecs.vec
+append: Any = librt.vecs.append
+remove: Any = librt.vecs.remove
+pop: Any = librt.vecs.pop
+extend: Any = librt.vecs.extend
+i64: Any = mypy_extensions.i64
+i16: Any = mypy_extensions.i16
+u8: Any = mypy_extensions.u8
+
+# (item type, min value, max value, mypyc error value, buffer format)
+TYPES: list[tuple[Any, int, int, int, str]] = [
+    (mypy_extensions.i8, -128, 127, -113, "b"),
+    (mypy_extensions.u16, 0, 65535, 239, "H"),
+    (mypy_extensions.u32, 0, 4294967295, 239, "I"),
+    (mypy_extensions.u64, 0, 18446744073709551615, 239, "Q"),
+]
+
+def test_basics() -> None:
+    for t, lo, hi, err, _ in TYPES:
+        name = t.__name__
+        v = vec[t]()
+        assert str(v) == f"vec[{name}]([])"
+        assert type(v).__name__ == f"vec[{name}]"
+        assert isinstance(v, librt.vecs.vec)
+        v = vec[t]([lo, hi, err])
+        assert str(v) == f"vec[{name}]([{lo}, {hi}, {err}])"
+        assert repr(v) == str(v)
+        assert len(v) == 3
+        assert list(v) == [lo, hi, err]
+        assert v[0] == lo and v[-1] == err
+        assert type(v[1]) is int
+        v[0] = hi
+        assert v[0] == hi
+        assert v == vec[t]([hi, hi, err])
+        assert v != vec[t]([hi, hi])
+        v = append(v, 5)
+        assert v[3] == 5
+        v, x = pop(v)
+        assert x == 5 and len(v) == 3
+        v, x = pop(v, 0)
+        assert x == hi and list(v) == [hi, err]
+        v = remove(v, err)
+        assert list(v) == [hi]
+        with assertRaises(ValueError):
+            remove(v, err)
+        v = extend(v, [1, 2])
+        v = extend(v, vec[t]([3]))
+        v = extend(v, iter([lo]))
+        assert list(v) == [hi, 1, 2, 3, lo]
+        assert list(v[1:3]) == [1, 2]
+        assert list(v[::-2]) == [lo, 2, hi]
+        with assertRaises(IndexError):
+            v[5]
+        with assertRaises(IndexError):
+            v[-6] = 1
+
+def test_contains() -> None:
+    for t, lo, hi, err, _ in TYPES:
+        v = vec[t]([lo, hi, 1])
+        assert lo in v and hi in v and 1 in v
+        assert 2 not in v
+        assert hi + 1 not in v
+        assert lo - 1 not in v
+        assert 1.0 in v
+        assert 1.5 not in v
+        assert "x" not in v
+
+def test_out_of_range() -> None:
+    for t, lo, hi, err, _ in TYPES:
+        for bad in (hi + 1, lo - 1, 2**100, -2**100):
+            with assertRaises(OverflowError):
+                vec[t]([bad])
+            with assertRaises(OverflowError):
+                append(vec[t](), bad)
+            v = vec[t]([1])
+            with assertRaises(OverflowError):
+                v[0] = bad
+            assert v[0] == 1
+        with assertRaises(TypeError):
+            vec[t]([1.0])
+        with assertRaises(TypeError):
+            append(vec[t](), "x")
+        with assertRaises(TypeError):
+            vec[t]([None])
+
+def test_distinct_types() -> None:
+    all_types = [t for t, *_ in TYPES] + [i64, i16, u8, bool]
+    for t in all_types:
+        for t2 in all_types:
+            if t is not t2:
+                assert type(vec[t]()) is not type(vec[t2]())
+                # A nested vec only accepts items of the exact vec type
+                with assertRaises(TypeError):
+                    vec[vec[t]]([vec[t2]()])
+    assert type(vec[TYPES[0][0]]()) is type(vec[TYPES[0][0]]([1]))
+
+def test_optional_rejected() -> None:
+    for t, *_ in TYPES:
+        with assertRaises(TypeError, "vec does not support optional value types"):
+            vec[t | None]
+        with assertRaises(TypeError):
+            vec[t | None]()
+
+def test_nested() -> None:
+    for t, lo, hi, err, _ in TYPES:
+        name = t.__name__
+        n = vec[vec[t]]([vec[t]([hi]), vec[t]()])
+        n = append(n, vec[t]([lo, err]))
+        assert str(n) == f"vec[vec[{name}]]([[{hi}], [], [{lo}, {err}]])"
+        assert n[0][0] == hi
+        assert n[2] == vec[t]([lo, err])
+        assert type(n[2]) is type(vec[t]())
+        n, last = pop(n)
+        assert last == vec[t]([lo, err])
+        with assertRaises(TypeError):
+            append(n, vec[i64]([1]))
+        with assertRaises(TypeError):
+            append(n, [1])
+        nn = vec[vec[vec[t]]]([n])
+        assert str(nn) == f"vec[vec[vec[{name}]]]([[[{hi}], []]])"
+
+def test_buffer_protocol() -> None:
+    for t, lo, hi, err, fmt in TYPES:
+        m: Any = memoryview(vec[t]([lo, hi, err]))
+        assert m.format == fmt
+        assert m.itemsize == struct.calcsize(fmt)
+        assert m.readonly
+        assert m.tolist() == [lo, hi, err]
+        assert bytes(m) == struct.pack("=" + fmt * 3, lo, hi, err)
+        assert vec[t](array.array(fmt, [lo, hi, 3])) == vec[t]([lo, hi, 3])
+        assert len(vec[t](array.array(fmt))) == 0
+        # Buffer with a different format falls back to item-by-item conversion
+        assert vec[t](array.array("i" if fmt != "i" else "h", [1, 2])) == vec[t]([1, 2])
+        assert vec[t](bytes([1, 2])) == vec[t]([1, 2])
