@@ -741,3 +741,61 @@ except RuntimeError as e:
     assert str(e) == "No active exception to reraise"
 else:
     assert False
+
+[case testTracebackCodeObjectReuse]
+import gc
+from typing import Any, List
+
+def fail(n: int) -> None:
+    raise ValueError(str(n))
+
+def catch(n: int) -> List[Any]:
+    tbs = []
+    for i in range(n):
+        try:
+            fail(i)
+        except ValueError as e:
+            exc: Any = e
+            tbs.append(exc.__traceback__)
+    return tbs
+
+def raise_and_catch(n: int) -> int:
+    count = 0
+    for i in range(n):
+        try:
+            raise ValueError("x")
+        except ValueError:
+            count += 1
+    return count
+
+def entries(tb: Any) -> List[Any]:
+    result = []
+    while tb is not None:
+        code = tb.tb_frame.f_code
+        result.append((code.co_filename.endswith("native.py"), code.co_name, tb.tb_lineno))
+        tb = tb.tb_next
+    return result
+
+def test_traceback_entries() -> None:
+    tbs = catch(2)
+    assert entries(tbs[0]) == [(True, "catch", 11), (True, "fail", 5)]
+    assert entries(tbs[1]) == entries(tbs[0])
+    # Code objects of traceback entries are cached
+    assert tbs[0].tb_frame.f_code is tbs[1].tb_frame.f_code
+    assert tbs[0].tb_next.tb_frame.f_code is tbs[1].tb_next.tb_frame.f_code
+
+def count_code_objects() -> int:
+    return sum(1 for o in gc.get_objects() if type(o).__name__ == "code")
+
+def test_no_garbage_code_objects() -> None:
+    # On free-threaded builds code objects are only freed by the cyclic GC,
+    # so creating a new code object for each traceback entry would create
+    # garbage that can't be freed while a native loop runs.
+    gc.collect()
+    gc.disable()
+    try:
+        before = count_code_objects()
+        assert raise_and_catch(1000) == 1000
+        assert count_code_objects() - before < 10
+    finally:
+        gc.enable()
