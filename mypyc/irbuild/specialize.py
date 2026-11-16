@@ -147,6 +147,7 @@ from mypyc.primitives.dict_ops import (
 from mypyc.primitives.float_ops import isinstance_float
 from mypyc.primitives.generic_ops import generic_setattr, setup_object
 from mypyc.primitives.int_ops import (
+    int_abs_op,
     int_to_big_endian_op,
     int_to_bytes_op,
     int_to_little_endian_op,
@@ -411,6 +412,16 @@ def translate_builtins_with_unary_dunder(
             obj = builder.accept(arg)
             return builder.gen_method_call(obj, method, [], None, expr.line)
 
+    return None
+
+
+@specialize_function("builtins.abs")
+def translate_abs(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value | None:
+    if len(expr.args) == 1 and expr.arg_kinds == [ARG_POS]:
+        arg_type = builder.node_type(expr.args[0])
+        if is_fixed_width_rtype(arg_type):
+            arg = builder.accept(expr.args[0])
+            return builder.builder.primitive_op(int_abs_op, [arg], expr.line, type_args=[arg_type])
     return None
 
 
