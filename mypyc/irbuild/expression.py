@@ -54,10 +54,8 @@ from mypy.types import (
     Instance,
     ProperType,
     TupleType,
-    Type,
     TypeOfAny,
     TypeType,
-    UnionType,
     get_proper_type,
 )
 from mypyc.common import KEEP_ALIVE_SHORT_LIVED, KEEP_ALIVE_WHOLE_EXPRESSION, MAX_SHORT_INT
@@ -133,6 +131,7 @@ from mypyc.irbuild.specialize import (
     apply_dunder_specialization,
     apply_function_specialization,
     apply_method_specialization,
+    is_builtin_number_type,
     translate_getitem_with_bounds_check,
     translate_object_new,
     translate_object_setattr,
@@ -368,19 +367,6 @@ def transform_member_expr(builder: IRBuilder, expr: MemberExpr) -> Value:
     borrow = (can_borrow and builder.can_borrow) or scope == KEEP_ALIVE_WHOLE_EXPRESSION
     return builder.builder.get_attr(
         obj, expr.name, rtype, expr.line, borrow=borrow, borrow_scope=scope
-    )
-
-
-def is_builtin_number_type(typ: Type | None) -> bool:
-    """Is typ int, bool, float, complex or a union of them (and not a subclass)?"""
-    typ = get_proper_type(typ)
-    if isinstance(typ, UnionType):
-        return all(is_builtin_number_type(item) for item in typ.items)
-    return isinstance(typ, Instance) and typ.type.fullname in (
-        "builtins.int",
-        "builtins.bool",
-        "builtins.float",
-        "builtins.complex",
     )
 
 

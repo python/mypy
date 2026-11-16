@@ -264,3 +264,51 @@ double CPyLong_AsDouble(PyObject *o) {
     }
     return result;
 }
+
+// abs(o), where the static type of o is complex (or float | complex). An int or a
+// float can be used where a complex is expected. Anything else, including subclasses
+// that might override __abs__, calls __abs__, and the result is converted to a C
+// double like unboxing it to a float would.
+double CPyComplex_Abs(PyObject *o) {
+    if (PyComplex_CheckExact(o)) {
+        // The same as complex.__abs__ (see _Py_c_abs in Objects/complexobject.c)
+        Py_complex z = ((PyComplexObject *)o)->cval;
+        if (!isfinite(z.real) || !isfinite(z.imag)) {
+            // C99 rules: if either part is infinite, the result is infinity, even if
+            // the other part is a NaN
+            if (isinf(z.real)) {
+                return fabs(z.real);
+            }
+            if (isinf(z.imag)) {
+                return fabs(z.imag);
+            }
+            return Py_NAN;
+        }
+        double result = hypot(z.real, z.imag);
+        if (!isfinite(result)) {
+            PyErr_SetString(PyExc_OverflowError, "absolute value too large");
+            return CPY_FLOAT_ERROR;
+        }
+        return result;
+    } else if (PyFloat_CheckExact(o)) {
+        return fabs(PyFloat_AS_DOUBLE(o));
+    } else if (PyLong_CheckExact(o)) {
+        double result = CPyLong_AsDouble(o);
+        if (result == CPY_FLOAT_ERROR && PyErr_Occurred()) {
+            return CPY_FLOAT_ERROR;
+        }
+        return fabs(result);
+    }
+    PyObject *abs = PyNumber_Absolute(o);
+    if (abs == NULL) {
+        return CPY_FLOAT_ERROR;
+    }
+    double result = PyFloat_AsDouble(abs);
+    if (result == -1.0 && PyErr_Occurred()) {
+        // Same error as unboxing the result would produce
+        CPy_TypeError("float", abs);
+        result = CPY_FLOAT_ERROR;
+    }
+    Py_DECREF(abs);
+    return result;
+}

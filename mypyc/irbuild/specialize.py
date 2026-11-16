@@ -37,7 +37,7 @@ from mypy.nodes import (
     TupleExpr,
     Var,
 )
-from mypy.types import AnyType, TypeOfAny
+from mypy.types import AnyType, Instance, Type, TypeOfAny, UnionType, get_proper_type
 from mypyc.ir.class_ir import ClassIR
 from mypyc.ir.ops import (
     ERR_FALSE,
@@ -144,7 +144,7 @@ from mypyc.primitives.dict_ops import (
     dict_values_op,
     isinstance_dict,
 )
-from mypyc.primitives.float_ops import isinstance_float
+from mypyc.primitives.float_ops import complex_abs_op, isinstance_float
 from mypyc.primitives.generic_ops import generic_setattr, setup_object
 from mypyc.primitives.int_ops import (
     int_to_big_endian_op,
@@ -411,6 +411,37 @@ def translate_builtins_with_unary_dunder(
             obj = builder.accept(arg)
             return builder.gen_method_call(obj, method, [], None, expr.line)
 
+    return None
+
+
+def is_builtin_number_type(typ: Type | None) -> bool:
+    """Is typ int, bool, float, complex or a union of them (and not a subclass)?"""
+    typ = get_proper_type(typ)
+    if isinstance(typ, UnionType):
+        return all(is_builtin_number_type(item) for item in typ.items)
+    return isinstance(typ, Instance) and typ.type.fullname in (
+        "builtins.int",
+        "builtins.bool",
+        "builtins.float",
+        "builtins.complex",
+    )
+
+
+@specialize_function("builtins.abs")
+def translate_complex_abs(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value | None:
+    """Specialize abs() of a complex (or a float | complex), which is a float.
+
+    The argument is a boxed object, and the generic abs() would return a float object
+    that is unboxed right away. abs() of an unboxed float or int has a primitive.
+    """
+    if len(expr.args) == 1 and expr.arg_kinds == [ARG_POS]:
+        arg = expr.args[0]
+        if (
+            is_float_rprimitive(builder.node_type(expr))
+            and not builder.node_type(arg).is_unboxed
+            and is_builtin_number_type(builder.types.get(arg))
+        ):
+            return builder.primitive_op(complex_abs_op, [builder.accept(arg)], expr.line)
     return None
 
 

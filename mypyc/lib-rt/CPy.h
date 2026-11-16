@@ -814,6 +814,7 @@ bool CPyFloat_IsInf(double x);
 bool CPyFloat_IsNaN(double x);
 double CPyComplex_GetPartSlow(PyObject *o, PyObject *name);
 double CPyLong_AsDouble(PyObject *o);
+double CPyComplex_Abs(PyObject *o);
 
 // o.real, where the static type of o is float or complex. Other types,
 // including subclasses that might override the property, use getattr.

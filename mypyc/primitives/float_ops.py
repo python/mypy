@@ -212,3 +212,12 @@ number_imag_op = custom_primitive_op(
     c_function_name="CPyNumber_Imag",
     error_kind=ERR_MAGIC,
 )
+
+# abs(obj), where obj is a complex or a float | complex
+complex_abs_op = custom_primitive_op(
+    name="builtins.abs",
+    arg_types=[object_rprimitive],
+    return_type=float_rprimitive,
+    c_function_name="CPyComplex_Abs",
+    error_kind=ERR_MAGIC_OVERLAPPING,
+)

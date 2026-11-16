@@ -47,7 +47,7 @@ Functions
 * ``i8(f)`` (convert to 8-bit signed integer)
 * ``u16(f)`` (convert to 16-bit unsigned integer)
 * ``u8(f)`` (convert to 8-bit unsigned integer)
-* ``abs(f)``
+* ``abs(f)`` (also for ``complex`` values and unions such as ``float | complex``)
 * ``math.sin(f)``
 * ``math.cos(f)``
 * ``math.tan(f)``
