@@ -147,6 +147,7 @@ from mypyc.primitives.dict_ops import (
 from mypyc.primitives.float_ops import isinstance_float
 from mypyc.primitives.generic_ops import generic_setattr, setup_object
 from mypyc.primitives.int_ops import (
+    int_abs_op,
     int_to_big_endian_op,
     int_to_bytes_op,
     int_to_little_endian_op,
@@ -171,6 +172,7 @@ from mypyc.primitives.misc_ops import (
     isinstance_slice,
     isinstance_type,
     slow_isinstance_op,
+    type_of_int_op,
 )
 from mypyc.primitives.set_ops import isinstance_frozenset, isinstance_set
 from mypyc.primitives.str_ops import (
@@ -411,6 +413,16 @@ def translate_builtins_with_unary_dunder(
             obj = builder.accept(arg)
             return builder.gen_method_call(obj, method, [], None, expr.line)
 
+    return None
+
+
+@specialize_function("builtins.abs")
+def translate_abs(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value | None:
+    if len(expr.args) == 1 and expr.arg_kinds == [ARG_POS]:
+        arg_type = builder.node_type(expr.args[0])
+        if is_fixed_width_rtype(arg_type):
+            arg = builder.accept(expr.args[0])
+            return builder.builder.primitive_op(int_abs_op, [arg], expr.line, type_args=[arg_type])
     return None
 
 
@@ -1543,6 +1555,35 @@ def translate_float(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Valu
         # No-op float conversion.
         return builder.accept(arg)
     return None
+
+
+@specialize_function("builtins.type")
+def translate_type(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value | None:
+    """Get the type of an unboxed int, float or bool without boxing it.
+
+    Only these exact types are handled. A union such as 'bool | int' is boxed
+    already, and unboxing it as an int would lose the type of a bool.
+    """
+    if len(expr.args) != 1 or expr.arg_kinds[0] != ARG_POS:
+        return None
+    arg = expr.args[0]
+    arg_type = builder.node_type(arg)
+    if is_int_rprimitive(arg_type):
+        # A long int can be an instance of a subclass of int
+        return builder.primitive_op(type_of_int_op, [builder.accept(arg)], expr.line)
+    if is_bool_rprimitive(arg_type):
+        type_name = "builtins.bool"
+    elif is_float_rprimitive(arg_type):
+        type_name = "builtins.float"
+    elif is_fixed_width_rtype(arg_type):
+        type_name = "builtins.int"
+    else:
+        return None
+    # The type doesn't depend on the value, but the argument can have side effects
+    builder.accept(arg)
+    type_obj = builder.load_builtin(type_name, expr.line)
+    assert type_obj is not None
+    return type_obj
 
 
 @specialize_function("builtins.ord")

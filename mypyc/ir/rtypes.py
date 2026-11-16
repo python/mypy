@@ -1416,6 +1416,18 @@ def check_native_int_range(rtype: RPrimitive, n: int) -> bool:
         return -limit <= n < limit
 
 
+def wrap_unsigned_native_int(rtype: RType, n: int) -> int:
+    """Wrap n around to the range of rtype if it's an unsigned native int type.
+
+    Unsigned native int arithmetic wraps around on overflow at runtime, so
+    compile-time evaluation must do the same (e.g. -u64(1) is 2**64 - 1).
+    Return n unchanged for other types.
+    """
+    if is_fixed_width_rtype(rtype) and not rtype.is_signed:
+        return n & ((1 << (8 * rtype.size)) - 1)
+    return n
+
+
 # Buffers for vec item types that have a packed representation
 #
 # Note that the 'items' fields are variable-length arrays, and mypyc IR isn't
@@ -1435,6 +1447,28 @@ VecI32BufObject = RStruct(
 
 VecI16BufObject = RStruct(
     name="VecI16BufObject",
+    names=["ob_base", "len", "items"],
+    types=[PyVarObject, int64_rprimitive],
+)
+
+VecI8BufObject = RStruct(
+    name="VecI8BufObject", names=["ob_base", "len", "items"], types=[PyVarObject, int64_rprimitive]
+)
+
+VecU64BufObject = RStruct(
+    name="VecU64BufObject",
+    names=["ob_base", "len", "items"],
+    types=[PyVarObject, int64_rprimitive],
+)
+
+VecU32BufObject = RStruct(
+    name="VecU32BufObject",
+    names=["ob_base", "len", "items"],
+    types=[PyVarObject, int64_rprimitive],
+)
+
+VecU16BufObject = RStruct(
+    name="VecU16BufObject",
     names=["ob_base", "len", "items"],
     types=[PyVarObject, int64_rprimitive],
 )
@@ -1511,6 +1545,10 @@ vec_buf_types: Final[dict[RType, RStruct]] = {
     int64_rprimitive: VecI64BufObject,
     int32_rprimitive: VecI32BufObject,
     int16_rprimitive: VecI16BufObject,
+    int8_rprimitive: VecI8BufObject,
+    uint64_rprimitive: VecU64BufObject,
+    uint32_rprimitive: VecU32BufObject,
+    uint16_rprimitive: VecU16BufObject,
     uint8_rprimitive: VecU8BufObject,
     float_rprimitive: VecFloatBufObject,
     bool_rprimitive: VecBoolBufObject,
@@ -1520,6 +1558,10 @@ vec_c_types: Final[dict[RType, str]] = {
     int64_rprimitive: "VecI64",
     int32_rprimitive: "VecI32",
     int16_rprimitive: "VecI16",
+    int8_rprimitive: "VecI8",
+    uint64_rprimitive: "VecU64",
+    uint32_rprimitive: "VecU32",
+    uint16_rprimitive: "VecU16",
     uint8_rprimitive: "VecU8",
     float_rprimitive: "VecFloat",
     bool_rprimitive: "VecBool",
@@ -1529,6 +1571,10 @@ vec_api_fields: Final[dict[RType, str]] = {
     int64_rprimitive: "i64",
     int32_rprimitive: "i32",
     int16_rprimitive: "i16",
+    int8_rprimitive: "i8",
+    uint64_rprimitive: "u64",
+    uint32_rprimitive: "u32",
+    uint16_rprimitive: "u16",
     uint8_rprimitive: "u8",
     float_rprimitive: "float_",
     bool_rprimitive: "bool_",
@@ -1538,6 +1584,10 @@ vec_api_by_item_type: Final[dict[RType, str]] = {
     int64_rprimitive: "VecI64Api",
     int32_rprimitive: "VecI32Api",
     int16_rprimitive: "VecI16Api",
+    int8_rprimitive: "VecI8Api",
+    uint64_rprimitive: "VecU64Api",
+    uint32_rprimitive: "VecU32Api",
+    uint16_rprimitive: "VecU16Api",
     uint8_rprimitive: "VecU8Api",
     float_rprimitive: "VecFloatApi",
     bool_rprimitive: "VecBoolApi",
@@ -1550,6 +1600,10 @@ vec_item_type_tags: Final[dict[RType, int]] = {
     int64_rprimitive: 2,
     int32_rprimitive: 6,
     int16_rprimitive: 10,
+    int8_rprimitive: 26,
+    uint64_rprimitive: 30,
+    uint32_rprimitive: 34,
+    uint16_rprimitive: 38,
     uint8_rprimitive: 14,
     float_rprimitive: 18,
     bool_rprimitive: 22,
