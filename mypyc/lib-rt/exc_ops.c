@@ -271,6 +271,7 @@ static PyObject *CPy_FormatTypeName(PyObject *value) {
 
 CPy_NOINLINE
 void CPy_TypeError(const char *expected, PyObject *value) {
+    PyErr_Clear();
     PyObject *out = CPy_FormatTypeName(value);
     if (out) {
         PyErr_Format(PyExc_TypeError, "%s object expected; got %U", expected, out);
