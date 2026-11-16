@@ -178,6 +178,11 @@ p.add_argument(
     type=int,
     help="Set the maximum number of types to try for a function (default 64)",
 )
+p.add_argument(
+    "--generic-min-calls",
+    type=int,
+    help="Set the minimum number of callsites required for generic inference (default 2)",
+)
 
 inspect_parser = p = subparsers.add_parser(
     "inspect", help="Locate and statically inspect expression(s)"
@@ -520,6 +525,7 @@ def do_suggest(args: argparse.Namespace) -> None:
         flex_any=args.flex_any,
         use_fixme=args.use_fixme,
         max_guesses=args.max_guesses,
+        generic_min_calls=args.generic_min_calls,
     )
     check_output(response, verbose=False, junit_xml=None, perf_stats_file=None)
 

@@ -31,10 +31,12 @@ import sys
 from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from typing import NamedTuple, TypedDict, TypeVar, cast
+from typing_extensions import NotRequired
 
 from mypy.argmap import map_actuals_to_formals
 from mypy.build import Graph, State
 from mypy.find_sources import InvalidSourceList, SourceFinder
+from mypy.generic_suggestions import infer_generic_candidates
 from mypy.join import join_type_list
 from mypy.meet import meet_type_list
 from mypy.modulefinder import PYTHON_EXTENSIONS
@@ -87,6 +89,7 @@ from mypy.util import split_target
 class PyAnnotateSignature(TypedDict):
     return_type: str
     arg_types: list[str]
+    type_params: NotRequired[list[str]]
 
 
 class Callsite(NamedTuple):
@@ -255,6 +258,7 @@ class SuggestionEngine:
         flex_any: float | None = None,
         use_fixme: str | None = None,
         max_guesses: int | None = None,
+        generic_min_calls: int | None = None,
     ) -> None:
         self.fgmanager = fgmanager
         self.manager = fgmanager.manager
@@ -270,6 +274,7 @@ class SuggestionEngine:
 
         self.max_guesses = max_guesses or 64
         self.use_fixme = use_fixme
+        self.generic_min_calls = generic_min_calls if generic_min_calls is not None else 2
 
     def suggest(self, function: str) -> str:
         """Suggest an inferred type for function."""
@@ -475,6 +480,49 @@ class SuggestionEngine:
 
         return []
 
+    def get_generic_callsites(
+        self,
+        node: FuncDef,
+        is_method: bool,
+        defaults: list[Type | None],
+        callsites: list[Callsite],
+    ) -> list[list[list[Type]]]:
+        """Normalize callsite argument types for generic candidate inference."""
+        if any(k in (ARG_STAR, ARG_STAR2) for k in node.arg_kinds):
+            return []
+
+        expected_formals = len(node.arguments) - int(is_method)
+        normalized: list[list[list[Type]]] = []
+
+        for call in callsites:
+            if len(call.arg_types) != expected_formals:
+                continue
+            if any(k in (ARG_STAR, ARG_STAR2) for kinds in call.arg_kinds for k in kinds):
+                continue
+
+            call_args: list[list[Type]] = []
+            if is_method:
+                assert node.info is not None
+                call_args.append([Instance(node.info, [])])
+
+            valid = True
+            for i, actual_types in enumerate(call.arg_types):
+                formal_idx = i + int(is_method)
+                filtered = [t for t in actual_types if not is_implicit_any(t)]
+                if not filtered and defaults[formal_idx] is not None:
+                    default_type = defaults[formal_idx]
+                    assert default_type is not None
+                    filtered = [default_type]
+                if len(filtered) != 1:
+                    valid = False
+                    break
+                call_args.append(filtered)
+
+            if valid:
+                normalized.append(call_args)
+
+        return normalized
+
     def get_suggestion(self, mod: str, node: FuncDef) -> PyAnnotateSignature:
         """Compute a suggestion for a function.
 
@@ -488,12 +536,14 @@ class SuggestionEngine:
             raise SuggestionFailure("Function does not typecheck.")
 
         is_method = bool(node.info) and node.has_self_or_cls_argument
+        starting_type = self.get_starting_type(node)
+        defaults = self.get_default_arg_types(node)
 
         with state.strict_optional_set(graph[mod].options.strict_optional):
             guesses = self.get_guesses(
                 is_method,
-                self.get_starting_type(node),
-                self.get_default_arg_types(node),
+                starting_type,
+                defaults,
                 callsites,
                 uses,
             )
@@ -513,6 +563,27 @@ class SuggestionEngine:
         guesses = [best.copy_modified(ret_type=refine_type(best.ret_type, t)) for t in ret_types]
         guesses = self.filter_options(guesses, is_method, ignore_return=False)
         best, errors = self.find_best(node, guesses)
+
+        generic_candidates = infer_generic_candidates(
+            node,
+            starting_type,
+            self.get_generic_callsites(node, is_method, defaults, callsites),
+            self.named_type,
+            min_calls=self.generic_min_calls,
+        )
+        if generic_candidates:
+            generic_guesses = [refine_callable(cand, best) for cand in generic_candidates]
+            generic_guesses = self.filter_options(generic_guesses, is_method, ignore_return=False)
+            if generic_guesses:
+                best_generic, generic_errors = self.find_best(node, generic_guesses)
+                orig_error_count = count_errors(orig_errors)
+                if (
+                    generic_errors <= orig_error_count
+                    and generic_errors <= errors
+                    and self.score_callable(best_generic) <= self.score_callable(best)
+                ):
+                    best = best_generic
+                    errors = generic_errors
 
         if self.no_errors and errors:
             raise SuggestionFailure("No annotation without errors")
@@ -693,7 +764,10 @@ class SuggestionEngine:
         # We set type to None to ensure that the type always changes during
         # reprocessing.
         func.type = None
-        func.unanalyzed_type = typ
+        if isinstance(typ, CallableType):
+            func.unanalyzed_type = typ.copy_modified()
+        else:
+            func.unanalyzed_type = typ
         try:
             res = self.fgmanager.trigger(func.fullname)
             # if res:
@@ -746,14 +820,19 @@ class SuggestionEngine:
     ) -> PyAnnotateSignature:
         """Format a callable type as a pyannotate dict"""
         start = int(is_method)
-        return {
+        sig: PyAnnotateSignature = {
             "arg_types": [self.format_type(cur_module, t) for t in typ.arg_types[start:]],
             "return_type": self.format_type(cur_module, typ.ret_type),
         }
+        if typ.variables:
+            sig["type_params"] = [var.name for var in typ.variables]
+        return sig
 
     def format_signature(self, sig: PyAnnotateSignature) -> str:
         """Format a callable type in a way suitable as an annotation... kind of"""
-        return f"({', '.join(sig['arg_types'])}) -> {sig['return_type']}"
+        type_params = sig.get("type_params")
+        prefix = f"[{', '.join(type_params)}]" if type_params else ""
+        return f"{prefix}({', '.join(sig['arg_types'])}) -> {sig['return_type']}"
 
     def format_type(self, cur_module: str | None, typ: Type) -> str:
         if self.use_fixme and isinstance(get_proper_type(typ), AnyType):
@@ -862,7 +941,7 @@ class TypeFormatter(TypeStrVisitor):
                 mod = self.module
 
         if (mod, obj) == ("builtins", "tuple"):
-            mod, obj = "typing", "Tuple[" + t.args[0].accept(self) + ", ...]"
+            obj = f"tuple[{t.args[0].accept(self)}, ...]"
         elif t.args:
             obj += f"[{self.list_str(t.args)}]"
 
@@ -881,6 +960,9 @@ class TypeFormatter(TypeStrVisitor):
                 return t.partial_fallback.accept(self)
         s = self.list_str(t.items)
         return f"Tuple[{s}]"
+
+    def visit_type_var(self, t: TypeVarType) -> str:
+        return t.name
 
     def visit_uninhabited_type(self, t: UninhabitedType) -> str:
         return "Any"

@@ -3,9 +3,13 @@
 
 from collections.abc import Callable, Sequence
 
+from mypy.erasetype import remove_instance_last_known_values
 from mypy.nodes import (
+    ARG_OPT,
+    ARG_POS,
     AssignmentExpr,
     AssignmentStmt,
+    CallExpr,
     DelStmt,
     Expression,
     ForStmt,
@@ -379,6 +383,155 @@ def make_dictionary_generic(
     )
 
 
+class CallbackApplicationFinder(TraverserVisitor):
+    """Find returns of the form callback(arg)."""
+
+    def __init__(self, func: FuncDef) -> None:
+        self.arguments = [
+            arg.variable for arg in func.arguments
+        ]
+        self.applications: list[tuple[int, int] | None] = []
+
+    def visit_return_stmt(self, stmt: ReturnStmt) -> None:
+        expr = stmt.expr
+
+        if (
+            not isinstance(expr, CallExpr)
+            or not isinstance(expr.callee, NameExpr)
+            or len(expr.args) != 1
+            or expr.arg_kinds != [ARG_POS]
+            or not isinstance(expr.args[0], NameExpr)
+        ):
+            self.applications.append(None)
+            return
+
+        callback_index = next(
+            (
+                i for i, arg in enumerate(self.arguments)
+                if expr.callee.node is arg
+            ),
+            None,
+        )
+
+        arg_index = next(
+            (
+                i for i, arg in enumerate(self.arguments)
+                if expr.args[0].node is arg
+            ),
+            None,
+        )
+
+        if (
+            callback_index is None
+            or arg_index is None
+            or callback_index == arg_index
+        ):
+            self.applications.append(None)
+            return
+
+        self.applications.append((callback_index, arg_index))
+
+    def visit_func_def(self, node: FuncDef) -> None:
+        # Ignore nested functions.
+        pass
+
+
+def find_callback_application(
+    func: FuncDef,
+) -> tuple[int, int] | None:
+    """Find arguments used in direct callback(arg) returns."""
+
+    finder = CallbackApplicationFinder(func)
+    func.body.accept(finder)
+
+    if not finder.applications:
+        return None
+
+    first = finder.applications[0]
+
+    if first is None:
+        return None
+
+    if any(app != first for app in finder.applications):
+        return None
+
+    if (
+        is_argument_reassigned(func, first[0])
+        or is_argument_reassigned(func, first[1])
+    ):
+        return None
+
+    return first
+
+
+def make_callback_generic(
+    base: CallableType,
+    callback_index: int,
+    arg_index: int,
+    object_type: Instance,
+    function_type: Instance | None = None,
+) -> CallableType | None:
+    """Build a candidate with Callable[[T], R], T -> R."""
+
+    if base.variables:
+        return None
+
+    if callback_index == arg_index:
+        return None
+
+    if not (
+        0 <= callback_index < len(base.arg_types)
+        and 0 <= arg_index < len(base.arg_types)
+    ):
+        return None
+
+    if function_type is None:
+        function_type = base.fallback
+
+    if function_type.type.fullname != "builtins.function":
+        return None
+
+    if not all(
+        isinstance(get_proper_type(tp), AnyType)
+        for tp in (
+            base.arg_types[callback_index],
+            base.arg_types[arg_index],
+            base.ret_type,
+        )
+    ):
+        return None
+
+    default = AnyType(TypeOfAny.from_omitted_generics)
+
+    arg_var = TypeVarType(
+        "T", "T", TypeVarId(-1), [],
+        object_type, default,
+    )
+
+    ret_var = TypeVarType(
+        "R", "R", TypeVarId(-2), [],
+        object_type, default,
+    )
+
+    callback_type = CallableType(
+        [arg_var],
+        [ARG_POS],
+        [None],
+        ret_var,
+        function_type,
+    )
+
+    new_arg_types = base.arg_types.copy()
+    new_arg_types[callback_index] = callback_type
+    new_arg_types[arg_index] = arg_var
+
+    return base.copy_modified(
+        arg_types=new_arg_types,
+        ret_type=ret_var,
+        variables=[arg_var, ret_var],
+    )
+
+
 class ArgumentReassignmentFinder(TraverserVisitor):
     """Detect whether a function argument is reassigned."""
 
@@ -449,6 +602,7 @@ def infer_generic_candidates(
     base: CallableType,
     callsite_arg_types: Sequence[Sequence[Sequence[Type]]],
     named_type: Callable[[str], Instance],
+    min_calls: int = 2,
 ) -> list[CallableType]:
     """Generate generic candidates from a function and its call sites.
 
@@ -461,7 +615,7 @@ def infer_generic_candidates(
     if len(base.arg_types) != len(func.arguments):
         return []
 
-    if len(callsite_arg_types) < 2:
+    if min_calls < 2 or len(callsite_arg_types) < min_calls:
         return []
 
     observed: list[list[Type]] = [
@@ -476,7 +630,9 @@ def infer_generic_candidates(
             if len(actual_types) != 1:
                 return []
 
-            typ = get_proper_type(actual_types[0])
+            typ = get_proper_type(
+                remove_instance_last_known_values(actual_types[0])
+            )
 
             if isinstance(typ, AnyType):
                 return []
@@ -516,21 +672,30 @@ def infer_generic_candidates(
             )
             return [candidate] if candidate is not None else []
 
-        def is_homogeneous_tuple(t: Type) -> bool:
+        def tuple_element_type(t: Type) -> Type | None:
             t = get_proper_type(t)
 
             if isinstance(t, TupleType):
-                return bool(t.items) and all(
+                if bool(t.items) and all(
                     item == t.items[0] for item in t.items
-                )
+                ):
+                    return get_proper_type(t.items[0])
+                return None
 
-            return (
+            if (
                 isinstance(t, Instance)
                 and t.type.fullname == "builtins.tuple"
                 and len(t.args) == 1
-            )
+            ):
+                return get_proper_type(t.args[0])
 
-        if all(is_homogeneous_tuple(t) for t in types):
+            return None
+
+        element_types = [tuple_element_type(t) for t in types]
+
+        if all(elem is not None for elem in element_types) and varies(
+            [elem for elem in element_types if elem is not None]
+        ):
             candidate = make_tuple_element_generic(
                 base,
                 indexed,
@@ -570,6 +735,58 @@ def infer_generic_candidates(
                     key_index,
                     named_type("builtins.dict"),
                     object_type,
+                )
+                return [candidate] if candidate is not None else []
+
+    callback = find_callback_application(func)
+
+    if callback is not None:
+        callback_index, arg_index = callback
+
+        callbacks = [
+            get_proper_type(t) for t in observed[callback_index]
+        ]
+
+        if all(
+            isinstance(t, CallableType)
+            and not t.is_ellipsis_args
+            and len(t.arg_types) == 1
+            and t.arg_kinds[0] in (ARG_POS, ARG_OPT)
+            and not isinstance(
+                get_proper_type(t.arg_types[0]), AnyType
+            )
+            and not isinstance(get_proper_type(t.ret_type), AnyType)
+            for t in callbacks
+        ):
+            matching_args = all(
+                get_proper_type(cb.arg_types[0])
+                == get_proper_type(arg_type)
+                for cb, arg_type in zip(
+                    callbacks, observed[arg_index]
+                )
+                if isinstance(cb, CallableType)
+            )
+
+            cb_arg_types = [
+                get_proper_type(cb.arg_types[0])
+                for cb in callbacks
+                if isinstance(cb, CallableType)
+            ]
+            cb_ret_types = [
+                get_proper_type(cb.ret_type)
+                for cb in callbacks
+                if isinstance(cb, CallableType)
+            ]
+
+            if matching_args and (
+                varies(cb_arg_types) or varies(cb_ret_types)
+            ):
+                candidate = make_callback_generic(
+                    base,
+                    callback_index,
+                    arg_index,
+                    object_type,
+                    named_type("builtins.function"),
                 )
                 return [candidate] if candidate is not None else []
 
