@@ -1561,18 +1561,17 @@ class ForRange(ForGenerator):
         assert isinstance(index_type, RPrimitive), index_type
         lo, hi = native_int_bounds(index_type)
         end = self.end_target
+        if isinstance(end, Integer) and not range_step_may_overflow(
+            end.numeric_value(), step, lo, hi
+        ):
+            return
         if step > 0:
             # Overflow if index > hi - step
             limit = hi - step
-            if isinstance(end, Integer) and end.numeric_value() - 1 <= limit:
-                # The largest possible index is end - 1, so overflow is impossible
-                return
             op = ComparisonOp.SGT if index_type.is_signed else ComparisonOp.UGT
         else:
             # Overflow if index < lo - step
             limit = lo - step
-            if isinstance(end, Integer) and end.numeric_value() + 1 >= limit:
-                return
             op = ComparisonOp.SLT if index_type.is_signed else ComparisonOp.ULT
         if not lo <= limit <= hi:
             # The step doesn't fit in the index type. This is reported as an error elsewhere.
@@ -1588,8 +1587,6 @@ class ForRange(ForGenerator):
 def short_int_range_step_may_overflow(end: Value, step: int) -> bool:
     """Could index + step overflow a short int in a short_int range loop?
 
-    The step is only taken when index < end (or index > end, if the step is negative).
-
     Apart from literals, short_int values are lengths, counts and similar values, which
     are far from the short int limits. Assume that the magnitude of a non-literal end
     value is at most MAX_SHORT_INT // 2. The check is exact for a literal end.
@@ -1599,14 +1596,19 @@ def short_int_range_step_may_overflow(end: Value, step: int) -> bool:
     if not min_short <= step <= max_short:
         return True
     if isinstance(end, Integer):
-        lo = hi = end.numeric_value()
+        end_value = end.numeric_value()
     else:
-        hi = max_short // 2
-        lo = -hi
-    if step > 0:
-        return hi - 1 + step > max_short
-    else:
-        return lo + 1 + step < min_short
+        end_value = max_short // 2 if step > 0 else -(max_short // 2)
+    return range_step_may_overflow(end_value, step, min_short, max_short)
+
+
+def range_step_may_overflow(end: int, step: int, lo: int, hi: int) -> bool:
+    """Could index + step fall outside [lo, hi] for an index in range(..., end, step)?
+
+    The step is only taken when index < end (or index > end, if the step is negative).
+    """
+    last = end - 1 if step > 0 else end + 1
+    return not lo <= last + step <= hi
 
 
 class ForInfiniteCounter(ForGenerator):
