@@ -89,3 +89,48 @@ PyObject *CPySequenceTuple_SetSize(PyObject *tuple, Py_ssize_t size) {
     }
     return CPyTuple_MoveItems(tuple, size, size);
 }
+
+// Compare two exact tuples for equality. Return 1 if equal, 0 if not equal, -1 on error.
+static int _CPyTuple_Equal(PyObject *left, PyObject *right) {
+    if (left == right) {
+        // All items are identical, so they compare equal
+        return 1;
+    }
+    Py_ssize_t left_size = PyTuple_GET_SIZE(left);
+    Py_ssize_t right_size = PyTuple_GET_SIZE(right);
+    // Like CPython, compare items even if the lengths differ, since item
+    // comparisons can have side effects or raise exceptions
+    Py_ssize_t i;
+    for (i = 0; i < left_size && i < right_size; i++) {
+        PyObject *left_item = PyTuple_GET_ITEM(left, i);
+        PyObject *right_item = PyTuple_GET_ITEM(right, i);
+        if (left_item == right_item) {
+            continue;
+        }
+        int cmp = PyObject_RichCompareBool(left_item, right_item, Py_EQ);
+        if (cmp <= 0) {
+            return cmp;
+        }
+    }
+    return left_size == right_size;
+}
+
+// Compare two tuples using == or != (op is Py_EQ or Py_NE). Return 1 if the result is
+// true, 0 if it's false, and -1 on error.
+int CPyTuple_Compare(PyObject *left, PyObject *right, int op) {
+    if (likely(PyTuple_CheckExact(left) && PyTuple_CheckExact(right))) {
+        int result = _CPyTuple_Equal(left, right);
+        if (result < 0) {
+            return -1;
+        }
+        return op == Py_EQ ? result : !result;
+    }
+    // Subclasses may override __eq__ and __ne__
+    PyObject *res = PyObject_RichCompare(left, right, op);
+    if (res == NULL) {
+        return -1;
+    }
+    int result = PyObject_IsTrue(res);
+    Py_DECREF(res);
+    return result;
+}

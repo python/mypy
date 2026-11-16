@@ -19,6 +19,7 @@ from mypyc.ir.ops import (
 )
 from mypyc.ir.rtypes import (
     RType,
+    RTypeVar,
     bit_rprimitive,
     bool_rprimitive,
     bytes_rprimitive,
@@ -212,6 +213,15 @@ function_op(
     return_type=int_rprimitive,
     c_function_name="CPyTagged_Absolute",
     error_kind=ERR_NEVER,
+)
+
+# abs(x) for fixed-width x, lowered to inline IR
+int_abs_op = custom_primitive_op(
+    name="int_abs",
+    arg_types=[RTypeVar(0)],
+    return_type=RTypeVar(0),
+    error_kind=ERR_NEVER,
+    type_params=[RTypeVar(0)],
 )
 
 

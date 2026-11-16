@@ -26,6 +26,7 @@ from mypy.nodes import (
     UnaryExpr,
     Var,
 )
+from mypyc.ir.rtypes import wrap_unsigned_native_int
 from mypyc.irbuild.util import bytes_from_str
 
 if TYPE_CHECKING:
@@ -41,6 +42,16 @@ def constant_fold_expr(builder: IRBuilder, expr: Expression) -> ConstantValue | 
 
     Return None otherwise.
     """
+    value = constant_fold_expr_inner(builder, expr)
+    if isinstance(value, int) and not isinstance(value, bool) and not isinstance(expr, IntExpr):
+        # Evaluate each operation using native int semantics if needed, since
+        # unsigned native ints wrap around on overflow (e.g. -X if X is a u64).
+        # Bools are skipped, since the helper returns a plain int when compiled.
+        value = wrap_unsigned_native_int(builder.node_type(expr), value)
+    return value
+
+
+def constant_fold_expr_inner(builder: IRBuilder, expr: Expression) -> ConstantValue | None:
     if isinstance(expr, IntExpr):
         return expr.value
     if isinstance(expr, FloatExpr):

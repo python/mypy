@@ -267,6 +267,21 @@ CPyTagged CPyStr_FindWithEnd(PyObject *str, PyObject *substr, CPyTagged start, C
     return index << 1;
 }
 
+CPyTagged CPyStr_Index(PyObject *str, PyObject *substr, CPyTagged start, int direction) {
+    CPyTagged end = PyUnicode_GET_LENGTH(str) << 1;
+    return CPyStr_IndexWithEnd(str, substr, start, end, direction);
+}
+
+CPyTagged CPyStr_IndexWithEnd(PyObject *str, PyObject *substr, CPyTagged start, CPyTagged end,
+                              int direction) {
+    CPyTagged index = CPyStr_FindWithEnd(str, substr, start, end, direction);
+    if (unlikely(index == CPyTagged_ShortFromSsize_t(-1))) {
+        PyErr_SetString(PyExc_ValueError, "substring not found");
+        return CPY_INT_TAG;
+    }
+    return index;
+}
+
 PyObject *CPyStr_Split(PyObject *str, PyObject *sep, CPyTagged max_split) {
     Py_ssize_t temp_max_split = CPyTagged_AsSsize_t(max_split);
     if (temp_max_split == -1 && PyErr_Occurred()) {
@@ -984,4 +999,22 @@ bool CPyStr_IsTitle(PyObject *str) {
         }
     }
     return cased;
+}
+
+bool CPyStr_IsIdentifier(PyObject *str) {
+    if (PyUnicode_IS_ASCII(str)) {
+        // ASCII fast path: [A-Za-z_][A-Za-z0-9_]*
+        Py_ssize_t len = PyUnicode_GET_LENGTH(str);
+        if (len == 0) return false;
+        const Py_UCS1 *data = PyUnicode_1BYTE_DATA(str);
+        if (!Py_ISALPHA(data[0]) && data[0] != '_')
+            return false;
+        for (Py_ssize_t i = 1; i < len; i++) {
+            if (!Py_ISALNUM(data[i]) && data[i] != '_')
+                return false;
+        }
+        return true;
+    }
+    // Non-ASCII identifiers need XID_Start/XID_Continue checks (PEP 3131)
+    return PyUnicode_IsIdentifier(str) == 1;
 }
