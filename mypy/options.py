@@ -288,6 +288,12 @@ class Options:
         # source hashes as often.
         self.quickstart_file: str | None = None
 
+        # A file naming, one path per line, every file that may differ from those
+        # the fine-grained cache was generated from. With --use-fine-grained-cache,
+        # every other file is trusted to match its cache metadata without being
+        # looked at, so the first build costs what changed rather than what exists.
+        self.changed_since_cache_file: str | None = None
+
         # A comma-separated list of files/directories for mypy to type check;
         # supports globbing
         self.files: list[str] | None = None

@@ -1231,6 +1231,7 @@ def define_options(
 
     misc_group = parser.add_argument_group(title="Miscellaneous")
     misc_group.add_argument("--quickstart-file", help=argparse.SUPPRESS)
+    misc_group.add_argument("--changed-since-cache-file", help=argparse.SUPPRESS)
     misc_group.add_argument(
         "--junit-xml",
         metavar="JUNIT_XML_OUTPUT_FILE",

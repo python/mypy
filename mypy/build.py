@@ -955,6 +955,7 @@ class BuildManager:
         if self.verbosity() >= 2:
             self.trace(f"Plugins snapshot (fresh) {json.dumps(self.plugins_snapshot)}")
         self.quickstart_state = read_quickstart_file(options, self.stdout)
+        self.changed_since_cache = read_changed_since_cache_file(options, self.stdout)
         # Fine grained targets (module top levels and top level functions) processed by
         # the semantic analyzer, used only for testing. Currently used only by the new
         # semantic analyzer. Tuple of module and target name.
@@ -1142,6 +1143,18 @@ class BuildManager:
 
     def use_fine_grained_cache(self) -> bool:
         return self.cache_enabled and self.options.use_fine_grained_cache
+
+    def trusts_cache_for(self, path: str) -> bool:
+        """Is the file at path known to match its fine-grained cache metadata?
+
+        True only if --changed-since-cache-file names the files that may differ, and
+        it does not name this one.
+        """
+        return (
+            self.changed_since_cache is not None
+            and self.use_fine_grained_cache()
+            and path not in self.changed_since_cache
+        )
 
     def maybe_swap_for_shadow_path(self, path: str) -> str:
         if not self.shadow_map:
@@ -1738,6 +1751,19 @@ def read_plugins_snapshot(manager: BuildManager) -> dict[str, str] | None:
     return snapshot
 
 
+def read_changed_since_cache_file(options: Options, stdout: TextIO) -> set[str] | None:
+    """The paths that may differ from those the cache was generated from, if known."""
+    if not options.changed_since_cache_file:
+        return None
+    try:
+        with open(options.changed_since_cache_file) as f:
+            return {os.path.normpath(line.rstrip("\n")) for line in f if line.strip()}
+    except OSError as e:
+        # Without it, every file is looked at, as without the option.
+        print(f"Warning: Failed to load changed-since-cache file: {str(e)}\n", file=stdout)
+        return None
+
+
 def read_quickstart_file(
     options: Options, stdout: TextIO
 ) -> dict[str, tuple[float, int, str]] | None:
@@ -2193,6 +2219,10 @@ def validate_meta(
     if bazel:
         # Normalize path under bazel to make sure it isn't absolute
         path = normpath(path, manager.options)
+
+    if path == meta.path and manager.trusts_cache_for(path):
+        manager.log(f"Metadata trusted for {id}: {path} is unchanged since the cache")
+        return meta
 
     st = manager.get_stat(path)
     if st is None:
@@ -2777,8 +2807,19 @@ class State:
                 local_partial_types = meta.options["local_partial_types"]
                 if options.local_partial_types != local_partial_types:
                     options = options.apply_changes({"local_partial_types": local_partial_types})
-        if path and source is None and manager.fscache.isdir(path):
-            source = ""
+        if path and source is None:
+            if (
+                meta is not None
+                and meta.path == path
+                and path.endswith((".py", ".pyi"))
+                and manager.trusts_cache_for(path)
+            ):
+                # A file, as when the cache was made: no need to look.
+                is_dir = False
+            else:
+                is_dir = manager.fscache.isdir(path)
+            if is_dir:
+                source = ""
 
         if manager.stats_enabled:
             t0 = time.time()

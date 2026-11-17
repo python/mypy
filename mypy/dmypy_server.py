@@ -505,7 +505,20 @@ class Server:
                     FileData(st_mtime=float(meta.mtime), st_size=meta.size, hash=meta.hash),
                 )
 
-            changed, removed = self.find_changed(sources)
+            changed_since_cache = self.fine_grained_manager.manager.changed_since_cache
+            if changed_since_cache is not None:
+                # Look only at the files that may differ from the cache, and at sources
+                # it has nothing for, which the build deferred.
+                graph = self.fine_grained_manager.graph
+                update = [
+                    source.path
+                    for source in sources
+                    if source.path
+                    and (source.path in changed_since_cache or source.module not in graph)
+                ]
+                changed, removed = self.update_changed(sources, [], update)
+            else:
+                changed, removed = self.find_changed(sources)
             changed += self.find_added_suppressed(
                 self.fine_grained_manager.graph,
                 set(),

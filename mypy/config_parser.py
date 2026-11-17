@@ -201,6 +201,7 @@ ini_config_types: Final[dict[str, _INI_PARSER_CALLABLE]] = {
     "mypy_path": lambda s: [expand_path(p.strip()) for p in re.split("[,:]", s)],
     "files": split_and_match_files,
     "quickstart_file": expand_path,
+    "changed_since_cache_file": expand_path,
     "junit_xml": expand_path,
     "junit_format": check_junit_format,
     "follow_imports": check_follow_imports,
