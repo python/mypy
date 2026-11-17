@@ -283,6 +283,66 @@ if int():
 class A: pass
 [builtins fixtures/tuple.pyi]
 
+[case testTypesFunctionTypeDecorator]
+from types import FunctionType
+
+def dec(func: FunctionType) -> FunctionType:
+    return func
+
+@dec
+def f() -> None:
+    pass
+
+reveal_type(f)  # N: Revealed type is "types.FunctionType"
+f()
+dec(1)  # E: Argument 1 to "dec" has incompatible type "int"; expected "FunctionType"
+dec(object())  # E: Argument 1 to "dec" has incompatible type "object"; expected "FunctionType"
+[file types.pyi]
+from typing import Any
+class FunctionType:
+    def __call__(self, *args: Any, **kwargs: Any) -> Any: ...
+[builtins fixtures/dict.pyi]
+
+[case testTypesFunctionTypeSubtyping]
+from types import FunctionType
+from typing import Callable, overload
+
+def f() -> None: pass
+
+func: FunctionType = f
+func = lambda: None
+callback: Callable[[int], str]
+func = callback
+
+@overload
+def overloaded(x: int) -> int: ...
+@overload
+def overloaded(x: str) -> str: ...
+def overloaded(x: int | str) -> int | str:
+    return x
+
+func = overloaded
+
+class CallableClass:
+    def __call__(self) -> None: pass
+
+func = CallableClass()  # E: Incompatible types in assignment (expression has type "CallableClass", variable has type "FunctionType")
+func = CallableClass  # E: Incompatible types in assignment (expression has type "type[CallableClass]", variable has type "FunctionType")
+
+class OverloadedClass:
+    @overload
+    def __init__(self, x: int) -> None: ...
+    @overload
+    def __init__(self, x: str) -> None: ...
+    def __init__(self, x: int | str) -> None: pass
+
+func = OverloadedClass  # E: Incompatible types in assignment (expression has type "type[OverloadedClass]", variable has type "FunctionType")
+[file types.pyi]
+from typing import Any
+class FunctionType:
+    def __call__(self, *args: Any, **kwargs: Any) -> Any: ...
+[builtins fixtures/dict.pyi]
+
 [case testReturnEmptyTuple]
 from typing import Tuple
 def f(x): # type: (int) -> () # E: Syntax error in type annotation \
