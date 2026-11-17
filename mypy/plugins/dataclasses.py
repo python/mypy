@@ -33,6 +33,7 @@ from mypy.nodes import (
     JsonDict,
     NameExpr,
     Node,
+    OverloadedFuncDef,
     PlaceholderNode,
     RefExpr,
     Statement,
@@ -62,6 +63,7 @@ from mypy.types import (
     Instance,
     LiteralType,
     NoneType,
+    Overloaded,
     ProperType,
     SentinelValue,
     TupleType,
@@ -1128,6 +1130,18 @@ def check_post_init(api: TypeChecker, defn: FuncItem, info: TypeInfo) -> None:
         return
     assert isinstance(defn.type, FunctionLike)
 
+    override: FunctionLike = defn.type
+    post_init = info.names.get("__post_init__")
+    if post_init is not None and isinstance(post_init.node, OverloadedFuncDef):
+        overload = post_init.node
+        # check_func_item() runs once per item, so validate an overload as a whole.
+        if isinstance(overload.type, Overloaded) and overload.items:
+            first_item = overload.items[0]
+            first_func = first_item.func if isinstance(first_item, Decorator) else first_item
+            if defn is not first_func:
+                return
+            override = overload.type
+
     ideal_sig_method = info.get_method(_INTERNAL_POST_INIT_SYM_NAME)
     assert ideal_sig_method is not None and ideal_sig_method.type is not None
     ideal_sig = ideal_sig_method.type
@@ -1136,7 +1150,7 @@ def check_post_init(api: TypeChecker, defn: FuncItem, info: TypeInfo) -> None:
     ideal_sig = ideal_sig.copy_modified(name="__post_init__")
 
     api.check_override(
-        override=defn.type,
+        override=override,
         original=ideal_sig,
         name="__post_init__",
         name_in_super="__post_init__",
