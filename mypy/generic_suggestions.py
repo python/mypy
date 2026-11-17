@@ -1,4 +1,3 @@
-
 """Helpers for detecting generic type relationships."""
 
 from collections.abc import Callable, Sequence
@@ -43,9 +42,7 @@ class ReturnedArgumentFinder(TraverserVisitor):
     """Find arguments returned directly by a function."""
 
     def __init__(self, func: FuncDef) -> None:
-        self.arguments = [
-            arg.variable for arg in func.arguments
-        ]
+        self.arguments = [arg.variable for arg in func.arguments]
         self.returned: list[int | None] = []
 
     def visit_return_stmt(self, stmt: ReturnStmt) -> None:
@@ -86,6 +83,7 @@ def find_direct_returned_argument(func: FuncDef) -> int | None:
 
     return first
 
+
 def make_direct_return_generic(
     base: CallableType,
     returned_arg: int,
@@ -99,9 +97,7 @@ def make_direct_return_generic(
     if not 0 <= returned_arg < len(base.arg_types):
         return None
 
-    if not isinstance(
-        get_proper_type(base.arg_types[returned_arg]), AnyType
-    ):
+    if not isinstance(get_proper_type(base.arg_types[returned_arg]), AnyType):
         return None
 
     if not isinstance(get_proper_type(base.ret_type), AnyType):
@@ -144,6 +140,7 @@ class IndexedReturnFinder(ReturnedArgumentFinder):
 
         self.returned.append(None)
 
+
 def find_indexed_returned_argument(func: FuncDef) -> int | None:
     """Find an argument returned through integer indexing."""
 
@@ -167,7 +164,6 @@ def find_indexed_returned_argument(func: FuncDef) -> int | None:
     return first
 
 
-
 def make_collection_element_generic(
     base: CallableType,
     indexed_arg: int,
@@ -188,9 +184,7 @@ def make_collection_element_generic(
     ):
         return None
 
-    if not isinstance(
-        get_proper_type(base.arg_types[indexed_arg]), AnyType
-    ):
+    if not isinstance(get_proper_type(base.arg_types[indexed_arg]), AnyType):
         return None
 
     if not isinstance(get_proper_type(base.ret_type), AnyType):
@@ -206,9 +200,7 @@ def make_collection_element_generic(
     )
 
     new_arg_types = base.arg_types.copy()
-    new_arg_types[indexed_arg] = collection_type.copy_modified(
-        args=[type_var]
-    )
+    new_arg_types[indexed_arg] = collection_type.copy_modified(args=[type_var])
 
     return base.copy_modified(
         arg_types=new_arg_types,
@@ -226,9 +218,7 @@ def make_list_element_generic(
     if list_type.type.fullname != "builtins.list":
         return None
 
-    return make_collection_element_generic(
-        base, indexed_arg, list_type, object_type
-    )
+    return make_collection_element_generic(base, indexed_arg, list_type, object_type)
 
 
 def make_tuple_element_generic(
@@ -240,18 +230,14 @@ def make_tuple_element_generic(
     if tuple_type.type.fullname != "builtins.tuple":
         return None
 
-    return make_collection_element_generic(
-        base, indexed_arg, tuple_type, object_type
-    )
+    return make_collection_element_generic(base, indexed_arg, tuple_type, object_type)
 
 
 class DictionaryLookupFinder(TraverserVisitor):
     """Find returns of the form mapping[key]."""
 
     def __init__(self, func: FuncDef) -> None:
-        self.arguments = [
-            arg.variable for arg in func.arguments
-        ]
+        self.arguments = [arg.variable for arg in func.arguments]
         self.lookups: list[tuple[int, int] | None] = []
 
     def visit_return_stmt(self, stmt: ReturnStmt) -> None:
@@ -266,26 +252,16 @@ class DictionaryLookupFinder(TraverserVisitor):
             return
 
         mapping_index = next(
-            (
-                i for i, arg in enumerate(self.arguments)
-                if expr.base.node is arg
-            ),
+            (i for i, arg in enumerate(self.arguments) if expr.base.node is arg),
             None,
         )
 
         key_index = next(
-            (
-                i for i, arg in enumerate(self.arguments)
-                if expr.index.node is arg
-            ),
+            (i for i, arg in enumerate(self.arguments) if expr.index.node is arg),
             None,
         )
 
-        if (
-            mapping_index is None
-            or key_index is None
-            or mapping_index == key_index
-        ):
+        if mapping_index is None or key_index is None or mapping_index == key_index:
             self.lookups.append(None)
             return
 
@@ -315,13 +291,11 @@ def find_dictionary_lookup(
     if any(lookup != first for lookup in finder.lookups):
         return None
 
-    if (
-        is_argument_reassigned(func, first[0])
-        or is_argument_reassigned(func, first[1])
-    ):
+    if is_argument_reassigned(func, first[0]) or is_argument_reassigned(func, first[1]):
         return None
 
     return first
+
 
 def make_dictionary_generic(
     base: CallableType,
@@ -338,10 +312,7 @@ def make_dictionary_generic(
     if mapping_index == key_index:
         return None
 
-    if not (
-        0 <= mapping_index < len(base.arg_types)
-        and 0 <= key_index < len(base.arg_types)
-    ):
+    if not (0 <= mapping_index < len(base.arg_types) and 0 <= key_index < len(base.arg_types)):
         return None
 
     if dict_type.type.fullname != "builtins.dict":
@@ -360,20 +331,26 @@ def make_dictionary_generic(
     default = AnyType(TypeOfAny.from_omitted_generics)
 
     key_var = TypeVarType(
-        "K", "K", TypeVarId(-1), [],
-        object_type, default,
+        "K",
+        "K",
+        TypeVarId(-1),
+        [],
+        object_type,
+        default,
     )
 
     value_var = TypeVarType(
-        "V", "V", TypeVarId(-2), [],
-        object_type, default,
+        "V",
+        "V",
+        TypeVarId(-2),
+        [],
+        object_type,
+        default,
     )
 
     new_arg_types = base.arg_types.copy()
 
-    new_arg_types[mapping_index] = dict_type.copy_modified(
-        args=[key_var, value_var]
-    )
+    new_arg_types[mapping_index] = dict_type.copy_modified(args=[key_var, value_var])
     new_arg_types[key_index] = key_var
 
     return base.copy_modified(
@@ -387,9 +364,7 @@ class CallbackApplicationFinder(TraverserVisitor):
     """Find returns of the form callback(arg)."""
 
     def __init__(self, func: FuncDef) -> None:
-        self.arguments = [
-            arg.variable for arg in func.arguments
-        ]
+        self.arguments = [arg.variable for arg in func.arguments]
         self.applications: list[tuple[int, int] | None] = []
 
     def visit_return_stmt(self, stmt: ReturnStmt) -> None:
@@ -406,26 +381,16 @@ class CallbackApplicationFinder(TraverserVisitor):
             return
 
         callback_index = next(
-            (
-                i for i, arg in enumerate(self.arguments)
-                if expr.callee.node is arg
-            ),
+            (i for i, arg in enumerate(self.arguments) if expr.callee.node is arg),
             None,
         )
 
         arg_index = next(
-            (
-                i for i, arg in enumerate(self.arguments)
-                if expr.args[0].node is arg
-            ),
+            (i for i, arg in enumerate(self.arguments) if expr.args[0].node is arg),
             None,
         )
 
-        if (
-            callback_index is None
-            or arg_index is None
-            or callback_index == arg_index
-        ):
+        if callback_index is None or arg_index is None or callback_index == arg_index:
             self.applications.append(None)
             return
 
@@ -455,10 +420,7 @@ def find_callback_application(
     if any(app != first for app in finder.applications):
         return None
 
-    if (
-        is_argument_reassigned(func, first[0])
-        or is_argument_reassigned(func, first[1])
-    ):
+    if is_argument_reassigned(func, first[0]) or is_argument_reassigned(func, first[1]):
         return None
 
     return first
@@ -479,10 +441,7 @@ def make_callback_generic(
     if callback_index == arg_index:
         return None
 
-    if not (
-        0 <= callback_index < len(base.arg_types)
-        and 0 <= arg_index < len(base.arg_types)
-    ):
+    if not (0 <= callback_index < len(base.arg_types) and 0 <= arg_index < len(base.arg_types)):
         return None
 
     if function_type is None:
@@ -504,13 +463,21 @@ def make_callback_generic(
     default = AnyType(TypeOfAny.from_omitted_generics)
 
     arg_var = TypeVarType(
-        "T", "T", TypeVarId(-1), [],
-        object_type, default,
+        "T",
+        "T",
+        TypeVarId(-1),
+        [],
+        object_type,
+        default,
     )
 
     ret_var = TypeVarType(
-        "R", "R", TypeVarId(-2), [],
-        object_type, default,
+        "R",
+        "R",
+        TypeVarId(-2),
+        [],
+        object_type,
+        default,
     )
 
     callback_type = CallableType(
@@ -556,9 +523,7 @@ class ArgumentReassignmentFinder(TraverserVisitor):
             self.check_target(target)
         super().visit_assignment_stmt(stmt)
 
-    def visit_operator_assignment_stmt(
-        self, stmt: OperatorAssignmentStmt
-    ) -> None:
+    def visit_operator_assignment_stmt(self, stmt: OperatorAssignmentStmt) -> None:
         self.check_target(stmt.lvalue)
         super().visit_operator_assignment_stmt(stmt)
 
@@ -597,6 +562,7 @@ def is_argument_reassigned(func: FuncDef, index: int) -> bool:
     func.body.accept(finder)
     return finder.reassigned
 
+
 def infer_generic_candidates(
     func: FuncDef,
     base: CallableType,
@@ -618,9 +584,7 @@ def infer_generic_candidates(
     if min_calls < 2 or len(callsite_arg_types) < min_calls:
         return []
 
-    observed: list[list[Type]] = [
-        [] for _ in base.arg_types
-    ]
+    observed: list[list[Type]] = [[] for _ in base.arg_types]
 
     for call in callsite_arg_types:
         if len(call) != len(observed):
@@ -630,9 +594,7 @@ def infer_generic_candidates(
             if len(actual_types) != 1:
                 return []
 
-            typ = get_proper_type(
-                remove_instance_last_known_values(actual_types[0])
-            )
+            typ = get_proper_type(remove_instance_last_known_values(actual_types[0]))
 
             if isinstance(typ, AnyType):
                 return []
@@ -647,23 +609,15 @@ def infer_generic_candidates(
     direct = find_direct_returned_argument(func)
 
     if direct is not None and varies(observed[direct]):
-        candidate = make_direct_return_generic(
-            base, direct, object_type
-        )
+        candidate = make_direct_return_generic(base, direct, object_type)
         return [candidate] if candidate is not None else []
 
     indexed = find_indexed_returned_argument(func)
 
     if indexed is not None and varies(observed[indexed]):
-        types = [
-            get_proper_type(t) for t in observed[indexed]
-        ]
+        types = [get_proper_type(t) for t in observed[indexed]]
 
-        if all(
-            isinstance(t, Instance)
-            and t.type.fullname == "builtins.list"
-            for t in types
-        ):
+        if all(isinstance(t, Instance) and t.type.fullname == "builtins.list" for t in types):
             candidate = make_list_element_generic(
                 base,
                 indexed,
@@ -676,9 +630,7 @@ def infer_generic_candidates(
             t = get_proper_type(t)
 
             if isinstance(t, TupleType):
-                if bool(t.items) and all(
-                    item == t.items[0] for item in t.items
-                ):
+                if bool(t.items) and all(item == t.items[0] for item in t.items):
                     return get_proper_type(t.items[0])
                 return None
 
@@ -709,22 +661,15 @@ def infer_generic_candidates(
     if lookup is not None:
         mapping_index, key_index = lookup
 
-        mappings = [
-            get_proper_type(t) for t in observed[mapping_index]
-        ]
+        mappings = [get_proper_type(t) for t in observed[mapping_index]]
 
         if all(
-            isinstance(t, Instance)
-            and t.type.fullname == "builtins.dict"
-            and len(t.args) == 2
+            isinstance(t, Instance) and t.type.fullname == "builtins.dict" and len(t.args) == 2
             for t in mappings
         ):
             matching_keys = all(
-                get_proper_type(mapping.args[0])
-                == get_proper_type(key_type)
-                for mapping, key_type in zip(
-                    mappings, observed[key_index]
-                )
+                get_proper_type(mapping.args[0]) == get_proper_type(key_type)
+                for mapping, key_type in zip(mappings, observed[key_index])
                 if isinstance(mapping, Instance)
             )
 
@@ -743,27 +688,20 @@ def infer_generic_candidates(
     if callback is not None:
         callback_index, arg_index = callback
 
-        callbacks = [
-            get_proper_type(t) for t in observed[callback_index]
-        ]
+        callbacks = [get_proper_type(t) for t in observed[callback_index]]
 
         if all(
             isinstance(t, CallableType)
             and not t.is_ellipsis_args
             and len(t.arg_types) == 1
             and t.arg_kinds[0] in (ARG_POS, ARG_OPT)
-            and not isinstance(
-                get_proper_type(t.arg_types[0]), AnyType
-            )
+            and not isinstance(get_proper_type(t.arg_types[0]), AnyType)
             and not isinstance(get_proper_type(t.ret_type), AnyType)
             for t in callbacks
         ):
             matching_args = all(
-                get_proper_type(cb.arg_types[0])
-                == get_proper_type(arg_type)
-                for cb, arg_type in zip(
-                    callbacks, observed[arg_index]
-                )
+                get_proper_type(cb.arg_types[0]) == get_proper_type(arg_type)
+                for cb, arg_type in zip(callbacks, observed[arg_index])
                 if isinstance(cb, CallableType)
             )
 
@@ -773,14 +711,10 @@ def infer_generic_candidates(
                 if isinstance(cb, CallableType)
             ]
             cb_ret_types = [
-                get_proper_type(cb.ret_type)
-                for cb in callbacks
-                if isinstance(cb, CallableType)
+                get_proper_type(cb.ret_type) for cb in callbacks if isinstance(cb, CallableType)
             ]
 
-            if matching_args and (
-                varies(cb_arg_types) or varies(cb_ret_types)
-            ):
+            if matching_args and (varies(cb_arg_types) or varies(cb_ret_types)):
                 candidate = make_callback_generic(
                     base,
                     callback_index,
