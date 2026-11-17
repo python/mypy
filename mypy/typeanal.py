@@ -1929,7 +1929,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         """Find the type variables of the function type and bind them in our tvar_scope"""
         has_self_type = False
         if fun_type.variables:
-            if all(var.id.raw_id < 0 and not var.id.namespace for var in fun_type.variables):
+            if all(var.id.namespace == "dmypy_suggest" for var in fun_type.variables):
                 return tuple(fun_type.variables), has_self_type
             defs = []
             for var in fun_type.variables:
@@ -2830,7 +2830,7 @@ class FindTypeVarVisitor(SyntheticTypeVisitor[None]):
         pass
 
     def visit_type_var(self, t: TypeVarType) -> None:
-        if t.id.raw_id < 0 and not t.id.namespace and t not in self.existing_type_vars:
+        if t.id.namespace == "dmypy_suggest" and t not in self.existing_type_vars:
             self.existing_type_vars.append(t)
         self.process_types([t.upper_bound, t.default] + t.values)
 

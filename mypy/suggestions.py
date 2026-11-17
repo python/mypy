@@ -28,6 +28,7 @@ import itertools
 import json
 import os
 import sys
+from collections import Counter
 from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from typing import NamedTuple, TypedDict, TypeVar, cast
@@ -571,14 +572,36 @@ class SuggestionEngine:
             self.named_type,
             min_calls=self.generic_min_calls,
         )
+
         if generic_candidates:
             generic_guesses = [refine_callable(cand, best) for cand in generic_candidates]
-            generic_guesses = self.filter_options(generic_guesses, is_method, ignore_return=False)
-            if generic_guesses:
-                best_generic, generic_errors = self.find_best(node, generic_guesses)
-                orig_error_count = count_errors(orig_errors)
+            generic_guesses = self.filter_options(
+                generic_guesses,
+                is_method,
+                ignore_return=False,
+            )
+
+            safe_generics = []
+
+            for candidate in generic_guesses:
+                candidate_errors = self.try_type(node, candidate)
+
+                if not has_new_errors(orig_errors, candidate_errors):
+                    safe_generics.append((candidate, candidate_errors))
+
+            if safe_generics:
+                best_generic, messages = min(
+                    safe_generics,
+                    key=lambda item: (
+                        count_errors(item[1]),
+                        self.score_callable(item[0]),
+                    ),
+                )
+
+                generic_errors = count_errors(messages)
+
                 if (
-                    generic_errors <= orig_error_count
+                    generic_errors <= count_errors(orig_errors)
                     and generic_errors <= errors
                     and self.score_callable(best_generic) <= self.score_callable(best)
                 ):
@@ -1031,6 +1054,18 @@ def generate_type_combinations(types: list[Type]) -> list[Type]:
 
 def count_errors(msgs: list[str]) -> int:
     return len([x for x in msgs if " error: " in x])
+
+
+def has_new_errors(
+    original: list[str],
+    proposed: list[str],
+) -> bool:
+    """Check whether a proposed signature introduces new errors."""
+
+    original_errors = Counter(msg for msg in original if " error: " in msg)
+    proposed_errors = Counter(msg for msg in proposed if " error: " in msg)
+
+    return bool(proposed_errors - original_errors)
 
 
 def refine_type(ti: Type, si: Type) -> Type:

@@ -35,6 +35,7 @@ from mypy.nodes import (
     Var,
 )
 from mypy.options import Options
+from mypy.suggestions import has_new_errors
 from mypy.types import (
     AnyType,
     CallableType,
@@ -724,6 +725,33 @@ class GenericSuggestionsTests(TestCase):
             )
             == 1
         )
+
+    def test_no_new_errors(self) -> None:
+        original = ["foo.py:5: error: Error A"]
+        proposed = ["foo.py:5: error: Error A"]
+
+        assert not has_new_errors(original, proposed)
+
+    def test_reject_different_error(self) -> None:
+        original = ["foo.py:5: error: Error A"]
+        proposed = ["foo.py:8: error: Error B"]
+
+        assert has_new_errors(original, proposed)
+
+    def test_allow_removed_errors(self) -> None:
+        original = ["foo.py:5: error: Error A"]
+        proposed: list[str] = []
+
+        assert not has_new_errors(original, proposed)
+
+    def test_reject_additional_error(self) -> None:
+        original = ["foo.py:5: error: Error A"]
+        proposed = [
+            "foo.py:5: error: Error A",
+            "foo.py:8: error: Error B",
+        ]
+
+        assert has_new_errors(original, proposed)
 
 
 class DmypySuggestGenericIntegrationTests(TestCase):

@@ -106,7 +106,7 @@ def make_direct_return_generic(
     type_var = TypeVarType(
         "T",
         "T",
-        TypeVarId(-1),
+        TypeVarId(-1, namespace="dmypy_suggest"),
         [],
         object_type,
         AnyType(TypeOfAny.from_omitted_generics),
@@ -193,7 +193,7 @@ def make_collection_element_generic(
     type_var = TypeVarType(
         "T",
         "T",
-        TypeVarId(-1),
+        TypeVarId(-1, namespace="dmypy_suggest"),
         [],
         object_type,
         AnyType(TypeOfAny.from_omitted_generics),
@@ -333,7 +333,7 @@ def make_dictionary_generic(
     key_var = TypeVarType(
         "K",
         "K",
-        TypeVarId(-1),
+        TypeVarId(-1, namespace="dmypy_suggest"),
         [],
         object_type,
         default,
@@ -342,7 +342,7 @@ def make_dictionary_generic(
     value_var = TypeVarType(
         "V",
         "V",
-        TypeVarId(-2),
+        TypeVarId(-2, namespace="dmypy_suggest"),
         [],
         object_type,
         default,
@@ -465,7 +465,7 @@ def make_callback_generic(
     arg_var = TypeVarType(
         "T",
         "T",
-        TypeVarId(-1),
+        TypeVarId(-1, namespace="dmypy_suggest"),
         [],
         object_type,
         default,
@@ -474,7 +474,7 @@ def make_callback_generic(
     ret_var = TypeVarType(
         "R",
         "R",
-        TypeVarId(-2),
+        TypeVarId(-2, namespace="dmypy_suggest"),
         [],
         object_type,
         default,
