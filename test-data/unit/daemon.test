@@ -369,6 +369,29 @@ Found 3 errors in 3 files (checked 3 source files)
 $ dmypy stop
 Daemon stopped
 
+-- The first check takes the modules of files it trusts the cache for from the cache, but not
+-- of those under an __init__ that changed: without pkg/__init__.py, pkg/a.py is module a.
+[case testDaemonChangedSinceCacheModules]
+$ {python} -c "import os; os.makedirs('pkg'); os.makedirs('other')"
+$ {python} -c "print('')" >pkg/__init__.py
+$ {python} -c "print('x = 1')" >pkg/a.py
+$ {python} -c "print('')" >other/__init__.py
+$ {python} -c "print('y = 1')" >other/b.py
+$ {python} -c "print('from pkg.a import x; from other.b import y')" >c.py
+$ mypy --local-partial-types --cache-fine-grained --follow-imports=error --no-sqlite-cache --python-version=3.11 -- pkg/__init__.py pkg/a.py other/__init__.py other/b.py c.py
+Success: no issues found in 5 source files
+$ {python} -c "import os; os.remove('pkg/__init__.py')"
+$ {python} -c "print('pkg/__init__.py')" >changed.txt
+$ dmypy start -- --local-partial-types --follow-imports=error --use-fine-grained-cache --no-sqlite-cache --python-version=3.11 --changed-since-cache-file changed.txt
+Daemon started
+$ dmypy check pkg/a.py other/__init__.py other/b.py c.py
+c.py:1: error: Import of "pkg.a" ignored  [misc]
+c.py:1: note: (Using --follow-imports=error, module not passed on command line)
+Found 1 error in 1 file (checked 4 source files)
+== Return code: 1
+$ dmypy stop
+Daemon stopped
+
 [case testDaemonSuggest]
 $ dmypy start --log-file log.txt -- --follow-imports=error --no-error-summary
 Daemon started

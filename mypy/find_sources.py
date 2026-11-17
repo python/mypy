@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import functools
 import os
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from typing import Final
 
 from mypy.fscache import FileSystemCache
@@ -29,8 +29,12 @@ def create_source_list(
     options: Options,
     fscache: FileSystemCache | None = None,
     allow_empty_dir: bool = False,
+    known_modules: Mapping[str, str] | None = None,
 ) -> list[BuildSource]:
     """From a list of source files/directories, makes a list of BuildSources.
+
+    known_modules maps files to their modules, known already, as from a cache: such a
+    file's module and base directory come from it, without crawling up its directories.
 
     Raises InvalidSourceList on errors.
     """
@@ -41,6 +45,11 @@ def create_source_list(
     for path in paths:
         path = os.path.normpath(path)
         if path.endswith(PY_EXTENSIONS):
+            module = known_modules.get(path) if known_modules else None
+            base_dir = base_dir_of(path, module) if module is not None else None
+            if module is not None and base_dir is not None:
+                sources.append(BuildSource(path, module, None, base_dir))
+                continue
             # Can raise InvalidSourceList if a directory doesn't have a valid module name.
             name, base_dir = finder.crawl_up(path)
             sources.append(BuildSource(path, name, None, base_dir))
@@ -53,6 +62,29 @@ def create_source_list(
             mod = os.path.basename(path) if options.scripts_are_modules else None
             sources.append(BuildSource(path, mod, None))
     return sources
+
+
+def base_dir_of(path: str, module: str) -> str | None:
+    """The base directory crawl_up would find for a file holding module, without looking.
+
+    Each component of a module but its last is a directory above the file, so the base
+    directory is as many directories up. None if the path's directories do not match the
+    module's components.
+    """
+    dir = os.path.dirname(os.path.abspath(path))
+    components = module.split(".")
+    stem = strip_py(os.path.basename(path))
+    if stem == "__init__":
+        packages = components
+    elif components[-1] == stem:
+        packages = components[:-1]
+    else:
+        return None
+    for package in reversed(packages):
+        dir, name = os.path.split(dir)
+        if name.removesuffix("-stubs") != package:
+            return None
+    return dir
 
 
 def keyfunc(name: str) -> tuple[bool, int, str]:

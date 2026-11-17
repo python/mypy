@@ -364,10 +364,47 @@ class Server:
     ) -> dict[str, object]:
         """Check a list of files."""
         try:
-            sources = create_source_list(files, self.options, self.fscache)
+            sources = create_source_list(
+                files, self.options, self.fscache, known_modules=self.trusted_cached_modules()
+            )
         except InvalidSourceList as err:
             return {"out": "", "err": str(err), "status": 2}
         return self.check(sources, export_types, is_tty, terminal_width)
+
+    def trusted_cached_modules(self) -> dict[str, str] | None:
+        """The module of each file a first check trusts the cache for.
+
+        A file's module is as when the cache was made unless the file, or an __init__ in a
+        directory above it, has changed since: so the first check of a daemon trusting its
+        cache need not crawl up each file's directories to find its module.
+        """
+        if self.fine_grained_manager or not self.options.use_fine_grained_cache:
+            return None
+        # The build warns, if need be, of a file it cannot read.
+        changed = mypy.build.read_changed_since_cache_file(self.options, io.StringIO())
+        if changed is None:
+            return None
+        changed_packages = {
+            os.path.dirname(path)
+            for path in changed
+            if os.path.basename(path) in ("__init__.py", "__init__.pyi")
+        }
+
+        def under_changed_package(path: str) -> bool:
+            dir = os.path.dirname(path)
+            while True:
+                if dir in changed_packages:
+                    return True
+                parent = os.path.dirname(dir)
+                if parent == dir:
+                    return False
+                dir = parent
+
+        return {
+            path: module
+            for path, module in mypy.build.read_cached_modules(self.options).items()
+            if path not in changed and not under_changed_package(path)
+        }
 
     def cmd_recheck(
         self,

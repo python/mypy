@@ -1764,6 +1764,32 @@ def read_changed_since_cache_file(options: Options, stdout: TextIO) -> set[str] 
         return None
 
 
+def read_cached_modules(options: Options) -> dict[str, str]:
+    """Map the path of each module in the cache to the module's id."""
+    metastore = create_metastore(options, parallel_worker=False)
+    modules = {}
+    try:
+        for name in metastore.list_all():
+            if name.startswith("@") or not name.endswith((".meta.ff", ".meta.json")):
+                continue
+            try:
+                data = metastore.read(name)
+            except OSError:
+                continue
+            meta: CacheMeta | None
+            if name.endswith(".meta.ff"):
+                if data[0] != cache_version() or data[1] != CACHE_VERSION:
+                    continue
+                meta = CacheMeta.read(ReadBuffer(data[2:]), data_file="")
+            else:
+                meta = CacheMeta.deserialize(json_loads(data), data_file="")
+            if meta is not None:
+                modules[meta.path] = meta.id
+    finally:
+        metastore.close()
+    return modules
+
+
 def read_quickstart_file(
     options: Options, stdout: TextIO
 ) -> dict[str, tuple[float, int, str]] | None:

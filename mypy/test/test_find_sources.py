@@ -7,7 +7,7 @@ import unittest
 
 import pytest
 
-from mypy.find_sources import InvalidSourceList, SourceFinder, create_source_list
+from mypy.find_sources import InvalidSourceList, SourceFinder, base_dir_of, create_source_list
 from mypy.fscache import FileSystemCache
 from mypy.modulefinder import BuildSource
 from mypy.options import Options
@@ -374,3 +374,38 @@ class SourceFinderSuite(unittest.TestCase):
             }
             fscache = FakeFSCache(files)
             assert len(find_sources(["."], options, fscache)) == len(files)
+
+    def test_base_dir_of_matches_crawl_up(self) -> None:
+        files = {
+            "/a/pkg/__init__.py",
+            "/a/pkg/sub/__init__.py",
+            "/a/pkg/sub/mod.py",
+            "/a/pkg/mod.pyi",
+            "/a/top.py",
+            "/a/foo-stubs/__init__.pyi",
+            "/a/foo-stubs/bar.pyi",
+        }
+        finder = SourceFinder(FakeFSCache(files), Options())
+        for f in files:
+            module, base_dir = finder.crawl_up(f)
+            assert base_dir_of(f, module) == base_dir, f
+
+    def test_base_dir_of_mismatch(self) -> None:
+        assert base_dir_of("/a/pkg/mod.py", "pkg.other") is None
+        assert base_dir_of("/a/pkg/mod.py", "other.mod") is None
+        assert base_dir_of("/a/pkg/__init__.py", "other") is None
+
+    def test_known_modules_need_no_crawl(self) -> None:
+        class NoFS(FakeFSCache):
+            def isfile(self, path: str) -> bool:
+                raise AssertionError(f"looked at {path}")
+
+        sources = create_source_list(
+            ["/a/pkg/sub/mod.py"],
+            Options(),
+            NoFS(set()),
+            known_modules={"/a/pkg/sub/mod.py": "pkg.sub.mod"},
+        )
+        assert [(s.module, normalise_path(s.base_dir or "")) for s in sources] == [
+            ("pkg.sub.mod", "/a")
+        ]
