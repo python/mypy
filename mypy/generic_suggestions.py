@@ -85,9 +85,7 @@ def find_direct_returned_argument(func: FuncDef) -> int | None:
 
 
 def make_direct_return_generic(
-    base: CallableType,
-    returned_arg: int,
-    object_type: Instance,
+    base: CallableType, returned_arg: int, object_type: Instance
 ) -> CallableType | None:
     """Build a generic candidate linking an argument to the return type."""
 
@@ -115,11 +113,7 @@ def make_direct_return_generic(
     new_arg_types = base.arg_types.copy()
     new_arg_types[returned_arg] = type_var
 
-    return base.copy_modified(
-        arg_types=new_arg_types,
-        ret_type=type_var,
-        variables=[type_var],
-    )
+    return base.copy_modified(arg_types=new_arg_types, ret_type=type_var, variables=[type_var])
 
 
 class IndexedReturnFinder(ReturnedArgumentFinder):
@@ -165,10 +159,7 @@ def find_indexed_returned_argument(func: FuncDef) -> int | None:
 
 
 def make_collection_element_generic(
-    base: CallableType,
-    indexed_arg: int,
-    collection_type: Instance,
-    object_type: Instance,
+    base: CallableType, indexed_arg: int, collection_type: Instance, object_type: Instance
 ) -> CallableType | None:
     """Build a generic candidate for list[T] or tuple[T, ...]."""
 
@@ -178,10 +169,7 @@ def make_collection_element_generic(
     if not 0 <= indexed_arg < len(base.arg_types):
         return None
 
-    if collection_type.type.fullname not in (
-        "builtins.list",
-        "builtins.tuple",
-    ):
+    if collection_type.type.fullname not in ("builtins.list", "builtins.tuple"):
         return None
 
     if not isinstance(get_proper_type(base.arg_types[indexed_arg]), AnyType):
@@ -202,18 +190,11 @@ def make_collection_element_generic(
     new_arg_types = base.arg_types.copy()
     new_arg_types[indexed_arg] = collection_type.copy_modified(args=[type_var])
 
-    return base.copy_modified(
-        arg_types=new_arg_types,
-        ret_type=type_var,
-        variables=[type_var],
-    )
+    return base.copy_modified(arg_types=new_arg_types, ret_type=type_var, variables=[type_var])
 
 
 def make_list_element_generic(
-    base: CallableType,
-    indexed_arg: int,
-    list_type: Instance,
-    object_type: Instance,
+    base: CallableType, indexed_arg: int, list_type: Instance, object_type: Instance
 ) -> CallableType | None:
     if list_type.type.fullname != "builtins.list":
         return None
@@ -222,10 +203,7 @@ def make_list_element_generic(
 
 
 def make_tuple_element_generic(
-    base: CallableType,
-    indexed_arg: int,
-    tuple_type: Instance,
-    object_type: Instance,
+    base: CallableType, indexed_arg: int, tuple_type: Instance, object_type: Instance
 ) -> CallableType | None:
     if tuple_type.type.fullname != "builtins.tuple":
         return None
@@ -252,13 +230,11 @@ class DictionaryLookupFinder(TraverserVisitor):
             return
 
         mapping_index = next(
-            (i for i, arg in enumerate(self.arguments) if expr.base.node is arg),
-            None,
+            (i for i, arg in enumerate(self.arguments) if expr.base.node is arg), None
         )
 
         key_index = next(
-            (i for i, arg in enumerate(self.arguments) if expr.index.node is arg),
-            None,
+            (i for i, arg in enumerate(self.arguments) if expr.index.node is arg), None
         )
 
         if mapping_index is None or key_index is None or mapping_index == key_index:
@@ -272,9 +248,7 @@ class DictionaryLookupFinder(TraverserVisitor):
         pass
 
 
-def find_dictionary_lookup(
-    func: FuncDef,
-) -> tuple[int, int] | None:
+def find_dictionary_lookup(func: FuncDef) -> tuple[int, int] | None:
     """Find arguments used in direct mapping[key] returns."""
 
     finder = DictionaryLookupFinder(func)
@@ -320,32 +294,18 @@ def make_dictionary_generic(
 
     if not all(
         isinstance(get_proper_type(tp), AnyType)
-        for tp in (
-            base.arg_types[mapping_index],
-            base.arg_types[key_index],
-            base.ret_type,
-        )
+        for tp in (base.arg_types[mapping_index], base.arg_types[key_index], base.ret_type)
     ):
         return None
 
     default = AnyType(TypeOfAny.from_omitted_generics)
 
     key_var = TypeVarType(
-        "K",
-        "K",
-        TypeVarId(-1, namespace="dmypy_suggest"),
-        [],
-        object_type,
-        default,
+        "K", "K", TypeVarId(-1, namespace="dmypy_suggest"), [], object_type, default
     )
 
     value_var = TypeVarType(
-        "V",
-        "V",
-        TypeVarId(-2, namespace="dmypy_suggest"),
-        [],
-        object_type,
-        default,
+        "V", "V", TypeVarId(-2, namespace="dmypy_suggest"), [], object_type, default
     )
 
     new_arg_types = base.arg_types.copy()
@@ -354,9 +314,7 @@ def make_dictionary_generic(
     new_arg_types[key_index] = key_var
 
     return base.copy_modified(
-        arg_types=new_arg_types,
-        ret_type=value_var,
-        variables=[key_var, value_var],
+        arg_types=new_arg_types, ret_type=value_var, variables=[key_var, value_var]
     )
 
 
@@ -381,13 +339,11 @@ class CallbackApplicationFinder(TraverserVisitor):
             return
 
         callback_index = next(
-            (i for i, arg in enumerate(self.arguments) if expr.callee.node is arg),
-            None,
+            (i for i, arg in enumerate(self.arguments) if expr.callee.node is arg), None
         )
 
         arg_index = next(
-            (i for i, arg in enumerate(self.arguments) if expr.args[0].node is arg),
-            None,
+            (i for i, arg in enumerate(self.arguments) if expr.args[0].node is arg), None
         )
 
         if callback_index is None or arg_index is None or callback_index == arg_index:
@@ -401,9 +357,7 @@ class CallbackApplicationFinder(TraverserVisitor):
         pass
 
 
-def find_callback_application(
-    func: FuncDef,
-) -> tuple[int, int] | None:
+def find_callback_application(func: FuncDef) -> tuple[int, int] | None:
     """Find arguments used in direct callback(arg) returns."""
 
     finder = CallbackApplicationFinder(func)
@@ -452,50 +406,28 @@ def make_callback_generic(
 
     if not all(
         isinstance(get_proper_type(tp), AnyType)
-        for tp in (
-            base.arg_types[callback_index],
-            base.arg_types[arg_index],
-            base.ret_type,
-        )
+        for tp in (base.arg_types[callback_index], base.arg_types[arg_index], base.ret_type)
     ):
         return None
 
     default = AnyType(TypeOfAny.from_omitted_generics)
 
     arg_var = TypeVarType(
-        "T",
-        "T",
-        TypeVarId(-1, namespace="dmypy_suggest"),
-        [],
-        object_type,
-        default,
+        "T", "T", TypeVarId(-1, namespace="dmypy_suggest"), [], object_type, default
     )
 
     ret_var = TypeVarType(
-        "R",
-        "R",
-        TypeVarId(-2, namespace="dmypy_suggest"),
-        [],
-        object_type,
-        default,
+        "R", "R", TypeVarId(-2, namespace="dmypy_suggest"), [], object_type, default
     )
 
-    callback_type = CallableType(
-        [arg_var],
-        [ARG_POS],
-        [None],
-        ret_var,
-        function_type,
-    )
+    callback_type = CallableType([arg_var], [ARG_POS], [None], ret_var, function_type)
 
     new_arg_types = base.arg_types.copy()
     new_arg_types[callback_index] = callback_type
     new_arg_types[arg_index] = arg_var
 
     return base.copy_modified(
-        arg_types=new_arg_types,
-        ret_type=ret_var,
-        variables=[arg_var, ret_var],
+        arg_types=new_arg_types, ret_type=ret_var, variables=[arg_var, ret_var]
     )
 
 
@@ -619,10 +551,7 @@ def infer_generic_candidates(
 
         if all(isinstance(t, Instance) and t.type.fullname == "builtins.list" for t in types):
             candidate = make_list_element_generic(
-                base,
-                indexed,
-                named_type("builtins.list"),
-                object_type,
+                base, indexed, named_type("builtins.list"), object_type
             )
             return [candidate] if candidate is not None else []
 
@@ -649,10 +578,7 @@ def infer_generic_candidates(
             [elem for elem in element_types if elem is not None]
         ):
             candidate = make_tuple_element_generic(
-                base,
-                indexed,
-                named_type("builtins.tuple"),
-                object_type,
+                base, indexed, named_type("builtins.tuple"), object_type
             )
             return [candidate] if candidate is not None else []
 
@@ -675,11 +601,7 @@ def infer_generic_candidates(
 
             if matching_keys and varies(observed[mapping_index]):
                 candidate = make_dictionary_generic(
-                    base,
-                    mapping_index,
-                    key_index,
-                    named_type("builtins.dict"),
-                    object_type,
+                    base, mapping_index, key_index, named_type("builtins.dict"), object_type
                 )
                 return [candidate] if candidate is not None else []
 
@@ -716,11 +638,7 @@ def infer_generic_candidates(
 
             if matching_args and (varies(cb_arg_types) or varies(cb_ret_types)):
                 candidate = make_callback_generic(
-                    base,
-                    callback_index,
-                    arg_index,
-                    object_type,
-                    named_type("builtins.function"),
+                    base, callback_index, arg_index, object_type, named_type("builtins.function")
                 )
                 return [candidate] if candidate is not None else []
 

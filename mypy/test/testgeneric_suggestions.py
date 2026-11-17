@@ -48,10 +48,7 @@ from mypy.types import (
 )
 
 
-def make_function(
-    argument_names: list[str],
-    returned_name: str | None,
-) -> FuncDef:
+def make_function(argument_names: list[str], returned_name: str | None) -> FuncDef:
     variables = [Var(name) for name in argument_names]
 
     arguments = [Argument(variable, None, None, ARG_POS) for variable in variables]
@@ -62,11 +59,7 @@ def make_function(
         expression = NameExpr(returned_name)
         expression.node = next(var for var in variables if var.name == returned_name)
 
-    return FuncDef(
-        "example",
-        arguments,
-        Block([ReturnStmt(expression)]),
-    )
+    return FuncDef("example", arguments, Block([ReturnStmt(expression)]))
 
 
 def make_instance(fullname: str) -> Instance:
@@ -82,9 +75,7 @@ def make_instance(fullname: str) -> Instance:
 
 
 def make_indexed_function(
-    names: list[str],
-    collection_index: int,
-    key_index: int | None = None,
+    names: list[str], collection_index: int, key_index: int | None = None
 ) -> FuncDef:
     func = make_function(names, names[collection_index])
 
@@ -102,11 +93,7 @@ def make_indexed_function(
     return func
 
 
-def make_callback_function(
-    names: list[str],
-    callback_index: int,
-    arg_index: int,
-) -> FuncDef:
+def make_callback_function(names: list[str], callback_index: int, arg_index: int) -> FuncDef:
     func = make_function(names, names[callback_index])
 
     callee = NameExpr(names[callback_index])
@@ -167,13 +154,7 @@ class GenericSuggestionsTests(TestCase):
 
         any_type = AnyType(TypeOfAny.suggestion_engine)
 
-        base = CallableType(
-            [any_type],
-            [ARG_POS],
-            ["value"],
-            any_type,
-            function_type,
-        )
+        base = CallableType([any_type], [ARG_POS], ["value"], any_type, function_type)
 
         candidate = make_direct_return_generic(base, 0, object_type)
 
@@ -201,18 +182,11 @@ class GenericSuggestionsTests(TestCase):
         any_type = AnyType(TypeOfAny.suggestion_engine)
 
         base = CallableType(
-            [any_type],
-            [ARG_POS],
-            ["items"],
-            any_type,
-            make_instance("builtins.function"),
+            [any_type], [ARG_POS], ["items"], any_type, make_instance("builtins.function")
         )
 
         candidate = make_list_element_generic(
-            base,
-            0,
-            make_instance("builtins.list"),
-            make_instance("builtins.object"),
+            base, 0, make_instance("builtins.list"), make_instance("builtins.object")
         )
 
         assert candidate is not None
@@ -250,10 +224,7 @@ class GenericSuggestionsTests(TestCase):
         key = NameExpr("key")
         key.node = func.arguments[1].variable
 
-        func.body.body = [
-            ReturnStmt(IndexExpr(mapping, key)),
-            ReturnStmt(IntExpr(42)),
-        ]
+        func.body.body = [ReturnStmt(IndexExpr(mapping, key)), ReturnStmt(IntExpr(42))]
 
         assert find_dictionary_lookup(func) is None
 
@@ -269,11 +240,7 @@ class GenericSuggestionsTests(TestCase):
         )
 
         candidate = make_dictionary_generic(
-            base,
-            0,
-            1,
-            make_instance("builtins.dict"),
-            make_instance("builtins.object"),
+            base, 0, 1, make_instance("builtins.dict"), make_instance("builtins.object")
         )
 
         assert candidate is not None
@@ -297,18 +264,11 @@ class GenericSuggestionsTests(TestCase):
         any_type = AnyType(TypeOfAny.suggestion_engine)
 
         base = CallableType(
-            [any_type],
-            [ARG_POS],
-            ["items"],
-            any_type,
-            make_instance("builtins.function"),
+            [any_type], [ARG_POS], ["items"], any_type, make_instance("builtins.function")
         )
 
         candidate = make_tuple_element_generic(
-            base,
-            0,
-            make_instance("builtins.tuple"),
-            make_instance("builtins.object"),
+            base, 0, make_instance("builtins.tuple"), make_instance("builtins.object")
         )
 
         assert candidate is not None
@@ -328,18 +288,11 @@ class GenericSuggestionsTests(TestCase):
         any_type = AnyType(TypeOfAny.suggestion_engine)
 
         base = CallableType(
-            [any_type],
-            [ARG_POS],
-            ["items"],
-            any_type,
-            make_instance("builtins.function"),
+            [any_type], [ARG_POS], ["items"], any_type, make_instance("builtins.function")
         )
 
         candidate = make_tuple_element_generic(
-            base,
-            0,
-            make_instance("builtins.list"),
-            make_instance("builtins.object"),
+            base, 0, make_instance("builtins.list"), make_instance("builtins.object")
         )
 
         assert candidate is None
@@ -384,11 +337,7 @@ class GenericSuggestionsTests(TestCase):
         any_type = AnyType(TypeOfAny.suggestion_engine)
 
         base = CallableType(
-            [any_type],
-            [ARG_POS],
-            ["value"],
-            any_type,
-            make_instance("builtins.function"),
+            [any_type], [ARG_POS], ["value"], any_type, make_instance("builtins.function")
         )
 
         func = make_function(["value"], "value")
@@ -396,17 +345,9 @@ class GenericSuggestionsTests(TestCase):
         int_type = make_instance("builtins.int")
         str_type = make_instance("builtins.str")
 
-        callsites = [
-            [[int_type]],
-            [[str_type]],
-        ]
+        callsites = [[[int_type]], [[str_type]]]
 
-        candidates = infer_generic_candidates(
-            func,
-            base,
-            callsites,
-            make_instance,
-        )
+        candidates = infer_generic_candidates(func, base, callsites, make_instance)
 
         assert len(candidates) == 1
 
@@ -419,20 +360,13 @@ class GenericSuggestionsTests(TestCase):
         any_type = AnyType(TypeOfAny.suggestion_engine)
 
         base = CallableType(
-            [any_type],
-            [ARG_POS],
-            ["value"],
-            any_type,
-            make_instance("builtins.function"),
+            [any_type], [ARG_POS], ["value"], any_type, make_instance("builtins.function")
         )
 
         func = make_function(["value"], "value")
 
         candidates = infer_generic_candidates(
-            func,
-            base,
-            [[[make_instance("builtins.int")]]],
-            make_instance,
+            func, base, [[[make_instance("builtins.int")]]], make_instance
         )
 
         assert candidates == []
@@ -441,11 +375,7 @@ class GenericSuggestionsTests(TestCase):
         any_type = AnyType(TypeOfAny.suggestion_engine)
 
         base = CallableType(
-            [any_type],
-            [ARG_POS],
-            ["items"],
-            any_type,
-            make_instance("builtins.function"),
+            [any_type], [ARG_POS], ["items"], any_type, make_instance("builtins.function")
         )
 
         func = make_indexed_function(["items"], 0)
@@ -474,11 +404,7 @@ class GenericSuggestionsTests(TestCase):
         any_type = AnyType(TypeOfAny.suggestion_engine)
 
         base = CallableType(
-            [any_type],
-            [ARG_POS],
-            ["items"],
-            any_type,
-            make_instance("builtins.function"),
+            [any_type], [ARG_POS], ["items"], any_type, make_instance("builtins.function")
         )
 
         func = make_indexed_function(["items"], 0)
@@ -522,14 +448,8 @@ class GenericSuggestionsTests(TestCase):
         bool_type = make_instance("builtins.bool")
 
         callsites = [
-            [
-                [dict_type.copy_modified(args=[str_type, int_type])],
-                [str_type],
-            ],
-            [
-                [dict_type.copy_modified(args=[int_type, bool_type])],
-                [int_type],
-            ],
+            [[dict_type.copy_modified(args=[str_type, int_type])], [str_type]],
+            [[dict_type.copy_modified(args=[int_type, bool_type])], [int_type]],
         ]
 
         candidates = infer_generic_candidates(func, base, callsites, make_instance)
@@ -566,14 +486,8 @@ class GenericSuggestionsTests(TestCase):
         int_type = make_instance("builtins.int")
 
         callsites = [
-            [
-                [dict_type.copy_modified(args=[str_type, int_type])],
-                [int_type],
-            ],
-            [
-                [dict_type.copy_modified(args=[str_type, int_type])],
-                [str_type],
-            ],
+            [[dict_type.copy_modified(args=[str_type, int_type])], [int_type]],
+            [[dict_type.copy_modified(args=[str_type, int_type])], [str_type]],
         ]
 
         candidates = infer_generic_candidates(func, base, callsites, make_instance)
@@ -593,19 +507,11 @@ class GenericSuggestionsTests(TestCase):
         function_type = make_instance("builtins.function")
 
         base = CallableType(
-            [any_type, any_type],
-            [ARG_POS, ARG_POS],
-            ["f", "x"],
-            any_type,
-            function_type,
+            [any_type, any_type], [ARG_POS, ARG_POS], ["f", "x"], any_type, function_type
         )
 
         candidate = make_callback_generic(
-            base,
-            0,
-            1,
-            make_instance("builtins.object"),
-            function_type,
+            base, 0, 1, make_instance("builtins.object"), function_type
         )
 
         assert candidate is not None
@@ -629,11 +535,7 @@ class GenericSuggestionsTests(TestCase):
         function_type = make_instance("builtins.function")
 
         base = CallableType(
-            [any_type, any_type],
-            [ARG_POS, ARG_POS],
-            ["f", "x"],
-            any_type,
-            function_type,
+            [any_type, any_type], [ARG_POS, ARG_POS], ["f", "x"], any_type, function_type
         )
 
         func = make_callback_function(["f", "x"], 0, 1)
@@ -645,10 +547,7 @@ class GenericSuggestionsTests(TestCase):
         cb1 = CallableType([int_type], [ARG_POS], [None], str_type, function_type)
         cb2 = CallableType([str_type], [ARG_POS], [None], bool_type, function_type)
 
-        callsites: list[list[list[Type]]] = [
-            [[cb1], [int_type]],
-            [[cb2], [str_type]],
-        ]
+        callsites: list[list[list[Type]]] = [[[cb1], [int_type]], [[cb2], [str_type]]]
 
         candidates = infer_generic_candidates(func, base, callsites, make_instance)
 
@@ -668,11 +567,7 @@ class GenericSuggestionsTests(TestCase):
         function_type = make_instance("builtins.function")
 
         base = CallableType(
-            [any_type, any_type],
-            [ARG_POS, ARG_POS],
-            ["f", "x"],
-            any_type,
-            function_type,
+            [any_type, any_type], [ARG_POS, ARG_POS], ["f", "x"], any_type, function_type
         )
 
         func = make_callback_function(["f", "x"], 0, 1)
@@ -683,10 +578,7 @@ class GenericSuggestionsTests(TestCase):
         cb1 = CallableType([int_type], [ARG_POS], [None], str_type, function_type)
         cb2 = CallableType([str_type], [ARG_POS], [None], int_type, function_type)
 
-        callsites: list[list[list[Type]]] = [
-            [[cb1], [str_type]],
-            [[cb2], [int_type]],
-        ]
+        callsites: list[list[list[Type]]] = [[[cb1], [str_type]], [[cb2], [int_type]]]
 
         candidates = infer_generic_candidates(func, base, callsites, make_instance)
 
@@ -696,11 +588,7 @@ class GenericSuggestionsTests(TestCase):
         any_type = AnyType(TypeOfAny.suggestion_engine)
 
         base = CallableType(
-            [any_type],
-            [ARG_POS],
-            ["value"],
-            any_type,
-            make_instance("builtins.function"),
+            [any_type], [ARG_POS], ["value"], any_type, make_instance("builtins.function")
         )
 
         func = make_function(["value"], "value")
@@ -714,16 +602,7 @@ class GenericSuggestionsTests(TestCase):
 
         assert infer_generic_candidates(func, base, two_calls, make_instance, min_calls=3) == []
         assert (
-            len(
-                infer_generic_candidates(
-                    func,
-                    base,
-                    three_calls,
-                    make_instance,
-                    min_calls=3,
-                )
-            )
-            == 1
+            len(infer_generic_candidates(func, base, three_calls, make_instance, min_calls=3)) == 1
         )
 
     def test_no_new_errors(self) -> None:
@@ -746,10 +625,7 @@ class GenericSuggestionsTests(TestCase):
 
     def test_reject_additional_error(self) -> None:
         original = ["foo.py:5: error: Error A"]
-        proposed = [
-            "foo.py:5: error: Error A",
-            "foo.py:8: error: Error B",
-        ]
+        proposed = ["foo.py:5: error: Error A", "foo.py:8: error: Error B"]
 
         assert has_new_errors(original, proposed)
 
@@ -840,12 +716,7 @@ b_box: str = box.echo("hello")
         status_file = os.path.join(cls.tmpdir.name, DEFAULT_STATUS_FILE)
         cls.server = Server(options, status_file)
         sources = create_source_list([mod_path], options)
-        cls.server.check(
-            sources,
-            export_types=False,
-            is_tty=False,
-            terminal_width=-1,
-        )
+        cls.server.check(sources, export_types=False, is_tty=False, terminal_width=-1)
 
     @classmethod
     def tearDownClass(cls) -> None:
@@ -898,17 +769,11 @@ b_box: str = box.echo("hello")
         assert self.suggest("identity", generic_min_calls=3) == "(object) -> object"
         assert self.suggest("identity", generic_min_calls=2) == "[T](T) -> T"
 
-    def test_dmypy_suggest_rejects_generic_when_body_constrains_type(
-        self,
-    ) -> None:
+    def test_dmypy_suggest_rejects_generic_when_body_constrains_type(self) -> None:
         assert self.suggest("add_self") == "(object) -> object"
 
-    def test_dmypy_suggest_rejects_generic_for_same_type_calls(
-        self,
-    ) -> None:
+    def test_dmypy_suggest_rejects_generic_for_same_type_calls(self) -> None:
         assert self.suggest("same_type_identity") == "(int) -> int"
 
-    def test_dmypy_suggest_rejects_generic_for_single_call(
-        self,
-    ) -> None:
+    def test_dmypy_suggest_rejects_generic_for_single_call(self) -> None:
         assert self.suggest("single_call_identity") == "(int) -> int"

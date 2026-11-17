@@ -541,13 +541,7 @@ class SuggestionEngine:
         defaults = self.get_default_arg_types(node)
 
         with state.strict_optional_set(graph[mod].options.strict_optional):
-            guesses = self.get_guesses(
-                is_method,
-                starting_type,
-                defaults,
-                callsites,
-                uses,
-            )
+            guesses = self.get_guesses(is_method, starting_type, defaults, callsites, uses)
         guesses += self.get_guesses_from_parent(node)
         guesses = self.filter_options(guesses, is_method, ignore_return=True)
         best, _ = self.find_best(node, guesses)
@@ -575,11 +569,7 @@ class SuggestionEngine:
 
         if generic_candidates:
             generic_guesses = [refine_callable(cand, best) for cand in generic_candidates]
-            generic_guesses = self.filter_options(
-                generic_guesses,
-                is_method,
-                ignore_return=False,
-            )
+            generic_guesses = self.filter_options(generic_guesses, is_method, ignore_return=False)
 
             safe_generics = []
 
@@ -592,10 +582,7 @@ class SuggestionEngine:
             if safe_generics:
                 best_generic, messages = min(
                     safe_generics,
-                    key=lambda item: (
-                        count_errors(item[1]),
-                        self.score_callable(item[0]),
-                    ),
+                    key=lambda item: (count_errors(item[1]), self.score_callable(item[0])),
                 )
 
                 generic_errors = count_errors(messages)
@@ -1056,10 +1043,7 @@ def count_errors(msgs: list[str]) -> int:
     return len([x for x in msgs if " error: " in x])
 
 
-def has_new_errors(
-    original: list[str],
-    proposed: list[str],
-) -> bool:
+def has_new_errors(original: list[str], proposed: list[str]) -> bool:
     """Check whether a proposed signature introduces new errors."""
 
     original_errors = Counter(msg for msg in original if " error: " in msg)
