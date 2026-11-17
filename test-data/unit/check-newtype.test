@@ -369,6 +369,8 @@ d: object
 if isinstance(d, T):   # E: Cannot use isinstance() with NewType type
     reveal_type(d)     # N: Revealed type is "builtins.int"
 issubclass(object, T)  # E: Cannot use issubclass() with NewType type
+issubclass(T, object)  # E: Cannot use issubclass() with NewType type
+issubclass((T,), object)  # E: Cannot use issubclass() with NewType type
 [builtins fixtures/isinstancelist.pyi]
 
 [case testInvalidNewTypeCrash]
