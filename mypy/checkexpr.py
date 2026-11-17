@@ -4413,7 +4413,10 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                     )
                 )
             )
+            # The data model gives reflected methods priority only for proper subclasses,
+            # not same-type operands (#22386).
             # Note: use `covers_at_runtime` instead of `is_subtype` (#19006)
+            and not is_same_type(left_type, right_type)
             and covers_at_runtime(right_type, left_type)
         ):
             # When we do "A() + B()" where B is a subclass of A, we'll actually try calling

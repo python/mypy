@@ -704,6 +704,23 @@ assert_type(tupX + size, Size)
 
 [builtins fixtures/tuple-typeshed.pyi]
 
+[case testReverseBinaryOperatorSameTypeDoesNotGetPriority]
+from typing import assert_type
+
+class Base:
+    def __lt__(self, other: "Base") -> str: return "lt"
+
+class Child(Base):
+    def __gt__(self, other: "Child") -> int: return 7
+
+class Sub(Child): pass
+
+a = Child()
+b = Child()
+assert_type(a < b, str)
+assert_type(a > b, int)
+assert_type(a < Sub(), int)
+
 [case testBinaryOperatorWithAnyRightOperand]
 from typing import Any, cast
 class A: pass
