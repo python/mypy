@@ -473,6 +473,39 @@ if int():
     x = x | C.b
 [builtins fixtures/enum.pyi]
 
+[case testFlagEnumNotExpandedIntoUnion]
+# A Flag value can hold any combination of members, so the declared members are not an
+# exhaustive set of values: ruling out one member must not prune the others.
+from enum import Flag
+class Programs(Flag):
+    NONE = 0
+    P1 = 1
+    P2 = 2
+    P3 = 4
+def f(programs: Programs) -> None:
+    if programs is Programs.NONE:
+        return
+    if programs is Programs.P2:
+        return
+    reveal_type(programs)  # N: Revealed type is "__main__.Programs"
+    if Programs.P2 in programs:
+        pass
+[builtins fixtures/enum.pyi]
+
+[case testFlagEnumExplicitLiteralUnionStillNarrows]
+# Narrowing a union that was written out explicitly still removes members.
+from enum import Flag
+from typing import Literal
+class P(Flag):
+    A = 1
+    B = 2
+def f(p: Literal[P.A] | Literal[P.B]) -> None:
+    if p is P.A:
+        reveal_type(p)  # N: Revealed type is "Literal[__main__.P.A]"
+    else:
+        reveal_type(p)  # N: Revealed type is "Literal[__main__.P.B]"
+[builtins fixtures/enum.pyi]
+
 [case testEnumIntFlag]
 from enum import IntFlag
 class C(IntFlag):

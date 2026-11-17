@@ -1195,6 +1195,11 @@ def try_expanding_sum_type_to_union(typ: Type, target_fullname: str | None) -> T
             return UnionType([LiteralType(True, typ), LiteralType(False, typ)])
 
         if typ.type.is_enum:
+            if any(base.fullname == "enum.Flag" for base in typ.type.mro):
+                # The declared members of a Flag are not an exhaustive set of values: a
+                # value can hold any combination of members, so expanding the enum into a
+                # union of member literals would be unsound.
+                return typ
             items = [LiteralType(name, typ) for name in typ.type.enum_members]
             if not items:
                 return typ
