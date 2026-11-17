@@ -282,3 +282,19 @@ def identity(xs: list[T]) -> list[T]:
 
 def f(xs: list[int]) -> list[int]:
     return cast(list[int], identity(xs))  # E: Redundant cast to "list[int]"
+
+[case testRedundantCastGenericCallableReturn]
+# flags: --warn-redundant-casts
+from collections.abc import Callable
+from typing import TypeVar, cast
+
+T = TypeVar("T")
+
+class A: ...
+
+def f(factory: Callable[[], T]) -> tuple[A, T]:
+    ...
+
+reveal_type(f(A))  # N: Revealed type is "tuple[__main__.A, __main__.A]"
+cast(tuple[A, A], f(A))  # E: Redundant cast to "tuple[A, A]"
+[builtins fixtures/tuple.pyi]
