@@ -1778,6 +1778,64 @@ L3:
 L4:
     return 1
 
+[case testI64ForLoopOverRangeWithStep]
+from mypy_extensions import i64
+
+def f(a: i64, b: i64) -> None:
+    for x in range(a, b, 3):
+        y = x
+
+def g(a: i64, b: i64) -> None:
+    for x in range(a, b, -2):
+        y = x
+[out]
+def f(a, b):
+    a, b, r0 :: i64
+    r1 :: bit
+    x, y :: i64
+    r2 :: bit
+    r3 :: i64
+L0:
+    r0 = a
+L1:
+    r1 = r0 < b :: signed
+    if r1 goto L2 else goto L5 :: bool
+L2:
+    x = r0
+    y = x
+L3:
+    r2 = r0 > 9223372036854775804 :: signed
+    if r2 goto L5 else goto L4 :: bool
+L4:
+    r3 = r0 + 3
+    r0 = r3
+    goto L1
+L5:
+    return 1
+def g(a, b):
+    a, b, r0 :: i64
+    r1 :: bit
+    x, y :: i64
+    r2 :: bit
+    r3 :: i64
+L0:
+    r0 = a
+L1:
+    r1 = r0 > b :: signed
+    if r1 goto L2 else goto L5 :: bool
+L2:
+    x = r0
+    y = x
+L3:
+    r2 = r0 < -9223372036854775806 :: signed
+    if r2 goto L5 else goto L4 :: bool
+L4:
+    r3 = r0 + -2
+    r0 = r3
+    goto L1
+L5:
+    return 1
+
 [case testI64MethodDefaultValueOverride]
 from mypy_extensions import i64
 

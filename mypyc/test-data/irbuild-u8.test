@@ -599,3 +599,83 @@ L4:
     unreachable
 L5:
     return r7
+
+[case testU8ForLoopOverRangeWithStep]
+from mypy_extensions import u8
+
+def f(a: u8, b: u8) -> None:
+    for x in range(a, b, 5):
+        y = x
+
+def g(a: u8, b: u8) -> None:
+    for x in range(a, b, -5):
+        y = x
+
+def h(a: u8, b: u8) -> None:
+    for x in range(a, b, -1):
+        y = x
+[out]
+def f(a, b):
+    a, b, r0 :: u8
+    r1 :: bit
+    x, y :: u8
+    r2 :: bit
+    r3 :: u8
+L0:
+    r0 = a
+L1:
+    r1 = r0 < b :: signed
+    if r1 goto L2 else goto L5 :: bool
+L2:
+    x = r0
+    y = x
+L3:
+    r2 = r0 > 250 :: unsigned
+    if r2 goto L5 else goto L4 :: bool
+L4:
+    r3 = r0 + 5
+    r0 = r3
+    goto L1
+L5:
+    return 1
+def g(a, b):
+    a, b, r0 :: u8
+    r1 :: bit
+    x, y :: u8
+    r2 :: bit
+    r3 :: u8
+L0:
+    r0 = a
+L1:
+    r1 = r0 > b :: signed
+    if r1 goto L2 else goto L5 :: bool
+L2:
+    x = r0
+    y = x
+L3:
+    r2 = r0 < 5 :: unsigned
+    if r2 goto L5 else goto L4 :: bool
+L4:
+    r3 = r0 - 5
+    r0 = r3
+    goto L1
+L5:
+    return 1
+def h(a, b):
+    a, b, r0 :: u8
+    r1 :: bit
+    x, y, r2 :: u8
+L0:
+    r0 = a
+L1:
+    r1 = r0 > b :: signed
+    if r1 goto L2 else goto L4 :: bool
+L2:
+    x = r0
+    y = x
+L3:
+    r2 = r0 - 1
+    r0 = r2
+    goto L1
+L4:
+    return 1

@@ -127,6 +127,7 @@ from mypyc.ir.rtypes import (
     is_uint16_rprimitive,
     is_uint32_rprimitive,
     is_uint64_rprimitive,
+    native_int_bounds,
     none_rprimitive,
     object_pointer_rprimitive,
     object_rprimitive,
@@ -699,10 +700,8 @@ class LowLevelIRBuilder:
         """
         in_range, in_range2 = BasicBlock(), BasicBlock()
 
-        size = target_type.size
-        upper_bound = 1 << (size * 8 - 1)
-        if not target_type.is_signed:
-            upper_bound *= 2
+        lower_bound, max_value = native_int_bounds(target_type)
+        upper_bound = max_value + 1
 
         # Check if value < upper_bound
         check_upper = self.add(
@@ -713,10 +712,6 @@ class LowLevelIRBuilder:
         self.activate_block(in_range)
 
         # Check if value >= lower_bound
-        if target_type.is_signed:
-            lower_bound = -upper_bound
-        else:
-            lower_bound = 0
         check_lower = self.add(
             ComparisonOp(src, Integer(lower_bound, src.type), ComparisonOp.SGE, line)
         )
