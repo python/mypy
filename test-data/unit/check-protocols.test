@@ -1025,13 +1025,27 @@ main:15: note:         def [T2] a(self, other: P1[T2]) -> Any
 
 [case testHashable]
 
-from typing import Hashable, Iterable
+from typing import Hashable, Iterable, Iterator
 
 def f(x: Hashable) -> None:
     pass
 
 def g(x: Iterable[str]) -> None:
     f(x)   # E: Argument 1 to "f" has incompatible type "Iterable[str]"; expected "Hashable"
+
+def h(x: Iterator[str]) -> None:
+    f(x)
+
+class UnhashableIterator(Iterator[str]):
+    __hash__ = None  # type: ignore[assignment]
+
+    def __next__(self) -> str:
+        return ""
+
+def k(x: UnhashableIterator) -> None:
+    f(x)   # E: Argument 1 to "f" has incompatible type "UnhashableIterator"; expected "Hashable" \
+           # N: Following member(s) of "UnhashableIterator" have conflicts: \
+           # N:     __hash__: expected "Callable[[], int]", got "None"
 
 [builtins fixtures/object_hashable.pyi]
 [typing fixtures/typing-full.pyi]
