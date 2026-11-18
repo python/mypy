@@ -1268,6 +1268,277 @@ def foo(): pass
 def test_decorator_name():
     assert foo.__name__ == "foo"
 
+[case testDeprecatedDecorator]
+from typing import Callable, Iterator, Union, overload
+from mypy_extensions import mypyc_attr
+from typing_extensions import deprecated
+
+class CustomWarning(UserWarning):
+    pass
+
+@deprecated("f is deprecated")
+def f(x: int = 1) -> int:
+    return x + 1
+
+@deprecated("custom is deprecated", category=CustomWarning, stacklevel=2)
+def custom() -> int:
+    return 2
+
+@deprecated("silent is deprecated", category=None)
+def silent() -> int:
+    return 3
+
+@deprecated("gen is deprecated")
+def gen() -> Iterator[int]:
+    yield 1
+    yield 2
+
+@deprecated("co is deprecated")
+async def co() -> int:
+    return 4
+
+@overload
+def ov(x: int) -> int: ...
+@overload
+@deprecated("ov(str) is deprecated")
+def ov(x: str) -> str: ...
+@deprecated("ov is deprecated")
+def ov(x: Union[int, str]) -> Union[int, str]:
+    return x
+
+def identity(fn: Callable[[], int]) -> Callable[[], int]:
+    return fn
+
+def add_100(fn: Callable[[], int]) -> Callable[[], int]:
+    def wrapper() -> int:
+        return fn() + 100
+    return wrapper
+
+@identity
+@deprecated("under is deprecated")
+def under() -> int:
+    return 5
+
+# Only the innermost decorators are compiled into the function. This one is applied
+# at runtime to the result of add_100.
+@deprecated("over is deprecated")
+@add_100
+def over() -> int:
+    return 6
+
+def nested() -> Callable[[], int]:
+    @deprecated("nested is deprecated")
+    def inner() -> int:
+        return 7
+    return inner
+
+# Without a literal message the decorator is also applied at runtime.
+def nested_dynamic(message: str) -> Callable[[], int]:
+    @deprecated(message)
+    def inner() -> int:
+        return 8
+    return inner
+
+class Base:
+    def __init__(self) -> None:
+        self._q = 0
+
+    def plain(self) -> int:
+        return 1
+
+    @deprecated("Base.old is deprecated")
+    def old(self) -> int:
+        return 2
+
+    @property
+    @deprecated("Base.p is deprecated")
+    def p(self) -> int:
+        return 3
+
+    @property
+    def q(self) -> int:
+        return self._q
+
+    @q.setter
+    @deprecated("setting Base.q is deprecated")
+    def q(self, value: int) -> None:
+        self._q = value
+
+    @classmethod
+    @deprecated("Base.cm is deprecated")
+    def cm(cls) -> str:
+        return cls.__name__
+
+    @staticmethod
+    @deprecated("Base.sm is deprecated")
+    def sm() -> int:
+        return 4
+
+    @deprecated("Base.aco is deprecated")
+    async def aco(self) -> int:
+        return 5
+
+class Child(Base):
+    @deprecated("Child.plain is deprecated")
+    def plain(self) -> int:
+        return 10
+
+    def old(self) -> int:
+        return 20
+
+@mypyc_attr(native_class=False)
+class NonNative:
+    @deprecated("NonNative.m is deprecated")
+    def m(self) -> int:
+        return 9
+
+@deprecated("Cls is deprecated")
+class Cls:
+    def __init__(self, x: int) -> None:
+        self.x = x
+
+@deprecated("SilentCls is deprecated", category=None)
+class SilentCls:
+    pass
+
+def call_f() -> int:
+    return f(2)
+
+def call_methods(b: Base) -> int:
+    return b.plain() + b.old() + b.p
+
+def set_q(b: Base, value: int) -> None:
+    b.q = value
+
+def make_cls() -> Cls:
+    return Cls(1)
+
+[file driver.py]
+import asyncio
+import warnings
+from typing import Any, Callable
+
+from native import (
+    Base,
+    Child,
+    Cls,
+    CustomWarning,
+    NonNative,
+    SilentCls,
+    call_f,
+    call_methods,
+    co,
+    custom,
+    f,
+    gen,
+    make_cls,
+    nested,
+    nested_dynamic,
+    ov,
+    over,
+    set_q,
+    silent,
+    under,
+)
+from testutil import assertRaises
+
+D = DeprecationWarning
+
+def check(fn: Callable[[], Any], expected: Any, *messages: str, category: Any = D) -> None:
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        result = fn()
+    assert result == expected, result
+    assert [str(w.message) for w in caught] == list(messages), caught
+    for w in caught:
+        assert w.category is category, w.category
+        # Compiled functions have no frames, so this is the closest interpreted caller.
+        assert w.filename == __file__, w.filename
+
+check(f, 2, "f is deprecated")
+check(lambda: f(5), 6, "f is deprecated")
+check(lambda: f(x=5), 6, "f is deprecated")
+check(call_f, 3, "f is deprecated")
+check(custom, 2, "custom is deprecated", category=CustomWarning)
+check(silent, 3)
+check(lambda: ov(1), 1, "ov is deprecated")
+check(lambda: ov("x"), "x", "ov is deprecated")
+check(under, 5, "under is deprecated")
+check(over, 106, "over is deprecated")
+check(nested(), 7, "nested is deprecated")
+check(nested_dynamic("dynamic message"), 8, "dynamic message")
+
+def direct() -> int:
+    return f()
+
+def indirect() -> int:
+    return custom()
+
+def call_indirect() -> int:
+    return indirect()
+
+with warnings.catch_warnings(record=True) as caught:
+    warnings.simplefilter("always")
+    direct()
+    call_indirect()
+assert [w.lineno for w in caught] == [
+    direct.__code__.co_firstlineno + 1,
+    call_indirect.__code__.co_firstlineno + 1,
+], caught
+
+# A generator or a coroutine warns when it's created.
+def create_gen() -> None:
+    gen()
+
+check(create_gen, None, "gen is deprecated")
+check(lambda: list(gen()), [1, 2], "gen is deprecated")
+check(lambda: co().close(), None, "co is deprecated")
+check(lambda: Base().aco().close(), None, "Base.aco is deprecated")
+with warnings.catch_warnings():
+    warnings.simplefilter("ignore")
+    assert asyncio.run(co()) == 4
+    assert asyncio.run(Base().aco()) == 5
+
+b = Base()
+c = Child()
+check(b.plain, 1)
+check(b.old, 2, "Base.old is deprecated")
+check(lambda: b.p, 3, "Base.p is deprecated")
+check(c.plain, 10, "Child.plain is deprecated")
+check(c.old, 20)
+check(lambda: c.p, 3, "Base.p is deprecated")
+check(lambda: call_methods(b), 6, "Base.old is deprecated", "Base.p is deprecated")
+check(lambda: call_methods(c), 33, "Child.plain is deprecated", "Base.p is deprecated")
+
+def set_q_attr() -> int:
+    b.q = 5
+    return b.q
+
+check(set_q_attr, 5, "setting Base.q is deprecated")
+check(lambda: set_q(b, 6), None, "setting Base.q is deprecated")
+check(lambda: b.q, 6)
+
+check(Base.cm, "Base", "Base.cm is deprecated")
+check(c.cm, "Child", "Base.cm is deprecated")
+check(Base.sm, 4, "Base.sm is deprecated")
+check(b.sm, 4, "Base.sm is deprecated")
+check(lambda: NonNative().m(), 9, "NonNative.m is deprecated")
+
+check(lambda: Cls(1).x, 1, "Cls is deprecated")
+check(lambda: make_cls().x, 1, "Cls is deprecated")
+check(lambda: isinstance(SilentCls(), SilentCls), True)
+
+# The warning is raised like any other exception if warnings are errors.
+with warnings.catch_warnings():
+    warnings.simplefilter("error")
+    with assertRaises(DeprecationWarning, "f is deprecated"):
+        f()
+    with assertRaises(DeprecationWarning, "Base.p is deprecated"):
+        b.p
+    with assertRaises(CustomWarning, "custom is deprecated"):
+        custom()
+    assert silent() == 3
+
 [case testLambdaArgToOverloaded]
 from lib import sub
 
