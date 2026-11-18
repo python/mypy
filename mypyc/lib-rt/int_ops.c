@@ -476,6 +476,10 @@ int64_t CPyInt64_Remainder(int64_t x, int64_t y) {
     return d;
 }
 
+void CPyInt64_Overflow() {
+    PyErr_SetString(PyExc_ValueError, "int too large to convert to i64");
+}
+
 // i32 unboxing slow path
 int32_t CPyLong_AsInt32_(PyObject *o) {
     int overflow;
