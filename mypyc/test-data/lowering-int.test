@@ -380,3 +380,34 @@ L5:
 L6:
     r11 = <error> :: None
     return r11
+
+[case testLowerI64Abs]
+from mypy_extensions import i64
+
+def f(x: i64) -> i64:
+    return abs(x)
+[out]
+def f(x):
+    x, r0 :: i64
+    r1 :: bit
+    r2 :: i64
+L0:
+    r0 = x
+    r1 = x < 0 :: signed
+    if r1 goto L1 else goto L2 :: bool
+L1:
+    r2 = 0 - x
+    r0 = r2
+L2:
+    return r0
+
+[case testLowerU8Abs]
+from mypy_extensions import u8
+
+def f(x: u8) -> u8:
+    return abs(x)
+[out]
+def f(x):
+    x :: u8
+L0:
+    return x

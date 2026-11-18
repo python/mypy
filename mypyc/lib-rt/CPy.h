@@ -229,6 +229,7 @@ PyObject *CPyBool_Str(bool b);
 int64_t CPyLong_AsInt64_(PyObject *o);
 int64_t CPyInt64_Divide(int64_t x, int64_t y);
 int64_t CPyInt64_Remainder(int64_t x, int64_t y);
+void CPyInt64_Overflow(void);
 int32_t CPyLong_AsInt32_(PyObject *o);
 int32_t CPyInt32_Divide(int32_t x, int32_t y);
 int32_t CPyInt32_Remainder(int32_t x, int32_t y);
@@ -1039,6 +1040,7 @@ CPyTagged CPyList_Count(PyObject *obj, PyObject *value);
 int CPyList_Insert(PyObject *list, CPyTagged index, PyObject *value);
 PyObject *CPyList_Extend(PyObject *o1, PyObject *o2);
 int CPyList_Remove(PyObject *list, PyObject *obj);
+int CPyList_Compare(PyObject *left, PyObject *right, int op);
 CPyTagged CPyList_Index(PyObject *list, PyObject *obj);
 PyObject *CPySequence_Sort(PyObject *seq);
 PyObject *CPySequence_Concat(PyObject *seq, PyObject *other);
@@ -1112,6 +1114,8 @@ PyObject *CPyStr_GetItem(PyObject *str, CPyTagged index);
 PyObject *CPyStr_GetItemUnsafe(PyObject *str, Py_ssize_t index);
 CPyTagged CPyStr_Find(PyObject *str, PyObject *substr, CPyTagged start, int direction);
 CPyTagged CPyStr_FindWithEnd(PyObject *str, PyObject *substr, CPyTagged start, CPyTagged end, int direction);
+CPyTagged CPyStr_Index(PyObject *str, PyObject *substr, CPyTagged start, int direction);
+CPyTagged CPyStr_IndexWithEnd(PyObject *str, PyObject *substr, CPyTagged start, CPyTagged end, int direction);
 PyObject *CPyStr_Split(PyObject *str, PyObject *sep, CPyTagged max_split);
 PyObject *CPyStr_RSplit(PyObject *str, PyObject *sep, CPyTagged max_split);
 PyObject *_CPyStr_Strip(PyObject *self, int strip_type, PyObject *sep);
@@ -1162,6 +1166,7 @@ bool CPyStr_IsPrintable(PyObject *str);
 bool CPyStr_IsLower(PyObject *str);
 bool CPyStr_IsTitle(PyObject *str);
 bool CPyStr_IsUpper(PyObject *str);
+bool CPyStr_IsIdentifier(PyObject *str);
 
 // Bytes operations
 
@@ -1190,6 +1195,7 @@ bool CPySet_Remove(PyObject *set, PyObject *key);
 
 PyObject *CPySequenceTuple_GetSlice(PyObject *obj, CPyTagged start, CPyTagged end);
 PyObject *CPySequenceTuple_GetItem_(PyObject *tuple, CPyTagged index);
+int CPyTuple_Compare(PyObject *left, PyObject *right, int op);
 
 static inline PyObject *CPySequenceTuple_GetItem(PyObject *tuple, CPyTagged index)
 {
@@ -1370,6 +1376,17 @@ static inline PyObject *CPy_TYPE(PyObject *obj) {
     PyObject *result = (PyObject *)Py_TYPE(obj);
     Py_INCREF(result);
     return result;
+}
+
+// type() of an int, without boxing it
+static inline PyObject *CPyTagged_Type(CPyTagged x) {
+    // A short int boxes to an exact int, but a long int is an object that can
+    // be an instance of a subclass of int
+    if (likely(CPyTagged_CheckShort(x))) {
+        Py_INCREF(&PyLong_Type);
+        return (PyObject *)&PyLong_Type;
+    }
+    return CPy_TYPE(CPyTagged_LongAsObject(x));
 }
 
 PyObject *CPy_CalculateMetaclass(PyObject *type, PyObject *o);
