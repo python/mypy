@@ -3262,6 +3262,41 @@ class Base: ...
 reveal_type(K.q)  # N: Revealed type is "builtins.list[tuple[builtins.bool, builtins.int, builtins.str]]"
 [builtins fixtures/tuple.pyi]
 
+[case testUnpackTypeVarTupleInFunctionWithConstrainedTypeVar]
+from typing import Generic, TypeVar, Tuple
+from typing_extensions import TypeVarTuple, Unpack
+
+T = TypeVar("T")
+P = TypeVar("P", int, str)
+Ts = TypeVarTuple("Ts")
+
+class Container(Generic[T, P]):
+    def foo(self) -> T: ...
+
+def f(container: Container[Tuple[Unpack[Ts]], P]) -> None:
+    result = container.foo()
+    reveal_type(result)  # N: Revealed type is "tuple[Unpack[Ts`-1]]"
+    y = (*result,)
+    reveal_type(y)  # N: Revealed type is "tuple[Unpack[Ts`-1]]"
+[builtins fixtures/tuple.pyi]
+
+[case testUnpackAssignmentOfTypeVarTupleInFunctionWithConstrainedTypeVar]
+from typing import Generic, TypeVar, Tuple
+from typing_extensions import TypeVarTuple, Unpack
+
+T = TypeVar("T")
+P = TypeVar("P", int, str)
+Ts = TypeVarTuple("Ts")
+
+class Container(Generic[T, P]):
+    def foo(self) -> T: ...
+
+def f(container: Container[Tuple[Unpack[Ts]], P]) -> None:
+    result, index = container.foo()  # E: Variadic tuple unpacking requires a star target
+    reveal_type(result)  # N: Revealed type is "Any"
+    reveal_type(index)  # N: Revealed type is "Any"
+[builtins fixtures/tuple.pyi]
+
 [case testTypeVarTupleApplyResultsFromUnionWithAnyNoCrash]
 from typing import Any, Generic, Union
 from typing_extensions import TypeVarTuple, Unpack
