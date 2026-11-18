@@ -9850,3 +9850,31 @@ fs = [lambda df, x: df.foo, f]
 reveal_type(fs)  # N: Revealed type is "builtins.list[def (Any, Any) -> builtins.int | Any]"
 fs2 = [f, lambda df, x: df.foo]
 reveal_type(fs2)  # N: Revealed type is "builtins.list[def (Any, Any) -> builtins.int | Any]"
+
+[case testMetaclassProperty]
+class M(type):
+    @property
+    def f(cls) -> str:
+        return "1"
+
+    @property
+    def g(cls) -> str:
+        return "1"
+
+    def h(cls) -> str:
+        return "2"
+
+class A(metaclass=M):
+    @property
+    def f(self) -> str:
+        return type(self).f
+
+    g: int = 1
+
+reveal_type(A.f)  # N: Revealed type is "builtins.str"
+reveal_type(A().f)  # N: Revealed type is "builtins.str"
+reveal_type(A.g)  # N: Revealed type is "builtins.str"
+reveal_type(A().g)  # N: Revealed type is "builtins.int"
+reveal_type(A.h)  # N: Revealed type is "def () -> builtins.str"
+
+[builtins fixtures/property.pyi]
