@@ -214,10 +214,10 @@ i(arg=0)  # E: Unexpected keyword argument "arg"
 from typing import Final, NamedTuple, Optional, List
 
 if a := 2:
-    reveal_type(a)  # N: Revealed type is "builtins.int"
+    reveal_type(a)  # N: Revealed type is "Literal[2]?"
 
 while b := "x":
-    reveal_type(b)  # N: Revealed type is "builtins.str"
+    reveal_type(b)  # N: Revealed type is "Literal['x']?"
 
 l = [y2 := 1, y2 + 2, y2 + 3]
 reveal_type(y2)  # N: Revealed type is "builtins.int"
@@ -242,10 +242,10 @@ reveal_type(new_v)  # N: Revealed type is "builtins.int"
 
 def f(x: int = (c := 4)) -> int:
     if a := 2:
-        reveal_type(a)  # N: Revealed type is "builtins.int"
+        reveal_type(a)  # N: Revealed type is "Literal[2]?"
 
     while b := "x":
-        reveal_type(b)  # N: Revealed type is "builtins.str"
+        reveal_type(b)  # N: Revealed type is "Literal['x']?"
 
     x = (y := 1) + (z := 2)
     reveal_type(x)  # N: Revealed type is "builtins.int"
@@ -284,7 +284,7 @@ def f(x: int = (c := 4)) -> int:
     f(x=(y7 := 3))
     reveal_type(y7)  # N: Revealed type is "builtins.int"
 
-    reveal_type((lambda: (y8 := 3) and y8)())  # N: Revealed type is "builtins.int"
+    reveal_type((lambda: (y8 := 3) and y8)())  # N: Revealed type is "Literal[3]?"
     y8  # E: Name "y8" is not defined
 
     y7 = 1.0  # E: Incompatible types in assignment (expression has type "float", variable has type "int")
@@ -325,16 +325,16 @@ def check_binder(x: Optional[int], y: Optional[int], z: Optional[int], a: Option
         reveal_type(y)  # N: Revealed type is "builtins.int | None"
 
     if x and (y := 1):
-        reveal_type(y)  # N: Revealed type is "builtins.int"
+        reveal_type(y)  # N: Revealed type is "Literal[1]?"
 
     if (a := 1) and x:
-        reveal_type(a)  # N: Revealed type is "builtins.int"
+        reveal_type(a)  # N: Revealed type is "Literal[1]?"
 
     if (b := 1) or x:
         reveal_type(b)  # N: Revealed type is "builtins.int"
 
     if z := 1:
-        reveal_type(z)  # N: Revealed type is "builtins.int"
+        reveal_type(z)  # N: Revealed type is "Literal[1]?"
 
 def check_partial() -> None:
     x = None
@@ -351,7 +351,7 @@ def check_narrow(x: Optional[int], s: List[int]) -> None:
         reveal_type(y)  # N: Revealed type is "builtins.int"
 
     if (y := x) == 10:
-        reveal_type(y)  # N: Revealed type is "builtins.int"
+        reveal_type(y)  # N: Revealed type is "Literal[10]?"
 
     if (y := x) in s:
         reveal_type(y)  # N: Revealed type is "builtins.int"
