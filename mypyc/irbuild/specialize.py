@@ -1826,15 +1826,28 @@ def translate_getitem_with_bounds_check(
     if is_int_rprimitive(index.type):
         index = coerce_int_index_to_int64(builder, index, ctx_expr.line)
 
+    # Create blocks for branching
+    valid_block = BasicBlock()
+    invalid_block = BasicBlock()
+
+    if is_uint64_rprimitive(index.type):
+        # A u64 value that doesn't fit in i64 is always out of range, so raise
+        # IndexError (instead of the generic overflow error from coercion)
+        fits = builder.add(
+            ComparisonOp(
+                index, Integer(2**63 - 1, uint64_rprimitive), ComparisonOp.ULE, ctx_expr.line
+            )
+        )
+        fits_block = BasicBlock()
+        builder.add_bool_branch(fits, fits_block, invalid_block)
+        builder.activate_block(fits_block)
+        index = builder.add(Truncate(index, int64_rprimitive, ctx_expr.line))
+
     # Adjust the index (handle negative indices)
     adjusted_index = builder.primitive_op(adjust_index_op, [obj, index], ctx_expr.line)
 
     # Check if the adjusted index is in valid range
     range_check = builder.primitive_op(range_check_op, [obj, adjusted_index], ctx_expr.line)
-
-    # Create blocks for branching
-    valid_block = BasicBlock()
-    invalid_block = BasicBlock()
 
     builder.add_bool_branch(range_check, valid_block, invalid_block)
 
@@ -2014,6 +2027,8 @@ def check_weakref_target(builder: IRBuilder, expr: CallExpr, callee: RefExpr) ->
     Native classes only support weak references if requested explicitly, so a
     weakref.ref() or weakref.proxy() call would fail at runtime. This is best effort:
     we only detect calls where the argument has a precise native class type.
+    Interpreted subclasses always support weak references, so the call may succeed
+    if the class allows interpreted subclasses.
 
     This doesn't generate any code, so translation continues as usual.
     """
@@ -2023,6 +2038,7 @@ def check_weakref_target(builder: IRBuilder, expr: CallExpr, callee: RefExpr) ->
             isinstance(rtype, RInstance)
             and not rtype.class_ir.is_trait
             and not rtype.class_ir.supports_weakrefs()
+            and not rtype.class_ir.allow_interpreted_subclasses
         ):
             builder.error(
                 "Cannot create weak reference to instance of native class "

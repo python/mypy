@@ -1404,16 +1404,25 @@ PyListObject = RStruct(
 )
 
 
+def native_int_bounds(rtype: RPrimitive) -> tuple[int, int]:
+    """Return the smallest and largest values of a native, fixed-width int type.
+
+    Assume the type is a fixed-width int type.
+    """
+    if not rtype.is_signed:
+        return 0, (1 << (8 * rtype.size)) - 1
+    else:
+        limit = 1 << (rtype.size * 8 - 1)
+        return -limit, limit - 1
+
+
 def check_native_int_range(rtype: RPrimitive, n: int) -> bool:
     """Is n within the range of a native, fixed-width int type?
 
     Assume the type is a fixed-width int type.
     """
-    if not rtype.is_signed:
-        return 0 <= n < (1 << (8 * rtype.size))
-    else:
-        limit = 1 << (rtype.size * 8 - 1)
-        return -limit <= n < limit
+    lo, hi = native_int_bounds(rtype)
+    return lo <= n <= hi
 
 
 def wrap_unsigned_native_int(rtype: RType, n: int) -> int:
@@ -1424,7 +1433,8 @@ def wrap_unsigned_native_int(rtype: RType, n: int) -> int:
     Return n unchanged for other types.
     """
     if is_fixed_width_rtype(rtype) and not rtype.is_signed:
-        return n & ((1 << (8 * rtype.size)) - 1)
+        # The largest value of an unsigned type is also a mask of all its bits
+        return n & native_int_bounds(rtype)[1]
     return n
 
 

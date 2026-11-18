@@ -1178,10 +1178,8 @@ def generate_dealloc_for_class(
     if cl.has_weakref_list():
         # Invalidate all weak references to the object, and call their callbacks.
         # This must happen after the finalizer has run, and before any of the
-        # attributes are cleared.
-        #
-        # TODO: Weak references created *inside* __del__ are not cleared. CPython
-        #       handles these with a second _PyWeakref_ClearWeakRefsNoCallbacks pass.
+        # attributes are cleared. This also clears any weak references created by
+        # the finalizer (__del__).
         if cl.has_weakref_slot():
             emitter.emit_line("CPy_ClearWeakrefs((PyObject *)self, &self->weakreflist);")
         else:

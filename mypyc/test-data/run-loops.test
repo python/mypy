@@ -3,7 +3,7 @@
 [case testForRange]
 from typing import Any
 
-from mypy_extensions import i64
+from mypy_extensions import i64, i16, u8, u64
 from testutil import assertRaises
 
 def count(n: int) -> list[int]:
@@ -45,6 +45,145 @@ def test_range_loop() -> None:
     assert count_down(20, 10) == list(range(20, 10, -1))
     assert count_double(10, 15) == [10, 12, 14]
     assert count_down_short() == list(range(10, 0, -1))
+
+# The range loops below stop after 10 items, so that a wrapped-around index
+# makes the test fail instead of hang.
+
+def range_up_i64(a: i64, b: i64) -> list[int]:
+    result = []
+    for i in range(a, b, 3):
+        result.append(int(i))
+        if len(result) > 10:
+            break
+    return result
+
+def range_down_i64(a: i64, b: i64) -> list[int]:
+    result = []
+    for i in range(a, b, -3):
+        result.append(int(i))
+        if len(result) > 10:
+            break
+    return result
+
+def range_up_i16(a: i16, b: i16) -> list[int]:
+    result = []
+    for i in range(a, b, 4):
+        result.append(int(i))
+        if len(result) > 10:
+            break
+    return result
+
+def range_down_i16(a: i16, b: i16) -> list[int]:
+    result = []
+    for i in range(a, b, -4):
+        result.append(int(i))
+        if len(result) > 10:
+            break
+    return result
+
+def range_up_u8(a: u8, b: u8) -> list[int]:
+    result = []
+    for i in range(a, b, 5):
+        result.append(int(i))
+        if len(result) > 10:
+            break
+    return result
+
+def range_down_u8(a: u8, b: u8) -> list[int]:
+    result = []
+    for i in range(a, b, -5):
+        result.append(int(i))
+        if len(result) > 10:
+            break
+    return result
+
+def range_down_u64_by_one(a: u64, b: u64) -> list[int]:
+    result = []
+    for i in range(a, b, -1):
+        result.append(int(i))
+    return result
+
+def range_up_i16_constant_end(a: i16) -> list[int]:
+    result = []
+    for i in range(a, i16(32766), 3):
+        result.append(int(i))
+        if len(result) > 10:
+            break
+    return result
+
+def range_up_i16_constant_end_no_check(a: i16) -> list[int]:
+    result = []
+    for i in range(a, i16(32765), 3):
+        result.append(int(i))
+        if len(result) > 10:
+            break
+    return result
+
+def test_range_step_near_native_int_limits() -> None:
+    for d1 in range(8):
+        for d2 in range(4):
+            a, b = 2**63 - 1 - d1, 2**63 - 1 - d2
+            assert range_up_i64(a, b) == list(range(a, b, 3)), (a, b)
+            a, b = -2**63 + d1, -2**63 + d2
+            assert range_down_i64(a, b) == list(range(a, b, -3)), (a, b)
+            a, b = 2**15 - 1 - d1, 2**15 - 1 - d2
+            assert range_up_i16(a, b) == list(range(a, b, 4)), (a, b)
+            a, b = -2**15 + d1, -2**15 + d2
+            assert range_down_i16(a, b) == list(range(a, b, -4)), (a, b)
+    assert range_up_i64(0, 9) == [0, 3, 6]
+    assert range_down_i64(9, 0) == [9, 6, 3]
+    for d1 in range(12):
+        for d2 in range(4):
+            a = 255 - d1
+            b = 255 - d2
+            assert range_up_u8(a, b) == list(range(a, b, 5)), (a, b)
+            assert range_down_u8(d1, d2) == list(range(d1, d2, -5)), (d1, d2)
+    assert range_down_u8(255, 240) == [255, 250, 245]
+    assert range_down_u64_by_one(3, 0) == [3, 2, 1]
+    assert range_down_u64_by_one(2**64 - 1, 2**64 - 3) == [2**64 - 1, 2**64 - 2]
+    for a in range(32755, 32767):
+        assert range_up_i16_constant_end(a) == list(range(a, 32766, 3)), a
+        assert range_up_i16_constant_end_no_check(a) == list(range(a, 32765, 3)), a
+
+def range_up_short_literal() -> list[int]:
+    result = []
+    for i in range(4611686018427387897, 4611686018427387903, 3):  # 2**62 - 7, 2**62 - 1
+        result.append(i)
+        if len(result) > 10:
+            break
+    return result
+
+def range_down_short_literal() -> list[int]:
+    result = []
+    for i in range(-4611686018427387898, -4611686018427387904, -3):  # -2**62 + 6, -2**62
+        result.append(i)
+        if len(result) > 10:
+            break
+    return result
+
+def range_huge_step_literal() -> list[int]:
+    result = []
+    for i in range(-5, 10, 4611686018427387904):  # step 2**62
+        result.append(i)
+        if len(result) > 10:
+            break
+    return result
+
+def range_huge_step(a: int, b: int) -> list[int]:
+    result = []
+    for i in range(a, b, 4611686018427387904):  # step 2**62
+        result.append(i)
+        if len(result) > 10:
+            break
+    return result
+
+def test_range_step_near_short_int_limits() -> None:
+    n = 2**62
+    assert range_up_short_literal() == list(range(n - 7, n - 1, 3))
+    assert range_down_short_literal() == list(range(-n + 6, -n, -3))
+    assert range_huge_step_literal() == [-5]
+    assert range_huge_step(0, 10) == [0]
+    assert range_huge_step(-n, n) == [-n, 0]
 
 def sum_range(x: range) -> int:
     sum = 0
