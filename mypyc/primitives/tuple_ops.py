@@ -12,6 +12,7 @@ from mypyc.ir.rtypes import (
     bool_rprimitive,
     c_int_rprimitive,
     c_pyssize_t_rprimitive,
+    c_size_t_rprimitive,
     int_rprimitive,
     list_rprimitive,
     object_rprimitive,
@@ -82,6 +83,27 @@ new_tuple_set_item_op = custom_op(
     steals=[False, False, True],
 )
 
+# Like new_tuple_set_item_op, but grow the tuple if the index is out of range.
+# Items before the index must have been set. Returns the resulting tuple.
+new_tuple_set_item_grow_op = custom_op(
+    arg_types=[tuple_rprimitive, c_pyssize_t_rprimitive, object_rprimitive],
+    return_type=tuple_rprimitive,
+    c_function_name="CPySequenceTuple_SetItemGrow",
+    error_kind=ERR_MAGIC,
+    steals=[True, False, True],
+)
+
+# Set the size of a tuple built using new_tuple_set_item_op or new_tuple_set_item_grow_op.
+# Items before the new size must have been set, and items after it must not have been set.
+# Returns the resulting tuple.
+new_tuple_set_size_op = custom_op(
+    arg_types=[tuple_rprimitive, c_pyssize_t_rprimitive],
+    return_type=tuple_rprimitive,
+    c_function_name="CPySequenceTuple_SetSize",
+    error_kind=ERR_MAGIC,
+    steals=[True, False],
+)
+
 # Construct tuple from a list.
 list_tuple_op = function_op(
     name="builtins.tuple",
@@ -108,6 +130,24 @@ isinstance_tuple = function_op(
     return_type=bit_rprimitive,
     c_function_name="PyTuple_Check",
     error_kind=ERR_NEVER,
+)
+
+# tuple == tuple (return -1/0/1)
+tuple_equal_op = custom_op(
+    arg_types=[tuple_rprimitive, tuple_rprimitive],
+    return_type=c_int_rprimitive,
+    c_function_name="CPyTuple_Compare",
+    error_kind=ERR_NEG_INT,
+    extra_int_constants=[(2, c_int_rprimitive)],  # Py_EQ
+)
+
+# tuple != tuple (return -1/0/1)
+tuple_not_equal_op = custom_op(
+    arg_types=[tuple_rprimitive, tuple_rprimitive],
+    return_type=c_int_rprimitive,
+    c_function_name="CPyTuple_Compare",
+    error_kind=ERR_NEG_INT,
+    extra_int_constants=[(3, c_int_rprimitive)],  # Py_NE
 )
 
 # tuple + tuple
@@ -165,4 +205,43 @@ tuple_slice_op = custom_op(
     return_type=object_rprimitive,
     c_function_name="CPySequenceTuple_GetSlice",
     error_kind=ERR_MAGIC,
+)
+
+# The steps of hash() for a fixed-length tuple (RTuple), which combine the C hashes
+# of its items without building a tuple object (see CPyTupleHash_Start in CPy.h)
+tuple_hash_start_op = custom_op(
+    arg_types=[],
+    return_type=c_size_t_rprimitive,
+    c_function_name="CPyTupleHash_Start",
+    error_kind=ERR_NEVER,
+)
+
+tuple_hash_add_op = custom_op(
+    arg_types=[c_size_t_rprimitive, c_pyssize_t_rprimitive],
+    return_type=c_size_t_rprimitive,
+    c_function_name="CPyTupleHash_Add",
+    error_kind=ERR_NEVER,
+)
+
+tuple_hash_finish_op = custom_op(
+    arg_types=[c_size_t_rprimitive, c_pyssize_t_rprimitive],
+    return_type=c_pyssize_t_rprimitive,
+    c_function_name="CPyTupleHash_Finish",
+    error_kind=ERR_NEVER,
+)
+
+# The C hash of an int item
+tuple_hash_int_op = custom_op(
+    arg_types=[int_rprimitive],
+    return_type=c_pyssize_t_rprimitive,
+    c_function_name="CPyTupleHash_Int",
+    error_kind=ERR_NEVER,
+)
+
+# The C hash of any other item, which is -1 on error (the caller checks for it)
+tuple_hash_object_op = custom_op(
+    arg_types=[object_rprimitive],
+    return_type=c_pyssize_t_rprimitive,
+    c_function_name="PyObject_Hash",
+    error_kind=ERR_NEVER,
 )

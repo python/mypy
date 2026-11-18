@@ -2106,6 +2106,24 @@ def f() -> None:
     x = 1
 x()  # E: "None" not callable
 
+[case testPartialNoneTypeInTuple]
+x, y = None, None
+
+def f() -> None:
+    global x, y
+    if bool():
+        x = y = 1
+    reveal_type(x)  # N: Revealed type is "builtins.int | None"
+    reveal_type(y)  # N: Revealed type is "builtins.int | None"
+
+class C:
+    x, y = None, None
+    def f(self) -> None:
+        if bool():
+            self.x = self.y = 1
+        reveal_type(self.x)  # N: Revealed type is "builtins.int | None"
+        reveal_type(self.y)  # N: Revealed type is "builtins.int | None"
+
 [case testAttributePartiallyInitializedToNone]
 class A:
     def f(self) -> None:

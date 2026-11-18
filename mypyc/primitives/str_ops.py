@@ -185,6 +185,26 @@ for i in range(len(str_find_types) - 1):
         error_kind=ERR_MAGIC,
     )
 
+# str.index(...) and str.rindex(...)
+str_index_functions = ["CPyStr_Index", "CPyStr_Index", "CPyStr_IndexWithEnd"]
+for i in range(len(str_find_types) - 1):
+    method_op(
+        name="index",
+        arg_types=str_find_types[0 : i + 2],
+        return_type=int_rprimitive,
+        c_function_name=str_index_functions[i],
+        extra_int_constants=str_find_constants[i] + [(1, c_int_rprimitive)],
+        error_kind=ERR_MAGIC,
+    )
+    method_op(
+        name="rindex",
+        arg_types=str_find_types[0 : i + 2],
+        return_type=int_rprimitive,
+        c_function_name=str_index_functions[i],
+        extra_int_constants=str_rfind_constants[i] + [(-1, c_int_rprimitive)],
+        error_kind=ERR_MAGIC,
+    )
+
 # str.join(obj)
 method_op(
     name="join",
@@ -439,6 +459,87 @@ method_op(
     error_kind=ERR_NEVER,
 )
 
+# str.isalpha()
+method_op(
+    name="isalpha",
+    arg_types=[str_rprimitive],
+    return_type=bool_rprimitive,
+    c_function_name="CPyStr_IsAlpha",
+    error_kind=ERR_NEVER,
+)
+
+# str.isascii()
+method_op(
+    name="isascii",
+    arg_types=[str_rprimitive],
+    return_type=bool_rprimitive,
+    c_function_name="CPyStr_IsAscii",
+    error_kind=ERR_NEVER,
+)
+
+# str.isdecimal()
+method_op(
+    name="isdecimal",
+    arg_types=[str_rprimitive],
+    return_type=bool_rprimitive,
+    c_function_name="CPyStr_IsDecimal",
+    error_kind=ERR_NEVER,
+)
+
+# str.isnumeric()
+method_op(
+    name="isnumeric",
+    arg_types=[str_rprimitive],
+    return_type=bool_rprimitive,
+    c_function_name="CPyStr_IsNumeric",
+    error_kind=ERR_NEVER,
+)
+
+# str.isprintable()
+method_op(
+    name="isprintable",
+    arg_types=[str_rprimitive],
+    return_type=bool_rprimitive,
+    c_function_name="CPyStr_IsPrintable",
+    error_kind=ERR_NEVER,
+)
+
+# str.islower()
+method_op(
+    name="islower",
+    arg_types=[str_rprimitive],
+    return_type=bool_rprimitive,
+    c_function_name="CPyStr_IsLower",
+    error_kind=ERR_NEVER,
+)
+
+# str.istitle()
+method_op(
+    name="istitle",
+    arg_types=[str_rprimitive],
+    return_type=bool_rprimitive,
+    c_function_name="CPyStr_IsTitle",
+    error_kind=ERR_NEVER,
+)
+
+# str.isupper()
+method_op(
+    name="isupper",
+    arg_types=[str_rprimitive],
+    return_type=bool_rprimitive,
+    c_function_name="CPyStr_IsUpper",
+    error_kind=ERR_NEVER,
+)
+
+# str.isidentifier()
+method_op(
+    name="isidentifier",
+    arg_types=[str_rprimitive],
+    return_type=bool_rprimitive,
+    c_function_name="CPyStr_IsIdentifier",
+    error_kind=ERR_NEVER,
+)
+
 
 # obj.decode()
 method_op(
@@ -551,6 +652,15 @@ function_op(
     arg_types=[str_rprimitive],
     return_type=int_rprimitive,
     c_function_name="CPyStr_Ord",
+    error_kind=ERR_MAGIC,
+)
+
+# chr(int)
+function_op(
+    name="builtins.chr",
+    arg_types=[int_rprimitive],
+    return_type=str_rprimitive,
+    c_function_name="CPyStr_Chr",
     error_kind=ERR_MAGIC,
 )
 

@@ -146,6 +146,7 @@ from mypyc.irbuild.vec import (
     vec_item_type,
     vec_slice,
 )
+from mypyc.primitives.bytearray_ops import bytearray_slice_op
 from mypyc.primitives.bytes_ops import bytes_slice_op
 from mypyc.primitives.dict_ops import dict_get_item_op, dict_new_op, exact_dict_set_item_op
 from mypyc.primitives.float_ops import (
@@ -1084,6 +1085,8 @@ def try_gen_slice_op(builder: IRBuilder, base: Value, index: SliceExpr) -> Value
             end = builder.load_int(MAX_SHORT_INT)
         if isinstance(base.type, RVec):
             return vec_slice(builder.builder, base, begin, end, index.line)
+        if is_bytearray_rprimitive(base.type):
+            return builder.primitive_op(bytearray_slice_op, [base, begin, end], index.line)
         candidates = [list_slice_op, tuple_slice_op, str_slice_op, bytes_slice_op]
         return builder.builder.matching_call_c(candidates, [base, begin, end], index.line)
 

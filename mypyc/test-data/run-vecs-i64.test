@@ -249,6 +249,28 @@ def test_construct_from_list_comprehension() -> None:
         for j in range(i):
             assert v[j] == j * j + 5
 
+def grow_list(a: list[i64], x: i64) -> i64:
+    if len(a) < 6:
+        a.append(x + 10)
+    return x
+
+def shrink_list(a: list[i64], x: i64) -> i64:
+    a.pop()
+    return x
+
+def test_construct_from_modified_list_comprehension() -> None:
+    a: list[i64] = [1, 2]
+    assert vec[i64]([grow_list(a, x) for x in a]) == vec[i64]([1, 2, 11, 12, 21, 22])
+    a = [1, 2, 3, 4]
+    assert vec[i64]([shrink_list(a, x) for x in a]) == vec[i64]([1, 2])
+    a = [1, 2, 3, 4]
+    v = vec[i64]([shrink_list(a, x) for x in a], capacity=10)
+    assert v == vec[i64]([1, 2])
+    v = append(v, 5)
+    assert v == vec[i64]([1, 2, 5])
+    a = [1, 2]
+    assert vec[i64]([x + 1 for x in a]) == vec[i64]([2, 3])
+
 def test_construct_from_range() -> None:
     v = vec[i64](range(0))
     assert v == vec[i64]()

@@ -41,5 +41,6 @@ PyObject *CPyBytes_Translate(PyObject *bytes, PyObject *table) {
     }
 
     // Fallback to Python method call for non-exact types or non-standard tables
-    return PyObject_CallMethodOneArg(bytes, mypyc_interned_str.translate, table);
+    return CPyBytes_CheckResult(
+        PyObject_CallMethodOneArg(bytes, mypyc_interned_str.translate, table));
 }

@@ -230,6 +230,15 @@ new_list_set_item_op = custom_op(
     steals=[False, False, True],
 )
 
+# Reduce the size of a list built using new_list_set_item_op. Items at or after
+# the new size must not have been set.
+new_list_set_size_op = custom_op(
+    arg_types=[list_rprimitive, c_pyssize_t_rprimitive],
+    return_type=void_rtype,
+    c_function_name="CPyList_SetSizeUnsafe",
+    error_kind=ERR_NEVER,
+)
+
 # list.append(obj)
 list_append_op = method_op(
     name="append",
@@ -322,6 +331,24 @@ method_op(
     return_type=c_int_rprimitive,
     c_function_name="PyList_Reverse",
     error_kind=ERR_NEG_INT,
+)
+
+# list == list (return -1/0/1)
+list_equal_op = custom_op(
+    arg_types=[list_rprimitive, list_rprimitive],
+    return_type=c_int_rprimitive,
+    c_function_name="CPyList_Compare",
+    error_kind=ERR_NEG_INT,
+    extra_int_constants=[(2, c_int_rprimitive)],  # Py_EQ
+)
+
+# list != list (return -1/0/1)
+list_not_equal_op = custom_op(
+    arg_types=[list_rprimitive, list_rprimitive],
+    return_type=c_int_rprimitive,
+    c_function_name="CPyList_Compare",
+    error_kind=ERR_NEG_INT,
+    extra_int_constants=[(3, c_int_rprimitive)],  # Py_NE
 )
 
 # list.remove(obj)

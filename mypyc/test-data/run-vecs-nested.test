@@ -142,6 +142,25 @@ def test_equality_different_types() -> None:
     assert vec[vec[str]]() != vec[vec[bytes]]()
     assert vec[vec[str]]() != vec[vec[i64]]()
 
+def grow_list(a: list[str], x: str) -> vec[str]:
+    if len(a) < 6:
+        a.append(x + "!")
+    return vec[str]([x])
+
+def shrink_list(a: list[str], x: str) -> vec[str]:
+    a.pop()
+    return vec[str]([x])
+
+def test_construct_from_modified_list_comprehension() -> None:
+    a = ["a", "b"]
+    v = vec[vec[str]]([grow_list(a, x) for x in a])
+    assert v == vec[vec[str]](vec[str]([x]) for x in ["a", "b", "a!", "b!", "a!!", "b!!"])
+    a = ["a", "b", "c", "d"]
+    v = vec[vec[str]]([shrink_list(a, x) for x in a])
+    assert v == vec[vec[str]]([vec[str](["a"]), vec[str](["b"])])
+    v = append(v, vec[str](["x"]))
+    assert v == vec[vec[str]]([vec[str](["a"]), vec[str](["b"]), vec[str](["x"])])
+
 def test_slicing() -> None:
     v = vec[vec[str]](vec[str]([str(i)]) for i in range(5))
     assert v[1:4] == vec[vec[str]]([v[1], v[2], v[3]])

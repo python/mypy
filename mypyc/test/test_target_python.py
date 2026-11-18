@@ -40,6 +40,8 @@ class TestTargetPython(unittest.TestCase):
         for host, target, expected in [
             (".cpython-313-x86_64-linux-gnu.so", "3.14t", ".cpython-314t-x86_64-linux-gnu.so"),
             (".cpython-314t-darwin.so", "3.13", ".cpython-313-darwin.so"),
+            (".cpython-312d-x86_64-linux-gnu.so", "3.14t", ".cpython-314td-x86_64-linux-gnu.so"),
+            (".cpython-314td-darwin.so", "3.12", ".cpython-312d-darwin.so"),
             (".cp313-win_amd64.pyd", "3.14t", ".cp314t-win_amd64.pyd"),
             ("_d.cp313t-win_amd64.pyd", "3.12", "_d.cp312-win_amd64.pyd"),
         ]:

@@ -242,6 +242,18 @@ def vec_len_native(builder: LowLevelIRBuilder, val: Value) -> Value:
     return builder.get_element(val, "len")
 
 
+def vec_set_len_unsafe(
+    builder: LowLevelIRBuilder, vecobj: Value, length: Value, line: int
+) -> Value:
+    """Return <vec> with a reduced length (steal <vec>).
+
+    Items at or after the new length must not have been initialized, so that
+    they don't need to be freed (vec_create initializes them to NULL if needed).
+    """
+    length = as_platform_int(builder, length, line)
+    return builder.add(SetElement(vecobj, "len", length, line))
+
+
 def vec_items(builder: LowLevelIRBuilder, vecobj: Value) -> Value:
     """Return pointer to first item in vec.
 

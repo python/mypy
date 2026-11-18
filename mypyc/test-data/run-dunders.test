@@ -1477,6 +1477,52 @@ def test_explicit_hash() -> None:
     assert hash(EqHash()) == 5
     assert hash(EqHashSub()) == 5
 
+[case testDundersHashResult]
+# hash() converts the value returned by __hash__ like in Python
+from typing import Any
+
+from mypy_extensions import i64
+from testutil import assertRaises
+
+class Hash:
+    def __init__(self, h: int) -> None:
+        self.h = h
+
+    def __hash__(self) -> int:
+        return self.h
+
+class HashAny:
+    def __init__(self, h: Any) -> None:
+        self.h = h
+
+    def __hash__(self) -> Any:
+        return self.h
+
+class HashI64:
+    def __hash__(self) -> i64:
+        return -1
+
+def test_hash_result() -> None:
+    # These fit in Py_hash_t on 32-bit and 64-bit platforms
+    for h in [0, 7, -2, 2**30, -(2**31)]:
+        assert hash(Hash(h)) == h
+        assert hash(HashAny(h)) == h
+    # -1 is reserved for errors
+    assert hash(Hash(-1)) == -2
+    assert hash(HashAny(-1)) == -2
+    assert hash(HashI64()) == -2
+    # These don't fit in Py_hash_t on any platform, so they are hashed again
+    for h in [2**63, -(2**63) - 1, 2**64 + 5, -(2**100)]:
+        assert hash(Hash(h)) == hash(h)
+        assert hash(HashAny(h)) == hash(h)
+    # A long int that fits in Py_hash_t on 64-bit platforms, but not on 32-bit ones
+    assert hash(Hash(2**62)) in (2**62, hash(2**62))
+    assert hash(HashAny(2**62)) in (2**62, hash(2**62))
+    assert hash(HashAny(True)) == 1
+    for x in ["x", 1.0, None]:
+        with assertRaises(TypeError, "__hash__ method should return an integer"):
+            hash(HashAny(x))
+
 [case testDundersImplicitNeWithNarrowRhs]
 class Accepted:
     pass

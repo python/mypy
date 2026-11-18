@@ -106,6 +106,56 @@ L3:
 L4:
     return 1
 
+[case testForInRangeStepMayOverflowShortInt_64bit]
+def f() -> None:
+    # 2**62 - 3 + 3 doesn't fit in a short int, so this uses a tagged int index
+    for i in range(4611686018427387901, 4611686018427387903, 3):
+        pass
+def g(n: list[int]) -> None:
+    # Still a short int index, since a length can't be close to the limit
+    for i in range(0, len(n), 3):
+        pass
+[out]
+def f():
+    r0 :: int
+    r1 :: bit
+    i, r2 :: int
+L0:
+    r0 = 9223372036854775802
+L1:
+    r1 = int_lt r0, 9223372036854775806
+    if r1 goto L2 else goto L4 :: bool
+L2:
+    i = r0
+L3:
+    r2 = CPyTagged_Add(r0, 6)
+    r0 = r2
+    goto L1
+L4:
+    return 1
+def g(n):
+    n :: list
+    r0 :: native_int
+    r1, r2 :: short_int
+    r3 :: bit
+    i :: int
+    r4 :: short_int
+L0:
+    r0 = var_object_size n
+    r1 = r0 << 1
+    r2 = 0
+L1:
+    r3 = int_lt r2, r1
+    if r3 goto L2 else goto L4 :: bool
+L2:
+    i = r2
+L3:
+    r4 = r2 + 6
+    r2 = r4
+    goto L1
+L4:
+    return 1
+
 [case testForInRangeNativeIndexArg]
 class C:
     def __index__(self) -> int:

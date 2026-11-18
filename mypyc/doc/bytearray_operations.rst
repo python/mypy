@@ -11,3 +11,21 @@ Construction
 
 * ``bytearray()``
 * ``bytearray(x)``
+
+Operators
+---------
+
+* Indexing (``b[n]``)
+* Slicing (``b[n:m]``, ``b[n:]``, ``b[:m]``)
+
+Statements
+----------
+
+Set item by integer index:
+
+* ``b[n] = x``
+
+Functions
+---------
+
+* ``len(b: bytearray)``

@@ -1440,6 +1440,270 @@ def test_new_without_init_is_usable() -> None:
     sw.write("hello")
     assert sw.getvalue() == "hello"
 
+[case testLibrtStringsI8AndUnsigned_librt]
+from typing import Any
+import struct
+
+from librt.strings import (
+    BytesWriter,
+    write_i8,
+    read_i8,
+    write_u16_le, write_u16_be, read_u16_le, read_u16_be, write_u32_le, write_u32_be,
+    read_u32_le, read_u32_be, write_u64_le, write_u64_be, read_u64_le, read_u64_be,
+)
+from mypy_extensions import i8, u8, u16, u32, u64, i64
+
+from testutil import assertRaises
+
+# 239 is the mypyc overlapping error value for unsigned native ints
+U16_TEST_VALUES: list[int] = [0, 1, 127, 128, 239, 255, 256, 0x1234, 0x7FFF, 0x8000, 0xFFFE, 0xFFFF]
+U32_TEST_VALUES: list[int] = U16_TEST_VALUES + [
+    0x10000, 0x123456, 0x12345678, 0x7FFFFFFF, 0x80000000, 0xFFFFFFFE, 0xFFFFFFFF,
+]
+U64_TEST_VALUES: list[int] = U32_TEST_VALUES + [
+    0x100000000, 0x123456789ABCDEF0, 0x7FFFFFFFFFFFFFFF, 0x8000000000000000,
+    0xFFFFFFFFFFFFFFFE, 0xFFFFFFFFFFFFFFFF,
+]
+
+def test_write_read_i8() -> None:
+    data = bytes(range(256))
+    for i in range(256):
+        expected = i - 256 if i >= 128 else i
+        assert read_i8(data, i) == expected
+    # -113 is the mypyc overlapping error value for signed native ints
+    assert read_i8(b"\x8f", 0) == -113
+    n: i64 = 3
+    x: i8 = read_i8(b"\x00\x01\xff", n - 1)
+    assert x == -1
+
+    # Round trip through BytesWriter
+    w = BytesWriter()
+    for v in (-128, -113, -1, 0, 1, 127):
+        write_i8(w, i8(v))
+    result = w.getvalue()
+    assert result == b"\x80\x8f\xff\x00\x01\x7f"
+    assert [read_i8(result, j) for j in range(6)] == [-128, -113, -1, 0, 1, 127]
+
+    with assertRaises(IndexError, "index 3 out of range for bytes of length 3"):
+        read_i8(b"abc", n)
+    with assertRaises(IndexError):
+        read_i8(b"", 0)
+    with assertRaises(ValueError, "index must be non-negative"):
+        read_i8(b"abc", -1)
+
+    # Buffer growth, mixed with other writes
+    w = BytesWriter()
+    for j in range(600):
+        write_i8(w, i8(j % 256 - 128))
+        w.append(u8(j % 256))
+    result = w.getvalue()
+    assert len(result) == 1200
+    for j in range(600):
+        assert read_i8(result, 2 * j) == j % 256 - 128
+        assert result[2 * j + 1] == j % 256
+
+def test_write_i8_via_any() -> None:
+    f: Any = write_i8
+    w: Any = BytesWriter()
+    for v in (-128, -113, -1, 0, 127):
+        f(w, v)
+    assert w.getvalue() == b"\x80\x8f\xff\x00\x7f"
+    with assertRaises(ValueError, "int too large to convert to i8"):
+        f(w, 128 + int())
+    with assertRaises(ValueError, "int too large to convert to i8"):
+        f(w, -129 + int())
+    with assertRaises(TypeError):
+        f(w, "x")
+    with assertRaises(TypeError):
+        f(bytearray(), 1)
+    with assertRaises(TypeError):
+        f(w)
+    assert w.getvalue() == b"\x80\x8f\xff\x00\x7f"
+
+def test_read_i8_via_any() -> None:
+    f: Any = read_i8
+    assert f(b"\x7f\x80\xff", 0) == 127
+    assert f(b"\x7f\x80\xff", 1) == -128
+    assert f(b"\x7f\x80\xff", 2) == -1
+    with assertRaises(IndexError, "index 3 out of range for bytes of length 3"):
+        f(b"abc", 3)
+    with assertRaises(ValueError, "index must be non-negative"):
+        f(b"abc", -1)
+    with assertRaises(TypeError):
+        f(bytearray(b"abc"), 0)
+    with assertRaises(TypeError):
+        f(b"abc")
+
+def test_u16() -> None:
+    w = BytesWriter()
+    for v in U16_TEST_VALUES:
+        write_u16_le(w, u16(v))
+    data = w.getvalue()
+    assert data == b"".join(struct.pack("<H", v) for v in U16_TEST_VALUES)
+    for i, v in enumerate(U16_TEST_VALUES):
+        assert read_u16_le(data, i * 2) == v
+
+    w = BytesWriter()
+    for v in U16_TEST_VALUES:
+        write_u16_be(w, u16(v))
+    data = w.getvalue()
+    assert data == b"".join(struct.pack(">H", v) for v in U16_TEST_VALUES)
+    for i, v in enumerate(U16_TEST_VALUES):
+        assert read_u16_be(data, i * 2) == v
+
+    x: u16 = 0xFFFF
+    w = BytesWriter()
+    write_u16_le(w, x)
+    write_u16_be(w, x - 1)
+    data = w.getvalue()
+    assert data == b"\xff\xff\xff\xfe"
+    assert read_u16_le(data, 0) == x
+    assert read_u16_be(data, 2) == x - 1
+    # Unaligned read
+    assert read_u16_le(b"\x00\x34\x12", 1) == 0x1234
+    assert read_u16_be(b"\x00\x12\x34", 1) == 0x1234
+
+def test_u32() -> None:
+    w = BytesWriter()
+    for v in U32_TEST_VALUES:
+        write_u32_le(w, u32(v))
+    data = w.getvalue()
+    assert data == b"".join(struct.pack("<I", v) for v in U32_TEST_VALUES)
+    for i, v in enumerate(U32_TEST_VALUES):
+        assert read_u32_le(data, i * 4) == v
+
+    w = BytesWriter()
+    for v in U32_TEST_VALUES:
+        write_u32_be(w, u32(v))
+    data = w.getvalue()
+    assert data == b"".join(struct.pack(">I", v) for v in U32_TEST_VALUES)
+    for i, v in enumerate(U32_TEST_VALUES):
+        assert read_u32_be(data, i * 4) == v
+
+    x: u32 = 0xFFFFFFFF
+    w = BytesWriter()
+    write_u32_le(w, x)
+    write_u32_be(w, x - 1)
+    data = w.getvalue()
+    assert data == b"\xff\xff\xff\xff\xff\xff\xff\xfe"
+    assert read_u32_le(data, 0) == x
+    assert read_u32_be(data, 4) == x - 1
+    assert read_u32_le(b"\x00\x78\x56\x34\x12", 1) == 0x12345678
+    assert read_u32_be(b"\x00\x12\x34\x56\x78", 1) == 0x12345678
+
+def test_u64() -> None:
+    w = BytesWriter()
+    for v in U64_TEST_VALUES:
+        write_u64_le(w, u64(v))
+    data = w.getvalue()
+    assert data == b"".join(struct.pack("<Q", v) for v in U64_TEST_VALUES)
+    for i, v in enumerate(U64_TEST_VALUES):
+        assert read_u64_le(data, i * 8) == v
+
+    w = BytesWriter()
+    for v in U64_TEST_VALUES:
+        write_u64_be(w, u64(v))
+    data = w.getvalue()
+    assert data == b"".join(struct.pack(">Q", v) for v in U64_TEST_VALUES)
+    for i, v in enumerate(U64_TEST_VALUES):
+        assert read_u64_be(data, i * 8) == v
+
+    x: u64 = 0xFFFFFFFFFFFFFFFF
+    w = BytesWriter()
+    write_u64_le(w, x)
+    write_u64_be(w, x - 1)
+    data = w.getvalue()
+    assert data == b"\xff" * 15 + b"\xfe"
+    assert read_u64_le(data, 0) == x
+    assert read_u64_be(data, 8) == x - 1
+    assert read_u64_le(b"\x00" + struct.pack("<Q", 0x123456789ABCDEF0), 1) == 0x123456789ABCDEF0
+    assert read_u64_be(b"\x00" + struct.pack(">Q", 0x123456789ABCDEF0), 1) == 0x123456789ABCDEF0
+
+def test_buffer_growth() -> None:
+    w = BytesWriter()
+    w.append(0xAA)
+    for i in range(200):
+        write_u16_le(w, u16(i))
+        write_u32_be(w, u32(i))
+        write_u64_le(w, u64(i))
+    w.append(0xBB)
+    data = w.getvalue()
+    assert len(data) == 2 + 200 * 14
+    assert data[0] == 0xAA
+    assert data[-1] == 0xBB
+    for i in range(200):
+        base = 1 + i * 14
+        assert read_u16_le(data, base) == i
+        assert read_u32_be(data, base + 2) == i
+        assert read_u64_le(data, base + 6) == i
+
+def test_read_out_of_range() -> None:
+    data = b"\x01\x02\x03\x04\x05\x06\x07"
+    n: i64 = len(data)
+    with assertRaises(IndexError):
+        read_u16_le(data, n - 1)
+    with assertRaises(ValueError, "index must be non-negative"):
+        read_u16_be(data, -1)
+    with assertRaises(IndexError):
+        read_u32_le(data, n - 3)
+    with assertRaises(ValueError, "index must be non-negative"):
+        read_u32_be(data, -1)
+    with assertRaises(IndexError):
+        read_u64_le(data, 0)
+    with assertRaises(IndexError):
+        read_u64_be(b"", 0)
+    assert read_u16_le(data, n - 2) == 0x0706
+    assert read_u32_be(data, n - 4) == 0x04050607
+
+WRITE_FUNCS: list[tuple[Any, str, int]] = [
+    (write_u16_le, "<H", 16), (write_u16_be, ">H", 16),
+    (write_u32_le, "<I", 32), (write_u32_be, ">I", 32),
+    (write_u64_le, "<Q", 64), (write_u64_be, ">Q", 64),
+]
+READ_FUNCS: list[tuple[Any, str, int]] = [
+    (read_u16_le, "<H", 16), (read_u16_be, ">H", 16),
+    (read_u32_le, "<I", 32), (read_u32_be, ">I", 32),
+    (read_u64_le, "<Q", 64), (read_u64_be, ">Q", 64),
+]
+
+def test_write_via_any() -> None:
+    for write_func, fmt, bits in WRITE_FUNCS:
+        values = [0, 1, 239, (1 << bits) - 1, 1 << (bits - 1), 0x1234]
+        w: Any = BytesWriter()
+        for v in values:
+            write_func(w, v)
+        assert w.getvalue() == b"".join(struct.pack(fmt, v) for v in values)
+
+        msg = f"int too large or small to convert to u{bits}"
+        with assertRaises(ValueError, msg):
+            write_func(w, (1 << bits) + int())
+        with assertRaises(ValueError, msg):
+            write_func(w, -1 + int())
+        with assertRaises(TypeError):
+            write_func(w, "x")
+        with assertRaises(TypeError):
+            write_func(bytearray(), 1)
+        with assertRaises(TypeError):
+            write_func(w)
+
+def test_read_via_any() -> None:
+    for read_func, fmt, bits in READ_FUNCS:
+        values = [0, 239, (1 << bits) - 1, 1 << (bits - 1)]
+        data: Any = b"".join(struct.pack(fmt, v) for v in values)
+        size = bits // 8
+        for i, v in enumerate(values):
+            assert read_func(data, i * size) == v
+        with assertRaises(IndexError, f"index {len(data)} out of range for bytes of length {len(data)}"):
+            read_func(data, len(data) + int())
+        with assertRaises(IndexError):
+            read_func(data, len(data) - size + 1 + int())
+        with assertRaises(ValueError, "index must be non-negative"):
+            read_func(data, -1 + int())
+        with assertRaises(TypeError):
+            read_func(bytearray(data), 0)
+        with assertRaises(TypeError):
+            read_func(data)
+
 [case testLibrtStringsCodepointClassifiers_librt]
 from typing import Any
 from mypy_extensions import i32

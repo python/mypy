@@ -50,6 +50,7 @@ from mypyc.ir.rtypes import (
     is_fixed_width_rtype,
     is_float_rprimitive,
     is_frozenset_rprimitive,
+    is_int8_rprimitive,
     is_int16_rprimitive,
     is_int32_rprimitive,
     is_int64_rprimitive,
@@ -94,6 +95,10 @@ VEC_MACRO_PREFIX: Final = {
     "VecI64": "VEC_I64",
     "VecI32": "VEC_I32",
     "VecI16": "VEC_I16",
+    "VecI8": "VEC_I8",
+    "VecU64": "VEC_U64",
+    "VecU32": "VEC_U32",
+    "VecU16": "VEC_U16",
     "VecU8": "VEC_U8",
     "VecFloat": "VEC_FLOAT",
     "VecBool": "VEC_BOOL",
@@ -1169,6 +1174,13 @@ class Emitter:
             self.emit_line(f"{dest} = CPyLong_AsInt16({src});")
             if not isinstance(error, AssignHandler):
                 self.emit_unbox_failure_with_overlapping_error_value(dest, typ, failure)
+        elif is_int8_rprimitive(typ):
+            assert not optional
+            if declare_dest:
+                self.emit_line(f"int8_t {dest};")
+            self.emit_line(f"{dest} = CPyLong_AsInt8({src});")
+            if not isinstance(error, AssignHandler):
+                self.emit_unbox_failure_with_overlapping_error_value(dest, typ, failure)
         elif is_uint32_rprimitive(typ):
             assert not optional
             if declare_dest:
@@ -1361,6 +1373,7 @@ class Emitter:
         elif (
             is_int32_rprimitive(typ)
             or is_int16_rprimitive(typ)
+            or is_int8_rprimitive(typ)
             or is_uint16_rprimitive(typ)
             or is_uint8_rprimitive(typ)
         ):

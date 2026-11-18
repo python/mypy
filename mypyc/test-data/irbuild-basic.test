@@ -2058,14 +2058,17 @@ def f(l):
     r4 :: tuple[int, int, int]
     r5, x, r6, y, r7, z :: int
     r8, r9 :: native_int
-    r10 :: list
-    r11, r12 :: native_int
-    r13 :: bit
-    r14 :: object
-    r15 :: tuple[int, int, int]
-    r16, x_2, r17, y_2, r18, z_2, r19, r20 :: int
-    r21 :: object
-    r22 :: native_int
+    r10, r11 :: list
+    r12, r13 :: native_int
+    r14 :: bit
+    r15 :: object
+    r16 :: tuple[int, int, int]
+    r17, x_2, r18, y_2, r19, z_2, r20, r21 :: int
+    r22 :: bit
+    r23, r24 :: object
+    r25 :: i32
+    r26 :: bit
+    r27 :: native_int
 L0:
     r0 = 0
 L1:
@@ -2088,30 +2091,41 @@ L3:
 L4:
     r9 = var_object_size l
     r10 = PyList_New(r9)
-    r11 = 0
+    r11 = r10
+    r12 = 0
 L5:
-    r12 = var_object_size l
-    r13 = r11 < r12 :: signed
-    if r13 goto L6 else goto L8 :: bool
+    r13 = var_object_size l
+    r14 = r12 < r13 :: signed
+    if r14 goto L6 else goto L11 :: bool
 L6:
-    r14 = list_get_item_unsafe l, r11
-    r15 = unbox(tuple[int, int, int], r14)
-    r16 = r15[0]
-    x_2 = r16
-    r17 = r15[1]
-    y_2 = r17
-    r18 = r15[2]
-    z_2 = r18
-    r19 = CPyTagged_Add(x_2, y_2)
-    r20 = CPyTagged_Add(r19, z_2)
-    r21 = box(int, r20)
-    CPyList_SetItemUnsafe(r10, r11, r21)
+    r15 = list_get_item_unsafe l, r12
+    r16 = unbox(tuple[int, int, int], r15)
+    r17 = r16[0]
+    x_2 = r17
+    r18 = r16[1]
+    y_2 = r18
+    r19 = r16[2]
+    z_2 = r19
+    r20 = CPyTagged_Add(x_2, y_2)
+    r21 = CPyTagged_Add(r20, z_2)
+    r22 = r12 < r9 :: signed
+    if r22 goto L7 else goto L8 :: bool
 L7:
-    r22 = r11 + 1
-    r11 = r22
-    goto L5
+    r23 = box(int, r21)
+    CPyList_SetItemUnsafe(r11, r12, r23)
+    goto L9
 L8:
-    return r10
+    r24 = box(int, r21)
+    r25 = PyList_Append(r11, r24)
+    r26 = r25 >= 0 :: signed
+L9:
+L10:
+    r27 = r12 + 1
+    r12 = r27
+    goto L5
+L11:
+    CPyList_SetSizeUnsafe(r11, r12)
+    return r11
 
 [case testProperty_withgil]
 class PropertyHolder:
