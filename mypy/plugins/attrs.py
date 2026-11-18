@@ -92,6 +92,7 @@ attr_frozen_makers: Final = {"attr.frozen", "attrs.frozen"}
 attr_define_makers: Final = {"attr.define", "attr.mutable", "attrs.define", "attrs.mutable"}
 attr_attrib_makers: Final = {"attr.ib", "attr.attrib", "attr.attr", "attr.field", "attrs.field"}
 attr_optional_converters: Final = {"attr.converters.optional", "attrs.converters.optional"}
+attr_converter_classes: Final = {"attr.Converter", "attrs.Converter"}
 
 SELF_TVAR_NAME: Final = "_AT"
 MAGIC_ATTR_NAME: Final = "__attrs_attrs__"
@@ -720,6 +721,19 @@ def _parse_converter(
     else:
         is_attr_converters_optional = False
 
+    if (
+        isinstance(converter_expr, CallExpr)
+        and isinstance(converter_expr.callee, RefExpr)
+        and converter_expr.callee.fullname in attr_converter_classes
+        and converter_expr.args
+        and converter_expr.args[0]
+    ):
+        # Special handling for attrs.Converter(callable, takes_self=..., takes_field=...).
+        # The first positional argument is the actual conversion callable; the keyword
+        # arguments only affect what mypy gets passed at runtime, but the init type
+        # is still the first parameter of the wrapped callable.
+        converter_expr = converter_expr.args[0]
+
     converter_type: Type | None = None
     if isinstance(converter_expr, RefExpr) and converter_expr.node:
         if isinstance(converter_expr.node, FuncDef):
@@ -734,6 +748,11 @@ def _parse_converter(
             converter_type = converter_expr.node.type
         elif isinstance(converter_expr.node, TypeInfo):
             converter_type = type_object_type(converter_expr.node)
+        elif isinstance(converter_expr.node, Var) and converter_expr.node.type:
+            # The converter is a variable annotated with a callable type.
+            var_type = get_proper_type(converter_expr.node.type)
+            if isinstance(var_type, FunctionLike):
+                converter_type = var_type
     elif (
         isinstance(converter_expr, IndexExpr)
         and isinstance(converter_expr.analyzed, TypeApplication)
@@ -751,6 +770,10 @@ def _parse_converter(
             )
         else:
             converter_type = None
+    elif isinstance(converter_expr, CallExpr):
+        # The converter is the result of a call, e.g. converter=make_converter(arg).
+        # Use the return type of the callee as the converter type.
+        converter_type = _callable_return_type(converter_expr)
 
     if isinstance(converter_expr, LambdaExpr):
         # TODO: should we send a fail if converter_expr.min_args > 1?
@@ -792,6 +815,43 @@ def _parse_converter(
         converter_info.init_type = UnionType.make_union([converter_info.init_type, NoneType()])
 
     return converter_info
+
+
+def _callable_return_type(call: CallExpr) -> Type | None:
+    """Return the return type of call if it is statically known to be callable.
+
+    This is used to support converters created by higher-order functions, e.g.
+    converter=make_converter(arg). We don't perform full type inference at the
+    call site; we just look at the statically declared return type of the callee.
+    Generic returns are returned as-is and may contain unresolved type variables.
+    """
+    callee = call.callee
+    callee_type: Type | None = None
+    if isinstance(callee, RefExpr) and callee.node:
+        if isinstance(callee.node, (FuncDef, OverloadedFuncDef)):
+            callee_type = callee.node.type
+        elif isinstance(callee.node, Var):
+            callee_type = callee.node.type
+    elif isinstance(callee, CallExpr):
+        # Chained calls like factory()(arg).
+        callee_type = _callable_return_type(callee)
+    if callee_type is None:
+        return None
+    callee_type = get_proper_type(callee_type)
+    if isinstance(callee_type, CallableType):
+        ret = get_proper_type(callee_type.ret_type)
+        if isinstance(ret, FunctionLike):
+            return ret
+    elif isinstance(callee_type, Overloaded):
+        # Without type inference at the call site we can't pick the correct
+        # overload. As a heuristic, take the first overload whose return type is
+        # itself a callable (this matches helpers like attrs.converters.pipe,
+        # whose first overload is the most specific callable form).
+        for item in callee_type.items:
+            ret = get_proper_type(item.ret_type)
+            if isinstance(ret, FunctionLike):
+                return ret
+    return None
 
 
 def is_valid_overloaded_converter(defn: OverloadedFuncDef) -> bool:
