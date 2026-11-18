@@ -4589,6 +4589,21 @@ t = Test(Mock())
 reveal_type(t)  # N: Revealed type is "__main__.Test[Any]"
 [builtins fixtures/dict.pyi]
 
+[case testProtocolCallableWithAnyVarargsAndExplicitKeyword]
+from typing import Any, Protocol
+
+class Registerable(Protocol):
+    def __call__(self, *args: Any, formatter: int, **kwargs: Any) -> None: ...
+
+def cb(*, formatter: int, extra: int = 0) -> None: ...
+
+def missing_formatter(*, extra: int = 0) -> None: ...
+
+x: Registerable = cb
+y: Registerable = missing_formatter  # E: Incompatible types in assignment (expression has type "def missing_formatter(*, extra: int = ...) -> None", variable has type "Registerable") \
+                                     # N: "Registerable.__call__" has type "def __call__(self, *args: Any, formatter: int, **kwargs: Any) -> None"
+[builtins fixtures/dict.pyi]
+
 [case testProtocolClassObjectDescriptor]
 from typing import Any, Protocol, overload
 

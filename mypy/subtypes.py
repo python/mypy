@@ -1883,12 +1883,11 @@ def are_trivial_parameters(param: Parameters | NormalizedCallableType) -> bool:
     )
 
 
-def is_trivial_suffix(param: Parameters | NormalizedCallableType) -> bool:
+def has_trivial_varargs(param: Parameters | NormalizedCallableType) -> bool:
     param_star = param.var_arg()
     param_star2 = param.kw_arg()
     return (
-        param.arg_kinds[-2:] == [ARG_STAR, ARG_STAR2]
-        and param_star is not None
+        param_star is not None
         and isinstance(get_proper_type(param_star.typ), AnyType)
         and param_star2 is not None
         and isinstance(get_proper_type(param_star2.typ), AnyType)
@@ -1917,7 +1916,10 @@ def are_parameters_compatible(
     # Treat "def _(*a: Any, **kw: Any) -> X" similarly to "Callable[..., X]"
     if are_trivial_parameters(right) and not is_proper_subtype:
         return True
-    trivial_suffix = is_trivial_suffix(right) and not is_proper_subtype
+    # Any-typed *args and **kwargs behave like an ellipsis even when explicit
+    # keyword-only arguments appear between them. Those arguments are still
+    # checked below.
+    trivial_varargs = has_trivial_varargs(right) and not is_proper_subtype
 
     trivial_vararg_suffix = False
     if (
@@ -1961,7 +1963,7 @@ def are_parameters_compatible(
         if right_arg is None:
             return False
         if left_arg is None:
-            return not allow_partial_overlap and not trivial_suffix
+            return not allow_partial_overlap and not trivial_varargs
         return not is_compat(right_arg.typ, left_arg.typ)
 
     if (
@@ -1990,9 +1992,9 @@ def are_parameters_compatible(
         ):
             return False
 
-    if trivial_suffix:
-        # For trivial right suffix we *only* check that every non-star right argument
-        # has a valid match on the left.
+    if trivial_varargs:
+        # For trivial right varargs we *only* check that every non-star right
+        # argument has a valid match on the left.
         return True
 
     # Phase 1c: Check var args. Right has an infinite series of optional positional
