@@ -9,6 +9,20 @@ def main(a: object) -> None:
         reveal_type(a)  # N: Revealed type is "builtins.object"
 [builtins fixtures/tuple.pyi]
 
+[case testTypeIsNewType]
+from typing import NewType
+from typing_extensions import TypeIs
+
+Admin = NewType("Admin", str)
+def is_admin(value: str) -> TypeIs[Admin]: ...
+
+def f(value: str) -> None:
+    if is_admin(value):
+        reveal_type(value)  # N: Revealed type is "__main__.Admin"
+    else:
+        reveal_type(value)  # N: Revealed type is "builtins.str"
+[builtins fixtures/tuple.pyi]
+
 [case testTypeIsElif]
 from typing_extensions import TypeIs
 from typing import Union
