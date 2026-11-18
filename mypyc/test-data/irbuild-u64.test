@@ -319,6 +319,88 @@ L0:
     c = 1
     return 1
 
+[case testU64NegateLiteral]
+from mypy_extensions import u64
+
+def f() -> None:
+    a = -u64(0)
+    b = -u64(1)
+    c = -u64(5)
+[out]
+def f():
+    a, b, c :: u64
+L0:
+    a = 0
+    b = 18446744073709551615
+    c = 18446744073709551611
+    return 1
+
+[case testU64LargeConstantToInt_64bit]
+from mypy_extensions import u64
+
+def f() -> int:
+    return -u64(1)
+def g() -> int:
+    return -u64(5)
+[out]
+def f():
+    r0 :: int
+L0:
+    r0 = object 18446744073709551615
+    return r0
+def g():
+    r0 :: int
+L0:
+    r0 = object 18446744073709551611
+    return r0
+
+[case testU64FinalWraparound]
+from typing import Final
+from mypy_extensions import u64
+
+X: Final[u64] = 1
+Y: Final[u64] = -X
+
+def f() -> None:
+    a = -X
+    b = X - 2
+    c = ~X
+    d = (X - 2) // 2
+    e = Y
+def g() -> str:
+    return "%d" % (-X,)
+[typing fixtures/typing-full.pyi]
+[out]
+def f():
+    r0 :: int
+    a :: u64
+    r1 :: int
+    b :: u64
+    r2 :: int
+    c :: u64
+    r3 :: int
+    d :: u64
+    r4 :: int
+    e :: u64
+L0:
+    r0 = object 18446744073709551615
+    a = 18446744073709551615
+    r1 = object 18446744073709551615
+    b = 18446744073709551615
+    r2 = object 18446744073709551614
+    c = 18446744073709551614
+    r3 = object 9223372036854775807
+    d = 9223372036854775807
+    r4 = object 18446744073709551615
+    e = 18446744073709551615
+    return 1
+def g():
+    r0, r1 :: str
+L0:
+    r0 = '18446744073709551615'
+    r1 = CPyStr_Build(1, r0)
+    return r1
+
 [case testU64FromShortInt_64bit]
 from mypy_extensions import u64
 

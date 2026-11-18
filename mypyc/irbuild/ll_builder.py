@@ -127,6 +127,7 @@ from mypyc.ir.rtypes import (
     is_uint16_rprimitive,
     is_uint32_rprimitive,
     is_uint64_rprimitive,
+    native_int_bounds,
     none_rprimitive,
     object_pointer_rprimitive,
     object_rprimitive,
@@ -134,6 +135,7 @@ from mypyc.ir.rtypes import (
     pointer_rprimitive,
     short_int_rprimitive,
     str_rprimitive,
+    wrap_unsigned_native_int,
 )
 from mypyc.irbuild.util import concrete_arg_kind
 from mypyc.irbuild.vec import vec_contains, vec_get_item, vec_len_native
@@ -188,7 +190,14 @@ from mypyc.primitives.int_ops import (
     uint64_overflow,
     uint64_to_int_op,
 )
-from mypyc.primitives.list_ops import list_build_op, list_extend_op, list_items, new_list_op
+from mypyc.primitives.list_ops import (
+    list_build_op,
+    list_equal_op,
+    list_extend_op,
+    list_items,
+    list_not_equal_op,
+    new_list_op,
+)
 from mypyc.primitives.misc_ops import (
     bool_op,
     buf_init_item,
@@ -223,6 +232,8 @@ from mypyc.primitives.tuple_ops import (
     new_tuple_op,
     new_tuple_with_length_op,
     sequence_tuple_op,
+    tuple_equal_op,
+    tuple_not_equal_op,
 )
 from mypyc.rt_expandtype import expand_rtype
 from mypyc.rt_subtype import is_runtime_subtype
@@ -708,10 +719,8 @@ class LowLevelIRBuilder:
         """
         in_range, in_range2 = BasicBlock(), BasicBlock()
 
-        size = target_type.size
-        upper_bound = 1 << (size * 8 - 1)
-        if not target_type.is_signed:
-            upper_bound *= 2
+        lower_bound, max_value = native_int_bounds(target_type)
+        upper_bound = max_value + 1
 
         # Check if value < upper_bound
         check_upper = self.add(
@@ -722,10 +731,6 @@ class LowLevelIRBuilder:
         self.activate_block(in_range)
 
         # Check if value >= lower_bound
-        if target_type.is_signed:
-            lower_bound = -upper_bound
-        else:
-            lower_bound = 0
         check_lower = self.add(
             ComparisonOp(src, Integer(lower_bound, src.type), ComparisonOp.SGE, line)
         )
@@ -847,6 +852,13 @@ class LowLevelIRBuilder:
         return res
 
     def coerce_fixed_width_to_int(self, src: Value, line: int) -> Value:
+        if isinstance(src, Integer):
+            value = src.numeric_value()
+            if not (MIN_SHORT_INT <= value <= MAX_SHORT_INT):
+                # The constant doesn't fit in a short int, so load it as an int literal.
+                # The fast path below would be unreachable, and C compilers may reject
+                # it, since it would truncate the constant (e.g. u64 on 32-bit platforms).
+                return self.load_int(value, line)
         if (
             (is_int32_rprimitive(src.type) and PLATFORM_SIZE == 8)
             or is_int16_rprimitive(src.type)
@@ -2088,6 +2100,27 @@ class LowLevelIRBuilder:
         op_type = ComparisonOp.EQ if op == "==" else ComparisonOp.NEQ
         return self.add(ComparisonOp(compare_result, Integer(1, c_int_rprimitive), op_type, line))
 
+    def compare_sequences(
+        self,
+        equal_op: CFunctionDescription,
+        not_equal_op: CFunctionDescription,
+        lhs: Value,
+        rhs: Value,
+        op: str,
+        line: int,
+    ) -> Value:
+        """Compare two lists or two variable-length tuples for (in)equality.
+
+        The ops return 1 if the comparison is true, 0 if it's false and -1 on error.
+        Use a separate op for != instead of negating ==, since a subclass may
+        override __ne__ (or inherit it while overriding only __eq__).
+        """
+        compare_op = equal_op if op == "==" else not_equal_op
+        compare_result = self.call_c(compare_op, [lhs, rhs], line)
+        return self.add(
+            ComparisonOp(compare_result, Integer(1, c_int_rprimitive), ComparisonOp.EQ, line)
+        )
+
     def compare_tuples(self, lhs: Value, rhs: Value, op: str, line: int = -1) -> Value:
         """Compare two tuples item by item"""
         # type cast to pass mypy check
@@ -2248,8 +2281,8 @@ class LowLevelIRBuilder:
         """Perform unary '-'."""
         typ = value.type
         if isinstance(value, Integer):
-            # TODO: Overflow? Unsigned?
-            return Integer(-value.numeric_value(), typ, line)
+            # TODO: Signed overflow?
+            return Integer(wrap_unsigned_native_int(typ, -value.numeric_value()), typ, line)
         elif isinstance(value, Float):
             return Float(-value.value, line)
         elif is_fixed_width_rtype(typ):
@@ -3224,6 +3257,14 @@ class LowLevelIRBuilder:
             return self.compare_strings(lreg, rreg, expr_op, line)
         if is_bytes_rprimitive(ltype) and is_bytes_rprimitive(rtype):
             return self.compare_bytes(lreg, rreg, expr_op, line)
+        if is_list_rprimitive(ltype) and is_list_rprimitive(rtype):
+            return self.compare_sequences(
+                list_equal_op, list_not_equal_op, lreg, rreg, expr_op, line
+            )
+        if is_tuple_rprimitive(ltype) and is_tuple_rprimitive(rtype):
+            return self.compare_sequences(
+                tuple_equal_op, tuple_not_equal_op, lreg, rreg, expr_op, line
+            )
 
         lopt = optional_value_type(ltype)
         ropt = optional_value_type(rtype)

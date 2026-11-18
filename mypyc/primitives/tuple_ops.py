@@ -9,6 +9,7 @@ from __future__ import annotations
 from mypyc.ir.ops import ERR_MAGIC, ERR_NEVER
 from mypyc.ir.rtypes import (
     bit_rprimitive,
+    c_int_rprimitive,
     c_pyssize_t_rprimitive,
     c_size_t_rprimitive,
     int_rprimitive,
@@ -17,7 +18,14 @@ from mypyc.ir.rtypes import (
     tuple_rprimitive,
     void_rtype,
 )
-from mypyc.primitives.registry import binary_op, custom_op, function_op, load_address_op, method_op
+from mypyc.primitives.registry import (
+    ERR_NEG_INT,
+    binary_op,
+    custom_op,
+    function_op,
+    load_address_op,
+    method_op,
+)
 
 # Get the 'builtins.tuple' type object.
 load_address_op(name="builtins.tuple", type=object_rprimitive, src="PyTuple_Type")
@@ -120,6 +128,24 @@ isinstance_tuple = function_op(
     return_type=bit_rprimitive,
     c_function_name="PyTuple_Check",
     error_kind=ERR_NEVER,
+)
+
+# tuple == tuple (return -1/0/1)
+tuple_equal_op = custom_op(
+    arg_types=[tuple_rprimitive, tuple_rprimitive],
+    return_type=c_int_rprimitive,
+    c_function_name="CPyTuple_Compare",
+    error_kind=ERR_NEG_INT,
+    extra_int_constants=[(2, c_int_rprimitive)],  # Py_EQ
+)
+
+# tuple != tuple (return -1/0/1)
+tuple_not_equal_op = custom_op(
+    arg_types=[tuple_rprimitive, tuple_rprimitive],
+    return_type=c_int_rprimitive,
+    c_function_name="CPyTuple_Compare",
+    error_kind=ERR_NEG_INT,
+    extra_int_constants=[(3, c_int_rprimitive)],  # Py_NE
 )
 
 # tuple + tuple
