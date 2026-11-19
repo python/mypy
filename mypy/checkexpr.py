@@ -2292,8 +2292,28 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                 arg_types = self.infer_arg_types_in_context(
                     pass2_callee_type, args, arg_kinds, formal_to_actual
                 )
+            # Preserve inferred ParamSpecs when selecting overloads in the second pass.
+            # Using the original Callable[P, T] could select an incompatible overload,
+            # but ordinary type variables must remain free to infer narrower types.
+            infer_callee_type = initial_callee_type
+            if any(isinstance(v, ParamSpecType) for v in type_vars):
+                infer_callee_type = self.apply_generic_arguments(
+                    initial_callee_type,
+                    [
+                        a if isinstance(v, ParamSpecType) else None
+                        for v, a in zip(type_vars, solid_inferred_args)
+                    ],
+                    context,
+                )
+                initial_formal_to_actual = map_actuals_to_formals(
+                    arg_kinds,
+                    arg_names,
+                    infer_callee_type.arg_kinds,
+                    infer_callee_type.arg_names,
+                    lambda a: self.accept(args[a]),
+                )
             inferred_args, _ = infer_function_type_arguments(
-                initial_callee_type,
+                infer_callee_type,
                 arg_types,
                 arg_kinds,
                 arg_names,
@@ -2301,6 +2321,10 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                 context=self.argument_infer_context(),
                 extra_constraints=constraints,
             )
+            inferred_by_id = dict(zip((v.id for v in infer_callee_type.variables), inferred_args))
+            inferred_args = [
+                inferred_by_id.get(v.id, a) for v, a in zip(type_vars, solid_inferred_args)
+            ]
 
         # Only use two-side inference if it is fully successful,
         # otherwise, fallback to return type context as a tiebreaker.

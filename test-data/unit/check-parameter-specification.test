@@ -2848,3 +2848,26 @@ def test(x: C[I]) -> list[int]: ...
 ci: C[int]
 f: list[int] = apply(test, ci)
 [builtins fixtures/paramspec.pyi]
+
+[case testTwoSidedInferenceWithParamSpecOverload]
+from typing import Callable, TypeVar, overload
+from typing_extensions import ParamSpec
+
+P = ParamSpec("P")
+T = TypeVar("T")
+
+def apply(func: Callable[P, T], *args: P.args, **kwargs: P.kwargs) -> list[T]: ...
+def consume(value: list[T]) -> T: ...
+
+@overload
+def func(value: int, required: str) -> int: ...
+@overload
+def func(value: int, *, optional: int = 0) -> int: ...
+def func(value: int, required: str = "", *, optional: int = 0) -> int: ...
+
+reveal_type(consume(apply(func, 1)))  # N: Revealed type is "builtins.int"
+reveal_type(consume(apply(func, 1, optional=0)))  # N: Revealed type is "builtins.int"
+reveal_type(consume(apply(func, 1, "")))  # N: Revealed type is "builtins.int"
+result = apply(func, 1)
+reveal_type(consume(result))  # N: Revealed type is "builtins.int"
+[builtins fixtures/paramspec.pyi]
