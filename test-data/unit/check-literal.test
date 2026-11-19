@@ -1190,6 +1190,31 @@ reveal_type(d)  # N: Revealed type is "tuple[builtins.int, builtins.int]"
 [builtins fixtures/tuple.pyi]
 [out]
 
+[case testLiteralEnumTupleUnionInSequenceContext]
+from enum import Enum
+from typing import Literal, Sequence
+
+class Color(Enum):
+    RED = 1
+    BLUE = 2
+
+class Shape(Enum):
+    CIRCLE = 1
+    TRIANGLE = 2
+    SQUARE = 3
+
+Pair = tuple[Literal[Color.RED], Literal[Shape.CIRCLE]] | tuple[Literal[Color.BLUE], Literal[Shape.TRIANGLE]]
+
+def consume(pairs: Sequence[Pair]) -> None: pass
+
+consume([(Color.BLUE, Shape.TRIANGLE)])
+consume([(Color.RED, Shape.CIRCLE)])
+consume([(Color.BLUE, Shape.TRIANGLE), (Color.RED, Shape.CIRCLE)])
+consume([(Color.RED, Shape.CIRCLE), (Color.BLUE, Shape.TRIANGLE)])
+consume([(Color.BLUE, Shape.CIRCLE)])  # E: List item 0 has incompatible type "tuple[Color, Shape]"; expected "tuple[Literal[Color.RED], Literal[Shape.CIRCLE]] | tuple[Literal[Color.BLUE], Literal[Shape.TRIANGLE]]"
+consume([(Color.BLUE, Shape.SQUARE)])  # E: List item 0 has incompatible type "tuple[Color, Shape]"; expected "tuple[Literal[Color.RED], Literal[Shape.CIRCLE]] | tuple[Literal[Color.BLUE], Literal[Shape.TRIANGLE]]"
+[builtins fixtures/tuple.pyi]
+
 [case testLiteralInferredInDictContext]
 from typing import Dict, Literal
 

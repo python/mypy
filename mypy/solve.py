@@ -7,6 +7,7 @@ from collections.abc import Iterable, Sequence
 from typing import TypeAlias as _TypeAlias
 
 from mypy.constraints import SUBTYPE_OF, SUPERTYPE_OF, Constraint, infer_constraints, neg_op
+from mypy.erasetype import remove_instance_last_known_values
 from mypy.expandtype import expand_type
 from mypy.graph_utils import prepare_sccs, strongly_connected_components, topsort
 from mypy.join import join_type_list
@@ -322,7 +323,9 @@ def solve_one(lowers: Iterable[Type], uppers: Iterable[Type]) -> Type | None:
             return None
     elif top is None:
         candidate = bottom
-    elif is_subtype(bottom, top):
+    # Last known values are erased after inference, so they must not be needed
+    # for the inferred type to satisfy the upper bound.
+    elif is_subtype(remove_instance_last_known_values(bottom), top):
         candidate = bottom
     else:
         candidate = None
