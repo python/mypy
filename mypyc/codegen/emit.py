@@ -214,6 +214,58 @@ class ReturnHandler(ErrorHandler):
         self.value = value
 
 
+# Keywords of some C compilers (MSVC) that aren't reserved by the C standard.
+NONSTANDARD_C_KEYWORDS: Final = frozenset(
+    {
+        "_alignof",
+        "_asm",
+        "_assume",
+        "_based",
+        "_cdecl",
+        "_declspec",
+        "_except",
+        "_fastcall",
+        "_finally",
+        "_forceinline",
+        "_inline",
+        "_int8",
+        "_int16",
+        "_int32",
+        "_int64",
+        "_leave",
+        "_multiple_inheritance",
+        "_pascal",
+        "_ptr32",
+        "_ptr64",
+        "_restrict",
+        "_single_inheritance",
+        "_sptr",
+        "_stdcall",
+        "_thiscall",
+        "_try",
+        "_unaligned",
+        "_uptr",
+        "_uuidof",
+        "_vectorcall",
+        "_virtual_inheritance",
+        "_w64",
+    }
+)
+
+
+def is_reserved_c_name(name: str) -> bool:
+    """Can name conflict with a keyword or macro of a C compiler or system headers?
+
+    Names starting with two underscores or an underscore and an uppercase letter are
+    reserved by the C standard (e.g. "__restrict", "_Bool").
+    """
+    return (
+        name.startswith("__")
+        or (len(name) > 1 and name[0] == "_" and name[1].isupper())
+        or name in NONSTANDARD_C_KEYWORDS
+    )
+
+
 class Emitter:
     """Helper for C code generation."""
 
@@ -251,7 +303,13 @@ class Emitter:
         return REG_PREFIX + self.value_names[reg]
 
     def attr(self, name: str) -> str:
-        return ATTR_PREFIX + name
+        """Return the C struct field name for a native attribute."""
+        result = ATTR_PREFIX + name
+        if is_reserved_c_name(result):
+            # Avoid C keywords and macros (e.g. "_restrict" -> "__restrict"). This is
+            # unambiguous, since other field names start with ATTR_PREFIX.
+            result = "m" + result
+        return result
 
     def object_annotation(self, obj: object, line: str) -> str:
         """Build a C comment with a literal value's string representation.
