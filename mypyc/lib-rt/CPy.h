@@ -928,16 +928,23 @@ Py_hash_t CPy_HashFromResult(PyObject *res);
 Py_ssize_t CPy_LenFromResult(PyObject *res);
 CPyTagged CPyObject_LenFromResult(PyObject *res);
 
-// Check that the result of a __len__ method is a valid length, like len() does
-static inline bool CPyTagged_CheckLen(CPyTagged x) {
+// Convert the result of a __len__ method to a length, like len() does.
+// Return -1 with an exception set on error.
+static inline Py_ssize_t CPyTagged_AsLen(CPyTagged x) {
     if (likely(CPyTagged_CheckShort(x))) {
-        if (likely(CPyTagged_ShortAsSsize_t(x) >= 0)) {
-            return true;
+        Py_ssize_t len = CPyTagged_ShortAsSsize_t(x);
+        if (likely(len >= 0)) {
+            return len;
         }
         PyErr_SetString(PyExc_ValueError, "__len__() should return >= 0");
-        return false;
+        return -1;
     }
-    return CPy_LenFromResult(CPyTagged_LongAsObject(x)) >= 0;
+    return CPy_LenFromResult(CPyTagged_LongAsObject(x));
+}
+
+// Check that the result of a __len__ method is a valid length, like len() does
+static inline bool CPyTagged_CheckLen(CPyTagged x) {
+    return CPyTagged_AsLen(x) >= 0;
 }
 
 // Default identity-based hash (same as object.__hash__), used as tp_hash

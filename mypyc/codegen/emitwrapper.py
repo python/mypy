@@ -652,13 +652,7 @@ def generate_len_wrapper(cl: ClassIR, fn: FuncIR, emitter: Emitter) -> str:
     )
     emitter.emit_error_check("retval", fn.ret_type, "return -1;")
     if is_int_rprimitive(fn.ret_type):
-        emitter.emit_line("if (likely(CPyTagged_CheckShort(retval))) {")
-        emitter.emit_line("Py_ssize_t val = CPyTagged_ShortAsSsize_t(retval);")
-        emitter.emit_line("if (likely(val >= 0)) return val;")
-        emitter.emit_line('PyErr_SetString(PyExc_ValueError, "__len__() should return >= 0");')
-        emitter.emit_line("return -1;")
-        emitter.emit_line("}")
-        emitter.emit_line("Py_ssize_t val = CPy_LenFromResult(CPyTagged_LongAsObject(retval));")
+        emitter.emit_line("Py_ssize_t val = CPyTagged_AsLen(retval);")
         emitter.emit_dec_ref("retval", fn.ret_type)
     else:
         # CPy_LenFromResult() takes an object, so box other unboxed types such as i64
