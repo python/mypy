@@ -1134,6 +1134,18 @@ class A:
     b: ClassVar[Final[int]] = 1
     c: ClassVar[Final] = 1
 
+[case testFinalUsedWithClassVarAfterPy313PreservesType]
+# flags: --python-version 3.13
+# Nested Final inside ClassVar should preserve the inner type (#21906).
+from typing import ClassVar, Final, reveal_type
+
+class B: pass
+
+class A:
+    cv: ClassVar[Final[dict[type[B], A]] = {}
+
+reveal_type(A.cv)  # N: Revealed type is "builtins.dict[type[B], __main__.A"
+
 [case testFinalClassWithAbstractMethod]
 from typing import final
 from abc import ABC, abstractmethod
