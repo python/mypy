@@ -4426,3 +4426,23 @@ def test() -> list[int]:
 
 d: dict[str, int] = {"hits": a, "misses": "42"}  # E: Dict entry 1 has incompatible type "str": "str"; expected "str": "int"
 [builtins fixtures/dict.pyi]
+
+[case testEnumLiteralTuplesInSequenceContext]
+from enum import Enum
+from typing import Literal, Sequence
+
+class Color(Enum):
+    RED = 1
+    BLUE = 2
+
+class Shape(Enum):
+    CIRCLE = 1
+    TRIANGLE = 2
+
+Pair = tuple[Literal[Color.RED], Literal[Shape.CIRCLE]] | tuple[Literal[Color.BLUE], Literal[Shape.TRIANGLE]]
+
+def consume(pairs: Sequence[Pair]) -> None: ...
+
+consume([(Color.BLUE, Shape.TRIANGLE)])
+consume([(Color.RED, Shape.TRIANGLE)])  # E: List item 0 has incompatible type "tuple[Literal[Color.RED], Literal[Shape.TRIANGLE]]"; expected "tuple[Literal[Color.RED], Literal[Shape.CIRCLE]] | tuple[Literal[Color.BLUE], Literal[Shape.TRIANGLE]]"
+[builtins fixtures/list.pyi]
