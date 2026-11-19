@@ -264,7 +264,8 @@ class PatternChecker(PatternVisitor[PatternType]):
                 star_expr = None
 
             for t in current_type.items:
-                match_type, rest_type, captures = self.accept(o, t)
+                with self.msg.filter_errors():
+                    match_type, rest_type, captures = self.accept(o, t)
                 match_types.append(match_type)
                 rest_types.append(rest_type)
                 if not is_uninhabited(match_type):

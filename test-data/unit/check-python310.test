@@ -4019,3 +4019,15 @@ def enum_then_dummy_class(arg: DummyClass | Literal[MyEnum.RELEVANT]):
         case _:
             pass  # E: Statement is unreachable
 [builtins fixtures/tuple.pyi]
+
+[case testMatchSequencePatternUnionTupleNoUnreachable]
+# flags: --warn-unreachable
+def f(value: tuple[None, int] | tuple[int, None] | tuple[int, int]) -> None:
+    match value:
+        case (None, int(y)):
+            pass
+        case (int(x), None):
+            pass
+        case (int(x), int(y)):
+            pass
+[builtins fixtures/tuple.pyi]
