@@ -1134,6 +1134,16 @@ class A:
     b: ClassVar[Final[int]] = 1
     c: ClassVar[Final] = 1
 
+[case testNestedFinalClassVarPreservesType]
+# flags: --python-version 3.13
+from typing import ClassVar, Final, reveal_type
+
+class A:
+    value: ClassVar[Final[dict[str, int]]] = {}
+
+reveal_type(A.value)  # N: Revealed type is "builtins.dict[builtins.str, builtins.int]"
+[builtins fixtures/dict.pyi]
+
 [case testFinalClassWithAbstractMethod]
 from typing import final
 from abc import ABC, abstractmethod
