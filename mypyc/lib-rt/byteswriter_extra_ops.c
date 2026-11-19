@@ -3,18 +3,7 @@
 
 #include "byteswriter_extra_ops.h"
 
-char CPyBytesWriter_Write(PyObject *obj, PyObject *value) {
-    BytesWriterObject *self = (BytesWriterObject *)obj;
-    const char *data;
-    Py_ssize_t size;
-    if (likely(PyBytes_Check(value))) {
-        data = PyBytes_AS_STRING(value);
-        size = PyBytes_GET_SIZE(value);
-    } else {
-        data = PyByteArray_AS_STRING(value);
-        size = PyByteArray_GET_SIZE(value);
-    }
-    // Write bytes content.
+static inline char write_data(BytesWriterObject *self, const char *data, Py_ssize_t size) {
     if (!CPyBytesWriter_EnsureSize(self, size))
         return CPY_NONE_ERROR;
     if (size < 8) {
@@ -28,6 +17,20 @@ char CPyBytesWriter_Write(PyObject *obj, PyObject *value) {
     }
     self->len += size;
     return CPY_NONE;
+}
+
+char CPyBytesWriter_Write(PyObject *obj, PyObject *value) {
+    BytesWriterObject *self = (BytesWriterObject *)obj;
+    if (likely(PyBytes_Check(value))) {
+        return write_data(self, PyBytes_AS_STRING(value), PyBytes_GET_SIZE(value));
+    }
+    // On free-threaded builds another thread could resize the bytearray while we
+    // copy it, so lock it like the bytearray methods do (no-op on other builds).
+    char result;
+    Py_BEGIN_CRITICAL_SECTION(value);
+    result = write_data(self, PyByteArray_AS_STRING(value), PyByteArray_GET_SIZE(value));
+    Py_END_CRITICAL_SECTION();
+    return result;
 }
 
 void CPyBytes_ReadError(int64_t index, Py_ssize_t size) {

@@ -1813,3 +1813,63 @@ def test_codepoint_case_conversion_via_any() -> None:
             f(1 << 40)
         with assertRaises(OverflowError, "codepoint out of i32 range"):
             f(-(1 << 40))
+
+[case testLibrtBytesWriterSetItemValueResetsWriter_librt]
+from typing import Any
+
+from librt.strings import BytesWriter
+
+from testutil import assertRaises
+from bytes_writer_helper import ByteArraySubclass, ResetWriter
+
+def set_item(w: BytesWriter, i: int, v: Any) -> None:
+    w[i] = v
+
+def test_compiled_set_item() -> None:
+    # Converting the value calls __index__, which resets the writer to its
+    # small initial buffer. The index must be checked after that.
+    for n in (300, 100000):
+        w = BytesWriter()
+        w.write(b"x" * n)
+        with assertRaises(IndexError):
+            set_item(w, n - 1, ResetWriter(w))
+        assert len(w) == 0
+
+def test_generic_set_item() -> None:
+    for n in (300, 100000):
+        w = BytesWriter()
+        w.write(b"x" * n)
+        a: Any = w
+        with assertRaises(IndexError):
+            a[n - 1] = ResetWriter(w)
+        assert len(w) == 0
+
+def test_value_checked_before_index() -> None:
+    w = BytesWriter()
+    w.write(b"x")
+    a: Any = w
+    # Like bytearray, an invalid value is reported before an invalid index
+    with assertRaises(TypeError):
+        a[5] = 256
+    with assertRaises(TypeError):
+        a[5] = "x"
+
+def test_write_bytearray_subclass() -> None:
+    w = BytesWriter()
+    w.write(ByteArraySubclass(b"abc"))
+    w.write(bytearray(b"d" * 100))
+    assert w.getvalue() == b"abc" + b"d" * 100
+
+[file bytes_writer_helper.py]
+from typing import Any
+
+class ResetWriter:
+    def __init__(self, w: Any) -> None:
+        self.w = w
+
+    def __index__(self) -> int:
+        self.w.__init__()
+        return 65
+
+class ByteArraySubclass(bytearray):
+    pass
