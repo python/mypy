@@ -34,6 +34,8 @@ intern_strings(void) {
     INTERN_STRING(__le__, "__le__");
     INTERN_STRING(__lt__, "__lt__");
     INTERN_STRING(__ge__, "__ge__");
+    INTERN_STRING(capitalize, "capitalize");
+    INTERN_STRING(casefold, "casefold");
     INTERN_STRING(clear, "clear");
     INTERN_STRING(close_, "close");
     INTERN_STRING(copy, "copy");
@@ -52,7 +54,9 @@ intern_strings(void) {
     INTERN_STRING(setdefault, "setdefault");
     INTERN_STRING(startswith, "startswith");
     INTERN_STRING(super, "super");
+    INTERN_STRING(swapcase, "swapcase");
     INTERN_STRING(throw_, "throw");
+    INTERN_STRING(title, "title");
     INTERN_STRING(translate, "translate");
     INTERN_STRING(update, "update");
     INTERN_STRING(upper, "upper");
