@@ -1038,6 +1038,42 @@ done:
 
 }
 
+#ifdef Py_GIL_DISABLED
+// The '__weakref__' descriptor of a class defined in Python, which wraps CPython's
+// own getter (subtype_getweakref in typeobject.c). Created on first use.
+static PyObject *CPy_SubtypeWeakrefDescr = NULL;
+
+static PyGetSetDef *CPy_GetSubtypeWeakrefGetSet(void) {
+    PyObject *descr = _Py_atomic_load_ptr_acquire(&CPy_SubtypeWeakrefDescr);
+    if (descr == NULL) {
+        // Don't hold a lock here, since creating the class can run arbitrary code
+        // (through the GC) that may reenter this function.
+        PyObject *cls = PyObject_CallFunction(
+            (PyObject *)&PyType_Type, "s(){}", "_CPyWeakrefGetter");
+        if (cls == NULL) {
+            return NULL;
+        }
+        descr = PyObject_GetAttrString(cls, "__weakref__");
+        Py_DECREF(cls);  // The descriptor keeps the class alive
+        if (descr == NULL) {
+            return NULL;
+        }
+        if (!Py_IS_TYPE(descr, &PyGetSetDescr_Type)) {
+            Py_DECREF(descr);
+            PyErr_SetString(PyExc_SystemError, "unexpected __weakref__ descriptor type");
+            return NULL;
+        }
+        PyObject *expected = NULL;
+        if (!_Py_atomic_compare_exchange_ptr(&CPy_SubtypeWeakrefDescr, &expected, descr)) {
+            // Another thread got there first
+            Py_DECREF(descr);
+            descr = expected;
+        }
+    }
+    return ((PyGetSetDescrObject *)descr)->d_getset;
+}
+#endif
+
 // Implementation of the '__weakref__' getter of native classes that support weak
 // references. Adapted from subtype_getweakref in CPython's typeobject.c.
 PyObject *CPy_GetWeakrefs(PyObject *obj, void *closure)
@@ -1047,11 +1083,23 @@ PyObject *CPy_GetWeakrefs(PyObject *obj, void *closure)
         PyErr_SetString(PyExc_AttributeError, "This object has no __weakref__");
         return NULL;
     }
+#ifdef Py_GIL_DISABLED
+    // Another thread may remove the head of the weak reference list and free it at
+    // any time, so the list may only be read while holding CPython's internal weak
+    // reference lock. Only CPython's own getter can take the lock, so use it. It
+    // works for any type, since it only uses tp_weaklistoffset.
+    PyGetSetDef *getset = CPy_GetSubtypeWeakrefGetSet();
+    if (getset == NULL) {
+        return NULL;
+    }
+    return getset->get(obj, getset->closure);
+#else
     PyObject **weaklistptr = (PyObject **)((char *)obj + offset);
     if (*weaklistptr == NULL) {
         return Py_NewRef(Py_None);
     }
     return Py_NewRef(*weaklistptr);
+#endif
 }
 
 // Adapted from ceval.c GET_AITER
