@@ -1118,21 +1118,22 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
         )
 
     def test_long_unsigned(self) -> None:
-        a = Register(int64_rprimitive, "a")
         self.assert_emit(
-            Assign(a, Integer(1 << 31, int64_rprimitive)), """cpy_r_a = 2147483648LL;"""
+            Assign(self.i64, Integer(1 << 31, int64_rprimitive)), """cpy_r_i64 = 2147483648LL;"""
         )
         self.assert_emit(
-            Assign(a, Integer((1 << 31) - 1, int64_rprimitive)), """cpy_r_a = 2147483647;"""
+            Assign(self.i64, Integer((1 << 31) - 1, int64_rprimitive)),
+            """cpy_r_i64 = 2147483647;""",
         )
 
     def test_long_signed(self) -> None:
-        a = Register(int64_rprimitive, "a")
         self.assert_emit(
-            Assign(a, Integer(-(1 << 31) + 1, int64_rprimitive)), """cpy_r_a = -2147483647;"""
+            Assign(self.i64, Integer(-(1 << 31) + 1, int64_rprimitive)),
+            """cpy_r_i64 = -2147483647;""",
         )
         self.assert_emit(
-            Assign(a, Integer(-(1 << 31), int64_rprimitive)), """cpy_r_a = -2147483648LL;"""
+            Assign(self.i64, Integer(-(1 << 31), int64_rprimitive)),
+            """cpy_r_i64 = -2147483648LL;""",
         )
 
     def test_cast_and_branch_merge(self) -> None:
@@ -1232,10 +1233,11 @@ else {
         )
 
     def test_extend(self) -> None:
-        a = Register(int32_rprimitive, "a")
-        self.assert_emit(Extend(a, int64_rprimitive, signed=True), """cpy_r_r0 = cpy_r_a;""")
         self.assert_emit(
-            Extend(a, int64_rprimitive, signed=False), """cpy_r_r0 = (uint32_t)cpy_r_a;"""
+            Extend(self.i32, int64_rprimitive, signed=True), """cpy_r_r0 = cpy_r_i32;"""
+        )
+        self.assert_emit(
+            Extend(self.i32, int64_rprimitive, signed=False), """cpy_r_r0 = (uint32_t)cpy_r_i32;"""
         )
         if PLATFORM_SIZE == 4:
             self.assert_emit(
@@ -1246,9 +1248,12 @@ else {
                 Extend(self.n, int64_rprimitive, signed=False), """cpy_r_r0 = cpy_r_n;"""
             )
         if PLATFORM_SIZE == 8:
-            self.assert_emit(Extend(a, int_rprimitive, signed=True), """cpy_r_r0 = cpy_r_a;""")
             self.assert_emit(
-                Extend(a, int_rprimitive, signed=False), """cpy_r_r0 = (uint32_t)cpy_r_a;"""
+                Extend(self.i32, int_rprimitive, signed=True), """cpy_r_r0 = cpy_r_i32;"""
+            )
+            self.assert_emit(
+                Extend(self.i32, int_rprimitive, signed=False),
+                """cpy_r_r0 = (uint32_t)cpy_r_i32;""",
             )
 
     def test_inc_ref_none(self) -> None:
