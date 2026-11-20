@@ -2126,6 +2126,26 @@ def __getattr__(name: str) -> int: ...
 
 [builtins fixtures/module.pyi]
 
+[case testModuleLevelGetattrImportCycle]
+from a import Bweh
+
+x: Bweh = 5
+reveal_type(x)  # N: Revealed type is "Any"
+
+[file a.py]
+from b import x
+
+from typing import Any
+
+def __getattr__(name: str) -> Any: ...
+
+[file b.py]
+from a import Bweh
+
+x: Bweh = 5
+
+[builtins fixtures/module.pyi]
+
 [case testModuleLevelGetattrImportFromNotStub]
 from non_stub import name
 reveal_type(name)  # N: Revealed type is "Any"
