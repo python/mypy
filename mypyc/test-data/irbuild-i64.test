@@ -266,7 +266,16 @@ L0:
     a = r1
     return a
 def others(a, b):
-    a, b, r0, r1, r2, r3, r4, r5, r6 :: i64
+    a, b, r0, r1, r2, r3, r4 :: i64
+    r5 :: bit
+    r6, r7 :: i64
+    r8 :: bit
+    r9 :: bool
+    r10 :: bit
+    r11, r12 :: i64
+    r13 :: bit
+    r14 :: bool
+    r15 :: i64
 L0:
     r0 = a - b
     a = r0
@@ -278,11 +287,72 @@ L0:
     a = r3
     r4 = a ^ b
     a = r4
-    r5 = a << b
-    a = r5
-    r6 = a >> b
-    a = r6
+    r5 = b < 64 :: unsigned
+    if r5 goto L1 else goto L2 :: bool
+L1:
+    r6 = a << b
+    r7 = r6
+    goto L5
+L2:
+    r8 = b < 0 :: signed
+    if r8 goto L3 else goto L4 :: bool
+L3:
+    r9 = raise ValueError('negative shift count')
+    unreachable
+L4:
+    r7 = 0
+L5:
+    a = r7
+    r10 = b < 64 :: unsigned
+    if r10 goto L6 else goto L7 :: bool
+L6:
+    r11 = a >> b
+    r12 = r11
+    goto L10
+L7:
+    r13 = b < 0 :: signed
+    if r13 goto L8 else goto L9 :: bool
+L8:
+    r14 = raise ValueError('negative shift count')
+    unreachable
+L9:
+    r15 = a >> 63
+    r12 = r15
+L10:
+    a = r12
     return a
+
+[case testI64ShiftByConstant]
+from mypy_extensions import i64
+
+def shift(x: i64) -> i64:
+    a = x << 63
+    b = x << 64
+    c = x >> 63
+    d = x >> 64
+    return x >> -1
+[out]
+def shift(x):
+    x, r0, a, b, r1, c, r2, d :: i64
+    r3 :: bit
+    r4 :: bool
+    r5 :: i64
+L0:
+    r0 = x << 63
+    a = r0
+    b = 0
+    r1 = x >> 63
+    c = r1
+    r2 = x >> 63
+    d = r2
+    r3 = -1 < 0 :: signed
+    if r3 goto L1 else goto L2 :: bool
+L1:
+    r4 = raise ValueError('negative shift count')
+    unreachable
+L2:
+    r5 = x >> 63
+    return r5
 
 [case testI64BitwiseOps]
 from mypy_extensions import i64
@@ -321,7 +391,16 @@ L0:
     b = r4
     return b
 def reverse(a, b):
-    a, b, r0, r1, r2, r3, r4 :: i64
+    a, b, r0, r1, r2 :: i64
+    r3 :: bit
+    r4, r5 :: i64
+    r6 :: bit
+    r7 :: bool
+    r8 :: bit
+    r9, r10 :: i64
+    r11 :: bit
+    r12 :: bool
+    r13 :: i64
 L0:
     r0 = 1 & a
     b = r0
@@ -329,10 +408,39 @@ L0:
     a = r1
     r2 = 3 ^ a
     b = r2
-    r3 = 4 << b
-    a = r3
-    r4 = 5 >> a
-    b = r4
+    r3 = b < 64 :: unsigned
+    if r3 goto L1 else goto L2 :: bool
+L1:
+    r4 = 4 << b
+    r5 = r4
+    goto L5
+L2:
+    r6 = b < 0 :: signed
+    if r6 goto L3 else goto L4 :: bool
+L3:
+    r7 = raise ValueError('negative shift count')
+    unreachable
+L4:
+    r5 = 0
+L5:
+    a = r5
+    r8 = a < 64 :: unsigned
+    if r8 goto L6 else goto L7 :: bool
+L6:
+    r9 = 5 >> a
+    r10 = r9
+    goto L10
+L7:
+    r11 = a < 0 :: signed
+    if r11 goto L8 else goto L9 :: bool
+L8:
+    r12 = raise ValueError('negative shift count')
+    unreachable
+L9:
+    r13 = 5 >> 63
+    r10 = r13
+L10:
+    b = r10
     return b
 def unary(a):
     a, r0 :: i64

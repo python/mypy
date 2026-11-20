@@ -15,6 +15,60 @@ L0:
     r2 = r0 + r1
     return r2
 
+[case testI8ShiftByVariable]
+from mypy_extensions import i8
+
+def shift(x: i8, y: i8) -> i8:
+    a = x << y
+    return a >> y
+[out]
+def shift(x, y):
+    x, y :: i8
+    r0 :: bit
+    r1, r2 :: i8
+    r3 :: bit
+    r4 :: bool
+    a :: i8
+    r5 :: bit
+    r6, r7 :: i8
+    r8 :: bit
+    r9 :: bool
+    r10 :: i8
+L0:
+    r0 = y < 8 :: unsigned
+    if r0 goto L1 else goto L2 :: bool
+L1:
+    r1 = x << y
+    r2 = r1
+    goto L5
+L2:
+    r3 = y < 0 :: signed
+    if r3 goto L3 else goto L4 :: bool
+L3:
+    r4 = raise ValueError('negative shift count')
+    unreachable
+L4:
+    r2 = 0
+L5:
+    a = r2
+    r5 = y < 8 :: unsigned
+    if r5 goto L6 else goto L7 :: bool
+L6:
+    r6 = a >> y
+    r7 = r6
+    goto L10
+L7:
+    r8 = y < 0 :: signed
+    if r8 goto L8 else goto L9 :: bool
+L8:
+    r9 = raise ValueError('negative shift count')
+    unreachable
+L9:
+    r10 = a >> 7
+    r7 = r10
+L10:
+    return r7
+
 [case testI8BoxAndUnbox]
 from typing import Any
 from mypy_extensions import i8
