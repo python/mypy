@@ -3236,6 +3236,32 @@ def f2(m: tuple[int] | tuple[str, str] | tuple[int, Unpack[tuple[str, ...]], int
             reveal_type(m)  # N: Revealed type is "tuple[builtins.int, Unpack[builtins.tuple[builtins.str, ...]], builtins.int]"
 [builtins fixtures/tuple.pyi]
 
+[case testMatchSequencePatternTupleUnionFalsePositiveUnreachable]
+# flags: --strict-equality --warn-unreachable
+from typing import Literal
+
+value: tuple[Literal["a"], None] | tuple[Literal["b"], int] = ("a", None)
+
+match value:
+    case "a", None:
+        pass
+    case _:
+        pass
+[builtins fixtures/tuple.pyi]
+
+[case testMatchSequencePatternTupleUnionFalsePositiveUnreachableClassPattern]
+# flags: --strict-equality --warn-unreachable
+value: tuple[None, int] | tuple[int, None] | tuple[int, int]
+
+match value:
+    case None, int(y):
+        pass
+    case int(x), None:
+        pass
+    case int(x), int(y):
+        pass
+[builtins fixtures/tuple.pyi]
+
 [case testMatchSequencePatternTypeVarTupleNotTooShort]
 # flags: --strict-equality --warn-unreachable
 from typing import Tuple

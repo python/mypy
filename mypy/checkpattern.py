@@ -264,7 +264,16 @@ class PatternChecker(PatternVisitor[PatternType]):
                 star_expr = None
 
             for t in current_type.items:
-                match_type, rest_type, captures = self.accept(o, t)
+                # A diagnostic from one union alternative may not apply to the
+                # pattern as a whole. For example, in tuple[A, None] | tuple[B, int],
+                # `case A, None` matches the first alternative; checking the second
+                # alternative independently would incorrectly report `None` as
+                # unreachable against `int`.
+                watcher = self.msg.filter_errors(save_filtered_errors=True)
+                with watcher:
+                    match_type, rest_type, captures = self.accept(o, t)
+                if not is_uninhabited(match_type):
+                    self.msg.add_errors(watcher.filtered_errors())
                 match_types.append(match_type)
                 rest_types.append(rest_type)
                 if not is_uninhabited(match_type):
