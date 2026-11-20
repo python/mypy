@@ -1,5 +1,418 @@
 -- Type checking of union types
 
+[case testUnionOfManyNominalClassesNarrowing]
+# Keep this case large enough to expose quadratic union narrowing.
+# To time it, run with -n0 --durations=1 -k testUnionOfManyNominalClassesNarrowing.
+from typing import Union
+
+class T:
+    value: int
+
+class T0(T): pass
+class T1(T): pass
+class T2(T): pass
+class T3(T): pass
+class T4(T): pass
+class T5(T): pass
+class T6(T): pass
+class T7(T): pass
+class T8(T): pass
+class T9(T): pass
+class T10(T): pass
+class T11(T): pass
+class T12(T): pass
+class T13(T): pass
+class T14(T): pass
+class T15(T): pass
+class T16(T): pass
+class T17(T): pass
+class T18(T): pass
+class T19(T): pass
+class T20(T): pass
+class T21(T): pass
+class T22(T): pass
+class T23(T): pass
+class T24(T): pass
+class T25(T): pass
+class T26(T): pass
+class T27(T): pass
+class T28(T): pass
+class T29(T): pass
+class T30(T): pass
+class T31(T): pass
+class T32(T): pass
+class T33(T): pass
+class T34(T): pass
+class T35(T): pass
+class T36(T): pass
+class T37(T): pass
+class T38(T): pass
+class T39(T): pass
+class T40(T): pass
+class T41(T): pass
+class T42(T): pass
+class T43(T): pass
+class T44(T): pass
+class T45(T): pass
+class T46(T): pass
+class T47(T): pass
+class T48(T): pass
+class T49(T): pass
+class T50(T): pass
+class T51(T): pass
+class T52(T): pass
+class T53(T): pass
+class T54(T): pass
+class T55(T): pass
+class T56(T): pass
+class T57(T): pass
+class T58(T): pass
+class T59(T): pass
+class T60(T): pass
+class T61(T): pass
+class T62(T): pass
+class T63(T): pass
+class T64(T): pass
+class T65(T): pass
+class T66(T): pass
+class T67(T): pass
+class T68(T): pass
+class T69(T): pass
+class T70(T): pass
+class T71(T): pass
+class T72(T): pass
+class T73(T): pass
+class T74(T): pass
+class T75(T): pass
+class T76(T): pass
+class T77(T): pass
+class T78(T): pass
+class T79(T): pass
+class T80(T): pass
+class T81(T): pass
+class T82(T): pass
+class T83(T): pass
+class T84(T): pass
+class T85(T): pass
+class T86(T): pass
+class T87(T): pass
+class T88(T): pass
+class T89(T): pass
+class T90(T): pass
+class T91(T): pass
+class T92(T): pass
+class T93(T): pass
+class T94(T): pass
+class T95(T): pass
+class T96(T): pass
+class T97(T): pass
+class T98(T): pass
+class T99(T): pass
+class T100(T): pass
+class T101(T): pass
+class T102(T): pass
+class T103(T): pass
+class T104(T): pass
+class T105(T): pass
+class T106(T): pass
+class T107(T): pass
+class T108(T): pass
+class T109(T): pass
+class T110(T): pass
+class T111(T): pass
+class T112(T): pass
+class T113(T): pass
+class T114(T): pass
+class T115(T): pass
+class T116(T): pass
+class T117(T): pass
+class T118(T): pass
+class T119(T): pass
+class T120(T): pass
+class T121(T): pass
+class T122(T): pass
+class T123(T): pass
+class T124(T): pass
+class T125(T): pass
+class T126(T): pass
+class T127(T): pass
+class T128(T): pass
+class T129(T): pass
+class T130(T): pass
+class T131(T): pass
+class T132(T): pass
+class T133(T): pass
+class T134(T): pass
+class T135(T): pass
+class T136(T): pass
+class T137(T): pass
+class T138(T): pass
+class T139(T): pass
+class T140(T): pass
+class T141(T): pass
+class T142(T): pass
+class T143(T): pass
+class T144(T): pass
+class T145(T): pass
+class T146(T): pass
+class T147(T): pass
+class T148(T): pass
+class T149(T): pass
+class T150(T): pass
+class T151(T): pass
+class T152(T): pass
+class T153(T): pass
+class T154(T): pass
+class T155(T): pass
+class T156(T): pass
+class T157(T): pass
+class T158(T): pass
+class T159(T): pass
+class T160(T): pass
+class T161(T): pass
+class T162(T): pass
+class T163(T): pass
+class T164(T): pass
+class T165(T): pass
+class T166(T): pass
+class T167(T): pass
+class T168(T): pass
+class T169(T): pass
+class T170(T): pass
+class T171(T): pass
+class T172(T): pass
+class T173(T): pass
+class T174(T): pass
+class T175(T): pass
+class T176(T): pass
+class T177(T): pass
+class T178(T): pass
+class T179(T): pass
+class T180(T): pass
+class T181(T): pass
+class T182(T): pass
+class T183(T): pass
+class T184(T): pass
+class T185(T): pass
+class T186(T): pass
+class T187(T): pass
+class T188(T): pass
+class T189(T): pass
+class T190(T): pass
+class T191(T): pass
+class T192(T): pass
+class T193(T): pass
+class T194(T): pass
+class T195(T): pass
+class T196(T): pass
+class T197(T): pass
+class T198(T): pass
+class T199(T): pass
+class T200(T): pass
+class T201(T): pass
+class T202(T): pass
+class T203(T): pass
+class T204(T): pass
+class T205(T): pass
+class T206(T): pass
+class T207(T): pass
+class T208(T): pass
+class T209(T): pass
+class T210(T): pass
+class T211(T): pass
+class T212(T): pass
+class T213(T): pass
+class T214(T): pass
+class T215(T): pass
+class T216(T): pass
+class T217(T): pass
+class T218(T): pass
+class T219(T): pass
+class T220(T): pass
+class T221(T): pass
+class T222(T): pass
+class T223(T): pass
+class T224(T): pass
+class T225(T): pass
+class T226(T): pass
+class T227(T): pass
+class T228(T): pass
+class T229(T): pass
+class T230(T): pass
+class T231(T): pass
+class T232(T): pass
+class T233(T): pass
+class T234(T): pass
+class T235(T): pass
+class T236(T): pass
+class T237(T): pass
+class T238(T): pass
+class T239(T): pass
+class T240(T): pass
+class T241(T): pass
+class T242(T): pass
+class T243(T): pass
+class T244(T): pass
+class T245(T): pass
+class T246(T): pass
+class T247(T): pass
+class T248(T): pass
+class T249(T): pass
+class T250(T): pass
+class T251(T): pass
+class T252(T): pass
+class T253(T): pass
+class T254(T): pass
+class T255(T): pass
+class T256(T): pass
+class T257(T): pass
+class T258(T): pass
+class T259(T): pass
+class T260(T): pass
+class T261(T): pass
+class T262(T): pass
+class T263(T): pass
+class T264(T): pass
+class T265(T): pass
+class T266(T): pass
+class T267(T): pass
+class T268(T): pass
+class T269(T): pass
+class T270(T): pass
+class T271(T): pass
+class T272(T): pass
+class T273(T): pass
+class T274(T): pass
+class T275(T): pass
+class T276(T): pass
+class T277(T): pass
+class T278(T): pass
+class T279(T): pass
+class T280(T): pass
+class T281(T): pass
+class T282(T): pass
+class T283(T): pass
+class T284(T): pass
+class T285(T): pass
+class T286(T): pass
+class T287(T): pass
+class T288(T): pass
+class T289(T): pass
+class T290(T): pass
+class T291(T): pass
+class T292(T): pass
+class T293(T): pass
+class T294(T): pass
+class T295(T): pass
+class T296(T): pass
+class T297(T): pass
+class T298(T): pass
+class T299(T): pass
+
+Types = Union[
+    T0, T1, T2, T3, T4, T5, T6, T7, T8, T9,
+    T10, T11, T12, T13, T14, T15, T16, T17, T18, T19,
+    T20, T21, T22, T23, T24, T25, T26, T27, T28, T29,
+    T30, T31, T32, T33, T34, T35, T36, T37, T38, T39,
+    T40, T41, T42, T43, T44, T45, T46, T47, T48, T49,
+    T50, T51, T52, T53, T54, T55, T56, T57, T58, T59,
+    T60, T61, T62, T63, T64, T65, T66, T67, T68, T69,
+    T70, T71, T72, T73, T74, T75, T76, T77, T78, T79,
+    T80, T81, T82, T83, T84, T85, T86, T87, T88, T89,
+    T90, T91, T92, T93, T94, T95, T96, T97, T98, T99,
+    T100, T101, T102, T103, T104, T105, T106, T107, T108, T109,
+    T110, T111, T112, T113, T114, T115, T116, T117, T118, T119,
+    T120, T121, T122, T123, T124, T125, T126, T127, T128, T129,
+    T130, T131, T132, T133, T134, T135, T136, T137, T138, T139,
+    T140, T141, T142, T143, T144, T145, T146, T147, T148, T149,
+    T150, T151, T152, T153, T154, T155, T156, T157, T158, T159,
+    T160, T161, T162, T163, T164, T165, T166, T167, T168, T169,
+    T170, T171, T172, T173, T174, T175, T176, T177, T178, T179,
+    T180, T181, T182, T183, T184, T185, T186, T187, T188, T189,
+    T190, T191, T192, T193, T194, T195, T196, T197, T198, T199,
+    T200, T201, T202, T203, T204, T205, T206, T207, T208, T209,
+    T210, T211, T212, T213, T214, T215, T216, T217, T218, T219,
+    T220, T221, T222, T223, T224, T225, T226, T227, T228, T229,
+    T230, T231, T232, T233, T234, T235, T236, T237, T238, T239,
+    T240, T241, T242, T243, T244, T245, T246, T247, T248, T249,
+    T250, T251, T252, T253, T254, T255, T256, T257, T258, T259,
+    T260, T261, T262, T263, T264, T265, T266, T267, T268, T269,
+    T270, T271, T272, T273, T274, T275, T276, T277, T278, T279,
+    T280, T281, T282, T283, T284, T285, T286, T287, T288, T289,
+    T290, T291, T292, T293, T294, T295, T296, T297, T298, T299,
+]
+RemainingTypes = Union[
+    T10, T11, T12, T13, T14, T15, T16, T17, T18, T19,
+    T20, T21, T22, T23, T24, T25, T26, T27, T28, T29,
+    T30, T31, T32, T33, T34, T35, T36, T37, T38, T39,
+    T40, T41, T42, T43, T44, T45, T46, T47, T48, T49,
+    T50, T51, T52, T53, T54, T55, T56, T57, T58, T59,
+    T60, T61, T62, T63, T64, T65, T66, T67, T68, T69,
+    T70, T71, T72, T73, T74, T75, T76, T77, T78, T79,
+    T80, T81, T82, T83, T84, T85, T86, T87, T88, T89,
+    T90, T91, T92, T93, T94, T95, T96, T97, T98, T99,
+    T100, T101, T102, T103, T104, T105, T106, T107, T108, T109,
+    T110, T111, T112, T113, T114, T115, T116, T117, T118, T119,
+    T120, T121, T122, T123, T124, T125, T126, T127, T128, T129,
+    T130, T131, T132, T133, T134, T135, T136, T137, T138, T139,
+    T140, T141, T142, T143, T144, T145, T146, T147, T148, T149,
+    T150, T151, T152, T153, T154, T155, T156, T157, T158, T159,
+    T160, T161, T162, T163, T164, T165, T166, T167, T168, T169,
+    T170, T171, T172, T173, T174, T175, T176, T177, T178, T179,
+    T180, T181, T182, T183, T184, T185, T186, T187, T188, T189,
+    T190, T191, T192, T193, T194, T195, T196, T197, T198, T199,
+    T200, T201, T202, T203, T204, T205, T206, T207, T208, T209,
+    T210, T211, T212, T213, T214, T215, T216, T217, T218, T219,
+    T220, T221, T222, T223, T224, T225, T226, T227, T228, T229,
+    T230, T231, T232, T233, T234, T235, T236, T237, T238, T239,
+    T240, T241, T242, T243, T244, T245, T246, T247, T248, T249,
+    T250, T251, T252, T253, T254, T255, T256, T257, T258, T259,
+    T260, T261, T262, T263, T264, T265, T266, T267, T268, T269,
+    T270, T271, T272, T273, T274, T275, T276, T277, T278, T279,
+    T280, T281, T282, T283, T284, T285, T286, T287, T288, T289,
+    T290, T291, T292, T293, T294, T295, T296, T297, T298, T299,
+]
+
+def handle(x: Types) -> int:
+    if isinstance(x, T0):
+        reveal_type(x)  # N: Revealed type is "__main__.T0"
+        return x.value
+    if isinstance(x, T1):
+        reveal_type(x)  # N: Revealed type is "__main__.T1"
+        return x.value
+    if isinstance(x, T2):
+        reveal_type(x)  # N: Revealed type is "__main__.T2"
+        return x.value
+    if isinstance(x, T3):
+        reveal_type(x)  # N: Revealed type is "__main__.T3"
+        return x.value
+    if isinstance(x, T4):
+        reveal_type(x)  # N: Revealed type is "__main__.T4"
+        return x.value
+    if isinstance(x, T5):
+        reveal_type(x)  # N: Revealed type is "__main__.T5"
+        return x.value
+    if isinstance(x, T6):
+        reveal_type(x)  # N: Revealed type is "__main__.T6"
+        return x.value
+    if isinstance(x, T7):
+        reveal_type(x)  # N: Revealed type is "__main__.T7"
+        return x.value
+    if isinstance(x, T8):
+        reveal_type(x)  # N: Revealed type is "__main__.T8"
+        return x.value
+    if isinstance(x, T9):
+        reveal_type(x)  # N: Revealed type is "__main__.T9"
+        return x.value
+    remaining: RemainingTypes = x
+    if remaining:
+        return remaining.value
+    return 0
+
+def widen(x: RemainingTypes) -> Types:
+    return x
+[builtins fixtures/isinstance.pyi]
+
 [case testUnion1]
 from typing import Union
 def f(x: Union[int, str]) -> None:

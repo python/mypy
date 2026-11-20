@@ -134,30 +134,49 @@ def narrow_declared_type(declared: Type, narrowed: Type) -> Type:
         return original_declared
     if isinstance(declared, UnionType):
         declared_items = declared.relevant_items()
-        if isinstance(narrowed, UnionType):
-            narrowed_items = narrowed.relevant_items()
-        else:
-            narrowed_items = [narrowed]
-        return make_simplified_union(
-            [
-                narrow_declared_type(d, n)
-                for d in declared_items
-                for n in narrowed_items
-                # This (ugly) special-casing is needed to support checking
-                # branches like this:
-                # x: Union[float, complex]
-                # if isinstance(x, int):
-                #     ...
-                # And assignments like this:
-                # x: float | None
-                # y: int | None
-                # x = y
-                if (
-                    is_overlapping_types(d, n, ignore_promotions=True)
-                    or is_subtype(n, d, ignore_promotions=False)
-                )
-            ]
+        narrowed_items = (
+            narrowed.relevant_items() if isinstance(narrowed, UnionType) else [narrowed]
         )
+        shared_items = {get_proper_type(item) for item in narrowed_items}
+        can_reuse_common_items = isinstance(narrowed, UnionType) and shared_items.issubset(
+            get_proper_types(declared.items)
+        )
+
+        def _is_overlapping_type(item: Type, narrowed_item: Type) -> bool:
+            # Overlap alone is insufficient when numeric promotions are involved:
+            # a declared float | complex may narrow to int even though the runtime
+            # classes don't overlap. Check each narrowed item independently, so
+            # promotions also work for assignments such as float | None = int | None.
+            return is_overlapping_types(item, narrowed_item, ignore_promotions=True) or is_subtype(
+                narrowed_item, item, ignore_promotions=False
+            )
+
+        def _can_reuse_type(item: Type) -> bool:
+            proper_item = get_proper_type(item)
+            # Literal values and restricted truthiness still need recursive narrowing.
+            return (
+                isinstance(proper_item, Instance)
+                and proper_item in shared_items
+                and proper_item.last_known_value is None
+                and proper_item.can_be_true
+                and proper_item.can_be_false
+            )
+
+        # Require exact membership, not subtyping. New members such as int
+        # alongside float, or T[int] alongside T[Any], need recursive narrowing
+        # to preserve the additional type information.
+        result_items: list[Type] = []
+        for item in declared_items:
+            if can_reuse_common_items and _can_reuse_type(item):
+                # Narrowing only removes items, so reuse unchanged instances.
+                result_items.append(item)
+            else:
+                result_items.extend(
+                    narrow_declared_type(item, narrowed_item)
+                    for narrowed_item in narrowed_items
+                    if _is_overlapping_type(item, narrowed_item)
+                )
+        return make_simplified_union(result_items)
     if is_enum_overlapping_union(declared, narrowed):
         # Quick check before reaching `is_overlapping_types`. If it's enum/literal overlap,
         # avoid full expansion and make it faster.
