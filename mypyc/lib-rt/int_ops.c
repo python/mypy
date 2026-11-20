@@ -648,9 +648,24 @@ void CPyInt16_Overflow() {
     PyErr_SetString(PyExc_ValueError, "int too large to convert to i16");
 }
 
+// Unlike PyLong_AsLongAndOverflow(), which the other native int types use,
+// PyLong_AsUnsignedLong() and PyLong_AsUnsignedLongLong() don't call __index__, so
+// convert the object first. Return a new reference, or NULL with an exception set.
+static PyObject *CPyLong_IndexForUnsigned(PyObject *o) {
+    if (likely(PyLong_Check(o))) {
+        return Py_NewRef(o);
+    }
+    return PyNumber_Index(o);
+}
+
 // u64 unboxing slow path
 uint64_t CPyLong_AsUInt64_(PyObject *o) {
-    unsigned long long result = PyLong_AsUnsignedLongLong(o);
+    PyObject *index = CPyLong_IndexForUnsigned(o);
+    if (index == NULL) {
+        return CPY_LL_UINT_ERROR;
+    }
+    unsigned long long result = PyLong_AsUnsignedLongLong(index);
+    Py_DECREF(index);
     if (result == (unsigned long long)-1 && PyErr_Occurred()) {
         if (PyErr_ExceptionMatches(PyExc_OverflowError)) {
             PyErr_Clear();
@@ -667,7 +682,12 @@ void CPyUInt64_Overflow() {
 
 // u32 unboxing slow path
 uint32_t CPyLong_AsUInt32_(PyObject *o) {
-    unsigned long result = PyLong_AsUnsignedLong(o);
+    PyObject *index = CPyLong_IndexForUnsigned(o);
+    if (index == NULL) {
+        return CPY_LL_UINT_ERROR;
+    }
+    unsigned long result = PyLong_AsUnsignedLong(index);
+    Py_DECREF(index);
     if (result == (unsigned long)-1 && PyErr_Occurred()) {
         if (PyErr_ExceptionMatches(PyExc_OverflowError)) {
             PyErr_Clear();

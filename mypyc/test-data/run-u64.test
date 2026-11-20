@@ -21,6 +21,33 @@ def test_box_and_unbox() -> None:
         o = -1
         x3: u64 = o
 
+class Index:
+    def __init__(self, n: int) -> None:
+        self.n = n
+
+    def __index__(self) -> int:
+        return self.n
+
+def take_u64(x: u64) -> u64:
+    return x
+
+def test_unbox_index_and_non_int() -> None:
+    f: Any = take_u64
+    for n in [0, 5, ERROR, 2**40, 18446744073709551615]:
+        o: Any = Index(n)
+        x: u64 = o
+        assert x == n
+        assert f(o) == n
+    for n in [-1, 18446744073709551616]:
+        o = Index(n)
+        with assertRaises(ValueError, "int too large or small to convert to u64"):
+            x = o
+    o = 1.0
+    with assertRaises(TypeError, "'float' object cannot be interpreted as an integer"):
+        x = o
+    with assertRaises(TypeError, "u64 object expected; got float"):
+        f(o)
+
 def div_by_7(x: u64) -> u64:
     return x // 7
 
