@@ -419,3 +419,42 @@ maximum Unicode code point ``0x10FFFF``) are returned unchanged.
 
    Return the lowercase of the code point, or the input unchanged if the lowercase does not
    consist of exactly one code point.
+
+Cached single-character strings
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+CPython caches one-character strings only for Latin-1 characters (code points below 256).
+Getting a character in most other alphabetic scripts using :py:func:`chr`, ``s[i]`` or
+``for c in s`` allocates a new string object, and in compiled code this is often most of the
+cost of a loop that processes text one character at a time.
+
+These functions behave like :py:func:`chr` and ``s[i]``, but they also cache the
+one-character strings for code points in the range U+0100 to U+0FFF (this includes Latin
+Extended, Greek, Cyrillic, Armenian, Hebrew, Arabic, Indic scripts, Thai and Georgian). This
+can make processing text in these scripts several times faster. Characters outside this
+range are not cached, and are as fast as with :py:func:`chr` and ``s[i]``.
+
+The tradeoff is memory use: the cache takes about 30 kB, plus about 60 bytes for each
+distinct cached character (up to about 230 kB in total). Cached strings are never freed.
+The cache isn't used on free-threaded Python builds or in subinterpreters.
+
+This example counts occurrences of a character in a string, without allocating a new string
+for each Cyrillic character::
+
+    from librt.strings import char_at
+
+    def count_char(s: str, ch: str) -> int:
+        n = 0
+        for i in range(len(s)):
+            if char_at(s, i) == ch:
+                n += 1
+        return n
+
+.. function:: cached_chr(c: i64, /) -> str
+
+   Return a one-character string for the code point. Equivalent to ``chr(c)``.
+
+.. function:: char_at(s: str, i: i64, /) -> str
+
+   Return the character at index ``i`` (negative indices count from the end). Equivalent
+   to ``s[i]``.

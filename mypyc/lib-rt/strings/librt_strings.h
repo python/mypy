@@ -15,11 +15,17 @@
 // API version -- more recent versions must maintain backward compatibility, i.e.
 // we can add new features but not remove or change existing features (unless
 // ABI version is changed, but see the comment above).
-#define LIBRT_STRINGS_API_VERSION 4
+#define LIBRT_STRINGS_API_VERSION 5
 
 // Number of functions in the capsule API. If you add a new function, also increase
 // LIBRT_STRINGS_API_VERSION.
-#define LIBRT_STRINGS_API_LEN 14
+#define LIBRT_STRINGS_API_LEN 15
+
+// Single-character strings for code points below this are cached by cached_chr and
+// char_at (CPython caches those below 256)
+#define LIBRT_STRINGS_CHAR_CACHE_END 0x1000
+
+#define LIBRT_STRINGS_CACHED_CHR_ERRMSG "cached_chr() arg not in range(0x110000)"
 
 typedef struct {
     PyObject_HEAD

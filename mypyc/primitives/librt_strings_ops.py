@@ -599,3 +599,23 @@ function_op(
     error_kind=ERR_NEVER,
     dependencies=[LIBRT_STRINGS],
 )
+
+# Like chr() and s[i], but single-character strings for code points in
+# U+0100..U+0FFF are cached (CPython only caches Latin-1 characters)
+function_op(
+    name="librt.strings.cached_chr",
+    arg_types=[int64_rprimitive],
+    return_type=str_rprimitive,
+    c_function_name="LibRTStrings_CachedChr",
+    error_kind=ERR_MAGIC,
+    dependencies=[LIBRT_STRINGS],
+)
+
+function_op(
+    name="librt.strings.char_at",
+    arg_types=[str_rprimitive, int64_rprimitive],
+    return_type=str_rprimitive,
+    c_function_name="LibRTStrings_CharAt",
+    error_kind=ERR_MAGIC,
+    dependencies=[LIBRT_STRINGS],
+)

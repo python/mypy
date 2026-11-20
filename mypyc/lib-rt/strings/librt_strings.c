@@ -1365,6 +1365,99 @@ DEFINE_CP_BOOL_WRAPPER(isidentifier, LibRTStrings_IsIdentifier)
 DEFINE_CP_I32_WRAPPER(toupper, LibRTStrings_ToUpper)
 DEFINE_CP_I32_WRAPPER(tolower, LibRTStrings_ToLower)
 
+// Cache of single-character strings for code points in U+0100..U+0FFF, used by
+// cached_chr and char_at. CPython only caches single-character Latin-1 strings,
+// so getting a character in most other alphabetic scripts (Latin Extended, Greek,
+// Cyrillic, Hebrew, Arabic, Indic scripts, Thai, Georgian, etc.) allocates a new
+// string. Entries are created on first use and never freed. The table takes 30 kB,
+// and each cached string about 60 bytes more (about 230 kB if all are used).
+//
+// Free-threaded builds don't use the cache, since the slots would need atomic
+// access. The cache is only used in the main interpreter, since objects can't be
+// shared between interpreters (mypyc-compiled modules only support the main
+// interpreter, so this only matters for calls from interpreted code).
+#ifndef Py_GIL_DISABLED
+static PyObject *char_cache[LIBRT_STRINGS_CHAR_CACHE_END - 256];
+#endif
+
+// Return a new reference to a single-character string for a valid code point,
+// or NULL with an exception set.
+static PyObject *
+str_from_code_point(int32_t c, bool use_cache) {
+    if (c < 256) {
+        // CPython caches single-character Latin-1 strings
+        return PyUnicode_FromOrdinal(c);
+    }
+#ifndef Py_GIL_DISABLED
+    PyObject **slot = NULL;
+    if (c < LIBRT_STRINGS_CHAR_CACHE_END && use_cache) {
+        slot = &char_cache[c - 256];
+        if (*slot != NULL) {
+            return Py_NewRef(*slot);
+        }
+    }
+#endif
+    PyObject *result = PyUnicode_FromOrdinal(c);
+#ifndef Py_GIL_DISABLED
+    if (result != NULL && slot != NULL) {
+        *slot = Py_NewRef(result);
+    }
+#endif
+    return result;
+}
+
+// Variant for compiled code, which is always run in the main interpreter
+static PyObject *
+str_from_code_point_internal(int32_t c) {
+    return str_from_code_point(c, true);
+}
+
+static inline bool
+can_use_char_cache(void) {
+    return PyInterpreterState_Get() == PyInterpreterState_Main();
+}
+
+static PyObject*
+cached_chr(PyObject *module, PyObject *arg) {
+    int64_t c = CPyLong_AsInt64(arg);
+    if (unlikely(c == CPY_LL_INT_ERROR && PyErr_Occurred())) {
+        return NULL;
+    }
+    if (unlikely(c < 0 || c > 0x10ffff)) {
+        PyErr_SetString(PyExc_ValueError, LIBRT_STRINGS_CACHED_CHR_ERRMSG);
+        return NULL;
+    }
+    return str_from_code_point((int32_t)c, can_use_char_cache());
+}
+
+static PyObject*
+char_at(PyObject *module, PyObject *const *args, size_t nargs) {
+    if (unlikely(nargs != 2)) {
+        PyErr_Format(PyExc_TypeError,
+                     "char_at() takes exactly 2 arguments (%zu given)", nargs);
+        return NULL;
+    }
+    PyObject *s = args[0];
+    if (unlikely(!PyUnicode_Check(s))) {
+        PyErr_SetString(PyExc_TypeError, "char_at() argument 1 must be str");
+        return NULL;
+    }
+    int64_t i = CPyLong_AsInt64(args[1]);
+    if (unlikely(i == CPY_LL_INT_ERROR && PyErr_Occurred())) {
+        return NULL;
+    }
+    Py_ssize_t len = PyUnicode_GET_LENGTH(s);
+    if (i < 0) {
+        i += len;
+    }
+    if (unlikely(i < 0 || i >= len)) {
+        PyErr_SetString(PyExc_IndexError, "string index out of range");
+        return NULL;
+    }
+    Py_UCS4 c = PyUnicode_READ_CHAR(s, (Py_ssize_t)i);
+    return str_from_code_point((int32_t)c, can_use_char_cache());
+}
+
 static PyMethodDef librt_strings_module_methods[] = {
     {"write_i8", (PyCFunction) write_i8, METH_FASTCALL,
      PyDoc_STR("Write an 8-bit signed integer to BytesWriter as a single byte")
@@ -1489,6 +1582,12 @@ static PyMethodDef librt_strings_module_methods[] = {
     {"tolower", cp_tolower, METH_O,
      PyDoc_STR("Single-codepoint lowercase mapping for a codepoint (i32). Returns the input unchanged if the Unicode lowercase expands to multiple codepoints; use str.lower() for full Unicode case conversion.")
     },
+    {"cached_chr", cached_chr, METH_O,
+     PyDoc_STR("Like chr(), but cache the result for code points in U+0100..U+0FFF.")
+    },
+    {"char_at", (PyCFunction) char_at, METH_FASTCALL,
+     PyDoc_STR("Like s[i], but cache the result for code points in U+0100..U+0FFF.")
+    },
     {NULL, NULL, 0, NULL}
 };
 
@@ -1534,6 +1633,7 @@ librt_strings_module_exec(PyObject *m)
         (void *)StringWriter_type_internal,
         (void *)StringWriter_write_internal,
         (void *)grow_string_buffer,
+        (void *)str_from_code_point_internal,
     };
     PyObject *c_api_object = PyCapsule_New((void *)librt_strings_api, "librt.strings._C_API", NULL);
     if (PyModule_Add(m, "_C_API", c_api_object) < 0) {
