@@ -1929,6 +1929,8 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         """Find the type variables of the function type and bind them in our tvar_scope"""
         has_self_type = False
         if fun_type.variables:
+            if all(var.id.namespace == "dmypy_suggest" for var in fun_type.variables):
+                return tuple(fun_type.variables), has_self_type
             defs = []
             for var in fun_type.variables:
                 if self.api.type and self.api.type.self_type and var == self.api.type.self_type:
@@ -1942,6 +1944,14 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 defs.append(binding)
             return tuple(defs), has_self_type
         typevars, has_self_type = self.infer_type_variables(fun_type)
+        if not typevars and isinstance(defn, nodes.FuncItem):
+            visitor = FindTypeVarVisitor(self.api, self.tvar_scope)
+            for arg in fun_type.arg_types:
+                arg.accept(visitor)
+            visitor.include_callables = False
+            fun_type.ret_type.accept(visitor)
+            if visitor.existing_type_vars:
+                return tuple(visitor.existing_type_vars), has_self_type
         # Do not define a new type variable if already defined in scope.
         typevars = [
             (name, tvar) for name, tvar in typevars if not self.is_defined_type_var(name, defn)
@@ -2763,6 +2773,7 @@ class FindTypeVarVisitor(SyntheticTypeVisitor[None]):
         self.api = api
         self.scope = scope
         self.type_var_likes: list[tuple[str, TypeVarLikeExpr]] = []
+        self.existing_type_vars: list[TypeVarLikeType] = []
         self.has_self_type = False
         self.include_callables = True
 
@@ -2819,6 +2830,8 @@ class FindTypeVarVisitor(SyntheticTypeVisitor[None]):
         pass
 
     def visit_type_var(self, t: TypeVarType) -> None:
+        if t.id.namespace == "dmypy_suggest" and t not in self.existing_type_vars:
+            self.existing_type_vars.append(t)
         self.process_types([t.upper_bound, t.default] + t.values)
 
     def visit_param_spec(self, t: ParamSpecType) -> None:
