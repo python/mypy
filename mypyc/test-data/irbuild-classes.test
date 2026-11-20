@@ -1529,6 +1529,27 @@ L0:
     __mypyc_self__.b = 1
     return 1
 
+[case testDefaultVarsOverriddenInSubclass]
+class A:
+    x = 'a'
+class B(A):
+    x = 'b'
+[out]
+def A.__mypyc_defaults_setup(__mypyc_self__):
+    __mypyc_self__ :: __main__.A
+    r0 :: str
+L0:
+    r0 = 'a'
+    __mypyc_self__.x = r0
+    return 1
+def B.__mypyc_defaults_setup(__mypyc_self__):
+    __mypyc_self__ :: __main__.B
+    r0 :: str
+L0:
+    r0 = 'b'
+    __mypyc_self__.x = r0
+    return 1
+
 [case testSubclassDictSpecalized]
 from typing import Dict
 class WelpDict(Dict[str, int]):
