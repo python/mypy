@@ -40,6 +40,7 @@ class Flag(Enum):
     value: int
     _value_: int
     def __or__(self: _T, other: Union[int, _T]) -> _T: pass
+    def __contains__(self: _T, other: _T) -> bool: pass
 
 
 class IntFlag(int, Flag):
