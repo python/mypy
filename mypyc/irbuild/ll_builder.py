@@ -154,8 +154,10 @@ from mypyc.primitives.float_ops import copysign_op, int_to_float_op
 from mypyc.primitives.generic_ops import (
     call_fastcall_wrapper_op,
     call_legacy_wrapper_op,
+    check_len_result_op,
     generic_len_op,
     generic_ssize_t_len_op,
+    len_from_result_op,
     py_call_op,
     py_call_with_kwargs_op,
     py_call_with_posargs_op,
@@ -3064,18 +3066,16 @@ class LowLevelIRBuilder:
             # TODO: Support use_pyssize_t
             assert not use_pyssize_t
             length = self.gen_method_call(val, "__len__", [], int_rprimitive, line)
+            rtype = length.type
+            if not (
+                is_tagged(rtype) or is_fixed_width_rtype(rtype) or is_bool_or_bit_rprimitive(rtype)
+            ):
+                # Like len(), accept any int (or object with __index__) that is a valid length
+                obj = self.coerce(length, object_rprimitive, line)
+                return self.call_c(len_from_result_op, [obj], line)
             length = self.coerce(length, int_rprimitive, line)
-            ok, fail = BasicBlock(), BasicBlock()
-            cond = self.binary_op(length, Integer(0), ">=", line)
-            self.add_bool_branch(cond, ok, fail)
-            self.activate_block(fail)
-            self.add(
-                RaiseStandardError(
-                    RaiseStandardError.VALUE_ERROR, "__len__() should return >= 0", line
-                )
-            )
-            self.add(Unreachable())
-            self.activate_block(ok)
+            # The length must not be negative and must fit in Py_ssize_t
+            self.call_c(check_len_result_op, [length], line)
             return length
 
         elif isinstance(typ, RVec):

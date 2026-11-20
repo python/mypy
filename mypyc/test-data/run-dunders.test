@@ -1523,6 +1523,124 @@ def test_hash_result() -> None:
         with assertRaises(TypeError, "__hash__ method should return an integer"):
             hash(HashAny(x))
 
+[case testDundersLenResult]
+# len() checks the value returned by __len__ like in Python
+from typing import Any
+
+from mypy_extensions import i64, i8, u8
+from testutil import assertRaises
+
+class Len:
+    def __init__(self, n: int) -> None:
+        self.n = n
+
+    def __len__(self) -> int:
+        return self.n
+
+class LenAny:
+    def __init__(self, n: Any) -> None:
+        self.n = n
+
+    def __len__(self) -> Any:
+        return self.n
+
+class LenBool:
+    def __init__(self, n: bool) -> None:
+        self.n = n
+
+    def __len__(self) -> bool:
+        return self.n
+
+class LenI64:
+    def __init__(self, n: i64) -> None:
+        self.n = n
+
+    def __len__(self) -> i64:
+        return self.n
+
+class LenI8:
+    def __init__(self, n: i8) -> None:
+        self.n = n
+
+    def __len__(self) -> i8:
+        return self.n
+
+class LenU8:
+    def __init__(self, n: u8) -> None:
+        self.n = n
+
+    def __len__(self) -> u8:
+        return self.n
+
+class Index:
+    def __index__(self) -> int:
+        return 7
+
+def len_any(x: Any) -> int:
+    # Uses the sq_length/mp_length slot
+    return len(x)
+
+NEGATIVE = "__len__() should return >= 0"
+TOO_LARGE = "cannot fit 'int' into an index-sized integer"
+
+def test_len_int() -> None:
+    for n in [0, 5, 2**30, 2**31 - 1]:
+        assert len(Len(n)) == n
+        assert len_any(Len(n)) == n
+    for n in [-1, -5, -(2**63), -(2**100)]:
+        with assertRaises(ValueError, NEGATIVE):
+            len(Len(n))
+        with assertRaises(ValueError, NEGATIVE):
+            len_any(Len(n))
+    for n in [2**63, 2**100]:
+        with assertRaises(OverflowError, TOO_LARGE):
+            len(Len(n))
+        with assertRaises(OverflowError, TOO_LARGE):
+            len_any(Len(n))
+
+def test_len_any() -> None:
+    for x, n in [(3, 3), (True, 1), (Index(), 7)]:
+        assert len(LenAny(x)) == n
+        assert len_any(LenAny(x)) == n
+    for x in [-1, -(2**100)]:
+        with assertRaises(ValueError, NEGATIVE):
+            len(LenAny(x))
+        with assertRaises(ValueError, NEGATIVE):
+            len_any(LenAny(x))
+    with assertRaises(OverflowError, TOO_LARGE):
+        len(LenAny(2**63))
+    with assertRaises(OverflowError, TOO_LARGE):
+        len_any(LenAny(2**63))
+    for x in ["x", 1.5, None]:
+        with assertRaises(TypeError, "cannot be interpreted as an integer"):
+            len(LenAny(x))
+        with assertRaises(TypeError, "cannot be interpreted as an integer"):
+            len_any(LenAny(x))
+
+def test_len_bool() -> None:
+    assert len(LenBool(True)) == 1
+    assert len(LenBool(False)) == 0
+    assert len_any(LenBool(True)) == 1
+    assert len_any(LenBool(False)) == 0
+
+def test_len_native_int() -> None:
+    for n in [0, 7, 2**31 - 1]:
+        assert len(LenI64(n)) == n
+        assert len_any(LenI64(n)) == n
+    for n in [-1, -(2**63)]:
+        with assertRaises(ValueError, NEGATIVE):
+            len(LenI64(n))
+        with assertRaises(ValueError, NEGATIVE):
+            len_any(LenI64(n))
+    assert len(LenI8(127)) == 127
+    assert len_any(LenI8(127)) == 127
+    with assertRaises(ValueError, NEGATIVE):
+        len(LenI8(-128))
+    with assertRaises(ValueError, NEGATIVE):
+        len_any(LenI8(-128))
+    assert len(LenU8(255)) == 255
+    assert len_any(LenU8(255)) == 255
+
 [case testDundersImplicitNeWithNarrowRhs]
 class Accepted:
     pass

@@ -926,6 +926,27 @@ static void CPy_LogGetAttr(const char *method, PyObject *obj, PyObject *attr) {
 
 CPyTagged CPyObject_Hash(PyObject *o);
 Py_hash_t CPy_HashFromResult(PyObject *res);
+Py_ssize_t CPy_LenFromResult(PyObject *res);
+CPyTagged CPyObject_LenFromResult(PyObject *res);
+
+// Convert the result of a __len__ method to a length, like len() does.
+// Return -1 with an exception set on error.
+static inline Py_ssize_t CPyTagged_AsLen(CPyTagged x) {
+    if (likely(CPyTagged_CheckShort(x))) {
+        Py_ssize_t len = CPyTagged_ShortAsSsize_t(x);
+        if (likely(len >= 0)) {
+            return len;
+        }
+        PyErr_SetString(PyExc_ValueError, "__len__() should return >= 0");
+        return -1;
+    }
+    return CPy_LenFromResult(CPyTagged_LongAsObject(x));
+}
+
+// Check that the result of a __len__ method is a valid length, like len() does
+static inline bool CPyTagged_CheckLen(CPyTagged x) {
+    return CPyTagged_AsLen(x) >= 0;
+}
 
 // Default identity-based hash (same as object.__hash__), used as tp_hash
 static inline Py_hash_t CPy_DefaultHash(PyObject *o) {
