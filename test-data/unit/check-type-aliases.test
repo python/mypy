@@ -1449,3 +1449,24 @@ Alias1: TypeAlias = Union[C, int]
 class SomeClass:
     pass
 [builtins fixtures/tuple.pyi]
+
+[case testUnionTypeAliasErrorDeduplicatesOverlappingItems]
+# Regression test for https://github.com/python/mypy/issues/22194
+# Overlapping aliases should not render as e.g. "str | str | None".
+from typing_extensions import TypeAlias
+
+TextInput: TypeAlias = str
+ImageInput: TypeAlias = str | None
+SingleInput: TypeAlias = TextInput | ImageInput
+
+def f(x: SingleInput) -> None: ...
+
+f(1)  # E: Argument 1 to "f" has incompatible type "int"; expected "str | None"
+
+Opt: TypeAlias = int | None
+U: TypeAlias = int | Opt
+
+def g(x: U) -> None: ...
+
+g("x")  # E: Argument 1 to "g" has incompatible type "str"; expected "int | None"
+[builtins fixtures/tuple.pyi]
