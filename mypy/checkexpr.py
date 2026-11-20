@@ -4381,6 +4381,22 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
 
         left_op = self.lookup_operator(op_name, left_type, context)
         right_op = self.lookup_operator(rev_op_name, right_type, context)
+        left_runtime_type = (
+            left_type.fallback
+            if isinstance(left_type, FunctionLike) and left_type.is_type_obj()
+            else left_type
+        )
+        right_runtime_type = (
+            right_type.fallback
+            if isinstance(right_type, FunctionLike) and right_type.is_type_obj()
+            else right_type
+        )
+        if isinstance(left_type, TypeType):
+            if info := type_info_from_type(left_type):
+                left_runtime_type = info.metaclass_type or self.named_type("builtins.type")
+        if isinstance(right_type, TypeType):
+            if info := type_info_from_type(right_type):
+                right_runtime_type = info.metaclass_type or self.named_type("builtins.type")
 
         # STEP 2a:
         # We figure out in which order Python will call the operator methods. As it
@@ -4390,7 +4406,9 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         # We store the determined order inside the 'variants_raw' variable,
         # which records tuples containing the method, base type, and the argument.
 
-        if op_name in operators.op_methods_that_shortcut and is_same_type(left_type, right_type):
+        if op_name in operators.op_methods_that_shortcut and is_same_type(
+            left_runtime_type, right_runtime_type
+        ):
             # When we do "A() + A()", for example, Python will only call the __add__ method,
             # never the __radd__ method.
             #
@@ -4401,20 +4419,23 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         elif (
             (
                 # Checking (A implies B) using the logically equivalent (not A or B), where
-                #    A: left and right are both `Instance` objects
+                #    A: left and right have `Instance` runtime types
                 #    B: right's __rop__ method is different from left's __op__ method
-                not (isinstance(left_type, Instance) and isinstance(right_type, Instance))
+                not (
+                    isinstance(left_runtime_type, Instance)
+                    and isinstance(right_runtime_type, Instance)
+                )
                 or (
-                    self.lookup_definer(left_type, op_name)
-                    != self.lookup_definer(right_type, rev_op_name)
+                    self.lookup_definer(left_runtime_type, op_name)
+                    != self.lookup_definer(right_runtime_type, rev_op_name)
                     and (
-                        left_type.type.alt_promote is None
-                        or left_type.type.alt_promote.type is not right_type.type
+                        left_runtime_type.type.alt_promote is None
+                        or left_runtime_type.type.alt_promote.type is not right_runtime_type.type
                     )
                 )
             )
             # Note: use `covers_at_runtime` instead of `is_subtype` (#19006)
-            and covers_at_runtime(right_type, left_type)
+            and covers_at_runtime(right_runtime_type, left_runtime_type)
         ):
             # When we do "A() + B()" where B is a subclass of A, we'll actually try calling
             # B's __radd__ method first, but ONLY if B explicitly defines or overrides the
