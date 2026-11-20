@@ -899,6 +899,39 @@ def test_long_needle() -> None:
         assert b"a" * n + b"c" not in h
         assert b"b" + b"a" * n not in h
 
+def test_frequent_first_byte() -> None:
+    # Dense false hits on the first needle byte switch to the CPython search
+    for first, last in [(b"a", b"b"), (b"\x00", b"\xff")]:
+        for size in [2, 32]:
+            needle = first * (size - 1) + last
+            h = first * 100
+            assert needle not in h
+            assert needle in h + needle
+            assert needle in h + needle + first * 20
+    # Just before, at, and after the first density check
+    for false_hits in [15, 16, 17]:
+        h = b"a" * false_hits
+        assert b"ab" in h + b"ab"
+        assert b"ab" not in h + b"a"
+    # The fallback must search beyond the dense prefix
+    h = b"a" * 100 + b"x" * 200
+    assert b"ab" in h + b"ab"
+    assert b"ab" not in h
+
+def test_dense_and_sparse_regions() -> None:
+    # Sparse false hits keep the direct search going across multiple density checks.
+    # A subsequent dense region should still trigger the fallback.
+    for tail in [b"x" * 100, b"a" * 100]:
+        h = b"axxxxxxxx" * 32 + tail
+        assert b"ab" not in h
+        assert b"ab" in h + b"ab"
+    # At the first density check, the distance from the initial mark to the
+    # next candidate equals the position of the 16th false hit.
+    for distance in [127, 128, 129]:
+        h = b"a" * 15 + b"x" * (distance - 15) + b"ax"
+        assert b"ab" not in h
+        assert b"ab" in h + b"ab"
+
 def test_subclass() -> None:
     s: bytes = BytesSubclass(b"abc")
     assert 97 in s

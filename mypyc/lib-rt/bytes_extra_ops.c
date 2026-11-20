@@ -49,6 +49,45 @@ PyObject *CPyBytes_Translate(PyObject *bytes, PyObject *table) {
 // generic implementation, which has better worst-case behavior.
 #define CPY_BYTES_CONTAINS_MAX_DIRECT 32
 
+#if CPY_3_11_FEATURES
+// Exported by CPython (used by the mmap module) but only declared in an internal header.
+// Uses the same search as bytes.find, and the haystack doesn't need to be a bytes object.
+PyAPI_FUNC(Py_ssize_t) _PyBytes_Find(const char *haystack, Py_ssize_t len_haystack,
+                                     const char *needle, Py_ssize_t len_needle,
+                                     Py_ssize_t offset);
+#endif
+
+// Continue a bytes containment search after a false hit, with p pointing to the
+// next position to check. See CPyBytes_Contains for the meaning of the arguments.
+// Not inlined, so that the common fast path in CPyBytes_Contains stays small.
+static CPy_NOINLINE int bytes_contains_after_false_hit(PyObject *self, PyObject *sub_obj,
+                                                       const char *p, const char *end,
+                                                       const char *sub, Py_ssize_t sub_len) {
+    // Position at the last density check
+    const char *mark = p;
+    unsigned false_hits = 1;
+    while ((p = memchr(p, sub[0], end - p)) != NULL) {
+        if (memcmp(p + 1, sub + 1, sub_len - 1) == 0) {
+            return 1;
+        }
+        p++;
+        // If the first needle byte is frequent, memchr makes little progress per
+        // call. Use the CPython search implementation, which has better worst-case
+        // behavior, if the last 16 false hits were within 128 bytes.
+        if ((++false_hits & 15) == 0) {
+            if (p - mark < 128) {
+#if CPY_3_11_FEATURES
+                return _PyBytes_Find(p, end - p + sub_len - 1, sub, sub_len, 0) >= 0;
+#else
+                return PySequence_Contains(self, sub_obj);
+#endif
+            }
+            mark = p;
+        }
+    }
+    return 0;
+}
+
 int CPyBytes_ContainsInt(PyObject *self, CPyTagged value) {
     if (likely(PyBytes_CheckExact(self))) {
         if (likely(CPyTagged_CheckShort(value))) {
@@ -81,14 +120,14 @@ int CPyBytes_Contains(PyObject *self, PyObject *sub) {
             const char *sub_buf = PyBytes_AS_STRING(sub);
             // One past the last position where a match can start
             const char *end = buf + (len - sub_len + 1);
-            const char *p = buf;
-            while ((p = memchr(p, sub_buf[0], end - p)) != NULL) {
-                if (memcmp(p + 1, sub_buf + 1, sub_len - 1) == 0) {
-                    return 1;
-                }
-                p++;
+            const char *p = memchr(buf, sub_buf[0], end - buf);
+            if (p == NULL) {
+                return 0;
             }
-            return 0;
+            if (memcmp(p + 1, sub_buf + 1, sub_len - 1) == 0) {
+                return 1;
+            }
+            return bytes_contains_after_false_hit(self, sub, p + 1, end, sub_buf, sub_len);
         }
     }
     return PySequence_Contains(self, sub);
