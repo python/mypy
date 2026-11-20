@@ -396,6 +396,112 @@ CPyTagged CPyList_Count(PyObject *obj, PyObject *value)
     return list_count((PyListObject *)obj, value);
 }
 
+// Return 1 if an exact list or tuple contains a short int value, 0 if it doesn't, or
+// -1 on error. Exact int items are compared without boxing the value. The boxed value
+// is only created if there is an item of some other type.
+//
+// The caller must hold a critical section on a list.
+static int _CPySequence_ContainsShortInt(PyObject *seq, Py_ssize_t value) {
+    PyObject *boxed = NULL;
+    int result = 0;
+    // A list may be resized by __eq__, so the size and item array must be read again
+    // after each comparison
+    for (Py_ssize_t i = 0; i < Py_SIZE(seq); i++) {
+        PyObject *item = PySequence_Fast_GET_ITEM(seq, i);
+        if (PyLong_CheckExact(item)) {
+            int overflow;
+            Py_ssize_t n = CPyLong_AsSsize_tAndOverflow(item, &overflow);
+            if (n == value && !overflow) {
+                result = 1;
+                break;
+            }
+            continue;
+        }
+        if (boxed == NULL) {
+            boxed = PyLong_FromSsize_t(value);
+            if (boxed == NULL) {
+                result = -1;
+                break;
+            }
+        }
+        Py_INCREF(item);
+        int cmp = PyObject_RichCompareBool(item, boxed, Py_EQ);
+        Py_DECREF(item);
+        if (cmp != 0) {
+            result = cmp;
+            break;
+        }
+    }
+    Py_XDECREF(boxed);
+    return result;
+}
+
+int CPySequence_ContainsInt(PyObject *seq, CPyTagged value) {
+    if (likely(CPyTagged_CheckShort(value))) {
+        Py_ssize_t n = CPyTagged_ShortAsSsize_t(value);
+        if (PyList_CheckExact(seq)) {
+            int result;
+            Py_BEGIN_CRITICAL_SECTION(seq);
+            result = _CPySequence_ContainsShortInt(seq, n);
+            Py_END_CRITICAL_SECTION();
+            return result;
+        } else if (PyTuple_CheckExact(seq)) {
+            return _CPySequence_ContainsShortInt(seq, n);
+        }
+    }
+    PyObject *obj = CPyTagged_AsObject(value);
+    int result = PySequence_Contains(seq, obj);
+    Py_DECREF(obj);
+    return result;
+}
+
+// Return 1 if an exact list or tuple contains an exact str, 0 if it doesn't, or -1 on
+// error. Exact str items are compared directly.
+//
+// The caller must hold a critical section on a list.
+static int _CPySequence_ContainsExactStr(PyObject *seq, PyObject *str) {
+    Py_ssize_t len = PyUnicode_GET_LENGTH(str);
+    int kind = PyUnicode_KIND(str);
+    const void *data = PyUnicode_DATA(str);
+    for (Py_ssize_t i = 0; i < Py_SIZE(seq); i++) {
+        PyObject *item = PySequence_Fast_GET_ITEM(seq, i);
+        int cmp;
+        if (item == str) {
+            return 1;
+        } else if (PyUnicode_CheckExact(item)) {
+            // Strings are always in the most compact representation, so equal strings
+            // have the same kind
+            cmp = PyUnicode_GET_LENGTH(item) == len
+                  && PyUnicode_KIND(item) == kind
+                  && memcmp(PyUnicode_DATA(item), data, len * kind) == 0;
+        } else {
+            Py_INCREF(item);
+            cmp = PyObject_RichCompareBool(item, str, Py_EQ);
+            Py_DECREF(item);
+        }
+        if (cmp != 0) {
+            return cmp;
+        }
+    }
+    return 0;
+}
+
+int CPySequence_ContainsStr(PyObject *seq, PyObject *str) {
+    // A str subclass could override __eq__, so it must use the generic implementation
+    if (likely(PyUnicode_CheckExact(str))) {
+        if (PyList_CheckExact(seq)) {
+            int result;
+            Py_BEGIN_CRITICAL_SECTION(seq);
+            result = _CPySequence_ContainsExactStr(seq, str);
+            Py_END_CRITICAL_SECTION();
+            return result;
+        } else if (PyTuple_CheckExact(seq)) {
+            return _CPySequence_ContainsExactStr(seq, str);
+        }
+    }
+    return PySequence_Contains(seq, str);
+}
+
 int CPyList_Insert(PyObject *list, CPyTagged index, PyObject *value)
 {
     if (CPyTagged_CheckShort(index)) {

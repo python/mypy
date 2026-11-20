@@ -24,6 +24,7 @@ Operators
 * ``tup1 == tup2``, ``tup1 != tup2`` (variable-length tuples)
 * ``tup1 + tup2``
 * ``tup * n``, ``n * tup``
+* ``obj in tup``
 
 Statements
 ----------
