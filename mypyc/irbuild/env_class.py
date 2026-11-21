@@ -49,12 +49,8 @@ def setup_env_class(builder: IRBuilder) -> ClassIR:
     Return a ClassIR representing an environment for a function
     containing a nested function.
     """
-    env_class = ClassIR(
-        f"{builder.fn_info.namespaced_name()}_env",
-        builder.module_name,
-        is_generated=True,
-        is_final_class=True,
-    )
+    name = builder.unique_class_name(f"{builder.fn_info.namespaced_name()}_env")
+    env_class = ClassIR(name, builder.module_name, is_generated=True, is_final_class=True)
     env_class.reuse_freed_instance = True
     env_class.attributes[SELF_NAME] = RInstance(env_class)
     if builder.fn_info.is_nested and builder.fn_infos[-2]._env_class is not None:

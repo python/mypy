@@ -176,16 +176,13 @@ def f() -> None:
     b = abs(1.1)
 [out]
 def f():
-    r0, r1 :: object
-    r2, a :: int
-    r3, b :: float
+    r0, a :: int
+    r1, b :: float
 L0:
-    r0 = object 1
-    r1 = PyNumber_Absolute(r0)
-    r2 = unbox(int, r1)
-    a = r2
-    r3 = fabs(1.1)
-    b = r3
+    r0 = CPyTagged_Absolute(2)
+    a = r0
+    r1 = fabs(1.1)
+    b = r1
     return 1
 
 [case testFunctionBasedOps]

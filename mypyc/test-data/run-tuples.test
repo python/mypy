@@ -383,6 +383,35 @@ def test_tuple_in_non_specialized() -> None:
     assert f_b() not in f_t()
     assert log == ["f_b", "f_t"]
 
+class NeverEqual:
+    def __eq__(self, other: object) -> bool:
+        return False
+
+    def __ne__(self, other: object) -> bool:
+        return False
+
+def test_tuple_and_list_in_identity() -> None:
+    # Membership tests compare identity before equality
+    x = NeverEqual()
+    y = NeverEqual()
+    assert x in (x,)
+    assert x in [x]
+    assert x in (y, x)
+    assert x in [y, x]
+    assert y not in (x,)
+    assert y not in [x]
+    assert y not in (x, x)
+    assert y not in [x, x]
+    assert not (x not in (x,))
+    assert not (x not in [y, x])
+    a: Any = x
+    assert a in (a,)
+    assert a in (y, a)
+    assert not (a not in (y, a))
+    f = float("nan")
+    assert f in (f,)
+    assert f in [1.0, f]
+
 def test_add() -> None:
     res = (1, 2, 3, 4)
     assert (1, 2) + (3, 4) == res
@@ -438,3 +467,287 @@ class subc(tuple[Any, ...]):
 [file userdefinedtuple.py]
 class tuple:
     pass
+
+[case testTupleOpsOverridingSubclass]
+from typing import Tuple
+from testutil import assertRaises
+from tuplesub import BadTuple, GoodTuple
+
+def add(a: Tuple[int, ...], b: Tuple[int, ...]) -> Tuple[int, ...]:
+    return a + b
+
+def mul(a: Tuple[int, ...], n: int) -> Tuple[int, ...]:
+    return a * n
+
+def rmul(a: Tuple[int, ...], n: int) -> Tuple[int, ...]:
+    return n * a
+
+def test_bad_result_type() -> None:
+    a: Tuple[int, ...] = BadTuple((1,))
+    with assertRaises(TypeError, "tuple object expected; got int"):
+        add(a, (2,))
+    with assertRaises(TypeError, "tuple object expected; got int"):
+        mul(a, 2)
+    with assertRaises(TypeError, "tuple object expected; got int"):
+        rmul(a, 2)
+
+def test_overrides_called() -> None:
+    a: Tuple[int, ...] = GoodTuple((1,))
+    assert add(a, (2,)) == (1, 2, 0)
+    assert mul(a, 2) == (1, 1, 2)
+    assert rmul(a, 2) == (1, 1, 3)
+    assert type(rmul(a, 2)) is GoodTuple
+    assert rmul((1,), 2) == (1, 1)
+
+[file tuplesub.py]
+from typing import Any
+
+class BadTuple(tuple):
+    def __add__(self, other: Any) -> Any:
+        return 1
+    def __mul__(self, n: Any) -> Any:
+        return 2
+    def __rmul__(self, n: Any) -> Any:
+        return 3
+
+class GoodTuple(tuple):
+    def __add__(self, other: Any) -> Any:
+        return GoodTuple(tuple(self) + other + (0,))
+    def __mul__(self, n: Any) -> Any:
+        return GoodTuple(tuple(self) * n + (2,))
+    def __rmul__(self, n: Any) -> Any:
+        return GoodTuple(tuple(self) * n + (3,))
+
+[case testTupleHash]
+from typing import Any, Tuple
+
+from mypy_extensions import i64, u16, u32, u64
+from testutil import assertRaises
+
+def boxed(t: Any) -> int:
+    # hash() of a tuple object
+    return hash(t)
+
+INTS = [0, 1, -1, -2, 2**30, -(2**30), 2**61 - 1, 2**61, -(2**61), -(2**61) - 1, 2**62 - 1,
+        -(2**62), 2**62, 2**63, -(2**100)]
+
+def test_ints() -> None:
+    for a in INTS:
+        for b in INTS:
+            assert hash((a, b)) == boxed((a, b))
+        assert hash((a,)) == boxed((a,))
+        assert hash((a, a, a, a, a)) == boxed((a, a, a, a, a))
+
+def test_fixed_width_ints() -> None:
+    for x in [0, 1, -1, -2, 2**62 - 1, 2**62, -(2**62) - 1, 2**63 - 1, -(2**63)]:
+        n: i64 = x
+        assert hash((n, x)) == boxed((n, x))
+    for x in [0, 1, 2**62 - 1, 2**62, 2**63, 2**64 - 1]:
+        n64: u64 = x
+        assert hash((n64, 1)) == boxed((n64, 1))
+    for x in [0, 2**31, 2**32 - 1]:
+        n32: u32 = x
+        assert hash((n32, 1)) == boxed((n32, 1))
+    for x in [0, 2**16 - 1]:
+        n16: u16 = x
+        assert hash((n16, 1)) == boxed((n16, 1))
+
+def test_other_items() -> None:
+    assert hash(()) == boxed(())
+    for b in [True, False]:
+        assert hash((b, 1 > 2)) == boxed((b, 1 > 2))
+    for f in [0.0, -0.0, 1.5, float("inf")]:
+        assert hash((f, "x", None)) == boxed((f, "x", None))
+    for o in [None, 5]:
+        assert hash((o, 1)) == boxed((o, 1))
+    assert hash((1, (2, (3, "a")), ())) == boxed((1, (2, (3, "a")), ()))
+
+def hash_arg(t: Tuple[int, str]) -> int:
+    return hash(t)
+
+class Point:
+    def __init__(self, x: int, y: int, label: str) -> None:
+        self.x = x
+        self.y = y
+        self.label = label
+
+    def __hash__(self) -> int:
+        return hash((self.x, self.y, self.label))
+
+def test_tuple_values() -> None:
+    assert hash_arg((3, "x")) == boxed((3, "x"))
+    assert hash(Point(3, -4, "p")) == boxed((3, -4, "p"))
+
+def test_unhashable_item() -> None:
+    a: Any = []
+    with assertRaises(TypeError, "unhashable type: 'list'"):
+        hash((1, a))
+    with assertRaises(TypeError, "unhashable type: 'list'"):
+        hash((a, 1))
+    with assertRaises(TypeError, "unhashable type: 'list'"):
+        hash((1, (2, a)))
+
+[case testVariableLengthTupleEquality]
+from typing import Any, Tuple
+from testutil import assertRaises
+from teqsubclass import (
+    TupleSubclass, TupleEqOverride, TupleEqOnlyOverride, TupleNeOverride, NT
+)
+
+def eq(x: Tuple[Any, ...], y: Tuple[Any, ...]) -> bool:
+    return x == y
+
+def ne(x: Tuple[Any, ...], y: Tuple[Any, ...]) -> bool:
+    return x != y
+
+class AlwaysEqual:
+    def __eq__(self, other: object) -> bool:
+        return True
+
+class NeverEqual:
+    def __eq__(self, other: object) -> bool:
+        return False
+
+class RaisesOnEq:
+    def __eq__(self, other: object) -> bool:
+        raise ValueError("eq")
+
+class FalsyEq:
+    def __eq__(self, other: object) -> Any:
+        return 0
+
+class TruthyEq:
+    def __eq__(self, other: object) -> Any:
+        return "yes"
+
+def test_basic() -> None:
+    nested = ((1, 2), (3,))
+    values: list[Tuple[Any, ...]] = [
+        (),
+        (1,),
+        (1, 2),
+        (1, 2, 3),
+        (2, 1),
+        (1, 2, 4),
+        ("a", "b"),
+        (1.0, 2.0),
+        (True, 2),
+        ((1, 2), (3,)),
+        nested,
+        ((1, 2), (4,)),
+        (None,),
+        ([1, 2],),
+        ([1, 2], [3]),
+    ]
+    for x in values:
+        for y in values:
+            a: Any = x
+            b: Any = y
+            assert eq(x, y) == (a == b), (x, y)
+            assert ne(x, y) == (a != b), (x, y)
+            assert eq(x, tuple(list(y))) == (a == b), (x, y)
+            assert ne(x, tuple(list(y))) == (a != b), (x, y)
+
+def test_identity() -> None:
+    nan: Any = float("nan")
+    x = (nan,)
+    assert eq(x, x)
+    assert not ne(x, x)
+    assert eq(x, (nan,))
+    assert not eq(x, (float("nan"),))
+    assert ne(x, (float("nan"),))
+    y = (NeverEqual(),)
+    assert eq(y, y)
+    assert not eq(y, (NeverEqual(),))
+
+def test_custom_eq() -> None:
+    assert eq((AlwaysEqual(),), (1,))
+    assert eq((1,), (AlwaysEqual(),))
+    assert not eq((AlwaysEqual(),), (1, 2))
+    assert ne((NeverEqual(),), (NeverEqual(),))
+    assert not eq((FalsyEq(),), (1,))
+    assert ne((FalsyEq(),), (1,))
+    assert eq((TruthyEq(),), (1,))
+    assert not ne((TruthyEq(),), (1,))
+
+def test_error() -> None:
+    with assertRaises(ValueError, "eq"):
+        eq((RaisesOnEq(),), (1,))
+    with assertRaises(ValueError, "eq"):
+        ne((1, RaisesOnEq()), (1, 2))
+    # Items are compared even if the lengths differ
+    with assertRaises(ValueError, "eq"):
+        eq((RaisesOnEq(),), (1, 2))
+    with assertRaises(ValueError, "eq"):
+        ne((1, 2), (RaisesOnEq(),))
+    # Items are compared in order, and the first mismatch stops the comparison
+    assert not eq((1, RaisesOnEq()), (2, 3))
+    assert not eq((1, RaisesOnEq()), (2,))
+
+class CountingEq:
+    def __init__(self) -> None:
+        self.count = 0
+
+    def __eq__(self, other: object) -> bool:
+        self.count += 1
+        return True
+
+def test_different_lengths() -> None:
+    c = CountingEq()
+    assert not eq((c,), (1, 2))
+    assert ne((1, 2, 3), (c,))
+    assert c.count == 2
+    a: Any = (c,)
+    b: Any = (1, 2)
+    assert a != b
+    assert c.count == 3
+
+def test_subclass() -> None:
+    assert eq(TupleSubclass((1, 2)), (1, 2))
+    assert eq((1, 2), TupleSubclass((1, 2)))
+    assert ne(TupleSubclass((1, 2)), (1,))
+    assert eq(NT(1, 2), (1, 2))
+    assert ne(NT(1, 2), (2, 1))
+    assert not eq(TupleEqOverride((1,)), (1,))
+    assert not eq((1,), TupleEqOverride((1,)))
+    assert ne(TupleEqOverride((1,)), (1,))
+    assert ne((1,), TupleEqOverride((1,)))
+    x = TupleEqOverride(())
+    assert not eq(x, x)
+    assert ne(x, x)
+    # Only __eq__ is overridden, so != uses tuple.__ne__
+    y = TupleEqOnlyOverride((1,))
+    assert eq(y, (2,))
+    assert ne(y, (2,))
+    assert eq((2,), y)
+    assert ne((2,), y)
+    assert not ne(y, (1,))
+    z = TupleNeOverride((1,))
+    assert eq(z, (1,))
+    assert ne(z, (1,))
+    assert ne((1,), z)
+
+[file teqsubclass.py]
+from typing import Any, NamedTuple
+
+class TupleSubclass(tuple[Any, ...]):
+    pass
+
+class TupleEqOverride(tuple[Any, ...]):
+    def __eq__(self, other: object) -> bool:
+        return False
+
+    def __ne__(self, other: object) -> bool:
+        return True
+
+class TupleEqOnlyOverride(tuple[Any, ...]):
+    def __eq__(self, other: object) -> bool:
+        return True
+
+class TupleNeOverride(tuple[Any, ...]):
+    def __ne__(self, other: object) -> bool:
+        return True
+
+class NT(NamedTuple):
+    x: int
+    y: int

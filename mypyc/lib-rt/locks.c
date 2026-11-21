@@ -18,9 +18,14 @@ CPyModuleLockAPI *CPyModuleLockAPI_Alloc(void) {
         return NULL;
     }
     api->get_module_lock = PyObject_GetAttrString(bootstrap, "_get_module_lock");
+    if (api->get_module_lock == NULL) {
+        Py_DECREF(bootstrap);
+        CPyModuleLockAPI_Free(api);
+        return NULL;
+    }
     api->deadlock_error = PyObject_GetAttrString(bootstrap, "_DeadlockError");
     Py_DECREF(bootstrap);
-    if (api->get_module_lock == NULL || api->deadlock_error == NULL) {
+    if (api->deadlock_error == NULL) {
         CPyModuleLockAPI_Free(api);
         return NULL;
     }

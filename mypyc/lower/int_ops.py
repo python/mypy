@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from typing import NamedTuple
 
-from mypyc.ir.ops import Assign, BasicBlock, Branch, ComparisonOp, Register, Value
-from mypyc.ir.rtypes import bool_rprimitive, is_short_int_rprimitive
+from mypyc.ir.ops import Assign, BasicBlock, Branch, ComparisonOp, Integer, IntOp, Register, Value
+from mypyc.ir.rtypes import bool_rprimitive, is_fixed_width_rtype, is_short_int_rprimitive
 from mypyc.irbuild.ll_builder import LowLevelIRBuilder
 from mypyc.lower.registry import lower_primitive_op
 from mypyc.primitives.int_ops import int_equal_, int_less_than_
@@ -111,3 +111,22 @@ def lower_int_gt(builder: LowLevelIRBuilder, args: list[Value], line: int) -> Va
 @lower_primitive_op("int_ge")
 def lower_int_ge(builder: LowLevelIRBuilder, args: list[Value], line: int) -> Value:
     return compare_tagged(builder, args[0], args[1], ">=", line)
+
+
+@lower_primitive_op("int_abs")
+def lower_int_abs(builder: LowLevelIRBuilder, args: list[Value], line: int) -> Value:
+    x = args[0]
+    typ = x.type
+    assert is_fixed_width_rtype(typ)
+    if not typ.is_signed:
+        return x
+    result = Register(typ)
+    builder.add(Assign(result, x, line))
+    neg, out = BasicBlock(), BasicBlock()
+    is_neg = builder.comparison_op(x, Integer(0, typ), ComparisonOp.SLT, line)
+    builder.add(Branch(is_neg, neg, out, Branch.BOOL))
+    builder.activate_block(neg)
+    negated = builder.int_op(typ, Integer(0, typ), x, IntOp.SUB, line)
+    builder.add(Assign(result, negated, line))
+    builder.goto_and_activate(out)
+    return result

@@ -3309,3 +3309,18 @@ reveal_type(a[0])  # N: Revealed type is "tuple[builtins.int, builtins.str]"
 reveal_type(a[1])  # N: Revealed type is "tuple[builtins.int, builtins.str]"
 reveal_type(a[2])  # N: Revealed type is "builtins.tuple[Any, ...]"
 [builtins fixtures/tuple.pyi]
+
+[case testTwoSidedInferenceWithTypeVarTuple]
+from typing import Generic, TypeVarTuple, Unpack
+
+Ts = TypeVarTuple("Ts")
+
+class A: ...
+class B: ...
+class C(A, B): ...
+
+def pack(*args: Unpack[Ts]) -> tuple[Unpack[Ts]]: ...
+x: tuple[A, B] = pack(A(), B())
+x = pack(C(), C())
+reveal_type(x)  # N: Revealed type is "tuple[__main__.C, __main__.C]"
+[builtins fixtures/tuple.pyi]

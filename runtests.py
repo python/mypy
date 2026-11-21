@@ -19,6 +19,7 @@ MYPYC_EXTERNAL = "TestExternal"
 MYPYC_COMMAND_LINE = "TestCommandLine"
 MYPYC_SEPARATE = "TestRunSeparate"
 MYPYC_MULTIMODULE = "multimodule"  # Subset of mypyc run tests that are slow
+MYPYC_SAFE_BASES = "TestSafeBases"  # Type checks many stdlib modules
 ERROR_STREAM = "ErrorStreamSuite"
 DIFF_CACHE = "DiffCacheIntegrationTests"
 
@@ -45,10 +46,16 @@ PYTEST_OPT_IN = [PEP561]
 
 
 # These must be enabled by explicitly including 'mypyc-extra' on the command line.
-MYPYC_OPT_IN = [MYPYC_RUN, MYPYC_RUN_MULTI, MYPYC_SEPARATE]
+MYPYC_OPT_IN = [MYPYC_RUN, MYPYC_RUN_MULTI, MYPYC_SEPARATE, MYPYC_SAFE_BASES]
 
 # These mypyc test filters cover most slow test cases
-MYPYC_SLOW = [MYPYC_RUN_MULTI, MYPYC_COMMAND_LINE, MYPYC_SEPARATE, MYPYC_MULTIMODULE]
+MYPYC_SLOW = [
+    MYPYC_RUN_MULTI,
+    MYPYC_COMMAND_LINE,
+    MYPYC_SEPARATE,
+    MYPYC_MULTIMODULE,
+    MYPYC_SAFE_BASES,
+]
 
 
 # We split the pytest run into three parts to improve test

@@ -1403,7 +1403,9 @@ def test_final() -> None:
     assert (a < A(5)) is False
     assert (b < A(5)) is True
 
-[case testDundersEq]
+[case testDundersEqAndHash]
+from testutil import assertRaises
+
 class Eq:
     def __init__(self, x: int) -> None:
         self.x = x
@@ -1424,6 +1426,220 @@ def test_equality_with_implicit_ne() -> None:
     assert not eq(Eq(1), Eq(2))
     assert ne(Eq(1), Eq(2))
     assert not ne(Eq(1), Eq(1))
+
+class Lt:
+    def __init__(self, n: int) -> None:
+        self.n = n
+
+    def __lt__(self, other: "Lt") -> bool:
+        return self.n < other.n
+
+class LtSub(Lt):
+    def __gt__(self, other: "Lt") -> bool:
+        return self.n > other.n
+
+class EqOnly:
+    def __eq__(self, other: object) -> bool:
+        return True
+
+class EqOnlySub(EqOnly):
+    def __lt__(self, other: "EqOnly") -> bool:
+        return True
+
+class EqHash:
+    def __eq__(self, other: object) -> bool:
+        return True
+
+    def __hash__(self) -> int:
+        return 5
+
+class EqHashSub(EqHash):
+    def __lt__(self, other: "EqHash") -> bool:
+        return True
+
+def test_ordering_comparisons_keep_class_hashable() -> None:
+    # Only defining __eq__ (without __hash__) makes a class unhashable
+    x = Lt(1)
+    assert hash(x) == hash(x)
+    assert x in {x}
+    y = LtSub(1)
+    assert y in {y}
+    assert Lt(1) < Lt(2)
+    assert LtSub(2) > Lt(1)
+
+def test_eq_makes_class_unhashable() -> None:
+    with assertRaises(TypeError, "unhashable type"):
+        hash(EqOnly())
+    with assertRaises(TypeError, "unhashable type"):
+        hash(EqOnlySub())
+
+def test_explicit_hash() -> None:
+    assert hash(EqHash()) == 5
+    assert hash(EqHashSub()) == 5
+
+[case testDundersHashResult]
+# hash() converts the value returned by __hash__ like in Python
+from typing import Any
+
+from mypy_extensions import i64
+from testutil import assertRaises
+
+class Hash:
+    def __init__(self, h: int) -> None:
+        self.h = h
+
+    def __hash__(self) -> int:
+        return self.h
+
+class HashAny:
+    def __init__(self, h: Any) -> None:
+        self.h = h
+
+    def __hash__(self) -> Any:
+        return self.h
+
+class HashI64:
+    def __hash__(self) -> i64:
+        return -1
+
+def test_hash_result() -> None:
+    # These fit in Py_hash_t on 32-bit and 64-bit platforms
+    for h in [0, 7, -2, 2**30, -(2**31)]:
+        assert hash(Hash(h)) == h
+        assert hash(HashAny(h)) == h
+    # -1 is reserved for errors
+    assert hash(Hash(-1)) == -2
+    assert hash(HashAny(-1)) == -2
+    assert hash(HashI64()) == -2
+    # These don't fit in Py_hash_t on any platform, so they are hashed again
+    for h in [2**63, -(2**63) - 1, 2**64 + 5, -(2**100)]:
+        assert hash(Hash(h)) == hash(h)
+        assert hash(HashAny(h)) == hash(h)
+    # A long int that fits in Py_hash_t on 64-bit platforms, but not on 32-bit ones
+    assert hash(Hash(2**62)) in (2**62, hash(2**62))
+    assert hash(HashAny(2**62)) in (2**62, hash(2**62))
+    assert hash(HashAny(True)) == 1
+    for x in ["x", 1.0, None]:
+        with assertRaises(TypeError, "__hash__ method should return an integer"):
+            hash(HashAny(x))
+
+[case testDundersLenResult]
+# len() checks the value returned by __len__ like in Python
+from typing import Any
+
+from mypy_extensions import i64, i8, u8
+from testutil import assertRaises
+
+class Len:
+    def __init__(self, n: int) -> None:
+        self.n = n
+
+    def __len__(self) -> int:
+        return self.n
+
+class LenAny:
+    def __init__(self, n: Any) -> None:
+        self.n = n
+
+    def __len__(self) -> Any:
+        return self.n
+
+class LenBool:
+    def __init__(self, n: bool) -> None:
+        self.n = n
+
+    def __len__(self) -> bool:
+        return self.n
+
+class LenI64:
+    def __init__(self, n: i64) -> None:
+        self.n = n
+
+    def __len__(self) -> i64:
+        return self.n
+
+class LenI8:
+    def __init__(self, n: i8) -> None:
+        self.n = n
+
+    def __len__(self) -> i8:
+        return self.n
+
+class LenU8:
+    def __init__(self, n: u8) -> None:
+        self.n = n
+
+    def __len__(self) -> u8:
+        return self.n
+
+class Index:
+    def __index__(self) -> int:
+        return 7
+
+def len_any(x: Any) -> int:
+    # Uses the sq_length/mp_length slot
+    return len(x)
+
+NEGATIVE = "__len__() should return >= 0"
+TOO_LARGE = "cannot fit 'int' into an index-sized integer"
+
+def test_len_int() -> None:
+    for n in [0, 5, 2**30, 2**31 - 1]:
+        assert len(Len(n)) == n
+        assert len_any(Len(n)) == n
+    for n in [-1, -5, -(2**63), -(2**100)]:
+        with assertRaises(ValueError, NEGATIVE):
+            len(Len(n))
+        with assertRaises(ValueError, NEGATIVE):
+            len_any(Len(n))
+    for n in [2**63, 2**100]:
+        with assertRaises(OverflowError, TOO_LARGE):
+            len(Len(n))
+        with assertRaises(OverflowError, TOO_LARGE):
+            len_any(Len(n))
+
+def test_len_any() -> None:
+    for x, n in [(3, 3), (True, 1), (Index(), 7)]:
+        assert len(LenAny(x)) == n
+        assert len_any(LenAny(x)) == n
+    for x in [-1, -(2**100)]:
+        with assertRaises(ValueError, NEGATIVE):
+            len(LenAny(x))
+        with assertRaises(ValueError, NEGATIVE):
+            len_any(LenAny(x))
+    with assertRaises(OverflowError, TOO_LARGE):
+        len(LenAny(2**63))
+    with assertRaises(OverflowError, TOO_LARGE):
+        len_any(LenAny(2**63))
+    for x in ["x", 1.5, None]:
+        with assertRaises(TypeError, "cannot be interpreted as an integer"):
+            len(LenAny(x))
+        with assertRaises(TypeError, "cannot be interpreted as an integer"):
+            len_any(LenAny(x))
+
+def test_len_bool() -> None:
+    assert len(LenBool(True)) == 1
+    assert len(LenBool(False)) == 0
+    assert len_any(LenBool(True)) == 1
+    assert len_any(LenBool(False)) == 0
+
+def test_len_native_int() -> None:
+    for n in [0, 7, 2**31 - 1]:
+        assert len(LenI64(n)) == n
+        assert len_any(LenI64(n)) == n
+    for n in [-1, -(2**63)]:
+        with assertRaises(ValueError, NEGATIVE):
+            len(LenI64(n))
+        with assertRaises(ValueError, NEGATIVE):
+            len_any(LenI64(n))
+    assert len(LenI8(127)) == 127
+    assert len_any(LenI8(127)) == 127
+    with assertRaises(ValueError, NEGATIVE):
+        len(LenI8(-128))
+    with assertRaises(ValueError, NEGATIVE):
+        len_any(LenI8(-128))
+    assert len(LenU8(255)) == 255
+    assert len_any(LenU8(255)) == 255
 
 [case testDundersImplicitNeWithNarrowRhs]
 class Accepted:

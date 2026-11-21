@@ -5,6 +5,7 @@ from collections.abc import Callable
 from mypy import join
 from mypy.erasetype import erase_type
 from mypy.maptype import map_instance_to_supertype
+from mypy.nodes import ARG_NAMED_OPT, ARG_OPT, ArgKind
 from mypy.state import state
 from mypy.subtypes import (
     are_parameters_compatible,
@@ -957,9 +958,9 @@ class TypeMeetVisitor(TypeVisitor[ProperType]):
         return self.default(self.s)
 
     def visit_callable_type(self, t: CallableType) -> ProperType:
-        if isinstance(self.s, CallableType) and join.is_similar_callables(t, self.s):
-            if is_equivalent(t, self.s):
-                return join.combine_similar_callables(t, self.s)
+        if isinstance(self.s, CallableType) and join.is_similar_callables(
+            t, self.s, for_meet=True
+        ):
             result = meet_similar_callables(t, self.s)
             # We set the from_type_type flag to suppress error when a collection of
             # concrete class objects gets inferred as their common abstract superclass.
@@ -1244,7 +1245,7 @@ def meet_similar_callables(t: CallableType, s: CallableType) -> CallableType:
     arg_types: list[Type] = []
     for i in range(len(t.arg_types)):
         arg_types.append(safe_join(t.arg_types[i], s.arg_types[i]))
-    # TODO in combine_similar_callables also applies here (names and kinds)
+    # TODOs in join_similar_callables() also applies here.
     # The fallback type can be either 'function' or 'type'. The result should have 'function' as
     # fallback only if both operands have it as 'function'.
     if t.fallback.type.fullname != "builtins.function":
@@ -1259,11 +1260,25 @@ def meet_similar_callables(t: CallableType, s: CallableType) -> CallableType:
         instance_type = meet_types(t.instance_type, s.instance_type)
     return t.copy_modified(
         arg_types=arg_types,
+        arg_kinds=combine_arg_kinds_for_meet(t, s),
         ret_type=meet_types(t.ret_type, s.ret_type),
         instance_type=instance_type,
         fallback=fallback,
         name=None,
     )
+
+
+def combine_arg_kinds_for_meet(t: CallableType, s: CallableType) -> list[ArgKind]:
+    new_kinds = []
+    for t_kind, s_kind in zip(t.arg_kinds, s.arg_kinds):
+        if t_kind == s_kind:
+            new_kinds.append(t_kind)
+        elif t_kind.is_positional():
+            new_kinds.append(ARG_OPT)
+        else:
+            assert t_kind.is_named()
+            new_kinds.append(ARG_NAMED_OPT)
+    return new_kinds
 
 
 def meet_type_list(types: list[Type]) -> Type:

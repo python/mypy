@@ -38,6 +38,7 @@ from mypyc.ir.rtypes import (
     dict_rprimitive,
     float_rprimitive,
     frozenset_rprimitive,
+    int8_rprimitive,
     int16_rprimitive,
     int32_rprimitive,
     int64_rprimitive,
@@ -50,6 +51,9 @@ from mypyc.ir.rtypes import (
     str_rprimitive,
     tuple_rprimitive,
     uint8_rprimitive,
+    uint16_rprimitive,
+    uint32_rprimitive,
+    uint64_rprimitive,
 )
 
 
@@ -123,6 +127,14 @@ class Mapper:
                 return int32_rprimitive
             elif typ.type.fullname == "mypy_extensions.i16":
                 return int16_rprimitive
+            elif typ.type.fullname == "mypy_extensions.i8":
+                return int8_rprimitive
+            elif typ.type.fullname == "mypy_extensions.u64":
+                return uint64_rprimitive
+            elif typ.type.fullname == "mypy_extensions.u32":
+                return uint32_rprimitive
+            elif typ.type.fullname == "mypy_extensions.u16":
+                return uint16_rprimitive
             elif typ.type.fullname == "mypy_extensions.u8":
                 return uint8_rprimitive
             elif typ.type.fullname == "librt.vecs.vec":

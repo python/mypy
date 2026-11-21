@@ -130,10 +130,7 @@ PyObject *CPyStr_GetItem(PyObject *str, CPyTagged index) {
             return NULL;
         }
     } else {
-        PyObject *index_obj = CPyTagged_AsObject(index);
-        PyObject *result = PyObject_GetItem(str, index_obj);
-        Py_DECREF(index_obj);
-        return result;
+        return NULL;
     }
 }
 
@@ -218,7 +215,11 @@ PyObject *CPyStr_Build(Py_ssize_t len, ...) {
             Py_ssize_t itemlen = PyUnicode_GET_LENGTH(item);
             if (itemlen != 0) {
 #if CPY_3_13_FEATURES
-                PyUnicode_CopyCharacters(res, res_offset, item, 0, itemlen);
+                if (PyUnicode_CopyCharacters(res, res_offset, item, 0, itemlen) < 0) {
+                    va_end(args);
+                    Py_DECREF(res);
+                    return NULL;
+                }
 #else
                 _PyUnicode_FastCopyCharacters(res, res_offset, item, 0, itemlen);
 #endif
@@ -235,27 +236,50 @@ PyObject *CPyStr_Build(Py_ssize_t len, ...) {
     return res;
 }
 
+// Convert a start or end index to Py_ssize_t. Like CPython, clamp values that don't fit
+// in Py_ssize_t (these are out of range for any string) instead of raising an error.
+static Py_ssize_t CPyStr_AsSliceIndex(CPyTagged x) {
+    if (likely(CPyTagged_CheckShort(x))) {
+        return CPyTagged_ShortAsSsize_t(x);
+    }
+    PyObject *obj = CPyTagged_LongAsObject(x);
+    Py_ssize_t n = PyLong_AsSsize_t(obj);
+    if (n == -1 && PyErr_Occurred()) {
+        // The only possible error is an overflow
+        PyErr_Clear();
+        return PyLong_IsNegative(obj) ? PY_SSIZE_T_MIN : PY_SSIZE_T_MAX;
+    }
+    return n;
+}
+
 CPyTagged CPyStr_Find(PyObject *str, PyObject *substr, CPyTagged start, int direction) {
     CPyTagged end = PyUnicode_GET_LENGTH(str) << 1;
     return CPyStr_FindWithEnd(str, substr, start, end, direction);
 }
 
 CPyTagged CPyStr_FindWithEnd(PyObject *str, PyObject *substr, CPyTagged start, CPyTagged end, int direction) {
-    Py_ssize_t temp_start = CPyTagged_AsSsize_t(start);
-    if (temp_start == -1 && PyErr_Occurred()) {
-        PyErr_SetString(PyExc_OverflowError, CPYTHON_LARGE_INT_ERRMSG);
-        return CPY_INT_TAG;
-    }
-    Py_ssize_t temp_end = CPyTagged_AsSsize_t(end);
-    if (temp_end == -1 && PyErr_Occurred()) {
-        PyErr_SetString(PyExc_OverflowError, CPYTHON_LARGE_INT_ERRMSG);
-        return CPY_INT_TAG;
-    }
+    Py_ssize_t temp_start = CPyStr_AsSliceIndex(start);
+    Py_ssize_t temp_end = CPyStr_AsSliceIndex(end);
     Py_ssize_t index = PyUnicode_Find(str, substr, temp_start, temp_end, direction);
     if (unlikely(index == -2)) {
         return CPY_INT_TAG;
     }
     return index << 1;
+}
+
+CPyTagged CPyStr_Index(PyObject *str, PyObject *substr, CPyTagged start, int direction) {
+    CPyTagged end = PyUnicode_GET_LENGTH(str) << 1;
+    return CPyStr_IndexWithEnd(str, substr, start, end, direction);
+}
+
+CPyTagged CPyStr_IndexWithEnd(PyObject *str, PyObject *substr, CPyTagged start, CPyTagged end,
+                              int direction) {
+    CPyTagged index = CPyStr_FindWithEnd(str, substr, start, end, direction);
+    if (unlikely(index == CPyTagged_ShortFromSsize_t(-1))) {
+        PyErr_SetString(PyExc_ValueError, "substring not found");
+        return CPY_INT_TAG;
+    }
+    return index;
 }
 
 PyObject *CPyStr_Split(PyObject *str, PyObject *sep, CPyTagged max_split) {
@@ -419,6 +443,9 @@ int CPyStr_Startswith(PyObject *self, PyObject *subobj) {
                 return 2;
             }
             int result = PyUnicode_Tailmatch(self, substring, start, end, -1);
+            if (result < 0) {
+                return 2;
+            }
             if (result) {
                 return 1;
             }
@@ -443,6 +470,9 @@ int CPyStr_Endswith(PyObject *self, PyObject *subobj) {
                 return 2;
             }
             int result = PyUnicode_Tailmatch(self, substring, start, end, 1);
+            if (result < 0) {
+                return 2;
+            }
             if (result) {
                 return 1;
             }
@@ -455,6 +485,9 @@ int CPyStr_Endswith(PyObject *self, PyObject *subobj) {
 PyObject *CPyStr_Removeprefix(PyObject *self, PyObject *prefix) {
     Py_ssize_t end = PyUnicode_GET_LENGTH(self);
     int match = PyUnicode_Tailmatch(self, prefix, 0, end, -1);
+    if (match < 0) {
+        return NULL;
+    }
     if (match) {
         Py_ssize_t prefix_end = PyUnicode_GET_LENGTH(prefix);
         return PyUnicode_Substring(self, prefix_end, end);
@@ -465,6 +498,9 @@ PyObject *CPyStr_Removeprefix(PyObject *self, PyObject *prefix) {
 PyObject *CPyStr_Removesuffix(PyObject *self, PyObject *suffix) {
     Py_ssize_t end = PyUnicode_GET_LENGTH(self);
     int match = PyUnicode_Tailmatch(self, suffix, 0, end, 1);
+    if (match < 0) {
+        return NULL;
+    }
     if (match) {
         Py_ssize_t suffix_end = PyUnicode_GET_LENGTH(suffix);
         return PyUnicode_Substring(self, 0, end - suffix_end);
@@ -592,26 +628,14 @@ PyObject *CPy_Encode(PyObject *obj, PyObject *encoding, PyObject *errors) {
 }
 
 Py_ssize_t CPyStr_Count(PyObject *unicode, PyObject *substring, CPyTagged start) {
-    Py_ssize_t temp_start = CPyTagged_AsSsize_t(start);
-    if (temp_start == -1 && PyErr_Occurred()) {
-        PyErr_SetString(PyExc_OverflowError, CPYTHON_LARGE_INT_ERRMSG);
-        return -1;
-    }
+    Py_ssize_t temp_start = CPyStr_AsSliceIndex(start);
     Py_ssize_t end = PyUnicode_GET_LENGTH(unicode);
     return PyUnicode_Count(unicode, substring, temp_start, end);
 }
 
 Py_ssize_t CPyStr_CountFull(PyObject *unicode, PyObject *substring, CPyTagged start, CPyTagged end) {
-    Py_ssize_t temp_start = CPyTagged_AsSsize_t(start);
-    if (temp_start == -1 && PyErr_Occurred()) {
-        PyErr_SetString(PyExc_OverflowError, CPYTHON_LARGE_INT_ERRMSG);
-        return -1;
-    }
-    Py_ssize_t temp_end = CPyTagged_AsSsize_t(end);
-    if (temp_end == -1 && PyErr_Occurred()) {
-        PyErr_SetString(PyExc_OverflowError, CPYTHON_LARGE_INT_ERRMSG);
-        return -1;
-    }
+    Py_ssize_t temp_start = CPyStr_AsSliceIndex(start);
+    Py_ssize_t temp_end = CPyStr_AsSliceIndex(end);
     return PyUnicode_Count(unicode, substring, temp_start, temp_end);
 }
 
@@ -627,13 +651,39 @@ CPyTagged CPyStr_Ord(PyObject *obj) {
     return CPY_INT_TAG;
 }
 
+PyObject *CPyStr_Chr(CPyTagged n) {
+    if (likely(CPyTagged_CheckShort(n))) {
+        Py_ssize_t v = CPyTagged_ShortAsSsize_t(n);
+        if (likely(v >= 0 && v <= 0x10ffff)) {
+            return PyUnicode_FromOrdinal((int)v);
+        }
+    }
+#if CPY_3_13_FEATURES
+    // Python 3.13+ raises ValueError for all out-of-range values
+    PyErr_SetString(PyExc_ValueError, "chr() arg not in range(0x110000)");
+    return NULL;
+#else
+    // Older Python versions convert the argument to a C int first. Note that on
+    // 32-bit platforms some values that fit in a C int aren't short ints.
+    Py_ssize_t v = CPyTagged_AsSsize_t(n);
+    if ((v == -1 && PyErr_Occurred()) || v < INT_MIN || v > INT_MAX) {
+        PyErr_SetString(PyExc_OverflowError, "Python int too large to convert to C int");
+        return NULL;
+    }
+    // This raises ValueError, since the value is out of range
+    return PyUnicode_FromOrdinal((int)v);
+#endif
+}
+
 PyObject *CPyStr_Multiply(PyObject *str, CPyTagged count) {
     Py_ssize_t temp_count = CPyTagged_AsSsize_t(count);
     if (temp_count == -1 && PyErr_Occurred()) {
         PyErr_SetString(PyExc_OverflowError, CPYTHON_LARGE_INT_ERRMSG);
         return NULL;
     }
-    return PySequence_Repeat(str, temp_count);
+    // Use the str implementation directly (like PyUnicode_Concat does for str + str), so
+    // that the result is always an exact str even if a subclass overrides __mul__.
+    return PyUnicode_Type.tp_as_sequence->sq_repeat(str, temp_count);
 }
 
 
@@ -715,7 +765,9 @@ static inline PyObject *CPyStr_ChangeCase(PyObject *self,
 #if CPY_3_13_FEATURES
     // On 3.13+, _PyUnicode_ToLowerFull/ToUpperFull are no longer exported,
     // so fall back to CPython's method implementation for non-ASCII strings.
-    return PyObject_CallMethodNoArgs(self, method_name);
+    // The method is looked up on str (not on the type of self), so that the
+    // result is always an exact str even if a subclass overrides it.
+    return PyObject_CallMethodOneArg((PyObject *)&PyUnicode_Type, method_name, self);
 #else
     // General Unicode: unicode_func handles 1-to-N expansion.
     // Worst case: each codepoint expands to 3 (per Unicode standard).
@@ -792,4 +844,177 @@ bool CPyStr_IsDigit(PyObject *str) {
     return true;
 
 #undef CHECK_ISDIGIT
+}
+
+#define CPY_STR_CHECK_CHARS(TYPE, DATA, LEN, CHECK)        \
+    {                                                      \
+        const TYPE *_data = (const TYPE *)(DATA);          \
+        for (Py_ssize_t _i = 0; _i < (LEN); _i++) {        \
+            if (!CHECK(_data[_i]))                         \
+                return false;                              \
+        }                                                  \
+    }
+
+// Return from the enclosing function whether every character of str satisfies a
+// predicate. ASCII strings are checked using ASCII_CHECK, which avoids Unicode database
+// lookups, and other strings using UNICODE_CHECK. Empty strings return EMPTY_RESULT.
+#define CPY_STR_RETURN_ALL_CHARS(str, ASCII_CHECK, UNICODE_CHECK, EMPTY_RESULT)          \
+    {                                                                                   \
+        Py_ssize_t _len = PyUnicode_GET_LENGTH(str);                                    \
+        if (_len == 0)                                                                  \
+            return (EMPTY_RESULT);                                                      \
+        if (PyUnicode_IS_ASCII(str)) {                                                  \
+            CPY_STR_CHECK_CHARS(Py_UCS1, PyUnicode_1BYTE_DATA(str), _len, ASCII_CHECK); \
+            return true;                                                                \
+        }                                                                               \
+        switch (PyUnicode_KIND(str)) {                                                  \
+        case PyUnicode_1BYTE_KIND:                                                      \
+            CPY_STR_CHECK_CHARS(Py_UCS1, PyUnicode_1BYTE_DATA(str), _len, UNICODE_CHECK); \
+            break;                                                                      \
+        case PyUnicode_2BYTE_KIND:                                                      \
+            CPY_STR_CHECK_CHARS(Py_UCS2, PyUnicode_2BYTE_DATA(str), _len, UNICODE_CHECK); \
+            break;                                                                      \
+        case PyUnicode_4BYTE_KIND:                                                      \
+            CPY_STR_CHECK_CHARS(Py_UCS4, PyUnicode_4BYTE_DATA(str), _len, UNICODE_CHECK); \
+            break;                                                                      \
+        default:                                                                        \
+            Py_UNREACHABLE();                                                           \
+        }                                                                               \
+        return true;                                                                    \
+    }
+
+// Printable ASCII characters are from ' ' (0x20) to '~' (0x7e)
+#define CPY_ASCII_ISPRINTABLE(c) ((c) >= 0x20 && (c) < 0x7f)
+
+bool CPyStr_IsAlpha(PyObject *str) {
+    CPY_STR_RETURN_ALL_CHARS(str, Py_ISALPHA, Py_UNICODE_ISALPHA, false);
+}
+
+bool CPyStr_IsDecimal(PyObject *str) {
+    CPY_STR_RETURN_ALL_CHARS(str, Py_ISDIGIT, Py_UNICODE_ISDECIMAL, false);
+}
+
+bool CPyStr_IsNumeric(PyObject *str) {
+    CPY_STR_RETURN_ALL_CHARS(str, Py_ISDIGIT, Py_UNICODE_ISNUMERIC, false);
+}
+
+bool CPyStr_IsPrintable(PyObject *str) {
+    CPY_STR_RETURN_ALL_CHARS(str, CPY_ASCII_ISPRINTABLE, Py_UNICODE_ISPRINTABLE, true);
+}
+
+#undef CPY_ASCII_ISPRINTABLE
+#undef CPY_STR_RETURN_ALL_CHARS
+#undef CPY_STR_CHECK_CHARS
+
+// Shared implementation of str.islower() and str.isupper(), mirroring CPython. There
+// must be at least one cased character, and no character may be titlecase or have
+// the opposite case.
+static inline bool CPyStr_IsCase(PyObject *str, bool lower) {
+    Py_ssize_t len = PyUnicode_GET_LENGTH(str);
+    bool cased = false;
+
+    // ASCII fast path (there are no titlecase characters in ASCII)
+    if (PyUnicode_IS_ASCII(str)) {
+        const Py_UCS1 *data = PyUnicode_1BYTE_DATA(str);
+        for (Py_ssize_t i = 0; i < len; i++) {
+            Py_UCS1 ch = data[i];
+            if (lower ? Py_ISUPPER(ch) : Py_ISLOWER(ch))
+                return false;
+            if (lower ? Py_ISLOWER(ch) : Py_ISUPPER(ch))
+                cased = true;
+        }
+        return cased;
+    }
+
+    int kind = PyUnicode_KIND(str);
+    const void *data = PyUnicode_DATA(str);
+    if (len == 1) {
+        Py_UCS4 ch = PyUnicode_READ(kind, data, 0);
+        return lower ? Py_UNICODE_ISLOWER(ch) : Py_UNICODE_ISUPPER(ch);
+    }
+    for (Py_ssize_t i = 0; i < len; i++) {
+        Py_UCS4 ch = PyUnicode_READ(kind, data, i);
+        if (Py_UNICODE_ISTITLE(ch) || (lower ? Py_UNICODE_ISUPPER(ch) : Py_UNICODE_ISLOWER(ch)))
+            return false;
+        if (!cased && (lower ? Py_UNICODE_ISLOWER(ch) : Py_UNICODE_ISUPPER(ch)))
+            cased = true;
+    }
+    return cased;
+}
+
+bool CPyStr_IsLower(PyObject *str) {
+    return CPyStr_IsCase(str, true);
+}
+
+bool CPyStr_IsUpper(PyObject *str) {
+    return CPyStr_IsCase(str, false);
+}
+
+// Mirrors CPython's str.istitle(). Uppercase and titlecase characters may only follow
+// uncased characters, lowercase characters may only follow cased characters, and
+// there must be at least one cased character.
+bool CPyStr_IsTitle(PyObject *str) {
+    Py_ssize_t len = PyUnicode_GET_LENGTH(str);
+    bool cased = false;
+    bool previous_is_cased = false;
+
+    // ASCII fast path (there are no titlecase characters in ASCII)
+    if (PyUnicode_IS_ASCII(str)) {
+        const Py_UCS1 *data = PyUnicode_1BYTE_DATA(str);
+        for (Py_ssize_t i = 0; i < len; i++) {
+            Py_UCS1 ch = data[i];
+            if (Py_ISUPPER(ch)) {
+                if (previous_is_cased)
+                    return false;
+                previous_is_cased = cased = true;
+            } else if (Py_ISLOWER(ch)) {
+                if (!previous_is_cased)
+                    return false;
+                previous_is_cased = cased = true;
+            } else {
+                previous_is_cased = false;
+            }
+        }
+        return cased;
+    }
+
+    int kind = PyUnicode_KIND(str);
+    const void *data = PyUnicode_DATA(str);
+    if (len == 1) {
+        Py_UCS4 ch = PyUnicode_READ(kind, data, 0);
+        return Py_UNICODE_ISTITLE(ch) || Py_UNICODE_ISUPPER(ch);
+    }
+    for (Py_ssize_t i = 0; i < len; i++) {
+        Py_UCS4 ch = PyUnicode_READ(kind, data, i);
+        if (Py_UNICODE_ISUPPER(ch) || Py_UNICODE_ISTITLE(ch)) {
+            if (previous_is_cased)
+                return false;
+            previous_is_cased = cased = true;
+        } else if (Py_UNICODE_ISLOWER(ch)) {
+            if (!previous_is_cased)
+                return false;
+            previous_is_cased = cased = true;
+        } else {
+            previous_is_cased = false;
+        }
+    }
+    return cased;
+}
+
+bool CPyStr_IsIdentifier(PyObject *str) {
+    if (PyUnicode_IS_ASCII(str)) {
+        // ASCII fast path: [A-Za-z_][A-Za-z0-9_]*
+        Py_ssize_t len = PyUnicode_GET_LENGTH(str);
+        if (len == 0) return false;
+        const Py_UCS1 *data = PyUnicode_1BYTE_DATA(str);
+        if (!Py_ISALPHA(data[0]) && data[0] != '_')
+            return false;
+        for (Py_ssize_t i = 1; i < len; i++) {
+            if (!Py_ISALNUM(data[i]) && data[i] != '_')
+                return false;
+        }
+        return true;
+    }
+    // Non-ASCII identifiers need XID_Start/XID_Continue checks (PEP 3131)
+    return PyUnicode_IsIdentifier(str) == 1;
 }

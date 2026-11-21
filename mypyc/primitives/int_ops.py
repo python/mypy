@@ -19,17 +19,21 @@ from mypyc.ir.ops import (
 )
 from mypyc.ir.rtypes import (
     RType,
+    RTypeVar,
     bit_rprimitive,
     bool_rprimitive,
     bytes_rprimitive,
     c_pyssize_t_rprimitive,
     float_rprimitive,
+    int8_rprimitive,
     int16_rprimitive,
     int32_rprimitive,
     int64_rprimitive,
     int_rprimitive,
     object_rprimitive,
     str_rprimitive,
+    uint32_rprimitive,
+    uint64_rprimitive,
     void_rtype,
 )
 from mypyc.primitives.registry import (
@@ -49,6 +53,10 @@ for int_name in (
     "mypy_extensions.i64",
     "mypy_extensions.i32",
     "mypy_extensions.i16",
+    "mypy_extensions.i8",
+    "mypy_extensions.u64",
+    "mypy_extensions.u32",
+    "mypy_extensions.u16",
     "mypy_extensions.u8",
 ):
     # These int constructors produce object_rprimitives that then need to be unboxed
@@ -198,6 +206,24 @@ def int_unary_op(name: str, c_function_name: str) -> PrimitiveDescription:
 int_neg_op = int_unary_op("-", "CPyTagged_Negate")
 int_invert_op = int_unary_op("~", "CPyTagged_Invert")
 
+# abs(int)
+function_op(
+    name="builtins.abs",
+    arg_types=[int_rprimitive],
+    return_type=int_rprimitive,
+    c_function_name="CPyTagged_Absolute",
+    error_kind=ERR_NEVER,
+)
+
+# abs(x) for fixed-width x, lowered to inline IR
+int_abs_op = custom_primitive_op(
+    name="int_abs",
+    arg_types=[RTypeVar(0)],
+    return_type=RTypeVar(0),
+    error_kind=ERR_NEVER,
+    type_params=[RTypeVar(0)],
+)
+
 
 # Primitives related to integer comparison operations:
 
@@ -262,6 +288,20 @@ int16_mod_op = custom_op(
     error_kind=ERR_MAGIC_OVERLAPPING,
 )
 
+int8_divide_op = custom_op(
+    arg_types=[int8_rprimitive, int8_rprimitive],
+    return_type=int8_rprimitive,
+    c_function_name="CPyInt8_Divide",
+    error_kind=ERR_MAGIC_OVERLAPPING,
+)
+
+int8_mod_op = custom_op(
+    arg_types=[int8_rprimitive, int8_rprimitive],
+    return_type=int8_rprimitive,
+    c_function_name="CPyInt8_Remainder",
+    error_kind=ERR_MAGIC_OVERLAPPING,
+)
+
 # Convert tagged int (as PyObject *) to i64
 int_to_int64_op = custom_op(
     arg_types=[object_rprimitive],
@@ -284,12 +324,49 @@ int64_to_int_op = custom_op(
     error_kind=ERR_MAGIC,
 )
 
+uint64_to_int_op = custom_op(
+    arg_types=[uint64_rprimitive],
+    return_type=int_rprimitive,
+    c_function_name="CPyTagged_FromUInt64",
+    error_kind=ERR_MAGIC,
+)
+
+uint32_to_int_op = custom_op(
+    arg_types=[uint32_rprimitive],
+    return_type=int_rprimitive,
+    c_function_name="CPyTagged_FromUInt32",
+    error_kind=ERR_MAGIC,
+)
+
+# Convert tagged int (as PyObject *) to u64
+int_to_uint64_op = custom_op(
+    arg_types=[object_rprimitive],
+    return_type=uint64_rprimitive,
+    c_function_name="CPyLong_AsUInt64",
+    error_kind=ERR_MAGIC_OVERLAPPING,
+)
+
+# Convert tagged int (as PyObject *) to u32
+int_to_uint32_op = custom_op(
+    arg_types=[object_rprimitive],
+    return_type=uint32_rprimitive,
+    c_function_name="CPyLong_AsUInt32",
+    error_kind=ERR_MAGIC_OVERLAPPING,
+)
+
 # Convert tagged int (as PyObject *) to i32
 int_to_int32_op = custom_op(
     arg_types=[object_rprimitive],
     return_type=int32_rprimitive,
     c_function_name="CPyLong_AsInt32",
     error_kind=ERR_MAGIC_OVERLAPPING,
+)
+
+int64_overflow = custom_op(
+    arg_types=[],
+    return_type=void_rtype,
+    c_function_name="CPyInt64_Overflow",
+    error_kind=ERR_ALWAYS,
 )
 
 int32_overflow = custom_op(
@@ -303,6 +380,31 @@ int16_overflow = custom_op(
     arg_types=[],
     return_type=void_rtype,
     c_function_name="CPyInt16_Overflow",
+    error_kind=ERR_ALWAYS,
+)
+
+int8_overflow = custom_op(
+    arg_types=[], return_type=void_rtype, c_function_name="CPyInt8_Overflow", error_kind=ERR_ALWAYS
+)
+
+uint32_overflow = custom_op(
+    arg_types=[],
+    return_type=void_rtype,
+    c_function_name="CPyUInt32_Overflow",
+    error_kind=ERR_ALWAYS,
+)
+
+uint64_overflow = custom_op(
+    arg_types=[],
+    return_type=void_rtype,
+    c_function_name="CPyUInt64_Overflow",
+    error_kind=ERR_ALWAYS,
+)
+
+uint16_overflow = custom_op(
+    arg_types=[],
+    return_type=void_rtype,
+    c_function_name="CPyUInt16_Overflow",
     error_kind=ERR_ALWAYS,
 )
 

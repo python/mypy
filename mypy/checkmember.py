@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Sequence
-from typing import TypeVar, cast
+from typing import cast
 
 from mypy import message_registry, state
 from mypy.checker_shared import TypeCheckerSharedApi
@@ -21,7 +21,6 @@ from mypy.modules_state import modules_state
 from mypy.nodes import (
     ARG_POS,
     ARG_STAR,
-    ARG_STAR2,
     EXCLUDED_ENUM_ATTRIBUTES,
     SYMBOL_FUNCBASE_TYPES,
     Context,
@@ -45,6 +44,7 @@ from mypy.plugin import AttributeContext
 from mypy.subtypes import is_subtype
 from mypy.typeops import (
     bind_self,
+    bind_self_fast,
     erase_to_bound,
     freeze_all_type_vars,
     get_all_type_vars,
@@ -1501,34 +1501,6 @@ def analyze_decorator_or_funcbase_access(
         return bind_self_fast(typ, mx.self_type)
     typ = check_self_arg(typ, defn.is_class, name, mx)
     return bind_self(typ, original_type=mx.self_type, is_classmethod=defn.is_class)
-
-
-F = TypeVar("F", bound=FunctionLike)
-
-
-def bind_self_fast(method: F, original_type: Type | None = None) -> F:
-    """Return a copy of `method`, with the type of its first parameter (usually
-    self or cls) bound to original_type.
-
-    This is a faster version of mypy.typeops.bind_self() that can be used for methods
-    with trivial self/cls annotations.
-    """
-    if isinstance(method, Overloaded):
-        items = [bind_self_fast(c, original_type) for c in method.items]
-        return cast(F, Overloaded(items))
-    assert isinstance(method, CallableType)
-    if not method.arg_types:
-        # Invalid method, return something.
-        return method
-    if method.arg_kinds[0] in (ARG_STAR, ARG_STAR2):
-        # See typeops.py for details.
-        return method
-    return method.copy_modified(
-        arg_types=method.arg_types[1:],
-        arg_kinds=method.arg_kinds[1:],
-        arg_names=method.arg_names[1:],
-        is_bound=True,
-    )
 
 
 def has_operator(typ: Type, op_method: str) -> bool:

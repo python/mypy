@@ -13,6 +13,8 @@ Also build a mapping from mypy TypeInfos to ClassIR objects.
 
 from __future__ import annotations
 
+import importlib.machinery
+import os
 from collections import defaultdict
 from collections.abc import Iterable
 from typing import NamedTuple
@@ -33,6 +35,7 @@ from mypy.nodes import (
     NameExpr,
     OverloadedFuncDef,
     RefExpr,
+    StrExpr,
     SymbolNode,
     TypeAlias,
     TypeInfo,
@@ -73,10 +76,12 @@ from mypyc.ir.rtypes import (
     tuple_rprimitive,
 )
 from mypyc.irbuild.mapper import Mapper
+from mypyc.irbuild.safe_bases import SAFE_STUB_BASE_CLASSES
 from mypyc.irbuild.util import (
     dataclass_type,
     default_attr_name,
     get_func_def,
+    get_mypyc_attr_call,
     get_mypyc_attrs,
     is_class_body_final,
     is_dataclass,
@@ -127,7 +132,9 @@ def build_type_map(
     for module, cdef in classes:
         with catch_errors(module.path, cdef.line):
             if mapper.type_to_ir[cdef.info].is_ext_class:
-                prepare_class_def(module.path, module.fullname, cdef, errors, mapper, options)
+                prepare_class_def(
+                    module.path, module.fullname, cdef, errors, mapper, options, graph
+                )
             else:
                 prepare_non_ext_class_def(
                     module.path, module.fullname, cdef, errors, mapper, options
@@ -146,6 +153,7 @@ def build_type_map(
         with catch_errors(module.path, cdef.line):
             if mapper.type_to_ir[cdef.info].is_ext_class:
                 validate_acyclic_class_bases(module.path, cdef, errors, mapper)
+                validate_weakrefs_class_base(module.path, cdef, errors, mapper)
 
     # Prepare implicit attribute accessors as needed if an attribute overrides a property.
     for module, cdef in classes:
@@ -480,6 +488,26 @@ def validate_acyclic_class_bases(
         )
 
 
+def validate_weakrefs_class_base(
+    path: str, cdef: ClassDef, errors: Errors, mapper: Mapper
+) -> None:
+    ir = mapper.type_to_ir[cdef.info]
+    if not ir.has_weakref_slot() or ir.base is None or ir.base.has_weakref_slot():
+        return
+    # The weak reference list field is at a fixed offset that must be the same in a
+    # base class and all its subclasses, so only the class that starts the hierarchy
+    # can introduce it.
+    line = cdef.line
+    for dec in cdef.decorators:
+        call = get_mypyc_attr_call(dec)
+        if call is not None and any(
+            name == "weakrefs" or (isinstance(arg, StrExpr) and arg.value == "weakrefs")
+            for name, arg in zip(call.arg_names, call.args)
+        ):
+            line = call.line
+    errors.error(f'"weakrefs" must be used in the base class "{ir.base.name}" as well', path, line)
+
+
 def _has_own_default_attrs(cdef: ClassDef, ir: ClassIR) -> bool:
     """Whether this class's own body has any default attribute assignment
     that would be emitted into __mypyc_defaults_setup.
@@ -584,6 +612,56 @@ def check_unknown_base_classes(path: str, cdef: ClassDef, errors: Errors, mapper
         report_needs_non_native_class(errors, msg, path, cdef.line)
 
 
+def find_unsupported_base(
+    info: TypeInfo, mapper: Mapper, graph: Graph
+) -> tuple[TypeInfo, str] | None:
+    """Find a non-mypyc base class whose instance layout may conflict with a native class.
+
+    Native classes assume that non-mypyc base classes have the layout of object (or of
+    dict/BaseException, which are checked elsewhere). Regular Python classes defined in
+    source files are fine unless they use __slots__, but stubs don't tell whether a class
+    is implemented in C, so classes defined in stubs must be explicitly allowed.
+
+    Return the base class and a description of the problem, or None if all bases are ok.
+    """
+    seen = set()
+    todo = [base.type for base in info.bases]
+    while todo:
+        base = todo.pop()
+        if base in seen or base.fullname.startswith("builtins."):
+            # Builtin base classes are checked in prepare_class_def
+            continue
+        seen.add(base)
+        base_ir = mapper.type_to_ir.get(base)
+        if base_ir is not None:
+            if not base_ir.is_ext_class:
+                # A compiled non-native class is a regular Python class
+                todo.extend(b.type for b in base.bases)
+            # Native base classes are checked separately
+            continue
+        state = graph.get(base.module_name)
+        path = state.xpath if state is not None else ""
+        if path.endswith(".pyi") or (state is not None and state.tree and state.tree.is_stub):
+            if base.fullname not in SAFE_STUB_BASE_CLASSES:
+                return base, "defined in a stub, so its instance layout is unknown"
+            # The listed classes have a known layout, including their base classes
+            continue
+        if base.slots:
+            return base, "defines __slots__"
+        if is_compiled_module_path(path):
+            return base, "its instance layout is unknown, since it's imported from a C extension"
+        todo.extend(b.type for b in base.bases)
+    return None
+
+
+def is_compiled_module_path(path: str) -> bool:
+    """Is there a C extension next to a Python source file that would be imported instead?"""
+    if not path.endswith(".py"):
+        return False
+    stem = path[:-3]
+    return any(os.path.isfile(stem + suffix) for suffix in importlib.machinery.EXTENSION_SUFFIXES)
+
+
 def prepare_class_def(
     path: str,
     module_name: str,
@@ -591,6 +669,7 @@ def prepare_class_def(
     errors: Errors,
     mapper: Mapper,
     options: CompilerOptions,
+    graph: Graph,
 ) -> None:
     """Populate the interface-level information in a class IR.
 
@@ -613,7 +692,15 @@ def prepare_class_def(
     if attrs.get("acyclic") is True:
         ir.is_acyclic = True
 
+    if attrs.get("weakrefs") is True:
+        line = attrs_lines["weakrefs"]
+        if ir.is_trait:
+            errors.error('"weakrefs" can\'t be used with traits', path, line)
+        else:
+            ir._weakrefs = True
+
     # Check for subclassing from builtin types
+    reported_base = False
     for cls in info.mro:
         # Special case exceptions and dicts
         # XXX: How do we handle *other* things??
@@ -630,6 +717,26 @@ def prepare_class_def(
                 report_needs_non_native_class(
                     errors, "Inheriting from most builtin types is unimplemented", path, cdef.line
                 )
+                reported_base = True
+
+    if not reported_base and not info.fallback_to_any:
+        unsupported = find_unsupported_base(info, mapper, graph)
+        if unsupported is not None:
+            base, reason = unsupported
+            report_needs_non_native_class(
+                errors,
+                f'Native classes cannot inherit from "{base.fullname}" ({reason})',
+                path,
+                cdef.line,
+            )
+
+    if ir.builtin_base and ir._weakrefs:
+        errors.error(
+            '"weakrefs" can\'t be used in a class that inherits from a built-in type',
+            path,
+            attrs_lines["weakrefs"],
+        )
+        ir._weakrefs = False
 
     free_list_len = attrs.get("free_list_len")
     if free_list_len is not None:

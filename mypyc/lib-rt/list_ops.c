@@ -48,11 +48,35 @@ char CPyList_Clear(PyObject *list) {
     return 1;
 }
 
+// Operations on list and tuple subclasses may call an overriding method that returns an
+// arbitrary object. Check that the result is a list if seq is a list, or a tuple otherwise
+// (only lists and tuples are supported), since callers rely on the result type.
+static PyObject *CPySequence_CheckResult(PyObject *seq, PyObject *res) {
+    if (res == NULL) {
+        return NULL;
+    }
+    const char *expected;
+    if (PyList_Check(seq)) {
+        if (PyList_Check(res)) {
+            return res;
+        }
+        expected = "list";
+    } else {
+        if (PyTuple_Check(res)) {
+            return res;
+        }
+        expected = "tuple";
+    }
+    CPy_TypeError(expected, res);
+    Py_DECREF(res);
+    return NULL;
+}
+
 PyObject *CPyList_Copy(PyObject *list) {
     if(PyList_CheckExact(list)) {
         return PyList_GetSlice(list, 0, PyList_GET_SIZE(list));
     }
-    return PyObject_CallMethodNoArgs(list, mypyc_interned_str.copy);
+    return CPySequence_CheckResult(list, PyObject_CallMethodNoArgs(list, mypyc_interned_str.copy));
 }
 
 #ifndef Py_GIL_DISABLED
@@ -177,6 +201,30 @@ bool CPyList_SetItemInt64(PyObject *list, int64_t index, PyObject *value) {
     return true;
 }
 
+PyObject *CPyList_GetItemUInt64(PyObject *list, uint64_t index) {
+    if (likely(index < (uint64_t)PyList_GET_SIZE(list))) {
+        PyObject *result = PyList_GET_ITEM(list, index);
+        Py_INCREF(result);
+        return result;
+    }
+    PyErr_SetString(PyExc_IndexError, "list index out of range");
+    return NULL;
+}
+
+bool CPyList_SetItemUInt64(PyObject *list, uint64_t index, PyObject *value) {
+    if (unlikely(index >= (uint64_t)PyList_GET_SIZE(list))) {
+        Py_DECREF(value);
+        PyErr_SetString(PyExc_IndexError, "list assignment index out of range");
+        return false;
+    }
+    // Set the replacement before decref, which may run reentrant Python code.
+    PyObject *old = PyList_GET_ITEM(list, index);
+    // N.B: Steals reference
+    PyList_SET_ITEM(list, index, value);
+    Py_DECREF(old);
+    return true;
+}
+
 #else /* Py_GIL_DISABLED */
 
 PyObject *CPyList_GetItem_(PyObject *list, CPyTagged index) {
@@ -265,6 +313,14 @@ PyObject *CPyList_GetItemInt64Borrow(PyObject *list, int64_t index) {
         return NULL;
     }
     return PyList_GET_ITEM(list, index);
+}
+
+PyObject *CPyList_GetItemUInt64Borrow(PyObject *list, uint64_t index) {
+    if (likely(index < (uint64_t)PyList_GET_SIZE(list))) {
+        return PyList_GET_ITEM(list, index);
+    }
+    PyErr_SetString(PyExc_IndexError, "list index out of range");
+    return NULL;
 }
 
 // This function should only be used to fill in brand new lists.
@@ -412,6 +468,61 @@ CPyTagged CPyList_Index(PyObject *list, PyObject *obj) {
     return retval;
 }
 
+// Compare two lists for equality. Return 1 if equal, 0 if not equal, -1 on error.
+//
+// The caller must hold a critical section on both lists.
+static int _CPyList_Equal(PyObject *left, PyObject *right) {
+    if (Py_SIZE(left) != Py_SIZE(right)) {
+        return 0;
+    }
+    Py_ssize_t i;
+    for (i = 0; i < Py_SIZE(left) && i < Py_SIZE(right); i++) {
+        PyObject *left_item = PyList_GET_ITEM(left, i);
+        PyObject *right_item = PyList_GET_ITEM(right, i);
+        if (left_item == right_item) {
+            continue;
+        }
+        Py_INCREF(left_item);
+        Py_INCREF(right_item);
+        int cmp = PyObject_RichCompareBool(left_item, right_item, Py_EQ);
+        Py_DECREF(left_item);
+        Py_DECREF(right_item);
+        if (cmp <= 0) {
+            return cmp;
+        }
+    }
+    // An item comparison may have changed the lengths
+    return Py_SIZE(left) == Py_SIZE(right);
+}
+
+// Compare two lists using == or != (op is Py_EQ or Py_NE). Return 1 if the result is
+// true, 0 if it's false, and -1 on error.
+int CPyList_Compare(PyObject *left, PyObject *right, int op) {
+    if (likely(PyList_CheckExact(left) && PyList_CheckExact(right))) {
+        int result;
+        if (left == right) {
+            // All items are identical, so they compare equal
+            result = 1;
+        } else {
+            Py_BEGIN_CRITICAL_SECTION2(left, right);
+            result = _CPyList_Equal(left, right);
+            Py_END_CRITICAL_SECTION2();
+            if (result < 0) {
+                return -1;
+            }
+        }
+        return op == Py_EQ ? result : !result;
+    }
+    // Subclasses may override __eq__ and __ne__
+    PyObject *res = PyObject_RichCompare(left, right, op);
+    if (res == NULL) {
+        return -1;
+    }
+    int result = PyObject_IsTrue(res);
+    Py_DECREF(res);
+    return result;
+}
+
 PyObject *CPySequence_Sort(PyObject *seq) {
     PyObject *newlist = PySequence_List(seq);
     if (newlist == NULL)
@@ -424,16 +535,31 @@ PyObject *CPySequence_Sort(PyObject *seq) {
     return newlist;
 }
 
+PyObject *CPySequence_Concat(PyObject *seq, PyObject *other) {
+    return CPySequence_CheckResult(seq, PySequence_Concat(seq, other));
+}
+
+PyObject *CPySequence_InPlaceConcat(PyObject *seq, PyObject *other) {
+    return CPySequence_CheckResult(seq, PySequence_InPlaceConcat(seq, other));
+}
+
 PyObject *CPySequence_Multiply(PyObject *seq, CPyTagged t_size) {
     Py_ssize_t size = CPyTagged_AsSsize_t(t_size);
     if (size == -1 && PyErr_Occurred()) {
         return NULL;
     }
-    return PySequence_Repeat(seq, size);
+    return CPySequence_CheckResult(seq, PySequence_Repeat(seq, size));
 }
 
 PyObject *CPySequence_RMultiply(CPyTagged t_size, PyObject *seq) {
-    return CPySequence_Multiply(seq, t_size);
+    if (PyList_CheckExact(seq) || PyTuple_CheckExact(seq)) {
+        return CPySequence_Multiply(seq, t_size);
+    }
+    // Use the generic operation so that __rmul__ is called on subclasses
+    PyObject *size = CPyTagged_AsObject(t_size);
+    PyObject *res = PyNumber_Multiply(size, seq);
+    Py_DECREF(size);
+    return CPySequence_CheckResult(seq, res);
 }
 
 PyObject *CPySequence_InPlaceMultiply(PyObject *seq, CPyTagged t_size) {
@@ -441,7 +567,7 @@ PyObject *CPySequence_InPlaceMultiply(PyObject *seq, CPyTagged t_size) {
     if (size == -1 && PyErr_Occurred()) {
         return NULL;
     }
-    return PySequence_InPlaceRepeat(seq, size);
+    return CPySequence_CheckResult(seq, PySequence_InPlaceRepeat(seq, size));
 }
 
 PyObject *CPyList_GetSlice(PyObject *obj, CPyTagged start, CPyTagged end) {

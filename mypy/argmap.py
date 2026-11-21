@@ -233,7 +233,7 @@ class ArgTypeExpander:
                     item = fallback.args[0]
                 return item
             elif isinstance(actual_type, ParamSpecType):
-                # ParamSpec is valid in *args but it can't be unpacked.
+                # ParamSpec is valid in *args, but it can't be unpacked.
                 return actual_type
             else:
                 return AnyType(TypeOfAny.from_error)
@@ -260,7 +260,7 @@ class ArgTypeExpander:
                     1
                 ]
             elif isinstance(actual_type, ParamSpecType):
-                # ParamSpec is valid in **kwargs but it can't be unpacked.
+                # ParamSpec is valid in **kwargs, but it can't be unpacked.
                 return actual_type
             else:
                 return AnyType(TypeOfAny.from_error)

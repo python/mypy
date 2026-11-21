@@ -360,6 +360,65 @@ of cyclic GC.
     leaks. Only use this for classes whose instances won't refer back
     to objects that (directly or indirectly) refer to the instance.
 
+Weak references
+---------------
+
+By default, you can't create weak references to instances of native
+classes, since supporting weak references requires an extra pointer in
+every instance::
+
+    import weakref
+
+    class Cls:
+        pass
+
+    o = Cls()
+    r = weakref.ref(o)  # Error
+
+You can enable support for weak references using
+``@mypyc_attr(weakrefs=True)``::
+
+    import weakref
+    from mypy_extensions import mypyc_attr
+
+    @mypyc_attr(weakrefs=True)
+    class Cls:
+        pass
+
+    o = Cls()
+    r = weakref.ref(o)  # OK
+    assert r() is o
+
+Unlike ``acyclic``, weak reference support is inherited by subclasses,
+including subclasses defined in other modules and interpreted
+subclasses. If a native base class doesn't support weak references, a
+native subclass can't add support for them, since the location of the
+extra pointer must be the same in all classes of a hierarchy -- you
+must add ``@mypyc_attr(weakrefs=True)`` to the base class instead.
+
+Native classes that inherit from a non-native class other than
+``object``, such as an interpreted class or ``abc.ABC``, always support
+weak references, like interpreted subclasses do. Their instances
+already have a ``__dict__``, and weak reference support costs no
+additional memory. Native subclasses of built-in types such as ``dict``
+or ``Exception`` don't support weak references yet.
+
+.. note::
+
+    Mypyc only reports an error about an unsupported weak reference if
+    it can infer the precise native class of the target. Otherwise the
+    error is raised at runtime, as in interpreted Python::
+
+        o: object = Cls()
+        r = weakref.ref(o)  # TypeError at runtime
+
+.. note::
+
+    Mypyc frees a local variable as soon as it's no longer used, which
+    can be before the end of the enclosing function. Weak references
+    to an object stored only in a local variable may thus be cleared
+    earlier than in interpreted Python.
+
 Other properties
 ----------------
 

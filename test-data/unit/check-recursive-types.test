@@ -15,6 +15,15 @@ class Bad: ...
 x = ["foo", {"bar": [Bad()]}]  # E: List item 0 has incompatible type "Bad"; expected "str | list[JSON] | dict[str, JSON]"
 [builtins fixtures/isinstancelist.pyi]
 
+[case testRecursiveAliasNestedWithAny]
+from typing import Any, Dict, List, Union
+
+JSON = Union[str, List[JSON], Dict[str, JSON]]
+
+a: Any
+x: JSON = {"str": [{"bar": a}]}
+[builtins fixtures/isinstancelist.pyi]
+
 [case testRecursiveAliasBasicGenericSubtype]
 from typing import Union, TypeVar, Sequence, List
 
@@ -298,8 +307,8 @@ a = [[b]]  # OK
 b = aa  # E: Incompatible types in assignment (expression has type "Nested[A]", variable has type "B")
 
 def join(a: T, b: T) -> T: ...
-reveal_type(join(a, b))  # N: Revealed type is "typing.Sequence[__main__.A | typing.Sequence[__main__.A | ...]]"
-reveal_type(join(b, a))  # N: Revealed type is "typing.Sequence[__main__.A | typing.Sequence[__main__.A | ...]]"
+reveal_type(join(aa, b))  # N: Revealed type is "typing.Sequence[__main__.A | typing.Sequence[__main__.A | ...]]"
+reveal_type(join(b, aa))  # N: Revealed type is "typing.Sequence[__main__.A | typing.Sequence[__main__.A | ...]]"
 [builtins fixtures/isinstancelist.pyi]
 
 [case testRecursiveAliasWithRecursiveInstanceInference]

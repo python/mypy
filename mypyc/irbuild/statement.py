@@ -1439,8 +1439,12 @@ def emit_yield_from_or_await(
     builder.goto_and_activate(loop_block)
 
     def try_body() -> None:
+        # Traceback will be added if yield_from_except_op propagates an error.
+        # Skip it here to not have a duplicated entry.
         builder.assign(
-            received_reg, emit_yield(builder, builder.read(to_yield_reg, line), line), line
+            received_reg,
+            emit_yield(builder, builder.read(to_yield_reg, line), NO_TRACEBACK_LINE_NO),
+            line,
         )
 
     def except_body() -> None:

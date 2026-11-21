@@ -16,16 +16,35 @@ def f(c):
     c :: __main__.C
     r0 :: int
     r1 :: bit
-    r2 :: bool
 L0:
     r0 = c.__len__()
-    r1 = int_ge r0, 0
-    if r1 goto L2 else goto L1 :: bool
-L1:
-    r2 = raise ValueError('__len__() should return >= 0')
-    unreachable
-L2:
+    r1 = CPyTagged_CheckLen(r0)
     return r0
+
+[case testDundersLenAny]
+from typing import Any
+
+class C:
+    def __len__(self) -> Any:
+        return 2
+
+def f(c: C) -> int:
+    return len(c)
+[out]
+def C.__len__(self):
+    self :: __main__.C
+    r0 :: object
+L0:
+    r0 = object 2
+    return r0
+def f(c):
+    c :: __main__.C
+    r0 :: object
+    r1 :: int
+L0:
+    r0 = c.__len__()
+    r1 = CPyObject_LenFromResult(r0)
+    return r1
 
 [case testDundersSetItem]
 class C:

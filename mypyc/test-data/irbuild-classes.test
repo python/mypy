@@ -2148,6 +2148,70 @@ class AnyBase(Any): ...
 class Indirect(AnyBase): ...
 IndirectAlias = Indirect
 
+[case testInheritFromDefaultDictOrOrderedDictError]
+from collections import defaultdict, OrderedDict
+
+from mypy_extensions import mypyc_attr
+
+class D(defaultdict[str, int]):  # E: Native classes cannot inherit from "collections.defaultdict" (defined in a stub, so its instance layout is unknown) \
+                                 # N: Potential workaround: @mypy_extensions.mypyc_attr(native_class=False) \
+                                 # N: https://mypyc.readthedocs.io/en/stable/native_classes.html#defining-non-native-classes
+    pass
+
+class O(OrderedDict[str, int]):  # E: Native classes cannot inherit from "collections.OrderedDict" (defined in a stub, so its instance layout is unknown) \
+                                 # N: Potential workaround: @mypy_extensions.mypyc_attr(native_class=False) \
+                                 # N: https://mypyc.readthedocs.io/en/stable/native_classes.html#defining-non-native-classes
+    pass
+
+class Ok(dict[str, int]):
+    pass
+
+@mypyc_attr(native_class=False)
+class NonNative(defaultdict[str, int]):
+    pass
+
+[case testInheritFromClassInCExtensionError]
+from compiled import Base
+from plain import Indirect, Plain
+
+from mypy_extensions import mypyc_attr
+
+class C(Base):  # E: Native classes cannot inherit from "compiled.Base" (its instance layout is unknown, since it's imported from a C extension) \
+                # N: Potential workaround: @mypy_extensions.mypyc_attr(native_class=False) \
+                # N: https://mypyc.readthedocs.io/en/stable/native_classes.html#defining-non-native-classes
+    pass
+
+class D(Indirect):  # E: Native classes cannot inherit from "compiled.Base" (its instance layout is unknown, since it's imported from a C extension) \
+                    # N: Potential workaround: @mypy_extensions.mypyc_attr(native_class=False) \
+                    # N: https://mypyc.readthedocs.io/en/stable/native_classes.html#defining-non-native-classes
+    pass
+
+class Ok(Plain):
+    pass
+
+@mypyc_attr(native_class=False)
+class NonNative(Base):
+    pass
+
+[file compiled.py]
+class Base:
+    pass
+
+-- An extension module next to compiled.py is imported instead of it at runtime.
+-- The check only looks for the file, so the contents don't matter. Create both
+-- to cover the extension suffixes on all platforms.
+[file compiled.so]
+[file compiled.pyd]
+
+[file plain.py]
+from compiled import Base
+
+class Indirect(Base):
+    pass
+
+class Plain:
+    pass
+
 [case testMypycAttrNativeClassMetaError]
 from mypy_extensions import mypyc_attr
 
@@ -2454,6 +2518,97 @@ def native_class(x):
 L0:
     r0 = CPy_TYPE(x)
     return r0
+
+[case testTypeOfUnboxedValue]
+from typing import Union
+
+from mypy_extensions import u16
+
+def type_of_int(x: int) -> type:
+    return type(x)
+
+def type_of_float(x: float) -> type:
+    return type(x)
+
+def type_of_bool(x: bool) -> type:
+    return type(x)
+
+def type_of_u16(x: u16) -> type:
+    return type(x)
+
+def type_of_bool_or_int(x: Union[bool, int]) -> type:
+    return type(x)
+
+def is_exact_int(x: int) -> bool:
+    return type(x) is int
+
+def is_exact_float(x: float) -> bool:
+    return type(x) is float
+
+def get_float() -> float:
+    return 1.5
+
+def type_of_call() -> type:
+    return type(get_float())
+[out]
+def type_of_int(x):
+    x :: int
+    r0 :: object
+L0:
+    r0 = CPyTagged_Type(x)
+    return r0
+def type_of_float(x):
+    x :: float
+    r0 :: object
+L0:
+    r0 = load_address PyFloat_Type
+    return r0
+def type_of_bool(x):
+    x :: bool
+    r0 :: object
+L0:
+    r0 = load_address PyBool_Type
+    return r0
+def type_of_u16(x):
+    x :: u16
+    r0 :: object
+L0:
+    r0 = load_address PyLong_Type
+    return r0
+def type_of_bool_or_int(x):
+    x :: union[bool, int]
+    r0 :: object
+L0:
+    r0 = CPy_TYPE(x)
+    return r0
+def is_exact_int(x):
+    x :: int
+    r0, r1 :: object
+    r2 :: bit
+L0:
+    r0 = CPyTagged_Type(x)
+    r1 = load_address PyLong_Type
+    r2 = r0 == r1
+    return r2
+def is_exact_float(x):
+    x :: float
+    r0, r1 :: object
+    r2 :: bit
+L0:
+    r0 = load_address PyFloat_Type
+    r1 = load_address PyFloat_Type
+    r2 = r0 == r1
+    return r2
+def get_float():
+L0:
+    return 1.5
+def type_of_call():
+    r0 :: float
+    r1 :: object
+L0:
+    r0 = get_float()
+    r1 = load_address PyFloat_Type
+    return r1
 
 [case testDunderNew]
 from __future__ import annotations
@@ -4050,11 +4205,11 @@ L0:
 from mypy_extensions import mypyc_attr
 
 @mypyc_attr("allow_interpreted_subclasses", "invalid_arg")  # E: "invalid_arg" is not a supported "mypyc_attr" \
-                                                            # N: supported keys: "acyclic", "allow_interpreted_subclasses", "free_list_len", "native_class", "serializable"
+                                                            # N: supported keys: "acyclic", "allow_interpreted_subclasses", "free_list_len", "native_class", "serializable", "weakrefs"
 class InvalidArg:
     pass
 @mypyc_attr(invalid_kwarg=True)  # E: "invalid_kwarg" is not a supported "mypyc_attr" \
-                                 # N: supported keys: "acyclic", "allow_interpreted_subclasses", "free_list_len", "native_class", "serializable"
+                                 # N: supported keys: "acyclic", "allow_interpreted_subclasses", "free_list_len", "native_class", "serializable", "weakrefs"
 class InvalidKwarg:
     pass
 @mypyc_attr(str())  # E: All "mypyc_attr" positional arguments must be string literals.

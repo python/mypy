@@ -116,6 +116,26 @@ class TestEmitter(unittest.TestCase):
         assert emitter.fragments[0] == "CPyStatics[0]; /* 'hello, world' */\n"
         assert emitter.fragments[1] == "CPyStatics[1]; /* 42 */\n"
 
+    def test_emit_line_with_indented_braces(self) -> None:
+        self.emitter.emit_lines(
+            "if (outer)",
+            "    if (inner) { ",
+            "    f();",
+            "    } else {",
+            "    g();",
+            "    }",
+            "h();",
+        )
+        self.assert_output(
+            "if (outer)\n"
+            "    if (inner) { \n"
+            "        f();\n"
+            "    } else {\n"
+            "        g();\n"
+            "    }\n"
+            "h();\n"
+        )
+
     def test_emit_undefined_value_for_simple_type(self) -> None:
         emitter = self.emitter
         assert emitter.c_undefined_value(int_rprimitive) == "CPY_INT_TAG"

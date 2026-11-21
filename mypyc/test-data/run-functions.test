@@ -1426,6 +1426,24 @@ def test_reassigned_nested_function() -> None:
     assert outer(False) == [-1]
     assert outer(True) == [0, 101]
 
+def conditional_outer(flag: bool) -> int:
+    x = 1
+    if flag:
+        def inner() -> int:
+            def g() -> int:
+                return x + 10
+            return g()
+    else:
+        def inner() -> int:
+            def g() -> int:
+                return x + 20
+            return g()
+    return inner()
+
+def test_conditional_nested_functions_with_nested_functions() -> None:
+    assert conditional_outer(True) == 11
+    assert conditional_outer(False) == 21
+
 [case testStarArgFastPaths]
 from typing import Any, Mapping
 def fn(x: str, y: int) -> str:

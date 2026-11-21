@@ -524,3 +524,58 @@ L4:
     unreachable
 L5:
     return r7
+
+[case testI16ForLoopOverRangeWithStepAndConstantEnd]
+from mypy_extensions import i16
+
+def f(a: i16) -> None:
+    # The largest index is 32764, and 32764 + 3 fits in i16: no overflow check
+    for x in range(a, i16(32765), 3):
+        y = x
+
+def g(a: i16) -> None:
+    # The largest index is 32765, and 32765 + 3 doesn't fit in i16: overflow check
+    for x in range(a, i16(32766), 3):
+        y = x
+[out]
+def f(a):
+    a, r0 :: i16
+    r1 :: bit
+    x, y, r2 :: i16
+L0:
+    r0 = a
+L1:
+    r1 = r0 < 32765 :: signed
+    if r1 goto L2 else goto L4 :: bool
+L2:
+    x = r0
+    y = x
+L3:
+    r2 = r0 + 3
+    r0 = r2
+    goto L1
+L4:
+    return 1
+def g(a):
+    a, r0 :: i16
+    r1 :: bit
+    x, y :: i16
+    r2 :: bit
+    r3 :: i16
+L0:
+    r0 = a
+L1:
+    r1 = r0 < 32766 :: signed
+    if r1 goto L2 else goto L5 :: bool
+L2:
+    x = r0
+    y = x
+L3:
+    r2 = r0 > 32764 :: signed
+    if r2 goto L5 else goto L4 :: bool
+L4:
+    r3 = r0 + 3
+    r0 = r3
+    goto L1
+L5:
+    return 1

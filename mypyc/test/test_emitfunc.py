@@ -75,6 +75,9 @@ from mypyc.ir.rtypes import (
     pointer_rprimitive,
     short_int_rprimitive,
     str_rprimitive,
+    uint8_rprimitive,
+    uint16_rprimitive,
+    uint32_rprimitive,
 )
 from mypyc.irbuild.vtable import compute_vtable
 from mypyc.namegen import NameGenerator
@@ -118,6 +121,12 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
         self.i32_1 = add_local("i32_1", int32_rprimitive)
         self.i64 = add_local("i64", int64_rprimitive)
         self.i64_1 = add_local("i64_1", int64_rprimitive)
+        self.u8 = add_local("u8", uint8_rprimitive)
+        self.u8_1 = add_local("u8_1", uint8_rprimitive)
+        self.u16 = add_local("u16", uint16_rprimitive)
+        self.u16_1 = add_local("u16_1", uint16_rprimitive)
+        self.u32 = add_local("u32", uint32_rprimitive)
+        self.u32_1 = add_local("u32_1", uint32_rprimitive)
         self.ptr = add_local("ptr", pointer_rprimitive)
         self.t = add_local("t", RTuple([int_rprimitive, bool_rprimitive]))
         self.tt = add_local(
@@ -990,6 +999,30 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
             """cpy_r_r0 = cpy_r_i64 >> cpy_r_i64_1;""",
         )
 
+    def test_int_op_narrow_unsigned(self) -> None:
+        # Unsigned types narrower than int would be promoted to signed int in C,
+        # and e.g. u16 * u16 could overflow int (undefined behavior)
+        self.assert_emit(
+            IntOp(uint16_rprimitive, self.u16, self.u16_1, IntOp.MUL, 1),
+            """cpy_r_r0 = (unsigned int)cpy_r_u16 * cpy_r_u16_1;""",
+        )
+        self.assert_emit(
+            IntOp(uint16_rprimitive, self.u16, self.u16_1, IntOp.LEFT_SHIFT, 1),
+            """cpy_r_r0 = (unsigned int)cpy_r_u16 << cpy_r_u16_1;""",
+        )
+        self.assert_emit(
+            IntOp(uint8_rprimitive, self.u8, self.u8_1, IntOp.MUL, 1),
+            """cpy_r_r0 = (unsigned int)cpy_r_u8 * cpy_r_u8_1;""",
+        )
+        self.assert_emit(
+            IntOp(uint16_rprimitive, self.u16, self.u16_1, IntOp.ADD, 1),
+            """cpy_r_r0 = cpy_r_u16 + cpy_r_u16_1;""",
+        )
+        self.assert_emit(
+            IntOp(uint32_rprimitive, self.u32, self.u32_1, IntOp.MUL, 1),
+            """cpy_r_r0 = cpy_r_u32 * cpy_r_u32_1;""",
+        )
+
     def test_comparison_op(self) -> None:
         # signed
         self.assert_emit(
@@ -1085,21 +1118,22 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
         )
 
     def test_long_unsigned(self) -> None:
-        a = Register(int64_rprimitive, "a")
         self.assert_emit(
-            Assign(a, Integer(1 << 31, int64_rprimitive)), """cpy_r_a = 2147483648LL;"""
+            Assign(self.i64, Integer(1 << 31, int64_rprimitive)), """cpy_r_i64 = 2147483648LL;"""
         )
         self.assert_emit(
-            Assign(a, Integer((1 << 31) - 1, int64_rprimitive)), """cpy_r_a = 2147483647;"""
+            Assign(self.i64, Integer((1 << 31) - 1, int64_rprimitive)),
+            """cpy_r_i64 = 2147483647;""",
         )
 
     def test_long_signed(self) -> None:
-        a = Register(int64_rprimitive, "a")
         self.assert_emit(
-            Assign(a, Integer(-(1 << 31) + 1, int64_rprimitive)), """cpy_r_a = -2147483647;"""
+            Assign(self.i64, Integer(-(1 << 31) + 1, int64_rprimitive)),
+            """cpy_r_i64 = -2147483647;""",
         )
         self.assert_emit(
-            Assign(a, Integer(-(1 << 31), int64_rprimitive)), """cpy_r_a = -2147483648LL;"""
+            Assign(self.i64, Integer(-(1 << 31), int64_rprimitive)),
+            """cpy_r_i64 = -2147483648LL;""",
         )
 
     def test_cast_and_branch_merge(self) -> None:
@@ -1199,10 +1233,11 @@ else {
         )
 
     def test_extend(self) -> None:
-        a = Register(int32_rprimitive, "a")
-        self.assert_emit(Extend(a, int64_rprimitive, signed=True), """cpy_r_r0 = cpy_r_a;""")
         self.assert_emit(
-            Extend(a, int64_rprimitive, signed=False), """cpy_r_r0 = (uint32_t)cpy_r_a;"""
+            Extend(self.i32, int64_rprimitive, signed=True), """cpy_r_r0 = cpy_r_i32;"""
+        )
+        self.assert_emit(
+            Extend(self.i32, int64_rprimitive, signed=False), """cpy_r_r0 = (uint32_t)cpy_r_i32;"""
         )
         if PLATFORM_SIZE == 4:
             self.assert_emit(
@@ -1213,9 +1248,12 @@ else {
                 Extend(self.n, int64_rprimitive, signed=False), """cpy_r_r0 = cpy_r_n;"""
             )
         if PLATFORM_SIZE == 8:
-            self.assert_emit(Extend(a, int_rprimitive, signed=True), """cpy_r_r0 = cpy_r_a;""")
             self.assert_emit(
-                Extend(a, int_rprimitive, signed=False), """cpy_r_r0 = (uint32_t)cpy_r_a;"""
+                Extend(self.i32, int_rprimitive, signed=True), """cpy_r_r0 = cpy_r_i32;"""
+            )
+            self.assert_emit(
+                Extend(self.i32, int_rprimitive, signed=False),
+                """cpy_r_r0 = (uint32_t)cpy_r_i32;""",
             )
 
     def test_inc_ref_none(self) -> None:

@@ -59,6 +59,27 @@ CPyTagged CPyTagged_FromInt64(int64_t value) {
     }
 }
 
+CPyTagged CPyTagged_FromUInt64(uint64_t value) {
+    if (unlikely(value > CPY_TAGGED_MAX)) {
+        PyObject *object = PyLong_FromUnsignedLongLong(value);
+        return ((CPyTagged)object) | CPY_INT_TAG;
+    } else {
+        return ((CPyTagged)value) << 1;
+    }
+}
+
+CPyTagged CPyTagged_FromUInt32(uint32_t value) {
+#if SIZEOF_SIZE_T == 4
+    // Only 32-bit platforms can have values that don't fit in a short int. Doing
+    // the comparison on 64-bit platforms would trigger a tautological compare warning.
+    if (unlikely(value > CPY_TAGGED_MAX)) {
+        PyObject *object = PyLong_FromUnsignedLong(value);
+        return ((CPyTagged)object) | CPY_INT_TAG;
+    }
+#endif
+    return ((CPyTagged)value) << 1;
+}
+
 PyObject *CPyTagged_AsObject(CPyTagged x) {
     PyObject *value;
     if (unlikely(CPyTagged_CheckLong(x))) {
@@ -119,6 +140,17 @@ void CPyTagged_XDecRef(CPyTagged x) {
 CPyTagged CPyTagged_Negate_(CPyTagged num) {
     PyObject *num_obj = CPyTagged_AsObject(num);
     PyObject *result = PyNumber_Negative(num_obj);
+    if (result == NULL) {
+        CPyError_OutOfMemory();
+    }
+    Py_DECREF(num_obj);
+    return CPyTagged_StealFromObject(result);
+}
+
+// Tagged int absolute value slow path, where the result may be a long integer
+CPyTagged CPyTagged_Absolute_(CPyTagged num) {
+    PyObject *num_obj = CPyTagged_AsObject(num);
+    PyObject *result = PyNumber_Absolute(num_obj);
     if (result == NULL) {
         CPyError_OutOfMemory();
     }
@@ -225,6 +257,9 @@ bool CPyTagged_IsLt_(CPyTagged left, CPyTagged right) {
 
 PyObject *CPyLong_FromStrWithBase(PyObject *o, CPyTagged base) {
     Py_ssize_t base_size_t = CPyTagged_AsSsize_t(base);
+    if (base_size_t == -1 && PyErr_Occurred()) {
+        return NULL;
+    }
     return PyLong_FromUnicodeObject(o, base_size_t);
 }
 
@@ -441,6 +476,10 @@ int64_t CPyInt64_Remainder(int64_t x, int64_t y) {
     return d;
 }
 
+void CPyInt64_Overflow() {
+    PyErr_SetString(PyExc_ValueError, "int too large to convert to i64");
+}
+
 // i32 unboxing slow path
 int32_t CPyLong_AsInt32_(PyObject *o) {
     int overflow;
@@ -498,6 +537,60 @@ void CPyInt32_Overflow() {
     PyErr_SetString(PyExc_ValueError, "int too large to convert to i32");
 }
 
+// i8 unboxing slow path
+int8_t CPyLong_AsInt8_(PyObject *o) {
+    int overflow;
+    long result = PyLong_AsLongAndOverflow(o, &overflow);
+    if (result > 0x7f || result < -0x80) {
+        overflow = 1;
+        result = -1;
+    }
+    if (result == -1) {
+        if (PyErr_Occurred()) {
+            return CPY_LL_INT_ERROR;
+        } else if (overflow) {
+            PyErr_SetString(PyExc_ValueError, "int too large to convert to i8");
+            return CPY_LL_INT_ERROR;
+        }
+    }
+    return result;
+}
+
+int8_t CPyInt8_Divide(int8_t x, int8_t y) {
+    if (y == 0) {
+        PyErr_SetString(PyExc_ZeroDivisionError, "integer division or modulo by zero");
+        return CPY_LL_INT_ERROR;
+    }
+    if (y == -1 && x == INT8_MIN) {
+        PyErr_SetString(PyExc_OverflowError, "integer division overflow");
+        return CPY_LL_INT_ERROR;
+    }
+    int8_t d = x / y;
+    if (((x < 0) != (y < 0)) && d * y != x) {
+        d--;
+    }
+    return d;
+}
+
+int8_t CPyInt8_Remainder(int8_t x, int8_t y) {
+    if (y == 0) {
+        PyErr_SetString(PyExc_ZeroDivisionError, "integer division or modulo by zero");
+        return CPY_LL_INT_ERROR;
+    }
+    if (y == -1 && x == INT8_MIN) {
+        return 0;
+    }
+    int8_t d = x % y;
+    if (((x < 0) != (y < 0)) && d != 0) {
+        d += y;
+    }
+    return d;
+}
+
+void CPyInt8_Overflow() {
+    PyErr_SetString(PyExc_ValueError, "int too large to convert to i8");
+}
+
 // i16 unboxing slow path
 int16_t CPyLong_AsInt16_(PyObject *o) {
     int overflow;
@@ -553,6 +646,87 @@ int16_t CPyInt16_Remainder(int16_t x, int16_t y) {
 
 void CPyInt16_Overflow() {
     PyErr_SetString(PyExc_ValueError, "int too large to convert to i16");
+}
+
+// Unlike PyLong_AsLongAndOverflow(), which the other native int types use,
+// PyLong_AsUnsignedLong() and PyLong_AsUnsignedLongLong() don't call __index__, so
+// convert the object first. Return a new reference, or NULL with an exception set.
+static PyObject *CPyLong_IndexForUnsigned(PyObject *o) {
+    if (likely(PyLong_Check(o))) {
+        return Py_NewRef(o);
+    }
+    return PyNumber_Index(o);
+}
+
+// u64 unboxing slow path
+uint64_t CPyLong_AsUInt64_(PyObject *o) {
+    PyObject *index = CPyLong_IndexForUnsigned(o);
+    if (index == NULL) {
+        return CPY_LL_UINT_ERROR;
+    }
+    unsigned long long result = PyLong_AsUnsignedLongLong(index);
+    Py_DECREF(index);
+    if (result == (unsigned long long)-1 && PyErr_Occurred()) {
+        if (PyErr_ExceptionMatches(PyExc_OverflowError)) {
+            PyErr_Clear();
+            PyErr_SetString(PyExc_ValueError, "int too large or small to convert to u64");
+        }
+        return CPY_LL_UINT_ERROR;
+    }
+    return (uint64_t)result;
+}
+
+void CPyUInt64_Overflow() {
+    PyErr_SetString(PyExc_ValueError, "int too large or small to convert to u64");
+}
+
+// u32 unboxing slow path
+uint32_t CPyLong_AsUInt32_(PyObject *o) {
+    PyObject *index = CPyLong_IndexForUnsigned(o);
+    if (index == NULL) {
+        return CPY_LL_UINT_ERROR;
+    }
+    unsigned long result = PyLong_AsUnsignedLong(index);
+    Py_DECREF(index);
+    if (result == (unsigned long)-1 && PyErr_Occurred()) {
+        if (PyErr_ExceptionMatches(PyExc_OverflowError)) {
+            PyErr_Clear();
+            PyErr_SetString(PyExc_ValueError, "int too large or small to convert to u32");
+        }
+        return CPY_LL_UINT_ERROR;
+    }
+    if (result > UINT32_MAX) {
+        PyErr_SetString(PyExc_ValueError, "int too large or small to convert to u32");
+        return CPY_LL_UINT_ERROR;
+    }
+    return (uint32_t)result;
+}
+
+void CPyUInt32_Overflow() {
+    PyErr_SetString(PyExc_ValueError, "int too large or small to convert to u32");
+}
+
+// u16 unboxing slow path
+uint16_t CPyLong_AsUInt16_(PyObject *o) {
+    int overflow;
+    long result = PyLong_AsLongAndOverflow(o, &overflow);
+    if (result < 0 || result >= 65536) {
+        overflow = 1;
+        result = -1;
+    }
+    if (result == -1) {
+        if (PyErr_Occurred()) {
+            return CPY_LL_UINT_ERROR;
+        } else if (overflow) {
+            PyErr_SetString(PyExc_ValueError, "int too large or small to convert to u16");
+            return CPY_LL_UINT_ERROR;
+        }
+    }
+    return result;
+}
+
+void CPyUInt16_Overflow() {
+    PyErr_SetString(PyExc_ValueError, "int too large or small to convert to u16");
 }
 
 // u8 unboxing slow path

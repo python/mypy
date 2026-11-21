@@ -117,6 +117,7 @@ update(s, [5, 4, 3])
 assert s == {1, 2, 3, 4, 5}
 
 [case testFrozenSets]
+import sys
 from typing import FrozenSet, List, Any, cast
 from testutil import assertRaises
 
@@ -182,6 +183,13 @@ def test_frozen_sets() -> None:
 
     with assertRaises(TypeError, "frozenset object expected; got set"):
         castFrozenSetError()
+
+    value = b'frozenset member'
+    assert value in {b'frozenset member', b'other member'}
+    # References from the statics array, the precomputed frozenset, and the
+    # getrefcount argument. The compiled local borrows its reference.
+    getrefcount: Any = getattr(sys, "getrefcount")
+    assert getrefcount(value) == 3, getrefcount(value)
 
 [case testFrozenSetsFromIterables]
 from typing import FrozenSet

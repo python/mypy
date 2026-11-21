@@ -119,6 +119,10 @@ LIBRT_MODULES = [
             "vecs/vec_i64.c",
             "vecs/vec_i32.c",
             "vecs/vec_i16.c",
+            "vecs/vec_i8.c",
+            "vecs/vec_u64.c",
+            "vecs/vec_u32.c",
+            "vecs/vec_u16.c",
             "vecs/vec_u8.c",
             "vecs/vec_float.c",
             "vecs/vec_bool.c",
@@ -843,6 +847,9 @@ def get_cflags(
         cflags += [
             f"-O{opt_level}",
             f"-g{debug_level}",
+            # Native groups exchange functions and data through export capsules.
+            # PyMODINIT_FUNC keeps Python module entry points publicly visible.
+            "-fvisibility=hidden",
             "-Werror",
             "-Wno-unused-function",
             "-Wno-unused-label",

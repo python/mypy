@@ -78,22 +78,37 @@ PyObject *CPyBytes_GetSlice(PyObject *obj, CPyTagged start, CPyTagged end) {
         startn = Clamp(startn, 0, len);
         endn = Clamp(endn, 0, len);
         Py_ssize_t slice_len = endn - startn;
+        if (slice_len < 0) {
+            slice_len = 0;
+        }
         if (PyBytes_Check(obj)) {
             return PyBytes_FromStringAndSize(PyBytes_AS_STRING(obj) + startn, slice_len);
         } else {
             return PyByteArray_FromStringAndSize(PyByteArray_AS_STRING(obj) + startn, slice_len);
         }
     }
-    return CPyObject_GetSlice(obj, start, end);
+    return CPyBytes_CheckResult(CPyObject_GetSlice(obj, start, end));
 }
 
-// Like _PyBytes_Join but fallback to dynamic call if 'sep' is not bytes
-// (mostly commonly, for bytearrays)
+// An overriding method in a bytes subclass can return an arbitrary object. Check that
+// the result is bytes, since callers rely on the result type.
+PyObject *CPyBytes_CheckResult(PyObject *res) {
+    if (res != NULL && !PyBytes_Check(res)) {
+        CPy_TypeError("bytes", res);
+        Py_DECREF(res);
+        return NULL;
+    }
+    return res;
+}
+
+// Like _PyBytes_Join but fallback to dynamic call if 'sep' is not exact bytes
+// (a subclass may override join)
 PyObject *CPyBytes_Join(PyObject *sep, PyObject *iter) {
     if (PyBytes_CheckExact(sep)) {
         return PyBytes_Join(sep, iter);
     } else {
-        return PyObject_CallMethodOneArg(sep, mypyc_interned_str.join, iter);
+        return CPyBytes_CheckResult(
+            PyObject_CallMethodOneArg(sep, mypyc_interned_str.join, iter));
     }
 }
 
@@ -148,7 +163,18 @@ PyObject *CPyBytes_Multiply(PyObject *bytes, CPyTagged count) {
         PyErr_SetString(PyExc_OverflowError, CPYTHON_LARGE_INT_ERRMSG);
         return NULL;
     }
-    return PySequence_Repeat(bytes, temp_count);
+    return CPyBytes_CheckResult(PySequence_Repeat(bytes, temp_count));
+}
+
+PyObject *CPyBytes_RMultiply(CPyTagged count, PyObject *bytes) {
+    if (PyBytes_CheckExact(bytes)) {
+        return CPyBytes_Multiply(bytes, count);
+    }
+    // Use the generic operation so that __rmul__ is called on subclasses
+    PyObject *count_obj = CPyTagged_AsObject(count);
+    PyObject *res = PyNumber_Multiply(count_obj, bytes);
+    Py_DECREF(count_obj);
+    return CPyBytes_CheckResult(res);
 }
 
 int CPyBytes_Startswith(PyObject *self, PyObject *subobj) {

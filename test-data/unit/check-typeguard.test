@@ -897,3 +897,27 @@ def main(x: Union[A, B]) -> None:
     else:
         reveal_type(x)  # N: Revealed type is "__main__.A | __main__.B"
 [builtins fixtures/tuple.pyi]
+
+[case testTypeGuardOnRecursiveType]
+from typing import Callable, TypeVar, Union
+from typing_extensions import TypeGuard
+
+X = TypeVar("X")
+Y = TypeVar("Y")
+
+Foo = Union[list["Foo"], str, int]
+
+def is_str(o: Foo) -> TypeGuard[str]:
+    return isinstance(o, str)
+
+def ensure(guard: Callable[[Foo], TypeGuard[Y]], x: Foo) -> Y:
+    if guard(x):
+        return x
+    raise
+
+def test_ensure_is_str(s: Foo) -> None:
+    reveal_type(s)  # N: Revealed type is "builtins.list[...] | builtins.str | builtins.int"
+    x = ensure(is_str, s)
+    reveal_type(x)  # N: Revealed type is "builtins.str"
+    reveal_type(ensure(is_str, s))  # N: Revealed type is "builtins.str"
+[builtins fixtures/tuple.pyi]

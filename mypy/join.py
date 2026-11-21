@@ -8,7 +8,16 @@ from typing import overload
 import mypy.typeops
 from mypy.expandtype import expand_type
 from mypy.maptype import map_instance_to_supertype
-from mypy.nodes import CONTRAVARIANT, COVARIANT, INVARIANT, VARIANCE_NOT_READY, TypeInfo
+from mypy.nodes import (
+    ARG_NAMED,
+    ARG_POS,
+    CONTRAVARIANT,
+    COVARIANT,
+    INVARIANT,
+    VARIANCE_NOT_READY,
+    ArgKind,
+    TypeInfo,
+)
 from mypy.state import state
 from mypy.subtypes import (
     SubtypeContext,
@@ -53,6 +62,7 @@ from mypy.types import (
     get_proper_types,
     split_with_prefix_and_suffix,
 )
+from mypy.typestate import type_state
 
 
 class InstanceJoiner:
@@ -236,7 +246,9 @@ def join_types(s: Type, t: Type, instance_joiner: InstanceJoiner | None = None) 
         s, t = t, s
 
     if isinstance(s, AnyType):
-        return s
+        if isinstance(t, AnyType):
+            return s
+        s, t = t, s
 
     if isinstance(s, ErasedType):
         return t
@@ -275,13 +287,22 @@ class TypeJoinVisitor(TypeVisitor[ProperType]):
             return mypy.typeops.make_simplified_union([self.s, t])
 
     def visit_any(self, t: AnyType) -> ProperType:
-        return t
+        if type_state.allow_any_join:
+            return t
+        if isinstance(self.s, Instance) and self.s.type.fullname == "builtins.object":
+            return self.s
+        if isinstance(self.s, UnionType) and any(
+            isinstance(get_proper_type(it), AnyType) for it in self.s.items
+        ):
+            # Avoid multiple Anys in a union type.
+            return self.s
+        return UnionType([self.s, t])
 
     def visit_none_type(self, t: NoneType) -> ProperType:
         if state.strict_optional:
             if isinstance(self.s, (NoneType, UninhabitedType)):
                 return t
-            elif isinstance(self.s, (UnboundType, AnyType)):
+            elif isinstance(self.s, UnboundType):
                 return AnyType(TypeOfAny.special_form)
             else:
                 return mypy.typeops.make_simplified_union([self.s, t])
@@ -328,7 +349,7 @@ class TypeJoinVisitor(TypeVisitor[ProperType]):
 
     def visit_parameters(self, t: Parameters) -> ProperType:
         if isinstance(self.s, Parameters):
-            if not is_similar_params(t, self.s):
+            if not is_similar_callables(t, self.s):
                 # TODO: it would be prudent to return [*object, **object] instead of Any.
                 return self.default(self.s)
             from mypy.meet import meet_types
@@ -337,6 +358,7 @@ class TypeJoinVisitor(TypeVisitor[ProperType]):
                 arg_types=[
                     meet_types(s_a, t_a) for s_a, t_a in zip(self.s.arg_types, t.arg_types)
                 ],
+                arg_kinds=combine_arg_kinds(self.s, t),
                 arg_names=combine_arg_names(self.s, t),
             )
         else:
@@ -380,8 +402,6 @@ class TypeJoinVisitor(TypeVisitor[ProperType]):
     def visit_callable_type(self, t: CallableType) -> ProperType:
         if isinstance(self.s, CallableType):
             if is_similar_callables(t, self.s):
-                if is_equivalent(t, self.s):
-                    return combine_similar_callables(t, self.s)
                 result = join_similar_callables(t, self.s)
                 if any(
                     isinstance(tp, (NoneType, UninhabitedType))
@@ -452,7 +472,7 @@ class TypeJoinVisitor(TypeVisitor[ProperType]):
                 for s_item in s.items:
                     if is_similar_callables(t_item, s_item):
                         if is_equivalent(t_item, s_item):
-                            result.append(combine_similar_callables(t_item, s_item))
+                            result.append(join_similar_callables(t_item, s_item))
                         elif is_subtype(t_item, s_item):
                             result.append(s_item)
             if result:
@@ -752,24 +772,29 @@ def normalize_callables(s: ProperType, t: ProperType) -> tuple[ProperType, Prope
     return s, t
 
 
-def is_similar_callables(t: CallableType, s: CallableType) -> bool:
-    """Return True if t and s have identical numbers of
-    arguments, default arguments and varargs.
+def is_similar_callables(
+    t: CallableType | Parameters, s: CallableType | Parameters, for_meet: bool = False
+) -> bool:
+    """Return True if t and s have identical numbers of arguments with similar shape.
+
+    If for_meet is True, the argument names must always match.
     """
-    return (
-        len(t.arg_types) == len(s.arg_types)
-        and t.min_args == s.min_args
-        and t.is_var_arg == s.is_var_arg
-    )
-
-
-def is_similar_params(t: Parameters, s: Parameters) -> bool:
-    # This matches the logic in is_similar_callables() above.
-    return (
-        len(t.arg_types) == len(s.arg_types)
-        and t.min_args == s.min_args
-        and (t.var_arg() is not None) == (s.var_arg() is not None)
-    )
+    if len(t.variables) != len(s.variables):
+        return False
+    if len(t.arg_types) != len(s.arg_types):
+        return False
+    for i, (t_kind, s_kind) in enumerate(zip(t.arg_kinds, s.arg_kinds)):
+        if t.arg_names[i] != s.arg_names[i]:
+            if for_meet or t_kind.is_named():
+                return False
+        if t_kind == s_kind:
+            continue
+        if t_kind.is_positional() and s_kind.is_positional():
+            continue
+        if t_kind.is_named() and s_kind.is_named():
+            continue
+        return False
+    return True
 
 
 def update_callable_ids(c: CallableType, ids: list[TypeVarId]) -> CallableType:
@@ -803,19 +828,29 @@ def join_similar_callables(t: CallableType, s: CallableType) -> CallableType:
     t, s = match_generic_callables(t, s)
     arg_types: list[Type] = []
     for i in range(len(t.arg_types)):
-        arg_types.append(safe_meet(t.arg_types[i], s.arg_types[i]))
-    # TODO in combine_similar_callables also applies here (names and kinds; user metaclasses)
+        if isinstance(get_proper_type(t.arg_types[i]), AnyType):
+            arg_types.append(t.arg_types[i])
+        elif isinstance(get_proper_type(s.arg_types[i]), AnyType):
+            arg_types.append(s.arg_types[i])
+        else:
+            arg_types.append(safe_meet(t.arg_types[i], s.arg_types[i]))
+    # TODO Handle more kinds and different argument names.
+    # TODO what should happen if one fallback is 'type' and the other is a custom metaclass?
     # The fallback type can be either 'function', 'type', or some user-provided metaclass.
     # The result should always use 'function' as a fallback if either operands are using it.
     if t.fallback.type.fullname == "builtins.function":
         fallback = t.fallback
-    else:
+    elif s.fallback.type.fullname == "builtins.function":
         fallback = s.fallback
+    else:
+        fallback = InstanceJoiner().join_instances(t.fallback, s.fallback)
+        assert isinstance(fallback, Instance)
     instance_type = None
     if t.instance_type is not None and s.instance_type is not None:
         instance_type = join_types(t.instance_type, s.instance_type)
     return t.copy_modified(
         arg_types=arg_types,
+        arg_kinds=combine_arg_kinds(t, s),
         arg_names=combine_arg_names(t, s),
         ret_type=join_types(t.ret_type, s.ret_type),
         instance_type=instance_type,
@@ -825,7 +860,7 @@ def join_similar_callables(t: CallableType, s: CallableType) -> CallableType:
 
 
 def safe_join(t: Type, s: Type) -> Type:
-    # This is a temporary solution to prevent crashes in combine_similar_callables() etc.,
+    # This is a temporary solution to prevent crashes in join_similar_callables() etc.,
     # until relevant TODOs on handling arg_kinds will be addressed there.
     if not isinstance(t, UnpackType) and not isinstance(s, UnpackType):
         return join_types(t, s)
@@ -856,32 +891,6 @@ def safe_meet(t: Type, s: Type) -> Type:
     return UninhabitedType()
 
 
-def combine_similar_callables(t: CallableType, s: CallableType) -> CallableType:
-    t, s = match_generic_callables(t, s)
-    arg_types: list[Type] = []
-    for i in range(len(t.arg_types)):
-        arg_types.append(safe_join(t.arg_types[i], s.arg_types[i]))
-    # TODO kinds and argument names
-    # TODO what should happen if one fallback is 'type' and the other is a user-provided metaclass?
-    # The fallback type can be either 'function', 'type', or some user-provided metaclass.
-    # The result should always use 'function' as a fallback if either operands are using it.
-    if t.fallback.type.fullname == "builtins.function":
-        fallback = t.fallback
-    else:
-        fallback = s.fallback
-    instance_type = None
-    if t.instance_type is not None and s.instance_type is not None:
-        instance_type = join_types(t.instance_type, s.instance_type)
-    return t.copy_modified(
-        arg_types=arg_types,
-        arg_names=combine_arg_names(t, s),
-        ret_type=join_types(t.ret_type, s.ret_type),
-        instance_type=instance_type,
-        fallback=fallback,
-        name=None,
-    )
-
-
 def combine_arg_names(
     t: CallableType | Parameters, s: CallableType | Parameters
 ) -> list[str | None]:
@@ -899,18 +908,33 @@ def combine_arg_names(
     Note that the third argument's name is omitted and 't' and 's'
     are both valid subtypes of this inferred signature.
 
-    Precondition: is_similar_types(t, s) is true.
+    Precondition: is_similar_callables(t, s) is true.
     """
-    num_args = len(t.arg_types)
     new_names = []
-    for i in range(num_args):
-        t_name = t.arg_names[i]
-        s_name = s.arg_names[i]
-        if t_name == s_name or t.arg_kinds[i].is_named() or s.arg_kinds[i].is_named():
+    for t_name, s_name in zip(t.arg_names, s.arg_names):
+        if t_name == s_name:
             new_names.append(t_name)
         else:
             new_names.append(None)
     return new_names
+
+
+def combine_arg_kinds(t: CallableType | Parameters, s: CallableType | Parameters) -> list[ArgKind]:
+    """Produces a list of argument kinds compatible with both callables.
+
+    Essentially we make all arguments non-optional (both positional and named).
+    Precondition: is_similar_callables(t, s) is true.
+    """
+    new_kinds = []
+    for t_kind, s_kind in zip(t.arg_kinds, s.arg_kinds):
+        if t_kind == s_kind:
+            new_kinds.append(t_kind)
+        elif t_kind.is_positional():
+            new_kinds.append(ARG_POS)
+        else:
+            assert t_kind.is_named()
+            new_kinds.append(ARG_NAMED)
+    return new_kinds
 
 
 def object_from_instance(instance: Instance) -> Instance:

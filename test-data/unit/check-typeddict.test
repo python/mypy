@@ -5476,10 +5476,10 @@ reveal_type(j(a, c)) # N: Revealed type is "TypedDict({'x'?=: builtins.int, 'y'?
 reveal_type(j(c, a)) # N: Revealed type is "TypedDict({'y'?=: builtins.int, 'x'?=: builtins.int}, closed=True)"
 reveal_type(j(a, d)) # N: Revealed type is "TypedDict({'x': builtins.int, 'y'?=: builtins.int}, closed=True)"
 reveal_type(j(d, a)) # N: Revealed type is "TypedDict({'x': builtins.int, 'y'?=: builtins.int}, closed=True)"
-reveal_type(j(a, e)) # N: Revealed type is "TypedDict({'x': Any, 'y'?=: Any})"
-reveal_type(j(e, a)) # N: Revealed type is "TypedDict({'x': Any, 'y'?=: Any})"
-reveal_type(j(b, e)) # N: Revealed type is "TypedDict({'y': Any})"
-reveal_type(j(e, b)) # N: Revealed type is "TypedDict({'y': Any})"
+reveal_type(j(a, e)) # N: Revealed type is "TypedDict({'x': builtins.int | Any, 'y'?=: Any})"
+reveal_type(j(e, a)) # N: Revealed type is "TypedDict({'x': builtins.int | Any, 'y'?=: Any})"
+reveal_type(j(b, e)) # N: Revealed type is "TypedDict({'y': builtins.int | Any})"
+reveal_type(j(e, b)) # N: Revealed type is "TypedDict({'y': builtins.int | Any})"
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 

@@ -158,7 +158,6 @@ CREATE TABLE IF NOT EXISTS files2 (
     mtime REAL,
     data BLOB
 );
-CREATE INDEX IF NOT EXISTS path_idx on files2(path);
 """
 
 

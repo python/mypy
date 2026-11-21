@@ -41,6 +41,7 @@ PyObject *CPyDict_Build(Py_ssize_t size, ...) {
         PyObject *key = va_arg(args, PyObject *);
         PyObject *value = va_arg(args, PyObject *);
         if (PyDict_SetItem(res, key, value)) {
+            va_end(args);
             Py_DECREF(res);
             return NULL;
         }
@@ -71,8 +72,10 @@ PyObject *CPyDict_GetWithNone(PyObject *dict, PyObject *key) {
 
 PyObject *CPyDict_SetDefault(PyObject *dict, PyObject *key, PyObject *value) {
     if (PyDict_CheckExact(dict)) {
-        PyObject* ret = PyDict_SetDefault(dict, key, value);
-        Py_XINCREF(ret);
+        PyObject *ret;
+        if (PyDict_SetDefaultRef(dict, key, value, &ret) < 0) {
+            return NULL;
+        }
         return ret;
     }
     return PyObject_CallMethodObjArgs(dict, mypyc_interned_str.setdefault, key, value, NULL);
@@ -84,32 +87,31 @@ PyObject *CPyDict_SetDefaultWithNone(PyObject *dict, PyObject *key) {
 
 PyObject *CPyDict_SetDefaultWithEmptyDatatype(PyObject *dict, PyObject *key,
                                               int data_type) {
-    PyObject *res = CPyDict_GetItem(dict, key);
-    if (!res) {
-        // CPyDict_GetItem() would generates a PyExc_KeyError
-        // when key is not found.
-        PyErr_Clear();
-
-        PyObject *new_obj;
-        if (data_type == 1) {
-            new_obj = PyList_New(0);
-        } else if (data_type == 2) {
-            new_obj = PyDict_New();
-        } else if (data_type == 3) {
-            new_obj = PySet_New(NULL);
-        } else {
-            new_obj = NULL;
-        }
-
-        if (new_obj == NULL) {
-            res = NULL;
-        } else if (CPyDict_SetItem(dict, key, new_obj) == -1) {
-            Py_DECREF(new_obj);
-            res = NULL;
-        } else {
-            res = new_obj;
+    if (PyDict_CheckExact(dict)) {
+        // Fast path: avoid creating the empty collection if the key exists
+        PyObject *res;
+        int found = PyDict_GetItemRef(dict, key, &res);
+        if (found != 0) {
+            return res;
         }
     }
+    PyObject *new_obj;
+    if (data_type == 1) {
+        new_obj = PyList_New(0);
+    } else if (data_type == 2) {
+        new_obj = PyDict_New();
+    } else if (data_type == 3) {
+        new_obj = PySet_New(NULL);
+    } else {
+        new_obj = NULL;
+    }
+    if (new_obj == NULL) {
+        return NULL;
+    }
+    // Use setdefault (not get + set) so that this is atomic for exact dicts
+    // on free-threaded builds and respects overridden methods in subclasses
+    PyObject *res = CPyDict_SetDefault(dict, key, new_obj);
+    Py_DECREF(new_obj);
     return res;
 }
 
@@ -159,7 +161,12 @@ int CPyDict_Update(PyObject *dict, PyObject *stuff) {
 int CPyDict_UpdateFromAny(PyObject *dict, PyObject *stuff) {
     if (PyDict_CheckExact(dict)) {
         // Argh this sucks
-        if (PyDict_Check(stuff) || PyObject_HasAttrWithError(stuff, mypyc_interned_str.keys) > 0) {
+        int has_keys = PyDict_Check(stuff) ? 1 :
+            PyObject_HasAttrWithError(stuff, mypyc_interned_str.keys);
+        if (has_keys < 0) {
+            return -1;
+        }
+        if (has_keys) {
             return PyDict_Update(dict, stuff);
         } else {
             return PyDict_MergeFromSeq2(dict, stuff, 1);
@@ -178,7 +185,12 @@ PyObject *CPyDict_FromAny(PyObject *obj) {
         if (!dict) {
             return NULL;
         }
-        if (PyObject_HasAttrWithError(obj, mypyc_interned_str.keys) > 0) {
+        int has_keys = PyObject_HasAttrWithError(obj, mypyc_interned_str.keys);
+        if (has_keys < 0) {
+            Py_DECREF(dict);
+            return NULL;
+        }
+        if (has_keys) {
             res = PyDict_Update(dict, obj);
         } else {
             res = PyDict_MergeFromSeq2(dict, obj, 1);
@@ -260,7 +272,14 @@ PyObject *CPyDict_Copy(PyObject *dict) {
     if (PyDict_CheckExact(dict)) {
         return PyDict_Copy(dict);
     }
-    return PyObject_CallMethodNoArgs(dict, mypyc_interned_str.copy);
+    PyObject *res = PyObject_CallMethodNoArgs(dict, mypyc_interned_str.copy);
+    // An overriding method in a subclass can return an arbitrary object
+    if (res != NULL && !PyDict_Check(res)) {
+        CPy_TypeError("dict", res);
+        Py_DECREF(res);
+        return NULL;
+    }
+    return res;
 }
 
 PyObject *CPyDict_GetKeysIter(PyObject *dict) {

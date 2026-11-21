@@ -94,6 +94,38 @@ L2:
     CPyBytesWriter_SetItem(b, r0, x)
     return 1
 
+[case testLibrtStrings_i8_64bit]
+from librt.strings import BytesWriter, write_i8, read_i8
+from mypy_extensions import i8, i64
+
+def test_write_i8(b: BytesWriter, n: i8) -> None:
+    write_i8(b, n)
+def test_write_i8_literal(b: BytesWriter) -> None:
+    write_i8(b, -5)
+def test_read_i8(b: bytes, i: i64) -> i8:
+    return read_i8(b, i)
+[out]
+def test_write_i8(b, n):
+    b :: librt.strings.BytesWriter
+    n :: i8
+    r0 :: None
+L0:
+    r0 = CPyBytesWriter_WriteI8(b, n)
+    return 1
+def test_write_i8_literal(b):
+    b :: librt.strings.BytesWriter
+    r0 :: None
+L0:
+    r0 = CPyBytesWriter_WriteI8(b, -5)
+    return 1
+def test_read_i8(b, i):
+    b :: bytes
+    i :: i64
+    r0 :: i8
+L0:
+    r0 = CPyBytes_ReadI8(b, i)
+    return r0
+
 [case testLibrtStrings_write_i16_le_64bit]
 from librt.strings import BytesWriter, write_i16_le
 from mypy_extensions import i16
@@ -218,6 +250,65 @@ def test_read_i64_le_literal(b):
 L0:
     r0 = CPyBytes_ReadI64LE(b, 0)
     return r0
+
+[case testLibrtStrings_unsigned_64bit]
+from librt.strings import (
+    BytesWriter, write_u16_le, read_u16_be, write_u32_be, read_u32_le, write_u64_le, read_u64_be,
+)
+from mypy_extensions import u16, u32, u64, i64
+
+def test_u16(b: BytesWriter, n: u16, x: bytes, i: i64) -> u16:
+    write_u16_le(b, n)
+    write_u16_le(b, 0xFFFF)
+    return read_u16_be(x, i)
+def test_u32(b: BytesWriter, n: u32, x: bytes, i: i64) -> u32:
+    write_u32_be(b, n)
+    write_u32_be(b, 0xFFFFFFFF)
+    return read_u32_le(x, i)
+def test_u64(b: BytesWriter, n: u64, x: bytes, i: i64) -> u64:
+    write_u64_le(b, n)
+    write_u64_le(b, 0xFFFFFFFFFFFFFFFF)
+    return read_u64_be(x, i)
+[out]
+def test_u16(b, n, x, i):
+    b :: librt.strings.BytesWriter
+    n :: u16
+    x :: bytes
+    i :: i64
+    r0, r1 :: None
+    r2 :: u16
+L0:
+    r0 = CPyBytesWriter_WriteU16LE(b, n)
+    r1 = CPyBytesWriter_WriteU16LE(b, 65535)
+    r2 = CPyBytes_ReadU16BE(x, i)
+    return r2
+def test_u32(b, n, x, i):
+    b :: librt.strings.BytesWriter
+    n :: u32
+    x :: bytes
+    i :: i64
+    r0, r1 :: None
+    r2 :: u32
+L0:
+    r0 = CPyBytesWriter_WriteU32BE(b, n)
+    r1 = CPyBytesWriter_WriteU32BE(b, 4294967295)
+    r2 = CPyBytes_ReadU32LE(x, i)
+    return r2
+def test_u64(b, n, x, i):
+    b :: librt.strings.BytesWriter
+    n :: u64
+    x :: bytes
+    i :: i64
+    r0 :: None
+    r1 :: int
+    r2 :: None
+    r3 :: u64
+L0:
+    r0 = CPyBytesWriter_WriteU64LE(b, n)
+    r1 = object 18446744073709551615
+    r2 = CPyBytesWriter_WriteU64LE(b, 18446744073709551615)
+    r3 = CPyBytes_ReadU64BE(x, i)
+    return r3
 
 [case testLibrtStrings_StringWriter_64bit]
 from librt.strings import StringWriter

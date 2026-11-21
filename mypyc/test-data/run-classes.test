@@ -1546,7 +1546,9 @@ def welp() -> int:
 from native import welp
 assert welp() == 35
 
-[case testSubclassUnsupportedException]
+[case testNonNativeSubclassOfUnsupportedBase]
+from collections import defaultdict, OrderedDict
+
 from mypy_extensions import mypyc_attr
 
 @mypyc_attr(native_class=False)
@@ -1593,11 +1595,41 @@ def test_raise_non_native_exception_subclass_2() -> None:
         assert False
     assert x
 
-[case testSubclassUnknownPythonBase]
-# The base class is unknown during compilation, so it has type Any
+@mypyc_attr(native_class=False)
+class DD(defaultdict[str, int]):
+    def __init__(self) -> None:
+        super().__init__(int)
+        self.x = 5
+
+@mypyc_attr(native_class=False)
+class OD(OrderedDict[str, int]):
+    def __init__(self) -> None:
+        super().__init__()
+        self.x = 6
+
+def test_non_native_default_dict_subclass() -> None:
+    d = DD()
+    assert d["a"] == 0
+    d["b"] += 2
+    assert d == {"a": 0, "b": 2}
+    assert d.x == 5
+
+def test_non_native_ordered_dict_subclass() -> None:
+    d = OD()
+    d["b"] = 1
+    d["a"] = 2
+    assert list(d) == ["b", "a"]
+    assert d.x == 6
+
+[case testSubclassExternalPythonBase]
+# Subclass Python classes defined outside the compiled module (some are unknown during
+# compilation and have type Any)
+import ctypes
 from mypy_extensions import mypyc_attr
 from typing import Any, Generic, TypeVar
 from unchecked import Base, MetaBase, SecondBase, StrBase  # type: ignore
+import pkg
+from pkg import FunctionImportedBase, Outer, ReExportedBase, StrEnum
 
 T = TypeVar("T")
 
@@ -1724,6 +1756,49 @@ def test_generic_bases() -> None:
     assert KnownGenericBase.__orig_bases__ == (Base, KnownGeneric[int])
     assert KnownGenericBase(7).y == 7
 
+# The bases are imported through re-exports (from modules other than where they are defined)
+class ReExportedStrEnum(StrEnum):
+    value = "testing-value"
+
+@mypyc_attr(native_class=False)
+class FromReExport(ReExportedBase):
+    pass
+
+@mypyc_attr(native_class=False)
+class FromReExportedError(pkg.Error, ValueError):
+    pass
+
+# ctypes.Structure is defined in _ctypes
+class CtypesStructure(ctypes.Structure):
+    pass
+
+def import_in_function() -> None:
+    # This doesn't run before the class below is created
+    import pkg.function_imported
+
+@mypyc_attr(native_class=False)
+class FromFunctionImportedModule(FunctionImportedBase):
+    pass
+
+@mypyc_attr(native_class=False)
+class FromNested(Outer.Inner):
+    pass
+
+@mypyc_attr(native_class=False)
+class FromNestedViaModule(pkg.Outer.Inner):
+    pass
+
+def test_re_exported_base() -> None:
+    assert list(ReExportedStrEnum) == [ReExportedStrEnum.value]
+    assert ReExportedStrEnum.value == "testing-value"
+    assert isinstance(FromReExport(), ReExportedBase)
+    assert isinstance(FromReExportedError(), pkg.Error)
+    assert isinstance(CtypesStructure(), ctypes.Structure)
+    assert isinstance(FromFunctionImportedModule(), FunctionImportedBase)
+    assert isinstance(FromNested(), Outer.Inner)
+    assert FromNested().inner() == "inner"
+    assert isinstance(FromNestedViaModule(), Outer.Inner)
+
 [file unchecked.py]
 StrBase = str
 
@@ -1747,6 +1822,33 @@ class Base:
 
     def marker(self):
         return "base"
+
+[file pkg/__init__.py]
+from pkg.strenum import StrEnum
+from pkg.base import ReExportedBase, Error, Outer
+from pkg.function_imported import FunctionImportedBase
+
+[file pkg/strenum.py]
+import enum
+
+class StrEnum(str, enum.Enum):
+    pass
+
+[file pkg/base.py]
+class ReExportedBase:
+    pass
+
+class Error(Exception):
+    pass
+
+class Outer:
+    class Inner:
+        def inner(self):
+            return "inner"
+
+[file pkg/function_imported.py]
+class FunctionImportedBase:
+    pass
 
 [case testSubclassPy]
 from b import B, V
@@ -2272,25 +2374,24 @@ native.test()
 ok
 
 [case testNativeClassHiddenMetaclass]
-# The stub hides the base classes' metaclass and base resolution behavior.
+# The driver replaces the base classes at runtime with ones that the
+# compile-time checks would reject, so that the runtime checks are exercised.
 from hidden import Prefix, Base, Second
 
 class C(Prefix, Base, Second):
     pass
 
-[file hidden.pyi]
-class Prefix: ...
-class Base: ...
-class Second: ...
-
 [file hidden.py]
 class Prefix:
+    pass
+
+class Base:
     pass
 
 class Meta(type):
     pass
 
-class Base(metaclass=Meta):
+class MetaBase(metaclass=Meta):
     pass
 
 class Second:
@@ -2325,6 +2426,7 @@ import sys
 import hidden
 from testutil import assertRaises
 
+hidden.Base = hidden.MetaBase
 for _ in range(3):
     with assertRaises(TypeError, "mypyc classes can't have a metaclass"):
         import native
@@ -4556,6 +4658,139 @@ class Derived(Base):
 
 def test_inherited() -> None:
     assert Derived()() == 1
+
+[case testClassWith__call__InSubclassOnly]
+import gc
+import weakref
+from typing import Any
+from mypy_extensions import i64, mypyc_attr
+
+class Base:
+    def __init__(self, x: str, n: i64) -> None:
+        self.x = x
+        self.n = n
+        self.b = True
+
+    def get_x(self) -> str:
+        return self.x
+
+    def get_n(self) -> i64:
+        return self.n
+
+    def set_x(self, x: str) -> None:
+        self.x = x
+
+class CallSub(Base):
+    def __init__(self, x: str, n: i64) -> None:
+        super().__init__(x, n)
+        self.y = "y"
+
+    def __call__(self, a: int) -> str:
+        return f"{self.x}:{self.n}:{self.y}:{a}"
+
+class CallSubSub(CallSub):
+    def __init__(self, x: str, n: i64) -> None:
+        super().__init__(x, n)
+        self.z = "z"
+
+    def __call__(self, a: int) -> str:
+        return f"{self.x}:{self.y}:{self.z}:{a}"
+
+class Mid(Base):
+    def __init__(self, x: str, n: i64) -> None:
+        super().__init__(x, n)
+        self.m = "m"
+
+class CallSubOfMid(Mid):
+    def __call__(self) -> str:
+        return self.x + self.m
+
+@mypyc_attr(weakrefs=True)
+class WeakBase:
+    def __init__(self, x: str) -> None:
+        self.x = x
+
+    def get_x(self) -> str:
+        return self.x
+
+class WeakCallSub(WeakBase):
+    def __init__(self, x: str) -> None:
+        super().__init__(x)
+        self.y = "y"
+
+    def __call__(self) -> str:
+        return self.x + self.y
+
+@mypyc_attr(allow_interpreted_subclasses=True)
+class OpenBase:
+    def __init__(self, x: str) -> None:
+        self.x = x
+
+    def get_x(self) -> str:
+        return self.x
+
+@mypyc_attr(allow_interpreted_subclasses=True)
+class OpenCallSub(OpenBase):
+    def __init__(self, x: str) -> None:
+        super().__init__(x)
+        self.y = "y"
+
+    def __call__(self) -> str:
+        return self.x + self.y
+
+def get_x(b: Base) -> str:
+    return b.x
+
+def test_subclass_defines_call() -> None:
+    c = CallSub("x", 5)
+    assert c.get_x() == "x"
+    assert c.get_n() == 5
+    assert get_x(c) == "x"
+    assert c.x == "x" and c.n == 5 and c.b and c.y == "y"
+    c.set_x("xx")
+    assert c.x == "xx"
+    assert c(1) == "xx:5:y:1"
+    o: Any = c
+    assert o(2) == "xx:5:y:2"
+    assert o.get_x() == "xx"
+
+def test_call_overridden_in_subclass() -> None:
+    c = CallSubSub("x", -3)
+    assert c.get_x() == "x" and c.get_n() == -3 and get_x(c) == "x"
+    assert c.y == "y" and c.z == "z"
+    assert c(1) == "x:y:z:1"
+    s: CallSub = c
+    assert s(2) == "x:y:z:2"
+    o: Any = c
+    assert o(3) == "x:y:z:3"
+
+def test_call_in_indirect_subclass() -> None:
+    c = CallSubOfMid("x", 7)
+    assert c.get_x() == "x" and c.get_n() == 7 and get_x(c) == "x"
+    assert c.m == "m"
+    assert c() == "xm"
+
+def test_call_with_weakrefs() -> None:
+    c = WeakCallSub("x")
+    assert c.get_x() == "x" and c.y == "y"
+    assert c() == "xy"
+    r = weakref.ref(c)
+    assert r() is c
+    del c
+    gc.collect()
+    assert r() is None
+
+def test_interpreted_subclass() -> None:
+    type2: Any = type
+    Sub = type2("Sub", (OpenCallSub,), {})
+    c = Sub("x")
+    c.z = "z"
+    assert c.get_x() == "x" and c.y == "y" and c.z == "z"
+    assert c() == "xy"
+    CallSub2 = type2("CallSub2", (OpenBase,), {"__call__": lambda self: self.get_x() + "!"})
+    d = CallSub2("x")
+    assert d.get_x() == "x"
+    assert d() == "x!"
 
 [case testCallTypeObjectOfNativeClass]
 from abc import ABC, abstractmethod
@@ -10076,3 +10311,39 @@ for _ in range(100):
     assert owned_child(child) == (item, (item, number))
     assert borrowed_child(child) is item
 assert read_numbers(child, 100) == 300.0
+
+[case testAttributeNamesThatAreCKeywords]
+from typing import Any
+
+class C:
+    restrict: str = "eggs"
+
+    def __init__(self) -> None:
+        # With the "_" prefix of attribute names in C, these become C keywords or
+        # other names reserved by C compilers (e.g. "__restrict", "_Bool")
+        self._restrict: int = 0
+        self._inline = 1
+        self._asm = 2
+        self.Bool = 3
+        self._unix__ = 4
+        self._x = 5
+        self.m__x = 6
+        self.vectorcall = 7
+        self.unaligned = 8
+
+def test_attribute_names() -> None:
+    c = C()
+    assert c.restrict == "eggs"
+    assert c._restrict == 0
+    assert c._inline == 1
+    assert c._asm == 2
+    assert c.Bool == 3
+    assert c._unix__ == 4
+    assert c._x == 5
+    assert c.m__x == 6
+    assert c.vectorcall == 7
+    assert c.unaligned == 8
+    a: Any = c
+    a._restrict = 7
+    assert c._restrict == 7
+    assert a.m__x == 6

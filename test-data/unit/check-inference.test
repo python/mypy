@@ -1109,8 +1109,10 @@ def f(*, x: int) -> int: ...
 def g(*, y: int) -> int: ...
 def h(*, x: int) -> int: ...
 
-list_1 = [f, g]  # E: List item 0 has incompatible type "def f(*, x: int) -> int"; expected "def g(*, y: int) -> int"
+list_1 = [f, g]
+reveal_type(list_1)  # N: Revealed type is "builtins.list[builtins.function]"
 list_2 = [f, h]
+reveal_type(list_2)  # N: Revealed type is "builtins.list[def (*, x: builtins.int) -> builtins.int]"
 [builtins fixtures/list.pyi]
 
 
@@ -2103,6 +2105,24 @@ def f() -> None:
     x = None
     x = 1
 x()  # E: "None" not callable
+
+[case testPartialNoneTypeInTuple]
+x, y = None, None
+
+def f() -> None:
+    global x, y
+    if bool():
+        x = y = 1
+    reveal_type(x)  # N: Revealed type is "builtins.int | None"
+    reveal_type(y)  # N: Revealed type is "builtins.int | None"
+
+class C:
+    x, y = None, None
+    def f(self) -> None:
+        if bool():
+            self.x = self.y = 1
+        reveal_type(self.x)  # N: Revealed type is "builtins.int | None"
+        reveal_type(self.y)  # N: Revealed type is "builtins.int | None"
 
 [case testAttributePartiallyInitializedToNone]
 class A:
@@ -4393,3 +4413,16 @@ def f(x: Union[A[T], B[Optional[T]]]) -> T: ...
 
 reveal_type(f(C()))  # N: Revealed type is "builtins.int | builtins.str"
 [builtins fixtures/list.pyi]
+
+[case testJoinWithAnyIsPrecise]
+from typing import Any
+
+a: Any
+y = [a, "no"]
+x: list[int] = y  # E: Incompatible types in assignment (expression has type "list[str | Any]", variable has type "list[int]")
+
+def test() -> list[int]:
+    return [a, "no"]  # E: List item 1 has incompatible type "str"; expected "int"
+
+d: dict[str, int] = {"hits": a, "misses": "42"}  # E: Dict entry 1 has incompatible type "str": "str"; expected "str": "int"
+[builtins fixtures/dict.pyi]

@@ -7,7 +7,7 @@ from typing import Final, Any, Iterable, Tuple
 from mypy_extensions import i64, i32
 from librt.vecs import vec, append, extend, remove, pop
 
-from testutil import assertRaises
+from testutil import assertRaises, is_64_bit_platform
 
 ERROR: Final = -113
 
@@ -249,6 +249,28 @@ def test_construct_from_list_comprehension() -> None:
         for j in range(i):
             assert v[j] == j * j + 5
 
+def grow_list(a: list[i64], x: i64) -> i64:
+    if len(a) < 6:
+        a.append(x + 10)
+    return x
+
+def shrink_list(a: list[i64], x: i64) -> i64:
+    a.pop()
+    return x
+
+def test_construct_from_modified_list_comprehension() -> None:
+    a: list[i64] = [1, 2]
+    assert vec[i64]([grow_list(a, x) for x in a]) == vec[i64]([1, 2, 11, 12, 21, 22])
+    a = [1, 2, 3, 4]
+    assert vec[i64]([shrink_list(a, x) for x in a]) == vec[i64]([1, 2])
+    a = [1, 2, 3, 4]
+    v = vec[i64]([shrink_list(a, x) for x in a], capacity=10)
+    assert v == vec[i64]([1, 2])
+    v = append(v, 5)
+    assert v == vec[i64]([1, 2, 5])
+    a = [1, 2]
+    assert vec[i64]([x + 1 for x in a]) == vec[i64]([2, 3])
+
 def test_construct_from_range() -> None:
     v = vec[i64](range(0))
     assert v == vec[i64]()
@@ -284,6 +306,15 @@ def test_construct_from_array() -> None:
     a2 = array.array('q')
     v2 = vec[i64](a2)
     assert len(v2) == 0
+
+def test_construct_with_too_large_capacity() -> None:
+    if not is_64_bit_platform():
+        return
+    for n in [i64(2**61), i64(2**63 - 1)]:
+        with assertRaises(MemoryError):
+            vec[i64](capacity=n)
+        with assertRaises(MemoryError):
+            vec[i64]([1], capacity=n)
 
 def test_equality() -> None:
     v0 = vec[i64]()

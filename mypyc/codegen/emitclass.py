@@ -336,7 +336,11 @@ def generate_class(
         and not managed_dict
         and emitter.capi_version < (3, 12)
     )
-    generate_dealloc_slots = generate_full or managed_dict or needs_builtin_dict_cleanup
+    # Weak references to a dead object must be cleared in tp_dealloc, or they will
+    # resurrect freed memory.
+    generate_dealloc_slots = (
+        generate_full or managed_dict or needs_builtin_dict_cleanup or cl.has_weakref_list()
+    )
     if generate_dealloc_slots:
         fields["tp_dealloc"] = f"(destructor){name_prefix}_dealloc"
         if not cl.is_acyclic:
@@ -387,6 +391,10 @@ def generate_class(
     richcompare_name = generate_richcompare_wrapper(cl, emitter)
     if richcompare_name:
         fields["tp_richcompare"] = richcompare_name
+        if "tp_hash" not in fields and not cl.has_method("__eq__") and not cl.inherits_python:
+            # CPython doesn't inherit tp_hash if tp_richcompare is defined, but only
+            # defining __eq__ should make the class unhashable (not __lt__, etc.)
+            fields["tp_hash"] = "CPy_DefaultHash"
 
     # If the class inherits from python, make space for a __dict__
     struct_name = cl.struct_name(emitter.names)
@@ -401,26 +409,35 @@ def generate_class(
     # values. PyType_Ready will inherit the offsets from tp_base but
     # that isn't what we want.
 
-    # XXX: there is no reason for the __weakref__ stuff to be mixed up with __dict__
-    if cl.has_dict and not has_managed_dict(cl, emitter):
-        # __dict__ lives right after the struct and __weakref__ lives right after that
+    if cl.has_dict and not managed_dict:
+        # __dict__ lives right after the struct, and __weakref__ (if any) after that.
         # TODO: They should get members in the struct instead of doing this nonsense.
-        weak_offset = f"{base_size} + sizeof(PyObject *)"
+        #
+        # We can't inherit tp_dictoffset/tp_weaklistoffset from the base class, since
+        # the base class slots would overlap with fields of our object struct, which
+        # doesn't model the layout of the non-native base class at all.
+        needs_own_weak_slot = (
+            emitter.capi_version < (3, 12) and cl.has_weakref_list() and not cl.has_weakref_slot()
+        )
         emitter.emit_lines(
             f"PyMemberDef {members_name}[] = {{",
             f'{{"__dict__", T_OBJECT_EX, {base_size}, 0, NULL}},',
-            f'{{"__weakref__", T_OBJECT_EX, {weak_offset}, 0, NULL}},',
             "{0}",
             "};",
         )
 
         fields["tp_members"] = members_name
-        fields["tp_basicsize"] = f"{base_size} + 2*sizeof(PyObject *)"
+        num_slots = 2 if needs_own_weak_slot else 1
+        fields["tp_basicsize"] = f"{base_size} + {num_slots}*sizeof(PyObject *)"
         if emitter.capi_version < (3, 12):
             fields["tp_dictoffset"] = base_size
-            fields["tp_weaklistoffset"] = weak_offset
+            if needs_own_weak_slot:
+                fields["tp_weaklistoffset"] = f"{base_size} + sizeof(PyObject *)"
     else:
         fields["tp_basicsize"] = base_size
+
+    if cl.has_weakref_slot():
+        fields["tp_weaklistoffset"] = f"offsetof({struct_name}, weakreflist)"
 
     if generate_dealloc_slots:
         if not cl.is_acyclic:
@@ -520,6 +537,11 @@ def generate_class(
             fields["tp_call"] = "PyVectorcall_Call"
     if managed_dict:
         flags.append("Py_TPFLAGS_MANAGED_DICT")
+        if cl.has_weakref_list() and not cl.has_weakref_slot():
+            # The pre-header has room for both __dict__ and the weak reference list, so
+            # this is free. The flag is usually inherited from the base class, but not
+            # if the base class doesn't support weak references (e.g. abc.ABC).
+            flags.append("Py_TPFLAGS_MANAGED_WEAKREF")
     fields["tp_flags"] = " | ".join(flags)
 
     fields["tp_doc"] = f"PyDoc_STR({native_class_doc_initializer(cl)})"
@@ -561,8 +583,10 @@ def generate_object_struct(cl: ClassIR, emitter: Emitter) -> None:
     seen_attrs: set[str] = set()
     lines: list[str] = []
     lines += ["typedef struct {", "PyObject_HEAD", "CPyVTableItem *vtable;"]
-    if cl.has_method("__call__"):
-        lines.append("vectorcallfunc vectorcall;")
+    if cl.has_weakref_slot():
+        # This must come before any field whose presence depends on the class, since
+        # tp_weaklistoffset has to agree between a base class and its subclasses.
+        lines.append("PyObject *weakreflist;")
     # The flag affects attribute offsets, so concrete bases must agree on its presence.
     assert all(
         base.has_running_flag == cl.has_running_flag for base in cl.base_mro
@@ -590,6 +614,14 @@ def generate_object_struct(cl: ClassIR, emitter: Emitter) -> None:
 
                     if isinstance(rtype, RTuple):
                         emitter.declare_tuple_struct(rtype)
+
+    if cl.has_method("__call__"):
+        # This goes after the attributes, since a subclass may define __call__ when a
+        # base class doesn't, and the attributes of the base class must be at the same
+        # offsets in the subclass. The field is only accessed through the struct of the
+        # class or through tp_vectorcall_offset, so its offset can differ between
+        # classes.
+        lines.append("vectorcallfunc vectorcall;")
 
     lines.append(f"}} {cl.struct_name(emitter.names)};")
     lines.append("")
@@ -1048,12 +1080,10 @@ def generate_traverse_for_class(cl: ClassIR, func_name: str, emitter: Emitter) -
         emitter.emit_line(f"rv = PyObject_VisitManagedDict({base_args});")
         emitter.emit_line("if (rv != 0) return rv;")
     elif cl.has_dict:
-        # __dict__ lives at tp_dictoffset (== base_size), __weakref__ right after it.
+        # __dict__ lives at tp_dictoffset (== base_size). The weak reference list, if
+        # any, is deliberately not visited: it holds borrowed references.
         base_size = f"sizeof({cl.builtin_base or cl.struct_name(emitter.names)})"
         emitter.emit_gc_visit(f"*((PyObject **)((char *)self + {base_size}))", object_rprimitive)
-        emitter.emit_gc_visit(
-            f"*((PyObject **)((char *)self + sizeof(PyObject *) + {base_size}))", object_rprimitive
-        )
     emitter.emit_line("return rv;")
     emitter.emit_line("}")
 
@@ -1107,12 +1137,11 @@ def generate_subtype_clear_body(cl: ClassIR, emitter: Emitter, skip_attrs: set[s
     if has_managed_dict(cl, emitter):
         emitter.emit_line(f"PyObject_ClearManagedDict({base_args});")
     elif cl.has_dict:
-        # __dict__ lives at tp_dictoffset (== base_size), __weakref__ right after it.
+        # __dict__ lives at tp_dictoffset (== base_size). The weak reference list, if
+        # any, is not cleared here: it holds borrowed references, and it's cleared in
+        # tp_dealloc instead.
         base_size = f"sizeof({cl.builtin_base or cl.struct_name(emitter.names)})"
         emitter.emit_gc_clear(f"*((PyObject **)((char *)self + {base_size}))", object_rprimitive)
-        emitter.emit_gc_clear(
-            f"*((PyObject **)((char *)self + sizeof(PyObject *) + {base_size}))", object_rprimitive
-        )
 
 
 def generate_dealloc_for_class(
@@ -1152,6 +1181,16 @@ def generate_dealloc_for_class(
             emitter.emit_line("}")
     if not cl.is_acyclic:
         emitter.emit_line("PyObject_GC_UnTrack(self);")
+    if cl.has_weakref_list():
+        # Invalidate all weak references to the object, and call their callbacks.
+        # This must happen after the finalizer has run, and before any of the
+        # attributes are cleared. This also clears any weak references created by
+        # the finalizer (__del__).
+        if cl.has_weakref_slot():
+            emitter.emit_line("CPy_ClearWeakrefs((PyObject *)self, &self->weakreflist);")
+        else:
+            # The list is next to __dict__, and the offset depends on the Python version
+            emitter.emit_line("PyObject_ClearWeakRefs((PyObject *)self);")
     if cl.builtin_base:
         emitter.emit_line(f"{clear_func_name}((PyObject *)self);")
         # For native subclasses of builtins such as dict, the base deallocator
@@ -1335,6 +1374,10 @@ def generate_getseters_table(cl: ClassIR, name: str, emitter: Emitter) -> None:
 
     if cl.has_dict:
         emitter.emit_line('{"__dict__", PyObject_GenericGetDict, PyObject_GenericSetDict},')
+    if cl.has_weakref_list():
+        # Even if a non-native base class has a __weakref__ descriptor, we can't use it,
+        # since it uses the weak reference list offset of the base class.
+        emitter.emit_line('{"__weakref__", CPy_GetWeakrefs, NULL},')
 
     emitter.emit_line("{NULL}  /* Sentinel */")
     emitter.emit_line("};")

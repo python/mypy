@@ -345,39 +345,53 @@ def f(n, l):
     n :: i64
     l :: list
     r0 :: native_int
-    r1 :: vec[i64]
-    r2, r3 :: native_int
-    r4 :: bit
-    r5 :: object
-    r6, x, r7 :: i64
-    r8 :: ptr
-    r9 :: native_int
+    r1, r2 :: vec[i64]
+    r3, r4 :: native_int
+    r5 :: bit
+    r6 :: object
+    r7, x, r8 :: i64
+    r9 :: bit
     r10 :: ptr
     r11 :: native_int
+    r12 :: ptr
+    r13 :: vec[i64]
+    r14 :: native_int
+    r15 :: vec[i64]
 L0:
     r0 = var_object_size l
     r1 = VecI64Api.alloc(r0, r0)
-    r2 = 0
+    r2 = r1
+    r3 = 0
 L1:
-    r3 = var_object_size l
-    r4 = r2 < r3 :: signed
-    if r4 goto L2 else goto L4 :: bool
+    r4 = var_object_size l
+    r5 = r3 < r4 :: signed
+    if r5 goto L2 else goto L7 :: bool
 L2:
-    r5 = CPyList_GetItemInt64(l, r2)
-    r6 = unbox(i64, r5)
-    x = r6
-    r7 = x + 1
-    r8 = r1.items
-    r9 = r2 * 8
-    r10 = r8 + r9
-    set_mem r10, r7 :: i64*
-    keep_alive r1
+    r6 = CPyList_GetItemInt64(l, r3)
+    r7 = unbox(i64, r6)
+    x = r7
+    r8 = x + 1
+    r9 = r3 < r0 :: signed
+    if r9 goto L3 else goto L4 :: bool
 L3:
-    r11 = r2 + 1
-    r2 = r11
-    goto L1
+    r10 = r2.items
+    r11 = r3 * 8
+    r12 = r10 + r11
+    set_mem r12, r8 :: i64*
+    keep_alive r2
+    goto L5
 L4:
-    return r1
+    r13 = VecI64Api.append(r2, r8)
+    r2 = r13
+L5:
+L6:
+    r14 = r3 + 1
+    r3 = r14
+    goto L1
+L7:
+    r15 = set_element r2, len, r3
+    r2 = r15
+    return r2
 
 [case testVecI64FastComprehensionFromVec_64bit]
 from librt.vecs import vec

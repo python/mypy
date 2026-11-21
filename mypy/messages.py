@@ -2678,7 +2678,14 @@ def format_type_inner(
         return ", ".join(format(typ) for typ in types)
 
     def format_union_items(types: Sequence[Type]) -> list[str]:
-        formatted = [format(typ) for typ in types if format(typ) != "None"]
+        formatted = []
+        has_none = False
+        for typ in types:
+            item = format(typ)
+            if item == "None":
+                has_none = True
+            else:
+                formatted.append(item)
         if len(formatted) > MAX_UNION_ITEMS and verbosity == 0:
             more = len(formatted) - MAX_UNION_ITEMS // 2
             formatted = formatted[: MAX_UNION_ITEMS // 2]
@@ -2686,7 +2693,7 @@ def format_type_inner(
             more = 0
         if more:
             formatted.append(f"<{more} more items>")
-        if any(format(typ) == "None" for typ in types):
+        if has_none:
             formatted.append("None")
         return formatted
 
@@ -3129,7 +3136,7 @@ def pretty_callable(tp: CallableType, options: Options, skip_self: bool = False)
         # TODO: avoid different logic for incremental runs.
         first_arg = get_first_arg(tp)
 
-    if tp.is_type_obj():
+    if tp.is_type_obj() or not tp.is_bound:
         skip_self = True
     if first_arg and not skip_self:
         if s:

@@ -507,6 +507,28 @@ L0:
     r6 = unbox(int, r5)
     return r6
 
+[case testChr]
+def f(x: int) -> str:
+    return chr(x)
+def g(x: bool) -> str:
+    return chr(x)
+[out]
+def f(x):
+    x :: int
+    r0 :: str
+L0:
+    r0 = CPyStr_Chr(x)
+    return r0
+def g(x):
+    x, r0 :: bool
+    r1 :: int
+    r2 :: str
+L0:
+    r0 = x << 1
+    r1 = extend r0: builtins.bool to builtins.int
+    r2 = CPyStr_Chr(r1)
+    return r2
+
 [case testOrdOfStrIndex_64bit]
 from mypy_extensions import i64, i32, i16, u8
 def ord_str_index(s: str, i: int) -> int:
@@ -973,6 +995,46 @@ L0:
     r0 = CPyStr_Multiply(s, n)
     return r0
 
+[case testStrIndex]
+def index(s: str, sub: str, start: int, end: int) -> int:
+    a = s.index(sub)
+    b = s.index(sub, start)
+    c = s.index(sub, start, end)
+    return a + b + c
+
+def rindex(s: str, sub: str, start: int, end: int) -> int:
+    a = s.rindex(sub)
+    b = s.rindex(sub, start)
+    c = s.rindex(sub, start, end)
+    return a + b + c
+[out]
+def index(s, sub, start, end):
+    s, sub :: str
+    start, end, r0, a, r1, b, r2, c, r3, r4 :: int
+L0:
+    r0 = CPyStr_Index(s, sub, 0, 1)
+    a = r0
+    r1 = CPyStr_Index(s, sub, start, 1)
+    b = r1
+    r2 = CPyStr_IndexWithEnd(s, sub, start, end, 1)
+    c = r2
+    r3 = CPyTagged_Add(a, b)
+    r4 = CPyTagged_Add(r3, c)
+    return r4
+def rindex(s, sub, start, end):
+    s, sub :: str
+    start, end, r0, a, r1, b, r2, c, r3, r4 :: int
+L0:
+    r0 = CPyStr_Index(s, sub, 0, -1)
+    a = r0
+    r1 = CPyStr_Index(s, sub, start, -1)
+    b = r1
+    r2 = CPyStr_IndexWithEnd(s, sub, start, end, -1)
+    c = r2
+    r3 = CPyTagged_Add(a, b)
+    r4 = CPyTagged_Add(r3, c)
+    return r4
+
 [case testStrLower]
 def do_lower(s: str) -> str:
     return s.lower()
@@ -1024,6 +1086,105 @@ def is_digit(x):
     r0 :: bool
 L0:
     r0 = CPyStr_IsDigit(x)
+    return r0
+
+[case testStrIsAlpha]
+def is_alpha(x: str) -> bool:
+    return x.isalpha()
+[out]
+def is_alpha(x):
+    x :: str
+    r0 :: bool
+L0:
+    r0 = CPyStr_IsAlpha(x)
+    return r0
+
+[case testStrIsAscii]
+def is_ascii(x: str) -> bool:
+    return x.isascii()
+[out]
+def is_ascii(x):
+    x :: str
+    r0 :: bool
+L0:
+    r0 = CPyStr_IsAscii(x)
+    return r0
+
+[case testStrIsDecimal]
+def is_decimal(x: str) -> bool:
+    return x.isdecimal()
+[out]
+def is_decimal(x):
+    x :: str
+    r0 :: bool
+L0:
+    r0 = CPyStr_IsDecimal(x)
+    return r0
+
+[case testStrIsNumeric]
+def is_numeric(x: str) -> bool:
+    return x.isnumeric()
+[out]
+def is_numeric(x):
+    x :: str
+    r0 :: bool
+L0:
+    r0 = CPyStr_IsNumeric(x)
+    return r0
+
+[case testStrIsPrintable]
+def is_printable(x: str) -> bool:
+    return x.isprintable()
+[out]
+def is_printable(x):
+    x :: str
+    r0 :: bool
+L0:
+    r0 = CPyStr_IsPrintable(x)
+    return r0
+
+[case testStrIsLower]
+def is_lower(x: str) -> bool:
+    return x.islower()
+[out]
+def is_lower(x):
+    x :: str
+    r0 :: bool
+L0:
+    r0 = CPyStr_IsLower(x)
+    return r0
+
+[case testStrIsTitle]
+def is_title(x: str) -> bool:
+    return x.istitle()
+[out]
+def is_title(x):
+    x :: str
+    r0 :: bool
+L0:
+    r0 = CPyStr_IsTitle(x)
+    return r0
+
+[case testStrIsUpper]
+def is_upper(x: str) -> bool:
+    return x.isupper()
+[out]
+def is_upper(x):
+    x :: str
+    r0 :: bool
+L0:
+    r0 = CPyStr_IsUpper(x)
+    return r0
+
+[case testStrIsIdentifier]
+def is_identifier(x: str) -> bool:
+    return x.isidentifier()
+[out]
+def is_identifier(x):
+    x :: str
+    r0 :: bool
+L0:
+    r0 = CPyStr_IsIdentifier(x)
     return r0
 
 [case testStrIndexEqLiteral_64bit]

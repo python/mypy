@@ -943,6 +943,36 @@ async def async_def_contains_decorated_async_def(n: int) -> int:
 async def test_async_def_contains_decorated_async_def() -> None:
     assert await async_def_contains_decorated_async_def(7) == 10
 
+async def conditional_nested_async(flag: int) -> str:
+    if flag < 0:
+        async def inner() -> str:
+            return "first"
+    elif flag > 0:
+        async def inner() -> str:
+            return "second"
+    else:
+        async def inner() -> str:
+            return "third"
+    return await inner()
+
+async def test_conditional_nested_async_defs_with_same_name() -> None:
+    assert await conditional_nested_async(-1) == "first"
+    assert await conditional_nested_async(1) == "second"
+    assert await conditional_nested_async(0) == "third"
+
+def conditional_nested_generator(flag: bool) -> list[int]:
+    if flag:
+        def gen() -> Iterator[int]:
+            yield 1
+    else:
+        def gen() -> Iterator[int]:
+            yield 2
+    return list(gen())
+
+def test_conditional_nested_generators_with_same_name() -> None:
+    assert conditional_nested_generator(True) == [1]
+    assert conditional_nested_generator(False) == [2]
+
 [file asyncio/__init__.pyi]
 def run(x: object) -> object: ...
 
@@ -2733,6 +2763,87 @@ def test_close_suspended_native_child() -> None:
     coro.send(None)
     coro.close()
 
+async def throw_child(explicit: bool) -> None:
+    try:
+        await Suspend(1)
+    except ValueError as exc:
+        if explicit:
+            raise exc
+        raise
+
+async def throw_parent(explicit: bool) -> None:
+    await throw_child(explicit)
+
+def traceback_frames(tb: Any) -> list[str]:
+    result = []
+    while tb is not None:
+        result.append(tb.tb_frame.f_code.co_name)
+        tb = tb.tb_next
+    return result
+
+def throw_origin() -> None:
+    raise ValueError('injected')
+
+def check_throw_traceback(nested: bool, explicit: bool, kind: str) -> None:
+    error: Any
+    try:
+        throw_origin()
+    except ValueError as exc:
+        error = exc
+    if kind == 'fresh':
+        error = ValueError('fresh')
+    original = traceback_frames(error.__traceback__)
+    coro = (throw_parent if nested else throw_child)(explicit)
+    assert coro.send(None) == 0
+    with assertRaises(ValueError):
+        if kind == 'triple':
+            coro.throw(type(error), error, error.__traceback__)
+        else:
+            coro.throw(error)
+    expected = ['throw_parent'] if nested else []
+    if explicit:
+        expected += ['throw_child']
+    expected += ['throw_child', '__await__'] + original
+    # Skip assertRaises and this helper's throw() call.
+    actual = traceback_frames(error.__traceback__)[2:]
+    assert actual == expected, (nested, explicit, kind, actual, expected)
+
+def test_throw_fresh_reraise() -> None:
+    check_throw_traceback(False, False, 'fresh')
+
+def test_throw_existing_reraise() -> None:
+    check_throw_traceback(False, False, 'existing')
+
+def test_throw_triple_reraise() -> None:
+    check_throw_traceback(False, False, 'triple')
+
+def test_throw_fresh_raise_exc() -> None:
+    check_throw_traceback(False, True, 'fresh')
+
+def test_throw_existing_raise_exc() -> None:
+    check_throw_traceback(False, True, 'existing')
+
+def test_throw_triple_raise_exc() -> None:
+    check_throw_traceback(False, True, 'triple')
+
+def test_throw_nested_fresh_reraise() -> None:
+    check_throw_traceback(True, False, 'fresh')
+
+def test_throw_nested_existing_reraise() -> None:
+    check_throw_traceback(True, False, 'existing')
+
+def test_throw_nested_triple_reraise() -> None:
+    check_throw_traceback(True, False, 'triple')
+
+def test_throw_nested_fresh_raise_exc() -> None:
+    check_throw_traceback(True, True, 'fresh')
+
+def test_throw_nested_existing_raise_exc() -> None:
+    check_throw_traceback(True, True, 'existing')
+
+def test_throw_nested_triple_raise_exc() -> None:
+    check_throw_traceback(True, True, 'triple')
+
 [typing fixtures/typing-full.pyi]
 
 [case testRunAsyncNativeCoroutineDrivenByInterpretedCode]
@@ -2844,5 +2955,97 @@ assert pyiter_send(coro, 3) == (PYGEN_RETURN, 8)
 # PYGEN_ERROR leaves the body exception pending, so ctypes propagates it.
 with assertRaises(MyError):
     pyiter_send(fails(), None)
+
+[typing fixtures/typing-full.pyi]
+
+[case testCallUnboundAsyncMethodWithoutSelf]
+class C:
+    async def m(self) -> int:
+        return 1
+
+    @classmethod
+    async def c(cls) -> str:
+        return cls.__name__
+
+    @staticmethod
+    async def s() -> int:
+        return 2
+
+[file driver.py]
+from typing import Any
+from native import C
+from testutil import assertRaises
+
+def run(coro: Any) -> Any:
+    try:
+        coro.send(None)
+    except StopIteration as e:
+        return e.value
+    assert False
+
+assert run(C().m()) == 1
+assert run(C.m(C())) == 1
+assert run(C.c()) == "C"
+assert run(C().c()) == "C"
+assert run(C.s()) == 2
+
+# Calling the underlying function without self (or cls) used to read out of bounds.
+with assertRaises(TypeError, "unbound method C.m() needs an argument"):
+    C.m()
+with assertRaises(TypeError, "unbound method C.m() needs an argument"):
+    C.__dict__["m"]()
+with assertRaises(TypeError, "unbound method C.m() needs an argument"):
+    C.__dict__["m"].__call__()
+with assertRaises(TypeError, "unbound method C.c() needs an argument"):
+    C.__dict__["c"]()
+with assertRaises(TypeError, "unbound method C.c() needs an argument"):
+    C.__dict__["c"].__call__()
+assert run(C.__dict__["m"](C())) == 1
+assert run(C.__dict__["c"](C)) == "C"
+
+[case testRunAsyncListComprehensionWithAwait_librt]
+import asyncio
+from typing import List
+
+from mypy_extensions import i64
+from librt.vecs import vec
+
+async def ident(x: str) -> str:
+    await asyncio.sleep(0)
+    return x
+
+async def ident_int(x: int) -> int:
+    await asyncio.sleep(0)
+    return x
+
+async def grow(a: List[str], x: str) -> str:
+    await asyncio.sleep(0)
+    if len(a) < 4:
+        a.append(x + "!")
+    return x
+
+async def shrink(a: List[str], x: str) -> str:
+    await asyncio.sleep(0)
+    a.pop()
+    return x
+
+async def test_list() -> None:
+    a = ["a", "b"]
+    assert [await ident(x) for x in a] == ["a", "b"]
+    assert [await grow(a, x) for x in a] == ["a", "b", "a!", "b!"]
+    a = ["a", "b", "c", "d"]
+    assert [await shrink(a, x) for x in a] == ["a", "b"]
+
+async def test_vec() -> None:
+    a = ["a", "b"]
+    assert vec[str]([await ident(x) for x in a]) == vec[str](["a", "b"])
+    assert vec[str]([await grow(a, x) for x in a]) == vec[str](["a", "b", "a!", "b!"])
+    a = ["a", "b", "c", "d"]
+    assert vec[str]([await shrink(a, x) for x in a]) == vec[str](["a", "b"])
+    n = [1, 2, 3]
+    assert vec[i64]([await ident_int(x) for x in n]) == vec[i64]([1, 2, 3])
+
+[file asyncio/__init__.pyi]
+async def sleep(delay: float) -> None: ...
 
 [typing fixtures/typing-full.pyi]

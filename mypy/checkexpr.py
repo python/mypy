@@ -19,6 +19,7 @@ from mypy.checker_shared import ExpressionCheckerSharedApi
 from mypy.checkmember import analyze_member_access, has_operator
 from mypy.checkstrformat import StringFormatterChecker
 from mypy.constant_fold import constant_fold_expr
+from mypy.constraints import Constraint, infer_constraints_for_callable
 from mypy.erasetype import erase_type, remove_instance_last_known_values, replace_meta_vars
 from mypy.errors import ErrorInfo, ErrorWatcher, report_internal_error
 from mypy.expandtype import (
@@ -120,6 +121,7 @@ from mypy.plugin import (
     Plugin,
 )
 from mypy.semanal_enum import ENUM_BASES
+from mypy.solve import solve_constraints
 from mypy.state import state
 from mypy.subtypes import (
     common_type,
@@ -1792,8 +1794,33 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                     callee = freshen_function_type_vars(callee)
                 self.freshen_cache[(context, original_callee)] = callee
 
+        initial_callee = callee
+        initial_formal_to_actual = None
+        constraints: list[Constraint] = []
+        # The general flow of type inference is the following:
+        #   * Infer constraints from outer (return) context and solve them.
+        #   * Apply the inferred type arguments to the callable.
+        #   * Infer argument types in this partial context.
+        #   * Infer constraints from inner (argument) context (pass 1, non-callable arguments).
+        #   * Solve the combined constraint set (outer + partial inner).
+        #   * Apply the new (more precise) inferred type arguments to initial callable.
+        #   * Re-infer argument types in more precise type context
+        #     (including pass 2, callable arguments).
+        #   * Re-infer constraints from inner context (now from all arguments).
+        #   * Solve the final constraint set combining outer context and precise inner context.
+        #     Apply the inferred final type arguments to the initial generic callable.
+        #   * If we cannot solve (likely an error), we repeat the process starting from outer
+        #     context. Now progressively applying inferred type arguments after each step,
+        #     to give consistent error messages.
         if callee.is_generic():
-            callee = self.infer_function_type_arguments_using_context(callee, context)
+            initial_formal_to_actual = map_actuals_to_formals(
+                arg_kinds,
+                arg_names,
+                callee.arg_kinds,
+                callee.arg_names,
+                lambda i: self.accept(args[i]),
+            )
+            callee, constraints = self.infer_function_type_arguments_using_context(callee, context)
 
         formal_to_actual = map_actuals_to_formals(
             arg_kinds,
@@ -1825,12 +1852,22 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                     )
                     callee = callee.copy_modified(arg_types=[new_arg_type])
 
-        if callee.is_generic():
+        if initial_callee.is_generic():
             need_refresh = any(
-                isinstance(v, (ParamSpecType, TypeVarTupleType)) for v in callee.variables
+                isinstance(v, (ParamSpecType, TypeVarTupleType)) for v in initial_callee.variables
             )
+            assert initial_formal_to_actual is not None
             callee = self.infer_function_type_arguments(
-                callee, args, arg_kinds, arg_names, formal_to_actual, need_refresh, context
+                callee,
+                initial_callee,
+                constraints,
+                args,
+                arg_kinds,
+                arg_names,
+                formal_to_actual,
+                initial_formal_to_actual,
+                need_refresh,
+                context,
             )
             if need_refresh:
                 # Argument kinds etc. may have changed due to
@@ -2113,7 +2150,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
 
     def infer_function_type_arguments_using_context(
         self, callable: CallableType, error_context: Context
-    ) -> CallableType:
+    ) -> tuple[CallableType, list[Constraint]]:
         """Unify callable return type to type context to infer type vars.
 
         For example, if the return type is set[t] where 't' is a type variable
@@ -2122,7 +2159,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         """
         ctx = self.type_context[-1]
         if not ctx:
-            return callable
+            return callable, []
         # The return type may have references to type metavariables that
         # we are inferring right now. We must consider them as indeterminate
         # and they are not potential results; thus we replace them with the
@@ -2179,8 +2216,8 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             # TODO: we may want to add similar exception if all arguments are lambdas, since
             # in this case external context is almost everything we have.
             if not is_generic_instance(ctx) and not is_literal_type_like(ctx):
-                return callable.copy_modified()
-        args = infer_type_arguments(
+                return callable.copy_modified(), []
+        args, constraints = infer_type_arguments(
             callable.variables, ret_type, erased_ctx, skip_unsatisfied=True
         )
         # Only substitute non-Uninhabited and non-erased types.
@@ -2192,23 +2229,106 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                 new_args.append(arg)
         # Don't show errors after we have only used the outer context for inference.
         # We will use argument context to infer more variables.
-        return self.apply_generic_arguments(
-            callable, new_args, error_context, skip_unsatisfied=True
+        return (
+            self.apply_generic_arguments(callable, new_args, error_context, skip_unsatisfied=True),
+            constraints,
         )
+
+    def infer_function_type_arguments_both_sides(
+        self,
+        initial_callee_type: CallableType,
+        ret_constraints: list[Constraint],
+        args: list[Expression],
+        pass1_arg_types: list[Type | None],
+        arg_pass_nums: list[int],
+        arg_kinds: list[ArgKind],
+        arg_names: Sequence[str | None] | None,
+        formal_to_actual: list[list[int]],
+        initial_formal_to_actual: list[list[int]],
+        need_refresh: bool,
+        context: Context,
+    ) -> CallableType | None:
+        """Infer type arguments of a generic callable by combining outer and inner contexts."""
+        # Inline infer_function_type_arguments() to get access to argument-side constraints.
+        constraints = infer_constraints_for_callable(
+            initial_callee_type,
+            pass1_arg_types,
+            arg_kinds,
+            arg_names,
+            initial_formal_to_actual,
+            self.argument_infer_context(),
+        )
+        constraints += ret_constraints
+
+        type_vars = initial_callee_type.variables
+        type_vars_set = set(type_vars)
+        inferred_args, _ = solve_constraints(
+            type_vars, constraints, strict=self.chk.in_checked_function()
+        )
+
+        pass1_inferred_args = inferred_args
+        if 2 in arg_pass_nums:
+            # This is an adjusted version of logic in infer_function_type_arguments_pass2().
+            # Here we proceed even if first pass inferred all type arguments, since
+            # second pass may infer narrower types in presence of wide outer context.
+            solid_inferred_args = list(inferred_args)
+            for i, arg in enumerate(inferred_args):
+                if not solid_inferred_type(arg, type_vars_set):
+                    solid_inferred_args[i] = None
+            pass2_callee_type = self.apply_generic_arguments(
+                initial_callee_type, solid_inferred_args, context
+            )
+            if need_refresh:
+                formal_to_actual = map_actuals_to_formals(
+                    arg_kinds,
+                    arg_names,
+                    pass2_callee_type.arg_kinds,
+                    pass2_callee_type.arg_names,
+                    lambda a: self.accept(args[a]),
+                )
+
+            # (Re-)infer argument types in the more precise type context (for lambdas).
+            with self.msg.filter_errors():
+                arg_types = self.infer_arg_types_in_context(
+                    pass2_callee_type, args, arg_kinds, formal_to_actual
+                )
+            inferred_args, _ = infer_function_type_arguments(
+                initial_callee_type,
+                arg_types,
+                arg_kinds,
+                arg_names,
+                initial_formal_to_actual,
+                context=self.argument_infer_context(),
+                extra_constraints=constraints,
+            )
+
+        # Only use two-side inference if it is fully successful,
+        # otherwise, fallback to return type context as a tiebreaker.
+        if all(solid_inferred_type(a, type_vars_set) for a in inferred_args):
+            return self.apply_inferred_arguments(initial_callee_type, inferred_args, context)
+        # Before giving up, check first pass result. In some cases this may help in situations
+        # where both passes together create a system too tricky for our solver.
+        if all(solid_inferred_type(a, type_vars_set) for a in pass1_inferred_args):
+            return self.apply_inferred_arguments(initial_callee_type, pass1_inferred_args, context)
+        return None
 
     def infer_function_type_arguments(
         self,
         callee_type: CallableType,
+        initial_callee_type: CallableType,
+        ret_constraints: list[Constraint],
         args: list[Expression],
         arg_kinds: list[ArgKind],
         arg_names: Sequence[str | None] | None,
         formal_to_actual: list[list[int]],
+        initial_formal_to_actual: list[list[int]],
         need_refresh: bool,
         context: Context,
     ) -> CallableType:
         """Infer the type arguments for a generic callee type.
 
-        Infer based on the types of arguments.
+        Infer based on the types of arguments. The `initial_callee_type` is callee
+        type before applying arguments inferred from return type context.
 
         Return a derived callable type that has the arguments applied.
         """
@@ -2232,6 +2352,37 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                     pass1_args.append(None)
                 else:
                     pass1_args.append(arg)
+
+            # First, try inferring callee type using both argument type and return
+            # constraints. Do not do this if special_sig is set or for type objects,
+            # those are special-cased elsewhere.
+            if (
+                initial_callee_type != callee_type
+                and initial_callee_type.special_sig is None
+                and not initial_callee_type.is_type_obj()
+                # This is not very principled, but also prefer outer context for
+                # recursive types (because values can never be recursive).
+                and not type_state.infer_unions
+            ):
+                inferred_callee = self.infer_function_type_arguments_both_sides(
+                    initial_callee_type,
+                    ret_constraints,
+                    args,
+                    pass1_args,
+                    arg_pass_nums,
+                    arg_kinds,
+                    arg_names,
+                    formal_to_actual,
+                    initial_formal_to_actual,
+                    need_refresh,
+                    context,
+                )
+                if inferred_callee is not None:
+                    return inferred_callee
+
+            if not callee_type.is_generic():
+                # Fast path: return context inferred all type arguments.
+                return callee_type
 
             inferred_args, _ = infer_function_type_arguments(
                 callee_type,
@@ -4537,13 +4688,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
 
         Type inference is special-cased for this common construct.
         """
-        right_type = self.accept(e.right)
-        if is_subtype(right_type, self.named_type("builtins.int")):
-            # Special case: [...] * <int value>. Use the type context of the
-            # OpExpr, since the multiplication does not affect the type.
-            left_type = self.accept(e.left, type_context=self.type_context[-1])
-        else:
-            left_type = self.accept(e.left)
+        left_type = self.accept(e.left, type_context=self.type_context[-1])
         result, method_type = self.check_op("__mul__", left_type, e.right, e)
         e.method_type = method_type
         return result
@@ -5533,6 +5678,19 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         return typeddict_context.copy_modified()
 
     def visit_dict_expr(self, e: DictExpr) -> Type:
+        old_allow_any_join = type_state.allow_any_join
+        try:
+            ctx = self.type_context[-1]
+            # This is somewhat ad hoc, but we want to cover situations where a dict
+            # appears inside another dict or list literal as well.
+            type_state.allow_any_join = (
+                ctx is None or isinstance(ctx, TypeVarType) and ctx.id.is_meta_var()
+            )
+            return self._visit_dict_expr(e)
+        finally:
+            type_state.allow_any_join = old_allow_any_join
+
+    def _visit_dict_expr(self, e: DictExpr) -> Type:
         """Type check a dict expression.
 
         Translate it into a call to dict(), with provisions for **expr.
@@ -6287,7 +6445,12 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             # context, and use enclosing one, see infer_lambda_type_using_context().
             # TODO: consider using cache for more expression kinds.
             elif (
-                isinstance(node, (CallExpr, ListExpr, TupleExpr, DictExpr, OpExpr, MemberExpr))
+                (
+                    isinstance(node, (CallExpr, ListExpr, TupleExpr, DictExpr, OpExpr))
+                    # Only cache non-static access, it may be slow, and may freshen type vars.
+                    or isinstance(node, MemberExpr)
+                    and node.node is None
+                )
                 and not (self.in_lambda_expr or self.chk.current_node_deferred)
                 and not self.chk.options.disable_expression_cache
             ):
@@ -6826,6 +6989,20 @@ class HasAmbiguousUninhabitedComponentsQuery(types.BoolTypeQuery):
 
     def visit_uninhabited_type(self, t: UninhabitedType) -> bool:
         return t.ambiguous
+
+
+def solid_inferred_type(typ: Type | None, type_vars: set[TypeVarLikeType]) -> bool:
+    """Are we sure this is a good inferred type argument for a generic callable?"""
+    if typ is None:
+        return False
+    if isinstance(get_proper_type(typ), UninhabitedType):
+        return False
+    if has_erased_component(typ):
+        return False
+    # Make sure there are no type variable leaks in the type.
+    if set(get_type_vars(typ)) & type_vars:
+        return False
+    return True
 
 
 def arg_approximate_similarity(actual: Type, formal: Type) -> bool:

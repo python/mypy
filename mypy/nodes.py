@@ -1461,6 +1461,7 @@ class Var(SymbolNode):
         "invalid_partial_type",
         "is_argument",
         "is_sentinel",
+        "is_init_to_none",
     )
 
     __match_args__ = ("name", "type", "final_value")
@@ -1525,6 +1526,8 @@ class Var(SymbolNode):
         self.is_argument = False
         # Was this variable created by PEP 661 sentinel()/Sentinel() syntax?
         self.is_sentinel = False
+        # Is this variable initialized to None? (May be not set for ad-hoc vars)
+        self.is_init_to_none = False
 
     @property
     def name(self) -> str:
@@ -4076,14 +4079,14 @@ class TypeInfo(SymbolNode):
 
     def get_method(self, name: str) -> FuncBase | Decorator | None:
         for cls in self.mro:
-            if name in cls.names:
-                node = cls.names[name].node
-            elif possible_redefinitions := sorted(
-                [n for n in cls.names.keys() if n.startswith(f"{name}-redefinition")]
-            ):
-                node = cls.names[possible_redefinitions[-1]].node
-            else:
-                continue
+            sym = cls.names.get(name)
+            if sym is None:
+                # Plugins are allowed to meddle with redefinitions (first one wins).
+                if cls.metadata:
+                    sym = cls.names.get(f"{name}-redefinition")
+                if sym is None:
+                    continue
+            node = sym.node
             if isinstance(node, SYMBOL_FUNCBASE_TYPES):
                 return node
             elif isinstance(node, Decorator):  # Two `if`s make `mypyc` happy

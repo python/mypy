@@ -11,8 +11,9 @@ check that the priorities are configured properly.
 
 from __future__ import annotations
 
-from mypyc.ir.ops import ERR_MAGIC, ERR_NEVER
+from mypyc.ir.ops import ERR_FALSE, ERR_MAGIC, ERR_NEVER
 from mypyc.ir.rtypes import (
+    bit_rprimitive,
     bool_rprimitive,
     c_int_rprimitive,
     c_pointer_rprimitive,
@@ -372,6 +373,22 @@ generic_ssize_t_len_op = custom_op(
     return_type=c_pyssize_t_rprimitive,
     c_function_name="PyObject_Size",
     error_kind=ERR_NEG_INT,
+)
+
+# Check that the result of a native __len__ method is a valid length, like len() does
+check_len_result_op = custom_op(
+    arg_types=[int_rprimitive],
+    return_type=bit_rprimitive,
+    c_function_name="CPyTagged_CheckLen",
+    error_kind=ERR_FALSE,
+)
+
+# Convert the result of a native __len__ method that isn't an int to a length
+len_from_result_op = custom_op(
+    arg_types=[object_rprimitive],
+    return_type=int_rprimitive,
+    c_function_name="CPyObject_LenFromResult",
+    error_kind=ERR_MAGIC,
 )
 
 # iter(obj)
