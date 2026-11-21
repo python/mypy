@@ -5512,8 +5512,31 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                 if (isinstance(t, TupleType) and self.tuple_context_matches(e, t))
                 or is_named_instance(t, TUPLE_LIKE_INSTANCE_NAMES)
             ]
+            tuple_contexts = [t for t in tuples_in_context if isinstance(t, TupleType)]
             if len(tuples_in_context) == 1:
                 type_context = tuples_in_context[0]
+            elif (
+                len(tuple_contexts) == len(tuples_in_context)
+                and len(tuple_contexts) > 1
+                and all(
+                    len(t.items) == len(tuple_contexts[0].items)
+                    and find_unpack_in_list(t.items) is None
+                    for t in tuple_contexts
+                )
+            ):
+                # Preserve literal types when a tuple expression can match multiple
+                # alternatives in a union. The final tuple is still checked against
+                # the original union, so this only supplies item-level context.
+                type_context = TupleType(
+                    [
+                        UnionType.make_union([t.items[i] for t in tuple_contexts])
+                        for i in range(len(tuple_contexts[0].items))
+                    ],
+                    tuple_contexts[0].partial_fallback,
+                    e.line,
+                    e.column,
+                    implicit=True,
+                )
             else:
                 # There are either no relevant tuples in the Union, or there is
                 # more than one.  Either way, we can't decide on a context.
