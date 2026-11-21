@@ -238,6 +238,12 @@ UNUSED_AWAITABLE: Final = ErrorCode(
     "General",
     default_enabled=False,
 )
+UNUSED_ASYNCIO_TASK: Final = ErrorCode(
+    "unused-asyncio-task",
+    "Ensure that all asyncio tasks are used",
+    "General",
+    default_enabled=False,
+)
 REDUNDANT_SELF_TYPE: Final = ErrorCode(
     "redundant-self",
     "Warn about redundant Self type annotations on method first argument",
