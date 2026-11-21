@@ -1711,7 +1711,7 @@ else:
 if sys.version_info < (3, 14):
     @deprecated("Removed in Python 3.14. Use `ast.Constant` instead.")
     class Num(Constant, metaclass=_ABC):
-        def __new__(cls, n: complex, **kwargs: Unpack[_Attributes]) -> Constant: ...  # type: ignore[misc]  # pyright: ignore[reportInconsistentConstructor]
+        def __new__(cls, n: complex | float | int, **kwargs: Unpack[_Attributes]) -> Constant: ...  # type: ignore[misc]  # pyright: ignore[reportInconsistentConstructor]
 
     @deprecated("Removed in Python 3.14. Use `ast.Constant` instead.")
     class Str(Constant, metaclass=_ABC):
