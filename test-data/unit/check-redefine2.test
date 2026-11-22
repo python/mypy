@@ -333,6 +333,31 @@ def f3() -> None:
         reveal_type(x) # N: Revealed type is "builtins.int | builtins.str"
     reveal_type(x) # N: Revealed type is "builtins.int | builtins.str"
 
+[case testNewRedefineAssignmentExpressionChangesType]
+# flags: --allow-redefinition
+def f1() -> None:
+    x = 0
+    reveal_type(x) # N: Revealed type is "builtins.int"
+    (x := '')
+    reveal_type(x) # N: Revealed type is "builtins.str"
+
+def f2() -> None:
+    x = 0
+    if (x := '') and int():
+        reveal_type(x) # N: Revealed type is "builtins.str"
+    reveal_type(x) # N: Revealed type is "builtins.str"
+
+def f3() -> None:
+    while line := str():
+        reveal_type(line) # N: Revealed type is "builtins.str"
+    line = 1
+    reveal_type(line) # N: Revealed type is "builtins.int"
+
+x = 0
+(x := '')
+reveal_type(x) # N: Revealed type is "builtins.str"
+[builtins fixtures/primitives.pyi]
+
 [case testNewRedefineOperatorAssignment]
 # flags: --allow-redefinition
 class D: pass
