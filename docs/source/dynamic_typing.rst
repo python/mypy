@@ -25,7 +25,14 @@ versa).
    dyn = 'x'       # OK
 
    num = dyn       # No error, mypy will let you assign a value of type Any to any variable
-   num += 1        # Oops, mypy still thinks num is an int
+   num.nonexistent()  # OK, num is now treated as Any in expressions
+   num = 'x'       # Still an error: assignments are checked against the inferred int type
+
+Assigning an ``Any`` value to a variable without an explicit annotation makes
+subsequent expressions involving that variable dynamically typed. Mypy still
+checks later assignments against the type inferred from the variable's original
+assignment. Add an explicit annotation if you want the variable's declared type
+to remain in effect after assigning an ``Any`` value.
 
 You can think of ``Any`` as a way to locally disable type checking.
 See :ref:`silencing-type-errors` for other ways you can shut up
