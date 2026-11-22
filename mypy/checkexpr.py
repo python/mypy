@@ -5253,6 +5253,27 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             return AnyType(TypeOfAny.from_another_any, source_any=item)
         elif isinstance(item, UnionType) and item.uses_pep604_syntax:
             return self.chk.named_generic_type("types.UnionType", item.items)
+        elif isinstance(item, LiteralType) or (
+            isinstance(item, UnionType)
+            and all(isinstance(t, LiteralType) for t in item.items)
+        ):
+            if alias_definition:
+                return AnyType(TypeOfAny.special_form)
+            # A parameterized `Literal[...]` alias has a `__args__` attribute at
+            # runtime, but the plain `typing._SpecialForm` type does not declare
+            # it. Expose it as a per-instance attribute, so that e.g.
+            # `Key.__args__` works when `Key = Literal["a", "b"]`.
+            # Note that a multi-value `Literal[...]` is represented as a union
+            # of single-value literal types.
+            special_form = self.named_type("typing._SpecialForm").copy_modified()
+            special_form.extra_attrs = ExtraAttrs(
+                {
+                    "__args__": self.chk.named_generic_type(
+                        "builtins.tuple", [AnyType(TypeOfAny.special_form)]
+                    )
+                }
+            )
+            return special_form
         else:
             if alias_definition:
                 return AnyType(TypeOfAny.special_form)
