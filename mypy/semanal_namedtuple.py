@@ -473,7 +473,7 @@ class NamedTupleAnalyzer:
         # Note: actual signature should accept an invariant version of Iterable[UnionType[types]].
         # but it can't be expressed. 'new' and 'len' should be callable types.
         iterable_type = self.api.named_type_or_none("typing.Iterable", [implicit_any])
-        function_type = self.api.named_type("builtins.function")
+        function_type = self.api.named_type("types.FunctionType")
 
         literals: list[Type] = [LiteralType(item, strtype) for item in items]
         match_args_type = TupleType(literals, basetuple_type)

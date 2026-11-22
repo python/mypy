@@ -52,7 +52,6 @@ class list(Generic[_T], Sequence[_T]):
     @override
     def __iter__(self) -> Iterator[_T]: pass
 
-class function: pass
 class classmethod: pass
 class staticmethod: pass
 property = object()

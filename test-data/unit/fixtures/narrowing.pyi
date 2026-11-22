@@ -12,7 +12,6 @@ class object:
 
 class type: pass
 class tuple(Sequence[Tco], Generic[Tco]): pass
-class function: pass
 class int: pass
 class str: pass
 class float: pass

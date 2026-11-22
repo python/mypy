@@ -11,7 +11,6 @@ class object:
 
 class type: pass
 class tuple(Generic[T]): pass
-class function: pass
 
 class int: pass
 class float: pass

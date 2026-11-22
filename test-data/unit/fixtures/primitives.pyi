@@ -69,7 +69,6 @@ class set(Iterable[T]):
     def __contains__(self, o: object, /) -> bool: pass
 class frozenset(Iterable[T]):
     def __iter__(self) -> Iterator[T]: pass
-class function: pass
 
 class range(Sequence[int]):
     def __init__(self, __x: int, __y: int = ..., __z: int = ...) -> None: pass

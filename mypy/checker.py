@@ -215,7 +215,13 @@ from mypy.patterns import AsPattern, StarredPattern
 from mypy.plugin import Plugin
 from mypy.plugins import dataclasses as dataclasses_plugin
 from mypy.scope import Scope
-from mypy.semanal import is_trivial_body, refers_to_fullname, set_callable_name
+from mypy.semanal import (
+    CORE_TYPES_CLASSES,
+    is_trivial_body,
+    make_placeholder_types_info,
+    refers_to_fullname,
+    set_callable_name,
+)
 from mypy.semanal_enum import ENUM_BASES, ENUM_SPECIAL_PROPS
 from mypy.semanal_shared import SemanticAnalyzerCoreInterface
 from mypy.sharedparse import BINARY_MAGIC_METHODS
@@ -882,7 +888,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                     arg_kinds=[ARG_POS, ARG_POS],
                     arg_names=[None, None],
                     ret_type=any_type,
-                    fallback=self.named_type("builtins.function"),
+                    fallback=self.named_type("types.FunctionType"),
                 )
                 if setter_type and not is_subtype(setter_type, fallback_setter_type):
                     self.fail("Invalid property setter signature", defn.setter.func)
@@ -951,7 +957,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                     arg_kinds=[ARG_POS],
                     arg_names=[None],
                     ret_type=any_type,
-                    fallback=self.named_type("builtins.function"),
+                    fallback=self.named_type("types.FunctionType"),
                 )
             defn.type = Overloaded([var_type])
         # Check override validity after we analyzed current definition.
@@ -2022,7 +2028,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
             [nodes.ARG_POS, nodes.ARG_POS],
             [None, None],
             AnyType(TypeOfAny.special_form),
-            self.named_type("builtins.function"),
+            self.named_type("types.FunctionType"),
         )
         if not is_subtype(reverse_type, method_type):
             self.msg.invalid_signature(reverse_type, context)
@@ -2248,7 +2254,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                 [nodes.ARG_POS],
                 [None],
                 AnyType(TypeOfAny.special_form),
-                self.named_type("builtins.function"),
+                self.named_type("types.FunctionType"),
             )
         elif self.scope.active_class():
             method_type = CallableType(
@@ -2256,7 +2262,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                 [nodes.ARG_POS, nodes.ARG_POS],
                 [None, None],
                 AnyType(TypeOfAny.special_form),
-                self.named_type("builtins.function"),
+                self.named_type("types.FunctionType"),
             )
         else:
             return
@@ -2275,7 +2281,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
             [nodes.ARG_POS, nodes.ARG_POS, nodes.ARG_POS],
             [None, None, None],
             NoneType(),
-            self.named_type("builtins.function"),
+            self.named_type("types.FunctionType"),
         )
         if not is_subtype(typ, method_type):
             self.msg.invalid_signature_for_special_method(typ, context, "__setattr__")
@@ -6446,7 +6452,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
     def make_fake_callable(self, typ: Instance) -> Instance:
         """Produce a new type that makes type Callable with a generic callable type."""
 
-        fallback = self.named_type("builtins.function")
+        fallback = self.named_type("types.FunctionType")
         callable_type = CallableType(
             [AnyType(TypeOfAny.explicit), AnyType(TypeOfAny.explicit)],
             [nodes.ARG_STAR, nodes.ARG_STAR2],
@@ -7977,7 +7983,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
             if instance_cache.str_type is None:
                 instance_cache.str_type = self._named_type(name)
             return instance_cache.str_type
-        if name == "builtins.function":
+        if name == "types.FunctionType":
             if instance_cache.function_type is None:
                 instance_cache.function_type = self._named_type(name)
             return instance_cache.function_type
@@ -8085,6 +8091,20 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
             return self.lookup(name)
         else:
             parts = name.split(".")
+            if (
+                parts[0] == "types"
+                and parts[-1] in CORE_TYPES_CLASSES
+                and (parts[0] not in self.modules or parts[-1] not in self.modules[parts[0]].names)
+            ):
+                # The 'types' module may not be loaded (e.g. in tests using
+                # minimal builtins fixtures), but core types classes must be
+                # resolvable.
+                return SymbolTableNode(
+                    GDEF,
+                    make_placeholder_types_info(
+                        parts[-1], lambda: self.named_type("builtins.object")
+                    ),
+                )
             n = self.modules[parts[0]]
             for i in range(1, len(parts) - 1):
                 sym = n.names.get(parts[i])
@@ -8259,7 +8279,7 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
         return self.analyze_iterable_item_type_without_expression(it, context)[1]
 
     def function_type(self, func: FuncBase) -> FunctionLike:
-        typ = function_type(func, self.named_type("builtins.function"))
+        typ = function_type(func, self.named_type("types.FunctionType"))
         if (
             isinstance(func, FuncItem)
             and func.is_coroutine

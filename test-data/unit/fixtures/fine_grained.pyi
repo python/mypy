@@ -24,6 +24,5 @@ class str:
 class float: pass
 class bytes: pass
 class tuple(Generic[T]): pass
-class function: pass
 class list(Generic[T]): pass
 class dict: pass

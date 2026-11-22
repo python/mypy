@@ -1110,7 +1110,7 @@ def g(*, y: int) -> int: ...
 def h(*, x: int) -> int: ...
 
 list_1 = [f, g]
-reveal_type(list_1)  # N: Revealed type is "builtins.list[builtins.function]"
+reveal_type(list_1)  # N: Revealed type is "builtins.list[types.FunctionType]"
 list_2 = [f, h]
 reveal_type(list_2)  # N: Revealed type is "builtins.list[def (*, x: builtins.int) -> builtins.int]"
 [builtins fixtures/list.pyi]

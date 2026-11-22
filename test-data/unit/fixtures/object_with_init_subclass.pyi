@@ -33,7 +33,6 @@ class bytes(Sequence[int]):
     def __getitem__(self, item: int) -> int: pass
 class bytearray: pass
 class tuple(Generic[T]): pass
-class function: pass
 
 # copy-pasted from list.pyi
 class list(Sequence[T]):

@@ -15,7 +15,6 @@ class str:
 class bytes: pass
 
 class tuple(Generic[T]): pass
-class function: pass
 
 class int:
     def __abs__(self) -> int: ...

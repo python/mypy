@@ -164,7 +164,7 @@ def foo(a: int) -> None: ...
                     "ret_type": {
                         ".class": "NoneType"
                     },
-                    "fallback": "builtins.function",
+                    "fallback": "types.FunctionType",
                     "name": "foo",
                     "variables": [],
                     "is_ellipsis_args": false,

@@ -121,8 +121,6 @@ class dict(Mapping[KT, VT]): ...
 
 class frozenset(Generic[T]): ...
 
-class function: pass
-
 class sentinel:
     __name__: str
     __module__: str

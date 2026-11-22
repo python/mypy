@@ -148,9 +148,10 @@ class object:
 class bool: pass
 class int: pass
 class type: pass
-class function: pass
 class str: pass
 class dict: pass
+[file types.py]
+class FunctionType: pass
 
 [case testBinaryOperationsWithDynamicAsRightOperand]
 from typing import Any
@@ -221,9 +222,10 @@ class object:
 class bool: pass
 class int: pass
 class type: pass
-class function: pass
 class str: pass
 class dict: pass
+[file types.py]
+class FunctionType: pass
 
 [case testDynamicWithUnaryExpressions]
 from typing import Any

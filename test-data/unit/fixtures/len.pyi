@@ -17,8 +17,6 @@ class tuple(Sequence[T]):
 class list(Sequence[T]): pass
 class dict(Mapping[T, V]): pass
 
-class function: pass
-
 class Sized(Protocol):
     def __len__(self) -> int: pass
 

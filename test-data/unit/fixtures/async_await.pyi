@@ -11,7 +11,6 @@ class list(typing.Sequence[T]):
 class object:
     def __init__(self) -> None: pass
 class type: pass
-class function: pass
 class int: pass
 class float: pass
 class str: pass

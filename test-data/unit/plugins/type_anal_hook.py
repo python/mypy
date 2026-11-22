@@ -29,7 +29,7 @@ def signal_type_analyze_callback(ctx: AnalyzeTypeContext) -> Type:
     arg_types, arg_kinds, arg_names = analyzed
     arg_types = [ctx.api.analyze_type(arg) for arg in arg_types]
     type_arg = CallableType(
-        arg_types, arg_kinds, arg_names, NoneTyp(), ctx.api.named_type("builtins.function", [])
+        arg_types, arg_kinds, arg_names, NoneTyp(), ctx.api.named_type("types.FunctionType", [])
     )
     return ctx.api.named_type("m.Signal", [type_arg])
 

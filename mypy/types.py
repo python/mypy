@@ -1776,7 +1776,7 @@ class Instance(ProperType):
             type_ref = self.type.fullname
             if type_ref == "builtins.str":
                 write_tag(data, INSTANCE_STR)
-            elif type_ref == "builtins.function":
+            elif type_ref == "types.FunctionType":
                 write_tag(data, INSTANCE_FUNCTION)
             elif type_ref == "builtins.int":
                 write_tag(data, INSTANCE_INT)
@@ -1811,7 +1811,7 @@ class Instance(ProperType):
         if tag == INSTANCE_FUNCTION:
             if instance_cache.function_type is None:
                 instance_cache.function_type = Instance(NOT_READY, [])
-                instance_cache.function_type.type_ref = "builtins.function"
+                instance_cache.function_type.type_ref = "types.FunctionType"
             return instance_cache.function_type
         if tag == INSTANCE_INT:
             if instance_cache.int_type is None:

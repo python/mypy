@@ -522,7 +522,7 @@ def analyze_none_member_access(name: str, typ: NoneType, mx: MemberContext) -> T
             arg_kinds=[],
             arg_names=[],
             ret_type=literal_false,
-            fallback=mx.named_type("builtins.function"),
+            fallback=mx.named_type("types.FunctionType"),
         )
     else:
         return _analyze_member_access(name, mx.named_type("builtins.object"), mx)
@@ -1401,7 +1401,7 @@ def analyze_typeddict_access(
             arg_kinds=[ARG_POS, ARG_POS],
             arg_names=[None, None],
             ret_type=NoneType(),
-            fallback=mx.chk.named_type("builtins.function"),
+            fallback=mx.chk.named_type("types.FunctionType"),
             name=name,
         )
     elif name == "__delitem__":
@@ -1410,7 +1410,7 @@ def analyze_typeddict_access(
             arg_kinds=[ARG_POS],
             arg_names=[None],
             ret_type=NoneType(),
-            fallback=mx.chk.named_type("builtins.function"),
+            fallback=mx.chk.named_type("types.FunctionType"),
             name=name,
         )
     return _analyze_member_access(name, typ.fallback, mx, override_info)

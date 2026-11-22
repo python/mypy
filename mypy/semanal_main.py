@@ -72,6 +72,7 @@ core_modules: Final = [
     "typing",
     "_collections_abc",
     "builtins",
+    "types",
     "abc",
     "collections",
     "collections.abc",

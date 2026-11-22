@@ -593,7 +593,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                 e.callee.arg_kinds,
                 e.callee.arg_names,
                 ret_type=self.object_type(),
-                fallback=self.named_type("builtins.function"),
+                fallback=self.named_type("types.FunctionType"),
             )
         callee_type = get_proper_type(
             self.accept(e.callee, type_context, always_allow_any=True, is_callee=True)
@@ -2053,7 +2053,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                 arg_kinds=[],
                 arg_names=[],
                 ret_type=NoneType(),
-                fallback=self.named_type("builtins.function"),
+                fallback=self.named_type("types.FunctionType"),
                 name=None,
                 from_type_type=True,
             )
@@ -3983,7 +3983,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                                 [nodes.ARG_POS],
                                 [None],
                                 self.bool_type(),
-                                self.named_type("builtins.function"),
+                                self.named_type("types.FunctionType"),
                             )
                             e.method_types.append(method_type)
                             iterable_types.append(itertype)
@@ -5475,7 +5475,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             [nodes.ARG_STAR],
             [None],
             self.chk.named_generic_type(fullname, [tv]),
-            self.named_type("builtins.function"),
+            self.named_type("types.FunctionType"),
             name=tag,
             variables=[tv],
         )
@@ -5767,7 +5767,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             [nodes.ARG_POS] * len(expected_types),
             [None] * len(expected_types),
             self.chk.named_generic_type("builtins.dict", [kt, vt]),
-            self.named_type("builtins.function"),
+            self.named_type("types.FunctionType"),
             name="<dict>",
             variables=[kt, vt],
         )
@@ -5842,7 +5842,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                 # Only type check the return expression, not the return statement.
                 # There's no useful type context.
                 ret_type = self.accept(e.expr(), allow_none_return=True)
-            fallback = self.named_type("builtins.function")
+            fallback = self.named_type("types.FunctionType")
             self.chk.return_types.pop()
             self.in_lambda_expr = old_in_lambda
             return callable_type(e, fallback, ret_type)
@@ -5905,7 +5905,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
 
         # The callable_ctx may have a fallback of builtins.type if the context
         # is a constructor -- but this fallback doesn't make sense for lambdas.
-        callable_ctx = callable_ctx.copy_modified(fallback=self.named_type("builtins.function"))
+        callable_ctx = callable_ctx.copy_modified(fallback=self.named_type("types.FunctionType"))
 
         if callable_ctx.type_guard is not None or callable_ctx.type_is is not None:
             # Lambda's return type cannot be treated as a `TypeGuard`,
@@ -6185,7 +6185,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                 [nodes.ARG_POS],
                 [None],
                 self.chk.named_generic_type(type_name, tv_list + additional_args),
-                self.chk.named_type("builtins.function"),
+                self.chk.named_type("types.FunctionType"),
                 name=id_for_messages,
                 variables=[tv],
             )
@@ -6240,7 +6240,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                 arg_kinds,
                 arg_names,
                 self.chk.named_generic_type("builtins.dict", [ktdef, vtdef]),
-                self.chk.named_type("builtins.function"),
+                self.chk.named_type("types.FunctionType"),
                 name="<dictionary-comprehension>",
                 variables=[ktdef, vtdef],
             )

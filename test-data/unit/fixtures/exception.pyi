@@ -11,7 +11,6 @@ class tuple(Generic[T]):
     def __ge__(self, other: object) -> bool: ...
 class list: pass
 class dict: pass
-class function: pass
 class int: pass
 class float: pass
 class str: pass

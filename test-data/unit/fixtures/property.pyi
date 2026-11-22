@@ -9,8 +9,6 @@ class object:
 class type:
     def __init__(self, x: typing.Any) -> None: pass
 
-class function: pass
-
 property = object()  # Dummy definition
 class classmethod: pass
 

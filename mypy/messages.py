@@ -427,7 +427,7 @@ class MessageBuilder:
             return codes.INDEX
         elif member == "__call__":
             if isinstance(original_type, Instance) and (
-                original_type.type.fullname == "builtins.function"
+                original_type.type.fullname == "types.FunctionType"
             ):
                 # "'function' not callable" is a confusing error message.
                 # Explain that the problem is that the type of the function is not known.

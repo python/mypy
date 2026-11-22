@@ -28,8 +28,6 @@ class tuple(Sequence[_Tco], Generic[_Tco]):
     def __rmul__(self, n: int) -> Tuple[_Tco, ...]: pass
     def __add__(self, x: Tuple[_Tco, ...]) -> Tuple[_Tco, ...]: pass
     def count(self, obj: object) -> int: pass
-class function:
-    __name__: str
 class classmethod: pass
 
 # We need int and slice for indexing tuples.

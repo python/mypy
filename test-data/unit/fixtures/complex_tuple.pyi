@@ -8,7 +8,6 @@ class object:
 class tuple(Generic[_T]): pass
 
 class type: pass
-class function: pass
 class int: pass
 class float: pass
 class complex: pass

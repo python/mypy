@@ -13,8 +13,6 @@ class type:
 
 class tuple(Generic[T]): pass
 
-class function: pass
-
 def isinstance(x: object, t: Union[Type[object], Tuple[Type[object], ...], types.UnionType]) -> bool: pass
 def issubclass(x: object, t: Union[Type[object], Tuple[Type[object], ...]]) -> bool: pass
 

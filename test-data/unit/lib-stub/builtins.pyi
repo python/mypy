@@ -20,8 +20,6 @@ class float: pass
 class str: pass
 class bytes: pass
 
-class function:
-    __name__: str
 
 from typing import Generic, Iterator, Sequence, TypeVar
 _T = TypeVar('_T')

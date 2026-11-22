@@ -244,7 +244,7 @@ class NewTypeAnalyzer:
             arg_kinds=[arg.kind for arg in args],
             arg_names=["self", "item"],
             ret_type=NoneType(),
-            fallback=self.api.named_type("builtins.function"),
+            fallback=self.api.named_type("types.FunctionType"),
             name=name,
         )
         init_func = FuncDef("__init__", args, Block([]), typ=signature)
