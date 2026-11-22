@@ -2862,11 +2862,12 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
     def check_slice_index_bounds(self, slice: SliceExpr, expected_type: ProperType) -> bool:
         """Check that slice indexes have valid types for `__getitem__` or `__setitem__`
 
-        Validates start, stop, and step as int, SupportsIndex, or None. Reports an error for invalid index types (e.g str).
+        Validates start, stop, and step against the expected slice type from the method signature.
+        Reports an error for invalid index types.
 
         Rejected examples,
-        x["foo":"bar"] # str indices
-        x[:2:b] = y # if b is not int/SupportsIndex/None
+        x["foo":"bar"] # str indices when expecting int/SupportsIndex/None
+        x[:2:b] = y # if b doesn't match the expected step type
         """
         expected_types = (
             get_proper_types(expected_type.items)
@@ -2894,8 +2895,8 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             )
             if not is_subtype(actual, expected_type, options=self.chk.options):
                 self.chk.fail(
-                    "Slice index must be an integer, SupportsIndex or None; got: "
-                    f"{format_type(actual, self.chk.options)}",
+                    f"Slice index must be {format_type(expected_type, self.chk.options)}; "
+                    f"got {format_type(actual, self.chk.options)}",
                     index,
                     code=codes.INDEX,
                 )
