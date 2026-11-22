@@ -2509,6 +2509,35 @@ class C:
 tmp/foo.pyi:3: error: Invalid signature "Callable[[B], A]"
 tmp/foo.pyi:5: error: Invalid signature "Callable[[C, Any, Any], int]"
 
+[case testReverseOperatorTernaryRpow]
+# flags: --python-version 3.14
+from typing import overload
+class A:
+    @overload
+    def __rpow__(self, other: int) -> A: ...
+    @overload
+    def __rpow__(self, other: int, mod: int) -> A: ...
+    def __rpow__(self, other: int, mod: int | None = None) -> A: ...
+class B:
+    def __radd__(self, other: int, mod: int) -> B: ...
+reveal_type(2 ** A()) # N: Revealed type is "__main__.A"
+[builtins fixtures/ops.pyi]
+[out]
+main:10: error: Invalid signature "Callable[[B, int, int], B]"
+
+[case testReverseOperatorTernaryRpowBefore314]
+# flags: --python-version 3.13
+from typing import overload
+class A:
+    @overload
+    def __rpow__(self, other: int) -> A: ...
+    @overload
+    def __rpow__(self, other: int, mod: int) -> A: ...
+    def __rpow__(self, other: int, mod: int | None = None) -> A: ...
+[builtins fixtures/ops.pyi]
+[out]
+main:7: error: Invalid signature "Callable[[A, int, int], A]"
+
 [case testReverseOperatorOrderingCase1]
 class A:
     def __radd__(self, other: 'A') -> int: ...

@@ -2004,6 +2004,19 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
                 "but must return a subtype of",
             )
 
+    def is_ternary_rpow(self, reverse_type: CallableType, reverse_name: str) -> bool:
+        """Is this a three-argument __rpow__, which ternary pow() calls since Python 3.14?"""
+        if reverse_name != "__rpow__" or self.options.python_version < (3, 14):
+            return False
+        ternary_type = CallableType(
+            [AnyType(TypeOfAny.special_form)] * 3,
+            [nodes.ARG_POS] * 3,
+            [None] * 3,
+            AnyType(TypeOfAny.special_form),
+            self.named_type("builtins.function"),
+        )
+        return is_subtype(reverse_type, ternary_type)
+
     def check_reverse_op_method(
         self, defn: FuncItem, reverse_type: CallableType, reverse_name: str, context: Context
     ) -> None:
@@ -2024,7 +2037,9 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
             AnyType(TypeOfAny.special_form),
             self.named_type("builtins.function"),
         )
-        if not is_subtype(reverse_type, method_type):
+        if not is_subtype(reverse_type, method_type) and not self.is_ternary_rpow(
+            reverse_type, reverse_name
+        ):
             self.msg.invalid_signature(reverse_type, context)
             return
 
