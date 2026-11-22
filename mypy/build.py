@@ -213,6 +213,12 @@ MODULE_RESOLUTION_URL: Final = (
 # situations where 100 empty __init__.py files cost less than 1 trivial module.
 MIN_SIZE_HINT: Final = 256
 
+# To compensate for communication overhead.
+PER_WORKER_SIZE_HINT: Final = 100000
+
+# Because implementation/interface ~= 3
+MAX_SCC_SHARDS: Final = 2
+
 
 class SCC:
     """A simple class that represents a strongly connected component (import cycle)."""
@@ -340,6 +346,7 @@ def build(
     stderr: TextIO | None = None,
     extra_plugins: Sequence[Plugin] | None = None,
     worker_env: Mapping[str, str] | None = None,
+    max_shards_override: int | None = None,
 ) -> BuildResult:
     """Analyze a program.
 
@@ -436,6 +443,7 @@ def build(
             workers,
             connect_threads,
             metastore,
+            max_shards_override,
         )
         result.errors = messages
         return result
@@ -478,6 +486,7 @@ def build_inner(
     workers: list[WorkerClient],
     connect_threads: list[Thread],
     metastore: MetadataStore,
+    max_shards_override: int | None,
 ) -> BuildResult:
     if platform.python_implementation() == "CPython":
         # Run gc less frequently, as otherwise we can spend a large fraction of
@@ -533,6 +542,7 @@ def build_inner(
         stderr=stderr,
         metastore=metastore,
     )
+    manager.max_shards_override = max_shards_override
     manager.workers = workers
     if manager.verbosity() >= 2:
         manager.trace(repr(options))
@@ -983,9 +993,10 @@ class BuildManager:
         # Stale SCCs that are queued for processing. Each tuple contains SCC size hint,
         # SCC adding order (tie-breaker), and the SCC itself.
         self.scc_queue: list[tuple[int, int, SCC]] = []
+        self.pending_shards: tuple[int, int, int] | None = None
         # Total size hint for SCCs currently in queue.
         self.size_in_queue: int = 0
-        # SCCs that have been fully processed.
+        # SCCs that have been fully processed (interface-only in parallel mode).
         self.done_sccs: set[int] = set()
         # Parallel build workers, list is empty for in-process type-checking.
         self.workers: list[WorkerClient] = []
@@ -1009,6 +1020,7 @@ class BuildManager:
         self.options_snapshot_cache: dict[Options, tuple[str, str]] = {}
         # Packages for which we know presence or absence of __getattr__().
         self.known_partial_packages: dict[str, bool] = {}
+        self.max_shards_override: int | None = None
 
     def dump_stats(self) -> None:
         if self.stats_enabled:
@@ -1426,6 +1438,45 @@ class BuildManager:
             batch_frac /= 2
         return int(self.size_in_queue * batch_frac)
 
+    def max_scc_split(self, graph: Graph, scc: SCC) -> int:
+        max_id_size = max(graph[mod_id].size_hint for mod_id in scc.mod_ids)
+        return scc.size_hint // max_id_size
+
+    def max_shards(self, scc: SCC) -> int:
+        if self.max_shards_override is not None:
+            return self.max_shards_override
+        return scc.size_hint // PER_WORKER_SIZE_HINT + 1
+
+    def scc_fair_share(self, scc: SCC) -> int:
+        num_workers = len(self.workers)
+        if self.size_in_queue == 0:
+            return num_workers
+        total = scc.size_hint + self.size_in_queue
+        return int(scc.size_hint / total * num_workers) + 1
+
+    def get_scc_shard(self, scc: SCC, graph: Graph, shard_id: int, num_shards: int) -> set[str]:
+        size_in_shard = 0
+        current_shard = 0
+        shard = set()
+        max_shard_size = scc.size_hint // num_shards
+        by_size = sorted(
+            [graph[mod_id] for mod_id in scc.mod_ids], key=lambda st: (st.size_hint, st.id)
+        )
+        while by_size:
+            largest_size = by_size[-1].size_hint
+            assert largest_size <= max_shard_size
+            if size_in_shard + largest_size <= max_shard_size or current_shard == num_shards - 1:
+                state = by_size.pop()
+                size_in_shard += largest_size
+                if current_shard == shard_id:
+                    shard.add(state.id)
+            else:
+                if current_shard == shard_id:
+                    break
+                current_shard += 1
+                size_in_shard = 0
+        return shard
+
     def submit_to_workers(self, graph: Graph, sccs: list[SCC] | None = None) -> None:
         if sccs is not None:
             for scc in sccs:
@@ -1433,35 +1484,68 @@ class BuildManager:
                 self.size_in_queue += scc.size_hint
                 self.queue_order += 1
         max_size_in_batch = self.max_batch_size()
-        while self.scc_queue and self.free_workers:
-            idx = self.free_workers.pop()
+        while (self.scc_queue or self.pending_shards) and self.free_workers:
+            if self.pending_shards:
+                scc_id, next_shard_id, num_shards = self.pending_shards
+                scc_batch = [self.scc_by_id[scc_id]]
+                self.submit_batch_or_shards(graph, scc_batch, next_shard_id, num_shards)
+                continue
             scc_batch = self.get_scc_batch(max_size_in_batch)
-            import_errors = {
-                mod_id: self.errors.recorded[path]
-                for scc in scc_batch
-                for mod_id in scc.mod_ids
-                if (path := graph[mod_id].xpath) in self.errors.recorded
-            }
-            t0 = time.time()
+            num_shards = 1
+            if len(scc_batch) == 1:
+                scc = scc_batch[0]
+                num_shards = min(
+                    self.max_scc_split(graph, scc),
+                    self.scc_fair_share(scc),
+                    self.max_shards(scc),
+                    MAX_SCC_SHARDS,
+                )
+                assert len(self.workers) >= num_shards >= 1
+                if all(
+                    graph[id].ignore_all or graph[id].options.ignore_errors for id in scc.mod_ids
+                ):
+                    num_shards = 1
+            self.submit_batch_or_shards(graph, scc_batch, 0, num_shards)
+
+    def submit_batch_or_shards(
+        self, graph: Graph, scc_batch: list[SCC], first_shard_id: int, num_shards: int
+    ) -> None:
+        import_errors = {
+            mod_id: self.errors.recorded[path]
+            for scc in scc_batch
+            for mod_id in scc.mod_ids
+            if (path := graph[mod_id].xpath) in self.errors.recorded
+        }
+        mod_data = {
+            mod_id: (
+                # Although workers don't really need to know about details
+                # of dependencies, they will write cache, so we need to pass
+                # suppressed_deps_opts() as part of module data.
+                graph[mod_id].suppressed_deps_opts(),
+                tree.raw_data if (tree := graph[mod_id].tree) else None,
+            )
+            for scc in scc_batch
+            for mod_id in scc.mod_ids
+        }
+        t0 = time.time()
+        for shard_id in range(first_shard_id, num_shards):
+            if not self.free_workers:
+                self.pending_shards = scc_batch[0].id, shard_id, num_shards
+                break
+            idx = self.free_workers.pop()
             send(
                 self.workers[idx].conn,
                 SccRequestMessage(
                     scc_ids=[scc.id for scc in scc_batch],
                     import_errors=import_errors,
-                    mod_data={
-                        mod_id: (
-                            # Although workers don't really need to know about details
-                            # of dependencies, they will write cache, so we need to pass
-                            # suppressed_deps_opts() as part of module data.
-                            graph[mod_id].suppressed_deps_opts(),
-                            tree.raw_data if (tree := graph[mod_id].tree) else None,
-                        )
-                        for scc in scc_batch
-                        for mod_id in scc.mod_ids
-                    },
+                    mod_data=mod_data,
+                    shard_id=shard_id,
+                    num_shards=num_shards,
                 ),
             )
-            self.add_stats(scc_requests_sent=1, scc_send_time=time.time() - t0)
+        else:
+            self.pending_shards = None
+        self.add_stats(scc_requests_sent=1, scc_send_time=time.time() - t0)
 
     def wait_for_done(self, graph: Graph) -> tuple[list[SCC], bool, dict[str, ModuleResult]]:
         """Wait for a stale SCC processing to finish.
@@ -1502,7 +1586,7 @@ class BuildManager:
                 raise data.blocker
             assert data.result is not None
             results.update(data.result)
-            if data.is_interface:
+            if data.is_interface and data.shard_id == 0:
                 done_sccs.extend([self.scc_by_id[scc_id] for scc_id in data.scc_ids])
         self.add_stats(scc_wait_time=t1 - t0, scc_receive_time=time.time() - t1)
         self.submit_to_workers(graph)  # advance after some workers are free.
@@ -2311,6 +2395,7 @@ def write_cache(
     local_partial_types: bool,
     is_parallel: bool,
     manager: BuildManager,
+    do_write: bool = True,
 ) -> tuple[bytes, tuple[CacheMeta, str] | None]:
     """Write cache files for a module.
 
@@ -2360,6 +2445,8 @@ def write_cache(
         data = tree.serialize()
         data_bytes = json_dumps(data, manager.options.debug_cache)
     interface_hash = hash_digest_bytes(data_bytes + json_dumps(plugin_data))
+    if not do_write:
+        return interface_hash, None
 
     # Obtain and set up metadata
     st = manager.get_stat(path)
@@ -3652,7 +3739,7 @@ class State:
                 write_int_bare(buf, reason)
         return buf.getvalue()
 
-    def write_cache(self) -> tuple[CacheMeta, str] | None:
+    def write_cache(self, do_write: bool = True) -> tuple[CacheMeta, str] | None:
         assert self.tree is not None, "Internal error: method must be called on parsed file only"
         # We don't support writing cache files in fine-grained incremental mode.
         if (
@@ -3695,6 +3782,7 @@ class State:
             self.options.local_partial_types,
             self.options.num_workers > 0,
             self.manager,
+            do_write=do_write,
         )
         if new_interface_hash == self.interface_hash:
             self.manager.log(f"Cached module {self.id} has same interface")
@@ -4854,7 +4942,11 @@ def process_stale_scc(graph: Graph, ascc: SCC, manager: BuildManager) -> None:
         return
     manager.parse_all([graph[id] for id in ascc.mod_ids], post_parse=False)
     scc_result = process_stale_scc_interface(
-        graph, ascc, manager, from_cache={id for id in ascc.mod_ids if graph[id].meta}
+        graph,
+        ascc,
+        manager,
+        from_cache={id for id in ascc.mod_ids if graph[id].meta},
+        write_cache=True,
     )
     manager.commit()
 
@@ -4983,7 +5075,7 @@ def process_stale_scc_full(graph: Graph, ascc: SCC, manager: BuildManager) -> No
 
 
 def process_stale_scc_interface(
-    graph: Graph, ascc: SCC, manager: BuildManager, from_cache: set[str]
+    graph: Graph, ascc: SCC, manager: BuildManager, from_cache: set[str], write_cache: bool
 ) -> list[tuple[str, ModuleResult, str | None]]:
     """Process the modules' interfaces in one SCC from source code."""
     # First verify if all transitive dependencies are loaded in the current process.
@@ -5022,7 +5114,7 @@ def process_stale_scc_interface(
     scc_result = []
     meta_tuples = {}
     for id in stale:
-        meta_tuple = graph[id].write_cache()
+        meta_tuple = graph[id].write_cache(do_write=write_cache)
         meta_tuples[id] = meta_tuple
         # Commit data file write immediately to avoid holding shard locks across modules.
         if meta_tuple is not None:
@@ -5031,6 +5123,8 @@ def process_stale_scc_interface(
         meta_tuple = meta_tuples[id]
         if meta_tuple is None:
             meta = meta_file = None
+            if not write_cache and graph[id].path is not None:
+                meta_file, _, _ = get_cache_names(id, graph[id].xpath, manager.options)
         else:
             meta, meta_file = meta_tuple
         state = graph[id]
@@ -5343,10 +5437,14 @@ class SccRequestMessage(IPCMessage):
         scc_ids: list[int],
         import_errors: dict[str, list[ErrorInfo]],
         mod_data: dict[str, tuple[bytes, FileRawData | None]],
+        shard_id: int = 0,
+        num_shards: int = 1,
     ) -> None:
         self.scc_ids = scc_ids
         self.import_errors = import_errors
         self.mod_data = mod_data
+        self.shard_id = shard_id
+        self.num_shards = num_shards
 
     @classmethod
     def read(cls, buf: ReadBuffer) -> SccRequestMessage:
@@ -5363,6 +5461,8 @@ class SccRequestMessage(IPCMessage):
                 )
                 for _ in range(read_int_bare(buf))
             },
+            shard_id=read_int(buf),
+            num_shards=read_int(buf),
         )
 
     def write(self, buf: WriteBuffer) -> None:
@@ -5383,6 +5483,8 @@ class SccRequestMessage(IPCMessage):
             else:
                 write_bool(buf, True)
                 raw_data.write(buf)
+        write_int(buf, self.shard_id)
+        write_int(buf, self.num_shards)
 
 
 class ModuleResult:
@@ -5422,6 +5524,7 @@ class SccResponseMessage(IPCMessage):
         is_interface: bool,
         result: dict[str, ModuleResult] | None = None,
         blocker: CompileError | None = None,
+        shard_id: int = 0,
     ) -> None:
         if result is not None:
             assert blocker is None
@@ -5431,6 +5534,7 @@ class SccResponseMessage(IPCMessage):
         self.is_interface = is_interface
         self.result = result
         self.blocker = blocker
+        self.shard_id = shard_id
 
     @classmethod
     def read(cls, buf: ReadBuffer) -> SccResponseMessage:
@@ -5442,6 +5546,7 @@ class SccResponseMessage(IPCMessage):
                 scc_ids=scc_ids,
                 is_interface=is_interface,
                 blocker=CompileError(read_str_list(buf), read_bool(buf), read_str_opt(buf)),
+                shard_id=read_int(buf),
             )
         else:
             assert tag == DICT_STR_GEN
@@ -5451,6 +5556,7 @@ class SccResponseMessage(IPCMessage):
                 result={
                     read_str_bare(buf): ModuleResult.read(buf) for _ in range(read_int_bare(buf))
                 },
+                shard_id=read_int(buf),
             )
 
     def write(self, buf: WriteBuffer) -> None:
@@ -5469,6 +5575,7 @@ class SccResponseMessage(IPCMessage):
             for mod_id in sorted(self.result):
                 write_str_bare(buf, mod_id)
                 self.result[mod_id].write(buf)
+        write_int(buf, self.shard_id)
 
 
 class SourcesDataMessage(IPCMessage):

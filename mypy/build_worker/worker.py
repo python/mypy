@@ -42,6 +42,7 @@ from mypy.build import (
     SccResponseMessage,
     SccsDataMessage,
     SourcesDataMessage,
+    get_cache_names,
     load_plugins,
     process_stale_scc_implementation,
     process_stale_scc_interface,
@@ -235,20 +236,49 @@ def serve(server: IPCServer, ctx: ServerContext) -> None:
             manager.dump_stats()
             break
         sccs = [manager.scc_by_id[scc_id] for scc_id in scc_ids]
+        shard = None
+        if len(sccs) == 1:
+            scc = sccs[0]
+            scc.size_hint = sum(graph[mid].size_hint for mid in scc.mod_ids)
+            shard = manager.get_scc_shard(scc, graph, scc_message.shard_id, scc_message.num_shards)
         mod_ids: list[str] = []
         for scc in sccs:
             mod_ids.extend(scc.mod_ids)
         t0 = time.time()
+        if sccs[0].id in manager.done_sccs:
+            assert shard is not None
+            try:
+                result: dict[str, ModuleResult] = {}
+                for id in shard:
+                    if graph[id].path is None:
+                        meta_file = None
+                    else:
+                        meta_file, _, _ = get_cache_names(id, graph[id].xpath, manager.options)
+                    result |= process_stale_scc_implementation(graph, [id], manager, [meta_file])
+                manager.commit()
+            except CompileError as blocker:
+                message = SccResponseMessage(scc_ids=scc_ids, is_interface=False, blocker=blocker)
+            else:
+                message = SccResponseMessage(scc_ids=scc_ids, is_interface=False, result=result)
+            timed_send(manager, server, message)
+            manager.add_stats(total_process_stale_time=time.time() - t0, stale_sccs_processed=1)
+            continue
         try:
             load_states(mod_ids, graph, manager, scc_message.import_errors, scc_message.mod_data)
             results = []
             for scc in sccs:
                 scc_result = process_stale_scc_interface(
-                    graph, scc, manager, from_cache=graph_data.from_cache
+                    graph,
+                    scc,
+                    manager,
+                    from_cache=graph_data.from_cache,
+                    # We only write cache by one worker to avoid contention
+                    write_cache=scc_message.shard_id == 0,
                 )
                 results.extend(scc_result)
                 # We must commit after each SCC, otherwise we break --sqlite-cache.
-                manager.commit()
+                if scc_message.shard_id == 0:
+                    manager.commit()
         except CompileError as blocker:
             message = SccResponseMessage(scc_ids=scc_ids, is_interface=True, blocker=blocker)
             timed_send(manager, server, message)
@@ -260,12 +290,19 @@ def serve(server: IPCServer, ctx: ServerContext) -> None:
                 stale.append(id)
                 mod_results[id] = mod_result
                 meta_files.append(meta_file)
-            message = SccResponseMessage(scc_ids=scc_ids, is_interface=True, result=mod_results)
+            message = SccResponseMessage(
+                scc_ids=scc_ids,
+                is_interface=True,
+                result=mod_results,
+                shard_id=scc_message.shard_id,
+            )
             timed_send(manager, server, message)
             try:
                 # Process implementations one by one, so that we can free memory a bit earlier.
-                result: dict[str, ModuleResult] = {}
+                result = {}
                 for id, meta_file in zip(stale, meta_files):
+                    if shard is not None and id not in shard:
+                        continue
                     result |= process_stale_scc_implementation(graph, [id], manager, [meta_file])
                 # Both phases write cache, so we should commit here as well.
                 manager.commit()

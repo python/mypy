@@ -198,7 +198,11 @@ class TypeCheckSuite(DataSuite):
         blocker = False
         try:
             res = build.build(
-                sources=sources, options=options, alt_lib_path=test_temp_dir, worker_env=worker_env
+                sources=sources,
+                options=options,
+                alt_lib_path=test_temp_dir,
+                worker_env=worker_env,
+                max_shards_override=2,
             )
             a = res.errors
         except CompileError as e:
