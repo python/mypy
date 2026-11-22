@@ -216,6 +216,7 @@ def serve(server: IPCServer, ctx: ServerContext) -> None:
 
     # Notify coordinator we are ready to start processing SCCs.
     send(server, AckMessage())
+    interfaces_done = set()
     while True:
         t0 = time.time()
         ready_to_read([server], WORKER_IDLE_TIMEOUT)
@@ -245,7 +246,7 @@ def serve(server: IPCServer, ctx: ServerContext) -> None:
         for scc in sccs:
             mod_ids.extend(scc.mod_ids)
         t0 = time.time()
-        if sccs[0].id in manager.done_sccs:
+        if sccs[0].id in interfaces_done:
             assert shard is not None
             try:
                 result: dict[str, ModuleResult] = {}
@@ -276,6 +277,7 @@ def serve(server: IPCServer, ctx: ServerContext) -> None:
                     write_cache=scc_message.shard_id == 0,
                 )
                 results.extend(scc_result)
+                interfaces_done.add(scc.id)
                 # We must commit after each SCC, otherwise we break --sqlite-cache.
                 if scc_message.shard_id == 0:
                     manager.commit()
@@ -339,6 +341,7 @@ def load_states(
         state = graph[id]
         # Re-clone options since we don't send them, it is usually faster than deserializing.
         state.options = state.options.clone_for_module(state.id)
+        state.tree = None
         suppressed_deps_opts, raw_data = mod_data[id]
         if raw_data is not None:
             state.parse_file(raw_data=raw_data)

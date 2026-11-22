@@ -216,8 +216,8 @@ MIN_SIZE_HINT: Final = 256
 # To compensate for communication overhead.
 PER_WORKER_SIZE_HINT: Final = 100000
 
-# Because implementation/interface ~= 3
-MAX_SCC_SHARDS: Final = 2
+# Because total/interface = ~3
+MAX_SCC_SHARDS: Final = 3
 
 
 class SCC:
@@ -993,7 +993,10 @@ class BuildManager:
         # Stale SCCs that are queued for processing. Each tuple contains SCC size hint,
         # SCC adding order (tie-breaker), and the SCC itself.
         self.scc_queue: list[tuple[int, int, SCC]] = []
-        self.pending_shards: tuple[int, int, int] | None = None
+        # A mapping worker idx -> SCC id.
+        self.scc_affinity: dict[int, int] = {}
+        # A mapping SCC id -> (next shard id, total shards)
+        self.pending_shards: dict[int, tuple[int, int]] = {}
         # Total size hint for SCCs currently in queue.
         self.size_in_queue: int = 0
         # SCCs that have been fully processed (interface-only in parallel mode).
@@ -1449,9 +1452,14 @@ class BuildManager:
 
     def scc_fair_share(self, scc: SCC) -> int:
         num_workers = len(self.workers)
-        if self.size_in_queue == 0:
+        if self.size_in_queue == 0 and not self.pending_shards:
             return num_workers
-        total = scc.size_hint + self.size_in_queue
+        total_in_shards = 0
+        for scc_id in self.pending_shards:
+            ascc = self.scc_by_id[scc_id]
+            shard_id, num_shards = self.pending_shards[scc_id]
+            total_in_shards += int(ascc.size_hint * (num_shards - shard_id) / num_shards)
+        total = scc.size_hint + self.size_in_queue + total_in_shards
         return int(scc.size_hint / total * num_workers) + 1
 
     def get_scc_shard(self, scc: SCC, graph: Graph, shard_id: int, num_shards: int) -> set[str]:
@@ -1485,12 +1493,25 @@ class BuildManager:
                 self.queue_order += 1
         max_size_in_batch = self.max_batch_size()
         while (self.scc_queue or self.pending_shards) and self.free_workers:
-            if self.pending_shards:
-                scc_id, next_shard_id, num_shards = self.pending_shards
-                scc_batch = [self.scc_by_id[scc_id]]
-                self.submit_batch_or_shards(graph, scc_batch, next_shard_id, num_shards)
+            idx = self.free_workers.pop()
+            if idx in self.scc_affinity:
+                scc_id = self.scc_affinity[idx]
+                shard_id, num_shards = self.pending_shards[scc_id]
+                self.submit_batch_or_shard(
+                    idx, graph, [self.scc_by_id[scc_id]], shard_id, num_shards
+                )
                 continue
             scc_batch = self.get_scc_batch(max_size_in_batch)
+            if not scc_batch:
+                # Queue is empty, use pending shards, use the fact dicts are ordered
+                # to get the oldest one.
+                scc_id = next(iter(self.pending_shards))
+                shard_id, num_shards = self.pending_shards[scc_id]
+                self.scc_affinity[idx] = scc_id
+                self.submit_batch_or_shard(
+                    idx, graph, [self.scc_by_id[scc_id]], shard_id, num_shards
+                )
+                continue
             num_shards = 1
             if len(scc_batch) == 1:
                 scc = scc_batch[0]
@@ -1505,10 +1526,12 @@ class BuildManager:
                     graph[id].ignore_all or graph[id].options.ignore_errors for id in scc.mod_ids
                 ):
                     num_shards = 1
-            self.submit_batch_or_shards(graph, scc_batch, 0, num_shards)
+            if num_shards > 1:
+                self.scc_affinity[idx] = scc_batch[0].id
+            self.submit_batch_or_shard(idx, graph, scc_batch, 0, num_shards)
 
-    def submit_batch_or_shards(
-        self, graph: Graph, scc_batch: list[SCC], first_shard_id: int, num_shards: int
+    def submit_batch_or_shard(
+        self, idx: int, graph: Graph, scc_batch: list[SCC], shard_id: int, num_shards: int
     ) -> None:
         import_errors = {
             mod_id: self.errors.recorded[path]
@@ -1528,24 +1551,27 @@ class BuildManager:
             for mod_id in scc.mod_ids
         }
         t0 = time.time()
-        for shard_id in range(first_shard_id, num_shards):
-            if not self.free_workers:
-                self.pending_shards = scc_batch[0].id, shard_id, num_shards
-                break
-            idx = self.free_workers.pop()
-            send(
-                self.workers[idx].conn,
-                SccRequestMessage(
-                    scc_ids=[scc.id for scc in scc_batch],
-                    import_errors=import_errors,
-                    mod_data=mod_data,
-                    shard_id=shard_id,
-                    num_shards=num_shards,
-                ),
-            )
-        else:
-            self.pending_shards = None
+        send(
+            self.workers[idx].conn,
+            SccRequestMessage(
+                scc_ids=[scc.id for scc in scc_batch],
+                import_errors=import_errors,
+                mod_data=mod_data,
+                shard_id=shard_id,
+                num_shards=num_shards,
+            ),
+        )
         self.add_stats(scc_requests_sent=1, scc_send_time=time.time() - t0)
+        if num_shards == 1:
+            return
+        scc_id = scc_batch[0].id
+        if shard_id == num_shards - 1:
+            del self.pending_shards[scc_id]
+            for idx in self.scc_affinity.copy():
+                if self.scc_affinity[idx] == scc_id:
+                    del self.scc_affinity[idx]
+        else:
+            self.pending_shards[scc_id] = shard_id + 1, num_shards
 
     def wait_for_done(self, graph: Graph) -> tuple[list[SCC], bool, dict[str, ModuleResult]]:
         """Wait for a stale SCC processing to finish.
