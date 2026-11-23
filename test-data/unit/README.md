@@ -141,7 +141,7 @@ To control which tests are run and how, you can use the `-k` switch:
 You can also run the type checker for manual testing without
 installing it by setting up the Python module search path suitably:
 
-    export PYTHONPATH=$PWD
+    export PYTHONPATH=$PWD:$PYTHONPATH
     python3 -m mypy PROGRAM.py
 
 You will have to manually install the `typing` module if you're running Python

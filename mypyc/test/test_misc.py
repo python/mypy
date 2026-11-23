@@ -188,7 +188,8 @@ class TestLazySetuptoolsImport(unittest.TestCase):
             with open(os.path.join(tmpdir, "a.py"), "w") as f:
                 f.write("def f(x: int) -> int:\n    return x + 1\n")
             env = os.environ.copy()
-            env["PYTHONPATH"] = PREFIX + os.pathsep + env.get("PYTHONPATH", "")
+            existing = env.get("PYTHONPATH")
+            env["PYTHONPATH"] = PREFIX + (os.pathsep + existing if existing else "")
             result = subprocess.run(
                 [sys.executable, "-c", script], cwd=tmpdir, env=env, capture_output=True, text=True
             )
