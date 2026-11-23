@@ -3,7 +3,7 @@ from typing import Any, Final, Tuple, cast
 
 from mypy_extensions import u64, i8, i16, i32, i64, u8
 
-from testutil import assertRaises
+from testutil import assertRaises, SSIZE_T_LONG, SSIZE_T_MAX
 
 ERROR: Final = 239
 
@@ -455,10 +455,15 @@ def test_index_with_u64() -> None:
     with assertRaises(IndexError):
         str_get("abc", 3)
     # Index too large for a short int takes the slow conversion path
-    with assertRaises(OverflowError):
-        tuple_get((1, 2, 3), 2**63)
-    with assertRaises(OverflowError):
-        str_get("abc", 2**64 - 1)
+    with assertRaises(IndexError, "tuple index out of range"):
+        tuple_get((1, 2, 3), SSIZE_T_LONG)
+    with assertRaises(IndexError, "string index out of range"):
+        str_get("abc", SSIZE_T_LONG)
+    for n in (2**63, 2**64 - 1):
+        with assertRaises(IndexError, "cannot fit 'int' into an index-sized integer"):
+            tuple_get((1, 2, 3), n)
+        with assertRaises(IndexError, "cannot fit 'int' into an index-sized integer"):
+            str_get("abc", n)
     assert bytes_get(b"abc", 0) == 97
     assert bytes_get(b"abc", 2) == 99
     assert str_ord("abc", 1) == 98
