@@ -84,7 +84,8 @@ def run_cmd(input: str) -> tuple[int, str]:
     if input.startswith("mypy "):
         input = sys.executable + " -m" + input
     env = os.environ.copy()
-    env["PYTHONPATH"] = PREFIX
+    existing = env.get("PYTHONPATH")
+    env["PYTHONPATH"] = PREFIX + (os.pathsep + existing if existing else "")
     try:
         output = subprocess.check_output(
             input, shell=True, stderr=subprocess.STDOUT, text=True, cwd=test_temp_dir, env=env
