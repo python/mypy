@@ -213,10 +213,14 @@ MODULE_RESOLUTION_URL: Final = (
 # situations where 100 empty __init__.py files cost less than 1 trivial module.
 MIN_SIZE_HINT: Final = 256
 
-# To compensate for communication overhead.
+# Minimum size of an SCC shard. This exists to avoid excessive communication overhead,
+# and only split larger SCCs across multiple workers.
 PER_WORKER_SIZE_HINT: Final = 100000
 
-# Because total/interface = ~3
+# Hard limit on number of shards per SCC. This exists because each extra shard
+# adds a significant penalty if it is not scheduled perfectly. Current value
+# is derived from total time/interface time.
+# TODO: bump this to 4-5 when we start splitting semantic analysis into two phases.
 MAX_SCC_SHARDS: Final = 3
 
 
@@ -993,9 +997,10 @@ class BuildManager:
         # Stale SCCs that are queued for processing. Each tuple contains SCC size hint,
         # SCC adding order (tie-breaker), and the SCC itself.
         self.scc_queue: list[tuple[int, int, SCC]] = []
-        # A mapping worker idx -> SCC id.
+        # We try to schedule shards of an SCC to a smaller subset of workers, when
+        # other workers are busy with non-sharded SCCs. A mapping worker idx -> SCC id.
         self.scc_affinity: dict[int, int] = {}
-        # A mapping SCC id -> (next shard id, total shards)
+        # SCC shards that are still pending: SCC id -> (next shard id, total shards).
         self.pending_shards: dict[int, tuple[int, int]] = {}
         # Total size hint for SCCs currently in queue.
         self.size_in_queue: int = 0
@@ -1023,6 +1028,8 @@ class BuildManager:
         self.options_snapshot_cache: dict[Options, tuple[str, str]] = {}
         # Packages for which we know presence or absence of __getattr__().
         self.known_partial_packages: dict[str, bool] = {}
+        # Override to aggressively force sharding in parallel tests, normally
+        # sharding would never happen, since all test files are tiny.
         self.max_shards_override: int | None = None
 
     def dump_stats(self) -> None:
@@ -1442,27 +1449,41 @@ class BuildManager:
         return int(self.size_in_queue * batch_frac)
 
     def max_scc_split(self, graph: Graph, scc: SCC) -> int:
+        """Maximum number of shards into which an SCC can be split relatively evenly.
+
+        For example, if an SCC contains one huge file that amounts to half of the SCC
+        size, it doesn't make much sense to split it into more than two shards, even
+        if total number of files in SCC is large.
+        """
         max_id_size = max(graph[mod_id].size_hint for mod_id in scc.mod_ids)
         return scc.size_hint // max_id_size
 
     def max_shards(self, scc: SCC) -> int:
+        """Maximum number of shards for this SCC judging by its absolute size."""
         if self.max_shards_override is not None:
             return self.max_shards_override
         return scc.size_hint // PER_WORKER_SIZE_HINT + 1
 
     def scc_fair_share(self, scc: SCC) -> int:
+        """How many workers this SCC can occupy compared to the total amount of work ready."""
         num_workers = len(self.workers)
         if self.size_in_queue == 0 and not self.pending_shards:
             return num_workers
+        # We include both ready SCCs, and remaining shards of the SCCs that are already
+        # being processed, since both represent work that is ready to be scheduled.
         total_in_shards = 0
         for scc_id in self.pending_shards:
-            ascc = self.scc_by_id[scc_id]
+            initial_size = self.scc_by_id[scc_id].size_hint
             shard_id, num_shards = self.pending_shards[scc_id]
-            total_in_shards += int(ascc.size_hint * (num_shards - shard_id) / num_shards)
+            total_in_shards += int(initial_size * (num_shards - shard_id) / num_shards)
         total = scc.size_hint + self.size_in_queue + total_in_shards
         return int(scc.size_hint / total * num_workers) + 1
 
     def get_scc_shard(self, scc: SCC, graph: Graph, shard_id: int, num_shards: int) -> set[str]:
+        """Get modules that represent given (stable) shard of an SCC.
+
+        We use a very simple sharding algorithm, a perfect solution is NP-complete.
+        """
         size_in_shard = 0
         current_shard = 0
         shard = set()
@@ -1494,6 +1515,8 @@ class BuildManager:
         max_size_in_batch = self.max_batch_size()
         while (self.scc_queue or self.pending_shards) and self.free_workers:
             idx = self.free_workers.pop()
+            # Prioritize workers with fixed affinity to avoid interface penalty
+            # in case of an overly eager sharding.
             if idx in self.scc_affinity:
                 scc_id = self.scc_affinity[idx]
                 shard_id, num_shards = self.pending_shards[scc_id]
@@ -1502,9 +1525,10 @@ class BuildManager:
                 )
                 continue
             scc_batch = self.get_scc_batch(max_size_in_batch)
+            # For workers without fixed affinity, prefer SCCs in queue. Again,
+            # this is to minimize interface penalty.
             if not scc_batch:
-                # Queue is empty, use pending shards, use the fact dicts are ordered
-                # to get the oldest one.
+                # Use the fact that dictionaries are ordered to get the oldest SCC.
                 scc_id = next(iter(self.pending_shards))
                 shard_id, num_shards = self.pending_shards[scc_id]
                 self.scc_affinity[idx] = scc_id
@@ -1516,6 +1540,7 @@ class BuildManager:
             if len(scc_batch) == 1:
                 scc = scc_batch[0]
                 num_shards = min(
+                    # Only shard SCCs when we are confident this will be efficient.
                     self.max_scc_split(graph, scc),
                     self.scc_fair_share(scc),
                     self.max_shards(scc),
@@ -1533,6 +1558,7 @@ class BuildManager:
     def submit_batch_or_shard(
         self, idx: int, graph: Graph, scc_batch: list[SCC], shard_id: int, num_shards: int
     ) -> None:
+        """Submit a unit of work to worker: a batch of small SCCs, or a shard of a large SCC."""
         import_errors = {
             mod_id: self.errors.recorded[path]
             for scc in scc_batch
@@ -1564,9 +1590,11 @@ class BuildManager:
         self.add_stats(scc_requests_sent=1, scc_send_time=time.time() - t0)
         if num_shards == 1:
             return
+        # Update shard status for sharded SCC.
         scc_id = scc_batch[0].id
         if shard_id == num_shards - 1:
             del self.pending_shards[scc_id]
+            # Clear all affinities when last shard is done.
             for idx in self.scc_affinity.copy():
                 if self.scc_affinity[idx] == scc_id:
                     del self.scc_affinity[idx]
@@ -1612,6 +1640,7 @@ class BuildManager:
                 raise data.blocker
             assert data.result is not None
             results.update(data.result)
+            # Shard 0 is the one writing the cache.
             if data.is_interface and data.shard_id == 0:
                 done_sccs.extend([self.scc_by_id[scc_id] for scc_id in data.scc_ids])
         self.add_stats(scc_wait_time=t1 - t0, scc_receive_time=time.time() - t1)
@@ -2441,6 +2470,7 @@ def write_cache(
       source_hash: the hash of the source code
       ignore_all: the ignore_all flag for this module
       manager: the build manager (for pyversion, log/trace)
+      do_write: if False, only compute interface hash, don't write the interface.
 
     Returns:
       A tuple containing the interface hash and inner tuple with CacheMeta
