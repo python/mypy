@@ -269,6 +269,30 @@ from .. import m
 [out]
 main:1: error: No parent module -- cannot perform relative import
 
+[case testRelativeImportFromAtTopLevelModule]
+from .m import x
+[file m.py]
+x = 1
+[out]
+main:1: error: No parent module -- cannot perform relative import
+
+[case testRelativeImportFromAtTopLevelModule2]
+from ..m import x
+[file m.py]
+x = 1
+[out]
+main:1: error: No parent module -- cannot perform relative import
+
+[case testRelativeImportFromPastTopLevelPackage]
+import pkg.mod
+[file m.py]
+x = 1
+[file pkg/__init__.py]
+[file pkg/mod.py]
+from ..m import x
+[out]
+tmp/pkg/mod.py:1: error: No parent module -- cannot perform relative import
+
 [case testUndefinedTypeWithQualifiedName]
 import typing
 import m
