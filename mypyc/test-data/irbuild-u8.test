@@ -224,6 +224,8 @@ def out_of_range() -> None:
     a: u8 = 256
     b: u8 = -1
     f(256)
+    g = u8(256)
+    h = u8(-1)
     # The following are ok
     c: u8 = 0
     d: u8 = 255
@@ -235,6 +237,8 @@ def f(x: u8) -> None: pass
 main:4: error: Value 256 is out of range for "u8"
 main:5: error: Value -1 is out of range for "u8"
 main:6: error: Value 256 is out of range for "u8"
+main:7: error: Value 256 is out of range for "u8"
+main:8: error: Value -1 is out of range for "u8"
 
 [case testU8BoxAndUnbox]
 from typing import Any
@@ -514,17 +518,13 @@ from mypy_extensions import u8
 def f() -> None:
     x = u8(0)
     y = u8(11)
-    z = u8(-3)  # Truncate
-    zz = u8(258)  # Truncate
     a = u8(255)
 [out]
 def f():
-    x, y, z, zz, a :: u8
+    x, y, a :: u8
 L0:
     x = 0
     y = 11
-    z = 253
-    zz = 2
     a = 255
     return 1
 

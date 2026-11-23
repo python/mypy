@@ -69,6 +69,8 @@ def out_of_range() -> None:
     a: u16 = 65536
     b: u16 = -1
     f(65536)
+    g = u16(65536)
+    h = u16(-1)
     # The following are ok
     c: u16 = 0
     d: u16 = 65535
@@ -80,6 +82,8 @@ def f(x: u16) -> None: pass
 main:4: error: Value 65536 is out of range for "u16"
 main:5: error: Value -1 is out of range for "u16"
 main:6: error: Value 65536 is out of range for "u16"
+main:7: error: Value 65536 is out of range for "u16"
+main:8: error: Value -1 is out of range for "u16"
 
 [case testU16BoxAndUnbox]
 from typing import Any
@@ -249,16 +253,12 @@ from mypy_extensions import u16
 def f() -> None:
     x = u16(0)
     y = u16(11)
-    z = u16(-3)  # Truncate
-    zz = u16(65538)  # Truncate
     a = u16(65535)
 [out]
 def f():
-    x, y, z, zz, a :: u16
+    x, y, a :: u16
 L0:
     x = 0
     y = 11
-    z = 65533
-    zz = 2
     a = 65535
     return 1

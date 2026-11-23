@@ -1659,27 +1659,17 @@ from mypy_extensions import i64
 def f() -> None:
     a = i64(9223372036854775807)
     b = i64(-9223372036854775808)
-    c = i64(9223372036854775808)  # Truncate
-    d = i64(18446744073709551621)  # Truncate
 [out]
 def f():
     r0 :: int
     a :: i64
     r1 :: int
     b :: i64
-    r2 :: int
-    c :: i64
-    r3 :: int
-    d :: i64
 L0:
     r0 = object 9223372036854775807
     a = 9223372036854775807
     r1 = object -9223372036854775808
     b = -9223372036854775808
-    r2 = object 9223372036854775808
-    c = -9223372036854775808
-    r3 = object 18446744073709551621
-    d = 5
     return 1
 
 [case testI64InitializeFromLargeLiteral_64bit]
@@ -1719,12 +1709,16 @@ def out_of_range() -> None:
     a: i64 = 9223372036854775808
     b: i64 = -9223372036854775809
     g(9223372036854775808)
+    c = i64(9223372036854775808)
+    d = i64(-9223372036854775809)
 
 def g(x: i64) -> None: pass
 [out]
 main:4: error: Value 9223372036854775808 is out of range for "i64"
 main:5: error: Value -9223372036854775809 is out of range for "i64"
 main:6: error: Value 9223372036854775808 is out of range for "i64"
+main:7: error: Value 9223372036854775808 is out of range for "i64"
+main:8: error: Value -9223372036854775809 is out of range for "i64"
 
 [case testI64ForLoopOverRange]
 from mypy_extensions import i64
