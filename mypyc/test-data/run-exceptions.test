@@ -759,6 +759,16 @@ def catch(n: int) -> List[Any]:
             tbs.append(exc.__traceback__)
     return tbs
 
+def catch_direct(n: int) -> List[Any]:
+    tbs = []
+    for i in range(n):
+        try:
+            raise ValueError(str(i))
+        except ValueError as e:
+            exc: Any = e
+            tbs.append(exc.__traceback__)
+    return tbs
+
 def raise_and_catch(n: int) -> int:
     count = 0
     for i in range(n):
@@ -780,9 +790,17 @@ def test_traceback_entries() -> None:
     tbs = catch(2)
     assert entries(tbs[0]) == [(True, "catch", 11), (True, "fail", 5)]
     assert entries(tbs[1]) == entries(tbs[0])
-    # Code objects of traceback entries are cached
+
+def test_code_object_reuse() -> None:
+    # Code objects of traceback entries are cached. The cache is direct-mapped
+    # and the slot depends on string addresses, so two distinct entries (such
+    # as those in catch()) can occasionally map to the same slot and evict each
+    # other. Use a single traceback entry per iteration so that the result
+    # doesn't depend on where the module is loaded.
+    tbs = catch_direct(2)
+    assert entries(tbs[0]) == [(True, "catch_direct", 21)]
+    assert tbs[0].tb_next is None
     assert tbs[0].tb_frame.f_code is tbs[1].tb_frame.f_code
-    assert tbs[0].tb_next.tb_frame.f_code is tbs[1].tb_next.tb_frame.f_code
 
 def count_code_objects() -> int:
     return sum(1 for o in gc.get_objects() if type(o).__name__ == "code")

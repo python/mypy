@@ -587,8 +587,6 @@ def generate_object_struct(cl: ClassIR, emitter: Emitter) -> None:
         # This must come before any field whose presence depends on the class, since
         # tp_weaklistoffset has to agree between a base class and its subclasses.
         lines.append("PyObject *weakreflist;")
-    if cl.has_method("__call__"):
-        lines.append("vectorcallfunc vectorcall;")
     # The flag affects attribute offsets, so concrete bases must agree on its presence.
     assert all(
         base.has_running_flag == cl.has_running_flag for base in cl.base_mro
@@ -616,6 +614,14 @@ def generate_object_struct(cl: ClassIR, emitter: Emitter) -> None:
 
                     if isinstance(rtype, RTuple):
                         emitter.declare_tuple_struct(rtype)
+
+    if cl.has_method("__call__"):
+        # This goes after the attributes, since a subclass may define __call__ when a
+        # base class doesn't, and the attributes of the base class must be at the same
+        # offsets in the subclass. The field is only accessed through the struct of the
+        # class or through tp_vectorcall_offset, so its offset can differ between
+        # classes.
+        lines.append("vectorcallfunc vectorcall;")
 
     lines.append(f"}} {cl.struct_name(emitter.names)};")
     lines.append("")

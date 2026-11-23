@@ -16,7 +16,7 @@ filelock==3.32.3
     # via -r test-requirements.in
 iniconfig==2.3.0
     # via pytest
-librt==0.16.0 ; platform_python_implementation != "PyPy"
+librt==0.17.0 ; platform_python_implementation != "PyPy"
     # via -r mypy-requirements.txt
 lxml==6.1.2 ; python_version < "3.16"
     # via -r test-requirements.in
