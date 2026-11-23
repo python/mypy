@@ -1601,7 +1601,7 @@ class BuildManager:
         else:
             self.pending_shards[scc_id] = shard_id + 1, num_shards
 
-    def wait_for_done(self, graph: Graph) -> tuple[list[SCC], bool, dict[str, ModuleResult]]:
+    def wait_for_done(self, graph: Graph) -> tuple[list[SCC], bool, list[ModuleResult]]:
         """Wait for a stale SCC processing to finish.
 
         Return a tuple three items:
@@ -1613,19 +1613,21 @@ class BuildManager:
         if self.workers:
             return self.wait_for_done_workers(graph)
         if not self.scc_queue:
-            return [], False, {}
+            return [], False, []
         _, _, next_scc = self.scc_queue.pop(0)
         process_stale_scc(graph, next_scc, self)
-        return [next_scc], bool(self.scc_queue), {}
+        return [next_scc], bool(self.scc_queue), []
 
-    def wait_for_done_workers(
-        self, graph: Graph
-    ) -> tuple[list[SCC], bool, dict[str, ModuleResult]]:
-        if not self.scc_queue and len(self.free_workers) == len(self.workers):
-            return [], False, {}
+    def wait_for_done_workers(self, graph: Graph) -> tuple[list[SCC], bool, list[ModuleResult]]:
+        if (
+            not self.scc_queue
+            and not self.pending_shards
+            and len(self.free_workers) == len(self.workers)
+        ):
+            return [], False, []
 
         done_sccs = []
-        results = {}
+        results = []
         t0 = time.time()
         ready = ready_to_read([w.conn for w in self.workers], WORKER_DONE_TIMEOUT)
         t1 = time.time()
@@ -1639,7 +1641,7 @@ class BuildManager:
             if data.blocker is not None:
                 raise data.blocker
             assert data.result is not None
-            results.update(data.result)
+            results.extend(data.result)
             # Shard 0 is the one writing the cache.
             if data.is_interface and data.shard_id == 0:
                 done_sccs.extend([self.scc_by_id[scc_id] for scc_id in data.scc_ids])
@@ -1649,7 +1651,9 @@ class BuildManager:
             # Note that "done" means interface-ready in this context. This is what
             # the caller should expect.
             done_sccs,
-            bool(self.scc_queue) or len(self.free_workers) < len(self.workers),
+            bool(self.scc_queue)
+            or bool(self.pending_shards)
+            or len(self.free_workers) < len(self.workers),
             results,
         )
 
@@ -4850,13 +4854,14 @@ def process_graph(graph: Graph, manager: BuildManager) -> None:
     manager.trace(f"Transitive deps cache size: {sys.getsizeof(manager.transitive_deps_cache)}")
 
 
-def process_results(results: dict[str, ModuleResult], graph: Graph, manager: BuildManager) -> None:
+def process_results(results: list[ModuleResult], graph: Graph, manager: BuildManager) -> None:
     """Process results of type-checking given modules.
 
     This will update interface hashes and flush type-checking errors (if any).
     Blockers should have been already handled by the caller.
     """
-    for id, result in results.items():
+    for result in results:
+        id = result.id
         # Interface and implementation results may be mixed in the same batch
         # from different workers, process each one accordingly.
         if result.interface_hash is not None:
@@ -5008,18 +5013,18 @@ def process_stale_scc(graph: Graph, ascc: SCC, manager: BuildManager) -> None:
 
     # Process interface results before starting implementations
     # (to mimic parallel checking 1:1).
-    mod_results = {}
+    mod_results = []
     stale = []
     meta_files = []
-    for id, mod_result, meta_file in scc_result:
-        stale.append(id)
-        mod_results[id] = mod_result
+    for mod_result, meta_file in scc_result:
+        stale.append(mod_result.id)
+        mod_results.append(mod_result)
         meta_files.append(meta_file)
     process_results(mod_results, graph, manager)
 
-    mod_results = {}
+    mod_results = []
     for id, meta_file in zip(stale, meta_files):
-        mod_results |= process_stale_scc_implementation(graph, [id], manager, [meta_file])
+        mod_results.extend(process_stale_scc_implementation(graph, [id], manager, [meta_file]))
     manager.commit()
     process_results(mod_results, graph, manager)
 
@@ -5132,7 +5137,7 @@ def process_stale_scc_full(graph: Graph, ascc: SCC, manager: BuildManager) -> No
 
 def process_stale_scc_interface(
     graph: Graph, ascc: SCC, manager: BuildManager, from_cache: set[str], write_cache: bool
-) -> list[tuple[str, ModuleResult, str | None]]:
+) -> list[tuple[ModuleResult, str | None]]:
     """Process the modules' interfaces in one SCC from source code."""
     # First verify if all transitive dependencies are loaded in the current process.
     t0 = time.time()
@@ -5193,7 +5198,7 @@ def process_stale_scc_interface(
             ]
             write_cache_meta(meta, manager, meta_file)
             manager.commit_module(meta_file)
-        scc_result.append((id, ModuleResult(graph[id].interface_hash.hex(), []), meta_file))
+        scc_result.append((ModuleResult(id, graph[id].interface_hash.hex(), []), meta_file))
     manager.done_sccs.add(ascc.id)
     manager.add_stats(
         load_missing_time=t1 - t0,
@@ -5207,7 +5212,7 @@ def process_stale_scc_interface(
 
 def process_stale_scc_implementation(
     graph: Graph, stale: list[str], manager: BuildManager, meta_files: list[str | None]
-) -> dict[str, ModuleResult]:
+) -> list[ModuleResult]:
     """Process implementations (top-level function/method bodies) in an SCC."""
     t0 = time.time()
     unfinished_modules = set(stale)
@@ -5251,7 +5256,7 @@ def process_stale_scc_implementation(
         graph[id].generate_unused_ignore_notes()
         graph[id].generate_ignore_without_code_notes()
 
-    scc_result = {}
+    scc_result = []
     for id, meta_file in zip(stale, meta_files):
         state = graph[id]
         # If there are no errors, only write the cache, don't send anything back
@@ -5261,7 +5266,7 @@ def process_stale_scc_implementation(
             formatted = manager.errors.format_messages(
                 graph[id].xpath, errors, formatter=manager.error_formatter
             )
-            scc_result[id] = ModuleResult(None, formatted)
+            scc_result.append(ModuleResult(id, None, formatted))
         else:
             errors = []
         if meta_file is None:
@@ -5551,15 +5556,17 @@ class ModuleResult:
     includes errors encountered during both phases).
     """
 
-    def __init__(self, interface_hash: str | None, error_lines: list[str]) -> None:
+    def __init__(self, id: str, interface_hash: str | None, error_lines: list[str]) -> None:
+        self.id = id
         self.interface_hash = interface_hash
         self.error_lines = error_lines
 
     @classmethod
     def read(cls, buf: ReadBuffer) -> ModuleResult:
-        return ModuleResult(read_str_opt(buf), read_str_list(buf))
+        return ModuleResult(read_str(buf), read_str_opt(buf), read_str_list(buf))
 
     def write(self, buf: WriteBuffer) -> None:
+        write_str(buf, self.id)
         write_str_opt(buf, self.interface_hash)
         write_str_list(buf, self.error_lines)
 
@@ -5578,7 +5585,7 @@ class SccResponseMessage(IPCMessage):
         *,
         scc_ids: list[int],
         is_interface: bool,
-        result: dict[str, ModuleResult] | None = None,
+        result: list[ModuleResult] | None = None,
         blocker: CompileError | None = None,
         shard_id: int = 0,
     ) -> None:
@@ -5609,9 +5616,7 @@ class SccResponseMessage(IPCMessage):
             return SccResponseMessage(
                 scc_ids=scc_ids,
                 is_interface=is_interface,
-                result={
-                    read_str_bare(buf): ModuleResult.read(buf) for _ in range(read_int_bare(buf))
-                },
+                result=[ModuleResult.read(buf) for _ in range(read_int_bare(buf))],
                 shard_id=read_int(buf),
             )
 
@@ -5628,9 +5633,8 @@ class SccResponseMessage(IPCMessage):
         else:
             write_tag(buf, DICT_STR_GEN)
             write_int_bare(buf, len(self.result))
-            for mod_id in sorted(self.result):
-                write_str_bare(buf, mod_id)
-                self.result[mod_id].write(buf)
+            for mod_result in self.result:
+                mod_result.write(buf)
         write_int(buf, self.shard_id)
 
 

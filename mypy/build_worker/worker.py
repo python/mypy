@@ -38,7 +38,6 @@ from mypy.build import (
     BuildManager,
     Graph,
     GraphMessage,
-    ModuleResult,
     SccRequestMessage,
     SccResponseMessage,
     SccsDataMessage,
@@ -265,13 +264,13 @@ def process_implementation_only(
 ) -> None:
     """Process implementation for a given shard, if interface has been done by this worker."""
     try:
-        result: dict[str, ModuleResult] = {}
+        result = []
         for id in sorted(shard):
             if graph[id].path is None:
                 meta_file = None
             else:
                 meta_file, _, _ = get_cache_names(id, graph[id].xpath, manager.options)
-            result |= process_stale_scc_implementation(graph, [id], manager, [meta_file])
+            result.extend(process_stale_scc_implementation(graph, [id], manager, [meta_file]))
         manager.commit()
     except CompileError as blocker:
         message = SccResponseMessage(scc_ids=[scc_id], is_interface=False, blocker=blocker)
@@ -308,12 +307,12 @@ def process_interface_and_implementation(
         message = SccResponseMessage(scc_ids=scc_ids, is_interface=True, blocker=blocker)
         timed_send(manager, server, message)
     else:
-        mod_results = {}
+        mod_results = []
         stale = []
         meta_files = []
-        for id, mod_result, meta_file in results:
-            stale.append(id)
-            mod_results[id] = mod_result
+        for mod_result, meta_file in results:
+            stale.append(mod_result.id)
+            mod_results.append(mod_result)
             meta_files.append(meta_file)
         message = SccResponseMessage(
             scc_ids=scc_ids, is_interface=True, result=mod_results, shard_id=scc_message.shard_id
@@ -321,11 +320,11 @@ def process_interface_and_implementation(
         timed_send(manager, server, message)
         try:
             # Process implementations one by one, so that we can free memory a bit earlier.
-            result: dict[str, ModuleResult] = {}
+            result = []
             for id, meta_file in zip(stale, meta_files):
                 if shard is not None and id not in shard:
                     continue
-                result |= process_stale_scc_implementation(graph, [id], manager, [meta_file])
+                result.extend(process_stale_scc_implementation(graph, [id], manager, [meta_file]))
             # Both phases write cache, so we should commit here as well.
             manager.commit()
         except CompileError as blocker:
