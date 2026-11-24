@@ -26,7 +26,12 @@ from mypy.nodes import (
     UnaryExpr,
     Var,
 )
-from mypyc.ir.rtypes import wrap_unsigned_native_int
+from mypyc.ir.rtypes import (
+    RPrimitive,
+    is_fixed_width_rtype,
+    wrap_native_int,
+    wrap_unsigned_native_int,
+)
 from mypyc.irbuild.util import bytes_from_str
 
 if TYPE_CHECKING:
@@ -80,12 +85,29 @@ def constant_fold_expr_inner(builder: IRBuilder, expr: Expression) -> ConstantVa
         left = constant_fold_expr(builder, expr.left)
         right = constant_fold_expr(builder, expr.right)
         if left is not None and right is not None:
+            if expr.op in ("<<", ">>") and isinstance(left, int) and isinstance(right, int):
+                rtype = builder.node_type(expr)
+                if is_fixed_width_rtype(rtype):
+                    return constant_fold_native_int_shift(rtype, expr.op, left, right)
             return constant_fold_binary_op_extended(expr.op, left, right)
     elif isinstance(expr, UnaryExpr):
         value = constant_fold_expr(builder, expr.expr)
         if value is not None and not isinstance(value, bytes):
             return constant_fold_unary_op(expr.op, value)
     return None
+
+
+def constant_fold_native_int_shift(rtype: RPrimitive, op: str, left: int, right: int) -> int:
+    """Fold a shift of a fixed-width native int (see IntOp for the semantics).
+
+    A count that is negative or at least the bit width gives 0, or -1 for a right shift
+    of a negative value. A left shift wraps around, also for signed types.
+    """
+    if not 0 <= right < 8 * rtype.size:
+        return -1 if op == ">>" and left < 0 else 0
+    if op == ">>":
+        return left >> right
+    return wrap_native_int(rtype, left << right)
 
 
 def constant_fold_binary_op_extended(

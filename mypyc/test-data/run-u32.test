@@ -113,6 +113,22 @@ def test_simple_arithmetic_ops() -> None:
     assert abs(neg_one) == 4294967295
     assert abs(zero) == 0
 
+def test_left_shift_wraps_around() -> None:
+    one: u32 = 1 + int()
+    max_u32: u32 = 4294967295 + int()
+    assert max_u32 << one == 4294967294
+    assert max_u32 << (one * 31) == 2147483648
+
+def test_shift_count_out_of_range() -> None:
+    one: u32 = 1 + int()
+    max_u32: u32 = 4294967295 + int()
+    width: u32 = 32 + int()
+    for n in [width, -one]:
+        assert max_u32 << n == 0
+        assert max_u32 >> n == 0
+    # The largest valid count
+    assert max_u32 >> (width - one) == 1
+
 def test_bitwise_ops() -> None:
     x: u32 = 47384 + int()
     y: u32 = 20239 + int()

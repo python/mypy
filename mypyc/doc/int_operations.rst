@@ -214,16 +214,6 @@ Operators
 * Comparisons (``==``, ``!=``, ``<``, etc.)
 * Augmented assignment (``x += y``, etc.)
 
-If one of the above native integer operations overflows or underflows
-with signed operands, the behavior is undefined. Signed native integer
-types should only be used if all possible values are small enough for
-the type. For this reason, the arbitrary-precision ``int`` type is
-recommended for signed values unless the performance of integer
-operations is critical.
-
-Operations on unsigned integers (``u64``, ``u32``, ``u16`` and ``u8``) wrap
-around on overflow.
-
 It's a compile-time error to mix different native integer types in a
 binary operation such as addition. An explicit conversion is required::
 
@@ -243,6 +233,20 @@ and the ``int`` operand is coerced to the native integer type::
       ...
       b = 1 - x
       # Similarly, type of "b" is "i64"
+
+If one of the above native integer arithmetic operations overflows or underflows
+with signed operands, the behavior is undefined. Signed native integer
+types should only be used if all possible values are small enough for
+the type. For this reason, the arbitrary-precision ``int`` type is
+recommended for signed values unless the performance of integer
+operations is critical.
+
+Operations on unsigned integers (``u64``, ``u32``, ``u16`` and ``u8``) wrap
+around on overflow. Left shifts (``<<``) wrap around on overflow for both signed
+and unsigned types. For example, ``i8(64) << 1`` is ``-128``.
+
+Shifting by a negative count or by at least the bit width gives 0, or
+-1 for a right shift of a negative value (similar to NumPy).
 
 Functions
 ---------
