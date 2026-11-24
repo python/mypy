@@ -1,6 +1,6 @@
 [case testI64BasicOps]
 import sys
-from typing import List, Any, Tuple, Union
+from typing import List, Any, Tuple, Union, Final
 
 from mypy_extensions import i64, i32, i16
 
@@ -212,6 +212,48 @@ def test_simple_arithmetic_ops() -> None:
     assert abs(one) == 1
     assert abs(neg_one) == 1
     assert abs(zero) == 0
+
+def test_left_shift_wraps_around() -> None:
+    max_i64: i64 = 2**63 - 1 + int()
+    min_i64: i64 = -2**63 + int()
+    one: i64 = 1 + int()
+    assert max_i64 << one == -2
+    assert min_i64 << one == 0
+    assert -one << (one * 63) == min_i64
+    x = max_i64
+    x <<= one + one
+    assert x == -4
+
+ONE_I64: Final[i64] = 1
+
+def test_left_shift_wraps_around_constant() -> None:
+    assert ONE_I64 << 63 == -2**63
+    assert (ONE_I64 << 63) >> 63 == -1
+
+def test_shift_count_out_of_range() -> None:
+    one: i64 = 1 + int()
+    neg: i64 = -5 + int()
+    width: i64 = 64 + int()
+    for n in [width, width + one, -one, -2**63 + int()]:
+        assert one << n == 0
+        assert neg << n == 0
+        assert one >> n == 0
+        assert neg >> n == -1
+        x = neg
+        x <<= n
+        assert x == 0
+        x = neg
+        x >>= n
+        assert x == -1
+    # The largest valid count
+    assert one << (width - one) == -2**63
+    assert neg >> (width - one) == -1
+    # Constant counts
+    assert neg << 64 == 0
+    assert neg << -1 == 0
+    assert neg >> 64 == -1
+    assert one >> 65 == 0
+    assert neg >> -1 == -1
 
 def test_bitwise_ops() -> None:
     x: i64 = 7997307308812232241 + int()

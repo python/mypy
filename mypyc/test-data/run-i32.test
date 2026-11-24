@@ -125,6 +125,26 @@ def test_simple_arithmetic_ops() -> None:
     assert abs(neg_one) == 1
     assert abs(zero) == 0
 
+def test_left_shift_wraps_around() -> None:
+    max_i32: i32 = 2**31 - 1 + int()
+    min_i32: i32 = -2**31 + int()
+    one: i32 = 1 + int()
+    assert max_i32 << one == -2
+    assert min_i32 << one == 0
+    assert -one << (one * 31) == min_i32
+
+def test_shift_count_out_of_range() -> None:
+    one: i32 = 1 + int()
+    neg: i32 = -5 + int()
+    width: i32 = 32 + int()
+    for n in [width, -one, -width]:
+        assert one << n == 0
+        assert one >> n == 0
+        assert neg >> n == -1
+    # The largest valid count
+    assert one << (width - one) == -2**31
+    assert neg >> (width - one) == -1
+
 def test_bitwise_ops() -> None:
     x: i32 = 1920687484 + int()
     y: i32 = 383354614 + int()

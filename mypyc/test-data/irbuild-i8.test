@@ -81,6 +81,25 @@ L4:
 L5:
     return r6
 
+[case testI8ConstantFoldLeftShiftWrapsAround]
+from typing import Final
+from mypy_extensions import i8
+
+ONE: Final[i8] = 1
+
+def f() -> None:
+    a = ONE << 7
+    b = (ONE << 7) >> 7
+    d = ONE << 6
+[out]
+def f():
+    a, b, d :: i8
+L0:
+    a = -128
+    b = -1
+    d = 64
+    return 1
+
 [case testI8DetectOutOfRangeLiterals]
 from mypy_extensions import i8
 

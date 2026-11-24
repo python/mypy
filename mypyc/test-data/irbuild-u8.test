@@ -742,3 +742,24 @@ L3:
     goto L1
 L4:
     return 1
+
+[case testU8ConstantFoldShiftByCountOutOfRange]
+from typing import Final
+from mypy_extensions import u8
+
+ONE: Final[u8] = 1
+
+def f() -> None:
+    a = ONE << -ONE
+    b = ONE << 8
+    c = ONE << 7
+    d = ONE >> 8
+[out]
+def f():
+    a, b, c, d :: u8
+L0:
+    a = 0
+    b = 0
+    c = 128
+    d = 0
+    return 1

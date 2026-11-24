@@ -56,6 +56,26 @@ def test_operations() -> None:
     assert abs(x) == 65
     assert abs(y) == 12
 
+def test_left_shift_wraps_around() -> None:
+    max_i8: i8 = 2**7 - 1 + int()
+    min_i8: i8 = -2**7 + int()
+    one: i8 = 1 + int()
+    assert max_i8 << one == -2
+    assert min_i8 << one == 0
+    assert -one << (one * 7) == min_i8
+
+def test_shift_count_out_of_range() -> None:
+    one: i8 = 1 + int()
+    neg: i8 = -5 + int()
+    width: i8 = 8 + int()
+    for n in [width, -one, -width]:
+        assert one << n == 0
+        assert one >> n == 0
+        assert neg >> n == -1
+    # The largest valid count
+    assert one << (width - one) == -2**7
+    assert neg >> (width - one) == -1
+
 def test_conversions() -> None:
     assert to_i8(127) == 127
     assert to_i8(128) == -128

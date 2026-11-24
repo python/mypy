@@ -566,3 +566,24 @@ L0:
     r1 = box(int, x)
     r2 = CPyList_SetItemInt64(a, r0, r1)
     return 1
+
+[case testU64ConstantFoldShiftByCountOutOfRange]
+from typing import Final
+from mypy_extensions import u64
+
+ONE: Final[u64] = 1
+
+def f() -> None:
+    a = ONE << -ONE
+    b = ONE << ~ONE
+    c = ONE << 64
+    d = ONE >> -ONE
+[out]
+def f():
+    a, b, c, d :: u64
+L0:
+    a = 0
+    b = 0
+    c = 0
+    d = 0
+    return 1

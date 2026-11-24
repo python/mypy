@@ -85,6 +85,7 @@ from mypyc.ir.rtypes import (
     RType,
     RVec,
     is_bool_or_bit_rprimitive,
+    is_fixed_width_rtype,
     is_int32_rprimitive,
     is_int64_rprimitive,
     is_int_rprimitive,
@@ -928,7 +929,7 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         dest = self.reg(op)
         value = self.reg(op.src)
         if op.signed:
-            src_cast = self.emit_signed_int_cast(op.src.type)
+            src_cast = self.signed_cast_if_tagged(op.src.type)
         else:
             src_cast = self.emit_unsigned_int_cast(op.src.type)
         self.emit_line(f"{dest} = {src_cast}{value};")
@@ -938,17 +939,19 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         self.emit_line(f"{dest} = {op.identifier};", ann=op.ann)
 
     def visit_int_op(self, op: IntOp) -> None:
+        if op.op in (IntOp.LEFT_SHIFT, IntOp.RIGHT_SHIFT) and is_fixed_width_rtype(op.type):
+            self.emit_native_int_shift(op)
+            return
         dest = self.reg(op)
         lhs = self.reg(op.lhs)
         rhs = self.reg(op.rhs)
         if op.op == IntOp.RIGHT_SHIFT:
             # Signed right shift
-            lhs = self.emit_signed_int_cast(op.lhs.type) + lhs
-            rhs = self.emit_signed_int_cast(op.rhs.type) + rhs
+            lhs = self.signed_cast_if_tagged(op.lhs.type) + lhs
+            rhs = self.signed_cast_if_tagged(op.rhs.type) + rhs
         elif (
-            op.op in (IntOp.MUL, IntOp.LEFT_SHIFT)
-            and isinstance(op.type, RPrimitive)
-            and op.type.is_native_int
+            op.op == IntOp.MUL
+            and is_fixed_width_rtype(op.type)
             and not op.type.is_signed
             and op.type.size < 4
         ):
@@ -958,6 +961,61 @@ class FunctionEmitterVisitor(OpVisitor[None]):
             lhs = f"(unsigned int){lhs}"
         self.emit_line(f"{dest} = {lhs} {op.op_str[op.op]} {rhs};")
 
+    def emit_native_int_shift(self, op: IntOp) -> None:
+        """Emit a left or right shift with a fixed-width native int result type.
+
+        The left operand is usually of the same type, but it can also be a tagged int,
+        when untagging an int (a right shift by 1).
+
+        Unlike in C, a left shift wraps around on overflow, and a shift count that is
+        negative or at least the bit width of the type is defined (like NumPy): the
+        count is treated as unsigned, and the result is 0, or -1 for a right shift of
+        a negative value.
+        """
+        rtype = op.type
+        assert is_fixed_width_rtype(rtype)
+        dest = self.reg(op)
+        lhs = self.reg(op.lhs)
+        rhs = self.reg(op.rhs)
+        bits = 8 * rtype.size
+        is_signed_right_shift = op.op == IntOp.RIGHT_SHIFT and rtype.is_signed
+
+        if op.op == IntOp.RIGHT_SHIFT:
+            # A tagged operand (when untagging an int) is unsigned in C, but the shift must
+            # be signed to preserve the sign. Native int operands already have the right
+            # signedness, so they are used as is.
+            lhs = self.signed_cast_if_tagged(op.lhs.type) + lhs
+
+        def shift(count: str) -> str:
+            if op.op == IntOp.RIGHT_SHIFT:
+                return f"{lhs} >> {count}"
+            unsigned_type = left_shift_unsigned_ctype(rtype)
+            if unsigned_type is None:
+                return f"{lhs} << {count}"
+            # Left shift of a negative value, or one that overflows a signed type, is
+            # undefined behavior in C, so shift using an unsigned type, which wraps
+            # around, and convert the result back.
+            return f"({self.ctype(rtype)})(({unsigned_type}){lhs} << {count})"
+
+        if isinstance(op.rhs, Integer):
+            if 0 <= op.rhs.value < bits:
+                self.emit_line(f"{dest} = {shift(rhs)};")
+            elif is_signed_right_shift:
+                self.emit_line(f"{dest} = {lhs} >> {bits - 1};")
+            else:
+                self.emit_line(f"{dest} = 0;")
+            return
+        # A shift count outside [0, bits) is undefined behavior in C. Compare the count
+        # as unsigned, so that a negative count is also out of range. Compilers generate
+        # branchless code for this (e.g. lsl, cmp, csel on arm64).
+        assert isinstance(op.rhs.type, RPrimitive)
+        count = f"({unsigned_ctype_of_size(op.rhs.type.size)}){rhs}"
+        if is_signed_right_shift:
+            # Shifting by bits - 1 gives 0, or -1 if the value is negative
+            self.emit_line(f"{dest} = {lhs} >> ({count} < {bits} ? {rhs} : {bits - 1});")
+        else:
+            self.emit_line(f"{dest} = {count} < {bits} ? {shift(rhs)} : 0;")
+
     def visit_comparison_op(self, op: ComparisonOp) -> None:
         dest = self.reg(op)
         lhs = self.reg(op.lhs)
@@ -966,18 +1024,18 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         rhs_cast = ""
         if op.op in (ComparisonOp.SLT, ComparisonOp.SGT, ComparisonOp.SLE, ComparisonOp.SGE):
             # Always signed comparison op
-            lhs_cast = self.emit_signed_int_cast(op.lhs.type)
-            rhs_cast = self.emit_signed_int_cast(op.rhs.type)
+            lhs_cast = self.signed_cast_if_tagged(op.lhs.type)
+            rhs_cast = self.signed_cast_if_tagged(op.rhs.type)
         elif op.op in (ComparisonOp.ULT, ComparisonOp.UGT, ComparisonOp.ULE, ComparisonOp.UGE):
             # Always unsigned comparison op
             lhs_cast = self.emit_unsigned_int_cast(op.lhs.type)
             rhs_cast = self.emit_unsigned_int_cast(op.rhs.type)
         elif isinstance(op.lhs, Integer) and op.lhs.value < 0:
             # Force signed ==/!= with negative operand
-            rhs_cast = self.emit_signed_int_cast(op.rhs.type)
+            rhs_cast = self.signed_cast_if_tagged(op.rhs.type)
         elif isinstance(op.rhs, Integer) and op.rhs.value < 0:
             # Force signed ==/!= with negative operand
-            lhs_cast = self.emit_signed_int_cast(op.lhs.type)
+            lhs_cast = self.signed_cast_if_tagged(op.lhs.type)
         self.emit_line(f"{dest} = {lhs_cast}{lhs} {op.op_str[op.op]} {rhs_cast}{rhs};")
 
     def visit_float_op(self, op: FloatOp) -> None:
@@ -1184,7 +1242,12 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         if DEBUG_ERRORS:
             self.emit_line('assert(PyErr_Occurred() != NULL && "failure w/o err!");')
 
-    def emit_signed_int_cast(self, type: RType) -> str:
+    def signed_cast_if_tagged(self, type: RType) -> str:
+        """Return a C cast prefix that makes a tagged int operand signed.
+
+        CPyTagged is unsigned in C. Return "" for all other types, including
+        unsigned native ints, which must keep their signedness.
+        """
         if is_tagged(type):
             return "(Py_ssize_t)"
         else:
@@ -1197,6 +1260,28 @@ class FunctionEmitterVisitor(OpVisitor[None]):
             return "(uint64_t)"
         else:
             return ""
+
+
+def left_shift_unsigned_ctype(rtype: RPrimitive) -> str | None:
+    """Return the unsigned C type to use so that a native int left shift wraps around.
+
+    Signed types need this, since a left shift of a negative value, or one that overflows,
+    is undefined behavior in C. Return None if the shift already uses an unsigned C type
+    at least as wide as int (u32 and u64).
+
+    C promotes narrower unsigned types (u8 and u16) to (signed) int. A valid count (less
+    than the bit width) can't overflow int (at most 0xFFFF << 15), but use an unsigned
+    type anyway, so that the shift stays defined even without the range check on the
+    count. This generates the same machine code. Only the left operand needs a cast,
+    since it alone determines the type of a shift.
+    """
+    if not rtype.is_signed and rtype.size >= 4:
+        return None
+    return unsigned_ctype_of_size(max(rtype.size, 4))
+
+
+def unsigned_ctype_of_size(size: int) -> str:
+    return f"uint{8 * size}_t"
 
 
 _translation_table: Final[dict[int, str]] = {}
