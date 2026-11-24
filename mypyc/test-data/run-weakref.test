@@ -87,8 +87,11 @@ class FreeList:
 class WithDel:
     def __del__(self) -> None:
         deleted.append(1)
+        # A weak reference created during finalization must also be cleared.
+        refs_from_del.append(weakref.ref(self))
 
 deleted: list[int] = []
+refs_from_del: list[weakref.ref[WithDel]] = []
 
 def test_ref() -> None:
     obj: Optional[C] = C(3)
@@ -171,6 +174,8 @@ def test_del() -> None:
     gc.collect()
     assert deleted == [1]
     assert r() is None
+    assert len(refs_from_del) == 1
+    assert refs_from_del[0]() is None
 
 def test_no_dangling_refs() -> None:
     # Regression test: weakrefs to dead objects used to resurrect freed memory.
@@ -291,6 +296,14 @@ class Open:
     def __init__(self) -> None:
         self.x = 1
 
+@mypyc_attr(allow_interpreted_subclasses=True)
+class OpenNoWeakrefs:
+    pass
+
+def ref_open_no_weakrefs(o: OpenNoWeakrefs) -> weakref.ref[OpenNoWeakrefs]:
+    # No compile error, since 'o' may be an instance of an interpreted subclass
+    return weakref.ref(o)
+
 def test_implicit_weakref_support() -> None:
     obj: Optional[Native] = Native()
     r = weakref.ref(obj)
@@ -323,7 +336,11 @@ class Base:
 [file driver.py]
 import gc
 import weakref
-from native import Open, test_implicit_weakref_support, test_no_dangling_refs
+from native import (
+    Open, OpenNoWeakrefs, ref_open_no_weakrefs, test_implicit_weakref_support,
+    test_no_dangling_refs,
+)
+from testutil import assertRaises
 
 test_implicit_weakref_support()
 test_no_dangling_refs()
@@ -339,3 +356,16 @@ assert r() is obj
 del obj
 gc.collect()
 assert r() is None
+
+# Interpreted subclasses support weak references even if the native base class doesn't.
+class ISubNoWeakrefs(OpenNoWeakrefs):
+    pass
+
+obj2 = ISubNoWeakrefs()
+r2 = ref_open_no_weakrefs(obj2)
+assert r2() is obj2
+del obj2
+gc.collect()
+assert r2() is None
+with assertRaises(TypeError, "cannot create weak reference to 'OpenNoWeakrefs' object"):
+    ref_open_no_weakrefs(OpenNoWeakrefs())

@@ -96,7 +96,7 @@ class TargetPython:
 def replace_ext_suffix_version(suffix: str, version: tuple[int, int], free_threaded: bool) -> str:
     """Replace the Python version tag in an extension suffix such as ".cp313-win_amd64.pyd"."""
     tag = f"{version[0]}{version[1]}{'t' if free_threaded else ''}"
-    result, n = re.subn(r"(\.cpython-|\.cp)\d+t?(?=-)", rf"\g<1>{tag}", suffix, count=1)
+    result, n = re.subn(r"(\.cpython-|\.cp)\d+t?(?=d?-)", rf"\g<1>{tag}", suffix, count=1)
     if n == 0:
         raise ValueError(
             f'Can\'t target Python {version[0]}.{version[1]}{"t" if free_threaded else ""}: '

@@ -185,6 +185,26 @@ for i in range(len(str_find_types) - 1):
         error_kind=ERR_MAGIC,
     )
 
+# str.index(...) and str.rindex(...)
+str_index_functions = ["CPyStr_Index", "CPyStr_Index", "CPyStr_IndexWithEnd"]
+for i in range(len(str_find_types) - 1):
+    method_op(
+        name="index",
+        arg_types=str_find_types[0 : i + 2],
+        return_type=int_rprimitive,
+        c_function_name=str_index_functions[i],
+        extra_int_constants=str_find_constants[i] + [(1, c_int_rprimitive)],
+        error_kind=ERR_MAGIC,
+    )
+    method_op(
+        name="rindex",
+        arg_types=str_find_types[0 : i + 2],
+        return_type=int_rprimitive,
+        c_function_name=str_index_functions[i],
+        extra_int_constants=str_rfind_constants[i] + [(-1, c_int_rprimitive)],
+        error_kind=ERR_MAGIC,
+    )
+
 # str.join(obj)
 method_op(
     name="join",
@@ -508,6 +528,15 @@ method_op(
     arg_types=[str_rprimitive],
     return_type=bool_rprimitive,
     c_function_name="CPyStr_IsUpper",
+    error_kind=ERR_NEVER,
+)
+
+# str.isidentifier()
+method_op(
+    name="isidentifier",
+    arg_types=[str_rprimitive],
+    return_type=bool_rprimitive,
+    c_function_name="CPyStr_IsIdentifier",
     error_kind=ERR_NEVER,
 )
 

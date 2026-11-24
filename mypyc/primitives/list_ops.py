@@ -309,6 +309,24 @@ method_op(
     error_kind=ERR_NEG_INT,
 )
 
+# list == list (return -1/0/1)
+list_equal_op = custom_op(
+    arg_types=[list_rprimitive, list_rprimitive],
+    return_type=c_int_rprimitive,
+    c_function_name="CPyList_Compare",
+    error_kind=ERR_NEG_INT,
+    extra_int_constants=[(2, c_int_rprimitive)],  # Py_EQ
+)
+
+# list != list (return -1/0/1)
+list_not_equal_op = custom_op(
+    arg_types=[list_rprimitive, list_rprimitive],
+    return_type=c_int_rprimitive,
+    c_function_name="CPyList_Compare",
+    error_kind=ERR_NEG_INT,
+    extra_int_constants=[(3, c_int_rprimitive)],  # Py_NE
+)
+
 # list.remove(obj)
 method_op(
     name="remove",

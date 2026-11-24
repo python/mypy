@@ -189,7 +189,11 @@ class TypeCheckSuite(DataSuite):
             # Make sure we are running tests with current worktree files, *not* with
             # an installed version of mypy.
             root_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
-            worker_env["PYTHONPATH"] = os.pathsep.join([root_dir, plugin_dir])
+            new_python_path = os.pathsep.join([root_dir, plugin_dir])
+            existing = worker_env.get("PYTHONPATH")
+            worker_env["PYTHONPATH"] = new_python_path + (
+                os.pathsep + existing if existing else ""
+            )
             worker_env["MYPY_TEST_PREFIX"] = root_dir
             worker_env["MYPY_ALT_LIB_PATH"] = test_temp_dir
 

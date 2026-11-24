@@ -1,9 +1,9 @@
 [case testU64BasicOps]
-from typing import Any, Final, Tuple
+from typing import Any, Final, Tuple, cast
 
-from mypy_extensions import u64, i16, i32, i64, u8
+from mypy_extensions import u64, i8, i16, i32, i64, u8
 
-from testutil import assertRaises
+from testutil import assertRaises, SSIZE_T_LONG, SSIZE_T_MAX
 
 ERROR: Final = 239
 
@@ -20,6 +20,33 @@ def test_box_and_unbox() -> None:
     with assertRaises(ValueError, "int too large or small to convert to u64"):
         o = -1
         x3: u64 = o
+
+class Index:
+    def __init__(self, n: int) -> None:
+        self.n = n
+
+    def __index__(self) -> int:
+        return self.n
+
+def take_u64(x: u64) -> u64:
+    return x
+
+def test_unbox_index_and_non_int() -> None:
+    f: Any = take_u64
+    for n in [0, 5, ERROR, 2**40, 18446744073709551615]:
+        o: Any = Index(n)
+        x: u64 = o
+        assert x == n
+        assert f(o) == n
+    for n in [-1, 18446744073709551616]:
+        o = Index(n)
+        with assertRaises(ValueError, "int too large or small to convert to u64"):
+            x = o
+    o = 1.0
+    with assertRaises(TypeError, "'float' object cannot be interpreted as an integer"):
+        x = o
+    with assertRaises(TypeError, "u64 object expected; got float"):
+        f(o)
 
 def div_by_7(x: u64) -> u64:
     return x // 7
@@ -82,6 +109,9 @@ def test_simple_arithmetic_ops() -> None:
     assert -two == 18446744073709551614
     assert -neg_one == 1
     assert -zero == 0
+    assert abs(one) == 1
+    assert abs(neg_one) == 18446744073709551615
+    assert abs(zero) == 0
 
 def test_bitwise_ops() -> None:
     x: u64 = 47384 + int()
@@ -278,6 +308,69 @@ def test_u64_large_literal_implicit_coercion() -> None:
 def u64_identity(x: u64) -> u64:
     return x
 
+def neg_literal_to_int() -> int:
+    return -u64(1)
+
+def eq_neg_literal(x: u64) -> bool:
+    return x == -u64(1)
+
+def gt_neg_literal(x: u64) -> bool:
+    return x > -u64(5)
+
+def and_neg_literal(x: u64) -> u64:
+    return x & -u64(8)
+
+def div_neg_literal(x: u64) -> u64:
+    return x // -u64(5)
+
+def test_negate_literal() -> None:
+    assert -u64(0) == 0
+    assert -u64(1) == 18446744073709551615
+    assert int(-u64(1)) == 2**64 - 1
+    assert neg_literal_to_int() == 2**64 - 1
+    assert str(-u64(1)) == "18446744073709551615"
+    assert -u64(18446744073709551615) == 1
+    assert 0 - u64(1) == 18446744073709551615
+    assert ~u64(0) == 18446744073709551615
+    one: u64 = 1 + int()
+    assert -u64(1) == -one
+    assert -u64(5) == -(one * 5)
+    assert eq_neg_literal(18446744073709551615)
+    assert not eq_neg_literal(1)
+    assert gt_neg_literal(18446744073709551615)
+    assert not gt_neg_literal(18446744073709551611)
+    assert and_neg_literal(18446744073709551615) == 18446744073709551608
+    assert div_neg_literal(18446744073709551615) == 1
+    assert div_neg_literal(5) == 0
+
+ONE_FINAL: Final[u64] = 1
+MAX_FINAL: Final[u64] = 18446744073709551615
+NEG_ONE_FINAL: Final[u64] = -ONE_FINAL
+
+class FinalAttrs:
+    TWO: Final[u64] = 2
+
+def neg_final() -> u64:
+    return -ONE_FINAL
+
+def neg_final_to_int() -> int:
+    return -ONE_FINAL
+
+def test_final_wraparound() -> None:
+    one: u64 = 1 + int()
+    max_val: u64 = 18446744073709551615 + int()
+    assert -ONE_FINAL == -one == 18446744073709551615
+    assert neg_final() == 18446744073709551615
+    assert neg_final_to_int() == 18446744073709551615
+    assert ONE_FINAL - 2 == one - 2 == 18446744073709551615
+    assert ~ONE_FINAL == ~one == 18446744073709551614
+    assert MAX_FINAL + 1 == max_val + 1 == 0
+    assert MAX_FINAL * 2 == max_val * 2 == 18446744073709551614
+    assert (ONE_FINAL - 2) // 2 == (one - 2) // 2 == 9223372036854775807
+    assert -ONE_FINAL >> 1 == -one >> 1 == 9223372036854775807
+    assert -FinalAttrs.TWO == -(one * 2) == 18446744073709551614
+    assert NEG_ONE_FINAL == 18446744073709551615
+
 def test_u64_truncate_from_i64() -> None:
     large = i64(2**62 + 157 + int())
     x = u64(large)
@@ -331,6 +424,15 @@ def tuple_get(a: tuple[int, ...], i: u64) -> int:
 def str_get(s: str, i: u64) -> str:
     return s[i]
 
+def bytes_get(b: bytes, i: u64) -> int:
+    return b[i]
+
+def str_ord(s: str, i: u64) -> int:
+    return ord(s[i])
+
+def str_index_eq(s: str, i: u64) -> bool:
+    return s[i] == "c"
+
 def test_index_with_u64() -> None:
     a = [1, 2, 3]
     assert list_get(a, 0) == 1
@@ -353,10 +455,27 @@ def test_index_with_u64() -> None:
     with assertRaises(IndexError):
         str_get("abc", 3)
     # Index too large for a short int takes the slow conversion path
-    with assertRaises(OverflowError):
-        tuple_get((1, 2, 3), 2**63)
-    with assertRaises(OverflowError):
-        str_get("abc", 2**64 - 1)
+    with assertRaises(IndexError, "tuple index out of range"):
+        tuple_get((1, 2, 3), SSIZE_T_LONG)
+    with assertRaises(IndexError, "string index out of range"):
+        str_get("abc", SSIZE_T_LONG)
+    for n in (2**63, 2**64 - 1):
+        with assertRaises(IndexError, "cannot fit 'int' into an index-sized integer"):
+            tuple_get((1, 2, 3), n)
+        with assertRaises(IndexError, "cannot fit 'int' into an index-sized integer"):
+            str_get("abc", n)
+    assert bytes_get(b"abc", 0) == 97
+    assert bytes_get(b"abc", 2) == 99
+    assert str_ord("abc", 1) == 98
+    assert str_index_eq("abc", 2)
+    assert not str_index_eq("abc", 0)
+    for n in (3, 2**63 - 1, 2**63, 2**64 - 3, 2**64 - 1):
+        with assertRaises(IndexError, "index out of range"):
+            bytes_get(b"abc", n)
+        with assertRaises(IndexError, "index out of range"):
+            str_ord("abc", n)
+        with assertRaises(IndexError, "index out of range"):
+            str_index_eq("abc", n)
 
 def test_tuple_u64() -> None:
     a: u64 = 1
@@ -376,3 +495,30 @@ def test_convert_u64_to_native_int() -> None:
         assert i16(x) == (i if i < 32768 else i - 18446744073709551616)
         assert i32(x) == i
         assert i64(x) == i
+
+def i64_to_u64(x: i64) -> u64:
+    return cast(u64, x)
+
+def i32_to_u64(x: i32) -> u64:
+    return cast(u64, x)
+
+def i8_to_u64(x: i8) -> u64:
+    return cast(u64, x)
+
+def test_coerce_from_signed_native_int() -> None:
+    for n in (0, 1, 2**31 - 1, 2**31, 2**63 - 1):
+        assert i64_to_u64(n) == n
+    for n in (0, 1, 2**31 - 1):
+        assert i32_to_u64(n) == n
+    for n in (0, 1, 127):
+        assert i8_to_u64(n) == n
+    msg = "int too large or small to convert to u64"
+    for n in (-1, -2**31, -2**63):
+        with assertRaises(ValueError, msg):
+            i64_to_u64(n)
+    for n in (-1, -2**31):
+        with assertRaises(ValueError, msg):
+            i32_to_u64(n)
+    for n in (-1, -128):
+        with assertRaises(ValueError, msg):
+            i8_to_u64(n)
