@@ -953,7 +953,13 @@ def generate_attr_defaults_init(
             finally:
                 builder.globals_lookup_module = None
             init = SetAttr(self_var, lvalue.name, val, stmt.rvalue.line)
-            init.mark_as_initializer()
+            # The parent's setup may have stored a default for an inherited attribute
+            # already, so use a regular store, which releases it. Separate builds don't
+            # treat any attribute as always defined, so the store checks for NULL first.
+            if parent_with_defaults is None or not any(
+                lvalue.name in base.attributes for base in cls.mro[1:]
+            ):
+                init.mark_as_initializer()
             builder.add(init)
 
         builder.add(Return(builder.true()))

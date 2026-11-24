@@ -2001,6 +2001,39 @@ class Parent:
 from native import test
 test()
 
+[case testCrossModuleOverriddenAttrDefaultIsReleased]
+import sys
+from other import BASE_X, Parent
+
+class Child(Parent):
+    x: object = None
+    y: object = None
+
+def test() -> None:
+    getrefcount = getattr(sys, "getrefcount")
+    c = Child()
+    assert c.x is None
+    assert c.y is None
+    assert Parent().x is BASE_X
+    rc = getrefcount(BASE_X)
+    for _ in range(10):
+        Child()
+    assert getrefcount(BASE_X) == rc
+
+[file other.py]
+from typing import Final, List
+
+BASE_X: Final[List[int]] = [1]
+
+class Parent:
+    x: object = BASE_X
+    y: object
+    z: int = 1
+
+[file driver.py]
+from native import test
+test()
+
 [case testIncrementalCrossModuleInheritedAttrDefaults]
 # Regression: under separate=True, when only the subclass module is
 # recompiled (parent loaded from mypy's incremental cache, so its
