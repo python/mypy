@@ -168,6 +168,7 @@ assert Record.__annotations__ == {
 
 [case testTupleOps]
 from typing import Tuple, Final, List, Any, Optional, cast
+from mypy_extensions import i8
 from testutil import assertRaises, SSIZE_T_LONG, SSIZE_T_MAX
 
 def f() -> Tuple[()]:
@@ -450,6 +451,22 @@ def test_tuple_with_walrus() -> None:
 def test_nested_tuple_with_walrus() -> None:
     i = 0
     assert ((i, i), (i := i + 1)) == ((0, 0), 1)
+
+# These used to get the same C struct name, causing a C compile error
+def i8_and_long_tuple() -> Tuple[Tuple[i8], Tuple[int, int, int, int, int, int, int, int, int, int, int]]:
+    return ((i8(5),), (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11))
+
+def nested_i8_tuple() -> Tuple[Tuple[Tuple[i8], int, int, int, int, int, int, int, int, int, int], int]:
+    return (((i8(6),), 1, 2, 3, 4, 5, 6, 7, 8, 9, 10), 99)
+
+def test_tuple_struct_names() -> None:
+    a = i8_and_long_tuple()
+    b = nested_i8_tuple()
+    assert a[0][0] == 5
+    assert a[1][10] == 11
+    assert b[0][0][0] == 6
+    assert b[0][10] == 10
+    assert b[1] == 99
 
 [case testIsInstance]
 from copysubclass import subc

@@ -756,7 +756,12 @@ def is_immutable_rprimitive(rtype: RType) -> TypeGuard[RPrimitive]:
 
 
 class TupleNameVisitor(RTypeVisitor[str]):
-    """Produce a tuple name based on the concrete representations of types."""
+    """Produce a tuple name based on the concrete representations of types.
+
+    A tuple is encoded as "T<length><item codes>". No item code may start with
+    a digit, as otherwise the name could be ambiguous (e.g. "T11..." could mean
+    a 1-tuple or an 11-tuple), and distinct tuple types could share a C struct.
+    """
 
     def visit_rinstance(self, t: RInstance) -> str:
         return "O"
@@ -776,13 +781,13 @@ class TupleNameVisitor(RTypeVisitor[str]):
         elif t._ctype == "char":
             return "C"
         elif t._ctype == "int64_t":
-            return "8"  # "8 byte integer"
+            return "S8"  # "8 byte signed integer"
         elif t._ctype == "int32_t":
-            return "4"  # "4 byte integer"
+            return "S4"  # "4 byte signed integer"
         elif t._ctype == "int16_t":
-            return "2"  # "2 byte integer"
+            return "S2"  # "2 byte signed integer"
         elif t._ctype == "int8_t":
-            return "1"  # "1 byte integer"
+            return "S1"  # "1 byte signed integer"
         elif t._ctype == "uint64_t":
             return "U8"
         elif t._ctype == "uint32_t":
