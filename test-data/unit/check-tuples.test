@@ -1899,4 +1899,3 @@ consume([(Color.BLUE, Shape.TRIANGLE)])
 consume([(Color.RED, Shape.CIRCLE), (Color.BLUE, Shape.TRIANGLE)])
 consume([(Color.RED, Shape.SQUARE)])  # E: List item 0 has incompatible type "tuple[Literal[Color.RED], Literal[Shape.SQUARE]]"; expected "tuple[Literal[Color.RED], Literal[Shape.CIRCLE]] | tuple[Literal[Color.BLUE], Literal[Shape.TRIANGLE]]"
 [builtins fixtures/tuple.pyi]
-
