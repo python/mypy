@@ -58,7 +58,6 @@ from mypyc.ir.ops import (
 )
 from mypyc.ir.rtypes import (
     RInstance,
-    RPrimitive,
     RTuple,
     RType,
     RVec,
@@ -120,7 +119,6 @@ from mypyc.irbuild.format_str_tokenizer import (
     join_formatted_strings,
     tokenizer_format_call,
 )
-from mypyc.irbuild.ll_builder import int_literal_value
 from mypyc.irbuild.vec import (
     supports_vec_to_sequence,
     vec_append,
@@ -1286,7 +1284,6 @@ def translate_i64(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value 
         return builder.add(Extend(val, int64_rprimitive, signed=False, line=expr.line))
     elif is_int_rprimitive(arg_type) or is_bool_rprimitive(arg_type):
         val = builder.accept(arg)
-        val = truncate_literal(val, int64_rprimitive)
         return builder.coerce(val, int64_rprimitive, expr.line)
     return None
 
@@ -1319,7 +1316,6 @@ def translate_i32(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value 
         return builder.add(Extend(val, int32_rprimitive, signed=False, line=expr.line))
     elif is_int_rprimitive(arg_type) or is_bool_rprimitive(arg_type):
         val = builder.accept(arg)
-        val = truncate_literal(val, int32_rprimitive)
         return builder.coerce(val, int32_rprimitive, expr.line)
     return None
 
@@ -1352,7 +1348,6 @@ def translate_i16(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value 
         return builder.add(Extend(val, int16_rprimitive, signed=True, line=expr.line))
     elif is_int_rprimitive(arg_type) or is_bool_rprimitive(arg_type):
         val = builder.accept(arg)
-        val = truncate_literal(val, int16_rprimitive)
         return builder.coerce(val, int16_rprimitive, expr.line)
     return None
 
@@ -1382,7 +1377,6 @@ def translate_i8(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value |
         return builder.add(Truncate(val, int8_rprimitive, line=expr.line))
     elif is_int_rprimitive(arg_type) or is_bool_rprimitive(arg_type):
         val = builder.accept(arg)
-        val = truncate_literal(val, int8_rprimitive)
         return builder.coerce(val, int8_rprimitive, expr.line)
     return None
 
@@ -1414,7 +1408,6 @@ def translate_u64(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value 
         return builder.add(Extend(val, uint64_rprimitive, signed=False, line=expr.line))
     elif is_int_rprimitive(arg_type) or is_bool_rprimitive(arg_type):
         val = builder.accept(arg)
-        val = truncate_literal(val, uint64_rprimitive)
         return builder.coerce(val, uint64_rprimitive, expr.line)
     return None
 
@@ -1444,7 +1437,6 @@ def translate_u32(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value 
         return builder.add(Truncate(val, uint32_rprimitive, line=expr.line))
     elif is_int_rprimitive(arg_type) or is_bool_rprimitive(arg_type):
         val = builder.accept(arg)
-        val = truncate_literal(val, uint32_rprimitive)
         return builder.coerce(val, uint32_rprimitive, expr.line)
     return None
 
@@ -1474,7 +1466,6 @@ def translate_u16(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value 
         return builder.add(Truncate(val, uint16_rprimitive, line=expr.line))
     elif is_int_rprimitive(arg_type) or is_bool_rprimitive(arg_type):
         val = builder.accept(arg)
-        val = truncate_literal(val, uint16_rprimitive)
         return builder.coerce(val, uint16_rprimitive, expr.line)
     return None
 
@@ -1500,25 +1491,8 @@ def translate_u8(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value |
         return builder.add(Truncate(val, uint8_rprimitive, line=expr.line))
     elif is_int_rprimitive(arg_type) or is_bool_rprimitive(arg_type):
         val = builder.accept(arg)
-        val = truncate_literal(val, uint8_rprimitive)
         return builder.coerce(val, uint8_rprimitive, expr.line)
     return None
-
-
-def truncate_literal(value: Value, rtype: RPrimitive) -> Value:
-    """If value is an integer literal value, truncate it to given native int rtype.
-
-    For example, truncate 256 into 0 if rtype is u8.
-    """
-    x = int_literal_value(value)
-    if x is None:
-        return value  # Not a literal, nothing to do
-    max_unsigned = (1 << (rtype.size * 8)) - 1
-    x = x & max_unsigned
-    if rtype.is_signed and x >= (max_unsigned + 1) // 2:
-        # Adjust to make it a negative value
-        x -= max_unsigned + 1
-    return Integer(x, rtype)
 
 
 @specialize_function("builtins.int")

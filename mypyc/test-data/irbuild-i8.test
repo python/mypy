@@ -80,3 +80,27 @@ L4:
     unreachable
 L5:
     return r6
+
+[case testI8DetectOutOfRangeLiterals]
+from mypy_extensions import i8
+
+def out_of_range() -> None:
+    a: i8 = 128
+    b: i8 = -129
+    f(128)
+    c = i8(128)
+    d = i8(-129)
+    # The following are ok
+    e: i8 = 127
+    g: i8 = -128
+    f(-128)
+    h = i8(127)
+    i = i8(-128)
+
+def f(x: i8) -> None: pass
+[out]
+main:4: error: Value 128 is out of range for "i8"
+main:5: error: Value -129 is out of range for "i8"
+main:6: error: Value 128 is out of range for "i8"
+main:7: error: Value 128 is out of range for "i8"
+main:8: error: Value -129 is out of range for "i8"

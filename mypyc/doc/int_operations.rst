@@ -169,7 +169,9 @@ Construction
 * ``u8(x: str, base: int)``
 
 Conversions from ``int`` to a native integer type raise
-``ValueError`` if the value is too large or small. Conversions from
+``ValueError`` if the value is too large or small. If the value is a
+constant, such as in ``u8(-1)``, this is a compile-time error instead.
+Conversions from
 a wider native integer type to a narrower one truncate the value and never
 fail. Conversions between signed and unsigned types of the same or larger
 size don't fail either: a value outside the target range wraps around

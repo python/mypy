@@ -481,15 +481,17 @@ def f() -> None:
     x = i32(0)
     y = i32(11)
     z = i32(-3)
-    a = i32(2**31)
+    a = i32(2**31 - 1)
+    b = i32(-2**31)
 [out]
 def f():
-    x, y, z, a :: i32
+    x, y, z, a, b :: i32
 L0:
     x = 0
     y = 11
     z = -3
-    a = -2147483648
+    a = 2147483647
+    b = -2147483648
     return 1
 
 [case testI32ExplicitConversionFromVariousTypes_64bit]
@@ -596,3 +598,27 @@ L2:
     keep_alive r0
 L3:
     return r4
+
+[case testI32DetectOutOfRangeLiterals_64bit]
+from mypy_extensions import i32
+
+def out_of_range() -> None:
+    a: i32 = 2147483648
+    b: i32 = -2147483649
+    f(2147483648)
+    c = i32(2147483648)
+    d = i32(-2147483649)
+    # The following are ok
+    e: i32 = 2147483647
+    g: i32 = -2147483648
+    f(-2147483648)
+    h = i32(2147483647)
+    i = i32(-2147483648)
+
+def f(x: i32) -> None: pass
+[out]
+main:4: error: Value 2147483648 is out of range for "i32"
+main:5: error: Value -2147483649 is out of range for "i32"
+main:6: error: Value 2147483648 is out of range for "i32"
+main:7: error: Value 2147483648 is out of range for "i32"
+main:8: error: Value -2147483649 is out of range for "i32"
