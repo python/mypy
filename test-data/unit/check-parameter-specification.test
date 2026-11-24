@@ -2848,3 +2848,32 @@ def test(x: C[I]) -> list[int]: ...
 ci: C[int]
 f: list[int] = apply(test, ci)
 [builtins fixtures/paramspec.pyi]
+
+[case testParamSpecTwoSidedOverloadDisambiguation]
+from typing import Callable, Protocol, TypeVar, overload
+from typing_extensions import ParamSpec
+
+P = ParamSpec("P")
+R = TypeVar("R")
+T = TypeVar("T")
+
+class OverloadedProto(Protocol):
+    @overload
+    def __call__(self, x: int, y: int) -> int: ...
+    @overload
+    def __call__(self, x: str, *, flag: bool = False) -> str: ...
+
+@overload
+def ov(x: int, y: int) -> int: ...
+@overload
+def ov(x: str, *, flag: bool = False) -> str: ...
+def ov(*args: object, **kwargs: object) -> object: ...
+
+def run(fn: Callable[P, R], *args: P.args, **kwargs: P.kwargs) -> list[R]: ...
+def unwrap(x: list[T]) -> T: ...
+
+def f(p: OverloadedProto) -> None:
+    reveal_type(unwrap(run(p, "hello", flag=True)))  # N: Revealed type is "builtins.str"
+    reveal_type(unwrap(run(ov, "hello", flag=True)))  # N: Revealed type is "builtins.str"
+[builtins fixtures/paramspec.pyi]
+
