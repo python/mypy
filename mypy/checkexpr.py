@@ -573,6 +573,17 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                         self.msg.cannot_use_function_with_type(e.callee.name, "TypedDict", e)
                     elif typ.node.is_newtype:
                         self.msg.cannot_use_function_with_type(e.callee.name, "NewType", e)
+            if e.callee.name == "issubclass":
+                # issubclass() tests the class given as its first argument, so a NewType
+                # there fails at runtime just as it does in second position. The subtype
+                # check lets it through, as a NewType's constructor looks like a type object.
+                cls_arg = e.args[0]
+                if (
+                    isinstance(cls_arg, RefExpr)
+                    and isinstance(cls_arg.node, TypeInfo)
+                    and cls_arg.node.is_newtype
+                ):
+                    self.msg.cannot_use_function_with_type("issubclass", "NewType", e)
         self.try_infer_partial_type(e)
         type_context = None
         if isinstance(e.callee, LambdaExpr):
