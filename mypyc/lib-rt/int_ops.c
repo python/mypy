@@ -115,6 +115,28 @@ Py_ssize_t CPyTagged_AsSsize_t(CPyTagged x) {
     }
 }
 
+// Set the exception for a sequence index that isn't a short int. Like CPython,
+// raise IndexError("cannot fit 'int' into an index-sized integer") if it
+// doesn't fit in Py_ssize_t. Otherwise raise IndexError(msg), since an index
+// this large is always out of range (no list or tuple can be this long, and
+// neither can a str or bytes object on a 64-bit platform).
+void CPy_LargeIndexError(CPyTagged index, const char *msg) {
+    Py_ssize_t n = PyNumber_AsSsize_t(CPyTagged_LongAsObject(index), PyExc_IndexError);
+    if (n != -1 || !PyErr_Occurred()) {
+        PyErr_SetString(PyExc_IndexError, msg);
+    }
+}
+
+// Convert an int used as a sequence index to i64. Like CPython, raise
+// IndexError if the value doesn't fit in Py_ssize_t.
+int64_t CPyLong_AsIndex(PyObject *o) {
+    Py_ssize_t n = PyNumber_AsSsize_t(o, PyExc_IndexError);
+    if (n == -1 && PyErr_Occurred()) {
+        return CPY_LL_INT_ERROR;
+    }
+    return n;
+}
+
 CPy_NOINLINE
 void CPyTagged_IncRef(CPyTagged x) {
     if (unlikely(CPyTagged_CheckLong(x))) {
@@ -476,6 +498,10 @@ int64_t CPyInt64_Remainder(int64_t x, int64_t y) {
     return d;
 }
 
+void CPyInt64_Overflow() {
+    PyErr_SetString(PyExc_ValueError, "int too large to convert to i64");
+}
+
 // i32 unboxing slow path
 int32_t CPyLong_AsInt32_(PyObject *o) {
     int overflow;
@@ -644,9 +670,24 @@ void CPyInt16_Overflow() {
     PyErr_SetString(PyExc_ValueError, "int too large to convert to i16");
 }
 
+// Unlike PyLong_AsLongAndOverflow(), which the other native int types use,
+// PyLong_AsUnsignedLong() and PyLong_AsUnsignedLongLong() don't call __index__, so
+// convert the object first. Return a new reference, or NULL with an exception set.
+static PyObject *CPyLong_IndexForUnsigned(PyObject *o) {
+    if (likely(PyLong_Check(o))) {
+        return Py_NewRef(o);
+    }
+    return PyNumber_Index(o);
+}
+
 // u64 unboxing slow path
 uint64_t CPyLong_AsUInt64_(PyObject *o) {
-    unsigned long long result = PyLong_AsUnsignedLongLong(o);
+    PyObject *index = CPyLong_IndexForUnsigned(o);
+    if (index == NULL) {
+        return CPY_LL_UINT_ERROR;
+    }
+    unsigned long long result = PyLong_AsUnsignedLongLong(index);
+    Py_DECREF(index);
     if (result == (unsigned long long)-1 && PyErr_Occurred()) {
         if (PyErr_ExceptionMatches(PyExc_OverflowError)) {
             PyErr_Clear();
@@ -663,7 +704,12 @@ void CPyUInt64_Overflow() {
 
 // u32 unboxing slow path
 uint32_t CPyLong_AsUInt32_(PyObject *o) {
-    unsigned long result = PyLong_AsUnsignedLong(o);
+    PyObject *index = CPyLong_IndexForUnsigned(o);
+    if (index == NULL) {
+        return CPY_LL_UINT_ERROR;
+    }
+    unsigned long result = PyLong_AsUnsignedLong(index);
+    Py_DECREF(index);
     if (result == (unsigned long)-1 && PyErr_Occurred()) {
         if (PyErr_ExceptionMatches(PyExc_OverflowError)) {
             PyErr_Clear();

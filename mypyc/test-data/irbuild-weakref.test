@@ -125,7 +125,13 @@ class NonNative:
 class T:
     pass
 
-def f(a: Plain, b: Supported, c: SupportedSub, d: NonNative, e: T, g: object) -> None:
+@mypyc_attr(allow_interpreted_subclasses=True)
+class Open:
+    pass
+
+def f(
+    a: Plain, b: Supported, c: SupportedSub, d: NonNative, e: T, g: object, h: Open
+) -> None:
     weakref.ref(a)  # E: Cannot create weak reference to instance of native class "__main__.Plain" \
                     # N: Add "@mypy_extensions.mypyc_attr(weakrefs=True)" to the class definition to enable support for weak references
     weakref.proxy(a)  # E: Cannot create weak reference to instance of native class "__main__.Plain" \
@@ -136,6 +142,8 @@ def f(a: Plain, b: Supported, c: SupportedSub, d: NonNative, e: T, g: object) ->
     weakref.ref(d)
     weakref.ref(e)
     weakref.ref(g)
+    # Could be an instance of an interpreted subclass, which supports weak references
+    weakref.ref(h)
 [out]
 
 [case testWeakrefAttrErrors]

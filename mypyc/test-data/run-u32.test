@@ -1,7 +1,7 @@
 [case testU32BasicOps]
-from typing import Any, Final, Tuple
+from typing import Any, Final, Tuple, cast
 
-from mypy_extensions import u32, i16, i32, i64, u8
+from mypy_extensions import u32, i8, i16, i32, i64, u8
 
 from testutil import assertRaises
 
@@ -20,6 +20,33 @@ def test_box_and_unbox() -> None:
     with assertRaises(ValueError, "int too large or small to convert to u32"):
         o = -1
         x3: u32 = o
+
+class Index:
+    def __init__(self, n: int) -> None:
+        self.n = n
+
+    def __index__(self) -> int:
+        return self.n
+
+def take_u32(x: u32) -> u32:
+    return x
+
+def test_unbox_index_and_non_int() -> None:
+    f: Any = take_u32
+    for n in [0, 5, ERROR, 2**30, 4294967295]:
+        o: Any = Index(n)
+        x: u32 = o
+        assert x == n
+        assert f(o) == n
+    for n in [-1, 4294967296, 18446744073709551616]:
+        o = Index(n)
+        with assertRaises(ValueError, "int too large or small to convert to u32"):
+            x = o
+    o = 1.0
+    with assertRaises(TypeError, "'float' object cannot be interpreted as an integer"):
+        x = o
+    with assertRaises(TypeError, "u32 object expected; got float"):
+        f(o)
 
 def div_by_7(x: u32) -> u32:
     return x // 7
@@ -367,6 +394,16 @@ def test_explicit_conversion_from_float() -> None:
         # One ulp below the lowest valid i64 value
         from_float(float(-1.0))
 
+def bytes_get(b: bytes, i: u32) -> int:
+    return b[i]
+
+def test_bytes_index_with_u32() -> None:
+    assert bytes_get(b"abc", 0) == 97
+    assert bytes_get(b"abc", 2) == 99
+    for n in (3, 2**31, 2**32 - 1):
+        with assertRaises(IndexError, "index out of range"):
+            bytes_get(b"abc", n)
+
 def test_tuple_u32() -> None:
     a: u32 = 1
     b: u32 = 2
@@ -414,3 +451,30 @@ def test_high_bit_conversions() -> None:
     assert u32(n32) == 2**31
     assert big > 1
     assert big >> 1 == 2**30
+
+def i64_to_u32(x: i64) -> u32:
+    return cast(u32, x)
+
+def i32_to_u32(x: i32) -> u32:
+    return cast(u32, x)
+
+def i8_to_u32(x: i8) -> u32:
+    return cast(u32, x)
+
+def test_coerce_from_signed_native_int() -> None:
+    for n in (0, 1, 2**31 - 1, 2**31, 2**32 - 1):
+        assert i64_to_u32(n) == n
+    for n in (0, 1, 2**31 - 1):
+        assert i32_to_u32(n) == n
+    for n in (0, 1, 127):
+        assert i8_to_u32(n) == n
+    msg = "int too large or small to convert to u32"
+    for n in (-1, 2**32, 2**63 - 1, -2**63):
+        with assertRaises(ValueError, msg):
+            i64_to_u32(n)
+    for n in (-1, -2**31):
+        with assertRaises(ValueError, msg):
+            i32_to_u32(n)
+    for n in (-1, -128):
+        with assertRaises(ValueError, msg):
+            i8_to_u32(n)

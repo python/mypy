@@ -12,6 +12,11 @@ from typing import Final
 
 FLOAT_MAGIC: Final = -113.0
 
+# Largest Py_ssize_t value (sys.maxsize isn't in the sys stub used by tests)
+SSIZE_T_MAX: Final[int] = getattr(sys, "maxsize")
+# Smallest positive int that isn't a short int, but fits in Py_ssize_t
+SSIZE_T_LONG: Final[int] = SSIZE_T_MAX // 2 + 1
+
 # Various different float values
 float_vals = [
     float(n) * 0.25 for n in range(-10, 10)

@@ -1262,6 +1262,7 @@ def try_specialize_str_index_compare(
         str_adjust_index_op,
         str_range_check_op,
         str_get_item_unsafe_as_int_op,
+        "string index out of range",
     )
     if codepoint is None:
         return None

@@ -45,7 +45,7 @@ def test_bytes_init() -> None:
         pass
 
 [case testBytesOps]
-from testutil import assertRaises
+from testutil import assertRaises, SSIZE_T_LONG, SSIZE_T_MAX
 
 def test_indexing() -> None:
     # Use bytes() to avoid constant folding
@@ -66,6 +66,16 @@ def test_indexing() -> None:
         b[-5]
     with assertRaises(IndexError, "index out of range"):
         b[2**26]
+    for n in (SSIZE_T_LONG, -SSIZE_T_LONG - 1, SSIZE_T_MAX, -SSIZE_T_MAX - 1):
+        with assertRaises(IndexError, "index out of range"):
+            b[n + int()]
+    for n in (2**63, -2**63 - 1, 2**100, -2**100):
+        with assertRaises(IndexError, "cannot fit 'int' into an index-sized integer"):
+            b[n + int()]
+    with assertRaises(IndexError, "cannot fit 'int' into an index-sized integer"):
+        b[2**63]
+    with assertRaises(IndexError, "cannot fit 'int' into an index-sized integer"):
+        b[-2**63 - 1]
 
 def test_concat() -> None:
     b1 = b'123' + bytes()
@@ -832,6 +842,129 @@ class WrongSliceType(bytearray):
         if isinstance(i, slice):
             return self.result
         return super().__getitem__(i)
+
+[case testBytesContains]
+from typing import Any
+from testutil import assertRaises
+from bcsubclass import BytesSubclass, BytesContainsOverride
+
+HAYSTACKS = [
+    b"",
+    b"a",
+    b"abc",
+    b"aaab",
+    b"\x00\x01\x7f\x80\xfe\xff",
+    b"abcabcabd" * 10,
+    bytes(range(256)),
+    b"x" * 40 + b"y",
+]
+
+def outcome(f: Any) -> Any:
+    try:
+        return f()
+    except Exception as e:
+        return type(e), str(e)
+
+def needles(h: bytes) -> list[bytes]:
+    result = [b"", b"z", b"\x00", b"\xff", b"ab", b"abd", b"aab", h, h + b"!", b"!" + h]
+    for i in range(len(h)):
+        for j in range(i + 1, min(len(h), i + 35) + 1):
+            result.append(h[i:j])
+            # Same length, but differs in the last byte
+            result.append(h[i:j - 1] + bytes([(h[j - 1] + 1) % 256]))
+    return result
+
+def test_int_in_bytes() -> None:
+    for h in HAYSTACKS:
+        a: Any = h
+        for n in list(range(-3, 260)) + [2**62, -2**62, 2**100, -2**100]:
+            an: Any = n
+            assert outcome(lambda: n in h) == outcome(lambda: an in a), (h, n)
+            assert outcome(lambda: n not in h) == outcome(lambda: an not in a), (h, n)
+    with assertRaises(ValueError, "byte must be in range(0, 256)"):
+        256 in b"a"
+    with assertRaises(ValueError, "byte must be in range(0, 256)"):
+        -1 not in b"a"
+
+def test_bool_in_bytes() -> None:
+    t = True
+    f = False
+    assert t in b"\x01"
+    assert t not in b"\x00"
+    assert f in b"\x00"
+    assert f not in b"\x01"
+
+def test_bytes_in_bytes() -> None:
+    for h in HAYSTACKS:
+        a: Any = h
+        for x in needles(h):
+            ax: Any = x
+            assert (x in h) == (ax in a), (h, x)
+            assert (x not in h) == (ax not in a), (h, x)
+
+def test_long_needle() -> None:
+    h = b"a" * 100 + b"b"
+    for n in range(30, 40):
+        assert b"a" * n + b"b" in h
+        assert b"a" * n + b"c" not in h
+        assert b"b" + b"a" * n not in h
+
+def test_frequent_first_byte() -> None:
+    # Dense false hits on the first needle byte switch to the CPython search
+    for first, last in [(b"a", b"b"), (b"\x00", b"\xff")]:
+        for size in [2, 32]:
+            needle = first * (size - 1) + last
+            h = first * 100
+            assert needle not in h
+            assert needle in h + needle
+            assert needle in h + needle + first * 20
+    # Just before, at, and after the first density check
+    for false_hits in [15, 16, 17]:
+        h = b"a" * false_hits
+        assert b"ab" in h + b"ab"
+        assert b"ab" not in h + b"a"
+    # The fallback must search beyond the dense prefix
+    h = b"a" * 100 + b"x" * 200
+    assert b"ab" in h + b"ab"
+    assert b"ab" not in h
+
+def test_dense_and_sparse_regions() -> None:
+    # Sparse false hits keep the direct search going across multiple density checks.
+    # A subsequent dense region should still trigger the fallback.
+    for tail in [b"x" * 100, b"a" * 100]:
+        h = b"axxxxxxxx" * 32 + tail
+        assert b"ab" not in h
+        assert b"ab" in h + b"ab"
+    # At the first density check, the distance from the initial mark to the
+    # next candidate equals the position of the 16th false hit.
+    for distance in [127, 128, 129]:
+        h = b"a" * 15 + b"x" * (distance - 15) + b"ax"
+        assert b"ab" not in h
+        assert b"ab" in h + b"ab"
+
+def test_subclass() -> None:
+    s: bytes = BytesSubclass(b"abc")
+    assert 97 in s
+    assert 100 not in s
+    assert b"bc" in s
+    assert BytesSubclass(b"bc") in b"abc"
+    assert BytesSubclass(b"bd") not in b"abc"
+    assert BytesSubclass(b"") in b""
+
+    o: bytes = BytesContainsOverride(b"abc")
+    assert 1 in o
+    assert 97 not in o
+    assert 1000 in o
+    assert b"zz" in o
+    assert b"ab" not in o
+
+[file bcsubclass.py]
+class BytesSubclass(bytes):
+    pass
+
+class BytesContainsOverride(bytes):
+    def __contains__(self, x: object) -> bool:
+        return x == 1 or x == 1000 or x == b"zz"
 
 [case testBytesJoin]
 from typing import Any

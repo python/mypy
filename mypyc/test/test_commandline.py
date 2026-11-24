@@ -44,7 +44,8 @@ class TestCommandLine(MypycDataSuite):
             f.write(text)
 
         env = os.environ.copy()
-        env["PYTHONPATH"] = base_path
+        existing = env.get("PYTHONPATH")
+        env["PYTHONPATH"] = base_path + (os.pathsep + existing if existing else "")
 
         out = b""
         try:

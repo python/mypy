@@ -126,7 +126,7 @@ PyObject *CPyStr_GetItem(PyObject *str, CPyTagged index) {
             }
             return unicode;
         } else {
-            PyErr_SetString(PyExc_OverflowError, CPYTHON_LARGE_INT_ERRMSG);
+            CPy_LargeIndexError(index, "string index out of range");
             return NULL;
         }
     } else {

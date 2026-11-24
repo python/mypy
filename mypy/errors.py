@@ -1055,7 +1055,7 @@ class Errors:
             a.append(s)
             if self.options.pretty:
                 # Add source code fragment and a location marker.
-                if severity == "error" and source_lines and line > 0:
+                if severity == "error" and source_lines and 0 < line <= len(source_lines):
                     source_line = source_lines[line - 1]
                     source_line_expanded = source_line.expandtabs()
                     min_column = len(source_line) - len(source_line.lstrip())

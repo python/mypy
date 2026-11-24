@@ -613,3 +613,44 @@ for thread in threads:
 for thread in threads:
     thread.join()
 assert not errors, errors
+
+[case testConcurrentWeakrefGetter]
+import threading
+import weakref
+from typing import Any
+from mypy_extensions import mypyc_attr
+
+@mypyc_attr(weakrefs=True)
+class C:
+    pass
+
+def churn(o: C, count: int) -> None:
+    # Each new weak reference becomes the head of the weak reference list, and it's
+    # freed right away
+    for _ in range(count):
+        weakref.ref(o, None)
+        weakref.ref(o, lambda r: None)
+
+def read(o: Any, count: int) -> None:
+    for _ in range(count):
+        # Note: mypy doesn't know about '__weakref__', so use getattr().
+        r = getattr(o, "__weakref__")
+        assert r is None or isinstance(r, weakref.ref)
+
+def test_concurrent_weakref_getter() -> None:
+    # On a free-threaded build, reading __weakref__ races with other threads that
+    # free the head of the list
+    o = C()
+    count = 100_000
+    threads = [
+        threading.Thread(target=churn, args=(o, count)),
+        threading.Thread(target=churn, args=(o, count)),
+        threading.Thread(target=read, args=(o, count)),
+        threading.Thread(target=read, args=(o, count)),
+    ]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join()
+    r = weakref.ref(o)
+    assert r() is o

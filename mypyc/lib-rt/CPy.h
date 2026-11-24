@@ -197,6 +197,7 @@ CPyTagged CPyTagged_FromUInt32(uint32_t value);
 PyObject *CPyTagged_AsObject(CPyTagged x);
 PyObject *CPyTagged_StealAsObject(CPyTagged x);
 Py_ssize_t CPyTagged_AsSsize_t(CPyTagged x);
+void CPy_LargeIndexError(CPyTagged index, const char *msg);
 void CPyTagged_IncRef(CPyTagged x);
 void CPyTagged_DecRef(CPyTagged x);
 void CPyTagged_XDecRef(CPyTagged x);
@@ -227,8 +228,10 @@ PyObject *CPyLong_FromStrWithBase(PyObject *o, CPyTagged base);
 PyObject *CPyLong_FromStr(PyObject *o);
 PyObject *CPyBool_Str(bool b);
 int64_t CPyLong_AsInt64_(PyObject *o);
+int64_t CPyLong_AsIndex(PyObject *o);
 int64_t CPyInt64_Divide(int64_t x, int64_t y);
 int64_t CPyInt64_Remainder(int64_t x, int64_t y);
+void CPyInt64_Overflow(void);
 int32_t CPyLong_AsInt32_(PyObject *o);
 int32_t CPyInt32_Divide(int32_t x, int32_t y);
 int32_t CPyInt32_Remainder(int32_t x, int32_t y);
@@ -925,6 +928,27 @@ static void CPy_LogGetAttr(const char *method, PyObject *obj, PyObject *attr) {
 
 CPyTagged CPyObject_Hash(PyObject *o);
 Py_hash_t CPy_HashFromResult(PyObject *res);
+Py_ssize_t CPy_LenFromResult(PyObject *res);
+CPyTagged CPyObject_LenFromResult(PyObject *res);
+
+// Convert the result of a __len__ method to a length, like len() does.
+// Return -1 with an exception set on error.
+static inline Py_ssize_t CPyTagged_AsLen(CPyTagged x) {
+    if (likely(CPyTagged_CheckShort(x))) {
+        Py_ssize_t len = CPyTagged_ShortAsSsize_t(x);
+        if (likely(len >= 0)) {
+            return len;
+        }
+        PyErr_SetString(PyExc_ValueError, "__len__() should return >= 0");
+        return -1;
+    }
+    return CPy_LenFromResult(CPyTagged_LongAsObject(x));
+}
+
+// Check that the result of a __len__ method is a valid length, like len() does
+static inline bool CPyTagged_CheckLen(CPyTagged x) {
+    return CPyTagged_AsLen(x) >= 0;
+}
 
 // Default identity-based hash (same as object.__hash__), used as tp_hash
 static inline Py_hash_t CPy_DefaultHash(PyObject *o) {

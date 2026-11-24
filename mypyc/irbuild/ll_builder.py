@@ -127,6 +127,7 @@ from mypyc.ir.rtypes import (
     is_uint16_rprimitive,
     is_uint32_rprimitive,
     is_uint64_rprimitive,
+    native_int_bounds,
     none_rprimitive,
     object_pointer_rprimitive,
     object_rprimitive,
@@ -153,8 +154,10 @@ from mypyc.primitives.float_ops import copysign_op, int_to_float_op
 from mypyc.primitives.generic_ops import (
     call_fastcall_wrapper_op,
     call_legacy_wrapper_op,
+    check_len_result_op,
     generic_len_op,
     generic_ssize_t_len_op,
+    len_from_result_op,
     py_call_op,
     py_call_with_kwargs_op,
     py_call_with_posargs_op,
@@ -175,6 +178,7 @@ from mypyc.primitives.int_ops import (
     int32_overflow,
     int64_divide_op,
     int64_mod_op,
+    int64_overflow,
     int64_to_int_op,
     int_to_int32_op,
     int_to_int64_op,
@@ -557,6 +561,24 @@ class LowLevelIRBuilder:
                 else:
                     # Extend to larger type
                     return self.add(Extend(src, target_type, target_type.is_signed, line))
+            elif (
+                isinstance(src_type, RPrimitive)
+                and isinstance(target_type, RPrimitive)
+                and src_type.is_native_int
+                and target_type.is_native_int
+                and not src_type.is_signed
+                and target_type.is_signed
+            ):
+                return self.coerce_unsigned_to_signed(src, target_type, line)
+            elif (
+                isinstance(src_type, RPrimitive)
+                and isinstance(target_type, RPrimitive)
+                and src_type.is_native_int
+                and target_type.is_native_int
+                and src_type.is_signed
+                and not target_type.is_signed
+            ):
+                return self.coerce_signed_to_unsigned(src, target_type, line)
             elif is_int64_rprimitive(src_type) and is_c_py_ssize_t_rprimitive(target_type):
                 return self.coerce_i64_to_ssize_t(src, line)
             elif is_bool_or_bit_rprimitive(src_type) and is_tagged(target_type):
@@ -609,8 +631,21 @@ class LowLevelIRBuilder:
             return tmp
         return src
 
-    def coerce_int_to_fixed_width(self, src: Value, target_type: RType, line: int) -> Value:
+    def coerce_int_to_fixed_width(
+        self,
+        src: Value,
+        target_type: RType,
+        line: int,
+        *,
+        slow_path_op: CFunctionDescription | None = None,
+    ) -> Value:
+        """Coerce a tagged int to a fixed-width native int.
+
+        If slow_path_op is given, use it instead of the default primitive to convert
+        an int that isn't a short int (only supported for i64 targets).
+        """
         assert is_fixed_width_rtype(target_type), target_type
+        assert slow_path_op is None or is_int64_rprimitive(target_type), target_type
         assert isinstance(target_type, RPrimitive), target_type
 
         fast, slow, overflow, end = BasicBlock(), BasicBlock(), BasicBlock(), BasicBlock()
@@ -660,7 +695,9 @@ class LowLevelIRBuilder:
             )
             ptr2 = Register(c_pointer_rprimitive)
             self.add(Assign(ptr2, ptr))
-            if is_int64_rprimitive(target_type):
+            if slow_path_op is not None:
+                conv_op = slow_path_op
+            elif is_int64_rprimitive(target_type):
                 conv_op = int_to_int64_op
             elif is_uint64_rprimitive(target_type):
                 conv_op = int_to_uint64_op
@@ -699,10 +736,8 @@ class LowLevelIRBuilder:
         """
         in_range, in_range2 = BasicBlock(), BasicBlock()
 
-        size = target_type.size
-        upper_bound = 1 << (size * 8 - 1)
-        if not target_type.is_signed:
-            upper_bound *= 2
+        lower_bound, max_value = native_int_bounds(target_type)
+        upper_bound = max_value + 1
 
         # Check if value < upper_bound
         check_upper = self.add(
@@ -713,10 +748,6 @@ class LowLevelIRBuilder:
         self.activate_block(in_range)
 
         # Check if value >= lower_bound
-        if target_type.is_signed:
-            lower_bound = -upper_bound
-        else:
-            lower_bound = 0
         check_lower = self.add(
             ComparisonOp(src, Integer(lower_bound, src.type), ComparisonOp.SGE, line)
         )
@@ -777,7 +808,9 @@ class LowLevelIRBuilder:
 
     def emit_fixed_width_overflow_error(self, target_type: RType, line: int) -> None:
         """Emit overflow error for fixed-width type conversion."""
-        if is_int32_rprimitive(target_type):
+        if is_int64_rprimitive(target_type):
+            self.call_c(int64_overflow, [], line)
+        elif is_int32_rprimitive(target_type):
             self.call_c(int32_overflow, [], line)
         elif is_int16_rprimitive(target_type):
             self.call_c(int16_overflow, [], line)
@@ -942,6 +975,53 @@ class LowLevelIRBuilder:
 
         self.activate_block(end)
         return res
+
+    def coerce_unsigned_to_signed(self, src: Value, target_type: RPrimitive, line: int) -> Value:
+        """Coerce an unsigned native int to a signed native int, preserving the value.
+
+        Raise ValueError if the value doesn't fit in the target type.
+        """
+        assert isinstance(src.type, RPrimitive), src.type
+        if src.type.size < target_type.size:
+            # Every value fits in the target type
+            return self.add(Extend(src, target_type, signed=False, line=line))
+        max_value = (1 << (target_type.size * 8 - 1)) - 1
+        overflow, end = BasicBlock(), BasicBlock()
+        in_range = self.add(
+            ComparisonOp(src, Integer(max_value, src.type), ComparisonOp.ULE, line)
+        )
+        self.add(Branch(in_range, end, overflow, Branch.BOOL, line))
+        self.activate_block(overflow)
+        self.emit_fixed_width_overflow_error(target_type, line)
+        self.activate_block(end)
+        return self.add(Truncate(src, target_type, line))
+
+    def coerce_signed_to_unsigned(self, src: Value, target_type: RPrimitive, line: int) -> Value:
+        """Coerce a signed native int to an unsigned native int, preserving the value.
+
+        Raise ValueError if the value is negative or doesn't fit in the target type.
+        """
+        assert isinstance(src.type, RPrimitive), src.type
+        overflow, end = BasicBlock(), BasicBlock()
+        non_negative = self.add(ComparisonOp(src, Integer(0, src.type), ComparisonOp.SGE, line))
+        if src.type.size > target_type.size:
+            # Large non-negative values don't fit in the target type
+            max_value = (1 << (target_type.size * 8)) - 1
+            check_max = BasicBlock()
+            self.add(Branch(non_negative, check_max, overflow, Branch.BOOL, line))
+            self.activate_block(check_max)
+            in_range = self.add(
+                ComparisonOp(src, Integer(max_value, src.type), ComparisonOp.SLE, line)
+            )
+            self.add(Branch(in_range, end, overflow, Branch.BOOL, line))
+        else:
+            self.add(Branch(non_negative, end, overflow, Branch.BOOL, line))
+        self.activate_block(overflow)
+        self.emit_fixed_width_overflow_error(target_type, line)
+        self.activate_block(end)
+        if src.type.size < target_type.size:
+            return self.add(Extend(src, target_type, signed=False, line=line))
+        return self.add(Truncate(src, target_type, line))
 
     def coerce_nullable(self, src: Value, target_type: RType, line: int) -> Value:
         """Generate a coercion from a potentially null value."""
@@ -3001,18 +3081,16 @@ class LowLevelIRBuilder:
             # TODO: Support use_pyssize_t
             assert not use_pyssize_t
             length = self.gen_method_call(val, "__len__", [], int_rprimitive, line)
+            rtype = length.type
+            if not (
+                is_tagged(rtype) or is_fixed_width_rtype(rtype) or is_bool_or_bit_rprimitive(rtype)
+            ):
+                # Like len(), accept any int (or object with __index__) that is a valid length
+                obj = self.coerce(length, object_rprimitive, line)
+                return self.call_c(len_from_result_op, [obj], line)
             length = self.coerce(length, int_rprimitive, line)
-            ok, fail = BasicBlock(), BasicBlock()
-            cond = self.binary_op(length, Integer(0), ">=", line)
-            self.add_bool_branch(cond, ok, fail)
-            self.activate_block(fail)
-            self.add(
-                RaiseStandardError(
-                    RaiseStandardError.VALUE_ERROR, "__len__() should return >= 0", line
-                )
-            )
-            self.add(Unreachable())
-            self.activate_block(ok)
+            # The length must not be negative and must fit in Py_ssize_t
+            self.call_c(check_len_result_op, [length], line)
             return length
 
         elif isinstance(typ, RVec):
