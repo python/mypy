@@ -5514,9 +5514,24 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
             ]
             if len(tuples_in_context) == 1:
                 type_context = tuples_in_context[0]
+            elif (
+                len(tuples_in_context) > 1
+                and not any(isinstance(item, StarExpr) for item in e.items)
+                and all(
+                    isinstance(t, TupleType)
+                    and len(t.items) == len(e.items)
+                    and find_unpack_in_list(t.items) is None
+                    for t in tuples_in_context
+                )
+            ):
+                tuple_types = [t for t in tuples_in_context if isinstance(t, TupleType)]
+                type_context_items = [
+                    UnionType.make_union([t.items[k] for t in tuple_types])
+                    for k in range(len(e.items))
+                ]
             else:
                 # There are either no relevant tuples in the Union, or there is
-                # more than one.  Either way, we can't decide on a context.
+                # more than one with incompatible structure. Either way, we can't decide on a context.
                 pass
 
         if isinstance(type_context, TupleType) and self.tuple_context_matches(e, type_context):
