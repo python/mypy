@@ -2876,4 +2876,3 @@ def f(p: OverloadedProto) -> None:
     reveal_type(unwrap(run(p, "hello", flag=True)))  # N: Revealed type is "builtins.str"
     reveal_type(unwrap(run(ov, "hello", flag=True)))  # N: Revealed type is "builtins.str"
 [builtins fixtures/paramspec.pyi]
-
