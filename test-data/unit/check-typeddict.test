@@ -79,6 +79,26 @@ p = Point(x='meaning_of_life', y=1337)  # E: Incompatible types (expression has 
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 
+[case testTypedDictDuplicateKeysTypeCheckAllValues]
+from typing import TypedDict
+
+class Payload(TypedDict):
+    value: int
+
+def takes_str(value: str) -> int:
+    return 0
+
+constructed = Payload({"value": takes_str(1), "value": 0})  # E: Argument 1 to "takes_str" has incompatible type "int"; expected "str"
+contextual: Payload = {"value": takes_str(1), "value": 0}  # E: Argument 1 to "takes_str" has incompatible type "int"; expected "str"
+overrides: Payload = {"value": 0}
+with_unpack = Payload({
+    "value": takes_str(1),  # E: Argument 1 to "takes_str" has incompatible type "int"; expected "str"
+    "value": takes_str(2),  # E: Argument 1 to "takes_str" has incompatible type "int"; expected "str"
+    **overrides,
+})
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
 [case testCannotCreateTypedDictInstanceWithInlineTypedDict]
 from typing import TypedDict
 D = TypedDict('D', {
