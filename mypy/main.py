@@ -1723,20 +1723,25 @@ def maybe_write_junit_xml(
             # Elapsed time would make the output non-reproducible.
             td = 0.0
         py_version = f"{options.python_version[0]}_{options.python_version[1]}"
-        if options.junit_format == "global":
-            util.write_junit_xml(
-                td,
-                serious,
-                {None: all_messages} if all_messages else {},
-                options.junit_xml,
-                py_version,
-                options.platform,
-            )
-        else:
-            # per_file
-            util.write_junit_xml(
-                td, serious, messages_by_file, options.junit_xml, py_version, options.platform
-            )
+        try:
+            if options.junit_format == "global":
+                util.write_junit_xml(
+                    td,
+                    serious,
+                    {None: all_messages} if all_messages else {},
+                    options.junit_xml,
+                    py_version,
+                    options.platform,
+                )
+            else:
+                # per_file
+                util.write_junit_xml(
+                    td, serious, messages_by_file, options.junit_xml, py_version, options.platform
+                )
+        except OSError as err:
+            # A path we cannot write to is a usage problem, not an internal error
+            sys.stderr.write(f"error: Cannot write junit-xml to {options.junit_xml}: {err}\n")
+            sys.exit(2)
 
 
 def fail(msg: str, stderr: TextIO, options: Options) -> NoReturn:

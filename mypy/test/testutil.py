@@ -1,8 +1,12 @@
 from __future__ import annotations
 
+import io
 import os
+import sys
 import tempfile
 from unittest import TestCase, mock
+
+import pytest
 
 from mypy.inspections import parse_location
 from mypy.main import maybe_write_junit_xml
@@ -112,6 +116,20 @@ Error line 2</failure>
             platform="test-plat",
         )
         assert result == expected
+
+    def test_junit_xml_unwritable_path_is_a_reported_error(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            blocker = os.path.join(tmpdir, "blocker")
+            with open(blocker, "w") as f:
+                f.write("this is a file, not a directory\n")
+            options = Options()
+            options.junit_xml = os.path.join(blocker, "junit.xml")
+            with mock.patch.object(sys, "stderr", new_callable=io.StringIO) as stderr:
+                with pytest.raises(SystemExit) as exc_info:
+                    maybe_write_junit_xml(1.23, False, [], {}, options)
+            assert exc_info.value.code == 2
+            assert "Cannot write junit-xml to" in stderr.getvalue()
+            assert "INTERNAL ERROR" not in stderr.getvalue()
 
     def test_junit_time_is_zero_in_bazel_mode(self) -> None:
         # Output must be reproducible under Bazel, so elapsed time is not included.
