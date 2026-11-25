@@ -301,9 +301,20 @@ d: Dict[str, A]
 f(**d)
 f(x=A(), **d)
 d2: Dict[str, B]
-f(**d2)         # E: Argument 1 to "f" has incompatible type "**dict[str, B]"; expected "A"
-f(x=A(), **d2)  # E: Argument 2 to "f" has incompatible type "**dict[str, B]"; expected "A"
-f(**{'x': B()}) # E: Argument 1 to "f" has incompatible type "**dict[str, B]"; expected "A"
+f(**d2)         # E: Argument 1 to "f" has incompatible type "**dict[str, B]"; expected "A" \
+                # N: Consider annotating the ** argument as "**kwargs: Any" or using a TypedDict
+f(x=A(), **d2)  # E: Argument 2 to "f" has incompatible type "**dict[str, B]"; expected "A" \
+                # N: Consider annotating the ** argument as "**kwargs: Any" or using a TypedDict
+f(**{'x': B()}) # E: Argument 1 to "f" has incompatible type "**dict[str, B]"; expected "A" \
+                # N: Consider annotating the ** argument as "**kwargs: Any" or using a TypedDict
+[builtins fixtures/dict.pyi]
+
+[case testIncompatibleKwargsNote]
+from typing import Any
+def f(x: int, y: str) -> None: pass
+d: dict[str, int] = {}
+f(**d)  # E: Argument 1 to "f" has incompatible type "**dict[str, int]"; expected "str" \
+        # N: Consider annotating the ** argument as "**kwargs: Any" or using a TypedDict
 [builtins fixtures/dict.pyi]
 
 [case testKwargsAllowedInDunderCall]
@@ -372,7 +383,8 @@ def f(a: 'A', b: 'B') -> None: pass
 d: Dict[str, Any]
 f(**d)
 d2: Dict[str, A]
-f(**d2) # E: Argument 1 to "f" has incompatible type "**dict[str, A]"; expected "B"
+f(**d2) # E: Argument 1 to "f" has incompatible type "**dict[str, A]"; expected "B" \
+        # N: Consider annotating the ** argument as "**kwargs: Any" or using a TypedDict
 class A: pass
 class B: pass
 [builtins fixtures/dict.pyi]
@@ -449,7 +461,8 @@ f(**a) # okay
 
 b = {'': ''}
 f(b) # E: Argument 1 to "f" has incompatible type "dict[str, str]"; expected "int"
-f(**b) # E: Argument 1 to "f" has incompatible type "**dict[str, str]"; expected "int"
+f(**b) # E: Argument 1 to "f" has incompatible type "**dict[str, str]"; expected "int" \
+       # N: Consider annotating the ** argument as "**kwargs: Any" or using a TypedDict
 
 c = {0: 0}
 f(**c) # E: Argument after ** must have string keys
@@ -521,7 +534,8 @@ def g(arg: int = 0, **kwargs: object) -> None:
 
 d = {} # type: Dict[str, object]
 f(**d)
-g(**d)  # E: Argument 1 to "g" has incompatible type "**dict[str, object]"; expected "int"
+g(**d)  # E: Argument 1 to "g" has incompatible type "**dict[str, object]"; expected "int" \
+        # N: Consider annotating the ** argument as "**kwargs: Any" or using a TypedDict
 
 m = {} # type: Mapping[str, object]
 f(**m)
@@ -596,6 +610,7 @@ main:37: error: Argument 1 to "foo" has incompatible type "**B[str, str]"; expec
 main:38: error: Argument after ** must be a mapping, not "C[str, float]"
 main:39: error: Argument after ** must be a mapping, not "D"
 main:41: error: Argument 1 to "foo" has incompatible type "**dict[str, str]"; expected "float"
+main:41: note: Consider annotating the ** argument as "**kwargs: Any" or using a TypedDict
 [builtins fixtures/dict.pyi]
 
 [case testLiteralKwargs]
