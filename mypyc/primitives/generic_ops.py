@@ -464,6 +464,14 @@ generic_setattr = custom_op(
     error_kind=ERR_NEG_INT,
 )
 
+# Does the type of the object override attribute assignment (by defining __setattr__)?
+has_custom_setattr = custom_op(
+    arg_types=[object_rprimitive],
+    return_type=bit_rprimitive,
+    c_function_name="CPyObject_HasCustomSetAttr",
+    error_kind=ERR_NEVER,
+)
+
 setup_object = custom_op(
     arg_types=[object_rprimitive],
     return_type=object_rprimitive,

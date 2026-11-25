@@ -488,9 +488,22 @@ L0:
 def Base.__mypyc_setter__x(self, v):
     self :: __main__.Base
     v :: str
-    r0 :: bool
+    r0 :: bit
+    r1 :: bool
+    r2 :: str
+    r3 :: i32
+    r4 :: bit
 L0:
-    self._x = v; r0 = is_error
+    r0 = CPyObject_HasCustomSetAttr(self)
+    if r0 goto L2 else goto L1 :: bool
+L1:
+    self._x = v; r1 = is_error
+    goto L3
+L2:
+    r2 = '_x'
+    r3 = PyObject_SetAttr(self, r2, v)
+    r4 = r3 >= 0 :: signed
+L3:
     return 1
 def Base.__mypyc_setter__x__Base_glue(self, v):
     self :: __main__.Base
