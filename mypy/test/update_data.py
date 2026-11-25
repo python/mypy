@@ -76,12 +76,23 @@ def _iter_fixes(
                     is_last = j == len(reports) - 1
                     severity_char = severity[0].upper()
                     continuation = "" if is_last else " \\"
-                    fix_lines.append(f"{out_l}{indent}# {severity_char}: {msg}{continuation}")
+                    fix_lines.append(
+                        _escape_section_header_like_line(
+                            f"{out_l}{indent}# {severity_char}: {msg}{continuation}"
+                        )
+                    )
             else:
-                fix_lines.append(source_line)
+                fix_lines.append(_escape_section_header_like_line(source_line))
 
         yield DataFileFix(
             lineno=testcase.line + test_item.line - 1,
             end_lineno=testcase.line + test_item.end_line - 1,
             lines=fix_lines + [""] * test_item.trimmed_newlines,
         )
+
+
+def _escape_section_header_like_line(line: str) -> str:
+    """Escape source lines that would be parsed as .test section headers."""
+    if line.startswith("[") and line.strip().endswith("]"):
+        return f"\\{line}"
+    return line
