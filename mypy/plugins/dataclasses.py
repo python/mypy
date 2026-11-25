@@ -475,6 +475,7 @@ class DataclassTransformer:
             self._cls,
             "__slots__",
             slots_type,
+            is_classvar=True,
             overwrite_existing=slots_defined_by_plugin,
         )
 
