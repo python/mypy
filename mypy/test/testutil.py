@@ -6,11 +6,11 @@ from unittest import TestCase, mock
 
 import pytest
 
-from mypy.inspections import parse_location
 from mypy.errors import CompileError
+from mypy.inspections import parse_location
 from mypy.main import maybe_write_junit_xml
-from mypy.report import Reports
 from mypy.options import Options
+from mypy.report import Reports
 from mypy.util import _generate_junit_contents, get_terminal_width
 
 
