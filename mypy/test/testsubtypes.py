@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from mypy import api
 from mypy.nodes import CONTRAVARIANT, COVARIANT, INVARIANT
 from mypy.subtypes import is_subtype
 from mypy.test.helpers import Suite
@@ -8,6 +9,33 @@ from mypy.types import Instance, TupleType, Type, UninhabitedType, UnpackType
 
 
 class SubtypingSuite(Suite):
+    def test_protocol_overload_with_class_override(self) -> None:
+        source = """
+from collections.abc import Iterator, Sequence
+from typing import Any, Protocol, overload
+from typing_extensions import TypeVar, reveal_type
+
+T = TypeVar("T", covariant=True)
+
+class ReducedCovariantList(Protocol[T]):
+    @property  # type: ignore[misc]
+    def __class__(self) -> type[list[Any]]: ...  # type: ignore[override]
+    def __iter__(self) -> Iterator[T]: ...
+
+@overload
+def choose(value: ReducedCovariantList[str]) -> str: ...
+@overload
+def choose(value: Sequence[int]) -> int: ...
+def choose(value: Any) -> Any: ...
+
+reveal_type(choose([1]))
+"""
+        stdout, stderr, returncode = api.run(
+            ["--python-version", "3.14", "--no-incremental", "--show-error-codes", "-c", source]
+        )
+        assert returncode == 0, stderr
+        assert 'Revealed type is "int"' in stdout
+
     def setUp(self) -> None:
         self.fx = TypeFixture(INVARIANT)
         self.fx_contra = TypeFixture(CONTRAVARIANT)
