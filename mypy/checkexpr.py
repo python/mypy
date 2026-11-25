@@ -573,6 +573,17 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                         self.msg.cannot_use_function_with_type(e.callee.name, "TypedDict", e)
                     elif typ.node.is_newtype:
                         self.msg.cannot_use_function_with_type(e.callee.name, "NewType", e)
+            if e.callee.name == "issubclass":
+                # The first argument of issubclass() must be a class, so a
+                # NewType is not allowed there either (unlike isinstance(),
+                # whose first argument is an arbitrary value).
+                for typ in mypy.checker.flatten(e.args[0]):
+                    if (
+                        isinstance(typ, RefExpr)
+                        and isinstance(typ.node, TypeInfo)
+                        and typ.node.is_newtype
+                    ):
+                        self.msg.cannot_use_function_with_type(e.callee.name, "NewType", e)
         self.try_infer_partial_type(e)
         type_context = None
         if isinstance(e.callee, LambdaExpr):
