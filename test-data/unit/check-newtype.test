@@ -365,12 +365,31 @@ Any(5)
 [case testNewTypeWithIsInstanceAndIsSubclass]
 from typing import NewType
 T = NewType('T', int)
+Alias = T
 d: object
 if isinstance(d, T):   # E: Cannot use isinstance() with NewType type
     reveal_type(d)     # N: Revealed type is "builtins.int"
+isinstance(d, Alias)   # E: Cannot use isinstance() with NewType type
 issubclass(object, T)  # E: Cannot use issubclass() with NewType type
 issubclass(T, object)  # E: Cannot use issubclass() with NewType type
 issubclass(int, object)
+issubclass(Alias, object)  # E: Cannot use issubclass() with NewType type
+issubclass(object, Alias)  # E: Cannot use issubclass() with NewType type
+[builtins fixtures/isinstancelist.pyi]
+
+[case testIsInstanceAndIsSubclassShadowed]
+from typing import NewType
+
+T = NewType('T', int)
+
+def isinstance(obj: object, typ: object) -> bool:
+    return True
+
+def issubclass(cls: object, typ: object) -> bool:
+    return True
+
+isinstance(T, int)
+issubclass(T, int)
 [builtins fixtures/isinstancelist.pyi]
 
 [case testInvalidNewTypeCrash]

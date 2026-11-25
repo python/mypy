@@ -536,7 +536,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                 )
         if (
             isinstance(e.callee, NameExpr)
-            and e.callee.name in ("isinstance", "issubclass")
+            and e.callee.fullname in ("builtins.isinstance", "builtins.issubclass")
             and len(e.args) == 2
         ):
             for typ in mypy.checker.flatten(e.args[1]):
@@ -571,18 +571,13 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                 if isinstance(typ, RefExpr) and isinstance(typ.node, TypeInfo):
                     if typ.node.typeddict_type:
                         self.msg.cannot_use_function_with_type(e.callee.name, "TypedDict", e)
-                    elif typ.node.is_newtype:
-                        self.msg.cannot_use_function_with_type(e.callee.name, "NewType", e)
-            if e.callee.name == "issubclass":
+                if self.is_newtype_type_expr(typ):
+                    self.msg.cannot_use_function_with_type(e.callee.name, "NewType", e)
+            if e.callee.fullname == "builtins.issubclass":
                 # issubclass() tests the class given as its first argument, so a NewType
                 # there fails at runtime just as it does in second position. The subtype
                 # check lets it through, as a NewType's constructor looks like a type object.
-                cls_arg = e.args[0]
-                if (
-                    isinstance(cls_arg, RefExpr)
-                    and isinstance(cls_arg.node, TypeInfo)
-                    and cls_arg.node.is_newtype
-                ):
+                if self.is_newtype_type_expr(e.args[0]):
                     self.msg.cannot_use_function_with_type("issubclass", "NewType", e)
         self.try_infer_partial_type(e)
         type_context = None
@@ -783,6 +778,21 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                 and not tp.type_object().runtime_protocol
             ):
                 self.chk.fail(message_registry.RUNTIME_PROTOCOL_EXPECTED, e)
+
+    def is_newtype_type_expr(self, expr: Expression) -> bool:
+        """Does this expression evaluate to a NewType, directly or through an alias?"""
+        if isinstance(expr, RefExpr) and isinstance(expr.node, TypeInfo) and expr.node.is_newtype:
+            return True
+        if isinstance(expr, NameExpr):
+            try:
+                node = self.chk.lookup_qualified(expr.name).node
+            except KeyError:
+                return False
+            # PEP 695 aliases are already rejected by the regular argument check.
+            if isinstance(node, TypeAlias) and not node.python_3_12_type_alias:
+                target = get_proper_type(node.target)
+                return isinstance(target, Instance) and target.type.is_newtype
+        return False
 
     def check_protocol_issubclass(self, e: CallExpr) -> None:
         for expr in mypy.checker.flatten(e.args[1]):
