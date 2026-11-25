@@ -110,7 +110,7 @@ class SourceFinder:
     def find_sources_in_dir(self, path: str) -> list[BuildSource]:
         sources = []
 
-        seen: set[str] = set()
+        seen_file_stems: set[str] = set()
         names = sorted(self.fscache.listdir(path), key=keyfunc)
         for name in names:
             # Skip certain names altogether
@@ -128,12 +128,16 @@ class SourceFinder:
             if self.fscache.isdir(subpath):
                 sub_sources = self.find_sources_in_dir(subpath)
                 if sub_sources:
-                    seen.add(name)
+                    if any(
+                        self.fscache.isfile(os.path.join(subpath, "__init__" + suffix))
+                        for suffix in PY_EXTENSIONS
+                    ):
+                        seen_file_stems.add(name)
                     sources.extend(sub_sources)
             else:
                 stem, suffix = os.path.splitext(name)
-                if stem not in seen and suffix in PY_EXTENSIONS:
-                    seen.add(stem)
+                if stem not in seen_file_stems and suffix in PY_EXTENSIONS:
+                    seen_file_stems.add(stem)
                     module, base_dir = self.crawl_up(subpath)
                     sources.append(BuildSource(subpath, module, None, base_dir))
 
