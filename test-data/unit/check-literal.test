@@ -3164,3 +3164,18 @@ bar: Literal[
 ]
 reveal_type(bar)  # N: Revealed type is "Literal['duration[s][pyarrow]'] | Literal['duration[ms][pyarrow]']"
 [builtins fixtures/primitives.pyi]
+
+[case testLiteralInUnionContextWithGenericFallback]
+# https://github.com/python/mypy/issues/22334
+from typing import Literal, TypeVar
+
+T = TypeVar("T")
+
+def none_if_one(value: T | Literal[1]) -> T | None:
+    return None if isinstance(value, int) else value
+
+def func() -> None:
+    x: str | Literal[1] | None = 1
+    x = none_if_one(x)
+    reveal_type(x)  # N: Revealed type is "builtins.str | None"
+[builtins fixtures/tuple.pyi]
