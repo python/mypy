@@ -505,6 +505,26 @@ Example:
    # Error: Unsupported operand types for + ("int" and "str")  [operator]
    1 + 'x'
 
+Because ``datetime`` is a subclass of ``date``, normal subtype checking can
+also accept mixed operations that raise :py:exc:`TypeError` at runtime. Mypy
+reports mixed ordering comparisons and subtraction:
+
+.. code-block:: python
+
+    from datetime import date, datetime
+
+    d = date.today()
+    dt = datetime.now()
+
+    dt < d  # Error: Unsupported operand types for < ("datetime" and "date")  [operator]
+    d - dt  # Error: Unsupported operand types for - ("date" and "datetime")  [operator]
+
+For subclasses, ordering checks follow the target Python version, since Python
+3.13 changed how ``datetime`` compares with ``date`` subclasses. Inherited
+subtraction is checked on all versions. The check does not affect normal
+subtyping, equality comparisons, or operations whose operands both have the
+static type ``date``.
+
 .. _code-index:
 
 Check indexing operations [index]
