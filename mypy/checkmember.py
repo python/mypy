@@ -1150,6 +1150,11 @@ def analyze_class_attribute_access(
     of E in the expression E.var, original_vars are type variables of the class callable
     (for generic classes).
     """
+
+    mcs_func_info = mcs_fallback.type.get_method(name)
+    if isinstance(mcs_func_info, Decorator) and mcs_func_info.var.is_property:
+        return analyze_decorator_or_funcbase_access(mcs_func_info, mcs_fallback, name, mx)
+
     info = itype.type
     if override_info:
         info = override_info
