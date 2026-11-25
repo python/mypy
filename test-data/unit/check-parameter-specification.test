@@ -2847,4 +2847,32 @@ def apply(func: Callable[P, T], *args: P.args, **kwargs: P.kwargs) -> T: ...
 def test(x: C[I]) -> list[int]: ...
 ci: C[int]
 f: list[int] = apply(test, ci)
+[builtins fixtures/tuple.pyi]
+
+[case testParamSpecAliasUnboundTypeVar]
+from typing import Callable, Generic, ParamSpec, TypeVar
+from typing_extensions import TypeAlias
+
+P = ParamSpec("P")
+T = TypeVar("T")
+T2 = TypeVar("T2")
+
+Alias: TypeAlias = Callable[P, T]
+NoParamSpec: TypeAlias = Callable[[int], T]
+
+def plain() -> Callable[[int], T]: ...
+def no_paramspec_alias() -> NoParamSpec[T]: ...
+def paramspec_alias() -> Alias[[int], T]: ...
+def paramspec_alias_ellipsis() -> Alias[..., T]: ...
+
+reveal_type(plain)  # N: Revealed type is "def () -> def [T] (builtins.int) -> T`-1"
+reveal_type(no_paramspec_alias)  # N: Revealed type is "def [T] () -> def (builtins.int) -> T`-1"
+reveal_type(paramspec_alias)  # N: Revealed type is "def () -> def [T] (builtins.int) -> T`-1"
+reveal_type(paramspec_alias_ellipsis)  # N: Revealed type is "def () -> def [T] (*Any, **Any) -> T`-1"
+
+class Chain(Generic[P, T]): ...
+Dec: TypeAlias = Callable[[Chain[P, T]], Chain[P, T2]]
+
+def identity() -> Dec[..., T, T]: ...
+reveal_type(identity)  # N: Revealed type is "def () -> def [T] (__main__.Chain[[*Any, **Any], T`-1]) -> __main__.Chain[[*Any, **Any], T`-1]"
 [builtins fixtures/paramspec.pyi]
