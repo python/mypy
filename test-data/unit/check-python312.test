@@ -2469,3 +2469,35 @@ reveal_type(a[0])  # N: Revealed type is "tuple[builtins.int, builtins.str]"
 reveal_type(a[1])  # N: Revealed type is "tuple[builtins.int, builtins.str]"
 reveal_type(a[2])  # N: Revealed type is "builtins.tuple[Any, ...]"
 [builtins fixtures/tuple.pyi]
+
+[case testProtocolDescriptorTypeStatement22549]
+# A `type` statement must not produce a false positive when a type argument
+# bound is a protocol implemented via a descriptor, and the check must not
+# poison later, accurate checks. See https://github.com/python/mypy/issues/22549
+from typing import Protocol, Self, overload
+
+
+class Desc:
+    @overload
+    def __get__(self, obj: None, owner: type) -> Self: ...
+    @overload
+    def __get__(self, obj: object, owner: type) -> int: ...
+    def __get__(self, obj: object, owner: type) -> Self | int: ...
+
+
+class P(Protocol):
+    @property
+    def m(self) -> int: ...
+
+
+class Box[T: P]: ...
+
+
+class C:
+    m: Desc = Desc()
+
+
+type A = Box[C] | int
+
+x: P = C()
+[builtins fixtures/property.pyi]
