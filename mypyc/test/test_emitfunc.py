@@ -79,6 +79,7 @@ from mypyc.ir.rtypes import (
     uint8_rprimitive,
     uint16_rprimitive,
     uint32_rprimitive,
+    uint64_rprimitive,
 )
 from mypyc.irbuild.vtable import compute_vtable
 from mypyc.namegen import NameGenerator
@@ -130,6 +131,7 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
         self.u32_1 = add_local("u32_1", uint32_rprimitive)
         self.ptr = add_local("ptr", pointer_rprimitive)
         self.i16 = add_local("i16", int16_rprimitive)
+        self.u64 = add_local("u64", uint64_rprimitive)
         self.t = add_local("t", RTuple([int_rprimitive, bool_rprimitive]))
         self.tt = add_local(
             "tt", RTuple([RTuple([int_rprimitive, bool_rprimitive]), bool_rprimitive])
@@ -1119,6 +1121,45 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
         self.assert_emit(
             IntOp(short_int_rprimitive, self.s1, self.s2, IntOp.ADD, 1),
             """cpy_r_r0 = cpy_r_s1 + cpy_r_s2;""",
+        )
+
+    def test_int_op_constant_operand(self) -> None:
+        # A C integer literal has type int or long long, which can be narrower or wider than
+        # the type of the operation, so a constant operand is converted to the result type
+        self.assert_emit(
+            IntOp(uint64_rprimitive, Integer(3, uint64_rprimitive), self.u64, IntOp.LEFT_SHIFT, 1),
+            """cpy_r_r0 = (uint64_t)cpy_r_u64 < 64 ? (uint64_t)3 << cpy_r_u64 : 0;""",
+        )
+        self.assert_emit(
+            IntOp(uint32_rprimitive, Integer(3, uint32_rprimitive), self.u32, IntOp.LEFT_SHIFT, 1),
+            """cpy_r_r0 = (uint32_t)cpy_r_u32 < 32 ? (uint32_t)3 << cpy_r_u32 : 0;""",
+        )
+        self.assert_emit(
+            IntOp(int64_rprimitive, Integer(5, int64_rprimitive), self.i64, IntOp.RIGHT_SHIFT, 1),
+            """cpy_r_r0 = (int64_t)5 >> ((uint64_t)cpy_r_i64 < 64 ? cpy_r_i64 : 63);""",
+        )
+        self.assert_emit(
+            IntOp(
+                uint64_rprimitive, Integer(5, uint64_rprimitive), self.u64, IntOp.RIGHT_SHIFT, 1
+            ),
+            """cpy_r_r0 = (uint64_t)cpy_r_u64 < 64 ? (uint64_t)5 >> cpy_r_u64 : 0;""",
+        )
+        self.assert_emit(
+            IntOp(
+                uint32_rprimitive, self.u32, Integer(4000000000, uint32_rprimitive), IntOp.MUL, 1
+            ),
+            """cpy_r_r0 = cpy_r_u32 * (uint32_t)4000000000LL;""",
+        )
+        self.assert_emit(
+            IntOp(
+                uint32_rprimitive, Integer(4000000000, uint32_rprimitive), self.u32, IntOp.MUL, 1
+            ),
+            """cpy_r_r0 = (uint32_t)4000000000LL * cpy_r_u32;""",
+        )
+        # A cast to an unsigned type is already used for signed left shifts
+        self.assert_emit(
+            IntOp(int64_rprimitive, Integer(3, int64_rprimitive), self.i64, IntOp.LEFT_SHIFT, 1),
+            """cpy_r_r0 = (uint64_t)cpy_r_i64 < 64 ? (int64_t)((uint64_t)3 << cpy_r_i64) : 0;""",
         )
 
     def test_int_op_no_overflow(self) -> None:

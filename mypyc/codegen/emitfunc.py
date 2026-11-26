@@ -961,6 +961,13 @@ class FunctionEmitterVisitor(OpVisitor[None]):
                 result_type = self.ctype(op.type)
                 self.emit_line(f"{dest} = ({result_type})({lhs} {op_str} {rhs});")
                 return
+            if is_fixed_width_rtype(op.type):
+                # The operation uses an unsigned type at least as wide as int (u32 or u64)
+                # and wraps around, unless a constant operand has a wider signed C type
+                # (e.g. 4000000000LL is a long long, so a u32 multiplication by it
+                # could overflow long long). Convert constants to the result type.
+                lhs = self.cast_if_constant(op.lhs, op.type, lhs)
+                rhs = self.cast_if_constant(op.rhs, op.type, rhs)
         self.emit_line(f"{dest} = {lhs} {op_str} {rhs};")
 
     def emit_native_int_shift(self, op: IntOp) -> None:
@@ -987,6 +994,11 @@ class FunctionEmitterVisitor(OpVisitor[None]):
             # be signed to preserve the sign. Native int operands already have the right
             # signedness, so they are used as is.
             lhs = self.signed_cast_if_tagged(op.lhs.type) + lhs
+        if op.op == IntOp.RIGHT_SHIFT or left_shift_unsigned_ctype(rtype) is None:
+            # The type of a shift is the (promoted) type of the left operand. A constant
+            # left operand such as 3 has type int in C, which can be narrower than the
+            # result type (e.g. 3 << 40 as u64), so convert it to the result type.
+            lhs = self.cast_if_constant(op.lhs, rtype, lhs)
 
         def shift(count: str) -> str:
             if op.op == IntOp.RIGHT_SHIFT:
@@ -1243,6 +1255,16 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         )
         if DEBUG_ERRORS:
             self.emit_line('assert(PyErr_Occurred() != NULL && "failure w/o err!");')
+
+    def cast_if_constant(self, value: Value, rtype: RType, expr: str) -> str:
+        """Convert a constant operand expression to the C type of rtype.
+
+        A C integer literal has type int, long long or unsigned long long, depending on
+        its value, which can be different from the type of the native int operation.
+        """
+        if isinstance(value, Integer):
+            return f"({self.ctype(rtype)}){expr}"
+        return expr
 
     def signed_cast_if_tagged(self, type: RType) -> str:
         """Return a C cast prefix that makes a tagged int operand signed.

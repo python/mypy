@@ -520,3 +520,17 @@ def test_coerce_from_signed_native_int() -> None:
     for n in (-1, -128):
         with assertRaises(ValueError, msg):
             i8_to_u64(n)
+
+[case testU64ConstantLeftOperandShift]
+from mypy_extensions import u64
+
+def lshift(n: u64) -> u64:
+    return 3 << n
+
+def rshift(n: u64) -> u64:
+    return 1000000 >> n
+
+def test_constant_left_operand() -> None:
+    for n in range(70):
+        assert lshift(n) == ((3 << n) & 0xFFFF_FFFF_FFFF_FFFF if n < 64 else 0)
+        assert rshift(n) == 1000000 >> n
