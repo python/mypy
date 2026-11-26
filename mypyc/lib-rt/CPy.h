@@ -1050,6 +1050,17 @@ PyObject *CPyList_GetItemInt64Borrow(PyObject *list, int64_t index);
 PyObject *CPyList_GetItemUInt64Borrow(PyObject *list, uint64_t index);
 void CPyList_SetItemUnsafe(PyObject *list, Py_ssize_t index, PyObject *value);
 
+// Return a new reference to list[index] for a non-negative index, or NULL without an
+// exception if the index is out of range. This is used for iterating over a list on
+// free-threaded builds, where another thread could shrink the list after a bounds check.
+static inline PyObject *CPyList_GetItemOrNull(PyObject *list, Py_ssize_t index) {
+    PyObject *item = PyList_GetItemRef(list, index);
+    if (item == NULL) {
+        PyErr_Clear();
+    }
+    return item;
+}
+
 // Reduce the size of a list that is being built using CPyList_SetItemUnsafe.
 // Items at or after the new size must not have been set.
 static inline void CPyList_SetSizeUnsafe(PyObject *list, Py_ssize_t size) {

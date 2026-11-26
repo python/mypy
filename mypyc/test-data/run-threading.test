@@ -654,3 +654,44 @@ def test_concurrent_weakref_getter() -> None:
         thread.join()
     r = weakref.ref(o)
     assert r() is o
+
+[case testConcurrentListShrinkDuringIteration]
+import threading
+
+def iterate(lst: list[int], count: int, errors: list[Exception]) -> None:
+    try:
+        for _ in range(count):
+            n = 0
+            for x in lst:
+                n += x
+            for x in reversed(lst):
+                n += x
+            for i, x in enumerate(lst):
+                n += x
+            a = [x + 1 for x in lst]
+    except Exception as e:
+        errors.append(e)
+
+def resize(lst: list[int], count: int) -> None:
+    for _ in range(count):
+        lst.extend(range(20))
+        for _ in range(20):
+            # Remove items one at a time, so that loops often see the list shrink
+            try:
+                lst.pop()
+            except IndexError:
+                pass
+
+def test_concurrent_list_shrink_during_iteration() -> None:
+    # On a free-threaded build, the list can shrink after the length check in a
+    # loop. This should stop the loop like the list iterator, not raise IndexError.
+    lst: list[int] = []
+    errors: list[Exception] = []
+    count = 20_000
+    threads = [threading.Thread(target=iterate, args=(lst, count, errors)) for _ in range(2)]
+    threads += [threading.Thread(target=resize, args=(lst, count)) for _ in range(2)]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join()
+    assert errors == []

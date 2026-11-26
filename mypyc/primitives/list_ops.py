@@ -186,6 +186,15 @@ list_get_item_unsafe_op = custom_primitive_op(
     error_kind=ERR_NEVER,
 )
 
+# Get list item, or NULL (without an exception) if index is out of range. Used for
+# iterating over a list on free-threaded builds, where the list may shrink concurrently.
+list_get_item_or_null_op = custom_op(
+    arg_types=[list_rprimitive, c_pyssize_t_rprimitive],
+    return_type=object_rprimitive,
+    c_function_name="CPyList_GetItemOrNull",
+    error_kind=ERR_NEVER,
+)
+
 # list[index] = obj
 list_set_item_op = method_op(
     name="__setitem__",

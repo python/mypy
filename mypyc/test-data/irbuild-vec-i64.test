@@ -365,30 +365,32 @@ L0:
 L1:
     r4 = var_object_size l
     r5 = r3 < r4 :: signed
-    if r5 goto L2 else goto L7 :: bool
+    if r5 goto L2 else goto L8 :: bool
 L2:
-    r6 = CPyList_GetItemInt64(l, r3)
+    r6 = CPyList_GetItemOrNull(l, r3)
+    if is_error(r6) goto L8 else goto L3
+L3:
     r7 = unbox(i64, r6)
     x = r7
     r8 = x + 1
     r9 = r3 < r0 :: signed
-    if r9 goto L3 else goto L4 :: bool
-L3:
+    if r9 goto L4 else goto L5 :: bool
+L4:
     r10 = r2.items
     r11 = r3 * 8
     r12 = r10 + r11
     set_mem r12, r8 :: i64*
     keep_alive r2
-    goto L5
-L4:
+    goto L6
+L5:
     r13 = VecI64Api.append(r2, r8)
     r2 = r13
-L5:
 L6:
+L7:
     r14 = r3 + 1
     r3 = r14
     goto L1
-L7:
+L8:
     r15 = set_element r2, len, r3
     r2 = r15
     return r2

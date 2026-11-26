@@ -109,6 +109,7 @@ from mypyc.primitives.generic_ops import aiter_op, anext_op, index_op, iter_op, 
 from mypyc.primitives.list_ops import (
     list_append_op,
     list_get_item_int64_op,
+    list_get_item_or_null_op,
     list_get_item_unsafe_op,
     new_list_set_item_op,
     new_list_set_size_op,
@@ -1247,6 +1248,12 @@ class ForSequence(ForGenerator):
             index_reg = builder.builder.int_sub(len_val, 1)
         self.index_target = builder.ensure_register(index_reg)
         self.target_type = target_type
+        # On free-threaded builds another thread could shrink a list after the length
+        # check, so the item read can find that the index is out of range. Stop the loop
+        # in that case, like the list iterator.
+        self.item_may_be_missing = (
+            is_list_rprimitive(expr_reg.type) and builder.options.target_python.free_threaded
+        )
 
     def gen_condition(self) -> None:
         builder = self.builder
@@ -1270,22 +1277,36 @@ class ForSequence(ForGenerator):
             # (unless input is immutable type).
             len_reg = builder.read(self.length_reg, line)
         comparison = builder.binary_op(builder.read(self.index_target, line), len_reg, "<", line)
-        if self.nested:
+        if self.reads_item_in_condition():
             # In zip() or enumerate(), read the item right after the length check, as
             # the sequence's iterator would. Other iterators may be advanced and other
             # loop targets assigned before our begin_body(), and either could shrink
-            # the sequence.
+            # the sequence. If the item may be missing, also stop the loop here.
             read_block = BasicBlock()
             builder.add_bool_branch(comparison, read_block, self.loop_exit)
             builder.activate_block(read_block)
             self.next_reg = self.read_item()
-            builder.goto(self.body_block)
+            if self.item_may_be_missing:
+                builder.add(
+                    Branch(self.next_reg, self.loop_exit, self.body_block, Branch.IS_ERROR)
+                )
+            else:
+                builder.goto(self.body_block)
         else:
             builder.add_bool_branch(comparison, self.body_block, self.loop_exit)
+
+    def reads_item_in_condition(self) -> bool:
+        return self.nested or self.item_may_be_missing
 
     def read_item(self) -> Value:
         builder = self.builder
         line = self.line
+        if self.item_may_be_missing:
+            return builder.call_c(
+                list_get_item_or_null_op,
+                [builder.read(self.expr_target, line), builder.read(self.index_target, line)],
+                line,
+            )
         return unsafe_index(
             builder,
             builder.read(self.expr_target, line),
@@ -1297,7 +1318,7 @@ class ForSequence(ForGenerator):
         builder = self.builder
         line = self.line
         # Read the next list item, unless gen_condition() already did.
-        value_box = self.next_reg if self.nested else self.read_item()
+        value_box = self.next_reg if self.reads_item_in_condition() else self.read_item()
         # We coerce to the type of list elements here so that
         # iterating with tuple unpacking generates a tuple based
         # unpack instead of an iterator based one.
