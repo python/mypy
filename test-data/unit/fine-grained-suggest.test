@@ -1268,3 +1268,91 @@ optional5(None)
 [out]
 (int | None) -> None
 ==
+
+[case testSuggestGenericFunctions]
+# suggest: foo.identity
+# suggest: foo.first_list
+# suggest: foo.lookup
+# suggest: foo.apply
+# suggest: --generic-min-calls=3 foo.identity
+[file foo.py]
+def identity(value):
+    return value
+
+def first_list(items):
+    return items[0]
+
+def lookup(mapping, key):
+    return mapping[key]
+
+def apply(f, x):
+    return f(x)
+
+def to_str(x: int) -> str:
+    return "a"
+
+def to_int(x: str) -> int:
+    return 1
+
+def caller() -> None:
+    a: int = identity(1)
+    b: str = identity("x")
+
+    c: int = first_list([1, 2])
+    d: str = first_list(["a", "b"])
+
+    g: int = lookup({"k": 1}, "k")
+    h: str = lookup({1: "v"}, 1)
+
+    i: str = apply(to_str, 1)
+    j: int = apply(to_int, "x")
+[builtins fixtures/dict.pyi]
+[out]
+[T](T) -> T
+[T](list[T]) -> T
+[K, V](dict[K, V], K) -> V
+[T, R](Callable[[T], R], T) -> R
+(object) -> object
+==
+
+[case testSuggestGenericTuple]
+# suggest: foo.first_tuple
+[file foo.py]
+def first_tuple(items):
+    return items[0]
+
+def caller() -> None:
+    e: int = first_tuple((1, 2))
+    f: str = first_tuple(("a", "b"))
+[builtins fixtures/tuple.pyi]
+[out]
+[T](tuple[T, ...]) -> T
+==
+
+[case testSuggestGenericNegativeCases]
+# suggest: foo.single_call
+# suggest: foo.same_type
+# suggest: foo.reassigned
+[file foo.py]
+def single_call(x):
+    return x
+
+def same_type(x):
+    return x
+
+def reassigned(x):
+    x = 1
+    return x
+
+def caller() -> None:
+    single_call(1)
+    same_type(1)
+    same_type(2)
+    reassigned(1)
+    reassigned("a")
+[builtins fixtures/isinstancelist.pyi]
+[out]
+(int) -> int
+(int) -> int
+(object) -> int
+==

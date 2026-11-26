@@ -317,6 +317,8 @@ class FineGrainedSuite(DataSuite):
             use_fixme = m.group(1) if m else None
             m = re.match("--max-guesses=([0-9]+)", flags)
             max_guesses = int(m.group(1)) if m else None
+            m = re.match("--generic-min-calls=([0-9]+)", flags)
+            generic_min_calls = int(m.group(1)) if m else None
             res: dict[str, Any] = server.cmd_suggest(
                 target.strip(),
                 json=json,
@@ -326,6 +328,7 @@ class FineGrainedSuite(DataSuite):
                 use_fixme=use_fixme,
                 callsites=callsites,
                 max_guesses=max_guesses,
+                generic_min_calls=generic_min_calls,
             )
             val = res["error"] if "error" in res else res["out"] + res["err"]
             if json:
