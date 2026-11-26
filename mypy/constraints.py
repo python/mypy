@@ -811,6 +811,8 @@ class ConstraintBuilderVisitor(TypeVisitor[list[Constraint]]):
         if isinstance(actual, TypeType) and template.type.is_protocol:
             if self.direction == SUPERTYPE_OF:
                 a_item = actual.item
+                if isinstance(a_item, TypeVarType):
+                    a_item = get_proper_type(a_item.upper_bound)
                 if isinstance(a_item, Instance):
                     res.extend(
                         self.infer_constraints_from_protocol_members(
@@ -818,8 +820,6 @@ class ConstraintBuilderVisitor(TypeVisitor[list[Constraint]]):
                         )
                     )
                 # Infer constraints for Type[T] via metaclass of T when it makes sense.
-                if isinstance(a_item, TypeVarType):
-                    a_item = get_proper_type(a_item.upper_bound)
                 if isinstance(a_item, Instance) and a_item.type.metaclass_type:
                     res.extend(
                         self.infer_constraints_from_protocol_members(

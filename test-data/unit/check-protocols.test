@@ -1,6 +1,29 @@
 -- Simple protocol types
 -- ---------------------
 
+[case testInferTypeVarBoundTypeObjectAgainstProtocol]
+from typing import ClassVar, Protocol, TypeVar
+
+class Layout: ...
+
+L_co = TypeVar("L_co", bound=Layout, covariant=True)
+
+class HasLayout(Protocol[L_co]):
+    @property
+    def layout(self) -> L_co: ...
+
+class Table:
+    layout: ClassVar[Layout]
+
+T_co = TypeVar("T_co", bound=Table, covariant=True)
+
+def get_layout(cls: HasLayout[L_co]) -> L_co:
+    return cls.layout
+
+def generic(cls: type[T_co]) -> None:
+    reveal_type(get_layout(cls))  # N: Revealed type is "__main__.Layout"
+[builtins fixtures/property.pyi]
+
 [case testCannotInstantiateProtocol]
 from typing import Protocol
 
