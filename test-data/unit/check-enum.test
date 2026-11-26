@@ -2799,6 +2799,38 @@ def f1(a: Foo | Literal['foo']) -> Foo:
     return a
 [builtins fixtures/primitives.pyi]
 
+[case testStrEnumEqualityMemberNameDiffersFromValue]
+# flags: --strict-equality
+import enum
+
+# https://github.com/python/mypy/issues/19576
+# Mypy tracks str-enum literals by member name, not by runtime value, so it
+# can't tell whether `A.a == "b"` is non-overlapping. Avoid the false positive.
+
+class A(str, enum.Enum):
+    a = "b"
+
+class B(enum.StrEnum):
+    a = "b"
+
+A.a == "a"  # OK
+A.a == "b"  # OK
+B.a == "a"  # OK
+B.a == "b"  # OK
+
+class C(enum.IntEnum):
+    x = 5
+
+C.x == 1    # OK
+C.x == 5    # OK
+C.x == "x"  # E: Non-overlapping equality check (left operand type: "Literal[C.x]", right operand type: "Literal['x']")
+
+class Plain(enum.Enum):
+    a = "a"
+
+Plain.a == "a"  # E: Non-overlapping equality check (left operand type: "Literal[Plain.a]", right operand type: "Literal['a']")
+[builtins fixtures/primitives.pyi]
+
 [case testStrEnumEqualityAlias]
 # flags: --strict-equality --warn-unreachable
 # https://github.com/python/mypy/issues/16830
