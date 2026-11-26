@@ -221,6 +221,19 @@ L2:
     r3 = CPyBytes_GetItemUnsafe(a, r0)
     return r3
 
+[case testBytesIndexWithSlice]
+def f(a: bytes, s: slice) -> bytes:
+    return a[s]
+[out]
+def f(a, s):
+    a :: bytes
+    s, r0 :: object
+    r1 :: bytes
+L0:
+    r0 = PyObject_GetItem(a, s)
+    r1 = cast(bytes, r0)
+    return r1
+
 [case testBytesConcat]
 def f(a: bytes, b: bytes) -> bytes:
     return a + b
