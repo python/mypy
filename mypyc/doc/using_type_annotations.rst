@@ -380,8 +380,8 @@ Example::
 .. note::
 
   Since there are no overflow checks when performing native integer
-  arithmetic, the above function has undefined behavior if the sum
-  doesn't fit within 64 bits.
+  arithmetic, the above function silently returns a wrapped-around
+  result if the sum doesn't fit within 64 bits.
 
 Native integer types only have an effect in compiled code. When
 interpreted, they behave exactly like ``int``: values have arbitrary
@@ -401,9 +401,8 @@ Native integer types have these additional properties:
   without a runtime overflow check. A conversion from ``int`` raises
   ``ValueError`` if the value is out of range.
 
-* Arithmetic on unsigned types wraps around on overflow, but overflow
-  on signed types is undefined behavior (except for ``<<``, which always
-  wraps around).
+* Arithmetic wraps around on overflow (two's complement), for both
+  signed and unsigned types. For example, ``i8(127) + 1`` is ``-128``.
 
 * If a binary operation (such as ``+``) or an augmented assignment
   (such as ``+=``) mixes native integer and ``int`` values, the

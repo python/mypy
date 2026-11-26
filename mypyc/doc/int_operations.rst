@@ -272,18 +272,9 @@ Overflow and errors
 
 Operations on native integer types don't check for overflow:
 
-* If an arithmetic operation on signed operands (``i64``, ``i32``,
-  ``i16`` and ``i8``) overflows or underflows, the behavior is
-  undefined. Signed native integer types should only be used if all
-  possible values are small enough for the type. For this reason, the
-  arbitrary-precision ``int`` type is recommended for signed values
-  unless the performance of integer operations is important.
-
-* Operations on unsigned operands (``u64``, ``u32``, ``u16`` and ``u8``)
-  wrap around on overflow. For example, ``u8(255) + 1`` is ``0``.
-
-* Left shifts (``<<``) wrap around on overflow for both signed and
-  unsigned types. For example, ``i8(64) << 1`` is ``-128``.
+* Arithmetic and bitwise operations wrap around on overflow or
+  underflow (two's complement), for both signed and unsigned types.
+  For example, ``u8(255) + 1`` is ``0`` and ``i8(127) + 1`` is ``-128``.
 
 * Shifting by a negative count or by at least the bit width gives 0, or
   -1 for a right shift of a negative value (similar to NumPy).
@@ -294,6 +285,12 @@ Some operations raise an exception instead:
 
 * Dividing the smallest value of a signed type by -1 (for example,
   ``i64(-2**63) // -1``) raises ``OverflowError``.
+
+Since overflow silently produces a wrapped-around result, native
+integer types should only be used if all possible values fit within
+the type, or if wraparound is the intended behavior. For this reason,
+the arbitrary-precision ``int`` type is recommended unless the
+performance of integer operations is important.
 
 When interpreted, none of the operations overflow, since native integers
 behave like ``int`` (see :ref:`native-ints-interpreted`).
