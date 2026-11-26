@@ -258,9 +258,10 @@ py_setattr_op = function_op(
 py_hasattr_op = function_op(
     name="builtins.hasattr",
     arg_types=[object_rprimitive, object_rprimitive],
-    return_type=bool_rprimitive,
-    c_function_name="PyObject_HasAttr",
-    error_kind=ERR_NEVER,
+    return_type=c_int_rprimitive,
+    c_function_name="PyObject_HasAttrWithError",
+    error_kind=ERR_NEG_INT,
+    truncated_type=bool_rprimitive,
 )
 
 # del obj.attr

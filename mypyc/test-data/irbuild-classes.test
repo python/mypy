@@ -4377,66 +4377,68 @@ def __top_level__():
     r16 :: tuple
     r17, r18 :: object
     r19 :: str
-    r20 :: bool
-    r21, r22 :: str
-    r23 :: object
-    r24 :: object[2]
-    r25 :: object_ptr
-    r26 :: object
-    r27, r28, r29, r30 :: dict
-    r31 :: object
-    r32 :: str
-    r33 :: i32
-    r34 :: bit
-    r35 :: str
-    r36 :: set
-    r37 :: i32
-    r38 :: bit
-    r39 :: str
-    r40 :: i32
-    r41 :: bit
-    r42 :: object
-    r43 :: str
-    r44 :: i32
-    r45 :: bit
-    r46 :: str
-    r47 :: object
-    r48 :: set
-    r49 :: str
+    r20 :: i32
+    r21 :: bit
+    r22 :: bool
+    r23, r24 :: str
+    r25 :: object
+    r26 :: object[2]
+    r27 :: object_ptr
+    r28 :: object
+    r29, r30, r31, r32 :: dict
+    r33 :: object
+    r34 :: str
+    r35 :: i32
+    r36 :: bit
+    r37 :: str
+    r38 :: set
+    r39 :: i32
+    r40 :: bit
+    r41 :: str
+    r42 :: i32
+    r43 :: bit
+    r44 :: object
+    r45 :: str
+    r46 :: i32
+    r47 :: bit
+    r48 :: str
+    r49 :: object
     r50 :: set
-    r51 :: i32
-    r52 :: bit
-    r53 :: object
-    r54 :: set
-    r55 :: str
-    r56 :: i32
-    r57 :: bit
-    r58, r59 :: str
-    r60 :: i32
-    r61 :: bit
-    r62, r63 :: str
-    r64 :: i32
-    r65 :: bit
-    r66, r67 :: str
-    r68 :: i32
-    r69 :: bit
-    r70 :: object[3]
-    r71 :: object_ptr
-    r72 :: object
-    r73 :: dict
-    r74 :: str
-    r75, r76 :: object
-    r77 :: object[1]
-    r78 :: object_ptr
-    r79, r80 :: object
-    r81 :: object[1]
-    r82 :: object_ptr
-    r83 :: object
-    r84 :: dict
-    r85 :: str
-    r86 :: i32
-    r87 :: bit
-    r88 :: object
+    r51 :: str
+    r52 :: set
+    r53 :: i32
+    r54 :: bit
+    r55 :: object
+    r56 :: set
+    r57 :: str
+    r58 :: i32
+    r59 :: bit
+    r60, r61 :: str
+    r62 :: i32
+    r63 :: bit
+    r64, r65 :: str
+    r66 :: i32
+    r67 :: bit
+    r68, r69 :: str
+    r70 :: i32
+    r71 :: bit
+    r72 :: object[3]
+    r73 :: object_ptr
+    r74 :: object
+    r75 :: dict
+    r76 :: str
+    r77, r78 :: object
+    r79 :: object[1]
+    r80 :: object_ptr
+    r81, r82 :: object
+    r83 :: object[1]
+    r84 :: object_ptr
+    r85 :: object
+    r86 :: dict
+    r87 :: str
+    r88 :: i32
+    r89 :: bit
+    r90 :: object
 L0:
     r0 = load_address builtins :: module
     r1 = 'builtins'
@@ -4464,85 +4466,87 @@ L2:
     r17 = load_address PyType_Type
     r18 = CPy_CalculateMetaclass(r17, r16)
     r19 = '__prepare__'
-    r20 = PyObject_HasAttr(r18, r19)
-    if r20 goto L3 else goto L4 :: bool
+    r20 = PyObject_HasAttrWithError(r18, r19)
+    r21 = r20 >= 0 :: signed
+    r22 = truncate r20: i32 to builtins.bool
+    if r22 goto L3 else goto L4 :: bool
 L3:
-    r21 = 'NonExt'
-    r22 = '__prepare__'
-    r23 = CPyObject_GetAttr(r18, r22)
-    r24 = [r21, r16]
-    r25 = load_address r24
-    r26 = PyObject_Vectorcall(r23, r25, 2, 0)
-    keep_alive r21, r16
-    r27 = cast(dict, r26)
-    r28 = r27
+    r23 = 'NonExt'
+    r24 = '__prepare__'
+    r25 = CPyObject_GetAttr(r18, r24)
+    r26 = [r23, r16]
+    r27 = load_address r26
+    r28 = PyObject_Vectorcall(r25, r27, 2, 0)
+    keep_alive r23, r16
+    r29 = cast(dict, r28)
+    r30 = r29
     goto L5
 L4:
-    r29 = PyDict_New()
-    r28 = r29
+    r31 = PyDict_New()
+    r30 = r31
 L5:
-    r30 = PyDict_New()
-    r31 = load_address PySet_Type
-    r32 = 'A'
-    r33 = PyDict_SetItem(r30, r32, r31)
-    r34 = r33 >= 0 :: signed
-    r35 = 'a'
+    r32 = PyDict_New()
+    r33 = load_address PySet_Type
+    r34 = 'A'
+    r35 = PyDict_SetItem(r32, r34, r33)
+    r36 = r35 >= 0 :: signed
+    r37 = 'a'
     keep_alive r0, r17, r16
-    r36 = PySet_New(0)
-    r37 = PySet_Add(r36, r35)
-    r38 = r37 >= 0 :: signed
-    r39 = 'A'
-    r40 = CPyDict_SetItem(r28, r39, r36)
-    r41 = r40 >= 0 :: signed
-    r42 = load_address PySet_Type
-    r43 = 'B'
-    r44 = PyDict_SetItem(r30, r43, r42)
-    r45 = r44 >= 0 :: signed
-    r46 = 'A'
-    r47 = CPyDict_GetItem(r28, r46)
-    r48 = cast(set, r47)
-    r49 = 'b'
-    r50 = PySet_New(0)
-    r51 = PySet_Add(r50, r49)
-    r52 = r51 >= 0 :: signed
-    r53 = PyNumber_Or(r48, r50)
-    r54 = cast(set, r53)
-    r55 = 'B'
-    r56 = CPyDict_SetItem(r28, r55, r54)
-    r57 = r56 >= 0 :: signed
-    r58 = 'NonExt'
-    r59 = '__annotations__'
-    r60 = CPyDict_SetItem(r28, r59, r30)
-    r61 = r60 >= 0 :: signed
-    r62 = 'mypyc filler docstring'
-    r63 = '__doc__'
-    r64 = CPyDict_SetItem(r28, r63, r62)
-    r65 = r64 >= 0 :: signed
-    r66 = '__main__'
-    r67 = '__module__'
-    r68 = CPyDict_SetItem(r28, r67, r66)
-    r69 = r68 >= 0 :: signed
-    r70 = [r58, r16, r28]
-    r71 = load_address r70
-    r72 = PyObject_Vectorcall(r18, r71, 3, 0)
-    keep_alive r58, r16, r28
-    r73 = __main__.globals :: static
-    r74 = 'mypyc_attr'
-    r75 = CPyDict_GetItem(r73, r74)
-    r76 = box(bool, 0)
-    r77 = [r76]
-    r78 = load_address r77
-    r79 = ('native_class',)
-    r80 = PyObject_Vectorcall(r75, r78, 0, r79)
-    keep_alive r76
-    r81 = [r72]
-    r82 = load_address r81
-    r83 = PyObject_Vectorcall(r80, r82, 1, 0)
-    keep_alive r72
-    __main__.NonExt = r83 :: type
-    r84 = __main__.globals :: static
-    r85 = 'NonExt'
-    r86 = PyDict_SetItem(r84, r85, r83)
-    r87 = r86 >= 0 :: signed
-    r88 = __main__.NonExt :: type
+    r38 = PySet_New(0)
+    r39 = PySet_Add(r38, r37)
+    r40 = r39 >= 0 :: signed
+    r41 = 'A'
+    r42 = CPyDict_SetItem(r30, r41, r38)
+    r43 = r42 >= 0 :: signed
+    r44 = load_address PySet_Type
+    r45 = 'B'
+    r46 = PyDict_SetItem(r32, r45, r44)
+    r47 = r46 >= 0 :: signed
+    r48 = 'A'
+    r49 = CPyDict_GetItem(r30, r48)
+    r50 = cast(set, r49)
+    r51 = 'b'
+    r52 = PySet_New(0)
+    r53 = PySet_Add(r52, r51)
+    r54 = r53 >= 0 :: signed
+    r55 = PyNumber_Or(r50, r52)
+    r56 = cast(set, r55)
+    r57 = 'B'
+    r58 = CPyDict_SetItem(r30, r57, r56)
+    r59 = r58 >= 0 :: signed
+    r60 = 'NonExt'
+    r61 = '__annotations__'
+    r62 = CPyDict_SetItem(r30, r61, r32)
+    r63 = r62 >= 0 :: signed
+    r64 = 'mypyc filler docstring'
+    r65 = '__doc__'
+    r66 = CPyDict_SetItem(r30, r65, r64)
+    r67 = r66 >= 0 :: signed
+    r68 = '__main__'
+    r69 = '__module__'
+    r70 = CPyDict_SetItem(r30, r69, r68)
+    r71 = r70 >= 0 :: signed
+    r72 = [r60, r16, r30]
+    r73 = load_address r72
+    r74 = PyObject_Vectorcall(r18, r73, 3, 0)
+    keep_alive r60, r16, r30
+    r75 = __main__.globals :: static
+    r76 = 'mypyc_attr'
+    r77 = CPyDict_GetItem(r75, r76)
+    r78 = box(bool, 0)
+    r79 = [r78]
+    r80 = load_address r79
+    r81 = ('native_class',)
+    r82 = PyObject_Vectorcall(r77, r80, 0, r81)
+    keep_alive r78
+    r83 = [r74]
+    r84 = load_address r83
+    r85 = PyObject_Vectorcall(r82, r84, 1, 0)
+    keep_alive r74
+    __main__.NonExt = r85 :: type
+    r86 = __main__.globals :: static
+    r87 = 'NonExt'
+    r88 = PyDict_SetItem(r86, r87, r85)
+    r89 = r88 >= 0 :: signed
+    r90 = __main__.NonExt :: type
     return 1
