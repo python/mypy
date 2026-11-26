@@ -98,7 +98,14 @@ def constant_fold_expr_inner(builder: IRBuilder, expr: Expression) -> ConstantVa
                 rtype = builder.node_type(expr)
                 if is_fixed_width_rtype(rtype):
                     return constant_fold_native_int_shift(rtype, expr.op, left, right)
-            return constant_fold_binary_op_extended(expr.op, left, right)
+            result = constant_fold_binary_op_extended(expr.op, left, right)
+            if expr.op == "//" and isinstance(result, int):
+                rtype = builder.node_type(expr)
+                if is_fixed_width_rtype(rtype) and not check_native_int_range(rtype, result):
+                    # Signed MIN // -1 raises OverflowError at runtime instead of wrapping
+                    # around, so don't fold it
+                    return None
+            return result
     elif isinstance(expr, UnaryExpr):
         value = constant_fold_expr(builder, expr.expr)
         if value is not None and not isinstance(value, bytes):
