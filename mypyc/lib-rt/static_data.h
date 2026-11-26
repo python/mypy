@@ -26,6 +26,8 @@ typedef struct mypyc_interned_str_struct {
     PyObject *__le__;
     PyObject *__lt__;
     PyObject *__ge__;
+    PyObject *capitalize;
+    PyObject *casefold;
     PyObject *clear;
     PyObject *close_;
     PyObject *copy;
@@ -44,7 +46,9 @@ typedef struct mypyc_interned_str_struct {
     PyObject *setdefault;
     PyObject *startswith;
     PyObject *super;
+    PyObject *swapcase;
     PyObject *throw_;
+    PyObject *title;
     PyObject *translate;
     PyObject *update;
     PyObject *upper;
