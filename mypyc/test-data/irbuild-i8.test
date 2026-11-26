@@ -100,6 +100,39 @@ L0:
     d = 64
     return 1
 
+[case testI8DetectUnsupportedFinalValues]
+from typing import Final
+from mypy_extensions import i8, mypyc_attr
+
+ONE: Final[i8] = 1
+BIG: Final = 200
+A: Final[i8] = 128  # E: Value 128 is out of range for "i8"
+B: Final[i8] = -129  # E: Value -129 is out of range for "i8"
+C: Final[i8] = BIG  # E: Value 200 is out of range for "i8"
+
+# Uses get the value computed by mypy, which doesn't wrap around
+D: Final[i8] = ONE << 7  # E: Value 128 is out of range for "i8"
+E: Final = ONE << 7  # E: Value 128 is out of range for "i8"
+F: Final[i8] = (ONE << 7) >> 7  # E: Unsupported value for final "F" (intermediate result overflows "i8")
+G: Final[i8] = True + 1  # E: Unsupported value for final "G"
+
+class Attrs:
+    H: Final = ONE << 7  # E: Value 128 is out of range for "i8"
+
+@mypyc_attr(native_class=False)
+class NonNative:
+    I: Final[i8] = 128  # E: Value 128 is out of range for "i8"
+
+def f() -> None:
+    J: Final[i8] = (ONE << 7) >> 7  # E: Unsupported value for final "J" (intermediate result overflows "i8")
+
+# The following are ok, since mypy computes the same value
+K: Final[i8] = -128
+L: Final[i8] = 127
+M: Final[i8] = True
+N: Final = ONE << 6
+O: Final[i8] = (ONE + 127) - 1
+
 [case testI8DetectOutOfRangeLiterals]
 from mypy_extensions import i8
 

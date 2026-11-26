@@ -345,7 +345,6 @@ def test_negate_literal() -> None:
 
 ONE_FINAL: Final[u64] = 1
 MAX_FINAL: Final[u64] = 18446744073709551615
-NEG_ONE_FINAL: Final[u64] = -ONE_FINAL
 
 class FinalAttrs:
     TWO: Final[u64] = 2
@@ -369,7 +368,6 @@ def test_final_wraparound() -> None:
     assert (ONE_FINAL - 2) // 2 == (one - 2) // 2 == 9223372036854775807
     assert -ONE_FINAL >> 1 == -one >> 1 == 9223372036854775807
     assert -FinalAttrs.TWO == -(one * 2) == 18446744073709551614
-    assert NEG_ONE_FINAL == 18446744073709551615
 
 def test_u64_truncate_from_i64() -> None:
     large = i64(2**62 + 157 + int())

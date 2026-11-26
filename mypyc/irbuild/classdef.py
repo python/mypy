@@ -52,6 +52,7 @@ from mypyc.ir.ops import (
 )
 from mypyc.ir.rtypes import RType, bool_rprimitive, dict_rprimitive, object_rprimitive
 from mypyc.irbuild.builder import IRBuilder, create_type_params
+from mypyc.irbuild.constant_fold import check_native_int_final
 from mypyc.irbuild.function import (
     gen_property_getter_ir,
     gen_property_setter_ir,
@@ -184,6 +185,7 @@ def transform_class_def(builder: IRBuilder, cdef: ClassDef) -> None:
                     "Only assignment to variables is supported in class bodies", stmt.line
                 )
                 continue
+            check_native_int_final(builder, stmt)
             # We want to collect class variables in a dictionary for both real
             # non-extension classes and fake dataclass ones.
             cls_builder.add_attr(lvalue, stmt)
