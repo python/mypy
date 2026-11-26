@@ -157,6 +157,7 @@ from mypyc.irbuild.util import bytes_from_str, get_func_def, is_constant
 from mypyc.irbuild.vec import vec_set_item
 from mypyc.options import CompilerOptions
 from mypyc.primitives.dict_ops import dict_get_item_op, dict_set_item_op
+from mypyc.primitives.exc_ops import no_err_occurred_op
 from mypyc.primitives.generic_ops import iter_op, next_op, py_setattr_op
 from mypyc.primitives.list_ops import (
     list_get_item_int64_op,
@@ -1041,6 +1042,7 @@ class IRBuilder:
         self.add(Branch(ritem, error_block, ok_block, Branch.IS_ERROR))
 
         self.activate_block(error_block)
+        self.call_c(no_err_occurred_op, [], line)
         self.add(
             RaiseStandardError(RaiseStandardError.VALUE_ERROR, "not enough values to unpack", line)
         )
@@ -1067,6 +1069,8 @@ class IRBuilder:
             self.add(Branch(ritem, error_block, ok_block, Branch.IS_ERROR))
 
             self.activate_block(error_block)
+            # PyIter_Next returns NULL also if the iterator raised an exception
+            self.call_c(no_err_occurred_op, [], line)
             self.add(
                 RaiseStandardError(
                     RaiseStandardError.VALUE_ERROR, "not enough values to unpack", line
@@ -1121,6 +1125,7 @@ class IRBuilder:
             self.add(Unreachable())
 
             self.activate_block(ok_block)
+            self.call_c(no_err_occurred_op, [], line)
 
         for litem, ritem in zip(target.items, values):
             self.assign(litem, ritem, line)
