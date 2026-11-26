@@ -237,7 +237,9 @@ def for_loop_helper_with_index(
 
     builder.push_loop_stack(step_block, exit_block)
 
-    if isinstance(length, Integer) and length.value > 0:
+    # If the sequence is known to be non-empty, skip the first condition check, unless the
+    # item is read as part of the condition
+    if isinstance(length, Integer) and length.value > 0 and not for_gen.reads_item_in_condition():
         builder.goto(body_block)
         builder.activate_block(condition_block)
     else:
