@@ -74,9 +74,12 @@ def test_python_cmdline(testcase: DataDrivenTestCase, step: int) -> None:
     env.pop("COLUMNS", None)
     extra_path = os.path.join(os.path.abspath(test_temp_dir), "pypath")
     # Use the same mypy installation as pytest, including the compiled wheel in CI.
+    existing = env.get("PYTHONPATH")
     env["PYTHONPATH"] = os.path.dirname(os.path.abspath(mypy.__path__[0]))
     if os.path.isdir(extra_path):
         env["PYTHONPATH"] += os.pathsep + extra_path
+    if existing:
+        env["PYTHONPATH"] += os.pathsep + existing
     cwd = os.path.join(test_temp_dir, custom_cwd or "")
     args = [arg.replace("$CWD", os.path.abspath(cwd)) for arg in args]
     process = subprocess.Popen(

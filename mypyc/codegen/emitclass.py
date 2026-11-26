@@ -587,8 +587,6 @@ def generate_object_struct(cl: ClassIR, emitter: Emitter) -> None:
         # This must come before any field whose presence depends on the class, since
         # tp_weaklistoffset has to agree between a base class and its subclasses.
         lines.append("PyObject *weakreflist;")
-    if cl.has_method("__call__"):
-        lines.append("vectorcallfunc vectorcall;")
     # The flag affects attribute offsets, so concrete bases must agree on its presence.
     assert all(
         base.has_running_flag == cl.has_running_flag for base in cl.base_mro
@@ -616,6 +614,14 @@ def generate_object_struct(cl: ClassIR, emitter: Emitter) -> None:
 
                     if isinstance(rtype, RTuple):
                         emitter.declare_tuple_struct(rtype)
+
+    if cl.has_method("__call__"):
+        # This goes after the attributes, since a subclass may define __call__ when a
+        # base class doesn't, and the attributes of the base class must be at the same
+        # offsets in the subclass. The field is only accessed through the struct of the
+        # class or through tp_vectorcall_offset, so its offset can differ between
+        # classes.
+        lines.append("vectorcallfunc vectorcall;")
 
     lines.append(f"}} {cl.struct_name(emitter.names)};")
     lines.append("")
@@ -1178,10 +1184,8 @@ def generate_dealloc_for_class(
     if cl.has_weakref_list():
         # Invalidate all weak references to the object, and call their callbacks.
         # This must happen after the finalizer has run, and before any of the
-        # attributes are cleared.
-        #
-        # TODO: Weak references created *inside* __del__ are not cleared. CPython
-        #       handles these with a second _PyWeakref_ClearWeakRefsNoCallbacks pass.
+        # attributes are cleared. This also clears any weak references created by
+        # the finalizer (__del__).
         if cl.has_weakref_slot():
             emitter.emit_line("CPy_ClearWeakrefs((PyObject *)self, &self->weakreflist);")
         else:

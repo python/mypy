@@ -358,7 +358,10 @@ if you know that integer values will
 always fit within fixed bounds. These types are faster than the
 arbitrary-precision ``int`` type, since they don't require overflow
 checks on operations. They may also use less memory than ``int``
-values. The types are imported from the ``mypy_extensions`` module
+values, and they don't switch to a boxed representation for large
+values, unlike ``int`` (``int`` values outside the range ``-2**62`` to
+``2**62 - 1`` are boxed on 64-bit platforms).
+The types are imported from the ``mypy_extensions`` module
 (installed via ``pip install mypy_extensions``).
 
 Example::
@@ -377,13 +380,16 @@ Example::
 .. note::
 
   Since there are no overflow checks when performing native integer
-  arithmetic, the above function could result in an overflow or other
-  undefined behavior if the sum might not fit within 64 bits.
+  arithmetic, the above function has undefined behavior if the sum
+  doesn't fit within 64 bits.
 
-  The behavior when running as interpreted Python program will be
-  different if there are overflows. Declaring native integer types
-  have no effect unless code is compiled. Native integer types are
-  effectively equivalent to ``int`` when interpreted.
+Native integer types only have an effect in compiled code. When
+interpreted, they behave exactly like ``int``: values have arbitrary
+precision, and there are no range checks, truncation or wraparound.
+For example, ``u8(255) + 1`` evaluates to ``256`` when interpreted.
+Code that overflows a native integer type may thus behave differently when
+compiled and interpreted. See :ref:`native-ints-interpreted` for more
+information.
 
 Native integer types have these additional properties:
 
@@ -392,7 +398,12 @@ Native integer types have these additional properties:
 
 * Conversions between different native integer types must be explicit.
   A conversion to a narrower native integer type truncates the value
-  without a runtime overflow check.
+  without a runtime overflow check. A conversion from ``int`` raises
+  ``ValueError`` if the value is out of range.
+
+* Arithmetic on unsigned types wraps around on overflow, but overflow
+  on signed types is undefined behavior (except for ``<<``, which always
+  wraps around).
 
 * If a binary operation (such as ``+``) or an augmented assignment
   (such as ``+=``) mixes native integer and ``int`` values, the

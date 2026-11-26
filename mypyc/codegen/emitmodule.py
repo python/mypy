@@ -79,7 +79,7 @@ from mypyc.ir.rtypes import RType
 from mypyc.irbuild.main import build_ir
 from mypyc.irbuild.mapper import Mapper
 from mypyc.irbuild.prepare import load_type_map
-from mypyc.irbuild.util import is_decorated_class, is_extension_class, is_trait
+from mypyc.irbuild.util import get_mypyc_attrs, is_decorated_class, is_extension_class, is_trait
 from mypyc.namegen import NameGenerator, exported_name
 from mypyc.options import CompilerOptions
 from mypyc.transform.borrow_generator_attrs import borrow_generator_attrs
@@ -118,6 +118,9 @@ Groups = list[Group]
 # A list of (file name, file contents) pairs.
 FileContents = list[tuple[str, str]]
 
+# The kind of a class that other modules depend on (see class_kinds).
+ClassKind = tuple[str, bool, bool, bool, dict[str, str]]
+
 
 class MarkedDeclaration:
     """Add a mark, useful for topological sort."""
@@ -141,8 +144,11 @@ class MypycPlugin(Plugin):
         other modules use a class: @mypyc_attr(native_class=False) and
         @trait decide what kind of class mypyc generates, and a decorator
         that can replace the class changes what its name refers to (see
-        ClassIR.is_decorated). So we make the kinds of a module's classes
-        part of its interface.
+        ClassIR.is_decorated). Most other mypyc_attr attributes also affect
+        subclasses, such as weakrefs (object layout), serializable (inherited)
+        and acyclic (required in base classes). So we make the kinds of a
+        module's classes, including all their mypyc_attr attributes, part of
+        its interface.
     """
 
     def __init__(
@@ -160,7 +166,7 @@ class MypycPlugin(Plugin):
 
     def report_config_data(
         self, ctx: ReportConfigContext
-    ) -> tuple[str | None, list[str], list[tuple[str, bool, bool, bool]]] | None:
+    ) -> tuple[str | None, list[str], list[ClassKind]] | None:
         # The config data we report is the group map entry for the module,
         # followed by the kinds of its classes (see class_kinds).
         # If the data is being used to check validity, we do additional checks
@@ -210,12 +216,10 @@ class MypycPlugin(Plugin):
                 return None
 
         # The module hasn't been parsed yet, so take the class kinds from the
-        # cached IR. It was built from the source the cache is for.
-        kinds = sorted(
-            (c["name"], c["is_ext_class"], c["is_trait"], c["is_decorated"])
-            for c in ir_data["ir"]["classes"]
-            if not c["is_generated"]
-        )
+        # IR cache. They were computed from the source the cache is for.
+        if "class_kinds" not in ir_data:
+            return None
+        kinds = [tuple(kind) for kind in ir_data["class_kinds"]]
         return (*self.group_map[id], kinds)
 
     def get_additional_deps(self, file: MypyFile) -> list[tuple[int, str, int]]:
@@ -245,23 +249,30 @@ class MypycPlugin(Plugin):
         return mods
 
 
-def class_kinds(tree: MypyFile, options: Options) -> list[tuple[str, bool, bool, bool]]:
-    """Return (name, is_ext_class, is_trait, is_decorated) for each class in a module.
+def class_kinds(tree: MypyFile, options: Options) -> list[ClassKind]:
+    """Return the kind of each class in a module.
 
-    These match the ClassIR flags that build_type_map sets.
+    The kind of a class is (name, is_ext_class, is_trait, is_decorated,
+    mypyc_attrs). The flags match the ClassIR flags that build_type_map sets.
+    The mypyc_attr values are stored using repr(), since an invalid value
+    isn't always JSON serializable.
     """
     # Any errors are reported when the module is compiled.
     errors = Errors(options)
-    return sorted(
+    return [
         (
             node.name,
             is_extension_class(tree.path, node, errors),
             is_trait(node),
             is_decorated_class(node),
+            {
+                key: repr(value)
+                for key, value in get_mypyc_attrs(node, tree.path, errors)[0].items()
+            },
         )
         for node in tree.defs
         if isinstance(node, ClassDef)
-    )
+    ]
 
 
 def parse_and_typecheck(
@@ -510,6 +521,8 @@ def write_cache(
       * The hashes of all the source file outputs for the group
         the module is in. This is so that the module will be
         recompiled if the source outputs are missing.
+      * The kinds of the classes in the module (see class_kinds), so
+        that MypycPlugin can check them without parsing the module.
     """
 
     hashes = {}
@@ -532,6 +545,7 @@ def write_cache(
             "ir": module.serialize(),
             "meta_hash": hash_digest(meta_data),
             "src_hashes": hashes[group_map[id]],
+            "class_kinds": class_kinds(result.files[id], result.manager.options),
         }
 
         result.manager.metastore.write(newpath, json_dumps(ir_data))

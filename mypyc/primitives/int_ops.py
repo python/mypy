@@ -19,6 +19,7 @@ from mypyc.ir.ops import (
 )
 from mypyc.ir.rtypes import (
     RType,
+    RTypeVar,
     bit_rprimitive,
     bool_rprimitive,
     bytes_rprimitive,
@@ -214,6 +215,15 @@ function_op(
     error_kind=ERR_NEVER,
 )
 
+# abs(x) for fixed-width x, lowered to inline IR
+int_abs_op = custom_primitive_op(
+    name="int_abs",
+    arg_types=[RTypeVar(0)],
+    return_type=RTypeVar(0),
+    error_kind=ERR_NEVER,
+    type_params=[RTypeVar(0)],
+)
+
 
 # Primitives related to integer comparison operations:
 
@@ -300,6 +310,15 @@ int_to_int64_op = custom_op(
     error_kind=ERR_MAGIC_OVERLAPPING,
 )
 
+# Convert tagged int (as PyObject *) used as a sequence index to i64
+# (raise IndexError if it doesn't fit in Py_ssize_t, like CPython)
+int_to_index_op = custom_op(
+    arg_types=[object_rprimitive],
+    return_type=int64_rprimitive,
+    c_function_name="CPyLong_AsIndex",
+    error_kind=ERR_MAGIC_OVERLAPPING,
+)
+
 ssize_t_to_int_op = custom_op(
     arg_types=[c_pyssize_t_rprimitive],
     return_type=int_rprimitive,
@@ -350,6 +369,13 @@ int_to_int32_op = custom_op(
     return_type=int32_rprimitive,
     c_function_name="CPyLong_AsInt32",
     error_kind=ERR_MAGIC_OVERLAPPING,
+)
+
+int64_overflow = custom_op(
+    arg_types=[],
+    return_type=void_rtype,
+    c_function_name="CPyInt64_Overflow",
+    error_kind=ERR_ALWAYS,
 )
 
 int32_overflow = custom_op(

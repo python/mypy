@@ -1443,6 +1443,12 @@ class IntOp(RegisterOp):
     compatible representations. Fixed-width integers, short_int_rprimitive,
     bool_rprimitive and bit_rprimitive are supported.
 
+    For fixed-width native int types, shifts are defined for all operand
+    values, unlike in C. Left shift wraps around on overflow (two's
+    complement). The shift count is treated as unsigned, so a count that is
+    negative or at least the bit width of the type gives 0, or -1 for a right
+    shift of a negative value (like NumPy).
+
     For tagged (arbitrary-precision) integer ops look at mypyc.primitives.int_ops.
     """
 

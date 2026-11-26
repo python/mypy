@@ -98,6 +98,7 @@ from mypyc.irbuild.builder import (
     find_walrus_targets,
     int_borrow_friendly_op,
 )
+from mypyc.irbuild.constant_fold import check_native_int_final
 from mypyc.irbuild.for_helpers import find_loop_assignments, for_loop_helper
 from mypyc.irbuild.generator import add_raise_exception_blocks_to_generator_class
 from mypyc.irbuild.nonlocalcontrol import (
@@ -261,6 +262,7 @@ def transform_assignment_stmt(builder: IRBuilder, stmt: AssignmentStmt) -> None:
 
     line = stmt.rvalue.line
     rvalue_reg = builder.accept(stmt.rvalue)
+    check_native_int_final(builder, stmt)
 
     if builder.non_function_scope() and stmt.is_final_def:
         builder.init_final_static(first_lvalue, rvalue_reg)

@@ -15,10 +15,11 @@ Mypyc supports these integer types:
 * ``u16`` (16-bit unsigned integer)
 * ``u8`` (8-bit unsigned integer)
 
-``i64``, ``i32``, ``i16``, ``i8``, ``u64``, ``u32``, ``u16`` and ``u8`` are *native integer types* and
-are available in the ``mypy_extensions`` module. ``int`` corresponds
-to the Python ``int`` type, but uses a more efficient runtime
-representation (tagged pointer). Native integer types are value types.
+``i64``, ``i32``, ``i16``, ``i8``, ``u64``, ``u32``, ``u16`` and ``u8``
+are *native integer types* and are available in the ``mypy_extensions``
+module. ``int`` corresponds to the Python ``int`` type, but uses a more
+efficient runtime representation (tagged pointer). Native integer types
+are value types. See :ref:`native-ints` for an introduction.
 
 All integer types have optimized primitive operations, but the native
 integer types are more efficient than ``int``, since they don't
@@ -28,6 +29,32 @@ Operations on integers that are listed here have fast, optimized
 implementations. Other integer operations use generic implementations
 that are generally slower. Some operations involving integers and other
 types, such as list indexing, are documented elsewhere.
+
+.. _native-ints-interpreted:
+
+Behavior when interpreted
+-------------------------
+
+Native integer types only have an effect in compiled code. When code
+runs interpreted (not compiled), they behave exactly like ``int``, and
+values have arbitrary precision:
+
+* ``i64(x)``, ``u8(x)``, etc. simply return ``int(x)``. The result is a
+  regular ``int`` object.
+
+* No range checks are performed, and values are never truncated or wrapped
+  around. For example, ``u8(-1)`` is ``-1`` and ``i32(2**40)`` is ``2**40``.
+
+* Arithmetic never overflows. For example, ``u8(255) + 1`` is ``256``.
+
+* ``isinstance(x, i64)`` (or any other native integer type) is true for
+  every ``int`` value.
+
+As a result, code that relies on overflow or wraparound behavior can produce
+different results when compiled and interpreted. If you need identical
+results, keep all values within the range of the type, or mask the
+values explicitly (for example, ``(x * y) & 0xFFFF_FFFF`` with ``u32``
+operands).
 
 Construction
 ------------
@@ -168,14 +195,22 @@ Construction
 * ``u8(x: str)``
 * ``u8(x: str, base: int)``
 
-Conversions from ``int`` to a native integer type raise
-``ValueError`` if the value is too large or small. Conversions from
-a wider native integer type to a narrower one truncate the value and never
-fail. Conversions between signed and unsigned types of the same or larger
-size don't fail either: a value outside the target range wraps around
-(for example, ``u64(i32(-1))`` is ``2**64 - 1`` and ``i64(u64(2**63))``
-is ``-2**63``). More generally, operations between
-native integer types don't check for overflow.
+Conversions from ``int`` or ``float`` to a native integer type raise
+``ValueError`` if the value is too large or small. If the value is a
+constant, such as in ``u8(-1)``, this is a compile-time error instead.
+
+Conversions between native integer types never fail:
+
+* Conversions from a wider native integer type to a narrower one
+  truncate the value.
+
+* Conversions between signed and unsigned types of the same or larger
+  size wrap around if the value is outside the target range. For
+  example, ``u64(i32(-1))`` is ``2**64 - 1`` and ``i64(u64(2**63))``
+  is ``-2**63``.
+
+These conversions behave differently when interpreted (see
+:ref:`native-ints-interpreted`).
 
 Implicit conversions
 --------------------
@@ -212,16 +247,6 @@ Operators
 * Comparisons (``==``, ``!=``, ``<``, etc.)
 * Augmented assignment (``x += y``, etc.)
 
-If one of the above native integer operations overflows or underflows
-with signed operands, the behavior is undefined. Signed native integer
-types should only be used if all possible values are small enough for
-the type. For this reason, the arbitrary-precision ``int`` type is
-recommended for signed values unless the performance of integer
-operations is critical.
-
-Operations on unsigned integers (``u64``, ``u32``, ``u16`` and ``u8``) wrap
-around on overflow.
-
 It's a compile-time error to mix different native integer types in a
 binary operation such as addition. An explicit conversion is required::
 
@@ -241,6 +266,37 @@ and the ``int`` operand is coerced to the native integer type::
       ...
       b = 1 - x
       # Similarly, type of "b" is "i64"
+
+Overflow and errors
+-------------------
+
+Operations on native integer types don't check for overflow:
+
+* If an arithmetic operation on signed operands (``i64``, ``i32``,
+  ``i16`` and ``i8``) overflows or underflows, the behavior is
+  undefined. Signed native integer types should only be used if all
+  possible values are small enough for the type. For this reason, the
+  arbitrary-precision ``int`` type is recommended for signed values
+  unless the performance of integer operations is important.
+
+* Operations on unsigned operands (``u64``, ``u32``, ``u16`` and ``u8``)
+  wrap around on overflow. For example, ``u8(255) + 1`` is ``0``.
+
+* Left shifts (``<<``) wrap around on overflow for both signed and
+  unsigned types. For example, ``i8(64) << 1`` is ``-128``.
+
+* Shifting by a negative count or by at least the bit width gives 0, or
+  -1 for a right shift of a negative value (similar to NumPy).
+
+Some operations raise an exception instead:
+
+* Division (``//``) and modulo (``%``) by zero raise ``ZeroDivisionError``.
+
+* Dividing the smallest value of a signed type by -1 (for example,
+  ``i64(-2**63) // -1``) raises ``OverflowError``.
+
+When interpreted, none of the operations overflow, since native integers
+behave like ``int`` (see :ref:`native-ints-interpreted`).
 
 Functions
 ---------
