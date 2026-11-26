@@ -51,6 +51,15 @@ function_op(
     error_kind=ERR_NEVER,
 )
 
+# round(float)
+function_op(
+    name="builtins.round",
+    arg_types=[float_rprimitive],
+    return_type=int_rprimitive,
+    c_function_name="CPyFloat_Round",
+    error_kind=ERR_MAGIC,
+)
+
 # math.sin(float)
 function_op(
     name="math.sin",

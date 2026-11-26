@@ -47,6 +47,7 @@ Functions
 * ``u16(f)`` (convert to 16-bit unsigned integer)
 * ``u8(f)`` (convert to 8-bit unsigned integer)
 * ``abs(f)``
+* ``round(f)`` (with a single argument)
 * ``math.sin(f)``
 * ``math.cos(f)``
 * ``math.tan(f)``

@@ -425,6 +425,35 @@ def translate_abs(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value 
     return None
 
 
+@specialize_function("builtins.round")
+def translate_round(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value | None:
+    if len(expr.args) == 1 and expr.arg_kinds == [ARG_POS]:
+        arg_type = builder.node_type(expr.args[0])
+        if is_int_rprimitive(arg_type):
+            arg = builder.accept(expr.args[0])
+            # A long int can be an instance of an int subclass that overrides __round__.
+            arg_class = builder.primitive_op(type_of_int_op, [arg], expr.line)
+            int_class = builder.load_builtin("builtins.int", expr.line)
+            assert int_class is not None
+            is_exact_int = builder.translate_is_op(arg_class, int_class, "is", expr.line)
+            exact_block, subclass_block, next_block = BasicBlock(), BasicBlock(), BasicBlock()
+            result = Register(int_rprimitive)
+            builder.add_bool_branch(is_exact_int, exact_block, subclass_block)
+
+            builder.activate_block(exact_block)
+            builder.assign(result, arg, expr.line)
+            builder.goto(next_block)
+
+            builder.activate_block(subclass_block)
+            rounded = builder.call_refexpr_with_args(expr, callee, [arg])
+            builder.assign(result, builder.coerce(rounded, int_rprimitive, expr.line), expr.line)
+            builder.goto(next_block)
+
+            builder.activate_block(next_block)
+            return result
+    return None
+
+
 @specialize_function("builtins.len")
 def translate_len(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value | None:
     if len(expr.args) == 1 and expr.arg_kinds == [ARG_POS]:

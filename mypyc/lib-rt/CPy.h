@@ -812,6 +812,7 @@ double CPyFloat_Exp(double x);
 double CPyFloat_Log(double x);
 CPyTagged CPyFloat_Floor(double x);
 CPyTagged CPyFloat_Ceil(double x);
+CPyTagged CPyFloat_Round(double x);
 double CPyFloat_FromTagged(CPyTagged x);
 bool CPyFloat_IsInf(double x);
 bool CPyFloat_IsNaN(double x);
