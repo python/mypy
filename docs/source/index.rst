@@ -55,6 +55,20 @@ Contents
    cheat_sheet_py3
    existing_code
 
+.. toctree::
+   :maxdepth: 2
+   :caption: Configuring and running mypy
+
+   running_mypy
+   command_line
+   config_file
+   inline_config
+   mypy_daemon
+   installed_packages
+   extending_mypy
+   stubgen
+   stubtest
+
 .. _overview-type-system-reference:
 
 .. toctree::
@@ -77,20 +91,6 @@ Contents
    typed_dict
    final_attrs
    metaclasses
-
-.. toctree::
-   :maxdepth: 2
-   :caption: Configuring and running mypy
-
-   running_mypy
-   command_line
-   config_file
-   inline_config
-   mypy_daemon
-   installed_packages
-   extending_mypy
-   stubgen
-   stubtest
 
 .. toctree::
    :maxdepth: 2
