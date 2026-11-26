@@ -36,6 +36,8 @@ Operators
 Methods
 -------
 
+* ``s.center(width: int)``
+* ``s.center(width: int, fillchar: str)``
 * ``s.encode()``
 * ``s.encode(encoding: str)``
 * ``s.encode(encoding: str, errors: str)``
@@ -59,6 +61,8 @@ Methods
 * ``s.isspace()``
 * ``s.istitle()``
 * ``s.isupper()``
+* ``s.ljust(width: int)``
+* ``s.ljust(width: int, fillchar: str)``
 * ``s.lower()``
 * ``s.join(x: Iterable)``
 * ``s.lstrip()``
@@ -74,6 +78,8 @@ Methods
 * ``s1.rindex(s2: str)``
 * ``s1.rindex(s2: str, start: int)``
 * ``s1.rindex(s2: str, start: int, end: int)``
+* ``s.rjust(width: int)``
+* ``s.rjust(width: int, fillchar: str)``
 * ``s.rpartition(sep: str)``
 * ``s.rsplit()``
 * ``s.rsplit(sep: str)``
@@ -90,6 +96,7 @@ Methods
 * ``s.upper()``
 * ``s.strip()``
 * ``s.strip(chars: str)``
+* ``s.zfill(width: int)``
 
 .. note::
 
