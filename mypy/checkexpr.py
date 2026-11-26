@@ -5,7 +5,7 @@ from __future__ import annotations
 import enum
 import itertools
 import time
-from collections import defaultdict
+from collections import Counter, defaultdict
 from collections.abc import Callable, Iterable, Iterator, Sequence
 from contextlib import contextmanager, nullcontext
 from typing import ClassVar, Final, TypeAlias as _TypeAlias, cast, overload
@@ -2769,6 +2769,7 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
 
         is_unexpected_arg_error = False  # Keep track of errors to avoid duplicate errors
         ok = True  # False if we've found any error
+        kwarg_count = Counter[str]()
 
         for i, kind in enumerate(actual_kinds):
             if (
@@ -2810,6 +2811,21 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                         ok = False
                 # *args/**kwargs can be applied even if the function takes a fixed
                 # number of positional arguments. This may succeed at runtime.
+
+                if isinstance(actual_type, TypedDictType):
+                    kwarg_count.update(dict.fromkeys(actual_type.required_keys, 1))
+
+        # omit non star formal arguments as these will be reported by the loop in `check_argument_count`
+        non_star_names = {
+            name
+            for name, arg_kind in zip(callee.arg_names, callee.arg_kinds)
+            if arg_kind != nodes.ARG_STAR and arg_kind != nodes.ARG_STAR2 and name
+        }
+        if duplicated := {
+            name for name, count in kwarg_count.items() if count > 1 and name not in non_star_names
+        }:
+            self.msg.duplicate_arguments_from_typed_dict(callee, duplicated, context)
+            ok = False
 
         return ok, is_unexpected_arg_error
 
