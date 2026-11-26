@@ -69,6 +69,8 @@ def out_of_range() -> None:
     a: u32 = 4294967296
     b: u32 = -1
     f(4294967296)
+    g = u32(4294967296)
+    h = u32(-1)
     # The following are ok
     c: u32 = 0
     d: u32 = 4294967295
@@ -80,6 +82,8 @@ def f(x: u32) -> None: pass
 main:4: error: Value 4294967296 is out of range for "u32"
 main:5: error: Value -1 is out of range for "u32"
 main:6: error: Value 4294967296 is out of range for "u32"
+main:7: error: Value 4294967296 is out of range for "u32"
+main:8: error: Value -1 is out of range for "u32"
 
 [case testU32BoxAndUnbox]
 from typing import Any
@@ -249,17 +253,13 @@ from mypy_extensions import u32
 def f() -> None:
     x = u32(0)
     y = u32(11)
-    z = u32(-3)  # Truncate
-    zz = u32(4294967298)  # Truncate
     a = u32(4294967295)
 [out]
 def f():
-    x, y, z, zz, a :: u32
+    x, y, a :: u32
 L0:
     x = 0
     y = 11
-    z = 4294967293
-    zz = 2
     a = 4294967295
     return 1
 

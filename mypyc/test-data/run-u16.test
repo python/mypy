@@ -1,7 +1,7 @@
 [case testU16BasicOps]
-from typing import Any, Final, Tuple
+from typing import Any, Final, Tuple, cast
 
-from mypy_extensions import u16, i16, i32, i64, u8
+from mypy_extensions import u16, i8, i16, i32, i64, u8
 
 from testutil import assertRaises
 
@@ -82,6 +82,25 @@ def test_simple_arithmetic_ops() -> None:
     assert -two == 65534
     assert -neg_one == 1
     assert -zero == 0
+    assert abs(one) == 1
+    assert abs(neg_one) == 65535
+    assert abs(zero) == 0
+
+def test_left_shift_wraps_around() -> None:
+    one: u16 = 1 + int()
+    max_u16: u16 = 65535 + int()
+    assert max_u16 << one == 65534
+    assert max_u16 << (one * 15) == 32768
+
+def test_shift_count_out_of_range() -> None:
+    one: u16 = 1 + int()
+    max_u16: u16 = 65535 + int()
+    width: u16 = 16 + int()
+    for n in [width, -one]:
+        assert max_u16 << n == 0
+        assert max_u16 >> n == 0
+    # The largest valid count
+    assert max_u16 >> (width - one) == 1
 
 def test_bitwise_ops() -> None:
     x: u16 = 47384 + int()
@@ -249,6 +268,67 @@ def test_u16_from_large_small_literal() -> None:
     x = u16(0)
     assert x == 0
 
+def neg_literal_to_int() -> int:
+    return -u16(1)
+
+def eq_neg_literal(x: u16) -> bool:
+    return x == -u16(1)
+
+def gt_neg_literal(x: u16) -> bool:
+    return x > -u16(5)
+
+def and_neg_literal(x: u16) -> u16:
+    return x & -u16(8)
+
+def div_neg_literal(x: u16) -> u16:
+    return x // -u16(5)
+
+def test_negate_literal() -> None:
+    assert -u16(0) == 0
+    assert -u16(1) == 65535
+    assert int(-u16(1)) == 2**16 - 1
+    assert neg_literal_to_int() == 2**16 - 1
+    assert str(-u16(1)) == "65535"
+    assert -u16(65535) == 1
+    assert 0 - u16(1) == 65535
+    assert ~u16(0) == 65535
+    one: u16 = 1 + int()
+    assert -u16(1) == -one
+    assert -u16(5) == -(one * 5)
+    assert eq_neg_literal(65535)
+    assert not eq_neg_literal(1)
+    assert gt_neg_literal(65535)
+    assert not gt_neg_literal(65531)
+    assert and_neg_literal(65535) == 65528
+    assert div_neg_literal(65535) == 1
+    assert div_neg_literal(5) == 0
+
+ONE_FINAL: Final[u16] = 1
+MAX_FINAL: Final[u16] = 65535
+
+class FinalAttrs:
+    TWO: Final[u16] = 2
+
+def neg_final() -> u16:
+    return -ONE_FINAL
+
+def neg_final_to_int() -> int:
+    return -ONE_FINAL
+
+def test_final_wraparound() -> None:
+    one: u16 = 1 + int()
+    max_val: u16 = 65535 + int()
+    assert -ONE_FINAL == -one == 65535
+    assert neg_final() == 65535
+    assert neg_final_to_int() == 65535
+    assert ONE_FINAL - 2 == one - 2 == 65535
+    assert ~ONE_FINAL == ~one == 65534
+    assert MAX_FINAL + 1 == max_val + 1 == 0
+    assert MAX_FINAL * 2 == max_val * 2 == 65534
+    assert (ONE_FINAL - 2) // 2 == (one - 2) // 2 == 32767
+    assert -ONE_FINAL >> 1 == -one >> 1 == 32767
+    assert -FinalAttrs.TWO == -(one * 2) == 65534
+
 def test_u16_truncate_from_i64() -> None:
     large = i64(2**32 + 65536 + 157 + int())
     x = u16(large)
@@ -304,3 +384,37 @@ def test_convert_u16_to_native_int() -> None:
         assert i16(x) == (i if i < 32768 else i - 65536)
         assert i32(x) == i
         assert i64(x) == i
+
+def i64_to_u16(x: i64) -> u16:
+    return cast(u16, x)
+
+def i32_to_u16(x: i32) -> u16:
+    return cast(u16, x)
+
+def i16_to_u16(x: i16) -> u16:
+    return cast(u16, x)
+
+def i8_to_u16(x: i8) -> u16:
+    return cast(u16, x)
+
+def test_coerce_from_signed_native_int() -> None:
+    for n in (0, 1, 255, 32767, 65535):
+        assert i64_to_u16(n) == n
+        assert i32_to_u16(n) == n
+    for n in (0, 1, 255, 32767):
+        assert i16_to_u16(n) == n
+    for n in (0, 1, 127):
+        assert i8_to_u16(n) == n
+    msg = "int too large or small to convert to u16"
+    for n in (-1, 65536, 2**63 - 1, -2**63):
+        with assertRaises(ValueError, msg):
+            i64_to_u16(n)
+    for n in (-1, 65536, 2**31 - 1, -2**31):
+        with assertRaises(ValueError, msg):
+            i32_to_u16(n)
+    for n in (-1, -32768):
+        with assertRaises(ValueError, msg):
+            i16_to_u16(n)
+    for n in (-1, -128):
+        with assertRaises(ValueError, msg):
+            i8_to_u16(n)

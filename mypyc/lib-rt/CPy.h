@@ -197,6 +197,7 @@ CPyTagged CPyTagged_FromUInt32(uint32_t value);
 PyObject *CPyTagged_AsObject(CPyTagged x);
 PyObject *CPyTagged_StealAsObject(CPyTagged x);
 Py_ssize_t CPyTagged_AsSsize_t(CPyTagged x);
+void CPy_LargeIndexError(CPyTagged index, const char *msg);
 void CPyTagged_IncRef(CPyTagged x);
 void CPyTagged_DecRef(CPyTagged x);
 void CPyTagged_XDecRef(CPyTagged x);
@@ -227,8 +228,10 @@ PyObject *CPyLong_FromStrWithBase(PyObject *o, CPyTagged base);
 PyObject *CPyLong_FromStr(PyObject *o);
 PyObject *CPyBool_Str(bool b);
 int64_t CPyLong_AsInt64_(PyObject *o);
+int64_t CPyLong_AsIndex(PyObject *o);
 int64_t CPyInt64_Divide(int64_t x, int64_t y);
 int64_t CPyInt64_Remainder(int64_t x, int64_t y);
+void CPyInt64_Overflow(void);
 int32_t CPyLong_AsInt32_(PyObject *o);
 int32_t CPyInt32_Divide(int32_t x, int32_t y);
 int32_t CPyInt32_Remainder(int32_t x, int32_t y);
@@ -925,6 +928,27 @@ static void CPy_LogGetAttr(const char *method, PyObject *obj, PyObject *attr) {
 
 CPyTagged CPyObject_Hash(PyObject *o);
 Py_hash_t CPy_HashFromResult(PyObject *res);
+Py_ssize_t CPy_LenFromResult(PyObject *res);
+CPyTagged CPyObject_LenFromResult(PyObject *res);
+
+// Convert the result of a __len__ method to a length, like len() does.
+// Return -1 with an exception set on error.
+static inline Py_ssize_t CPyTagged_AsLen(CPyTagged x) {
+    if (likely(CPyTagged_CheckShort(x))) {
+        Py_ssize_t len = CPyTagged_ShortAsSsize_t(x);
+        if (likely(len >= 0)) {
+            return len;
+        }
+        PyErr_SetString(PyExc_ValueError, "__len__() should return >= 0");
+        return -1;
+    }
+    return CPy_LenFromResult(CPyTagged_LongAsObject(x));
+}
+
+// Check that the result of a __len__ method is a valid length, like len() does
+static inline bool CPyTagged_CheckLen(CPyTagged x) {
+    return CPyTagged_AsLen(x) >= 0;
+}
 
 // Default identity-based hash (same as object.__hash__), used as tp_hash
 static inline Py_hash_t CPy_DefaultHash(PyObject *o) {
@@ -1039,6 +1063,7 @@ CPyTagged CPyList_Count(PyObject *obj, PyObject *value);
 int CPyList_Insert(PyObject *list, CPyTagged index, PyObject *value);
 PyObject *CPyList_Extend(PyObject *o1, PyObject *o2);
 int CPyList_Remove(PyObject *list, PyObject *obj);
+int CPyList_Compare(PyObject *left, PyObject *right, int op);
 CPyTagged CPyList_Index(PyObject *list, PyObject *obj);
 PyObject *CPySequence_Sort(PyObject *seq);
 PyObject *CPySequence_Concat(PyObject *seq, PyObject *other);
@@ -1112,6 +1137,8 @@ PyObject *CPyStr_GetItem(PyObject *str, CPyTagged index);
 PyObject *CPyStr_GetItemUnsafe(PyObject *str, Py_ssize_t index);
 CPyTagged CPyStr_Find(PyObject *str, PyObject *substr, CPyTagged start, int direction);
 CPyTagged CPyStr_FindWithEnd(PyObject *str, PyObject *substr, CPyTagged start, CPyTagged end, int direction);
+CPyTagged CPyStr_Index(PyObject *str, PyObject *substr, CPyTagged start, int direction);
+CPyTagged CPyStr_IndexWithEnd(PyObject *str, PyObject *substr, CPyTagged start, CPyTagged end, int direction);
 PyObject *CPyStr_Split(PyObject *str, PyObject *sep, CPyTagged max_split);
 PyObject *CPyStr_RSplit(PyObject *str, PyObject *sep, CPyTagged max_split);
 PyObject *_CPyStr_Strip(PyObject *self, int strip_type, PyObject *sep);
@@ -1158,6 +1185,7 @@ bool CPyStr_IsPrintable(PyObject *str);
 bool CPyStr_IsLower(PyObject *str);
 bool CPyStr_IsTitle(PyObject *str);
 bool CPyStr_IsUpper(PyObject *str);
+bool CPyStr_IsIdentifier(PyObject *str);
 
 // Bytes operations
 
@@ -1186,6 +1214,7 @@ bool CPySet_Remove(PyObject *set, PyObject *key);
 
 PyObject *CPySequenceTuple_GetSlice(PyObject *obj, CPyTagged start, CPyTagged end);
 PyObject *CPySequenceTuple_GetItem_(PyObject *tuple, CPyTagged index);
+int CPyTuple_Compare(PyObject *left, PyObject *right, int op);
 
 static inline PyObject *CPySequenceTuple_GetItem(PyObject *tuple, CPyTagged index)
 {
@@ -1366,6 +1395,17 @@ static inline PyObject *CPy_TYPE(PyObject *obj) {
     PyObject *result = (PyObject *)Py_TYPE(obj);
     Py_INCREF(result);
     return result;
+}
+
+// type() of an int, without boxing it
+static inline PyObject *CPyTagged_Type(CPyTagged x) {
+    // A short int boxes to an exact int, but a long int is an object that can
+    // be an instance of a subclass of int
+    if (likely(CPyTagged_CheckShort(x))) {
+        Py_INCREF(&PyLong_Type);
+        return (PyObject *)&PyLong_Type;
+    }
+    return CPy_TYPE(CPyTagged_LongAsObject(x));
 }
 
 PyObject *CPy_CalculateMetaclass(PyObject *type, PyObject *o);

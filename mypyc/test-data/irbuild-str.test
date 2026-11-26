@@ -567,7 +567,7 @@ L1:
 L2:
     r4 = i ^ 1
     r5 = r4
-    r6 = CPyLong_AsInt64(r5)
+    r6 = CPyLong_AsIndex(r5)
     r3 = r6
     keep_alive i
 L3:
@@ -575,7 +575,7 @@ L3:
     r8 = CPyStr_RangeCheck(s, r7)
     if r8 goto L5 else goto L4 :: bool
 L4:
-    r9 = raise IndexError('index out of range')
+    r9 = raise IndexError('string index out of range')
     unreachable
 L5:
     r10 = CPyStr_GetItemUnsafeAsInt(s, r7)
@@ -590,7 +590,7 @@ L0:
     r1 = CPyStr_RangeCheck(s, r0)
     if r1 goto L2 else goto L1 :: bool
 L1:
-    r2 = raise IndexError('index out of range')
+    r2 = raise IndexError('string index out of range')
     unreachable
 L2:
     r3 = CPyStr_GetItemUnsafeAsInt(s, r0)
@@ -608,7 +608,7 @@ L0:
     r1 = CPyStr_RangeCheck(s, r0)
     if r1 goto L2 else goto L1 :: bool
 L1:
-    r2 = raise IndexError('index out of range')
+    r2 = raise IndexError('string index out of range')
     unreachable
 L2:
     r3 = CPyStr_GetItemUnsafeAsInt(s, r0)
@@ -640,7 +640,7 @@ L0:
     r1 = CPyStr_RangeCheck(s, r0)
     if r1 goto L2 else goto L1 :: bool
 L1:
-    r2 = raise IndexError('index out of range')
+    r2 = raise IndexError('string index out of range')
     unreachable
 L2:
     r3 = CPyStr_GetItemUnsafeAsInt(s, r0)
@@ -672,7 +672,7 @@ L0:
     r1 = CPyStr_RangeCheck(s, r0)
     if r1 goto L2 else goto L1 :: bool
 L1:
-    r2 = raise IndexError('index out of range')
+    r2 = raise IndexError('string index out of range')
     unreachable
 L2:
     r3 = CPyStr_GetItemUnsafeAsInt(s, r0)
@@ -702,7 +702,7 @@ L0:
     r1 = CPyStr_RangeCheck(s, r0)
     if r1 goto L2 else goto L1 :: bool
 L1:
-    r2 = raise IndexError('index out of range')
+    r2 = raise IndexError('string index out of range')
     unreachable
 L2:
     r3 = CPyStr_GetItemUnsafeAsInt(s, r0)
@@ -995,6 +995,46 @@ L0:
     r0 = CPyStr_Multiply(s, n)
     return r0
 
+[case testStrIndex]
+def index(s: str, sub: str, start: int, end: int) -> int:
+    a = s.index(sub)
+    b = s.index(sub, start)
+    c = s.index(sub, start, end)
+    return a + b + c
+
+def rindex(s: str, sub: str, start: int, end: int) -> int:
+    a = s.rindex(sub)
+    b = s.rindex(sub, start)
+    c = s.rindex(sub, start, end)
+    return a + b + c
+[out]
+def index(s, sub, start, end):
+    s, sub :: str
+    start, end, r0, a, r1, b, r2, c, r3, r4 :: int
+L0:
+    r0 = CPyStr_Index(s, sub, 0, 1)
+    a = r0
+    r1 = CPyStr_Index(s, sub, start, 1)
+    b = r1
+    r2 = CPyStr_IndexWithEnd(s, sub, start, end, 1)
+    c = r2
+    r3 = CPyTagged_Add(a, b)
+    r4 = CPyTagged_Add(r3, c)
+    return r4
+def rindex(s, sub, start, end):
+    s, sub :: str
+    start, end, r0, a, r1, b, r2, c, r3, r4 :: int
+L0:
+    r0 = CPyStr_Index(s, sub, 0, -1)
+    a = r0
+    r1 = CPyStr_Index(s, sub, start, -1)
+    b = r1
+    r2 = CPyStr_IndexWithEnd(s, sub, start, end, -1)
+    c = r2
+    r3 = CPyTagged_Add(a, b)
+    r4 = CPyTagged_Add(r3, c)
+    return r4
+
 [case testStrLower]
 def do_lower(s: str) -> str:
     return s.lower()
@@ -1136,6 +1176,17 @@ L0:
     r0 = CPyStr_IsUpper(x)
     return r0
 
+[case testStrIsIdentifier]
+def is_identifier(x: str) -> bool:
+    return x.isidentifier()
+[out]
+def is_identifier(x):
+    x :: str
+    r0 :: bool
+L0:
+    r0 = CPyStr_IsIdentifier(x)
+    return r0
+
 [case testStrIndexEqLiteral_64bit]
 def is_comma(s: str, i: int) -> bool:
     return s[i] == ","
@@ -1167,7 +1218,7 @@ L1:
 L2:
     r4 = i ^ 1
     r5 = r4
-    r6 = CPyLong_AsInt64(r5)
+    r6 = CPyLong_AsIndex(r5)
     r3 = r6
     keep_alive i
 L3:
@@ -1175,7 +1226,7 @@ L3:
     r8 = CPyStr_RangeCheck(s, r7)
     if r8 goto L5 else goto L4 :: bool
 L4:
-    r9 = raise IndexError('index out of range')
+    r9 = raise IndexError('string index out of range')
     unreachable
 L5:
     r10 = CPyStr_GetItemUnsafeAsInt(s, r7)
@@ -1204,7 +1255,7 @@ L1:
 L2:
     r4 = i ^ 1
     r5 = r4
-    r6 = CPyLong_AsInt64(r5)
+    r6 = CPyLong_AsIndex(r5)
     r3 = r6
     keep_alive i
 L3:
@@ -1212,7 +1263,7 @@ L3:
     r8 = CPyStr_RangeCheck(s, r7)
     if r8 goto L5 else goto L4 :: bool
 L4:
-    r9 = raise IndexError('index out of range')
+    r9 = raise IndexError('string index out of range')
     unreachable
 L5:
     r10 = CPyStr_GetItemUnsafeAsInt(s, r7)
@@ -1241,7 +1292,7 @@ L1:
 L2:
     r4 = i ^ 1
     r5 = r4
-    r6 = CPyLong_AsInt64(r5)
+    r6 = CPyLong_AsIndex(r5)
     r3 = r6
     keep_alive i
 L3:
@@ -1249,7 +1300,7 @@ L3:
     r8 = CPyStr_RangeCheck(s, r7)
     if r8 goto L5 else goto L4 :: bool
 L4:
-    r9 = raise IndexError('index out of range')
+    r9 = raise IndexError('string index out of range')
     unreachable
 L5:
     r10 = CPyStr_GetItemUnsafeAsInt(s, r7)

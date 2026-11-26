@@ -121,7 +121,7 @@ PyObject *CPyList_GetItem(PyObject *list, CPyTagged index) {
         Py_INCREF(result);
         return result;
     } else {
-        PyErr_SetString(PyExc_OverflowError, CPYTHON_LARGE_INT_ERRMSG);
+        CPy_LargeIndexError(index, "list index out of range");
         return NULL;
     }
 }
@@ -173,7 +173,7 @@ bool CPyList_SetItem(PyObject *list, CPyTagged index, PyObject *value) {
         return true;
     } else {
         Py_DECREF(value);
-        PyErr_SetString(PyExc_OverflowError, CPYTHON_LARGE_INT_ERRMSG);
+        CPy_LargeIndexError(index, "list assignment index out of range");
         return false;
     }
 }
@@ -235,7 +235,7 @@ PyObject *CPyList_GetItem_(PyObject *list, CPyTagged index) {
         }
         return PyList_GetItemRef(list, n);
     } else {
-        PyErr_SetString(PyExc_OverflowError, CPYTHON_LARGE_INT_ERRMSG);
+        CPy_LargeIndexError(index, "list index out of range");
         return NULL;
     }
 }
@@ -250,7 +250,7 @@ bool CPyList_SetItem_(PyObject *list, CPyTagged index, PyObject *value) {
         return PyList_SetItem(list, n, value) >= 0;
     } else {
         Py_DECREF(value);
-        PyErr_SetString(PyExc_OverflowError, CPYTHON_LARGE_INT_ERRMSG);
+        CPy_LargeIndexError(index, "list assignment index out of range");
         return false;
     }
 }
@@ -293,7 +293,7 @@ PyObject *CPyList_GetItemBorrow(PyObject *list, CPyTagged index) {
         }
         return PyList_GET_ITEM(list, n);
     } else {
-        PyErr_SetString(PyExc_OverflowError, CPYTHON_LARGE_INT_ERRMSG);
+        CPy_LargeIndexError(index, "list index out of range");
         return NULL;
     }
 }
@@ -377,18 +377,23 @@ PyObject *CPyList_PopLast(PyObject *list)
 
 PyObject *CPyList_Pop(PyObject *obj, CPyTagged index)
 {
+    Py_ssize_t n;
     if (CPyTagged_CheckShort(index)) {
-        Py_ssize_t n = CPyTagged_ShortAsSsize_t(index);
-#ifdef Py_GIL_DISABLED
-        // We must use a slower implementation on free-threaded builds.
-        return list_pop_index(obj, n);
-#else
-        return list_pop_impl((PyListObject *)obj, n);
-#endif
+        n = CPyTagged_ShortAsSsize_t(index);
     } else {
-        PyErr_SetString(PyExc_OverflowError, CPYTHON_LARGE_INT_ERRMSG);
-        return NULL;
+        // Like CPython, raise OverflowError only if the index doesn't fit in
+        // Py_ssize_t. Other large indexes raise IndexError below.
+        n = PyLong_AsSsize_t(CPyTagged_LongAsObject(index));
+        if (n == -1 && PyErr_Occurred()) {
+            return NULL;
+        }
     }
+#ifdef Py_GIL_DISABLED
+    // We must use a slower implementation on free-threaded builds.
+    return list_pop_index(obj, n);
+#else
+    return list_pop_impl((PyListObject *)obj, n);
+#endif
 }
 
 CPyTagged CPyList_Count(PyObject *obj, PyObject *value)
@@ -398,14 +403,18 @@ CPyTagged CPyList_Count(PyObject *obj, PyObject *value)
 
 int CPyList_Insert(PyObject *list, CPyTagged index, PyObject *value)
 {
+    Py_ssize_t n;
     if (CPyTagged_CheckShort(index)) {
-        Py_ssize_t n = CPyTagged_ShortAsSsize_t(index);
-        return PyList_Insert(list, n, value);
+        n = CPyTagged_ShortAsSsize_t(index);
+    } else {
+        // Like CPython, raise OverflowError only if the index doesn't fit in
+        // Py_ssize_t. Other large indexes are clamped to the list bounds.
+        n = PyLong_AsSsize_t(CPyTagged_LongAsObject(index));
+        if (n == -1 && PyErr_Occurred()) {
+            return -1;
+        }
     }
-    // The max range doesn't exactly coincide with ssize_t, but we still
-    // want to keep the error message compatible with CPython.
-    PyErr_SetString(PyExc_OverflowError, CPYTHON_LARGE_INT_ERRMSG);
-    return -1;
+    return PyList_Insert(list, n, value);
 }
 
 PyObject *CPyList_Extend(PyObject *o1, PyObject *o2) {
@@ -466,6 +475,61 @@ CPyTagged CPyList_Index(PyObject *list, PyObject *obj) {
     }
     Py_END_CRITICAL_SECTION();
     return retval;
+}
+
+// Compare two lists for equality. Return 1 if equal, 0 if not equal, -1 on error.
+//
+// The caller must hold a critical section on both lists.
+static int _CPyList_Equal(PyObject *left, PyObject *right) {
+    if (Py_SIZE(left) != Py_SIZE(right)) {
+        return 0;
+    }
+    Py_ssize_t i;
+    for (i = 0; i < Py_SIZE(left) && i < Py_SIZE(right); i++) {
+        PyObject *left_item = PyList_GET_ITEM(left, i);
+        PyObject *right_item = PyList_GET_ITEM(right, i);
+        if (left_item == right_item) {
+            continue;
+        }
+        Py_INCREF(left_item);
+        Py_INCREF(right_item);
+        int cmp = PyObject_RichCompareBool(left_item, right_item, Py_EQ);
+        Py_DECREF(left_item);
+        Py_DECREF(right_item);
+        if (cmp <= 0) {
+            return cmp;
+        }
+    }
+    // An item comparison may have changed the lengths
+    return Py_SIZE(left) == Py_SIZE(right);
+}
+
+// Compare two lists using == or != (op is Py_EQ or Py_NE). Return 1 if the result is
+// true, 0 if it's false, and -1 on error.
+int CPyList_Compare(PyObject *left, PyObject *right, int op) {
+    if (likely(PyList_CheckExact(left) && PyList_CheckExact(right))) {
+        int result;
+        if (left == right) {
+            // All items are identical, so they compare equal
+            result = 1;
+        } else {
+            Py_BEGIN_CRITICAL_SECTION2(left, right);
+            result = _CPyList_Equal(left, right);
+            Py_END_CRITICAL_SECTION2();
+            if (result < 0) {
+                return -1;
+            }
+        }
+        return op == Py_EQ ? result : !result;
+    }
+    // Subclasses may override __eq__ and __ne__
+    PyObject *res = PyObject_RichCompare(left, right, op);
+    if (res == NULL) {
+        return -1;
+    }
+    int result = PyObject_IsTrue(res);
+    Py_DECREF(res);
+    return result;
 }
 
 PyObject *CPySequence_Sort(PyObject *seq) {

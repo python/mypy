@@ -52,6 +52,7 @@ from mypyc.ir.ops import (
 )
 from mypyc.ir.rtypes import RType, bool_rprimitive, dict_rprimitive, object_rprimitive
 from mypyc.irbuild.builder import IRBuilder, create_type_params
+from mypyc.irbuild.constant_fold import check_native_int_final
 from mypyc.irbuild.function import (
     gen_property_getter_ir,
     gen_property_setter_ir,
@@ -184,6 +185,7 @@ def transform_class_def(builder: IRBuilder, cdef: ClassDef) -> None:
                     "Only assignment to variables is supported in class bodies", stmt.line
                 )
                 continue
+            check_native_int_final(builder, stmt)
             # We want to collect class variables in a dictionary for both real
             # non-extension classes and fake dataclass ones.
             cls_builder.add_attr(lvalue, stmt)
@@ -862,7 +864,7 @@ def find_attr_initializers(
         return set(), []
 
     attrs_with_defaults: set[str] = set()
-    default_assignments: list[tuple[AssignmentStmt, str]] = []
+    default_assignments: dict[str, tuple[AssignmentStmt, str]] = {}
 
     # TODO: Support nested statements
     if builder.options.separate:
@@ -882,9 +884,11 @@ def find_attr_initializers(
             if name is None:
                 continue
             attrs_with_defaults.add(name)
-            default_assignments.append((stmt, info.module_name))
+            # Keep only the last default per name: initializer stores don't free an earlier value.
+            default_assignments.pop(name, None)
+            default_assignments[name] = (stmt, info.module_name)
 
-    return attrs_with_defaults, default_assignments
+    return attrs_with_defaults, list(default_assignments.values())
 
 
 def generate_attr_defaults_init(
@@ -901,8 +905,8 @@ def generate_attr_defaults_init(
     in filename order, so this class may be IR-built before its base, and a
     method_decls lookup that depended on the base having been IR-built first
     would miss. Without separate compilation, find_attr_initializers has
-    already collected the full MRO's defaults into default_assignments, so
-    we inline them all as before.
+    already collected the full MRO's defaults into default_assignments, one
+    per attribute name, so we inline them all as before.
     """
     cls = builder.mapper.type_to_ir[cdef.info]
     if cls.builtin_base:
@@ -951,7 +955,13 @@ def generate_attr_defaults_init(
             finally:
                 builder.globals_lookup_module = None
             init = SetAttr(self_var, lvalue.name, val, stmt.rvalue.line)
-            init.mark_as_initializer()
+            # The parent's setup may have stored a default for an inherited attribute
+            # already, so use a regular store, which releases it. Separate builds don't
+            # treat any attribute as always defined, so the store checks for NULL first.
+            if parent_with_defaults is None or not any(
+                lvalue.name in base.attributes for base in cls.mro[1:]
+            ):
+                init.mark_as_initializer()
             builder.add(init)
 
         builder.add(Return(builder.true()))
