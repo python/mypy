@@ -326,6 +326,16 @@ def test_context_manager_exception() -> None:
         pass
     assert not lock.locked()
 
+def test_context_manager_reassigned_in_body() -> None:
+    lock = Lock()
+    old = lock
+    with lock:
+        lock = Lock()
+        assert old.locked()
+        assert not lock.locked()
+    assert not old.locked()
+    assert not lock.locked()
+
 def test_acquire_blocking_true() -> None:
     lock = Lock()
     assert lock.acquire(True)

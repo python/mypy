@@ -188,6 +188,106 @@ enter! crash
 exit! a ohno
 caught
 
+[case testWithReassignContextManager]
+from typing import Any, Iterator
+from testutil import assertRaises
+
+log: list[str] = []
+
+class Native:
+    def __init__(self, name: str) -> None:
+        self.name = name
+    def __enter__(self) -> str:
+        log.append("enter " + self.name)
+        return self.name + "-value"
+    def __exit__(self, *exc: object) -> None:
+        log.append("exit " + self.name)
+
+class NonNative:
+    def __init__(self, name: str) -> None:
+        self.name = name
+    def __enter__(self) -> str:
+        log.append("enter " + self.name)
+        return self.name + "-value"
+    def __exit__(self, *exc: object) -> None:
+        log.append("exit " + self.name)
+
+NonNativeAny: Any = NonNative
+
+def native_reassign() -> None:
+    x = Native("a")
+    with x:
+        x = Native("b")
+
+def native_reassign_and_raise() -> None:
+    x = Native("a")
+    with x:
+        x = Native("b")
+        raise ValueError("x")
+
+def non_native_reassign() -> None:
+    x: Any = NonNativeAny("a")
+    with x:
+        x = NonNativeAny("b")
+
+def non_native_reassign_and_raise() -> None:
+    x: Any = NonNativeAny("a")
+    with x:
+        x = NonNativeAny("b")
+        raise ValueError("x")
+
+def reassign_in_target() -> None:
+    x: Any = Native("a")
+    with x as x:
+        assert x == "a-value"
+
+def reassign_in_second_target() -> None:
+    x: Any = Native("a")
+    with x, Native("b") as x:
+        assert x == "b-value"
+
+def reassign_with_walrus() -> None:
+    x = Native("a")
+    with x:
+        if y := (x := Native("b")):
+            pass
+
+def delete_in_body() -> None:
+    x = Native("a")
+    with x:
+        del x
+
+def reassign_in_generator() -> Iterator[int]:
+    x = Native("a")
+    with x:
+        x = Native("b")
+        yield 1
+        x = Native("c")
+
+def check(f: Any, expected: list[str]) -> None:
+    log.clear()
+    f()
+    assert log == expected, (f.__name__, log)
+
+def test_reassign_context_manager() -> None:
+    check(native_reassign, ["enter a", "exit a"])
+    check(non_native_reassign, ["enter a", "exit a"])
+    check(reassign_in_target, ["enter a", "exit a"])
+    check(reassign_in_second_target, ["enter a", "enter b", "exit b", "exit a"])
+    check(reassign_with_walrus, ["enter a", "exit a"])
+    check(delete_in_body, ["enter a", "exit a"])
+    check(lambda: list(reassign_in_generator()), ["enter a", "exit a"])
+
+def test_reassign_context_manager_and_raise() -> None:
+    log.clear()
+    with assertRaises(ValueError):
+        native_reassign_and_raise()
+    assert log == ["enter a", "exit a"], log
+    log.clear()
+    with assertRaises(ValueError):
+        non_native_reassign_and_raise()
+    assert log == ["enter a", "exit a"], log
+
 [case testDisplays]
 from typing import List, Set, Tuple, Sequence, Dict, Any, Mapping
 

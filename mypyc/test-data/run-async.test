@@ -453,6 +453,26 @@ async def test_x() -> None:
         value += f
     assert value == 5, value
 
+[case testAsyncWithReassignContextManager]
+from testutil import async_val
+
+log: list[str] = []
+
+class ConMan:
+    def __init__(self, name: str) -> None:
+        self.name = name
+    async def __aenter__(self) -> None:
+        log.append("enter " + self.name)
+    async def __aexit__(self, *exc: object) -> None:
+        log.append("exit " + self.name)
+
+async def test_reassign_context_manager() -> None:
+    x = ConMan("a")
+    async with x:
+        x = ConMan("b")
+        await async_val(None)
+    assert log == ["enter a", "exit a"], log
+
 [case testRunAsyncSpecialCases]
 import asyncio
 

@@ -717,6 +717,13 @@ def find_loop_assignments(s: ForStmt) -> set[SymbolNode]:
     return collector.symbols
 
 
+def find_with_assignments(s: WithStmt) -> set[SymbolNode]:
+    """Return the variables that a with statement may assign to."""
+    collector = AssignmentCollector()
+    s.accept(collector)
+    return collector.symbols
+
+
 class AssignmentCollector(TraverserVisitor):
     """Collect the symbols of the variables assigned to (or deleted) in a subtree."""
 
@@ -787,13 +794,19 @@ def accept_loop_state(
     of a local variable that the loop may assign to, copy it to a new register, since
     the assignment must not affect the iteration (as in "for x in a: a = []").
     """
-    value = builder.accept(expr)
+    return copy_if_reassigned(builder, builder.accept(expr), reassigned, expr.line)
+
+
+def copy_if_reassigned(
+    builder: IRBuilder, value: Value, reassigned: AbstractSet[SymbolNode], line: int
+) -> Value:
+    """Copy value to a new register if it's the register of a reassigned local variable."""
     if isinstance(value, Register):
         for symbol in reassigned:
             target = builder.symtables[-1].get(symbol)
             if isinstance(target, AssignmentTargetRegister) and target.register is value:
                 copy = Register(value.type)
-                builder.assign(copy, value, expr.line)
+                builder.assign(copy, value, line)
                 return copy
     return value
 
