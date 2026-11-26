@@ -884,19 +884,19 @@ reveal_type(plausible_child_4)  # N: Revealed type is "def () -> builtins.int | 
 
 # Use type aliases in a type alias context in an implausible way
 
-def weird_parent_1() -> p.NormalImplicit: pass   # E: Name "p.NormalImplicit" is not defined
-def weird_parent_2() -> p.NormalExplicit: pass   # E: Name "p.NormalExplicit" is not defined
-def weird_parent_3() -> p.SpecialImplicit: pass  # E: Name "p.SpecialImplicit" is not defined
-def weird_parent_4() -> p.SpecialExplicit: pass  # E: Name "p.SpecialExplicit" is not defined
+def weird_parent_1() -> p.NormalImplicit: pass   # E: Name "p.NormalImplicit" is not defined ("p" is a variable, not a module or class)
+def weird_parent_2() -> p.NormalExplicit: pass   # E: Name "p.NormalExplicit" is not defined ("p" is a variable, not a module or class)
+def weird_parent_3() -> p.SpecialImplicit: pass  # E: Name "p.SpecialImplicit" is not defined ("p" is a variable, not a module or class)
+def weird_parent_4() -> p.SpecialExplicit: pass  # E: Name "p.SpecialExplicit" is not defined ("p" is a variable, not a module or class)
 reveal_type(weird_parent_1)  # N: Revealed type is "def () -> Any"
 reveal_type(weird_parent_2)  # N: Revealed type is "def () -> Any"
 reveal_type(weird_parent_3)  # N: Revealed type is "def () -> Any"
 reveal_type(weird_parent_4)  # N: Revealed type is "def () -> Any"
 
-def weird_child_1() -> c.NormalImplicit: pass   # E: Name "c.NormalImplicit" is not defined
-def weird_child_2() -> c.NormalExplicit: pass   # E: Name "c.NormalExplicit" is not defined
-def weird_child_3() -> c.SpecialImplicit: pass  # E: Name "c.SpecialImplicit" is not defined
-def weird_child_4() -> c.SpecialExplicit: pass  # E: Name "c.SpecialExplicit" is not defined
+def weird_child_1() -> c.NormalImplicit: pass   # E: Name "c.NormalImplicit" is not defined ("c" is a variable, not a module or class)
+def weird_child_2() -> c.NormalExplicit: pass   # E: Name "c.NormalExplicit" is not defined ("c" is a variable, not a module or class)
+def weird_child_3() -> c.SpecialImplicit: pass  # E: Name "c.SpecialImplicit" is not defined ("c" is a variable, not a module or class)
+def weird_child_4() -> c.SpecialExplicit: pass  # E: Name "c.SpecialExplicit" is not defined ("c" is a variable, not a module or class)
 reveal_type(weird_child_1)  # N: Revealed type is "def () -> Any"
 reveal_type(weird_child_2)  # N: Revealed type is "def () -> Any"
 reveal_type(weird_child_3)  # N: Revealed type is "def () -> Any"
