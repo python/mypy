@@ -172,6 +172,80 @@ def test_explicit_conversion_from_int() -> None:
     for x in a:
         assert repr(float(x)) == repr(float_any(x))
 
+def round_float(x: float) -> int:
+    return round(x)
+
+def round_int(n: int) -> int:
+    return round(n)
+
+def test_round_float() -> None:
+    # Use a dynamic reference to avoid specializing round().
+    round_any: Any = round
+
+    # Halfway cases round to even
+    assert round_float(0.5) == 0
+    assert round_float(1.5) == 2
+    assert round_float(2.5) == 2
+    assert round_float(3.5) == 4
+    assert round_float(-0.5) == 0
+    assert round_float(-1.5) == -2
+    assert round_float(-2.5) == -2
+    assert round_float(-3.5) == -4
+
+    assert round_float(0.49999999999999994) == 0
+    assert round_float(0.5000000000000001) == 1
+    assert round_float(-0.49999999999999994) == 0
+    assert round_float(-0.5000000000000001) == -1
+
+    assert round_float(-0.0) == 0
+    assert round_float(1.4) == 1
+    assert round_float(-1.6) == -2
+
+    assert round_float(2.0**51 + 0.5) == 2**51
+    assert round_float(2.0**51 + 1.5) == 2**51 + 2
+    assert round_float(-2.0**51 - 0.5) == -2**51
+    assert round_float(-2.0**51 - 1.5) == -2**51 - 2
+    assert round_float(2.0**52 - 0.5) == 2**52
+    assert round_float(2.0**52 + 1.0) == 2**52 + 1
+
+    # Short int limits on 32-bit platforms
+    assert round_float(2.0**30 - 1.0) == 2**30 - 1
+    assert round_float(2.0**30 - 0.5) == 2**30
+    assert round_float(-2.0**30 - 0.5) == -2**30
+    assert round_float(-2.0**30 - 1.0) == -2**30 - 1
+
+    assert round_float(2.0**62) == 2**62
+    assert round_float(-2.0**62) == -2**62
+    assert round_float(1e300) == int(1e300)
+    assert round_float(-1e300) == int(-1e300)
+
+    for x in float_vals:
+        if math.isinf(x):
+            with assertRaises(OverflowError, "cannot convert float infinity to integer"):
+                round_float(x)
+        elif math.isnan(x):
+            with assertRaises(ValueError, "cannot convert float NaN to integer"):
+                round_float(x)
+        else:
+            assert round_float(x) == round_any(x), x
+            assert type(round_float(x)) is int
+
+    for n in range(-1000, 1000):
+        x = n / 8
+        assert round_float(x) == round_any(x), x
+
+    # Two-argument round() still works (generic implementation)
+    y = identity(2.675)
+    assert round(y, 2) == 2.67
+    assert round(y, None) == 3
+
+def test_round_int() -> None:
+    for n in [0, 1, -1, 2**62, -2**62, 2**63, -2**100, 10**400]:
+        assert round_int(n) == n
+    for b in (True, False):
+        assert round_int(b) == int(b)
+        assert type(round_int(b)) is int
+
 def test_explicit_conversion_to_int() -> None:
     int_any: Any = int
     for x in float_vals:
@@ -726,3 +800,44 @@ class BadIntReal(int):
     @property
     def real(self) -> Any:
         return "x"
+
+[case testRoundIntSubclass]
+def round_int(n: int) -> int:
+    return round(n)
+
+def round_pop(values: list[int]) -> int:
+    return round(values.pop())
+
+[file driver.py]
+from native import round_int, round_pop
+from testutil import assertRaises
+
+class PlainInt(int):
+    pass
+
+class OverrideRound(int):
+    def __round__(self):
+        return 42
+
+    def __getattribute__(self, name):
+        if name == "__round__":
+            raise AssertionError("round must use special method lookup")
+        return super().__getattribute__(name)
+
+class RaisingRound(int):
+    def __round__(self):
+        raise ValueError("custom round failed")
+
+# Large integer subclasses stay boxed and must retain their __round__ behavior.
+big = 2**100
+assert round_int(OverrideRound(big)) == 42
+assert round_int(PlainInt(big)) == big
+assert type(round_int(PlainInt(big))) is int
+with assertRaises(ValueError, "custom round failed"):
+    round_int(RaisingRound(big))
+
+# The argument is evaluated exactly once on both sides of the type guard.
+for value, expected in [(3, 3), (big, big), (OverrideRound(big), 42)]:
+    values = [value]
+    assert round_pop(values) == expected
+    assert values == []
