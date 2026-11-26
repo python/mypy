@@ -1050,7 +1050,7 @@ L2:
 L3:
     r9 = box(None, 1)
     return r9
-[case testMatchMappingPatternWithKeys_python3_10]
+[case testMatchMappingPatternWithKeys_python3_10_64bit]
 def f(x):
     match x:
         case {"key": "value"}:
@@ -1153,7 +1153,7 @@ L3:
 L4:
     r10 = box(None, 1)
     return r10
-[case testMatchMappingPatternWithRestPopKeys_python3_10]
+[case testMatchMappingPatternWithRestPopKeys_python3_10_64bit]
 def f(x):
     match x:
         case {"key": "value", **rest}:
