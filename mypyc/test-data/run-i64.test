@@ -1715,3 +1715,33 @@ for index in (0, -1):
     items = [Reentrant()]
     assign(items, index, None)
     assert items == []
+
+[case testI64FloorDivideConstantMinByMinusOne]
+from typing import Final
+from mypy_extensions import i64
+from testutil import assertRaises
+
+MIN: Final[i64] = -2**63
+MINUS_ONE: Final[i64] = -1
+
+def div() -> i64:
+    return MIN // -1
+
+def div_final() -> i64:
+    return MIN // MINUS_ONE
+
+def div_nested() -> i64:
+    return MIN // -1 + 1
+
+def mod() -> i64:
+    return MIN % -1
+
+def test_min_divided_by_minus_one() -> None:
+    with assertRaises(OverflowError, "integer division overflow"):
+        div()
+    with assertRaises(OverflowError, "integer division overflow"):
+        div_final()
+    with assertRaises(OverflowError, "integer division overflow"):
+        div_nested()
+    assert mod() == 0
+    assert MIN // 1 == MIN
