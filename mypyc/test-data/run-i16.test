@@ -388,3 +388,33 @@ def test_tuple_i16() -> None:
     x: Any = t
     tt: Tuple[i16, i16] = x
     assert tt == (1, 2)
+
+[case testI16FloorDivideConstantMinByMinusOne]
+from typing import Final
+from mypy_extensions import i16
+from testutil import assertRaises
+
+MIN: Final[i16] = -2**15
+MINUS_ONE: Final[i16] = -1
+
+def div() -> i16:
+    return MIN // -1
+
+def div_final() -> i16:
+    return MIN // MINUS_ONE
+
+def div_nested() -> i16:
+    return MIN // -1 + 1
+
+def mod() -> i16:
+    return MIN % -1
+
+def test_min_divided_by_minus_one() -> None:
+    with assertRaises(OverflowError, "integer division overflow"):
+        div()
+    with assertRaises(OverflowError, "integer division overflow"):
+        div_final()
+    with assertRaises(OverflowError, "integer division overflow"):
+        div_nested()
+    assert mod() == 0
+    assert MIN // 1 == MIN
