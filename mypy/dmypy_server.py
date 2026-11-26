@@ -364,10 +364,47 @@ class Server:
     ) -> dict[str, object]:
         """Check a list of files."""
         try:
-            sources = create_source_list(files, self.options, self.fscache)
+            sources = create_source_list(
+                files, self.options, self.fscache, known_modules=self.trusted_cached_modules()
+            )
         except InvalidSourceList as err:
             return {"out": "", "err": str(err), "status": 2}
         return self.check(sources, export_types, is_tty, terminal_width)
+
+    def trusted_cached_modules(self) -> dict[str, str] | None:
+        """The module of each file a first check trusts the cache for.
+
+        A file's module is as when the cache was made unless the file, or an __init__ in a
+        directory above it, has changed since: so the first check of a daemon trusting its
+        cache need not crawl up each file's directories to find its module.
+        """
+        if self.fine_grained_manager or not self.options.use_fine_grained_cache:
+            return None
+        # The build warns, if need be, of a file it cannot read.
+        changed = mypy.build.read_changed_since_cache_file(self.options, io.StringIO())
+        if changed is None:
+            return None
+        changed_packages = {
+            os.path.dirname(path)
+            for path in changed
+            if os.path.basename(path) in ("__init__.py", "__init__.pyi")
+        }
+
+        def under_changed_package(path: str) -> bool:
+            dir = os.path.dirname(path)
+            while True:
+                if dir in changed_packages:
+                    return True
+                parent = os.path.dirname(dir)
+                if parent == dir:
+                    return False
+                dir = parent
+
+        return {
+            path: module
+            for path, module in mypy.build.read_cached_modules(self.options).items()
+            if path not in changed and not under_changed_package(path)
+        }
 
     def cmd_recheck(
         self,
@@ -505,7 +542,20 @@ class Server:
                     FileData(st_mtime=float(meta.mtime), st_size=meta.size, hash=meta.hash),
                 )
 
-            changed, removed = self.find_changed(sources)
+            changed_since_cache = self.fine_grained_manager.manager.changed_since_cache
+            if changed_since_cache is not None:
+                # Look only at the files that may differ from the cache, and at sources
+                # it has nothing for, which the build deferred.
+                graph = self.fine_grained_manager.graph
+                update = [
+                    source.path
+                    for source in sources
+                    if source.path
+                    and (source.path in changed_since_cache or source.module not in graph)
+                ]
+                changed, removed = self.update_changed(sources, [], update)
+            else:
+                changed, removed = self.find_changed(sources)
             changed += self.find_added_suppressed(
                 self.fine_grained_manager.graph,
                 set(),
