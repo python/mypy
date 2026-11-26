@@ -1417,7 +1417,7 @@ def translate_printf_style_formatting(
                 return join_formatted_bytes(builder, literals, substitutions, format_expr.line)
         else:
             substitutions = convert_format_expr_to_str(
-                builder, format_ops, exprs, format_expr.line
+                builder, format_ops, exprs, format_expr.line, use_format=False
             )
             if substitutions is not None:
                 return join_formatted_strings(builder, literals, substitutions, format_expr.line)

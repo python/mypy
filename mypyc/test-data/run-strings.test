@@ -913,6 +913,102 @@ def test_format_method_python_doc() -> None:
                         '   10    A   12 1010',\
                         '   11    B   13 1011']
 
+[case testStringFormattingUsesDunderFormat]
+from enum import Enum, IntEnum
+from typing import Any
+
+from mypy_extensions import mypyc_attr
+
+class E(str, Enum):
+    A = 'a'
+
+class IE(IntEnum):
+    X = 1
+
+class Native:
+    def __format__(self, spec: str) -> str:
+        return 'format:' + spec
+
+    def __str__(self) -> str:
+        return 'str'
+
+class Plain:
+    def __str__(self) -> str:
+        return 'Plain.__str__'
+
+class Base:
+    def __str__(self) -> str:
+        return 'Base.__str__'
+
+class Derived(Base):
+    def __format__(self, spec: str) -> str:
+        return 'Derived.__format__'
+
+def identity(f: Any) -> Any:
+    return f
+
+class Decorated:
+    @identity
+    def __format__(self, spec: str) -> str:
+        return 'Decorated.__format__'
+
+@mypyc_attr(native_class=False)
+class S(str):
+    def __format__(self, spec: str) -> str:
+        return 'S.__format__'
+
+    def __str__(self) -> str:
+        return 'S.__str__'
+
+def test_format_method() -> None:
+    n = Native()
+    assert '{}'.format(n) == 'format:'
+    assert 'x{}y'.format(n) == 'xformat:y'
+    assert '{!s}'.format(n) == 'str'
+    assert '{:>5}'.format(n) == 'format:>5'
+    # The result depends on the Python version
+    assert '{}'.format(E.A) == format(E.A)
+    assert '<{}>'.format(IE.X) == '<' + format(IE.X) + '>'
+    s: str = S('value')
+    assert '{}'.format(s) == 'S.__format__'
+    assert '{}-{}'.format(s, 'x') == 'S.__format__-x'
+
+def test_f_string() -> None:
+    n = Native()
+    assert f'{n}' == 'format:'
+    assert f'x{n}y' == 'xformat:y'
+    assert f'x{n!s}y' == 'xstry'
+    assert f'x{n:>5}y' == 'xformat:>5y'
+    a: Any = n
+    assert f'x{a}y' == 'xformat:y'
+    o: object = E.A
+    assert f'x{o}y' == 'x' + format(E.A) + 'y'
+    assert f'x{IE.X}y' == 'x' + format(IE.X) + 'y'
+    s: str = S('value')
+    assert f'x{s}y' == 'xS.__format__y'
+    e: str = E.A
+    assert f'x{e}y' == 'x' + format(E.A) + 'y'
+
+def format_base(b: Base) -> str:
+    return f'<{b}>'
+
+def test_f_string_native_class() -> None:
+    assert f'<{Plain()}>' == '<Plain.__str__>'
+    assert '<{}>'.format(Plain()) == '<Plain.__str__>'
+    assert format_base(Base()) == '<Base.__str__>'
+    assert format_base(Derived()) == '<Derived.__format__>'
+    assert f'<{Decorated()}>' == '<Decorated.__format__>'
+
+def test_printf_style() -> None:
+    n = Native()
+    assert '%s' % n == 'str'
+    assert 'x%sy' % n == 'xstry'
+    s: str = S('value')
+    assert 'x%sy' % s == 'xS.__str__y'
+    assert '%s-%s' % (s, 'x') == 'S.__str__-x'
+    e: str = E.A
+    assert 'x%sy' % e == 'x' + str(E.A) + 'y'
+
 [case testChr]
 # Some test cases are from https://docs.python.org/3/howto/unicode.html
 from typing import Any
