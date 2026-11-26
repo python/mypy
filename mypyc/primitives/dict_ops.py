@@ -334,10 +334,3 @@ supports_mapping_protocol = custom_op(
     c_function_name="CPyMapping_Check",
     error_kind=ERR_NEVER,
 )
-
-mapping_has_key = custom_op(
-    arg_types=[object_rprimitive, object_rprimitive],
-    return_type=c_int_rprimitive,
-    c_function_name="PyMapping_HasKey",
-    error_kind=ERR_NEVER,
-)

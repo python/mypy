@@ -337,3 +337,53 @@ for fn in (f, g):
 [out]
 RuntimeError boom
 RuntimeError boom
+
+[case testMappingPatternUsesGet_python3_10]
+from typing import Any, Dict
+
+def f(x: object) -> object:
+    match x:
+        case {"a": v}:
+            return v
+    return "no match"
+
+def g(x: Dict[str, int]) -> object:
+    match x:
+        case {"a": v}:
+            return v
+    return "no match"
+
+[file driver.py]
+from collections import defaultdict
+from testutil import assertRaises
+
+from native import f, g
+
+class VirtualKey(dict):
+    def get(self, key, default=None):
+        if key == "a":
+            return 1
+        return super().get(key, default)
+
+class GetRaises(dict):
+    def get(self, key, default=None):
+        raise RuntimeError("get")
+
+class GetItemRaises(dict):
+    def __getitem__(self, key):
+        raise RuntimeError("__getitem__")
+
+# defaultdict.get() doesn't call __missing__
+d = defaultdict(int)
+assert f(d) == "no match"
+assert g(d) == "no match"
+assert d == {}
+
+assert f({"a": None}) is None
+assert f({"b": 1}) == "no match"
+assert g({"a": 5}) == 5
+
+assert f(VirtualKey()) == 1
+assert f(GetItemRaises(a=3)) == 3
+with assertRaises(RuntimeError, "get"):
+    f(GetRaises(a=1))

@@ -1061,52 +1061,59 @@ def f(x):
     r0 :: i32
     r1 :: bit
     r2 :: str
-    r3 :: i32
-    r4 :: bit
-    r5 :: object
-    r6 :: str
+    r3 :: object
+    r4 :: str
+    r5 :: object[3]
+    r6 :: object_ptr
     r7 :: object
-    r8 :: i32
-    r9 :: bit
-    r10 :: bool
-    r11 :: str
-    r12 :: object
-    r13 :: str
-    r14 :: object
-    r15 :: object[1]
-    r16 :: object_ptr
-    r17, r18 :: object
+    r8 :: bit
+    r9 :: str
+    r10 :: object
+    r11 :: i32
+    r12 :: bit
+    r13 :: bool
+    r14 :: str
+    r15 :: object
+    r16 :: str
+    r17 :: object
+    r18 :: object[1]
+    r19 :: object_ptr
+    r20, r21 :: object
 L0:
     r0 = CPyMapping_Check(x)
     r1 = r0 != 0
     if r1 goto L1 else goto L4 :: bool
 L1:
     r2 = 'key'
-    r3 = PyMapping_HasKey(x, r2)
-    r4 = r3 != 0
-    if r4 goto L2 else goto L4 :: bool
+    r3 = load_address _CPy_ExcDummyStruct
+    r4 = 'get'
+    r5 = [x, r2, r3]
+    r6 = load_address r5
+    r7 = PyObject_VectorcallMethod(r4, r6, 9223372036854775811, 0)
+    keep_alive x, r2, r3
+    r8 = r7 != r3
+    if r8 goto L2 else goto L4 :: bool
 L2:
-    r5 = PyObject_GetItem(x, r2)
-    r6 = 'value'
-    r7 = PyObject_RichCompare(r5, r6, 2)
-    r8 = PyObject_IsTrue(r7)
-    r9 = r8 >= 0 :: signed
-    r10 = truncate r8: i32 to builtins.bool
-    if r10 goto L3 else goto L4 :: bool
+    r9 = 'value'
+    r10 = PyObject_RichCompare(r7, r9, 2)
+    r11 = PyObject_IsTrue(r10)
+    r12 = r11 >= 0 :: signed
+    r13 = truncate r11: i32 to builtins.bool
+    if r13 goto L3 else goto L4 :: bool
 L3:
-    r11 = 'matched'
-    r12 = builtins :: module
-    r13 = 'print'
-    r14 = CPyObject_GetAttr(r12, r13)
-    r15 = [r11]
-    r16 = load_address r15
-    r17 = PyObject_Vectorcall(r14, r16, 1, 0)
-    keep_alive r11
+    r14 = 'matched'
+    r15 = builtins :: module
+    r16 = 'print'
+    r17 = CPyObject_GetAttr(r15, r16)
+    r18 = [r14]
+    r19 = load_address r18
+    r20 = PyObject_Vectorcall(r17, r19, 1, 0)
+    keep_alive r14
     goto L5
 L4:
 L5:
-    r18 = box(None, 1)
-    return r18
+    r21 = box(None, 1)
+    return r21
 [case testMatchMappingPatternWithRest_python3_10]
 def f(x):
     match x:
@@ -1157,60 +1164,67 @@ def f(x):
     r0 :: i32
     r1 :: bit
     r2 :: str
-    r3 :: i32
-    r4 :: bit
-    r5 :: object
-    r6 :: str
+    r3 :: object
+    r4 :: str
+    r5 :: object[3]
+    r6 :: object_ptr
     r7 :: object
-    r8 :: i32
-    r9 :: bit
-    r10 :: bool
-    r11, rest :: dict
-    r12 :: i32
-    r13 :: bit
-    r14 :: str
-    r15 :: object
-    r16 :: str
-    r17 :: object
-    r18 :: object[1]
-    r19 :: object_ptr
-    r20, r21 :: object
+    r8 :: bit
+    r9 :: str
+    r10 :: object
+    r11 :: i32
+    r12 :: bit
+    r13 :: bool
+    r14, rest :: dict
+    r15 :: i32
+    r16 :: bit
+    r17 :: str
+    r18 :: object
+    r19 :: str
+    r20 :: object
+    r21 :: object[1]
+    r22 :: object_ptr
+    r23, r24 :: object
 L0:
     r0 = CPyMapping_Check(x)
     r1 = r0 != 0
     if r1 goto L1 else goto L5 :: bool
 L1:
     r2 = 'key'
-    r3 = PyMapping_HasKey(x, r2)
-    r4 = r3 != 0
-    if r4 goto L2 else goto L5 :: bool
+    r3 = load_address _CPy_ExcDummyStruct
+    r4 = 'get'
+    r5 = [x, r2, r3]
+    r6 = load_address r5
+    r7 = PyObject_VectorcallMethod(r4, r6, 9223372036854775811, 0)
+    keep_alive x, r2, r3
+    r8 = r7 != r3
+    if r8 goto L2 else goto L5 :: bool
 L2:
-    r5 = PyObject_GetItem(x, r2)
-    r6 = 'value'
-    r7 = PyObject_RichCompare(r5, r6, 2)
-    r8 = PyObject_IsTrue(r7)
-    r9 = r8 >= 0 :: signed
-    r10 = truncate r8: i32 to builtins.bool
-    if r10 goto L3 else goto L5 :: bool
+    r9 = 'value'
+    r10 = PyObject_RichCompare(r7, r9, 2)
+    r11 = PyObject_IsTrue(r10)
+    r12 = r11 >= 0 :: signed
+    r13 = truncate r11: i32 to builtins.bool
+    if r13 goto L3 else goto L5 :: bool
 L3:
-    r11 = CPyDict_FromAny(x)
-    rest = r11
-    r12 = PyDict_DelItem(r11, r2)
-    r13 = r12 >= 0 :: signed
+    r14 = CPyDict_FromAny(x)
+    rest = r14
+    r15 = PyDict_DelItem(r14, r2)
+    r16 = r15 >= 0 :: signed
 L4:
-    r14 = 'matched'
-    r15 = builtins :: module
-    r16 = 'print'
-    r17 = CPyObject_GetAttr(r15, r16)
-    r18 = [r14]
-    r19 = load_address r18
-    r20 = PyObject_Vectorcall(r17, r19, 1, 0)
-    keep_alive r14
+    r17 = 'matched'
+    r18 = builtins :: module
+    r19 = 'print'
+    r20 = CPyObject_GetAttr(r18, r19)
+    r21 = [r17]
+    r22 = load_address r21
+    r23 = PyObject_Vectorcall(r20, r22, 1, 0)
+    keep_alive r17
     goto L6
 L5:
 L6:
-    r21 = box(None, 1)
-    return r21
+    r24 = box(None, 1)
+    return r24
 [case testMatchEmptySequencePattern_python3_10]
 def f(x):
     match x:
