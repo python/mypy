@@ -91,6 +91,9 @@ def test_left_shift_wraps_around() -> None:
     max_u8: u8 = 255 + int()
     assert max_u8 << one == 254
     assert one << (one * 7) == 128
+    x = max_u8
+    x <<= one + one
+    assert x == 252
 
 def test_shift_count_out_of_range() -> None:
     one: u8 = 1 + int()

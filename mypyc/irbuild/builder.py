@@ -511,8 +511,10 @@ class IRBuilder:
     ) -> Value:
         return self.builder.primitive_op(desc, args, line, result_type)
 
-    def int_op(self, type: RType, lhs: Value, rhs: Value, op: int, line: int) -> Value:
-        return self.builder.int_op(type, lhs, rhs, op, line)
+    def int_op(
+        self, type: RType, lhs: Value, rhs: Value, op: int, line: int, *, no_overflow: bool = False
+    ) -> Value:
+        return self.builder.int_op(type, lhs, rhs, op, line, no_overflow=no_overflow)
 
     def compare_tuples(self, lhs: Value, rhs: Value, op: str, line: int) -> Value:
         return self.builder.compare_tuples(lhs, rhs, op, line)

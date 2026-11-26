@@ -135,7 +135,7 @@ from mypyc.ir.rtypes import (
     pointer_rprimitive,
     short_int_rprimitive,
     str_rprimitive,
-    wrap_unsigned_native_int,
+    wrap_native_int,
 )
 from mypyc.irbuild.util import concrete_arg_kind
 from mypyc.irbuild.vec import vec_contains, vec_get_item, vec_len_native
@@ -2298,8 +2298,7 @@ class LowLevelIRBuilder:
         """Perform unary '-'."""
         typ = value.type
         if isinstance(value, Integer):
-            # TODO: Signed overflow?
-            return Integer(wrap_unsigned_native_int(typ, -value.numeric_value()), typ, line)
+            return Integer(wrap_native_int(typ, -value.numeric_value()), typ, line)
         elif isinstance(value, Float):
             return Float(-value.value, line)
         elif is_fixed_width_rtype(typ):
@@ -2812,17 +2811,27 @@ class LowLevelIRBuilder:
 
         return None
 
-    def int_op(self, type: RType, lhs: Value, rhs: Value, op: int, line: int = -1) -> Value:
+    def int_op(
+        self,
+        type: RType,
+        lhs: Value,
+        rhs: Value,
+        op: int,
+        line: int = -1,
+        *,
+        no_overflow: bool = False,
+    ) -> Value:
         """Generate a native integer binary op.
 
-        Use native/C semantics, which sometimes differ from Python
-        semantics.
+        Use native semantics, which sometimes differ from Python semantics.
+        For example, arithmetic wraps around on overflow (see IntOp).
 
         Args:
-            type: Either int64_rprimitive or int32_rprimitive
+            type: Result type (a fixed-width or another low-level integer type)
             op: IntOp.* constant (e.g. IntOp.ADD)
+            no_overflow: The operation can't overflow (see IntOp)
         """
-        return self.add(IntOp(type, lhs, rhs, op, line))
+        return self.add(IntOp(type, lhs, rhs, op, line, no_overflow=no_overflow))
 
     def float_op(self, lhs: Value, rhs: Value, op: str, line: int) -> Value:
         """Generate a native float binary arithmetic operation.
@@ -2880,42 +2889,44 @@ class LowLevelIRBuilder:
     def compare_floats(self, lhs: Value, rhs: Value, op: int, line: int) -> Value:
         return self.add(FloatComparisonOp(lhs, rhs, op, line))
 
-    def int_add(self, lhs: Value, rhs: Value | int) -> Value:
+    def int_add(self, lhs: Value, rhs: Value | int, *, no_overflow: bool = False) -> Value:
         """Helper to add two native integers.
 
-        The result has the type of lhs.
+        The result has the type of lhs. Set no_overflow if the result can't overflow.
         """
         if isinstance(rhs, int):
             rhs = Integer(rhs, lhs.type)
-        return self.int_op(lhs.type, lhs, rhs, IntOp.ADD, lhs.line)
+        return self.int_op(lhs.type, lhs, rhs, IntOp.ADD, lhs.line, no_overflow=no_overflow)
 
-    def int_sub(self, lhs: Value, rhs: Value | int) -> Value:
+    def int_sub(self, lhs: Value, rhs: Value | int, *, no_overflow: bool = False) -> Value:
         """Helper to subtract a native integer from another one.
 
-        The result has the type of lhs.
+        The result has the type of lhs. Set no_overflow if the result can't overflow.
         """
         if isinstance(rhs, int):
             rhs = Integer(rhs, lhs.type)
-        return self.int_op(lhs.type, lhs, rhs, IntOp.SUB, lhs.line)
+        return self.int_op(lhs.type, lhs, rhs, IntOp.SUB, lhs.line, no_overflow=no_overflow)
 
-    def int_mul(self, lhs: Value, rhs: Value | int) -> Value:
+    def int_mul(self, lhs: Value, rhs: Value | int, *, no_overflow: bool = False) -> Value:
         """Helper to multiply two native integers.
 
-        The result has the type of lhs.
+        The result has the type of lhs. Set no_overflow if the result can't overflow.
         """
         if isinstance(rhs, int):
             rhs = Integer(rhs, lhs.type)
-        return self.int_op(lhs.type, lhs, rhs, IntOp.MUL, lhs.line)
+        return self.int_op(lhs.type, lhs, rhs, IntOp.MUL, lhs.line, no_overflow=no_overflow)
 
     def fixed_width_int_op(
         self, type: RPrimitive, lhs: Value, rhs: Value, op: int, line: int
     ) -> Value:
-        """Generate a binary op using Python fixed-width integer semantics.
+        """Generate a binary op on fixed-width native ints, as in compiled Python code.
 
-        These may differ in overflow/rounding behavior from native/C ops.
+        Unlike a plain IntOp, division and modulus round toward negative infinity,
+        and they raise ZeroDivisionError if the divisor is zero. Signed MIN // -1 raises
+        OverflowError. Other ops wrap around on overflow (see IntOp).
 
         Args:
-            type: Either int64_rprimitive or int32_rprimitive
+            type: A fixed-width native int type (e.g. int64_rprimitive)
             op: IntOp.* constant (e.g. IntOp.ADD)
         """
         lhs = self.coerce(lhs, type, line)

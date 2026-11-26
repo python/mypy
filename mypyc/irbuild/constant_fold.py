@@ -32,7 +32,6 @@ from mypyc.ir.rtypes import (
     check_native_int_range,
     is_fixed_width_rtype,
     wrap_native_int,
-    wrap_unsigned_native_int,
 )
 from mypyc.irbuild.util import bytes_from_str
 
@@ -56,13 +55,13 @@ def constant_fold_expr(builder: IRBuilder, expr: Expression) -> ConstantValue | 
         and isinstance(expr, (OpExpr, UnaryExpr))
     ):
         # Evaluate each operation using native int semantics if needed, since
-        # unsigned native ints wrap around on overflow (e.g. -X if X is a u64).
+        # native ints wrap around on overflow (e.g. -X if X is a u64).
         # References to finals aren't wrapped: a final defined in an interpreted
         # module can have an out-of-range value, which must be reported instead.
         # (In a compiled module, check_native_int_final ensures that the value
         # computed by mypy for a constant initializer is in range.)
         # Bools are skipped, since the helper returns a plain int when compiled.
-        value = wrap_unsigned_native_int(builder.node_type(expr), value)
+        value = wrap_native_int(builder.node_type(expr), value)
     return value
 
 

@@ -1430,24 +1430,12 @@ def check_native_int_range(rtype: RPrimitive, n: int) -> bool:
     return lo <= n <= hi
 
 
-def wrap_unsigned_native_int(rtype: RType, n: int) -> int:
-    """Wrap n around to the range of rtype if it's an unsigned native int type.
-
-    Unsigned native int arithmetic wraps around on overflow at runtime, so
-    compile-time evaluation must do the same (e.g. -u64(1) is 2**64 - 1).
-    Return n unchanged for other types.
-    """
-    if is_fixed_width_rtype(rtype) and not rtype.is_signed:
-        return wrap_native_int(rtype, n)
-    return n
-
-
 def wrap_native_int(rtype: RType, n: int) -> int:
-    """Wrap n around to the range of rtype if it's a native int type.
+    """Wrap n around to the range of rtype if it's a native, fixed-width int type.
 
-    This is two's complement wrap-around, such as for a left shift that overflows
-    (e.g. i8(64) << 1 is -128) or unsigned negation (e.g. -u8(1) is 255).
-    Return n unchanged for other types.
+    Native int arithmetic wraps around on overflow at runtime (two's complement),
+    so compile-time evaluation must do the same (e.g. -u64(1) is 2**64 - 1 and
+    i8(127) + 1 is -128). Return n unchanged for other types.
     """
     if is_fixed_width_rtype(rtype):
         lo, hi = native_int_bounds(rtype)

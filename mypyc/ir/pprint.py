@@ -256,7 +256,8 @@ class IRPrettyPrintVisitor(OpVisitor[str]):
         return self.format("%r = load_global %s :: static%s", op, op.identifier, ann)
 
     def visit_int_op(self, op: IntOp) -> str:
-        return self.format("%r = %r %s %r", op, op.lhs, IntOp.op_str[op.op], op.rhs)
+        suffix = " :: no_overflow" if op.no_overflow else ""
+        return self.format("%r = %r %s %r%s", op, op.lhs, IntOp.op_str[op.op], op.rhs, suffix)
 
     def visit_comparison_op(self, op: ComparisonOp) -> str:
         if op.op in (ComparisonOp.SLT, ComparisonOp.SGT, ComparisonOp.SLE, ComparisonOp.SGE):

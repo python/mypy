@@ -1003,10 +1003,11 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
 
     def test_int_op_narrow_unsigned(self) -> None:
         # Unsigned types narrower than int would be promoted to signed int in C,
-        # and e.g. u16 * u16 could overflow int (undefined behavior)
+        # and e.g. u16 * u16 could overflow int (undefined behavior), so calculate
+        # using an unsigned type that is at least as wide as int
         self.assert_emit(
             IntOp(uint16_rprimitive, self.u16, self.u16_1, IntOp.MUL, 1),
-            """cpy_r_r0 = (unsigned int)cpy_r_u16 * cpy_r_u16_1;""",
+            """cpy_r_r0 = (uint16_t)((uint32_t)cpy_r_u16 * (uint32_t)cpy_r_u16_1);""",
         )
         self.assert_emit(
             IntOp(uint16_rprimitive, self.u16, self.u16_1, IntOp.LEFT_SHIFT, 1),
@@ -1014,11 +1015,11 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
         )
         self.assert_emit(
             IntOp(uint8_rprimitive, self.u8, self.u8_1, IntOp.MUL, 1),
-            """cpy_r_r0 = (unsigned int)cpy_r_u8 * cpy_r_u8_1;""",
+            """cpy_r_r0 = (uint8_t)((uint32_t)cpy_r_u8 * (uint32_t)cpy_r_u8_1);""",
         )
         self.assert_emit(
             IntOp(uint16_rprimitive, self.u16, self.u16_1, IntOp.ADD, 1),
-            """cpy_r_r0 = cpy_r_u16 + cpy_r_u16_1;""",
+            """cpy_r_r0 = (uint16_t)((uint32_t)cpy_r_u16 + (uint32_t)cpy_r_u16_1);""",
         )
         self.assert_emit(
             IntOp(uint32_rprimitive, self.u32, self.u32_1, IntOp.MUL, 1),
@@ -1068,6 +1069,70 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
         self.assert_emit(
             IntOp(short_int_rprimitive, self.s1, self.s2, IntOp.LEFT_SHIFT, 1),
             """cpy_r_r0 = cpy_r_s1 << cpy_r_s2;""",
+        )
+
+    def test_int_op_wraps_around(self) -> None:
+        # Signed overflow is undefined behavior in C, so signed arithmetic is calculated
+        # using unsigned types
+        self.assert_emit(
+            IntOp(int64_rprimitive, self.i64, self.i64_1, IntOp.ADD, 1),
+            """cpy_r_r0 = (int64_t)((uint64_t)cpy_r_i64 + (uint64_t)cpy_r_i64_1);""",
+        )
+        self.assert_emit(
+            IntOp(int64_rprimitive, self.i64, self.i64_1, IntOp.SUB, 1),
+            """cpy_r_r0 = (int64_t)((uint64_t)cpy_r_i64 - (uint64_t)cpy_r_i64_1);""",
+        )
+        self.assert_emit(
+            IntOp(int64_rprimitive, self.i64, self.i64_1, IntOp.MUL, 1),
+            """cpy_r_r0 = (int64_t)((uint64_t)cpy_r_i64 * (uint64_t)cpy_r_i64_1);""",
+        )
+        self.assert_emit(
+            IntOp(int32_rprimitive, self.i32, self.i32_1, IntOp.ADD, 1),
+            """cpy_r_r0 = (int32_t)((uint32_t)cpy_r_i32 + (uint32_t)cpy_r_i32_1);""",
+        )
+        # Narrow types are promoted to (signed) int in C
+        self.assert_emit(
+            IntOp(int16_rprimitive, self.i16, self.i16, IntOp.MUL, 1),
+            """cpy_r_r0 = (int16_t)((uint32_t)cpy_r_i16 * (uint32_t)cpy_r_i16);""",
+        )
+        # Constant operands
+        self.assert_emit(
+            IntOp(int64_rprimitive, Integer(0, int64_rprimitive), self.i64, IntOp.SUB, 1),
+            """cpy_r_r0 = (int64_t)((uint64_t)0 - (uint64_t)cpy_r_i64);""",
+        )
+        self.assert_emit(
+            IntOp(int64_rprimitive, self.i64, Integer(-(1 << 63), int64_rprimitive), IntOp.ADD, 1),
+            """cpy_r_r0 = (int64_t)((uint64_t)cpy_r_i64 + (uint64_t)(-9223372036854775807LL - 1));""",
+        )
+        # Pointer arithmetic with a signed offset
+        self.assert_emit(
+            IntOp(pointer_rprimitive, self.ptr, self.i64, IntOp.ADD, 1),
+            """cpy_r_r0 = (CPyPtr)((uint64_t)cpy_r_ptr + (uint64_t)cpy_r_i64);""",
+        )
+
+    def test_int_op_unsigned_no_cast(self) -> None:
+        # Unsigned arithmetic already wraps around in C
+        self.assert_emit(
+            IntOp(pointer_rprimitive, self.ptr, self.ptr, IntOp.ADD, 1),
+            """cpy_r_r0 = cpy_r_ptr + cpy_r_ptr;""",
+        )
+        self.assert_emit(
+            IntOp(short_int_rprimitive, self.s1, self.s2, IntOp.ADD, 1),
+            """cpy_r_r0 = cpy_r_s1 + cpy_r_s2;""",
+        )
+
+    def test_int_op_no_overflow(self) -> None:
+        self.assert_emit(
+            IntOp(int64_rprimitive, self.i64, self.i64_1, IntOp.ADD, 1, no_overflow=True),
+            """cpy_r_r0 = cpy_r_i64 + cpy_r_i64_1;""",
+        )
+        self.assert_emit(
+            IntOp(int64_rprimitive, self.i64, self.i64_1, IntOp.SUB, 1, no_overflow=True),
+            """cpy_r_r0 = cpy_r_i64 - cpy_r_i64_1;""",
+        )
+        self.assert_emit(
+            IntOp(int32_rprimitive, self.i32, self.i32_1, IntOp.MUL, 1, no_overflow=True),
+            """cpy_r_r0 = cpy_r_i32 * cpy_r_i32_1;""",
         )
 
     def test_comparison_op(self) -> None:

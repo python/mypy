@@ -255,6 +255,39 @@ def test_shift_count_out_of_range() -> None:
     assert one >> 65 == 0
     assert neg >> -1 == -1
 
+MAX_I64_FINAL: Final[i64] = 2**63 - 1
+MIN_I64_FINAL: Final[i64] = -MAX_I64_FINAL - 1
+
+def test_arithmetic_wraps_around() -> None:
+    max_i64: i64 = 2**63 - 1 + int()
+    min_i64: i64 = -2**63 + int()
+    one: i64 = 1 + int()
+    two: i64 = 2 + int()
+    assert max_i64 + one == min_i64
+    assert min_i64 - one == max_i64
+    assert one - min_i64 == -max_i64
+    assert max_i64 * two == -2
+    assert min_i64 * -one == min_i64
+    assert min_i64 + min_i64 == 0
+    assert -min_i64 == min_i64
+    assert max_i64 << one == -2
+    assert one << (two * 31 + one) == min_i64
+    x = max_i64
+    x += one
+    assert x == min_i64
+    x -= one
+    assert x == max_i64
+    x *= max_i64
+    assert x == 1
+    assert abs(min_i64) == min_i64
+    assert abs(-max_i64) == max_i64
+    assert abs(min_i64 + one) == max_i64
+    assert -i64(-2**63) == min_i64
+    assert MAX_I64_FINAL + 1 == min_i64
+    assert MIN_I64_FINAL - 1 == max_i64
+    assert -MIN_I64_FINAL == min_i64
+    assert MAX_I64_FINAL * 2 == -2
+
 def test_bitwise_ops() -> None:
     x: i64 = 7997307308812232241 + int()
     y: i64 = 4333433528471475340 + int()
