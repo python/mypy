@@ -39,11 +39,12 @@ from mypy.nodes import (
 from mypy.patterns import AsPattern, MappingPattern, StarredPattern
 from mypy.traverser import TraverserVisitor
 from mypy.types import LiteralType, TupleType, get_proper_type, get_proper_types
-from mypyc.common import GENERATOR_HELPER_NAME
+from mypyc.common import GENERATOR_HELPER_NAME, MAX_SHORT_INT, MIN_SHORT_INT
 from mypyc.ir.ops import (
     ERR_NEVER,
     BasicBlock,
     Branch,
+    ComparisonOp,
     Integer,
     IntOp,
     LoadAddress,
@@ -59,6 +60,7 @@ from mypyc.ir.ops import (
 )
 from mypyc.ir.rtypes import (
     RInstance,
+    RPrimitive,
     RTuple,
     RType,
     RVec,
@@ -66,6 +68,7 @@ from mypyc.ir.rtypes import (
     c_pyssize_t_rprimitive,
     int_rprimitive,
     is_bool_or_bit_rprimitive,
+    is_bytearray_rprimitive,
     is_dict_rprimitive,
     is_fixed_width_rtype,
     is_immutable_rprimitive,
@@ -75,6 +78,7 @@ from mypyc.ir.rtypes import (
     is_str_rprimitive,
     is_tagged,
     is_tuple_rprimitive,
+    native_int_bounds,
     object_pointer_rprimitive,
     object_rprimitive,
     short_int_rprimitive,
@@ -84,7 +88,13 @@ from mypyc.irbuild.constant_fold import constant_fold_expr
 from mypyc.irbuild.context import FuncInfo
 from mypyc.irbuild.env_class import add_vars_to_env, finalize_env_class, setup_env_class
 from mypyc.irbuild.targets import AssignmentTargetRegister, AssignmentTargetTuple
-from mypyc.irbuild.vec import vec_append, vec_create, vec_get_item_unsafe, vec_init_item_unsafe
+from mypyc.irbuild.vec import (
+    vec_append,
+    vec_create,
+    vec_get_item_unsafe,
+    vec_init_item_unsafe,
+    vec_set_len_unsafe,
+)
 from mypyc.primitives.dict_ops import (
     dict_check_size_op,
     dict_item_iter_op,
@@ -101,6 +111,7 @@ from mypyc.primitives.list_ops import (
     list_get_item_int64_op,
     list_get_item_unsafe_op,
     new_list_set_item_op,
+    new_list_set_size_op,
 )
 from mypyc.primitives.misc_ops import stop_async_iteration_op
 from mypyc.primitives.registry import CFunctionDescription
@@ -196,11 +207,12 @@ def for_loop_helper_with_index(
     body_insts: Callable[[Value], None],
     line: int,
     length: Value,
-) -> None:
+) -> Register:
     """Generate IR for a sequence iteration.
 
     This function only works for sequence type. Compared to for_loop_helper,
-    it would feed iteration index to body_insts.
+    it would feed iteration index to body_insts. Return the index register,
+    which holds the number of iterations after the loop.
 
     Args:
         index: the loop index Lvalue
@@ -244,12 +256,17 @@ def for_loop_helper_with_index(
     builder.pop_loop_stack()
 
     builder.activate_block(exit_block)
+    return for_gen.index_target
 
 
-def can_preallocate_from_generator(builder: IRBuilder, gen: GeneratorExpr) -> bool:
+def can_preallocate_from_generator(
+    builder: IRBuilder, gen: GeneratorExpr, *, resizable: bool = False
+) -> bool:
     """Can a sequence be built from a generator expression with a preallocated length?
 
     This requires a single loop without conditions over a sequence of known length.
+    If the length of the sequence can change during iteration (e.g. a list), the
+    built sequence must be resizable, since the preallocated length can be wrong.
     """
     if not (len(gen.sequences) == 1 and len(gen.indices) == 1 and len(gen.condlists[0]) == 0):
         return False
@@ -257,7 +274,31 @@ def can_preallocate_from_generator(builder: IRBuilder, gen: GeneratorExpr) -> bo
     if isinstance(rtype, RTuple):
         # for_loop_helper_with_index crashes for empty tuples
         return bool(rtype.types)
-    return is_sequence_rprimitive(rtype) or isinstance(rtype, RVec)
+    if not resizable and sequence_length_can_change(builder, gen.sequences[0]):
+        return False
+    return is_indexed_sequence_rprimitive(rtype) or isinstance(rtype, RVec)
+
+
+def is_indexed_sequence_rprimitive(rtype: RType) -> bool:
+    """Do we iterate over a primitive sequence by index, instead of using an iterator?
+
+    We use an iterator for bytearray, since there is no fast unsafe item access for it,
+    and since overrides of __len__ and __getitem__ in a subclass must not be used.
+    """
+    return is_sequence_rprimitive(rtype) and not is_bytearray_rprimitive(rtype)
+
+
+def sequence_length_can_change(builder: IRBuilder, expr: Expression) -> bool:
+    """Can the length of a sequence change while we iterate over it?
+
+    A list can be modified in the loop body, or by another thread. This isn't
+    possible if the length is known at compile time, since the list is then
+    created by the expression (e.g. a list display), and nothing else refers to it.
+    """
+    rtype = builder.node_type(expr)
+    if not is_list_rprimitive(rtype):
+        return False
+    return get_expr_length(builder, expr) is None
 
 
 def sequence_from_generator_preallocate_helper(
@@ -266,6 +307,8 @@ def sequence_from_generator_preallocate_helper(
     empty_op_llbuilder: Callable[[Value, int], Value],
     set_item_op: Callable[[Value, Value, Value, int], None],
     after_first_init: GenFunc | None = None,
+    append_op: Callable[[Value, Value, Value, int], Value] | None = None,
+    set_size_op: Callable[[Value, Value, int], Value] | None = None,
 ) -> Value | None:
     """Generate a new tuple or list from a simple generator expression.
 
@@ -290,8 +333,20 @@ def sequence_from_generator_preallocate_helper(
             implementation.
         after_first_init: Optional function that generates instructions to run after the
             sequence has been evaluated (see comprehension_helper).
+        append_op: Optional function that appends an item to a sequence, when the
+            target position is at or after the preallocated length. It's called with
+            Self, Target position and New Value, and returns the resulting sequence
+            (which can be a new value, e.g. for vecs and tuples).
+        set_size_op: Optional function that reduces the length of a sequence, dropping
+            uninitialized items at the end. It's called with Self and New Length, and
+            returns the resulting sequence.
+
+    If the length of the original sequence can change during iteration (e.g. it's a
+    list), append_op and set_size_op are required, since the preallocated length can
+    be wrong. If they aren't given, return None for such sequences.
     """
-    if can_preallocate_from_generator(builder, gen):
+    resizable = append_op is not None and set_size_op is not None
+    if can_preallocate_from_generator(builder, gen, resizable=resizable):
         line = gen.line
         sequence_expr = gen.sequences[0]
         rtype = builder.node_type(sequence_expr)
@@ -334,16 +389,48 @@ def sequence_from_generator_preallocate_helper(
 
         target_op = empty_op_llbuilder(length, line)
 
-        def set_item(item_index: Value) -> None:
+        if not sequence_length_can_change(builder, sequence_expr):
+
+            def set_item(item_index: Value) -> None:
+                with builder.enter_borrow_scope(line):
+                    e = builder.accept(gen.left_expr)
+                set_item_op(target_op, item_index, e, line)
+
+            for_loop_helper_with_index(
+                builder, gen.indices[0], sequence_expr, sequence, set_item, line, length
+            )
+            return target_op
+
+        # The original sequence can grow or shrink while we iterate over it (e.g. if
+        # it's modified in the loop body). Like CPython, we include all items that
+        # we see, so the preallocated length can be wrong.
+        assert append_op is not None and set_size_op is not None
+        target = builder.ensure_register(target_op)
+
+        def update_target(value: Value) -> None:
+            if value is not target:
+                builder.assign(target, value, line)
+
+        def set_or_append_item(item_index: Value) -> None:
             with builder.enter_borrow_scope(line):
                 e = builder.accept(gen.left_expr)
-            set_item_op(target_op, item_index, e, line)
+            set_block, append_block, next_block = BasicBlock(), BasicBlock(), BasicBlock()
+            fits = builder.binary_op(item_index, length, "<", line)
+            builder.add_bool_branch(fits, set_block, append_block)
+            builder.activate_block(set_block)
+            set_item_op(target, item_index, e, line)
+            builder.goto(next_block)
+            builder.activate_block(append_block)
+            update_target(append_op(target, item_index, e, line))
+            builder.goto_and_activate(next_block)
 
-        for_loop_helper_with_index(
-            builder, gen.indices[0], sequence_expr, sequence, set_item, line, length
+        index = for_loop_helper_with_index(
+            builder, gen.indices[0], sequence_expr, sequence, set_or_append_item, line, length
         )
-
-        return target_op
+        # If the sequence shrank, drop the items at the end that we didn't set. After the
+        # loop, the index is the number of items we set or appended.
+        update_target(set_size_op(target, index, line))
+        return target
     return None
 
 
@@ -362,6 +449,14 @@ def translate_list_comprehension(
     def set_item(x: Value, y: Value, z: Value, line: int) -> None:
         builder.call_c(new_list_set_item_op, [x, y, z], line)
 
+    def append(x: Value, y: Value, z: Value, line: int) -> Value:
+        builder.primitive_op(list_append_op, [x, z], line)
+        return x
+
+    def set_size(x: Value, y: Value, line: int) -> Value:
+        builder.call_c(new_list_set_size_op, [x, y], line)
+        return x
+
     # Try simplest list comprehension, otherwise fall back to general one
     val = sequence_from_generator_preallocate_helper(
         builder,
@@ -369,6 +464,8 @@ def translate_list_comprehension(
         empty_op_llbuilder=builder.builder.new_list_op_with_length,
         set_item_op=set_item,
         after_first_init=after_first_init,
+        append_op=append,
+        set_size_op=set_size,
     )
     if val is not None:
         return val
@@ -494,6 +591,12 @@ def translate_vec_comprehension(
     def set_item(x: Value, y: Value, z: Value, line: int) -> None:
         vec_init_item_unsafe(builder.builder, x, y, z, line)
 
+    def append(x: Value, y: Value, z: Value, line: int) -> Value:
+        return vec_append(builder.builder, x, z, line)
+
+    def set_size(x: Value, y: Value, line: int) -> Value:
+        return vec_set_len_unsafe(builder.builder, x, y, line)
+
     # Try simplest comprehension, otherwise fall back to general one
     val = sequence_from_generator_preallocate_helper(
         builder,
@@ -502,6 +605,8 @@ def translate_vec_comprehension(
             builder.builder, vec_type, length, line, capacity=capacity
         ),
         set_item_op=set_item,
+        append_op=append,
+        set_size_op=set_size,
     )
     if val is not None:
         return val
@@ -722,7 +827,7 @@ def make_for_loop_generator(
         return async_obj
 
     rtyp = builder.node_type(expr)
-    if is_sequence_rprimitive(rtyp) or isinstance(rtyp, RVec):
+    if is_indexed_sequence_rprimitive(rtyp) or isinstance(rtyp, RVec):
         # Special case "for x in <seq>" for concrete sequence types.
         expr_reg = accept_loop_state(builder, expr, reassigned)
         target_type = builder.get_sequence_type(expr)
@@ -801,7 +906,7 @@ def make_for_loop_generator(
             expr.callee.fullname == "builtins.reversed"
             and len(expr.args) == 1
             and expr.arg_kinds == [ARG_POS]
-            and is_sequence_rprimitive(builder.node_type(expr.args[0]))
+            and is_indexed_sequence_rprimitive(builder.node_type(expr.args[0]))
         ):
             # Special case "for x in reversed(<list>)".
             expr_reg = accept_loop_state(builder, expr.args[0], reassigned)
@@ -1364,7 +1469,11 @@ class ForRange(ForGenerator):
         self.end_reg = end_reg
         self.step = step
         self.end_target = end_reg
-        if is_short_int_rprimitive(start_reg.type) and is_short_int_rprimitive(end_reg.type):
+        if (
+            is_short_int_rprimitive(start_reg.type)
+            and is_short_int_rprimitive(end_reg.type)
+            and not short_int_range_step_may_overflow(end_reg, step)
+        ):
             index_type: RType = short_int_rprimitive
         elif is_fixed_width_rtype(end_reg.type):
             index_type = end_reg.type
@@ -1417,25 +1526,84 @@ class ForRange(ForGenerator):
     def gen_step(self) -> None:
         builder = self.builder
         line = self.line
+        index_type = self.index_reg.type
+        index = builder.read(self.index_reg, line)
 
         # Increment index register. If the range is known to fit in short ints, use
-        # short ints.
-        if is_short_int_rprimitive(self.start_reg.type) and is_short_int_rprimitive(
-            self.end_reg.type
-        ):
+        # short ints (init() has checked that the step can't overflow).
+        if is_short_int_rprimitive(index_type):
             new_val = builder.int_op(
-                short_int_rprimitive,
-                builder.read(self.index_reg, line),
-                Integer(self.step),
-                IntOp.ADD,
-                line,
+                short_int_rprimitive, index, Integer(self.step), IntOp.ADD, line
             )
-
+        elif is_fixed_width_rtype(index_type):
+            self.gen_fixed_width_overflow_check(index, index_type)
+            if self.step < 0 and not index_type.is_signed:
+                # A negative step isn't a valid unsigned value, so subtract its magnitude.
+                # Signed types add the step, since its magnitude may not fit (-128 for i8).
+                new_val = builder.binary_op(index, Integer(-self.step), "-", line)
+            else:
+                new_val = builder.binary_op(index, Integer(self.step), "+", line)
         else:
-            new_val = builder.binary_op(
-                builder.read(self.index_reg, line), Integer(self.step), "+", line
-            )
+            # Tagged int arithmetic can't overflow. The step may not fit in a short int.
+            new_val = builder.binary_op(index, builder.load_int(self.step, line), "+", line)
         builder.assign(self.index_reg, new_val, line)
+
+    def gen_fixed_width_overflow_check(self, index: Value, index_type: RPrimitive) -> None:
+        """Exit the loop if stepping a native int index would overflow.
+
+        If index + step doesn't fit in the index type, it's past the end of the range,
+        so the loop is done. A step of 1 or -1 can't overflow, since index < end (or
+        index > end) holds here.
+        """
+        step = self.step
+        if step in (1, -1):
+            return
+        lo, hi = native_int_bounds(index_type)
+        end = self.end_target
+        # Overflow if index > hi - step (or index < lo - step, if the step is negative)
+        limit = (hi if step > 0 else lo) - step
+        if not lo <= limit <= hi:
+            # The step doesn't fit in the index type. This is reported as an error elsewhere.
+            return
+        if isinstance(end, Integer) and not range_step_may_overflow(
+            end.numeric_value(), step, lo, hi
+        ):
+            return
+        if step > 0:
+            op = ComparisonOp.SGT if index_type.is_signed else ComparisonOp.UGT
+        else:
+            op = ComparisonOp.SLT if index_type.is_signed else ComparisonOp.ULT
+        builder = self.builder
+        line = self.line
+        overflow = builder.add(ComparisonOp(index, Integer(limit, index_type, line), op, line))
+        ok = BasicBlock()
+        builder.add(Branch(overflow, self.loop_exit, ok, Branch.BOOL, rare=True))
+        builder.activate_block(ok)
+
+
+def short_int_range_step_may_overflow(end: Value, step: int) -> bool:
+    """Could index + step overflow a short int in a short_int range loop?
+
+    Apart from literals, short_int values are lengths, counts and similar values, which
+    are far from the short int limits. Assume that the magnitude of a non-literal end
+    value is at most MAX_SHORT_INT // 2. The check is exact for a literal end.
+    """
+    if not MIN_SHORT_INT <= step <= MAX_SHORT_INT:
+        return True
+    if isinstance(end, Integer):
+        end_value = end.numeric_value()
+    else:
+        end_value = MAX_SHORT_INT // 2 if step > 0 else -(MAX_SHORT_INT // 2)
+    return range_step_may_overflow(end_value, step, MIN_SHORT_INT, MAX_SHORT_INT)
+
+
+def range_step_may_overflow(end: int, step: int, lo: int, hi: int) -> bool:
+    """Could index + step fall outside [lo, hi] for an index in range(..., end, step)?
+
+    The step is only taken when index < end (or index > end, if the step is negative).
+    """
+    last = end - 1 if step > 0 else end + 1
+    return not lo <= last + step <= hi
 
 
 class ForInfiniteCounter(ForGenerator):

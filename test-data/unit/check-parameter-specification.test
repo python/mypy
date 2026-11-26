@@ -2831,3 +2831,20 @@ def thing(func: Callable[P, T], *args: P.args, **kwargs: P.kwargs) -> C[P, T]: .
 def test(x: int = 0) -> None: ...
 f: C[[], None] = thing(test)
 [builtins fixtures/paramspec.pyi]
+
+[case testTwoSidedInferenceWithParamSpecGeneric]
+from typing import Callable, Generic, TypeVar, Union
+from typing_extensions import ParamSpec
+
+P = ParamSpec("P")
+T = TypeVar("T")
+I = TypeVar("I", bound=Union[int, str])
+
+class C(Generic[T]): ...
+
+def apply(func: Callable[P, T], *args: P.args, **kwargs: P.kwargs) -> T: ...
+
+def test(x: C[I]) -> list[int]: ...
+ci: C[int]
+f: list[int] = apply(test, ci)
+[builtins fixtures/paramspec.pyi]

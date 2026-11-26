@@ -443,3 +443,362 @@ def test_vec_u8_to_list() -> None:
 def test_vec_u8_to_tuple() -> None:
     assert u8_to_tuple(vec[u8]()) == ()
     assert u8_to_tuple(vec[u8]([0, 128, 255])) == (0, 128, 255)
+
+[case testVecNewNativeIntItemTypes_librt]
+# mypy: allow-redefinition-old
+
+import array
+import struct
+from typing import Any, cast
+from mypy_extensions import i64, i16, i8, u64, u32, u16, u8
+from librt.vecs import vec, append, extend, remove, pop
+from testutil import assertRaises
+
+def raises_any(f: Any) -> bool:
+    # Compiled and interpreted code may raise different exception types for
+    # values that don't fit in the item type
+    try:
+        f()
+    except (OverflowError, ValueError, TypeError):
+        return True
+    return False
+
+def test_i8() -> None:
+    v = vec[i8]()
+    assert len(v) == 0
+    assert str(v) == "vec[i8]([])"
+    v = vec[i8]([-128, 127, -113, 1])
+    assert str(v) == "vec[i8]([-128, 127, -113, 1])"
+    assert len(v) == 4
+    assert v[0] == -128 and v[1] == 127 and v[2] == -113 and v[3] == 1
+    assert v[-4] == -128 and v[-1] == 1
+    x: i8 = v[1]
+    assert x == 127
+    v[0] = 127
+    v[-1] = -113
+    assert v == vec[i8]([127, 127, -113, -113])
+    with assertRaises(IndexError):
+        v[4]
+    with assertRaises(IndexError):
+        v[-5] = 1
+
+    v = vec[i8]()
+    for i in range(100):
+        v = append(v, i8(i))
+    v = append(v, 127)
+    assert len(v) == 101
+    assert v[100] == 127
+    v, y = pop(v)
+    assert y == 127 and len(v) == 100
+    v, y = pop(v, 0)
+    assert y == 0 and v[0] == 1
+    v = remove(v, 50)
+    assert len(v) == 98
+    assert 50 not in v
+    assert 49 in v
+    assert 127 not in v
+    with assertRaises(ValueError):
+        remove(v, 50)
+    v = extend(vec[i8]([127]), [1, 2])
+    v = extend(v, vec[i8]([-113, -128]))
+    v = extend(v, (x for x in [7]))
+    assert v == vec[i8]([127, 1, 2, -113, -128, 7])
+    assert v[1:3] == vec[i8]([1, 2])
+    assert v[::-1] == vec[i8]([7, -128, -113, 2, 1, 127])
+    assert [x for x in v] == [127, 1, 2, -113, -128, 7]
+    total = 0
+    for x in v:
+        total += int(x)
+    assert total == 127 + 1 + 2 + -113 + -128 + 7
+
+    # Values that don't fit in the item type
+    bad: list[Any] = [127 + 1, -128 - 1, 1.0, "x"]
+    for b in bad:
+        assert raises_any(lambda: vec[i8]([b]))
+        assert raises_any(lambda: cast(Any, append)(vec[i8](), b))
+        # In compiled code, the operand is converted to the item type first
+        assert raises_any(lambda: b in vec[i8]([1])) or b not in vec[i8]([1])
+
+    # Boxing and unboxing
+    a: Any = vec[i8]([127, -113])
+    vv: vec[i8] = a
+    assert vv[0] == 127 and vv[1] == -113
+    assert type(a) is type(vec[i8]())
+    for other in (vec[i64]([1]), vec[u8]([1]), vec[i16]([1]), [1]):
+        with assertRaises(TypeError):
+            vv = cast(Any, other)
+    assert isinstance(a, vec)
+
+    # Nested vecs
+    n = vec[vec[i8]]([vec[i8]([127]), vec[i8]()])
+    n = append(n, vec[i8]([-128, -113]))
+    assert str(n) == "vec[vec[i8]]([[127], [], [-128, -113]])"
+    assert n[0][0] == 127
+    assert n[2][1] == -113
+    n, last = pop(n)
+    assert last == vec[i8]([-128, -113])
+    an: Any = n
+    with assertRaises(TypeError):
+        append(an, vec[i64]([1]))
+
+    # Buffer protocol
+    m: Any = memoryview(vec[i8]([-128, 127]))
+    assert m.format == "b"
+    assert m.itemsize == struct.calcsize("b")
+    assert m.tolist() == [-128, 127]
+    assert vec[i8](array.array("b", [-128, 127, 3])) == vec[i8]([-128, 127, 3])
+
+def test_u16() -> None:
+    v = vec[u16]()
+    assert len(v) == 0
+    assert str(v) == "vec[u16]([])"
+    v = vec[u16]([0, 65535, 239, 1])
+    assert str(v) == "vec[u16]([0, 65535, 239, 1])"
+    assert len(v) == 4
+    assert v[0] == 0 and v[1] == 65535 and v[2] == 239 and v[3] == 1
+    assert v[-4] == 0 and v[-1] == 1
+    x: u16 = v[1]
+    assert x == 65535
+    v[0] = 65535
+    v[-1] = 239
+    assert v == vec[u16]([65535, 65535, 239, 239])
+    with assertRaises(IndexError):
+        v[4]
+    with assertRaises(IndexError):
+        v[-5] = 1
+
+    v = vec[u16]()
+    for i in range(100):
+        v = append(v, u16(i))
+    v = append(v, 65535)
+    assert len(v) == 101
+    assert v[100] == 65535
+    v, y = pop(v)
+    assert y == 65535 and len(v) == 100
+    v, y = pop(v, 0)
+    assert y == 0 and v[0] == 1
+    v = remove(v, 50)
+    assert len(v) == 98
+    assert 50 not in v
+    assert 49 in v
+    assert 65535 not in v
+    with assertRaises(ValueError):
+        remove(v, 50)
+    v = extend(vec[u16]([65535]), [1, 2])
+    v = extend(v, vec[u16]([239, 0]))
+    v = extend(v, (x for x in [7]))
+    assert v == vec[u16]([65535, 1, 2, 239, 0, 7])
+    assert v[1:3] == vec[u16]([1, 2])
+    assert v[::-1] == vec[u16]([7, 0, 239, 2, 1, 65535])
+    assert [x for x in v] == [65535, 1, 2, 239, 0, 7]
+    total = 0
+    for x in v:
+        total += int(x)
+    assert total == 65535 + 1 + 2 + 239 + 0 + 7
+
+    # Values that don't fit in the item type
+    bad: list[Any] = [65535 + 1, 0 - 1, 1.0, "x"]
+    for b in bad:
+        assert raises_any(lambda: vec[u16]([b]))
+        assert raises_any(lambda: cast(Any, append)(vec[u16](), b))
+        # In compiled code, the operand is converted to the item type first
+        assert raises_any(lambda: b in vec[u16]([1])) or b not in vec[u16]([1])
+
+    # Boxing and unboxing
+    a: Any = vec[u16]([65535, 239])
+    vv: vec[u16] = a
+    assert vv[0] == 65535 and vv[1] == 239
+    assert type(a) is type(vec[u16]())
+    for other in (vec[i64]([1]), vec[u8]([1]), vec[i16]([1]), [1]):
+        with assertRaises(TypeError):
+            vv = cast(Any, other)
+    assert isinstance(a, vec)
+
+    # Nested vecs
+    n = vec[vec[u16]]([vec[u16]([65535]), vec[u16]()])
+    n = append(n, vec[u16]([0, 239]))
+    assert str(n) == "vec[vec[u16]]([[65535], [], [0, 239]])"
+    assert n[0][0] == 65535
+    assert n[2][1] == 239
+    n, last = pop(n)
+    assert last == vec[u16]([0, 239])
+    an: Any = n
+    with assertRaises(TypeError):
+        append(an, vec[i64]([1]))
+
+    # Buffer protocol
+    m: Any = memoryview(vec[u16]([0, 65535]))
+    assert m.format == "H"
+    assert m.itemsize == struct.calcsize("H")
+    assert m.tolist() == [0, 65535]
+    assert vec[u16](array.array("H", [0, 65535, 3])) == vec[u16]([0, 65535, 3])
+
+def test_u32() -> None:
+    v = vec[u32]()
+    assert len(v) == 0
+    assert str(v) == "vec[u32]([])"
+    v = vec[u32]([0, 4294967295, 239, 1])
+    assert str(v) == "vec[u32]([0, 4294967295, 239, 1])"
+    assert len(v) == 4
+    assert v[0] == 0 and v[1] == 4294967295 and v[2] == 239 and v[3] == 1
+    assert v[-4] == 0 and v[-1] == 1
+    x: u32 = v[1]
+    assert x == 4294967295
+    v[0] = 4294967295
+    v[-1] = 239
+    assert v == vec[u32]([4294967295, 4294967295, 239, 239])
+    with assertRaises(IndexError):
+        v[4]
+    with assertRaises(IndexError):
+        v[-5] = 1
+
+    v = vec[u32]()
+    for i in range(100):
+        v = append(v, u32(i))
+    v = append(v, 4294967295)
+    assert len(v) == 101
+    assert v[100] == 4294967295
+    v, y = pop(v)
+    assert y == 4294967295 and len(v) == 100
+    v, y = pop(v, 0)
+    assert y == 0 and v[0] == 1
+    v = remove(v, 50)
+    assert len(v) == 98
+    assert 50 not in v
+    assert 49 in v
+    assert 4294967295 not in v
+    with assertRaises(ValueError):
+        remove(v, 50)
+    v = extend(vec[u32]([4294967295]), [1, 2])
+    v = extend(v, vec[u32]([239, 0]))
+    v = extend(v, (x for x in [7]))
+    assert v == vec[u32]([4294967295, 1, 2, 239, 0, 7])
+    assert v[1:3] == vec[u32]([1, 2])
+    assert v[::-1] == vec[u32]([7, 0, 239, 2, 1, 4294967295])
+    assert [x for x in v] == [4294967295, 1, 2, 239, 0, 7]
+    total = 0
+    for x in v:
+        total += int(x)
+    assert total == 4294967295 + 1 + 2 + 239 + 0 + 7
+
+    # Values that don't fit in the item type
+    bad: list[Any] = [4294967295 + 1, 0 - 1, 1.0, "x"]
+    for b in bad:
+        assert raises_any(lambda: vec[u32]([b]))
+        assert raises_any(lambda: cast(Any, append)(vec[u32](), b))
+        # In compiled code, the operand is converted to the item type first
+        assert raises_any(lambda: b in vec[u32]([1])) or b not in vec[u32]([1])
+
+    # Boxing and unboxing
+    a: Any = vec[u32]([4294967295, 239])
+    vv: vec[u32] = a
+    assert vv[0] == 4294967295 and vv[1] == 239
+    assert type(a) is type(vec[u32]())
+    for other in (vec[i64]([1]), vec[u8]([1]), vec[i16]([1]), [1]):
+        with assertRaises(TypeError):
+            vv = cast(Any, other)
+    assert isinstance(a, vec)
+
+    # Nested vecs
+    n = vec[vec[u32]]([vec[u32]([4294967295]), vec[u32]()])
+    n = append(n, vec[u32]([0, 239]))
+    assert str(n) == "vec[vec[u32]]([[4294967295], [], [0, 239]])"
+    assert n[0][0] == 4294967295
+    assert n[2][1] == 239
+    n, last = pop(n)
+    assert last == vec[u32]([0, 239])
+    an: Any = n
+    with assertRaises(TypeError):
+        append(an, vec[i64]([1]))
+
+    # Buffer protocol
+    m: Any = memoryview(vec[u32]([0, 4294967295]))
+    assert m.format == "I"
+    assert m.itemsize == struct.calcsize("I")
+    assert m.tolist() == [0, 4294967295]
+    assert vec[u32](array.array("I", [0, 4294967295, 3])) == vec[u32]([0, 4294967295, 3])
+
+def test_u64() -> None:
+    v = vec[u64]()
+    assert len(v) == 0
+    assert str(v) == "vec[u64]([])"
+    v = vec[u64]([0, 18446744073709551615, 239, 1])
+    assert str(v) == "vec[u64]([0, 18446744073709551615, 239, 1])"
+    assert len(v) == 4
+    assert v[0] == 0 and v[1] == 18446744073709551615 and v[2] == 239 and v[3] == 1
+    assert v[-4] == 0 and v[-1] == 1
+    x: u64 = v[1]
+    assert x == 18446744073709551615
+    v[0] = 18446744073709551615
+    v[-1] = 239
+    assert v == vec[u64]([18446744073709551615, 18446744073709551615, 239, 239])
+    with assertRaises(IndexError):
+        v[4]
+    with assertRaises(IndexError):
+        v[-5] = 1
+
+    v = vec[u64]()
+    for i in range(100):
+        v = append(v, u64(i))
+    v = append(v, 18446744073709551615)
+    assert len(v) == 101
+    assert v[100] == 18446744073709551615
+    v, y = pop(v)
+    assert y == 18446744073709551615 and len(v) == 100
+    v, y = pop(v, 0)
+    assert y == 0 and v[0] == 1
+    v = remove(v, 50)
+    assert len(v) == 98
+    assert 50 not in v
+    assert 49 in v
+    assert 18446744073709551615 not in v
+    with assertRaises(ValueError):
+        remove(v, 50)
+    v = extend(vec[u64]([18446744073709551615]), [1, 2])
+    v = extend(v, vec[u64]([239, 0]))
+    v = extend(v, (x for x in [7]))
+    assert v == vec[u64]([18446744073709551615, 1, 2, 239, 0, 7])
+    assert v[1:3] == vec[u64]([1, 2])
+    assert v[::-1] == vec[u64]([7, 0, 239, 2, 1, 18446744073709551615])
+    assert [x for x in v] == [18446744073709551615, 1, 2, 239, 0, 7]
+    total = 0
+    for x in v:
+        total += int(x)
+    assert total == 18446744073709551615 + 1 + 2 + 239 + 0 + 7
+
+    # Values that don't fit in the item type
+    bad: list[Any] = [18446744073709551615 + 1, 0 - 1, 1.0, "x"]
+    for b in bad:
+        assert raises_any(lambda: vec[u64]([b]))
+        assert raises_any(lambda: cast(Any, append)(vec[u64](), b))
+        # In compiled code, the operand is converted to the item type first
+        assert raises_any(lambda: b in vec[u64]([1])) or b not in vec[u64]([1])
+
+    # Boxing and unboxing
+    a: Any = vec[u64]([18446744073709551615, 239])
+    vv: vec[u64] = a
+    assert vv[0] == 18446744073709551615 and vv[1] == 239
+    assert type(a) is type(vec[u64]())
+    for other in (vec[i64]([1]), vec[u8]([1]), vec[i16]([1]), [1]):
+        with assertRaises(TypeError):
+            vv = cast(Any, other)
+    assert isinstance(a, vec)
+
+    # Nested vecs
+    n = vec[vec[u64]]([vec[u64]([18446744073709551615]), vec[u64]()])
+    n = append(n, vec[u64]([0, 239]))
+    assert str(n) == "vec[vec[u64]]([[18446744073709551615], [], [0, 239]])"
+    assert n[0][0] == 18446744073709551615
+    assert n[2][1] == 239
+    n, last = pop(n)
+    assert last == vec[u64]([0, 239])
+    an: Any = n
+    with assertRaises(TypeError):
+        append(an, vec[i64]([1]))
+
+    # Buffer protocol
+    m: Any = memoryview(vec[u64]([0, 18446744073709551615]))
+    assert m.format == "Q"
+    assert m.itemsize == struct.calcsize("Q")
+    assert m.tolist() == [0, 18446744073709551615]
+    assert vec[u64](array.array("Q", [0, 18446744073709551615, 3])) == vec[u64]([0, 18446744073709551615, 3])

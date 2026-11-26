@@ -69,6 +69,8 @@ def out_of_range() -> None:
     a: u16 = 65536
     b: u16 = -1
     f(65536)
+    g = u16(65536)
+    h = u16(-1)
     # The following are ok
     c: u16 = 0
     d: u16 = 65535
@@ -80,6 +82,8 @@ def f(x: u16) -> None: pass
 main:4: error: Value 65536 is out of range for "u16"
 main:5: error: Value -1 is out of range for "u16"
 main:6: error: Value 65536 is out of range for "u16"
+main:7: error: Value 65536 is out of range for "u16"
+main:8: error: Value -1 is out of range for "u16"
 
 [case testU16BoxAndUnbox]
 from typing import Any
@@ -115,7 +119,7 @@ L0:
     return r1
 
 [case testU16ExplicitConversionFromNativeInt]
-from mypy_extensions import i64, i32, i16, u8, u16
+from mypy_extensions import i64, i32, i16, i8, u8, u16
 
 def from_u16(x: u16) -> u16:
     return u16(x)
@@ -130,6 +134,9 @@ def from_i32(x: i32) -> u16:
     return u16(x)
 
 def from_i64(x: i64) -> u16:
+    return u16(x)
+
+def from_i8(x: i8) -> u16:
     return u16(x)
 [out]
 def from_u16(x):
@@ -159,6 +166,12 @@ def from_i64(x):
     r0 :: u16
 L0:
     r0 = truncate x: i64 to u16
+    return r0
+def from_i8(x):
+    x :: i8
+    r0 :: u16
+L0:
+    r0 = extend signed x: i8 to u16
     return r0
 
 [case testU16ExplicitConversionToNativeInt]
@@ -240,16 +253,12 @@ from mypy_extensions import u16
 def f() -> None:
     x = u16(0)
     y = u16(11)
-    z = u16(-3)  # Truncate
-    zz = u16(65538)  # Truncate
     a = u16(65535)
 [out]
 def f():
-    x, y, z, zz, a :: u16
+    x, y, a :: u16
 L0:
     x = 0
     y = 11
-    z = 65533
-    zz = 2
     a = 65535
     return 1

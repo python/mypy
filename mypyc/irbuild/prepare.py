@@ -35,6 +35,7 @@ from mypy.nodes import (
     NameExpr,
     OverloadedFuncDef,
     RefExpr,
+    StrExpr,
     SymbolNode,
     TypeAlias,
     TypeInfo,
@@ -80,6 +81,7 @@ from mypyc.irbuild.util import (
     dataclass_type,
     default_attr_name,
     get_func_def,
+    get_mypyc_attr_call,
     get_mypyc_attrs,
     is_class_body_final,
     is_dataclass,
@@ -151,6 +153,7 @@ def build_type_map(
         with catch_errors(module.path, cdef.line):
             if mapper.type_to_ir[cdef.info].is_ext_class:
                 validate_acyclic_class_bases(module.path, cdef, errors, mapper)
+                validate_weakrefs_class_base(module.path, cdef, errors, mapper)
 
     # Prepare implicit attribute accessors as needed if an attribute overrides a property.
     for module, cdef in classes:
@@ -485,6 +488,26 @@ def validate_acyclic_class_bases(
         )
 
 
+def validate_weakrefs_class_base(
+    path: str, cdef: ClassDef, errors: Errors, mapper: Mapper
+) -> None:
+    ir = mapper.type_to_ir[cdef.info]
+    if not ir.has_weakref_slot() or ir.base is None or ir.base.has_weakref_slot():
+        return
+    # The weak reference list field is at a fixed offset that must be the same in a
+    # base class and all its subclasses, so only the class that starts the hierarchy
+    # can introduce it.
+    line = cdef.line
+    for dec in cdef.decorators:
+        call = get_mypyc_attr_call(dec)
+        if call is not None and any(
+            name == "weakrefs" or (isinstance(arg, StrExpr) and arg.value == "weakrefs")
+            for name, arg in zip(call.arg_names, call.args)
+        ):
+            line = call.line
+    errors.error(f'"weakrefs" must be used in the base class "{ir.base.name}" as well', path, line)
+
+
 def _has_own_default_attrs(cdef: ClassDef, ir: ClassIR) -> bool:
     """Whether this class's own body has any default attribute assignment
     that would be emitted into __mypyc_defaults_setup.
@@ -669,6 +692,13 @@ def prepare_class_def(
     if attrs.get("acyclic") is True:
         ir.is_acyclic = True
 
+    if attrs.get("weakrefs") is True:
+        line = attrs_lines["weakrefs"]
+        if ir.is_trait:
+            errors.error('"weakrefs" can\'t be used with traits', path, line)
+        else:
+            ir._weakrefs = True
+
     # Check for subclassing from builtin types
     reported_base = False
     for cls in info.mro:
@@ -699,6 +729,14 @@ def prepare_class_def(
                 path,
                 cdef.line,
             )
+
+    if ir.builtin_base and ir._weakrefs:
+        errors.error(
+            '"weakrefs" can\'t be used in a class that inherits from a built-in type',
+            path,
+            attrs_lines["weakrefs"],
+        )
+        ir._weakrefs = False
 
     free_list_len = attrs.get("free_list_len")
     if free_list_len is not None:

@@ -73,6 +73,13 @@ void CPy_RaiseFrom(PyObject *exc, PyObject *cause) {
 void CPy_Reraise(void) {
     PyObject *p_type, *p_value, *p_traceback;
     PyErr_GetExcInfo(&p_type, &p_value, &p_traceback);
+    if (p_value == NULL || Py_IsNone(p_value)) {
+        Py_XDECREF(p_type);
+        Py_XDECREF(p_value);
+        Py_XDECREF(p_traceback);
+        PyErr_SetString(PyExc_RuntimeError, "No active exception to reraise");
+        return;
+    }
     PyErr_Restore(p_type, p_value, p_traceback);
 }
 
@@ -94,6 +101,29 @@ void CPyErr_SetObjectAndTraceback(PyObject *type, PyObject *value, PyObject *tra
         Py_INCREF(traceback);
     }
     PyErr_Restore(type, value, traceback);
+}
+
+// Validate the arguments of generator.throw() before resuming the generator, like
+// CPython's _gen_throw. Return false and set an error if they are invalid.
+bool CPyGen_CheckThrowArgs(PyObject *type, PyObject *value, PyObject *traceback) {
+    if (!Py_IsNone(traceback) && !PyTraceBack_Check(traceback)) {
+        PyErr_SetString(PyExc_TypeError, "throw() third argument must be a traceback object");
+        return false;
+    }
+    if (PyExceptionClass_Check(type)) {
+        return true;
+    }
+    if (PyExceptionInstance_Check(type)) {
+        if (!Py_IsNone(value)) {
+            PyErr_SetString(PyExc_TypeError, "instance exception may not have a separate value");
+            return false;
+        }
+        return true;
+    }
+    PyErr_Format(PyExc_TypeError,
+                 "exceptions must be classes or instances deriving from BaseException, not %s",
+                 Py_TYPE(type)->tp_name);
+    return false;
 }
 
 tuple_T3OOO CPy_CatchError(void) {
@@ -241,6 +271,7 @@ static PyObject *CPy_FormatTypeName(PyObject *value) {
 
 CPy_NOINLINE
 void CPy_TypeError(const char *expected, PyObject *value) {
+    PyErr_Clear();
     PyObject *out = CPy_FormatTypeName(value);
     if (out) {
         PyErr_Format(PyExc_TypeError, "%s object expected; got %U", expected, out);
@@ -258,9 +289,106 @@ void CPy_TypeError(const char *expected, PyObject *value) {
 #include "internal/pycore_frame.h"
 #endif
 
+// Cache of the code objects used for traceback entries.
+//
+// Creating a new code object for each traceback entry is slow. It's also a
+// problem for memory use on free-threaded builds, since code objects use
+// deferred reference counting there and are only freed by the cyclic GC. The
+// GC only runs when the eval breaker is handled, which doesn't happen in a
+// native loop that doesn't call interpreted code, so a loop that repeatedly
+// raises and catches an exception would accumulate dead code objects until
+// it returns.
+//
+// The cache is direct-mapped. The slot is chosen based on the string pointers
+// and the line number, but the string contents are compared on lookup, since
+// the strings aren't required to have static storage duration.
+#define CPY_TB_CODE_CACHE_SIZE 256
+
+typedef struct {
+    char *filename;  // Owned copy
+    char *funcname;  // Owned copy
+    int line;
+    PyCodeObject *code;
+} CPyTracebackCodeCacheEntry;
+
+static CPyTracebackCodeCacheEntry tb_code_cache[CPY_TB_CODE_CACHE_SIZE];
+
+#ifdef Py_GIL_DISABLED
+static PyMutex tb_code_cache_mutex;
+#define TB_CODE_CACHE_LOCK() PyMutex_Lock(&tb_code_cache_mutex)
+#define TB_CODE_CACHE_UNLOCK() PyMutex_Unlock(&tb_code_cache_mutex)
+#else
+#define TB_CODE_CACHE_LOCK()
+#define TB_CODE_CACHE_UNLOCK()
+#endif
+
+static inline size_t tb_code_cache_index(const char *filename, const char *funcname, int line) {
+    size_t h = (size_t)(uintptr_t)funcname + (size_t)(uintptr_t)filename * 3
+        + (size_t)line * 0x9e3779b1u;
+    h ^= h >> 16;
+    h ^= h >> 8;
+    return h & (CPY_TB_CODE_CACHE_SIZE - 1);
+}
+
+static char *copy_c_string(const char *s) {
+    size_t size = strlen(s) + 1;
+    char *result = PyMem_RawMalloc(size);
+    if (result != NULL) {
+        memcpy(result, s, size);
+    }
+    return result;
+}
+
+// Return a new reference to a code object for a traceback entry, or NULL with
+// an error set.
+static PyCodeObject *get_traceback_code(const char *filename, const char *funcname, int line) {
+    CPyTracebackCodeCacheEntry *entry =
+        &tb_code_cache[tb_code_cache_index(filename, funcname, line)];
+    PyCodeObject *code = NULL;
+
+    TB_CODE_CACHE_LOCK();
+    if (entry->code != NULL && entry->line == line
+            && strcmp(entry->funcname, funcname) == 0
+            && strcmp(entry->filename, filename) == 0) {
+        code = (PyCodeObject *)Py_NewRef(entry->code);
+    }
+    TB_CODE_CACHE_UNLOCK();
+    if (code != NULL) {
+        return code;
+    }
+
+    code = PyCode_NewEmpty(filename, funcname, line);
+    if (code == NULL) {
+        return NULL;
+    }
+    char *filename_copy = copy_c_string(filename);
+    char *funcname_copy = copy_c_string(funcname);
+    if (filename_copy == NULL || funcname_copy == NULL) {
+        // Not being able to cache the code object is fine.
+        PyMem_RawFree(filename_copy);
+        PyMem_RawFree(funcname_copy);
+        return code;
+    }
+
+    TB_CODE_CACHE_LOCK();
+    CPyTracebackCodeCacheEntry old = *entry;
+    entry->filename = filename_copy;
+    entry->funcname = funcname_copy;
+    entry->line = line;
+    entry->code = (PyCodeObject *)Py_NewRef(code);
+    TB_CODE_CACHE_UNLOCK();
+
+    // Release the evicted entry only after the cache is consistent again, since
+    // the decref could run arbitrary code.
+    PyMem_RawFree(old.filename);
+    PyMem_RawFree(old.funcname);
+    Py_XDECREF(old.code);
+    return code;
+}
+
 // This function is basically exactly the same with _PyTraceback_Add
-// which is available in all the versions we support.
-// We're continuing to use this because we'll probably optimize this later.
+// which is available in all the versions we support, except that
+// code objects are cached (see above).
 void CPy_AddTraceback(const char *filename, const char *funcname, int line, PyObject *globals) {
     PyObject *exc, *val, *tb;
     PyThreadState *thread_state = PyThreadState_GET();
@@ -273,7 +401,7 @@ void CPy_AddTraceback(const char *filename, const char *funcname, int line, PyOb
     // FS encoding, which could have a decoder in Python. We don't do
     // that so *that* doesn't apply to us.)
     PyErr_Fetch(&exc, &val, &tb);
-    PyCodeObject *code_obj = PyCode_NewEmpty(filename, funcname, line);
+    PyCodeObject *code_obj = get_traceback_code(filename, funcname, line);
     if (code_obj == NULL) {
         goto error;
     }

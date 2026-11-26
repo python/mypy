@@ -1,5 +1,5 @@
 [case testI16BasicOps]
-from typing import Any, Tuple
+from typing import Any, Final, Tuple
 
 from mypy_extensions import i16, i32, i64
 
@@ -121,6 +121,58 @@ def test_simple_arithmetic_ops() -> None:
     assert -two == -2
     assert -neg_one == 1
     assert -zero == 0
+    assert abs(one) == 1
+    assert abs(neg_one) == 1
+    assert abs(zero) == 0
+
+def test_left_shift_wraps_around() -> None:
+    max_i16: i16 = 2**15 - 1 + int()
+    min_i16: i16 = -2**15 + int()
+    one: i16 = 1 + int()
+    assert max_i16 << one == -2
+    assert min_i16 << one == 0
+    assert -one << (one * 15) == min_i16
+
+def test_shift_count_out_of_range() -> None:
+    one: i16 = 1 + int()
+    neg: i16 = -5 + int()
+    width: i16 = 16 + int()
+    for n in [width, -one, -width]:
+        assert one << n == 0
+        assert one >> n == 0
+        assert neg >> n == -1
+    # The largest valid count
+    assert one << (width - one) == -2**15
+    assert neg >> (width - one) == -1
+
+MAX_I16_FINAL: Final[i16] = 2**15 - 1
+MIN_I16_FINAL: Final[i16] = -MAX_I16_FINAL - 1
+
+def test_arithmetic_wraps_around() -> None:
+    max_i16: i16 = 2**15 - 1 + int()
+    min_i16: i16 = -2**15 + int()
+    one: i16 = 1 + int()
+    two: i16 = 2 + int()
+    assert max_i16 + one == min_i16
+    assert min_i16 - one == max_i16
+    assert max_i16 * two == -2
+    assert max_i16 * max_i16 == 1
+    assert min_i16 * -one == min_i16
+    assert -min_i16 == min_i16
+    assert max_i16 << one == -2
+    assert min_i16 << one == 0
+    assert one << (two * 7 + one) == min_i16
+    x = max_i16
+    x += one
+    assert x == min_i16
+    assert abs(min_i16) == min_i16
+    assert abs(-max_i16) == max_i16
+    assert abs(min_i16 + one) == max_i16
+    assert -i16(-2**15) == min_i16
+    assert MAX_I16_FINAL + 1 == min_i16
+    assert MIN_I16_FINAL - 1 == max_i16
+    assert -MIN_I16_FINAL == min_i16
+    assert MAX_I16_FINAL * 2 == -2
 
 def test_bitwise_ops() -> None:
     x: i16 = 13855 + int()

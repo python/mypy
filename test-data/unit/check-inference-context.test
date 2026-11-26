@@ -1680,3 +1680,14 @@ x: Union[B, C]
 fn: Callable[[Union[A, B]], None]
 fn = make(x)
 reveal_type(fn)  # N: Revealed type is "def (__main__.B | __main__.C | __main__.A)"
+
+[case testInferenceContextBothSidesCallable]
+from typing import TypeVar, Callable, Optional
+
+T = TypeVar("T")
+S = TypeVar("S")
+
+def run(x: list[T], fn: Callable[[T], S]) -> list[Optional[S]]: ...
+
+def worker(d: int) -> Optional[int]: ...
+res: list[Optional[int]] = run([1, 2, 3], worker)  # OK

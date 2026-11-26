@@ -367,6 +367,7 @@ class PatchVisitor(OpVisitor[None]):
 
     def visit_set_element(self, op: SetElement) -> None:
         op.src = self.fix_op(op.src)
+        op.item = self.fix_op(op.item)
 
     def visit_load_address(self, op: LoadAddress) -> None:
         if isinstance(op.src, LoadStatic):

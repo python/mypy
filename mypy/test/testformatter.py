@@ -2,10 +2,20 @@ from __future__ import annotations
 
 from unittest import TestCase, main
 
+from mypy.errors import Errors
+from mypy.options import Options
 from mypy.util import split_words, trim_source_line
 
 
 class FancyErrorFormattingTestCases(TestCase):
+    def test_pretty_error_past_end_of_file(self) -> None:
+        options = Options()
+        options.pretty = True
+        errors = Errors(options, read_source=lambda _: ["x = (1,"], hide_error_codes=True)
+        errors.set_file("main", None, options)
+        errors.report(2, 1, "Unexpected EOF while parsing")
+        assert errors.new_messages() == ["main:2: error: Unexpected EOF while parsing"]
+
     def test_trim_source(self) -> None:
         assert trim_source_line("0123456789abcdef", max_len=16, col=5, min_width=2) == (
             "0123456789abcdef",

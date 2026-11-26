@@ -59,6 +59,15 @@ CPyTagged CPyTagged_FromInt64(int64_t value) {
     }
 }
 
+CPyTagged CPyTagged_FromUInt64(uint64_t value) {
+    if (unlikely(value > CPY_TAGGED_MAX)) {
+        PyObject *object = PyLong_FromUnsignedLongLong(value);
+        return ((CPyTagged)object) | CPY_INT_TAG;
+    } else {
+        return ((CPyTagged)value) << 1;
+    }
+}
+
 CPyTagged CPyTagged_FromUInt32(uint32_t value) {
 #if SIZEOF_SIZE_T == 4
     // Only 32-bit platforms can have values that don't fit in a short int. Doing
@@ -123,6 +132,28 @@ Py_ssize_t CPyTagged_AsSsize_t(CPyTagged x) {
     } else {
         return PyLong_AsSsize_t(CPyTagged_LongAsObject(x));
     }
+}
+
+// Set the exception for a sequence index that isn't a short int. Like CPython,
+// raise IndexError("cannot fit 'int' into an index-sized integer") if it
+// doesn't fit in Py_ssize_t. Otherwise raise IndexError(msg), since an index
+// this large is always out of range (no list or tuple can be this long, and
+// neither can a str or bytes object on a 64-bit platform).
+void CPy_LargeIndexError(CPyTagged index, const char *msg) {
+    Py_ssize_t n = PyNumber_AsSsize_t(CPyTagged_LongAsObject(index), PyExc_IndexError);
+    if (n != -1 || !PyErr_Occurred()) {
+        PyErr_SetString(PyExc_IndexError, msg);
+    }
+}
+
+// Convert an int used as a sequence index to i64. Like CPython, raise
+// IndexError if the value doesn't fit in Py_ssize_t.
+int64_t CPyLong_AsIndex(PyObject *o) {
+    Py_ssize_t n = PyNumber_AsSsize_t(o, PyExc_IndexError);
+    if (n == -1 && PyErr_Occurred()) {
+        return CPY_LL_INT_ERROR;
+    }
+    return n;
 }
 
 CPy_NOINLINE
@@ -486,6 +517,10 @@ int64_t CPyInt64_Remainder(int64_t x, int64_t y) {
     return d;
 }
 
+void CPyInt64_Overflow() {
+    PyErr_SetString(PyExc_ValueError, "int too large to convert to i64");
+}
+
 // i32 unboxing slow path
 int32_t CPyLong_AsInt32_(PyObject *o) {
     int overflow;
@@ -541,6 +576,60 @@ int32_t CPyInt32_Remainder(int32_t x, int32_t y) {
 
 void CPyInt32_Overflow() {
     PyErr_SetString(PyExc_ValueError, "int too large to convert to i32");
+}
+
+// i8 unboxing slow path
+int8_t CPyLong_AsInt8_(PyObject *o) {
+    int overflow;
+    long result = PyLong_AsLongAndOverflow(o, &overflow);
+    if (result > 0x7f || result < -0x80) {
+        overflow = 1;
+        result = -1;
+    }
+    if (result == -1) {
+        if (PyErr_Occurred()) {
+            return CPY_LL_INT_ERROR;
+        } else if (overflow) {
+            PyErr_SetString(PyExc_ValueError, "int too large to convert to i8");
+            return CPY_LL_INT_ERROR;
+        }
+    }
+    return result;
+}
+
+int8_t CPyInt8_Divide(int8_t x, int8_t y) {
+    if (y == 0) {
+        PyErr_SetString(PyExc_ZeroDivisionError, "integer division or modulo by zero");
+        return CPY_LL_INT_ERROR;
+    }
+    if (y == -1 && x == INT8_MIN) {
+        PyErr_SetString(PyExc_OverflowError, "integer division overflow");
+        return CPY_LL_INT_ERROR;
+    }
+    int8_t d = x / y;
+    if (((x < 0) != (y < 0)) && d * y != x) {
+        d--;
+    }
+    return d;
+}
+
+int8_t CPyInt8_Remainder(int8_t x, int8_t y) {
+    if (y == 0) {
+        PyErr_SetString(PyExc_ZeroDivisionError, "integer division or modulo by zero");
+        return CPY_LL_INT_ERROR;
+    }
+    if (y == -1 && x == INT8_MIN) {
+        return 0;
+    }
+    int8_t d = x % y;
+    if (((x < 0) != (y < 0)) && d != 0) {
+        d += y;
+    }
+    return d;
+}
+
+void CPyInt8_Overflow() {
+    PyErr_SetString(PyExc_ValueError, "int too large to convert to i8");
 }
 
 // i16 unboxing slow path
@@ -600,9 +689,46 @@ void CPyInt16_Overflow() {
     PyErr_SetString(PyExc_ValueError, "int too large to convert to i16");
 }
 
+// Unlike PyLong_AsLongAndOverflow(), which the other native int types use,
+// PyLong_AsUnsignedLong() and PyLong_AsUnsignedLongLong() don't call __index__, so
+// convert the object first. Return a new reference, or NULL with an exception set.
+static PyObject *CPyLong_IndexForUnsigned(PyObject *o) {
+    if (likely(PyLong_Check(o))) {
+        return Py_NewRef(o);
+    }
+    return PyNumber_Index(o);
+}
+
+// u64 unboxing slow path
+uint64_t CPyLong_AsUInt64_(PyObject *o) {
+    PyObject *index = CPyLong_IndexForUnsigned(o);
+    if (index == NULL) {
+        return CPY_LL_UINT_ERROR;
+    }
+    unsigned long long result = PyLong_AsUnsignedLongLong(index);
+    Py_DECREF(index);
+    if (result == (unsigned long long)-1 && PyErr_Occurred()) {
+        if (PyErr_ExceptionMatches(PyExc_OverflowError)) {
+            PyErr_Clear();
+            PyErr_SetString(PyExc_ValueError, "int too large or small to convert to u64");
+        }
+        return CPY_LL_UINT_ERROR;
+    }
+    return (uint64_t)result;
+}
+
+void CPyUInt64_Overflow() {
+    PyErr_SetString(PyExc_ValueError, "int too large or small to convert to u64");
+}
+
 // u32 unboxing slow path
 uint32_t CPyLong_AsUInt32_(PyObject *o) {
-    unsigned long result = PyLong_AsUnsignedLong(o);
+    PyObject *index = CPyLong_IndexForUnsigned(o);
+    if (index == NULL) {
+        return CPY_LL_UINT_ERROR;
+    }
+    unsigned long result = PyLong_AsUnsignedLong(index);
+    Py_DECREF(index);
     if (result == (unsigned long)-1 && PyErr_Occurred()) {
         if (PyErr_ExceptionMatches(PyExc_OverflowError)) {
             PyErr_Clear();

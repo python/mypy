@@ -1,6 +1,6 @@
 [case testI64BasicOps]
 import sys
-from typing import List, Any, Tuple, Union
+from typing import List, Any, Tuple, Union, Final
 
 from mypy_extensions import i64, i32, i16
 
@@ -209,6 +209,84 @@ def test_simple_arithmetic_ops() -> None:
     assert -two == -2
     assert -neg_one == 1
     assert -zero == 0
+    assert abs(one) == 1
+    assert abs(neg_one) == 1
+    assert abs(zero) == 0
+
+def test_left_shift_wraps_around() -> None:
+    max_i64: i64 = 2**63 - 1 + int()
+    min_i64: i64 = -2**63 + int()
+    one: i64 = 1 + int()
+    assert max_i64 << one == -2
+    assert min_i64 << one == 0
+    assert -one << (one * 63) == min_i64
+    x = max_i64
+    x <<= one + one
+    assert x == -4
+
+ONE_I64: Final[i64] = 1
+
+def test_left_shift_wraps_around_constant() -> None:
+    assert ONE_I64 << 63 == -2**63
+    assert (ONE_I64 << 63) >> 63 == -1
+
+def test_shift_count_out_of_range() -> None:
+    one: i64 = 1 + int()
+    neg: i64 = -5 + int()
+    width: i64 = 64 + int()
+    for n in [width, width + one, -one, -2**63 + int()]:
+        assert one << n == 0
+        assert neg << n == 0
+        assert one >> n == 0
+        assert neg >> n == -1
+        x = neg
+        x <<= n
+        assert x == 0
+        x = neg
+        x >>= n
+        assert x == -1
+    # The largest valid count
+    assert one << (width - one) == -2**63
+    assert neg >> (width - one) == -1
+    # Constant counts
+    assert neg << 64 == 0
+    assert neg << -1 == 0
+    assert neg >> 64 == -1
+    assert one >> 65 == 0
+    assert neg >> -1 == -1
+
+MAX_I64_FINAL: Final[i64] = 2**63 - 1
+MIN_I64_FINAL: Final[i64] = -MAX_I64_FINAL - 1
+
+def test_arithmetic_wraps_around() -> None:
+    max_i64: i64 = 2**63 - 1 + int()
+    min_i64: i64 = -2**63 + int()
+    one: i64 = 1 + int()
+    two: i64 = 2 + int()
+    assert max_i64 + one == min_i64
+    assert min_i64 - one == max_i64
+    assert one - min_i64 == -max_i64
+    assert max_i64 * two == -2
+    assert min_i64 * -one == min_i64
+    assert min_i64 + min_i64 == 0
+    assert -min_i64 == min_i64
+    assert max_i64 << one == -2
+    assert one << (two * 31 + one) == min_i64
+    x = max_i64
+    x += one
+    assert x == min_i64
+    x -= one
+    assert x == max_i64
+    x *= max_i64
+    assert x == 1
+    assert abs(min_i64) == min_i64
+    assert abs(-max_i64) == max_i64
+    assert abs(min_i64 + one) == max_i64
+    assert -i64(-2**63) == min_i64
+    assert MAX_I64_FINAL + 1 == min_i64
+    assert MIN_I64_FINAL - 1 == max_i64
+    assert -MIN_I64_FINAL == min_i64
+    assert MAX_I64_FINAL * 2 == -2
 
 def test_bitwise_ops() -> None:
     x: i64 = 7997307308812232241 + int()
@@ -312,6 +390,16 @@ def test_i64_from_large_small_literal() -> None:
     assert x == 2**63 - 1
     x = i64(-2**63)
     assert x == -2**63
+    x = i64(9223372036854775807)
+    assert x == 2**63 - 1
+    assert int(x) == 2**63 - 1
+    x = i64(-9223372036854775808)
+    assert x == -2**63
+    assert int(x) == -2**63
+    y: i64 = 9223372036854775807
+    assert y == 2**63 - 1
+    y = -9223372036854775808
+    assert y == -2**63
 
 def from_float(x: float) -> i64:
     return i64(x)

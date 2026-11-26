@@ -23,6 +23,10 @@ static inline VecT vec_error() {
 }
 
 static inline VecTBufObject *alloc_buf(Py_ssize_t size, size_t item_type) {
+    if (size > VEC_MAX_BUF_ITEMS(VecTBufObject, sizeof(PyObject *))) {
+        PyErr_NoMemory();
+        return NULL;
+    }
     VecTBufObject *buf = PyObject_GC_NewVar(VecTBufObject, &VecTBufType, size);
     if (buf == NULL)
         return NULL;
@@ -486,7 +490,11 @@ VecT VecT_Remove(VecT v, PyObject *arg) {
         if (items[i] == arg)
             match = 1;
         else {
-            int itemcmp = PyObject_RichCompareBool(items[i], arg, Py_EQ);
+            // The comparison can run arbitrary code that replaces the item
+            PyObject *item = items[i];
+            Py_INCREF(item);
+            int itemcmp = PyObject_RichCompareBool(item, arg, Py_EQ);
+            Py_DECREF(item);
             if (itemcmp < 0) {
                 // The input v is being consumed/stolen by this function, so on error
                 // we must decref it to avoid leaking the buffer.
@@ -497,13 +505,13 @@ VecT VecT_Remove(VecT v, PyObject *arg) {
         }
         if (match) {
             if (i < v.len - 1) {
-                Py_CLEAR(items[i]);
-                for (; i < v.len - 1; i++) {
-                    items[i] = items[i + 1];
-                }
+                // Decref the removed item last, since it could run arbitrary code
+                PyObject *removed = items[i];
+                memmove(&items[i], &items[i + 1], (v.len - 1 - i) * sizeof(PyObject *));
                 // Keep a duplicate item, since there could be another reference
                 // to the buffer with a longer length, and they expect a valid reference.
                 Py_XINCREF(items[v.len - 1]);
+                Py_XDECREF(removed);
             }
             v.len--;
             // Return the stolen reference without INCREF
@@ -536,8 +544,7 @@ VecTPopResult VecT_Pop(VecT v, Py_ssize_t index) {
 
     PyObject **items = v.items;
     result.f1 = items[index];
-    for (Py_ssize_t i = index; i < v.len - 1; i++)
-        items[i] = items[i + 1];
+    memmove(&items[index], &items[index + 1], (v.len - 1 - index) * sizeof(PyObject *));
     // Keep duplicate item, since there could be another reference
     // to the buffer with a longer length, and they expect a valid reference.
     Py_XINCREF(items[v.len - 1]);

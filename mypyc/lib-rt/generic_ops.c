@@ -20,6 +20,50 @@ CPyTagged CPyObject_Hash(PyObject *o) {
     }
 }
 
+// Convert the result of a __hash__ method to a hash value like slot_tp_hash in
+// CPython: an int that doesn't fit in Py_hash_t is hashed again, so any int is a
+// valid result. Return -1 with an exception set if res isn't an int.
+Py_hash_t CPy_HashFromResult(PyObject *res) {
+    if (unlikely(!PyLong_Check(res))) {
+        PyErr_SetString(PyExc_TypeError, "__hash__ method should return an integer");
+        return -1;
+    }
+    Py_hash_t h = PyLong_AsSsize_t(res);
+    if (h == -1 && PyErr_Occurred()) {
+        PyErr_Clear();
+        h = PyLong_Type.tp_hash(res);
+    }
+    // -1 is reserved for errors
+    return h == -1 ? -2 : h;
+}
+
+// Convert the result of a __len__ method to a length like slot_sq_length in CPython:
+// the result must be an int (or have __index__), not negative, and fit in Py_ssize_t.
+// Return -1 with an exception set on error.
+Py_ssize_t CPy_LenFromResult(PyObject *res) {
+    PyObject *index = PyNumber_Index(res);
+    if (index == NULL) {
+        return -1;
+    }
+    if (PyLong_IsNegative(index)) {
+        Py_DECREF(index);
+        PyErr_SetString(PyExc_ValueError, "__len__() should return >= 0");
+        return -1;
+    }
+    Py_ssize_t len = PyNumber_AsSsize_t(index, PyExc_OverflowError);
+    Py_DECREF(index);
+    return len;
+}
+
+// Like CPy_LenFromResult, but return the length as a tagged int
+CPyTagged CPyObject_LenFromResult(PyObject *res) {
+    Py_ssize_t len = CPy_LenFromResult(res);
+    if (len < 0) {
+        return CPY_INT_TAG;
+    }
+    return CPyTagged_FromSsize_t(len);
+}
+
 PyObject *CPyObject_GetAttr3(PyObject *v, PyObject *name, PyObject *defl)
 {
     PyObject *result;

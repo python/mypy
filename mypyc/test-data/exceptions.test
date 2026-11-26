@@ -788,3 +788,43 @@ L1:
 L2:
     r1 = <error> :: None
     return r1
+
+[case testLibRTRandomOverlappingErrorValue]
+from librt.random import Random, randrange
+from mypy_extensions import i64
+
+def f(r: Random, a: i64, b: i64) -> i64:
+    return r.randint(a, b)
+
+def g(n: i64) -> i64:
+    # Result is never negative, so -113 is unambiguously an error
+    return randrange(n)
+[out]
+def f(r, a, b):
+    r :: librt.random.Random
+    a, b, r0 :: i64
+    r1 :: bit
+    r2 :: object
+    r3 :: i64
+L0:
+    r0 = LibRTRandom_Random_randint_internal(r, a, b)
+    r1 = r0 == -113
+    if r1 goto L2 else goto L1 :: bool
+L1:
+    return r0
+L2:
+    r2 = PyErr_Occurred()
+    if not is_error(r2) goto L3 (error at f:5) else goto L1
+L3:
+    r3 = <error> :: i64
+    return r3
+def g(n):
+    n, r0, r1 :: i64
+L0:
+    r0 = LibRTRandom_module_randrange1_internal(n)
+    if is_error(r0) goto L2 (error at g:9) else goto L1
+L1:
+    return r0
+L2:
+    r1 = <error> :: i64
+    return r1

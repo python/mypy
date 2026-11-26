@@ -33,6 +33,8 @@ implementations:
 * ``i64`` (:ref:`documentation <native-ints>`, :ref:`native operations <int-ops>`)
 * ``i32`` (:ref:`documentation <native-ints>`, :ref:`native operations <int-ops>`)
 * ``i16`` (:ref:`documentation <native-ints>`, :ref:`native operations <int-ops>`)
+* ``i8`` (:ref:`documentation <native-ints>`, :ref:`native operations <int-ops>`)
+* ``u64`` (:ref:`documentation <native-ints>`, :ref:`native operations <int-ops>`)
 * ``u32`` (:ref:`documentation <native-ints>`, :ref:`native operations <int-ops>`)
 * ``u16`` (:ref:`documentation <native-ints>`, :ref:`native operations <int-ops>`)
 * ``u8`` (:ref:`documentation <native-ints>`, :ref:`native operations <int-ops>`)
@@ -350,13 +352,16 @@ Native integer types
 --------------------
 
 You can use the native integer types ``i64`` (64-bit signed integer),
-``i32`` (32-bit signed integer), ``i16`` (16-bit signed integer),
-``u32`` (32-bit unsigned integer), ``u16`` (16-bit unsigned integer), and ``u8`` (8-bit unsigned integer)
+``i32`` (32-bit signed integer), ``i16`` (16-bit signed integer), ``i8`` (8-bit signed integer),
+``u64`` (64-bit unsigned integer), ``u32`` (32-bit unsigned integer), ``u16`` (16-bit unsigned integer), and ``u8`` (8-bit unsigned integer)
 if you know that integer values will
 always fit within fixed bounds. These types are faster than the
 arbitrary-precision ``int`` type, since they don't require overflow
 checks on operations. They may also use less memory than ``int``
-values. The types are imported from the ``mypy_extensions`` module
+values, and they don't switch to a boxed representation for large
+values, unlike ``int`` (``int`` values outside the range ``-2**62`` to
+``2**62 - 1`` are boxed on 64-bit platforms).
+The types are imported from the ``mypy_extensions`` module
 (installed via ``pip install mypy_extensions``).
 
 Example::
@@ -375,13 +380,16 @@ Example::
 .. note::
 
   Since there are no overflow checks when performing native integer
-  arithmetic, the above function could result in an overflow or other
-  undefined behavior if the sum might not fit within 64 bits.
+  arithmetic, the above function silently returns a wrapped-around
+  result if the sum doesn't fit within 64 bits.
 
-  The behavior when running as interpreted Python program will be
-  different if there are overflows. Declaring native integer types
-  have no effect unless code is compiled. Native integer types are
-  effectively equivalent to ``int`` when interpreted.
+Native integer types only have an effect in compiled code. When
+interpreted, they behave exactly like ``int``: values have arbitrary
+precision, and there are no range checks, truncation or wraparound.
+For example, ``u8(255) + 1`` evaluates to ``256`` when interpreted.
+Code that overflows a native integer type may thus behave differently when
+compiled and interpreted. See :ref:`native-ints-interpreted` for more
+information.
 
 Native integer types have these additional properties:
 
@@ -390,7 +398,11 @@ Native integer types have these additional properties:
 
 * Conversions between different native integer types must be explicit.
   A conversion to a narrower native integer type truncates the value
-  without a runtime overflow check.
+  without a runtime overflow check. A conversion from ``int`` raises
+  ``ValueError`` if the value is out of range.
+
+* Arithmetic wraps around on overflow (two's complement), for both
+  signed and unsigned types. For example, ``i8(127) + 1`` is ``-128``.
 
 * If a binary operation (such as ``+``) or an augmented assignment
   (such as ``+=``) mixes native integer and ``int`` values, the

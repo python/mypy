@@ -11,23 +11,23 @@ import sys
 import native
 import asyncio
 import inspect
-
-evloop = asyncio.new_event_loop()
+from contextlib import closing
 
 failures = []
 tests_run = 0
 
-for name in dir(native):
-    if name.startswith('test_'):
-        test_func = getattr(native, name)
-        tests_run += 1
-        try:
-            if inspect.iscoroutinefunction(test_func):
-                evloop.run_until_complete(test_func())
-            else:
-                test_func()
-        except Exception as e:
-            failures.append((name, sys.exc_info()))
+with closing(asyncio.new_event_loop()) as evloop:
+    for name in dir(native):
+        if name.startswith('test_'):
+            test_func = getattr(native, name)
+            tests_run += 1
+            try:
+                if inspect.iscoroutinefunction(test_func):
+                    evloop.run_until_complete(test_func())
+                else:
+                    test_func()
+            except Exception as e:
+                failures.append((name, sys.exc_info()))
 
 if failures:
     from traceback import print_exception, format_tb

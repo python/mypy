@@ -58,6 +58,7 @@ from mypyc.irbuild.env_class import (
 from mypyc.irbuild.nonlocalcontrol import ExceptNonlocalControl, gen_generator_func_cleanup
 from mypyc.irbuild.targets import AssignmentTargetAttr
 from mypyc.primitives.exc_ops import (
+    check_throw_args_op,
     error_catch_op,
     exc_matches_op,
     raise_exception_with_tb_op,
@@ -331,6 +332,13 @@ def add_throw_to_generator_class(builder: IRBuilder, fn_info: FuncInfo, fn_decl:
         none_reg = builder.none_object()
         builder.assign_if_null(val, lambda: none_reg, fn_info.fitem.line)
         builder.assign_if_null(tb, lambda: none_reg, fn_info.fitem.line)
+
+        # Reject invalid arguments before resuming the generator.
+        builder.call_c(
+            check_throw_args_op,
+            [builder.read(typ), builder.read(val), builder.read(tb)],
+            fn_info.fitem.line,
+        )
 
         # Call the helper function using the arguments passed in, and return that result.
         result = builder.add(

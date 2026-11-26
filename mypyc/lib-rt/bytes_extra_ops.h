@@ -8,6 +8,10 @@
 // Optimized bytes translate operation
 PyObject *CPyBytes_Translate(PyObject *bytes, PyObject *table);
 
+// Optimized bytes.__contains__ operations
+int CPyBytes_ContainsInt(PyObject *self, CPyTagged value);
+int CPyBytes_Contains(PyObject *self, PyObject *sub);
+
 // Optimized bytes.__getitem__ operations
 
 // If index is negative, convert to non-negative index (no range checking)

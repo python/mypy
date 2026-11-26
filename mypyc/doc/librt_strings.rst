@@ -108,9 +108,13 @@ The ``write_*`` and ``read_*`` functions allow interpreting bytes as packed bina
 data. They can be used as (much) more efficient but lower-level alternatives to the
 stdlib :mod:`struct` module in compiled code.
 
-There are no functions for reading or writing individual bytes. ``BytesWriter.append`` can
-be used to insert a byte value, and ``b[n]`` can be used to read a byte value. Both
-are fast operations in compiled code.
+Individual unsigned byte values can be read using ``b[n]`` and written using
+``BytesWriter.append``. Both are fast operations in compiled code. Use ``write_i8`` and
+``read_i8`` to write and read a byte as a signed value.
+
+The ``read_*`` functions raise ``ValueError`` if the index is negative, and ``IndexError``
+if the value doesn't fit within the data starting at the index. Unlike ``b[n]``, they don't
+support negative indices that count from the end.
 
 This example writes two binary values and reads them afterwards::
 
@@ -124,58 +128,203 @@ This example writes two binary values and reads them afterwards::
         y = read_f64_le(data, 4)
         ...
 
+This table shows the :mod:`struct` format codes that correspond to these functions (``<``
+is little-endian and ``>`` is big-endian):
+
+.. list-table::
+   :header-rows: 1
+
+   * - Format
+     - Type
+     - Write function
+     - Read function
+   * - ``b``
+     - ``i8``
+     - :func:`write_i8`
+     - :func:`read_i8`
+   * - ``B``
+     - ``u8``
+     - :meth:`BytesWriter.append`
+     - ``b[n]``
+   * - ``<h``
+     - ``i16``
+     - :func:`write_i16_le`
+     - :func:`read_i16_le`
+   * - ``>h``
+     - ``i16``
+     - :func:`write_i16_be`
+     - :func:`read_i16_be`
+   * - ``<i``
+     - ``i32``
+     - :func:`write_i32_le`
+     - :func:`read_i32_le`
+   * - ``>i``
+     - ``i32``
+     - :func:`write_i32_be`
+     - :func:`read_i32_be`
+   * - ``<q``
+     - ``i64``
+     - :func:`write_i64_le`
+     - :func:`read_i64_le`
+   * - ``>q``
+     - ``i64``
+     - :func:`write_i64_be`
+     - :func:`read_i64_be`
+   * - ``<H``
+     - ``u16``
+     - :func:`write_u16_le`
+     - :func:`read_u16_le`
+   * - ``>H``
+     - ``u16``
+     - :func:`write_u16_be`
+     - :func:`read_u16_be`
+   * - ``<I``
+     - ``u32``
+     - :func:`write_u32_le`
+     - :func:`read_u32_le`
+   * - ``>I``
+     - ``u32``
+     - :func:`write_u32_be`
+     - :func:`read_u32_be`
+   * - ``<Q``
+     - ``u64``
+     - :func:`write_u64_le`
+     - :func:`read_u64_le`
+   * - ``>Q``
+     - ``u64``
+     - :func:`write_u64_be`
+     - :func:`read_u64_be`
+   * - ``<f``
+     - ``float``
+     - :func:`write_f32_le`
+     - :func:`read_f32_le`
+   * - ``>f``
+     - ``float``
+     - :func:`write_f32_be`
+     - :func:`read_f32_be`
+   * - ``<d``
+     - ``float``
+     - :func:`write_f64_le`
+     - :func:`read_f64_le`
+   * - ``>d``
+     - ``float``
+     - :func:`write_f64_be`
+     - :func:`read_f64_be`
+
+.. function:: write_i8(b: BytesWriter, n: i8, /) -> None
+
+   Append an 8-bit signed integer as a binary value (1 byte).
+
+.. function:: read_i8(b: bytes, index: i64, /) -> i8
+
+   Read an 8-bit signed integer value at the given index (1 byte).
+
 .. function:: write_i16_le(b: BytesWriter, n: i16, /) -> None
 
-   Append a 16-bit integer as a little-endian binary value.
+   Append a 16-bit signed integer as a little-endian binary value.
 
 .. function:: write_i16_be(b: BytesWriter, n: i16, /) -> None
 
-   Append a 16-bit integer as a big-endian binary value.
+   Append a 16-bit signed integer as a big-endian binary value.
 
 .. function:: read_i16_le(b: bytes, index: i64, /) -> i16
 
-   Read a 16-bit integer value starting at the given index as a little-endian binary value
+   Read a 16-bit signed integer value starting at the given index as a little-endian binary value
    (2 bytes).
 
 .. function:: read_i16_be(b: bytes, index: i64, /) -> i16
 
-   Read a 16-bit integer value starting at the given index as a big-endian binary value
+   Read a 16-bit signed integer value starting at the given index as a big-endian binary value
    (2 bytes).
 
 .. function:: write_i32_le(b: BytesWriter, n: i32, /) -> None
 
-   Append a 32-bit integer as a little-endian binary value.
+   Append a 32-bit signed integer as a little-endian binary value.
 
 .. function:: write_i32_be(b: BytesWriter, n: i32, /) -> None
 
-   Append a 32-bit integer as a big-endian binary value.
+   Append a 32-bit signed integer as a big-endian binary value.
 
 .. function:: read_i32_le(b: bytes, index: i64, /) -> i32
 
-   Read a 32-bit integer value starting at the given index as a little-endian binary value
+   Read a 32-bit signed integer value starting at the given index as a little-endian binary value
    (4 bytes).
 
 .. function:: read_i32_be(b: bytes, index: i64, /) -> i32
 
-   Read a 32-bit integer value starting at the given index as a big-endian binary value
+   Read a 32-bit signed integer value starting at the given index as a big-endian binary value
    (4 bytes).
 
 .. function:: write_i64_le(b: BytesWriter, n: i64, /) -> None
 
-   Append a 64-bit integer as a little-endian binary value.
+   Append a 64-bit signed integer as a little-endian binary value.
 
 .. function:: write_i64_be(b: BytesWriter, n: i64, /) -> None
 
-   Append a 64-bit integer as a big-endian binary value.
+   Append a 64-bit signed integer as a big-endian binary value.
 
 .. function:: read_i64_le(b: bytes, index: i64, /) -> i64
 
-   Read a 64-bit integer value starting at the given index as a little-endian binary value
+   Read a 64-bit signed integer value starting at the given index as a little-endian binary value
    (8 bytes).
 
 .. function:: read_i64_be(b: bytes, index: i64, /) -> i64
 
-   Read a 64-bit integer value starting at the given index as a big-endian binary value
+   Read a 64-bit signed integer value starting at the given index as a big-endian binary value
+   (8 bytes).
+
+.. function:: write_u16_le(b: BytesWriter, n: u16, /) -> None
+
+   Append a 16-bit unsigned integer as a little-endian binary value.
+
+.. function:: write_u16_be(b: BytesWriter, n: u16, /) -> None
+
+   Append a 16-bit unsigned integer as a big-endian binary value.
+
+.. function:: read_u16_le(b: bytes, index: i64, /) -> u16
+
+   Read a 16-bit unsigned integer value starting at the given index as a little-endian binary value
+   (2 bytes).
+
+.. function:: read_u16_be(b: bytes, index: i64, /) -> u16
+
+   Read a 16-bit unsigned integer value starting at the given index as a big-endian binary value
+   (2 bytes).
+
+.. function:: write_u32_le(b: BytesWriter, n: u32, /) -> None
+
+   Append a 32-bit unsigned integer as a little-endian binary value.
+
+.. function:: write_u32_be(b: BytesWriter, n: u32, /) -> None
+
+   Append a 32-bit unsigned integer as a big-endian binary value.
+
+.. function:: read_u32_le(b: bytes, index: i64, /) -> u32
+
+   Read a 32-bit unsigned integer value starting at the given index as a little-endian binary value
+   (4 bytes).
+
+.. function:: read_u32_be(b: bytes, index: i64, /) -> u32
+
+   Read a 32-bit unsigned integer value starting at the given index as a big-endian binary value
+   (4 bytes).
+
+.. function:: write_u64_le(b: BytesWriter, n: u64, /) -> None
+
+   Append a 64-bit unsigned integer as a little-endian binary value.
+
+.. function:: write_u64_be(b: BytesWriter, n: u64, /) -> None
+
+   Append a 64-bit unsigned integer as a big-endian binary value.
+
+.. function:: read_u64_le(b: bytes, index: i64, /) -> u64
+
+   Read a 64-bit unsigned integer value starting at the given index as a little-endian binary value
+   (8 bytes).
+
+.. function:: read_u64_be(b: bytes, index: i64, /) -> u64
+
+   Read a 64-bit unsigned integer value starting at the given index as a big-endian binary value
    (8 bytes).
 
 .. function:: write_f32_le(b: BytesWriter, n: float, /) -> None

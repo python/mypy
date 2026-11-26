@@ -3796,6 +3796,7 @@ class SemanticAnalyzer(
                 explicit_type=explicit,
                 is_final=s.is_final_def,
                 has_explicit_value=has_explicit_value,
+                rvalue=s.rvalue,
             )
 
     def analyze_rvalue_as_type_form(self, s: AssignmentStmt) -> None:
@@ -4511,6 +4512,7 @@ class SemanticAnalyzer(
         escape_comprehensions: bool = False,
         has_explicit_value: bool = False,
         is_index_var: bool = False,
+        rvalue: Expression | None = None,
     ) -> None:
         """Analyze an lvalue or assignment target.
 
@@ -4522,6 +4524,7 @@ class SemanticAnalyzer(
                 in the enclosing scope instead. This implements
                 https://www.python.org/dev/peps/pep-0572/#scope-of-the-target
             is_index_var: If lval is the index variable in a for loop
+            rvalue: Assignment rvalue (passed only in situations when it affects semantics).
         """
         if escape_comprehensions:
             assert isinstance(lval, NameExpr), "assignment expression target must be NameExpr"
@@ -4532,10 +4535,13 @@ class SemanticAnalyzer(
                 is_final,
                 escape_comprehensions,
                 has_explicit_value=has_explicit_value,
+                is_init_to_none=is_none_expr(rvalue),
                 is_index_var=is_index_var,
             )
         elif isinstance(lval, MemberExpr):
-            self.analyze_member_lvalue(lval, explicit_type, is_final, has_explicit_value)
+            self.analyze_member_lvalue(
+                lval, explicit_type, is_final, has_explicit_value, is_none_expr(rvalue)
+            )
             if explicit_type and not self.is_self_member_ref(lval):
                 self.fail("Type cannot be declared in assignment to non-self attribute", lval)
         elif isinstance(lval, IndexExpr):
@@ -4543,7 +4549,7 @@ class SemanticAnalyzer(
                 self.fail("Unexpected type declaration", lval)
             lval.accept(self)
         elif isinstance(lval, TupleExpr):
-            self.analyze_tuple_or_list_lvalue(lval, explicit_type)
+            self.analyze_tuple_or_list_lvalue(lval, explicit_type, rvalue)
         elif isinstance(lval, StarExpr):
             if nested:
                 self.analyze_lvalue(lval.expr, nested, explicit_type)
@@ -4559,6 +4565,7 @@ class SemanticAnalyzer(
         is_final: bool,
         escape_comprehensions: bool,
         has_explicit_value: bool,
+        is_init_to_none: bool,
         is_index_var: bool,
     ) -> None:
         """Analyze an lvalue that targets a name expression.
@@ -4606,7 +4613,7 @@ class SemanticAnalyzer(
         if (not existing or isinstance(existing.node, PlaceholderNode)) and not outer:
             # Define new variable.
             var = self.make_name_lvalue_var(
-                lvalue, kind, not explicit_type, has_explicit_value, is_index_var
+                lvalue, kind, not explicit_type, has_explicit_value, is_init_to_none, is_index_var
             )
             added = self.add_symbol(name, var, lvalue, escape_comprehensions=escape_comprehensions)
             # Only bind expression if we successfully added name to symbol table.
@@ -4666,6 +4673,7 @@ class SemanticAnalyzer(
         kind: int,
         inferred: bool,
         has_explicit_value: bool,
+        is_init_to_none: bool,
         is_index_var: bool,
     ) -> Var:
         """Return a Var node for an lvalue that is a name expression."""
@@ -4686,6 +4694,7 @@ class SemanticAnalyzer(
         v.is_ready = False  # Type not inferred yet
         v.has_explicit_value = has_explicit_value
         v.is_index_var = is_index_var
+        v.is_init_to_none = is_init_to_none
         return v
 
     def make_name_lvalue_point_to_existing_def(
@@ -4722,11 +4731,14 @@ class SemanticAnalyzer(
                 original_def
                 and isinstance(original_def.node, Var)
                 and original_def.node.is_inferred
+                and original_def.node.is_init_to_none
             ):
                 for func in self.scope.functions:
                     mark_as_top_level(func)
 
-    def analyze_tuple_or_list_lvalue(self, lval: TupleExpr, explicit_type: bool = False) -> None:
+    def analyze_tuple_or_list_lvalue(
+        self, lval: TupleExpr, explicit_type: bool, rvalue: Expression | None
+    ) -> None:
         """Analyze an lvalue or assignment target that is a list or tuple."""
         items = lval.items
         star_exprs = [item for item in items if isinstance(item, StarExpr)]
@@ -4736,18 +4748,28 @@ class SemanticAnalyzer(
         else:
             if len(star_exprs) == 1:
                 star_exprs[0].valid = True
-            for i in items:
+            for i, it in enumerate(items):
+                if isinstance(rvalue, TupleExpr) and len(rvalue.items) == len(items):
+                    item_rvalue = rvalue.items[i]
+                else:
+                    item_rvalue = None
                 self.analyze_lvalue(
-                    lval=i,
+                    lval=it,
                     nested=True,
                     explicit_type=explicit_type,
                     # Lists and tuples always have explicit values defined:
                     # `a, b, c = value`
                     has_explicit_value=True,
+                    rvalue=item_rvalue,
                 )
 
     def analyze_member_lvalue(
-        self, lval: MemberExpr, explicit_type: bool, is_final: bool, has_explicit_value: bool
+        self,
+        lval: MemberExpr,
+        explicit_type: bool,
+        is_final: bool,
+        has_explicit_value: bool,
+        is_init_to_none: bool,
     ) -> None:
         """Analyze lvalue that is a member expression.
 
@@ -4804,6 +4826,7 @@ class SemanticAnalyzer(
                     v.info = self.type
                     v.is_ready = False
                     v.explicit_self_type = explicit_type or is_final
+                    v.is_init_to_none = is_init_to_none
                     lval.def_var = v
                     lval.node = v
                     # TODO: should we also set lval.kind = MDEF?
@@ -4819,6 +4842,7 @@ class SemanticAnalyzer(
                 and isinstance(cur_node.node, Var)
                 and cur_node.node.is_inferred
                 and cur_node.node.is_initialized_in_class
+                and cur_node.node.is_init_to_none
             ):
                 for func in self.scope.functions:
                     mark_as_top_level(func)
@@ -8615,6 +8639,10 @@ def erase_func_annotations(func: FuncDef) -> None:
         arg.variable.type = None
     func.type = None
     func.unanalyzed_type = None
+
+
+def is_none_expr(expr: Expression | None) -> bool:
+    return isinstance(expr, NameExpr) and expr.name == "None"
 
 
 def mark_as_top_level(func: FuncBase) -> None:

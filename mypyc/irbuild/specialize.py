@@ -40,8 +40,10 @@ from mypy.nodes import (
 from mypy.types import AnyType, TypeOfAny
 from mypyc.ir.class_ir import ClassIR
 from mypyc.ir.ops import (
+    ERR_FALSE,
     BasicBlock,
     Call,
+    ComparisonOp,
     Extend,
     Integer,
     LoadErrorValue,
@@ -50,12 +52,12 @@ from mypyc.ir.ops import (
     Register,
     SetAttr,
     Truncate,
+    TupleGet,
     Unreachable,
     Value,
 )
 from mypyc.ir.rtypes import (
     RInstance,
-    RPrimitive,
     RTuple,
     RType,
     RVec,
@@ -63,17 +65,21 @@ from mypyc.ir.rtypes import (
     bytes_rprimitive,
     bytes_writer_rprimitive,
     c_int_rprimitive,
+    c_pyssize_t_rprimitive,
     dict_rprimitive,
+    int8_rprimitive,
     int16_rprimitive,
     int32_rprimitive,
     int64_rprimitive,
     int_rprimitive,
     is_any_int,
+    is_bool_or_bit_rprimitive,
     is_bool_rprimitive,
     is_bytes_rprimitive,
     is_dict_rprimitive,
     is_fixed_width_rtype,
     is_float_rprimitive,
+    is_int8_rprimitive,
     is_int16_rprimitive,
     is_int32_rprimitive,
     is_int64_rprimitive,
@@ -85,6 +91,7 @@ from mypyc.ir.rtypes import (
     is_uint8_rprimitive,
     is_uint16_rprimitive,
     is_uint32_rprimitive,
+    is_uint64_rprimitive,
     list_rprimitive,
     object_rprimitive,
     set_rprimitive,
@@ -93,6 +100,7 @@ from mypyc.ir.rtypes import (
     uint8_rprimitive,
     uint16_rprimitive,
     uint32_rprimitive,
+    uint64_rprimitive,
 )
 from mypyc.irbuild.builder import IRBuilder, find_walrus_targets, get_call_target_fullname
 from mypyc.irbuild.constant_fold import constant_fold_expr
@@ -137,8 +145,10 @@ from mypyc.primitives.dict_ops import (
 from mypyc.primitives.float_ops import isinstance_float
 from mypyc.primitives.generic_ops import generic_setattr, setup_object
 from mypyc.primitives.int_ops import (
+    int_abs_op,
     int_to_big_endian_op,
     int_to_bytes_op,
+    int_to_index_op,
     int_to_little_endian_op,
     isinstance_int,
 )
@@ -161,6 +171,7 @@ from mypyc.primitives.misc_ops import (
     isinstance_slice,
     isinstance_type,
     slow_isinstance_op,
+    type_of_int_op,
 )
 from mypyc.primitives.set_ops import isinstance_frozenset, isinstance_set
 from mypyc.primitives.str_ops import (
@@ -175,7 +186,17 @@ from mypyc.primitives.str_ops import (
     str_get_item_unsafe_as_int_op,
     str_range_check_op,
 )
-from mypyc.primitives.tuple_ops import isinstance_tuple, new_tuple_set_item_op
+from mypyc.primitives.tuple_ops import (
+    isinstance_tuple,
+    new_tuple_set_item_grow_op,
+    new_tuple_set_item_op,
+    new_tuple_set_size_op,
+    tuple_hash_add_op,
+    tuple_hash_finish_op,
+    tuple_hash_int_op,
+    tuple_hash_object_op,
+    tuple_hash_start_op,
+)
 
 # Specializers are attempted before compiling the arguments to the
 # function.  Specializers can return None to indicate that they failed
@@ -309,6 +330,50 @@ def apply_dunder_specialization(
     return None
 
 
+@specialize_function("builtins.hash")
+def translate_hash(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value | None:
+    """Hash a fixed-length tuple without boxing it (and its items) into a tuple object."""
+    if len(expr.args) == 1 and expr.arg_kinds == [ARG_POS]:
+        if isinstance(builder.node_type(expr.args[0]), RTuple):
+            t = builder.accept(expr.args[0])
+            return builder.coerce(tuple_hash(builder, t, expr.line), int_rprimitive, expr.line)
+    return None
+
+
+def tuple_hash(builder: IRBuilder, t: Value, line: int) -> Value:
+    """Return the hash of an unboxed tuple as a C Py_hash_t, like hash() of the boxed tuple."""
+    assert isinstance(t.type, RTuple)
+    acc = builder.call_c(tuple_hash_start_op, [], line)
+    for i in range(len(t.type.types)):
+        item_hash = tuple_item_hash(builder, builder.add(TupleGet(t, i, line)), line)
+        acc = builder.call_c(tuple_hash_add_op, [acc, item_hash], line)
+    length = Integer(len(t.type.types), c_pyssize_t_rprimitive, line)
+    return builder.call_c(tuple_hash_finish_op, [acc, length], line)
+
+
+def tuple_item_hash(builder: IRBuilder, item: Value, line: int) -> Value:
+    """Return the hash of a tuple item as a C Py_hash_t."""
+    typ = item.type
+    if isinstance(typ, RTuple):
+        return tuple_hash(builder, item, line)
+    if is_bool_or_bit_rprimitive(typ):
+        # hash(False) is 0 and hash(True) is 1
+        return builder.add(Extend(item, c_pyssize_t_rprimitive, signed=False, line=line))
+    if is_tagged(typ) or is_fixed_width_rtype(typ):
+        # A fixed-width int hashes like the int object it boxes to
+        value = builder.coerce(item, int_rprimitive, line)
+        return builder.call_c(tuple_hash_int_op, [value], line)
+    obj = builder.coerce(item, object_rprimitive, line)
+    item_hash = builder.call_c(tuple_hash_object_op, [obj], line)
+    # -1 means that the item couldn't be hashed
+    check = ComparisonOp(
+        item_hash, Integer(-1, c_pyssize_t_rprimitive, line), ComparisonOp.NEQ, line
+    )
+    check.error_kind = ERR_FALSE
+    builder.add(check)
+    return item_hash
+
+
 @specialize_function("builtins.globals")
 def translate_globals(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value | None:
     if len(expr.args) == 0:
@@ -323,6 +388,8 @@ def translate_globals(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Va
 @specialize_function("mypy_extensions.i64")
 @specialize_function("mypy_extensions.i32")
 @specialize_function("mypy_extensions.i16")
+@specialize_function("mypy_extensions.i8")
+@specialize_function("mypy_extensions.u64")
 @specialize_function("mypy_extensions.u32")
 @specialize_function("mypy_extensions.u16")
 @specialize_function("mypy_extensions.u8")
@@ -337,7 +404,7 @@ def translate_builtins_with_unary_dunder(
         arg = expr.args[0]
         arg_typ = builder.node_type(arg)
         shortname = callee.fullname.split(".")[1]
-        if shortname in ("i64", "i32", "i16", "u32", "u16", "u8"):
+        if shortname in ("i64", "i32", "i16", "i8", "u64", "u32", "u16", "u8"):
             method = "__int__"
         else:
             method = f"__{shortname}__"
@@ -345,6 +412,16 @@ def translate_builtins_with_unary_dunder(
             obj = builder.accept(arg)
             return builder.gen_method_call(obj, method, [], None, expr.line)
 
+    return None
+
+
+@specialize_function("builtins.abs")
+def translate_abs(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value | None:
+    if len(expr.args) == 1 and expr.arg_kinds == [ARG_POS]:
+        arg_type = builder.node_type(expr.args[0])
+        if is_fixed_width_rtype(arg_type):
+            arg = builder.accept(expr.args[0])
+            return builder.builder.primitive_op(int_abs_op, [arg], expr.line, type_args=[arg_type])
     return None
 
 
@@ -484,12 +561,18 @@ def translate_tuple_from_generator_call(
         len(expr.args) == 1
         and expr.arg_kinds[0] == ARG_POS
         and isinstance(expr.args[0], GeneratorExpr)
-        and can_preallocate_from_generator(builder, expr.args[0])
+        and can_preallocate_from_generator(builder, expr.args[0], resizable=True)
     ):
         gen = expr.args[0]
 
         def set_item(x: Value, y: Value, z: Value, line: int) -> None:
             builder.call_c(new_tuple_set_item_op, [x, y, z], line)
+
+        def set_item_grow(x: Value, y: Value, z: Value, line: int) -> Value:
+            return builder.call_c(new_tuple_set_item_grow_op, [x, y, z], line)
+
+        def set_size(x: Value, y: Value, line: int) -> Value:
+            return builder.call_c(new_tuple_set_size_op, [x, y], line)
 
         with comprehension_scope(builder, gen):
             return sequence_from_generator_preallocate_helper(
@@ -497,6 +580,8 @@ def translate_tuple_from_generator_call(
                 gen,
                 empty_op_llbuilder=builder.builder.new_tuple_with_length,
                 set_item_op=set_item,
+                append_op=set_item_grow,
+                set_size_op=set_size,
             )
     return None
 
@@ -1178,9 +1263,16 @@ def translate_i64(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value 
     arg_type = builder.node_type(arg)
     if is_int64_rprimitive(arg_type):
         return builder.accept(arg)
-    elif is_int32_rprimitive(arg_type) or is_int16_rprimitive(arg_type):
+    elif (
+        is_int32_rprimitive(arg_type)
+        or is_int16_rprimitive(arg_type)
+        or is_int8_rprimitive(arg_type)
+    ):
         val = builder.accept(arg)
         return builder.add(Extend(val, int64_rprimitive, signed=True, line=expr.line))
+    elif is_uint64_rprimitive(arg_type):
+        val = builder.accept(arg)
+        return builder.add(Truncate(val, int64_rprimitive, line=expr.line))
     elif is_uint32_rprimitive(arg_type):
         val = builder.accept(arg)
         return builder.add(Extend(val, int64_rprimitive, signed=False, line=expr.line))
@@ -1207,9 +1299,12 @@ def translate_i32(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value 
     elif is_int64_rprimitive(arg_type):
         val = builder.accept(arg)
         return builder.add(Truncate(val, int32_rprimitive, line=expr.line))
-    elif is_int16_rprimitive(arg_type):
+    elif is_int16_rprimitive(arg_type) or is_int8_rprimitive(arg_type):
         val = builder.accept(arg)
         return builder.add(Extend(val, int32_rprimitive, signed=True, line=expr.line))
+    elif is_uint64_rprimitive(arg_type):
+        val = builder.accept(arg)
+        return builder.add(Truncate(val, int32_rprimitive, line=expr.line))
     elif is_uint32_rprimitive(arg_type):
         val = builder.accept(arg)
         return builder.add(Truncate(val, int32_rprimitive, line=expr.line))
@@ -1221,7 +1316,6 @@ def translate_i32(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value 
         return builder.add(Extend(val, int32_rprimitive, signed=False, line=expr.line))
     elif is_int_rprimitive(arg_type) or is_bool_rprimitive(arg_type):
         val = builder.accept(arg)
-        val = truncate_literal(val, int32_rprimitive)
         return builder.coerce(val, int32_rprimitive, expr.line)
     return None
 
@@ -1237,6 +1331,9 @@ def translate_i16(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value 
     elif is_int32_rprimitive(arg_type) or is_int64_rprimitive(arg_type):
         val = builder.accept(arg)
         return builder.add(Truncate(val, int16_rprimitive, line=expr.line))
+    elif is_uint64_rprimitive(arg_type):
+        val = builder.accept(arg)
+        return builder.add(Truncate(val, int16_rprimitive, line=expr.line))
     elif is_uint32_rprimitive(arg_type):
         val = builder.accept(arg)
         return builder.add(Truncate(val, int16_rprimitive, line=expr.line))
@@ -1246,10 +1343,72 @@ def translate_i16(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value 
     elif is_uint8_rprimitive(arg_type):
         val = builder.accept(arg)
         return builder.add(Extend(val, int16_rprimitive, signed=False, line=expr.line))
+    elif is_int8_rprimitive(arg_type):
+        val = builder.accept(arg)
+        return builder.add(Extend(val, int16_rprimitive, signed=True, line=expr.line))
     elif is_int_rprimitive(arg_type) or is_bool_rprimitive(arg_type):
         val = builder.accept(arg)
-        val = truncate_literal(val, int16_rprimitive)
         return builder.coerce(val, int16_rprimitive, expr.line)
+    return None
+
+
+@specialize_function("mypy_extensions.i8")
+def translate_i8(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value | None:
+    if len(expr.args) != 1 or expr.arg_kinds[0] != ARG_POS:
+        return None
+    arg = expr.args[0]
+    arg_type = builder.node_type(arg)
+    if is_int8_rprimitive(arg_type):
+        return builder.accept(arg)
+    elif (
+        is_int16_rprimitive(arg_type)
+        or is_int32_rprimitive(arg_type)
+        or is_int64_rprimitive(arg_type)
+    ):
+        val = builder.accept(arg)
+        return builder.add(Truncate(val, int8_rprimitive, line=expr.line))
+    elif (
+        is_uint64_rprimitive(arg_type)
+        or is_uint32_rprimitive(arg_type)
+        or is_uint16_rprimitive(arg_type)
+        or is_uint8_rprimitive(arg_type)
+    ):
+        val = builder.accept(arg)
+        return builder.add(Truncate(val, int8_rprimitive, line=expr.line))
+    elif is_int_rprimitive(arg_type) or is_bool_rprimitive(arg_type):
+        val = builder.accept(arg)
+        return builder.coerce(val, int8_rprimitive, expr.line)
+    return None
+
+
+@specialize_function("mypy_extensions.u64")
+def translate_u64(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value | None:
+    if len(expr.args) != 1 or expr.arg_kinds[0] != ARG_POS:
+        return None
+    arg = expr.args[0]
+    arg_type = builder.node_type(arg)
+    if is_uint64_rprimitive(arg_type):
+        return builder.accept(arg)
+    elif is_int64_rprimitive(arg_type):
+        val = builder.accept(arg)
+        return builder.add(Truncate(val, uint64_rprimitive, line=expr.line))
+    elif (
+        is_int32_rprimitive(arg_type)
+        or is_int16_rprimitive(arg_type)
+        or is_int8_rprimitive(arg_type)
+    ):
+        val = builder.accept(arg)
+        return builder.add(Extend(val, uint64_rprimitive, signed=True, line=expr.line))
+    elif (
+        is_uint32_rprimitive(arg_type)
+        or is_uint16_rprimitive(arg_type)
+        or is_uint8_rprimitive(arg_type)
+    ):
+        val = builder.accept(arg)
+        return builder.add(Extend(val, uint64_rprimitive, signed=False, line=expr.line))
+    elif is_int_rprimitive(arg_type) or is_bool_rprimitive(arg_type):
+        val = builder.accept(arg)
+        return builder.coerce(val, uint64_rprimitive, expr.line)
     return None
 
 
@@ -1263,20 +1422,21 @@ def translate_u32(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value 
         return builder.accept(arg)
     elif (
         is_int16_rprimitive(arg_type)
+        or is_int8_rprimitive(arg_type)
         or is_int32_rprimitive(arg_type)
         or is_int64_rprimitive(arg_type)
+        or is_uint64_rprimitive(arg_type)
         or is_uint16_rprimitive(arg_type)
         or is_uint8_rprimitive(arg_type)
     ):
         val = builder.accept(arg)
         if is_uint16_rprimitive(arg_type) or is_uint8_rprimitive(arg_type):
             return builder.add(Extend(val, uint32_rprimitive, signed=False, line=expr.line))
-        if is_int16_rprimitive(arg_type):
+        if is_int16_rprimitive(arg_type) or is_int8_rprimitive(arg_type):
             return builder.add(Extend(val, uint32_rprimitive, signed=True, line=expr.line))
         return builder.add(Truncate(val, uint32_rprimitive, line=expr.line))
     elif is_int_rprimitive(arg_type) or is_bool_rprimitive(arg_type):
         val = builder.accept(arg)
-        val = truncate_literal(val, uint32_rprimitive)
         return builder.coerce(val, uint32_rprimitive, expr.line)
     return None
 
@@ -1291,18 +1451,21 @@ def translate_u16(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value 
         return builder.accept(arg)
     elif (
         is_int16_rprimitive(arg_type)
+        or is_int8_rprimitive(arg_type)
         or is_int32_rprimitive(arg_type)
         or is_int64_rprimitive(arg_type)
+        or is_uint64_rprimitive(arg_type)
         or is_uint32_rprimitive(arg_type)
         or is_uint8_rprimitive(arg_type)
     ):
         val = builder.accept(arg)
         if is_uint8_rprimitive(arg_type):
             return builder.add(Extend(val, uint16_rprimitive, signed=False, line=expr.line))
+        if is_int8_rprimitive(arg_type):
+            return builder.add(Extend(val, uint16_rprimitive, signed=True, line=expr.line))
         return builder.add(Truncate(val, uint16_rprimitive, line=expr.line))
     elif is_int_rprimitive(arg_type) or is_bool_rprimitive(arg_type):
         val = builder.accept(arg)
-        val = truncate_literal(val, uint16_rprimitive)
         return builder.coerce(val, uint16_rprimitive, expr.line)
     return None
 
@@ -1316,9 +1479,11 @@ def translate_u8(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value |
     if is_uint8_rprimitive(arg_type):
         return builder.accept(arg)
     elif (
-        is_int16_rprimitive(arg_type)
+        is_int8_rprimitive(arg_type)
+        or is_int16_rprimitive(arg_type)
         or is_int32_rprimitive(arg_type)
         or is_int64_rprimitive(arg_type)
+        or is_uint64_rprimitive(arg_type)
         or is_uint32_rprimitive(arg_type)
         or is_uint16_rprimitive(arg_type)
     ):
@@ -1326,25 +1491,8 @@ def translate_u8(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value |
         return builder.add(Truncate(val, uint8_rprimitive, line=expr.line))
     elif is_int_rprimitive(arg_type) or is_bool_rprimitive(arg_type):
         val = builder.accept(arg)
-        val = truncate_literal(val, uint8_rprimitive)
         return builder.coerce(val, uint8_rprimitive, expr.line)
     return None
-
-
-def truncate_literal(value: Value, rtype: RPrimitive) -> Value:
-    """If value is an integer literal value, truncate it to given native int rtype.
-
-    For example, truncate 256 into 0 if rtype is u8.
-    """
-    if not isinstance(value, Integer):
-        return value  # Not a literal, nothing to do
-    x = value.numeric_value()
-    max_unsigned = (1 << (rtype.size * 8)) - 1
-    x = x & max_unsigned
-    if rtype.is_signed and x >= (max_unsigned + 1) // 2:
-        # Adjust to make it a negative value
-        x -= max_unsigned + 1
-    return Integer(x, rtype)
 
 
 @specialize_function("builtins.int")
@@ -1384,6 +1532,35 @@ def translate_float(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Valu
     return None
 
 
+@specialize_function("builtins.type")
+def translate_type(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value | None:
+    """Get the type of an unboxed int, float or bool without boxing it.
+
+    Only these exact types are handled. A union such as 'bool | int' is boxed
+    already, and unboxing it as an int would lose the type of a bool.
+    """
+    if len(expr.args) != 1 or expr.arg_kinds[0] != ARG_POS:
+        return None
+    arg = expr.args[0]
+    arg_type = builder.node_type(arg)
+    if is_int_rprimitive(arg_type):
+        # A long int can be an instance of a subclass of int
+        return builder.primitive_op(type_of_int_op, [builder.accept(arg)], expr.line)
+    if is_bool_rprimitive(arg_type):
+        type_name = "builtins.bool"
+    elif is_float_rprimitive(arg_type):
+        type_name = "builtins.float"
+    elif is_fixed_width_rtype(arg_type):
+        type_name = "builtins.int"
+    else:
+        return None
+    # The type doesn't depend on the value, but the argument can have side effects
+    builder.accept(arg)
+    type_obj = builder.load_builtin(type_name, expr.line)
+    assert type_obj is not None
+    return type_obj
+
+
 @specialize_function("builtins.ord")
 def translate_ord(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value | None:
     if len(expr.args) != 1 or expr.arg_kinds[0] != ARG_POS:
@@ -1412,6 +1589,7 @@ def translate_ord(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value 
                     str_adjust_index_op,
                     str_range_check_op,
                     str_get_item_unsafe_as_int_op,
+                    "string index out of range",
                 )
                 return result
 
@@ -1569,6 +1747,17 @@ def specialize_int_to_bytes(builder: IRBuilder, expr: CallExpr, callee: RefExpr)
     )
 
 
+def coerce_int_index_to_int64(builder: IRBuilder, index: Value, line: int) -> Value:
+    """Coerce an int index to i64 for the specialized item access primitives.
+
+    Like CPython, raise IndexError (instead of ValueError, as a regular
+    coercion would) if the index doesn't fit in Py_ssize_t.
+    """
+    return builder.builder.coerce_int_to_fixed_width(
+        index, int64_rprimitive, line, slow_path_op=int_to_index_op
+    )
+
+
 def translate_getitem_with_bounds_check(
     builder: IRBuilder,
     base_expr: Expression,
@@ -1577,6 +1766,7 @@ def translate_getitem_with_bounds_check(
     adjust_index_op: PrimitiveDescription,
     range_check_op: PrimitiveDescription,
     get_item_unsafe_op: PrimitiveDescription,
+    index_error_msg: str = "index out of range",
 ) -> Value | None:
     """Shared helper for optimized __getitem__ with bounds checking.
 
@@ -1607,6 +1797,25 @@ def translate_getitem_with_bounds_check(
 
     # Get the index argument
     index = builder.accept(args[0])
+    if is_int_rprimitive(index.type):
+        index = coerce_int_index_to_int64(builder, index, ctx_expr.line)
+
+    # Create blocks for branching
+    valid_block = BasicBlock()
+    invalid_block = BasicBlock()
+
+    if is_uint64_rprimitive(index.type):
+        # A u64 value that doesn't fit in i64 is always out of range, so raise
+        # IndexError (instead of the generic overflow error from coercion)
+        fits = builder.add(
+            ComparisonOp(
+                index, Integer(2**63 - 1, uint64_rprimitive), ComparisonOp.ULE, ctx_expr.line
+            )
+        )
+        fits_block = BasicBlock()
+        builder.add_bool_branch(fits, fits_block, invalid_block)
+        builder.activate_block(fits_block)
+        index = builder.add(Truncate(index, int64_rprimitive, ctx_expr.line))
 
     # Adjust the index (handle negative indices)
     adjusted_index = builder.primitive_op(adjust_index_op, [obj, index], ctx_expr.line)
@@ -1614,17 +1823,11 @@ def translate_getitem_with_bounds_check(
     # Check if the adjusted index is in valid range
     range_check = builder.primitive_op(range_check_op, [obj, adjusted_index], ctx_expr.line)
 
-    # Create blocks for branching
-    valid_block = BasicBlock()
-    invalid_block = BasicBlock()
-
     builder.add_bool_branch(range_check, valid_block, invalid_block)
 
     # Handle invalid index - raise IndexError
     builder.activate_block(invalid_block)
-    builder.add(
-        RaiseStandardError(RaiseStandardError.INDEX_ERROR, "index out of range", ctx_expr.line)
-    )
+    builder.add(RaiseStandardError(RaiseStandardError.INDEX_ERROR, index_error_msg, ctx_expr.line))
     builder.add(Unreachable())
 
     # Handle valid index - get the item
@@ -1647,6 +1850,7 @@ def translate_bytes_writer_get_item(
         bytes_writer_adjust_index_op,
         bytes_writer_range_check_op,
         bytes_writer_get_item_unsafe_op,
+        "BytesWriter index out of range",
     )
 
 
@@ -1665,6 +1869,8 @@ def translate_bytes_writer_set_item(
     # Get the index and value arguments
     index = builder.accept(args[0])
     value = builder.accept(args[1])
+    if is_int_rprimitive(index.type):
+        index = coerce_int_index_to_int64(builder, index, ctx_expr.line)
 
     # Adjust the index (handle negative indices)
     adjusted_index = builder.primitive_op(
@@ -1685,7 +1891,9 @@ def translate_bytes_writer_set_item(
     # Handle invalid index - raise IndexError
     builder.activate_block(invalid_block)
     builder.add(
-        RaiseStandardError(RaiseStandardError.INDEX_ERROR, "index out of range", ctx_expr.line)
+        RaiseStandardError(
+            RaiseStandardError.INDEX_ERROR, "BytesWriter index out of range", ctx_expr.line
+        )
     )
     builder.add(Unreachable())
 
@@ -1711,6 +1919,7 @@ def translate_string_writer_get_item(
         string_writer_adjust_index_op,
         string_writer_range_check_op,
         string_writer_get_item_unsafe_op,
+        "StringWriter index out of range",
     )
 
 
@@ -1781,4 +1990,38 @@ def translate_vec_pop(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Va
             else:
                 index_value = Integer(-1, int64_rprimitive)
             return vec_pop(builder.builder, vec_value, index_value, vec_arg.line)
+    return None
+
+
+@specialize_function("weakref.ReferenceType")
+@specialize_function("_weakref.proxy")
+def check_weakref_target(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Value | None:
+    """Report an error if a weak reference to a native instance can't be created.
+
+    Native classes only support weak references if requested explicitly, so a
+    weakref.ref() or weakref.proxy() call would fail at runtime. This is best effort:
+    we only detect calls where the argument has a precise native class type.
+    Interpreted subclasses always support weak references, so the call may succeed
+    if the class allows interpreted subclasses.
+
+    This doesn't generate any code, so translation continues as usual.
+    """
+    if expr.args and expr.arg_kinds[0] == ARG_POS:
+        rtype = builder.node_type(expr.args[0])
+        if (
+            isinstance(rtype, RInstance)
+            and not rtype.class_ir.is_trait
+            and not rtype.class_ir.supports_weakrefs()
+            and not rtype.class_ir.allow_interpreted_subclasses
+        ):
+            builder.error(
+                "Cannot create weak reference to instance of native class "
+                f'"{rtype.class_ir.fullname}"',
+                expr.line,
+            )
+            builder.note(
+                'Add "@mypy_extensions.mypyc_attr(weakrefs=True)" to the class '
+                "definition to enable support for weak references",
+                expr.line,
+            )
     return None
