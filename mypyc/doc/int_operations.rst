@@ -299,6 +299,7 @@ Functions
 ---------
 
 * ``abs(n)``
+* ``round(n)`` (``int`` only, with a single argument)
 
 Attributes
 ----------

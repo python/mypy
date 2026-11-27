@@ -129,6 +129,16 @@ CPyTagged CPyFloat_Ceil(double x) {
     return CPyTagged_FromFloat(v);
 }
 
+// Adapted from CPython 3.14, Objects/floatobject.c
+CPyTagged CPyFloat_Round(double x) {
+    double rounded = round(x);
+    if (fabs(x - rounded) == 0.5) {
+        // Halfway case: round to even
+        rounded = 2.0 * round(x / 2.0);
+    }
+    return CPyTagged_FromFloat(rounded);
+}
+
 bool CPyFloat_IsInf(double x) {
     return isinf(x) != 0;
 }
