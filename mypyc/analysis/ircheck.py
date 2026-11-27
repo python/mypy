@@ -208,6 +208,9 @@ def can_coerce_to(src: RType, dest: RType) -> bool:
         if isinstance(src, (RInstance, RVec)):
             return is_object_rprimitive(dest)
         if isinstance(src, RUnion):
+            if is_object_rprimitive(dest):
+                # Unions are boxed, even if some of their items are unboxed.
+                return True
             # IR doesn't have the ability to narrow unions based on
             # control flow, so cannot be a strict all() here.
             return any(can_coerce_to(s, dest) for s in src.items)

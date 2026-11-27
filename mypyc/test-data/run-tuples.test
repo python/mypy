@@ -783,3 +783,154 @@ class TupleNeOverride(tuple[Any, ...]):
 class NT(NamedTuple):
     x: int
     y: int
+
+[case testFixedLengthTupleTruthiness]
+calls: list[int] = []
+
+def make_tuple(n: int) -> tuple[int, int]:
+    calls.append(n)
+    return n, n + 1
+
+def mark(n: int) -> int:
+    calls.append(n)
+    return n
+
+def nonempty_bool(t: tuple[int, int]) -> bool:
+    return bool(t)
+
+def nonempty_if(t: tuple[int, int]) -> int:
+    if t:
+        return 1
+    return 2
+
+def nonempty_not(t: tuple[int, int]) -> bool:
+    return not t
+
+def empty_bool(t: tuple[()]) -> bool:
+    return bool(t)
+
+def empty_if(t: tuple[()]) -> int:
+    if t:
+        return 1
+    return 2
+
+def empty_not(t: tuple[()]) -> bool:
+    return not t
+
+def empty_or(t: tuple[()]) -> tuple[int, int]:
+    return t or make_tuple(7)
+
+def optional_bool(t: tuple[int, int] | None) -> bool:
+    return bool(t)
+
+def optional_if(t: tuple[int, int] | None) -> int:
+    if t:
+        return t[0]
+    return -1
+
+def optional_not(t: tuple[int, int] | None) -> bool:
+    return not t
+
+def optional_or(t: tuple[int, int] | None) -> tuple[int, int]:
+    return t or make_tuple(7)
+
+def optional_and(t: tuple[int, int] | None, x: int) -> tuple[int, int] | int | None:
+    return t and mark(x)
+
+def optional_empty_bool(t: tuple[()] | None) -> bool:
+    return bool(t)
+
+def optional_empty_not(t: tuple[()] | None) -> bool:
+    return not t
+
+def union_bool(t: tuple[int] | list[int]) -> bool:
+    return bool(t)
+
+def union_not(t: tuple[int] | list[int]) -> bool:
+    return not t
+
+def side_effects() -> tuple[bool, bool]:
+    a = bool(make_tuple(1))
+    b = not make_tuple(2)
+    if make_tuple(3):
+        pass
+    return a, b
+
+def test_nonempty() -> None:
+    assert nonempty_bool((0, 0)) is True
+    assert nonempty_if((0, 0)) == 1
+    assert nonempty_not((0, 0)) is False
+
+def test_empty() -> None:
+    assert empty_bool(()) is False
+    assert empty_if(()) == 2
+    assert empty_not(()) is True
+
+def test_optional() -> None:
+    assert optional_bool(None) is False
+    assert optional_bool((0, 0)) is True
+    assert optional_if(None) == -1
+    assert optional_if((5, 6)) == 5
+    assert optional_not(None) is True
+    assert optional_not((0, 0)) is False
+    assert optional_empty_bool(None) is False
+    assert optional_empty_bool(()) is False
+    assert optional_empty_not(None) is True
+    assert optional_empty_not(()) is True
+
+def test_short_circuiting() -> None:
+    calls.clear()
+    assert empty_or(()) == (7, 8)
+    assert optional_or(None) == (7, 8)
+    assert optional_or((1, 2)) == (1, 2)
+    assert optional_and(None, 3) is None
+    assert optional_and((1, 2), 3) == 3
+    assert calls == [7, 7, 3]
+
+def test_union_with_list() -> None:
+    assert union_bool((0,)) is True
+    assert union_bool([]) is False
+    assert union_bool([0]) is True
+    assert union_not([]) is True
+    assert union_not([0]) is False
+    assert union_not((1,)) is False
+
+def test_side_effects() -> None:
+    calls.clear()
+    assert side_effects() == (True, False)
+    assert calls == [1, 2, 3]
+
+[case testFixedLengthTupleSubclassTruthiness]
+def plain(t: tuple[int, int]) -> tuple[bool, bool, bool]:
+    if t:
+        branch = True
+    else:
+        branch = False
+    return bool(t), branch, not t
+
+def optional(t: tuple[int, int] | None) -> tuple[bool, bool, bool]:
+    if t:
+        branch = True
+    else:
+        branch = False
+    return bool(t), branch, not t
+
+[file driver.py]
+from native import plain, optional
+
+class FalsyTuple(tuple):
+    def __bool__(self):
+        return False
+
+class LenZeroTuple(tuple):
+    def __len__(self):
+        return 0
+
+# Fixed-length tuple value semantics ignore subclass truthiness overrides.
+for cls in (FalsyTuple, LenZeroTuple):
+    value = cls((0, 0))
+    assert bool(value) is False
+    assert plain(value) == (True, True, False)
+    assert optional(value) == (True, True, False)
+
+assert optional(None) == (False, False, True)

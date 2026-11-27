@@ -1332,3 +1332,62 @@ L3:
     r19 = r20
 L4:
     return r19
+
+[case testFixedLengthTupleTruthiness]
+def nonempty_bool(t: tuple[int, int]) -> bool:
+    return bool(t)
+def empty_bool(t: tuple[()]) -> bool:
+    return bool(t)
+def nonempty_not(t: tuple[int, int]) -> bool:
+    return not t
+def optional_if(t: tuple[int, int] | None) -> bool:
+    if t:
+        return True
+    return False
+def optional_bool(t: tuple[int, int] | None) -> bool:
+    return bool(t)
+def optional_not(t: tuple[int, int] | None) -> bool:
+    return not t
+[out]
+def nonempty_bool(t):
+    t :: tuple[int, int]
+L0:
+    return 1
+def empty_bool(t):
+    t :: tuple[]
+L0:
+    return 0
+def nonempty_not(t):
+    t :: tuple[int, int]
+    r0 :: bool
+L0:
+    r0 = 1 ^ 1
+    return r0
+def optional_if(t):
+    t :: union[tuple[int, int], None]
+    r0 :: object
+    r1 :: bit
+L0:
+    r0 = load_address _Py_NoneStruct
+    r1 = t != r0
+    if r1 goto L1 else goto L2 :: bool
+L1:
+    return 1
+L2:
+    return 0
+def optional_bool(t):
+    t :: union[tuple[int, int], None]
+    r0 :: object
+    r1 :: bit
+L0:
+    r0 = load_address _Py_NoneStruct
+    r1 = t != r0
+    return r1
+def optional_not(t):
+    t :: union[tuple[int, int], None]
+    r0 :: object
+    r1 :: bit
+L0:
+    r0 = load_address _Py_NoneStruct
+    r1 = t == r0
+    return r1

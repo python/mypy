@@ -2239,13 +2239,15 @@ class LowLevelIRBuilder:
             or is_list_rprimitive(typ)
             or is_tuple_rprimitive(typ)
             or is_dict_rprimitive(typ)
-            or isinstance(typ, RInstance)
+            or isinstance(typ, (RInstance, RTuple))
         ):
             bool_val = self.bool_value(value)
             return self.unary_not(bool_val, line)
         if is_optional_type(typ):
             value_typ = optional_value_type(typ)
             assert value_typ
+            if isinstance(value_typ, RTuple) and value_typ.types:
+                return self.add(ComparisonOp(value, self.none_object(), ComparisonOp.EQ, line))
             if (
                 is_str_rprimitive(value_typ)
                 or is_list_rprimitive(value_typ)
@@ -2489,6 +2491,8 @@ class LowLevelIRBuilder:
         elif is_fixed_width_rtype(value.type):
             zero = Integer(0, value.type)
             result = self.add(ComparisonOp(value, zero, ComparisonOp.NEQ))
+        elif isinstance(value.type, RTuple):
+            result = self.true() if value.type.types else self.false()
         elif is_str_rprimitive(value.type):
             result = self.call_c(str_check_if_true, [value], value.line)
         elif (
@@ -2512,15 +2516,7 @@ class LowLevelIRBuilder:
             value_type = optional_value_type(value.type)
             if value_type is not None:
                 not_none = self.translate_is_op(value, self.none_object(), "is not", value.line)
-                always_truthy = False
-                if isinstance(value_type, RInstance):
-                    # check whether X.__bool__ is always just the default (object.__bool__)
-                    if not value_type.class_ir.has_method(
-                        "__bool__"
-                    ) and value_type.class_ir.is_method_final("__bool__"):
-                        always_truthy = True
-
-                if always_truthy:
+                if self.is_always_truthy(value_type):
                     result = not_none
                 else:
                     # "X | None" where X may be falsey and requires a check
@@ -2543,6 +2539,14 @@ class LowLevelIRBuilder:
                 result = self.primitive_op(bool_op, [value], value.line)
         return result
 
+    def is_always_truthy(self, typ: RType) -> bool:
+        if isinstance(typ, RInstance):
+            return not typ.class_ir.has_method("__bool__") and typ.class_ir.is_method_final(
+                "__bool__"
+            )
+        # Fixed-length tuples ignore subclass truthiness overrides, even when boxed.
+        return isinstance(typ, RTuple) and len(typ.types) > 0
+
     def add_bool_branch(self, value: Value, true: BasicBlock, false: BasicBlock) -> None:
         opt_value_type = optional_value_type(value.type)
         if opt_value_type is None:
@@ -2553,15 +2557,7 @@ class LowLevelIRBuilder:
             is_none = self.translate_is_op(value, self.none_object(), "is not", value.line)
             branch = Branch(is_none, true, false, Branch.BOOL, value.line)
             self.add(branch)
-            always_truthy = False
-            if isinstance(opt_value_type, RInstance):
-                # check whether X.__bool__ is always just the default (object.__bool__)
-                if not opt_value_type.class_ir.has_method(
-                    "__bool__"
-                ) and opt_value_type.class_ir.is_method_final("__bool__"):
-                    always_truthy = True
-
-            if not always_truthy:
+            if not self.is_always_truthy(opt_value_type):
                 # Optional[X] where X may be falsey and requires a check
                 branch.true = BasicBlock()
                 self.activate_block(branch.true)
