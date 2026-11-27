@@ -254,6 +254,7 @@ def test_endswith() -> None:
 
 [case testBytesSlicing]
 from typing import Any, cast
+from testutil import assertRaises
 
 def test_reversed_slice_bounds() -> None:
     bounds = (-100, -3, -1, 0, 1, 2, 3, 100, 2**100)
@@ -294,6 +295,22 @@ def test_bytes_slicing() -> None:
         assert type(b[-big_int:-1]) == bytes
     assert type(b[-ten:]) == bytes
     assert type(b[:]) == bytes
+
+def test_bytes_index_with_slice_object() -> None:
+    b = b'abcdef'
+    s = slice(1, None, 2)
+    assert b[s] == b'bdf'
+    i_or_s: int | slice = s
+    assert b[i_or_s] == b'bdf'
+    i_or_s = -1
+    assert b[i_or_s] == ord('f')
+    a: Any = s
+    assert b[a] == b'bdf'
+    a = 2
+    assert b[a] == ord('c')
+    a = 'x'
+    with assertRaises(TypeError, "byte indices must be integers or slices, not str"):
+        b[a]
 
 [case testBytearrayFromBytesSlice]
 from typing import Any, Callable
