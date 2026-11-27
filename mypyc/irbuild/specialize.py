@@ -1871,11 +1871,15 @@ def translate_bytes_writer_set_item(
     # Get the BytesWriter object
     obj = builder.accept(base_expr)
 
-    # Get the index and value arguments
+    # Get the index and value arguments. Convert them before checking the index,
+    # since the conversions can call __index__, which can change the length or the
+    # buffer of the writer.
     index = builder.accept(args[0])
-    value = builder.accept(args[1])
     if is_int_rprimitive(index.type):
         index = coerce_int_index_to_int64(builder, index, ctx_expr.line)
+    else:
+        index = builder.coerce(index, int64_rprimitive, ctx_expr.line)
+    value = builder.coerce(builder.accept(args[1]), uint8_rprimitive, ctx_expr.line)
 
     # Adjust the index (handle negative indices)
     adjusted_index = builder.primitive_op(

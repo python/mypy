@@ -177,24 +177,23 @@ BytesWriter_item(BytesWriterObject *self, Py_ssize_t index)
 static int
 BytesWriter_ass_item(BytesWriterObject *self, Py_ssize_t index, PyObject *value)
 {
-    Py_ssize_t length = self->len;
-
-    // Check bounds
-    if (index < 0 || index >= length) {
-        PyErr_SetString(PyExc_IndexError, "BytesWriter index out of range");
-        return -1;
-    }
-
     // Check that value is not NULL (deletion not supported)
     if (value == NULL) {
         PyErr_SetString(PyExc_TypeError, "BytesWriter does not support item deletion");
         return -1;
     }
 
-    // Convert value to uint8
+    // Convert value to uint8. Do this before checking bounds, since this can call
+    // __index__, which can change the length or the buffer of the writer.
     uint8_t byte_value = CPyLong_AsUInt8(value);
     if (unlikely(byte_value == CPY_LL_UINT_ERROR && PyErr_Occurred())) {
         CPy_TypeError("u8", value);
+        return -1;
+    }
+
+    // Check bounds
+    if (index < 0 || index >= self->len) {
+        PyErr_SetString(PyExc_IndexError, "BytesWriter index out of range");
         return -1;
     }
 
@@ -256,22 +255,26 @@ check_bytes_writer(PyObject *data) {
 }
 
 static char
-BytesWriter_write_internal(BytesWriterObject *self, PyObject *value) {
-    const char *data;
-    Py_ssize_t size;
-    if (likely(PyBytes_Check(value))) {
-        data = PyBytes_AS_STRING(value);
-        size = PyBytes_GET_SIZE(value);
-    } else {
-        data = PyByteArray_AS_STRING(value);
-        size = PyByteArray_GET_SIZE(value);
-    }
-    // Write bytes content.
+BytesWriter_write_data(BytesWriterObject *self, const char *data, Py_ssize_t size) {
     if (!ensure_bytes_writer_size(self, size))
         return CPY_NONE_ERROR;
     memcpy(self->buf + self->len, data, size);
     self->len += size;
     return CPY_NONE;
+}
+
+static char
+BytesWriter_write_internal(BytesWriterObject *self, PyObject *value) {
+    if (likely(PyBytes_Check(value))) {
+        return BytesWriter_write_data(self, PyBytes_AS_STRING(value), PyBytes_GET_SIZE(value));
+    }
+    // On free-threaded builds another thread could resize the bytearray while we
+    // copy it, so lock it like the bytearray methods do (no-op on other builds).
+    char result;
+    Py_BEGIN_CRITICAL_SECTION(value);
+    result = BytesWriter_write_data(self, PyByteArray_AS_STRING(value), PyByteArray_GET_SIZE(value));
+    Py_END_CRITICAL_SECTION();
+    return result;
 }
 
 static PyObject*
