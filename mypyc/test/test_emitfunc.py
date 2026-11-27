@@ -66,6 +66,7 @@ from mypyc.ir.rtypes import (
     c_pointer_rprimitive,
     cstring_rprimitive,
     dict_rprimitive,
+    int8_rprimitive,
     int16_rprimitive,
     int32_rprimitive,
     int64_rprimitive,
@@ -119,6 +120,10 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
         self.b = add_local("b", bool_rprimitive)
         self.s1 = add_local("s1", short_int_rprimitive)
         self.s2 = add_local("s2", short_int_rprimitive)
+        self.i8 = add_local("i8", int8_rprimitive)
+        self.i8_1 = add_local("i8_1", int8_rprimitive)
+        self.i16 = add_local("i16", int16_rprimitive)
+        self.i16_1 = add_local("i16_1", int16_rprimitive)
         self.i32 = add_local("i32", int32_rprimitive)
         self.i32_1 = add_local("i32_1", int32_rprimitive)
         self.i64 = add_local("i64", int64_rprimitive)
@@ -129,9 +134,8 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
         self.u16_1 = add_local("u16_1", uint16_rprimitive)
         self.u32 = add_local("u32", uint32_rprimitive)
         self.u32_1 = add_local("u32_1", uint32_rprimitive)
-        self.ptr = add_local("ptr", pointer_rprimitive)
-        self.i16 = add_local("i16", int16_rprimitive)
         self.u64 = add_local("u64", uint64_rprimitive)
+        self.ptr = add_local("ptr", pointer_rprimitive)
         self.t = add_local("t", RTuple([int_rprimitive, bool_rprimitive]))
         self.tt = add_local(
             "tt", RTuple([RTuple([int_rprimitive, bool_rprimitive]), bool_rprimitive])
@@ -1203,6 +1207,14 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
             ComparisonOp(self.i64, self.i64_1, ComparisonOp.ULT, 1),
             """cpy_r_r0 = (uint64_t)cpy_r_i64 < (uint64_t)cpy_r_i64_1;""",
         )
+        self.assert_emit(
+            ComparisonOp(self.i8, self.i8_1, ComparisonOp.ULT, 1),
+            """cpy_r_r0 = (uint8_t)cpy_r_i8 < (uint8_t)cpy_r_i8_1;""",
+        )
+        self.assert_emit(
+            ComparisonOp(self.i16, self.i16_1, ComparisonOp.ULT, 1),
+            """cpy_r_r0 = (uint16_t)cpy_r_i16 < (uint16_t)cpy_r_i16_1;""",
+        )
 
         # object type
         self.assert_emit(
@@ -1386,6 +1398,15 @@ else {
         )
 
     def test_extend(self) -> None:
+        self.assert_emit(
+            Extend(self.i8, int64_rprimitive, signed=True), """cpy_r_r0 = cpy_r_i8;"""
+        )
+        self.assert_emit(
+            Extend(self.i8, int64_rprimitive, signed=False), """cpy_r_r0 = (uint8_t)cpy_r_i8;"""
+        )
+        self.assert_emit(
+            Extend(self.i16, int32_rprimitive, signed=False), """cpy_r_r0 = (uint16_t)cpy_r_i16;"""
+        )
         self.assert_emit(
             Extend(self.i32, int64_rprimitive, signed=True), """cpy_r_r0 = cpy_r_i32;"""
         )
