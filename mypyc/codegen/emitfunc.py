@@ -947,21 +947,30 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         dest = self.reg(op)
         lhs = self.reg(op.lhs)
         rhs = self.reg(op.rhs)
+        op_str = op.op_str[op.op]
         if op.op == IntOp.RIGHT_SHIFT:
             # Signed right shift
             lhs = self.signed_cast_if_tagged(op.lhs.type) + lhs
             rhs = self.signed_cast_if_tagged(op.rhs.type) + rhs
-        elif (
-            op.op == IntOp.MUL
-            and is_fixed_width_rtype(op.type)
-            and not op.type.is_signed
-            and op.type.size < 4
-        ):
-            # C promotes unsigned types narrower than int to (signed) int, so
-            # e.g. u16 * u16 could overflow int, which is undefined behavior.
-            # Do the arithmetic using unsigned int to get predictable wraparound.
-            lhs = f"(unsigned int){lhs}"
-        self.emit_line(f"{dest} = {lhs} {op.op_str[op.op]} {rhs};")
+        elif op.op in (IntOp.ADD, IntOp.SUB, IntOp.MUL) and not op.no_overflow:
+            unsigned_type = wrapping_int_op_unsigned_ctype(op)
+            if unsigned_type is not None:
+                # Signed overflow is undefined behavior in C (types narrower than int are
+                # promoted to signed int), so calculate using an unsigned type, which
+                # wraps around, and convert the result back.
+                lhs = f"({unsigned_type}){lhs}"
+                rhs = f"({unsigned_type}){rhs}"
+                result_type = self.ctype(op.type)
+                self.emit_line(f"{dest} = ({result_type})({lhs} {op_str} {rhs});")
+                return
+            if is_fixed_width_rtype(op.type):
+                # The operation uses an unsigned type at least as wide as int (u32 or u64)
+                # and wraps around, unless a constant operand has a wider signed C type
+                # (e.g. 4000000000LL is a long long, so a u32 multiplication by it
+                # could overflow long long). Convert constants to the result type.
+                lhs = self.cast_if_constant(op.lhs, op.type, lhs)
+                rhs = self.cast_if_constant(op.rhs, op.type, rhs)
+        self.emit_line(f"{dest} = {lhs} {op_str} {rhs};")
 
     def emit_native_int_shift(self, op: IntOp) -> None:
         """Emit a left or right shift with a fixed-width native int result type.
@@ -987,6 +996,11 @@ class FunctionEmitterVisitor(OpVisitor[None]):
             # be signed to preserve the sign. Native int operands already have the right
             # signedness, so they are used as is.
             lhs = self.signed_cast_if_tagged(op.lhs.type) + lhs
+        if op.op == IntOp.RIGHT_SHIFT or left_shift_unsigned_ctype(rtype) is None:
+            # The type of a shift is the (promoted) type of the left operand. A constant
+            # left operand such as 3 has type int in C, which can be narrower than the
+            # result type (e.g. 3 << 40 as u64), so convert it to the result type.
+            lhs = self.cast_if_constant(op.lhs, rtype, lhs)
 
         def shift(count: str) -> str:
             if op.op == IntOp.RIGHT_SHIFT:
@@ -1244,6 +1258,16 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         if DEBUG_ERRORS:
             self.emit_line('assert(PyErr_Occurred() != NULL && "failure w/o err!");')
 
+    def cast_if_constant(self, value: Value, rtype: RType, expr: str) -> str:
+        """Convert a constant operand expression to the C type of rtype.
+
+        A C integer literal has type int, long long or unsigned long long, depending on
+        its value, which can be different from the type of the native int operation.
+        """
+        if isinstance(value, Integer):
+            return f"({self.ctype(rtype)}){expr}"
+        return expr
+
     def signed_cast_if_tagged(self, type: RType) -> str:
         """Return a C cast prefix that makes a tagged int operand signed.
 
@@ -1288,6 +1312,23 @@ def left_shift_unsigned_ctype(rtype: RPrimitive) -> str | None:
 
 def unsigned_ctype_of_size(size: int) -> str:
     return f"uint{8 * size}_t"
+
+
+def wrapping_int_op_unsigned_ctype(op: IntOp) -> str | None:
+    """Return the unsigned C type to use so that an IntOp wraps around on overflow.
+
+    This is used for addition, subtraction and multiplication (see emit_native_int_shift
+    for shifts). Return None if the C operation already wraps around, since it's performed
+    using an unsigned type. Operands narrower than int are promoted to (signed) int in C,
+    so they also need a cast.
+    """
+    operand_types = [op.lhs.type, op.rhs.type]
+    types = [op.type] + operand_types
+    if not all(isinstance(t, RPrimitive) and t.is_unboxed for t in types):
+        return None
+    if all(isinstance(t, RPrimitive) and not t.is_signed and t.size >= 4 for t in operand_types):
+        return None
+    return unsigned_ctype_of_size(max(4, *(t.size for t in types if isinstance(t, RPrimitive))))
 
 
 _translation_table: Final[dict[int, str]] = {}

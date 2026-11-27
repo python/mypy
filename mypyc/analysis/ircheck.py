@@ -448,6 +448,8 @@ class OpChecker(OpVisitor[None]):
             and not is_pointer_arithmetic(op)
         ):
             self.fail(op, f"Operand types have incompatible signs: {left}, {right}")
+        if op.no_overflow and op.op not in (IntOp.ADD, IntOp.SUB, IntOp.MUL):
+            self.fail(op, f"no_overflow is not supported for '{op_str}'")
 
     def visit_comparison_op(self, op: ComparisonOp) -> None:
         self.check_compatibility(op, op.lhs.type, op.rhs.type)

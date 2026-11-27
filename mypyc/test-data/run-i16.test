@@ -1,5 +1,5 @@
 [case testI16BasicOps]
-from typing import Any, Tuple
+from typing import Any, Final, Tuple
 
 from mypy_extensions import i16, i32, i64
 
@@ -144,6 +144,35 @@ def test_shift_count_out_of_range() -> None:
     # The largest valid count
     assert one << (width - one) == -2**15
     assert neg >> (width - one) == -1
+
+MAX_I16_FINAL: Final[i16] = 2**15 - 1
+MIN_I16_FINAL: Final[i16] = -MAX_I16_FINAL - 1
+
+def test_arithmetic_wraps_around() -> None:
+    max_i16: i16 = 2**15 - 1 + int()
+    min_i16: i16 = -2**15 + int()
+    one: i16 = 1 + int()
+    two: i16 = 2 + int()
+    assert max_i16 + one == min_i16
+    assert min_i16 - one == max_i16
+    assert max_i16 * two == -2
+    assert max_i16 * max_i16 == 1
+    assert min_i16 * -one == min_i16
+    assert -min_i16 == min_i16
+    assert max_i16 << one == -2
+    assert min_i16 << one == 0
+    assert one << (two * 7 + one) == min_i16
+    x = max_i16
+    x += one
+    assert x == min_i16
+    assert abs(min_i16) == min_i16
+    assert abs(-max_i16) == max_i16
+    assert abs(min_i16 + one) == max_i16
+    assert -i16(-2**15) == min_i16
+    assert MAX_I16_FINAL + 1 == min_i16
+    assert MIN_I16_FINAL - 1 == max_i16
+    assert -MIN_I16_FINAL == min_i16
+    assert MAX_I16_FINAL * 2 == -2
 
 def test_bitwise_ops() -> None:
     x: i16 = 13855 + int()
@@ -359,3 +388,33 @@ def test_tuple_i16() -> None:
     x: Any = t
     tt: Tuple[i16, i16] = x
     assert tt == (1, 2)
+
+[case testI16FloorDivideConstantMinByMinusOne]
+from typing import Final
+from mypy_extensions import i16
+from testutil import assertRaises
+
+MIN: Final[i16] = -2**15
+MINUS_ONE: Final[i16] = -1
+
+def div() -> i16:
+    return MIN // -1
+
+def div_final() -> i16:
+    return MIN // MINUS_ONE
+
+def div_nested() -> i16:
+    return MIN // -1 + 1
+
+def mod() -> i16:
+    return MIN % -1
+
+def test_min_divided_by_minus_one() -> None:
+    with assertRaises(OverflowError, "integer division overflow"):
+        div()
+    with assertRaises(OverflowError, "integer division overflow"):
+        div_final()
+    with assertRaises(OverflowError, "integer division overflow"):
+        div_nested()
+    assert mod() == 0
+    assert MIN // 1 == MIN

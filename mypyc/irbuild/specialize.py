@@ -1792,6 +1792,11 @@ def translate_getitem_with_bounds_check(
     if len(args) != 1:
         return None
 
+    # The index could also be a slice (or Any), for example
+    index_type = builder.node_type(args[0])
+    if not (is_tagged(index_type) or is_fixed_width_rtype(index_type)):
+        return None
+
     # Get the object
     obj = builder.accept(base_expr)
 

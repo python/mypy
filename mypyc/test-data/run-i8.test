@@ -1,5 +1,5 @@
 [case testI8BasicOps]
-from typing import Any
+from typing import Any, Final
 
 from mypy_extensions import i8, i16, i32, i64, u8, u16, u32, u64
 from testutil import assertRaises
@@ -76,6 +76,34 @@ def test_shift_count_out_of_range() -> None:
     assert one << (width - one) == -2**7
     assert neg >> (width - one) == -1
 
+MAX_I8_FINAL: Final[i8] = 127
+MIN_I8_FINAL: Final[i8] = -MAX_I8_FINAL - 1
+
+def test_arithmetic_wraps_around() -> None:
+    max_i8: i8 = 127 + int()
+    min_i8: i8 = -128 + int()
+    one: i8 = 1 + int()
+    two: i8 = 2 + int()
+    assert max_i8 + one == min_i8
+    assert min_i8 - one == max_i8
+    assert max_i8 * two == -2
+    assert max_i8 * max_i8 == 1
+    assert min_i8 * -one == min_i8
+    assert -min_i8 == min_i8
+    assert max_i8 << one == -2
+    assert one << (two * 3 + one) == min_i8
+    x = max_i8
+    x += one
+    assert x == min_i8
+    assert abs(min_i8) == min_i8
+    assert abs(-max_i8) == max_i8
+    assert abs(min_i8 + one) == max_i8
+    assert -i8(-128) == min_i8
+    assert MAX_I8_FINAL + 1 == min_i8
+    assert MIN_I8_FINAL - 1 == max_i8
+    assert -MIN_I8_FINAL == min_i8
+    assert MAX_I8_FINAL * 2 == -2
+
 def test_conversions() -> None:
     assert to_i8(127) == 127
     assert to_i8(128) == -128
@@ -84,3 +112,33 @@ def test_conversions() -> None:
     assert to_unsigned(5) == (5, 5, 5, 5)
     assert to_unsigned(-1) == (255, 2**16 - 1, 2**32 - 1, 2**64 - 1)
     assert to_unsigned(-128) == (128, 2**16 - 128, 2**32 - 128, 2**64 - 128)
+
+[case testI8FloorDivideConstantMinByMinusOne]
+from typing import Final
+from mypy_extensions import i8
+from testutil import assertRaises
+
+MIN: Final[i8] = -2**7
+MINUS_ONE: Final[i8] = -1
+
+def div() -> i8:
+    return MIN // -1
+
+def div_final() -> i8:
+    return MIN // MINUS_ONE
+
+def div_nested() -> i8:
+    return MIN // -1 + 1
+
+def mod() -> i8:
+    return MIN % -1
+
+def test_min_divided_by_minus_one() -> None:
+    with assertRaises(OverflowError, "integer division overflow"):
+        div()
+    with assertRaises(OverflowError, "integer division overflow"):
+        div_final()
+    with assertRaises(OverflowError, "integer division overflow"):
+        div_nested()
+    assert mod() == 0
+    assert MIN // 1 == MIN

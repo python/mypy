@@ -1644,3 +1644,43 @@ def test_local_final_with_same_name_as_module() -> None:
 
 def test_local_final_literal() -> None:
     assert local_final_literal() == [5, 6]
+
+[case testHasattr]
+from typing import Any
+
+from testutil import assertRaises
+
+class C:
+    x = 1
+
+    def __getattr__(self, name: str) -> Any:
+        if name == "value_error":
+            raise ValueError("value error")
+        if name == "runtime_error":
+            raise RuntimeError("runtime error")
+        raise AttributeError(name)
+
+def has(o: object, name: str) -> bool:
+    return hasattr(o, name)
+
+def test_hasattr() -> None:
+    c = C()
+    assert has(c, "x")
+    assert has(c, "__class__")
+    assert not has(c, "y")
+    assert hasattr(c, "x")
+    assert not hasattr(c, "y")
+
+def test_hasattr_propagates_exceptions() -> None:
+    c = C()
+    with assertRaises(ValueError, "value error"):
+        has(c, "value_error")
+    with assertRaises(ValueError, "value error"):
+        hasattr(c, "value_error")
+    with assertRaises(RuntimeError, "runtime error"):
+        has(c, "runtime_error")
+
+def test_hasattr_non_str_name() -> None:
+    name: Any = 1
+    with assertRaises(TypeError, "attribute name must be string"):
+        hasattr(C(), name)

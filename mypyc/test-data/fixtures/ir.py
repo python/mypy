@@ -350,7 +350,8 @@ class frozenset(Generic[_T]):
     def __or__(self, s: Union[Set[_S], FrozenSet[_S]]) -> FrozenSet[Union[_T, _S]]: ...
     def __xor__(self, s: Union[Set[_S], FrozenSet[_S]]) -> FrozenSet[Union[_T, _S]]: ...
 
-class slice: pass
+class slice:
+    def __init__(self, start: Any, stop: Any = ..., step: Any = ...) -> None: pass
 
 class range(Iterable[int]):
     def __init__(self, x: int, y: int = ..., z: int = ...) -> None: pass

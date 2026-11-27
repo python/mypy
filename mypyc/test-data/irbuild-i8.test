@@ -115,6 +115,7 @@ D: Final[i8] = ONE << 7  # E: Value 128 is out of range for "i8"
 E: Final = ONE << 7  # E: Value 128 is out of range for "i8"
 F: Final[i8] = (ONE << 7) >> 7  # E: Unsupported value for final "F" (intermediate result overflows "i8")
 G: Final[i8] = True + 1  # E: Unsupported value for final "G"
+P: Final[i8] = (ONE + 127) >> 1  # E: Unsupported value for final "P" (intermediate result overflows "i8")
 
 class Attrs:
     H: Final = ONE << 7  # E: Value 128 is out of range for "i8"
@@ -156,3 +157,50 @@ main:5: error: Value -129 is out of range for "i8"
 main:6: error: Value 128 is out of range for "i8"
 main:7: error: Value 128 is out of range for "i8"
 main:8: error: Value -129 is out of range for "i8"
+
+[case testI8NegateLiteralWrapsAround]
+from mypy_extensions import i8
+
+def f() -> None:
+    a = -i8(-128)
+    b = -i8(-127)
+    c = -i8(127)
+[out]
+def f():
+    a, b, c :: i8
+L0:
+    a = -128
+    b = 127
+    c = -127
+    return 1
+
+[case testI8FinalWraparound]
+from typing import Final
+from mypy_extensions import i8
+
+MAX: Final[i8] = 127
+MIN: Final[i8] = -MAX - 1
+
+def f() -> None:
+    a = MAX + 1
+    b = MIN - 1
+    c = -MIN
+    d = MAX * 2
+def g() -> str:
+    return "%d" % (MAX + 1,)
+[typing fixtures/typing-full.pyi]
+[out]
+def f():
+    a, b, c, d :: i8
+L0:
+    a = -128
+    b = 127
+    c = -128
+    d = -2
+    return 1
+def g():
+    r0, r1 :: str
+L0:
+    r0 = '-128'
+    r1 = CPyStr_Build(1, r0)
+    return r1

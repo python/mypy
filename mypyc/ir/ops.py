@@ -1443,11 +1443,19 @@ class IntOp(RegisterOp):
     compatible representations. Fixed-width integers, short_int_rprimitive,
     bool_rprimitive and bit_rprimitive are supported.
 
+    Addition, subtraction, multiplication and left shift wrap around on
+    overflow (two's complement), unlike in C, where signed overflow is
+    undefined behavior. If the operation can't overflow, set no_overflow to
+    generate a plain C operation, which C compilers may be able to optimize
+    better. Only addition, subtraction and multiplication support no_overflow.
+
     For fixed-width native int types, shifts are defined for all operand
-    values, unlike in C. Left shift wraps around on overflow (two's
-    complement). The shift count is treated as unsigned, so a count that is
-    negative or at least the bit width of the type gives 0, or -1 for a right
-    shift of a negative value (like NumPy).
+    values, unlike in C. The shift count is treated as unsigned, so a count
+    that is negative or at least the bit width of the type gives 0, or -1 for
+    a right shift of a negative value (like NumPy).
+
+    Division and modulus follow C semantics: the caller must ensure that the
+    divisor isn't zero and that there is no signed overflow (MIN / -1).
 
     For tagged (arbitrary-precision) integer ops look at mypyc.primitives.int_ops.
     """
@@ -1481,12 +1489,23 @@ class IntOp(RegisterOp):
         RIGHT_SHIFT: ">>",
     }
 
-    def __init__(self, type: RType, lhs: Value, rhs: Value, op: int, line: int = -1) -> None:
+    def __init__(
+        self,
+        type: RType,
+        lhs: Value,
+        rhs: Value,
+        op: int,
+        line: int = -1,
+        *,
+        no_overflow: bool = False,
+    ) -> None:
         super().__init__(line)
         self.type = type
         self.lhs = lhs
         self.rhs = rhs
         self.op = op
+        # If true, the operation is known to not overflow (only for ADD, SUB and MUL)
+        self.no_overflow = no_overflow
 
     def sources(self) -> list[Value]:
         return [self.lhs, self.rhs]

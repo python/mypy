@@ -1,5 +1,5 @@
 [case testI32BasicOps]
-from typing import Any, Tuple
+from typing import Any, Final, Tuple
 
 from mypy_extensions import i16, i32, i64
 
@@ -144,6 +144,35 @@ def test_shift_count_out_of_range() -> None:
     # The largest valid count
     assert one << (width - one) == -2**31
     assert neg >> (width - one) == -1
+
+MAX_I32_FINAL: Final[i32] = 2**31 - 1
+MIN_I32_FINAL: Final[i32] = -MAX_I32_FINAL - 1
+
+def test_arithmetic_wraps_around() -> None:
+    max_i32: i32 = 2**31 - 1 + int()
+    min_i32: i32 = -2**31 + int()
+    one: i32 = 1 + int()
+    two: i32 = 2 + int()
+    assert max_i32 + one == min_i32
+    assert min_i32 - one == max_i32
+    assert one - min_i32 == -max_i32
+    assert max_i32 * two == -2
+    assert max_i32 * max_i32 == 1
+    assert min_i32 * -one == min_i32
+    assert -min_i32 == min_i32
+    assert max_i32 << one == -2
+    assert one << (two * 15 + one) == min_i32
+    x = max_i32
+    x += one
+    assert x == min_i32
+    assert abs(min_i32) == min_i32
+    assert abs(-max_i32) == max_i32
+    assert abs(min_i32 + one) == max_i32
+    assert -i32(-2**31) == min_i32
+    assert MAX_I32_FINAL + 1 == min_i32
+    assert MIN_I32_FINAL - 1 == max_i32
+    assert -MIN_I32_FINAL == min_i32
+    assert MAX_I32_FINAL * 2 == -2
 
 def test_bitwise_ops() -> None:
     x: i32 = 1920687484 + int()
@@ -357,3 +386,33 @@ def test_tuple_i32() -> None:
     x: Any = t
     tt: Tuple[i32, i32] = x
     assert tt == (1, 2)
+
+[case testI32FloorDivideConstantMinByMinusOne]
+from typing import Final
+from mypy_extensions import i32
+from testutil import assertRaises
+
+MIN: Final[i32] = -2**31
+MINUS_ONE: Final[i32] = -1
+
+def div() -> i32:
+    return MIN // -1
+
+def div_final() -> i32:
+    return MIN // MINUS_ONE
+
+def div_nested() -> i32:
+    return MIN // -1 + 1
+
+def mod() -> i32:
+    return MIN % -1
+
+def test_min_divided_by_minus_one() -> None:
+    with assertRaises(OverflowError, "integer division overflow"):
+        div()
+    with assertRaises(OverflowError, "integer division overflow"):
+        div_final()
+    with assertRaises(OverflowError, "integer division overflow"):
+        div_nested()
+    assert mod() == 0
+    assert MIN // 1 == MIN

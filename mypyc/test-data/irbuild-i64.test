@@ -2365,3 +2365,31 @@ L0:
     e = 0
     g = -2
     return 1
+
+[case testI64FinalWraparound]
+from typing import Final
+from mypy_extensions import i64
+
+MAX: Final[i64] = 2**63 - 1
+
+def f() -> None:
+    a = MAX + 1
+    b = -(-MAX - 1)
+    c = -i64(-2**63)
+[typing fixtures/typing-full.pyi]
+[out]
+def f():
+    r0 :: int
+    a :: i64
+    r1 :: int
+    b :: i64
+    r2 :: int
+    c :: i64
+L0:
+    r0 = object -9223372036854775808
+    a = -9223372036854775808
+    r1 = object -9223372036854775808
+    b = -9223372036854775808
+    r2 = object -9223372036854775808
+    c = -9223372036854775808
+    return 1

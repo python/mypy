@@ -32,7 +32,6 @@ from mypyc.ir.rtypes import (
     check_native_int_range,
     is_fixed_width_rtype,
     wrap_native_int,
-    wrap_unsigned_native_int,
 )
 from mypyc.irbuild.util import bytes_from_str
 
@@ -56,13 +55,13 @@ def constant_fold_expr(builder: IRBuilder, expr: Expression) -> ConstantValue | 
         and isinstance(expr, (OpExpr, UnaryExpr))
     ):
         # Evaluate each operation using native int semantics if needed, since
-        # unsigned native ints wrap around on overflow (e.g. -X if X is a u64).
+        # native ints wrap around on overflow (e.g. -X if X is a u64).
         # References to finals aren't wrapped: a final defined in an interpreted
         # module can have an out-of-range value, which must be reported instead.
         # (In a compiled module, check_native_int_final ensures that the value
         # computed by mypy for a constant initializer is in range.)
         # Bools are skipped, since the helper returns a plain int when compiled.
-        value = wrap_unsigned_native_int(builder.node_type(expr), value)
+        value = wrap_native_int(builder.node_type(expr), value)
     return value
 
 
@@ -99,7 +98,14 @@ def constant_fold_expr_inner(builder: IRBuilder, expr: Expression) -> ConstantVa
                 rtype = builder.node_type(expr)
                 if is_fixed_width_rtype(rtype):
                     return constant_fold_native_int_shift(rtype, expr.op, left, right)
-            return constant_fold_binary_op_extended(expr.op, left, right)
+            result = constant_fold_binary_op_extended(expr.op, left, right)
+            if expr.op == "//" and isinstance(result, int):
+                rtype = builder.node_type(expr)
+                if is_fixed_width_rtype(rtype) and not check_native_int_range(rtype, result):
+                    # Signed MIN // -1 raises OverflowError at runtime instead of wrapping
+                    # around, so don't fold it
+                    return None
+            return result
     elif isinstance(expr, UnaryExpr):
         value = constant_fold_expr(builder, expr.expr)
         if value is not None and not isinstance(value, bytes):
