@@ -797,6 +797,13 @@ PyObject *CPyStr_Lower(PyObject *self) {
 #if CPY_3_13_FEATURES
     return CPyStr_ChangeCase(self, CPy_ASCII_Lower, mypyc_interned_str.lower);
 #else
+    // The lowercase mapping of capital sigma depends on the context (final sigma), which
+    // _PyUnicode_ToLowerFull doesn't handle, so use str.lower() for strings that contain it
+    if (!PyUnicode_IS_ASCII(self)
+            && PyUnicode_FindChar(self, 0x3a3, 0, PyUnicode_GET_LENGTH(self), 1) != -1) {
+        return PyObject_CallMethodOneArg(
+            (PyObject *)&PyUnicode_Type, mypyc_interned_str.lower, self);
+    }
     return CPyStr_ChangeCase(self, CPy_ASCII_Lower, _PyUnicode_ToLowerFull);
 #endif
 }

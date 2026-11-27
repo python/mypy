@@ -1487,6 +1487,16 @@ def test_expansion() -> None:
     assert "\u00DF".upper() == "SS"            # ß -> SS
     assert "\uFB03".upper() == "FFI"           # ffi ligature -> FFI
 
+def test_final_sigma() -> None:
+    # The lowercase mapping of capital sigma depends on the context
+    assert "\u039F\u0394\u039F\u03A3".lower() == "\u03BF\u03B4\u03BF\u03C2"  # \u039F\u0394\u039F\u03A3 -> \u03BF\u03B4\u03BF\u03C2
+    assert "\u03A3".lower() == "\u03C3"
+    assert "\u03A3A".lower() == "\u03C3a"
+    for s in ["A\u03A3", "A\u03A3.", "A\u03A3b", "\u03A3\u0391\u03A3'\u03A3", "\u00C0\u03A3 \u03A3"]:
+        a: Any = s
+        assert s.lower() == a.lower(), f"lower mismatch for {s!r}"
+        assert s.upper() == a.upper(), f"upper mismatch for {s!r}"
+
 def test_comprehensive() -> None:
     # All BMP code points, and a sample of the others (checking all of them is slow)
     for i in [*range(0x10000), *range(0x10000, 0x110000, 97), 0x10FFFF]:
