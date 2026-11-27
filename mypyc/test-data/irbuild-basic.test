@@ -3894,6 +3894,22 @@ L0:
     r0 = 'https://w3id.org/cwl/salad#'
     return 54
 
+[case testHasattr]
+def f(o: object, name: str) -> bool:
+    return hasattr(o, name)
+[out]
+def f(o, name):
+    o :: object
+    name :: str
+    r0 :: i32
+    r1 :: bit
+    r2 :: bool
+L0:
+    r0 = PyObject_HasAttrWithError(o, name)
+    r1 = r0 >= 0 :: signed
+    r2 = truncate r0: i32 to builtins.bool
+    return r2
+
 [case testAsyncGeneratorExprNotSupported]
 from typing import AsyncIterator
 
