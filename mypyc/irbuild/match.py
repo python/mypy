@@ -17,15 +17,10 @@ from mypy.patterns import (
 )
 from mypy.traverser import TraverserVisitor
 from mypy.types import Instance, LiteralType, TupleType, get_proper_type
-from mypyc.ir.ops import BasicBlock, Value
+from mypyc.ir.ops import BasicBlock, LoadAddress, Value
 from mypyc.ir.rtypes import object_rprimitive
 from mypyc.irbuild.builder import IRBuilder
-from mypyc.primitives.dict_ops import (
-    dict_copy,
-    dict_del_item,
-    mapping_has_key,
-    supports_mapping_protocol,
-)
+from mypyc.primitives.dict_ops import dict_copy, dict_del_item, supports_mapping_protocol
 from mypyc.primitives.generic_ops import generic_ssize_t_len_op
 from mypyc.primitives.list_ops import (
     sequence_get_item,
@@ -220,15 +215,21 @@ class MatchVisitor(TraverserVisitor):
             key_value = self.builder.accept(key)
             keys.append(key_value)
 
-            exists = self.builder.call_c(mapping_has_key, [self.subject, key_value], pattern.line)
+            # Like CPython, look up the key using x.get(key, <sentinel>). The sentinel is an
+            # object that is private to mypyc, but a user-defined get() method can see it.
+            # If the subject is a dict, the dict.get primitive is used, which doesn't call
+            # a get() method overridden in a dict subclass.
+            missing = self.builder.add(
+                LoadAddress(object_rprimitive, "_CPy_ExcDummyStruct", pattern.line)
+            )
+            item = self.builder.gen_method_call(
+                self.subject, "get", [key_value, missing], object_rprimitive, pattern.line
+            )
+            exists = self.builder.binary_op(item, missing, "is not", pattern.line)
 
             self.builder.add_bool_branch(exists, self.code_block, self.next_block)
             self.builder.activate_block(self.code_block)
             self.code_block = BasicBlock()
-
-            item = self.builder.gen_method_call(
-                self.subject, "__getitem__", [key_value], object_rprimitive, pattern.line
-            )
 
             with self.enter_subpattern(item):
                 value.accept(self)
