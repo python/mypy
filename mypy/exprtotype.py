@@ -26,6 +26,7 @@ from mypy.nodes import (
     SymbolTableNode,
     TupleExpr,
     UnaryExpr,
+    Var,
     get_member_expr_fullname,
 )
 from mypy.options import Options
@@ -105,7 +106,40 @@ def expr_to_unanalyzed_type(
         )
         if isinstance(base, UnboundType):
             if base.args:
-                raise TypeTranslationError()
+                # A variable subscripted more than once, e.g. `args[1][0]`
+                # used as a base class. Flatten the index chain into a
+                # single UnboundType, so the type analyser can defer it
+                # like a single subscript. Subscripting an actual type,
+                # e.g. `list[int][0]`, is not a valid type and keeps the
+                # error: only a plain variable may root the chain.
+                root: Expression = expr.base
+                while isinstance(root, IndexExpr):
+                    root = root.base
+                if not (isinstance(root, NameExpr) and isinstance(root.node, Var)):
+                    raise TypeTranslationError()
+                if isinstance(expr.index, TupleExpr):
+                    outer_args: list[Expression] = list(expr.index.items)
+                else:
+                    outer_args = [expr.index]
+                return UnboundType(
+                    base.name,
+                    [
+                        *base.args,
+                        *(
+                            expr_to_unanalyzed_type(
+                                arg,
+                                options,
+                                allow_new_syntax,
+                                expr,
+                                allow_unpack=True,
+                                lookup_qualified=lookup_qualified,
+                            )
+                            for arg in outer_args
+                        ),
+                    ],
+                    line=base.line,
+                    column=base.column,
+                )
             if isinstance(expr.index, TupleExpr):
                 args = expr.index.items
             else:
