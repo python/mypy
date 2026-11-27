@@ -1716,6 +1716,20 @@ for index in (0, -1):
     assign(items, index, None)
     assert items == []
 
+[case testI64ConstantLeftOperandRightShift]
+from mypy_extensions import i64
+
+def rshift(n: i64) -> i64:
+    return 1000000 >> n
+
+def rshift_negative(n: i64) -> i64:
+    return -1000000 >> n
+
+def test_constant_left_operand() -> None:
+    for n in range(70):
+        assert rshift(n) == 1000000 >> n
+        assert rshift_negative(n) == -1000000 >> n
+
 [case testI64FloorDivideConstantMinByMinusOne]
 from typing import Final
 from mypy_extensions import i64
