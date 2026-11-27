@@ -216,7 +216,9 @@ class PatternChecker(PatternVisitor[PatternType]):
         return PatternType(ok_type, rest_type, {})
 
     def visit_singleton_pattern(self, o: SingletonPattern) -> PatternType:
-        current_type = self.type_context[-1]
+        # A bool subject with a known value (e.g. `match False:`) must not be
+        # expanded to both literals, or `case True:` would look reachable.
+        current_type = known_bool_value(self.type_context[-1])
         value: bool | None = o.value
         if isinstance(value, bool):
             typ = self.chk.expr_checker.infer_literal_expr_type(value, "builtins.bool")
@@ -881,3 +883,17 @@ def get_type_range(typ: Type) -> TypeRange:
 
 def is_uninhabited(typ: Type) -> bool:
     return isinstance(get_proper_type(typ), UninhabitedType)
+
+
+def known_bool_value(typ: Type) -> Type:
+    """Replace bool types that have a known value with that literal."""
+    p_typ = get_proper_type(typ)
+    if isinstance(p_typ, UnionType):
+        return UnionType.make_union([known_bool_value(t) for t in p_typ.items], p_typ.line)
+    if (
+        isinstance(p_typ, Instance)
+        and p_typ.type.fullname == "builtins.bool"
+        and p_typ.last_known_value is not None
+    ):
+        return p_typ.last_known_value
+    return typ
