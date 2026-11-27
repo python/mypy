@@ -1072,3 +1072,50 @@ L3:
 L4:
     a = r19
     return 1
+
+[case testListComprehensionOverListDisplay_nogil]
+def f() -> list[int]:
+    return [x + 1 for x in [1, 2, 3]]
+[out]
+def f():
+    r0 :: list
+    r1, r2, r3 :: object
+    r4 :: ptr
+    r5 :: list
+    r6, r7 :: native_int
+    r8 :: bit
+    r9 :: object
+    r10, x, r11 :: int
+    r12 :: object
+    r13 :: native_int
+L0:
+    r0 = PyList_New(3)
+    r1 = object 1
+    r2 = object 2
+    r3 = object 3
+    r4 = list_items r0
+    buf_init_item r4, 0, r1
+    buf_init_item r4, 1, r2
+    buf_init_item r4, 2, r3
+    keep_alive r0
+    r5 = PyList_New(3)
+    r6 = 0
+L1:
+    r7 = var_object_size r0
+    r8 = r6 < r7 :: signed
+    if r8 goto L2 else goto L5 :: bool
+L2:
+    r9 = CPyList_GetItemOrNull(r0, r6)
+    if is_error(r9) goto L5 else goto L3
+L3:
+    r10 = unbox(int, r9)
+    x = r10
+    r11 = CPyTagged_Add(x, 2)
+    r12 = box(int, r11)
+    CPyList_SetItemUnsafe(r5, r6, r12)
+L4:
+    r13 = r6 + 1
+    r6 = r13
+    goto L1
+L5:
+    return r5
