@@ -19,6 +19,7 @@ from urllib.request import pathname2url
 
 from mypy import stats
 from mypy.defaults import REPORTER_NAMES
+from mypy.errors import CompileError
 from mypy.nodes import Expression, FuncDef, MypyFile
 from mypy.options import Options
 from mypy.traverser import TraverserVisitor
@@ -97,14 +98,27 @@ class Reports:
 
     def finish(self) -> None:
         for reporter in self.reporters:
-            reporter.on_finish()
+            try:
+                reporter.on_finish()
+            except OSError as err:
+                raise CompileError(
+                    [
+                        "mypy: error: Cannot write "
+                        f"{reporter.__class__.__name__} output to {reporter.output_dir}: {err}"
+                    ]
+                ) from err
 
 
 class AbstractReporter(metaclass=ABCMeta):
     def __init__(self, reports: Reports, output_dir: str) -> None:
         self.output_dir = output_dir
         if output_dir != "<memory>":
-            os.makedirs(output_dir, exist_ok=True)
+            try:
+                os.makedirs(output_dir, exist_ok=True)
+            except OSError as err:
+                raise CompileError(
+                    [f"mypy: error: Cannot create report directory {output_dir}: {err}"]
+                ) from err
 
     @abstractmethod
     def on_file(

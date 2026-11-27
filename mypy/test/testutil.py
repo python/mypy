@@ -4,9 +4,13 @@ import os
 import tempfile
 from unittest import TestCase, mock
 
+import pytest
+
+from mypy.errors import CompileError
 from mypy.inspections import parse_location
 from mypy.main import maybe_write_junit_xml
 from mypy.options import Options
+from mypy.report import Reports
 from mypy.util import _generate_junit_contents, get_terminal_width
 
 
@@ -124,3 +128,16 @@ Error line 2</failure>
                 result = f.read()
         assert 'time="0.000"' in result
         assert "1.230" not in result
+
+
+class TestReports(TestCase):
+    def test_report_output_dir_cant_be_created(self) -> None:
+        # A report directory we cannot create is a usage problem, not an internal error
+        with tempfile.TemporaryDirectory() as tmpdir:
+            blocker = os.path.join(tmpdir, "blocker")
+            with open(blocker, "w") as f:
+                f.write("this is a file, not a directory\n")
+
+            reports = Reports("", {})
+            with pytest.raises(CompileError, match="Cannot create report directory"):
+                reports.add_report("linecount", os.path.join(blocker, "linecount.txt"))
