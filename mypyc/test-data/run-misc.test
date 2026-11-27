@@ -434,6 +434,27 @@ def test_unpack_iterator_errors() -> None:
         c.x, *c.y, c.z = gen(1)
     assert not any(s.startswith("set") for s in log), log
 
+def gen_raise(n: int) -> Iterator[int]:
+    for i in range(n):
+        yield i
+    raise KeyError("from iterator")
+
+def unpack_two(n: int) -> tuple[int, int]:
+    a, b = gen_raise(n)
+    return a, b
+
+def unpack_star(n: int) -> tuple[int, list[int], int]:
+    a, *b, c = gen_raise(n)
+    return a, b, c
+
+def test_unpack_iterator_raises() -> None:
+    for n in range(3):
+        with assertRaises(KeyError, "from iterator"):
+            unpack_two(n)
+    for n in range(4):
+        with assertRaises(KeyError, "from iterator"):
+            unpack_star(n)
+
 [case testUnpack]
 from typing import List
 

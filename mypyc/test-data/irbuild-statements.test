@@ -597,34 +597,40 @@ L0:
     return 1
 def from_any(a):
     a, r0, r1 :: object
-    r2 :: bool
-    r3 :: object
-    r4 :: bool
-    r5 :: object
+    r2 :: bit
+    r3 :: bool
+    r4 :: object
+    r5 :: bit
     r6 :: bool
+    r7 :: object
+    r8 :: bool
+    r9 :: bit
     x, y :: object
 L0:
     r0 = PyObject_GetIter(a)
     r1 = PyIter_Next(r0)
     if is_error(r1) goto L1 else goto L2
 L1:
-    r2 = raise ValueError('not enough values to unpack')
+    r2 = CPy_NoErrOccurred()
+    r3 = raise ValueError('not enough values to unpack')
     unreachable
 L2:
-    r3 = PyIter_Next(r0)
-    if is_error(r3) goto L3 else goto L4
+    r4 = PyIter_Next(r0)
+    if is_error(r4) goto L3 else goto L4
 L3:
-    r4 = raise ValueError('not enough values to unpack')
+    r5 = CPy_NoErrOccurred()
+    r6 = raise ValueError('not enough values to unpack')
     unreachable
 L4:
-    r5 = PyIter_Next(r0)
-    if is_error(r5) goto L6 else goto L5
+    r7 = PyIter_Next(r0)
+    if is_error(r7) goto L6 else goto L5
 L5:
-    r6 = raise ValueError('too many values to unpack')
+    r8 = raise ValueError('too many values to unpack')
     unreachable
 L6:
+    r9 = CPy_NoErrOccurred()
     x = r1
-    y = r3
+    y = r4
     return 1
 
 [case testMultiAssignmentCoercions]
@@ -659,36 +665,42 @@ L0:
     return 1
 def from_any(a):
     a, r0, r1 :: object
-    r2 :: bool
-    r3 :: object
-    r4 :: bool
-    r5 :: object
+    r2 :: bit
+    r3 :: bool
+    r4 :: object
+    r5 :: bit
     r6 :: bool
-    r7, x :: int
+    r7 :: object
+    r8 :: bool
+    r9 :: bit
+    r10, x :: int
     y :: object
 L0:
     r0 = PyObject_GetIter(a)
     r1 = PyIter_Next(r0)
     if is_error(r1) goto L1 else goto L2
 L1:
-    r2 = raise ValueError('not enough values to unpack')
+    r2 = CPy_NoErrOccurred()
+    r3 = raise ValueError('not enough values to unpack')
     unreachable
 L2:
-    r3 = PyIter_Next(r0)
-    if is_error(r3) goto L3 else goto L4
+    r4 = PyIter_Next(r0)
+    if is_error(r4) goto L3 else goto L4
 L3:
-    r4 = raise ValueError('not enough values to unpack')
+    r5 = CPy_NoErrOccurred()
+    r6 = raise ValueError('not enough values to unpack')
     unreachable
 L4:
-    r5 = PyIter_Next(r0)
-    if is_error(r5) goto L6 else goto L5
+    r7 = PyIter_Next(r0)
+    if is_error(r7) goto L6 else goto L5
 L5:
-    r6 = raise ValueError('too many values to unpack')
+    r8 = raise ValueError('too many values to unpack')
     unreachable
 L6:
-    r7 = unbox(int, r1)
-    x = r7
-    y = r3
+    r9 = CPy_NoErrOccurred()
+    r10 = unbox(int, r1)
+    x = r10
+    y = r4
     return 1
 
 [case testMultiAssignmentNested]
