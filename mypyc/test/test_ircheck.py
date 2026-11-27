@@ -19,6 +19,7 @@ from mypyc.ir.ops import (
 from mypyc.ir.pprint import format_func
 from mypyc.ir.rtypes import (
     RInstance,
+    RTuple,
     RType,
     RUnion,
     bytes_rprimitive,
@@ -143,12 +144,15 @@ class TestIrcheck(unittest.TestCase):
             (RUnion([bytes_rprimitive, str_rprimitive]), str_rprimitive),
             (str_rprimitive, RUnion([bytes_rprimitive, str_rprimitive])),
             (RInstance(cls), object_rprimitive),
+            (RUnion([RTuple([str_rprimitive]), none_rprimitive]), object_rprimitive),
+            (RUnion([RTuple([]), RTuple([str_rprimitive])]), object_rprimitive),
         ]
 
         invalid_cases = [
             (int64_rprimitive, int32_rprimitive),
             (RInstance(cls), str_rprimitive),
             (str_rprimitive, bytes_rprimitive),
+            (RTuple([str_rprimitive]), object_rprimitive),
         ]
 
         for src, dest in valid_cases:
