@@ -1858,3 +1858,93 @@ def test_codepoint_case_conversion_via_any() -> None:
             f(1 << 40)
         with assertRaises(OverflowError, "codepoint out of i32 range"):
             f(-(1 << 40))
+
+[case testLibrtStringsCachedChars_librt]
+import sysconfig
+from typing import Any
+from librt.strings import cached_chr, char_at
+
+from testutil import assertRaises
+
+# The cache isn't used on free-threaded builds
+CACHE_ENABLED = not sysconfig.get_config_var("Py_GIL_DISABLED")
+
+# Latin-1, the range of cached characters (U+0100..U+0FFF) and some code points beyond it
+CODE_POINTS = [*range(0x1100), 0xFFFF, 0x10000, 0x10FFFF]
+
+def test_cached_chr() -> None:
+    # The second round uses cached strings
+    for _ in range(2):
+        for c in CODE_POINTS:
+            s = cached_chr(c)
+            assert len(s) == 1
+            assert s == chr(c)
+
+def test_cached_chr_errors() -> None:
+    for c in (-1, 0x110000, -(1 << 62), 1 << 62):
+        with assertRaises(ValueError, "cached_chr() arg not in range(0x110000)"):
+            cached_chr(c)
+
+def test_char_at() -> None:
+    s = "".join([chr(c) for c in CODE_POINTS])
+    n = len(s)
+    # The second round uses cached strings
+    for _ in range(2):
+        for i in range(n):
+            x = char_at(s, i)
+            assert len(x) == 1
+            assert x == s[i]
+            assert char_at(s, i - n) == s[i]
+
+def test_char_at_errors() -> None:
+    for s in ("", "a", "ЀЁ", "\U00010000"):
+        for i in (len(s), -len(s) - 1, 1 << 62, -(1 << 62)):
+            with assertRaises(IndexError, "string index out of range"):
+                char_at(s, i)
+
+def test_cache_is_used() -> None:
+    if CACHE_ENABLED:
+        assert cached_chr(0x400) is char_at("xЀ", 1)
+        assert cached_chr(0xFFF) is cached_chr(0xFFF)
+        assert char_at("Ā", 0) is char_at("Ā", -1)
+
+def test_cached_string_not_modified() -> None:
+    c = cached_chr(0x400)
+    c += "x"
+    assert c == "Ѐx"
+    assert cached_chr(0x400) == "Ѐ"
+    d = char_at("࿿", 0)
+    d += "y"
+    assert d == "࿿y"
+    assert char_at("࿿", 0) == "࿿"
+
+def test_via_any() -> None:
+    f: Any = cached_chr
+    g: Any = char_at
+    s = "".join([chr(c) for c in CODE_POINTS])
+    for _ in range(2):
+        for i, c in enumerate(CODE_POINTS):
+            assert f(c) == chr(c)
+            assert g(s, i) == s[i]
+            assert g(s, i - len(s)) == s[i]
+    if CACHE_ENABLED:
+        assert f(0x401) is cached_chr(0x401)
+        assert g("Ђ", 0) is cached_chr(0x402)
+    with assertRaises(ValueError, "cached_chr() arg not in range(0x110000)"):
+        f(-1)
+    with assertRaises(ValueError, "cached_chr() arg not in range(0x110000)"):
+        f(0x110000)
+    with assertRaises(ValueError, "int too large to convert to i64"):
+        f(1 << 70)
+    with assertRaises(TypeError):
+        f("a")
+    with assertRaises(IndexError, "string index out of range"):
+        g("ab", 2)
+    with assertRaises(IndexError, "string index out of range"):
+        g("ab", -3)
+    with assertRaises(ValueError, "int too large to convert to i64"):
+        g("ab", 1 << 70)
+    with assertRaises(TypeError, "char_at() argument 1 must be str"):
+        g(b"ab", 0)
+    with assertRaises(TypeError, "char_at() takes exactly 2 arguments (1 given)"):
+        g("ab")

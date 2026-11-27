@@ -518,3 +518,32 @@ def lo(c):
 L0:
     r0 = LibRTStrings_ToLower(c)
     return r0
+
+[case testLibrtStringsCachedChrIR]
+from librt.strings import cached_chr
+from mypy_extensions import i64
+
+def f(c: i64) -> str:
+    return cached_chr(c)
+[out]
+def f(c):
+    c :: i64
+    r0 :: str
+L0:
+    r0 = LibRTStrings_CachedChr(c)
+    return r0
+
+[case testLibrtStringsCharAtIR]
+from librt.strings import char_at
+from mypy_extensions import i64
+
+def f(s: str, i: i64) -> str:
+    return char_at(s, i)
+[out]
+def f(s, i):
+    s :: str
+    i :: i64
+    r0 :: str
+L0:
+    r0 = LibRTStrings_CharAt(s, i)
+    return r0
