@@ -113,3 +113,49 @@ L10:
     unreachable
 L11:
     return 1
+
+[case testLockWithReassign]
+from librt.threading import Lock
+
+def with_lock(lk: Lock) -> None:
+    with lk:
+        lk = Lock()
+[out]
+def with_lock(lk):
+    lk, r0 :: librt.threading.Lock
+    r1 :: bool
+    r2 :: librt.threading.Lock
+    r3, r4, r5 :: tuple[object, object, object]
+    r6 :: None
+    r7 :: bit
+L0:
+    r0 = lk
+    r1 = LibRTThreading_Lock_acquire_internal(r0)
+L1:
+    r2 = LibRTThreading_Lock_new_internal()
+    lk = r2
+L2:
+L3:
+    r3 = <error> :: tuple[object, object, object]
+    r4 = r3
+    goto L5
+L4: (handler for L1)
+    r5 = CPy_CatchError()
+    r4 = r5
+L5:
+    r6 = LibRTThreading_Lock_release_internal(r0)
+    if is_error(r4) goto L7 else goto L6
+L6:
+    CPy_Reraise()
+    unreachable
+L7:
+    goto L11
+L8: (handler for L5, L6)
+    if is_error(r4) goto L10 else goto L9
+L9:
+    CPy_RestoreExcInfo(r4)
+L10:
+    r7 = CPy_KeepPropagating()
+    unreachable
+L11:
+    return 1

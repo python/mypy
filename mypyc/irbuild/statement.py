@@ -9,7 +9,7 @@ A few statements are transformed in mypyc.irbuild.function (yield, for example).
 from __future__ import annotations
 
 import importlib.util
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Sequence, Set as AbstractSet
 from typing import Final
 
 import mypy.nodes
@@ -40,6 +40,7 @@ from mypy.nodes import (
     ReturnStmt,
     StarExpr,
     StrExpr,
+    SymbolNode,
     TempNode,
     TryStmt,
     TupleExpr,
@@ -99,7 +100,12 @@ from mypyc.irbuild.builder import (
     int_borrow_friendly_op,
 )
 from mypyc.irbuild.constant_fold import check_native_int_final
-from mypyc.irbuild.for_helpers import find_loop_assignments, for_loop_helper
+from mypyc.irbuild.for_helpers import (
+    copy_if_reassigned,
+    find_loop_assignments,
+    find_with_assignments,
+    for_loop_helper,
+)
 from mypyc.irbuild.generator import add_raise_exception_blocks_to_generator_class
 from mypyc.irbuild.nonlocalcontrol import (
     ExceptNonlocalControl,
@@ -1133,6 +1139,7 @@ def transform_with(
     body: GenFunc,
     is_async: bool,
     line: int,
+    reassigned: AbstractSet[SymbolNode],
 ) -> None:
     # This is basically a straight transcription of the Python code in PEP 343.
     # I don't actually understand why a bunch of it is the way it is.
@@ -1141,7 +1148,9 @@ def transform_with(
 
     al = "a" if is_async else ""
 
-    mgr_v = builder.accept(expr)
+    # The context manager is used again after the body, so copy it if it's a local
+    # variable that may be assigned to (as in "with x: x = y")
+    mgr_v = copy_if_reassigned(builder, builder.accept(expr), reassigned, line)
 
     if not is_async and mgr_v.type == lock_rprimitive:
         transform_with_lock(builder, mgr_v, target, body, line)
@@ -1250,13 +1259,21 @@ def transform_with_lock(
 
 
 def transform_with_stmt(builder: IRBuilder, o: WithStmt) -> None:
+    reassigned = find_with_assignments(o)
+
     # Generate separate logic for each expr in it, left to right
     def generate(i: int) -> None:
         if i >= len(o.expr):
             builder.accept(o.body)
         else:
             transform_with(
-                builder, o.expr[i], o.target[i], lambda: generate(i + 1), o.is_async, o.line
+                builder,
+                o.expr[i],
+                o.target[i],
+                lambda: generate(i + 1),
+                o.is_async,
+                o.line,
+                reassigned,
             )
 
     generate(0)
