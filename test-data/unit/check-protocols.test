@@ -4865,3 +4865,43 @@ from typing import Callable, TypeVar
 S = TypeVar("S")
 class C:
     def __init_subclass__(cls: type[S], item: Callable[[S], None]) -> None: ...
+
+[case testTrivialStarParamsInCallbackProtocol]
+from typing import Any, Protocol
+
+class P(Protocol):
+    def __call__(self, *args: Any, k: int, **kwargs: Any) -> None: ...
+
+def cb1(*, k: int, extra: int = 0) -> None: ...
+def cb2(x: int, *, k: int) -> None: ...
+def cb3(*args: Any, k: int, **kwargs: Any) -> None: ...
+
+p1: P = cb1
+p2: P = cb2
+p3: P = cb3
+[builtins fixtures/primitives.pyi]
+[case testTrivialStarParamsRetainedParamsChecked]
+from typing import Any, Protocol
+
+class P(Protocol):
+    def __call__(self, *args: Any, k: int, **kwargs: Any) -> None: ...
+
+def missing_k(*, other: int = 0) -> None: ...
+def wrong_k_type(*, k: str) -> None: ...
+
+p1: P = missing_k  # E: Incompatible types in assignment (expression has type "def missing_k(*, other: int = ...) -> None", variable has type "P") \
+                   # N: "P.__call__" has type "def __call__(self, *args: Any, k: int, **kwargs: Any) -> None"
+p2: P = wrong_k_type  # E: Incompatible types in assignment (expression has type "def wrong_k_type(*, k: str) -> None", variable has type "P") \
+                      # N: "P.__call__" has type "def __call__(self, *args: Any, k: int, **kwargs: Any) -> None"
+[builtins fixtures/primitives.pyi]
+[case testNonTrivialStarParamsStillChecked]
+from typing import Any, Protocol
+
+class P(Protocol):
+    def __call__(self, *args: str, k: int, **kwargs: Any) -> None: ...
+
+def no_varargs(*, k: int) -> None: ...
+
+p1: P = no_varargs  # E: Incompatible types in assignment (expression has type "def no_varargs(*, k: int) -> None", variable has type "P") \
+                    # N: "P.__call__" has type "def __call__(self, *args: str, k: int, **kwargs: Any) -> None"
+[builtins fixtures/primitives.pyi]

@@ -1883,6 +1883,17 @@ def are_trivial_parameters(param: Parameters | NormalizedCallableType) -> bool:
     )
 
 
+def is_trivial_star_params(param: Parameters | NormalizedCallableType) -> bool:
+    param_star = param.var_arg()
+    param_star2 = param.kw_arg()
+    return (
+        param_star is not None
+        and isinstance(get_proper_type(param_star.typ), AnyType)
+        and param_star2 is not None
+        and isinstance(get_proper_type(param_star2.typ), AnyType)
+    )
+
+
 def is_trivial_suffix(param: Parameters | NormalizedCallableType) -> bool:
     param_star = param.var_arg()
     param_star2 = param.kw_arg()
@@ -1918,6 +1929,11 @@ def are_parameters_compatible(
     if are_trivial_parameters(right) and not is_proper_subtype:
         return True
     trivial_suffix = is_trivial_suffix(right) and not is_proper_subtype
+    # Per the typing spec, a (*args: Any, **kwargs: Any) pair in the input signature
+    # is equivalent to "...", even if other parameters are declared between them.
+    # The star parameters then impose no constraints on the left callable, while
+    # any retained (non-star) parameters are still checked below.
+    trivial_star_params = is_trivial_star_params(right) and not is_proper_subtype
 
     trivial_vararg_suffix = False
     if (
@@ -1964,7 +1980,7 @@ def are_parameters_compatible(
             return not allow_partial_overlap and not trivial_suffix
         return not is_compat(right_arg.typ, left_arg.typ)
 
-    if (
+    if not trivial_star_params and (
         _incompatible(left_star, right_star)
         and not trivial_vararg_suffix
         or _incompatible(left_star2, right_star2)
@@ -1999,7 +2015,7 @@ def are_parameters_compatible(
     #           arguments. Get all further positional args of left, and make sure
     #           they're more general than the corresponding member in right.
     # TODO: handle suffix in UnpackType (i.e. *args: *Tuple[Ts, X, Y]).
-    if right_star is not None and not trivial_vararg_suffix:
+    if right_star is not None and not trivial_vararg_suffix and not trivial_star_params:
         # Synthesize an anonymous formal argument for the right
         right_by_position = right.try_synthesizing_arg_from_vararg(None)
         assert right_by_position is not None
@@ -2026,7 +2042,7 @@ def are_parameters_compatible(
     # Phase 1d: Check kw args. Right has an infinite series of optional named
     #           arguments. Get all further named args of left, and make sure
     #           they're more general than the corresponding member in right.
-    if right_star2 is not None:
+    if right_star2 is not None and not trivial_star_params:
         right_names = {name for name in right.arg_names if name is not None}
         left_only_names = set()
         for name, kind in zip(left.arg_names, left.arg_kinds):
