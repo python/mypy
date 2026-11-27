@@ -515,10 +515,11 @@ def f():
     r7, r8 :: object
 L0:
     r0 = int_eq 246, 246
+    if r0 goto L1 else goto L3 :: bool
+L1:
     r1 = object 123
     x = r1
-    if r0 goto L1 else goto L2 :: bool
-L1:
+L2:
     r2 = builtins :: module
     r3 = 'print'
     r4 = CPyObject_GetAttr(r2, r3)
@@ -526,9 +527,9 @@ L1:
     r6 = load_address r5
     r7 = PyObject_Vectorcall(r4, r6, 1, 0)
     keep_alive x
-    goto L3
-L2:
+    goto L4
 L3:
+L4:
     r8 = box(None, 1)
     return r8
 
@@ -539,44 +540,41 @@ def f():
             print(x)
 [out]
 def f():
-    r0 :: bit
-    r1, x :: object
-    r2 :: bit
-    r3, r4 :: object
-    r5 :: str
-    r6 :: object
-    r7 :: object[1]
-    r8 :: object_ptr
-    r9, r10 :: object
+    r0, r1 :: bit
+    r2, x, r3 :: object
+    r4 :: str
+    r5 :: object
+    r6 :: object[1]
+    r7 :: object_ptr
+    r8, r9 :: object
 L0:
     r0 = int_eq 2, 2
-    r1 = object 1
-    x = r1
     if r0 goto L1 else goto L2 :: bool
 L1:
     goto L5
 L2:
-    r2 = int_eq 2, 4
-    r3 = object 2
-    x = r3
-    if r2 goto L3 else goto L4 :: bool
+    r1 = int_eq 2, 4
+    if r1 goto L3 else goto L4 :: bool
 L3:
     goto L5
 L4:
-    goto L6
-L5:
-    r4 = builtins :: module
-    r5 = 'print'
-    r6 = CPyObject_GetAttr(r4, r5)
-    r7 = [x]
-    r8 = load_address r7
-    r9 = PyObject_Vectorcall(r6, r8, 1, 0)
-    keep_alive x
     goto L7
+L5:
+    r2 = object 1
+    x = r2
 L6:
+    r3 = builtins :: module
+    r4 = 'print'
+    r5 = CPyObject_GetAttr(r3, r4)
+    r6 = [x]
+    r7 = load_address r6
+    r8 = PyObject_Vectorcall(r5, r7, 1, 0)
+    keep_alive x
+    goto L8
 L7:
-    r10 = box(None, 1)
-    return r10
+L8:
+    r9 = box(None, 1)
+    return r9
 
 [case testMatchAsPatternOnClassPattern_python3_10]
 def f():
@@ -897,17 +895,17 @@ def f(x):
     r1 :: i32
     r2 :: bit
     r3 :: bool
-    r4, y :: __main__.C
-    r5 :: str
-    r6, r7, r8 :: object
-    r9 :: i32
-    r10 :: bit
-    r11 :: bool
-    r12 :: str
-    r13, r14, r15 :: object
-    r16 :: i32
-    r17 :: bit
-    r18 :: bool
+    r4 :: str
+    r5, r6, r7 :: object
+    r8 :: i32
+    r9 :: bit
+    r10 :: bool
+    r11 :: str
+    r12, r13, r14 :: object
+    r15 :: i32
+    r16 :: bit
+    r17 :: bool
+    r18, y :: __main__.C
     r19 :: str
     r20 :: object
     r21 :: str
@@ -922,26 +920,26 @@ L0:
     r3 = truncate r1: i32 to builtins.bool
     if r3 goto L1 else goto L5 :: bool
 L1:
-    r4 = cast(__main__.C, x)
-    y = r4
+    r4 = 'a'
+    r5 = CPyObject_GetAttr(x, r4)
+    r6 = object 1
+    r7 = PyObject_RichCompare(r5, r6, 2)
+    r8 = PyObject_IsTrue(r7)
+    r9 = r8 >= 0 :: signed
+    r10 = truncate r8: i32 to builtins.bool
+    if r10 goto L2 else goto L5 :: bool
 L2:
-    r5 = 'a'
-    r6 = CPyObject_GetAttr(x, r5)
-    r7 = object 1
-    r8 = PyObject_RichCompare(r6, r7, 2)
-    r9 = PyObject_IsTrue(r8)
-    r10 = r9 >= 0 :: signed
-    r11 = truncate r9: i32 to builtins.bool
-    if r11 goto L3 else goto L5 :: bool
+    r11 = 'b'
+    r12 = CPyObject_GetAttr(x, r11)
+    r13 = object 2
+    r14 = PyObject_RichCompare(r12, r13, 2)
+    r15 = PyObject_IsTrue(r14)
+    r16 = r15 >= 0 :: signed
+    r17 = truncate r15: i32 to builtins.bool
+    if r17 goto L3 else goto L5 :: bool
 L3:
-    r12 = 'b'
-    r13 = CPyObject_GetAttr(x, r12)
-    r14 = object 2
-    r15 = PyObject_RichCompare(r13, r14, 2)
-    r16 = PyObject_IsTrue(r15)
-    r17 = r16 >= 0 :: signed
-    r18 = truncate r16: i32 to builtins.bool
-    if r18 goto L4 else goto L5 :: bool
+    r18 = cast(__main__.C, x)
+    y = r18
 L4:
     r19 = 'matched'
     r20 = builtins :: module

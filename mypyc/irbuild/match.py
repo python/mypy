@@ -58,8 +58,6 @@ class MatchVisitor(TraverserVisitor):
     subject: Value
     match: MatchStmt
 
-    as_pattern: AsPattern | None = None
-
     def __init__(self, builder: IRBuilder, match_node: MatchStmt) -> None:
         self.builder = builder
 
@@ -103,8 +101,6 @@ class MatchVisitor(TraverserVisitor):
 
         cond = self.builder.binary_op(self.subject, value, "==", pattern.expr.line)
 
-        self.bind_as_pattern(value)
-
         self.builder.add_bool_branch(cond, self.code_block, self.next_block)
 
     def visit_or_pattern(self, pattern: OrPattern) -> None:
@@ -115,11 +111,7 @@ class MatchVisitor(TraverserVisitor):
             self.code_block = BasicBlock()
             self.next_block = BasicBlock()
 
-            # Hack to ensure the as pattern is bound to each pattern in the
-            # "or" pattern, but not every subpattern
-            backup = self.as_pattern
             p.accept(self)
-            self.as_pattern = backup
 
             self.builder.activate_block(self.code_block)
             self.builder.goto(code_block)
@@ -143,8 +135,6 @@ class MatchVisitor(TraverserVisitor):
         )
 
         self.builder.add_bool_branch(cond, self.code_block, self.next_block)
-
-        self.bind_as_pattern(self.subject, new_block=True)
 
         if pattern.positionals:
             if pattern.class_ref.fullname in MATCHABLE_BUILTINS:
@@ -182,12 +172,13 @@ class MatchVisitor(TraverserVisitor):
 
     def visit_as_pattern(self, pattern: AsPattern) -> None:
         if pattern.pattern:
-            old_pattern = self.as_pattern
-            self.as_pattern = pattern
             pattern.pattern.accept(self)
-            self.as_pattern = old_pattern
 
-        elif pattern.name:
+            # Bind the name to the subject only once the subpattern has matched.
+            self.builder.activate_block(self.code_block)
+            self.code_block = BasicBlock()
+
+        if pattern.name:
             target = self.builder.get_assignment_target(pattern.name)
 
             self.builder.assign(target, self.subject, pattern.line)
@@ -305,20 +296,6 @@ class MatchVisitor(TraverserVisitor):
             self.builder.assign(target, rest, capture.line)
 
             self.builder.goto(self.code_block)
-
-    def bind_as_pattern(self, value: Value, new_block: bool = False) -> None:
-        if self.as_pattern and self.as_pattern.pattern and self.as_pattern.name:
-            if new_block:
-                self.builder.activate_block(self.code_block)
-                self.code_block = BasicBlock()
-
-            target = self.builder.get_assignment_target(self.as_pattern.name)
-            self.builder.assign(target, value, self.as_pattern.pattern.line)
-
-            self.as_pattern = None
-
-            if new_block:
-                self.builder.goto(self.code_block)
 
     @contextmanager
     def enter_subpattern(self, subject: Value) -> Generator[None]:
