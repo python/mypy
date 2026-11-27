@@ -216,7 +216,9 @@ class MatchVisitor(TraverserVisitor):
             keys.append(key_value)
 
             # Like CPython, look up the key using x.get(key, <sentinel>). The sentinel is an
-            # object that is private to mypyc.
+            # object that is private to mypyc, but a user-defined get() method can see it.
+            # If the subject is a dict, the dict.get primitive is used, which doesn't call
+            # a get() method overridden in a dict subclass.
             missing = self.builder.add(
                 LoadAddress(object_rprimitive, "_CPy_ExcDummyStruct", pattern.line)
             )
