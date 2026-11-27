@@ -9,12 +9,14 @@ from __future__ import annotations
 from mypyc.ir.ops import ERR_MAGIC, ERR_NEVER
 from mypyc.ir.rtypes import (
     bit_rprimitive,
+    bool_rprimitive,
     c_int_rprimitive,
     c_pyssize_t_rprimitive,
     c_size_t_rprimitive,
     int_rprimitive,
     list_rprimitive,
     object_rprimitive,
+    str_rprimitive,
     tuple_rprimitive,
     void_rtype,
 )
@@ -155,6 +157,28 @@ binary_op(
     return_type=tuple_rprimitive,
     c_function_name="CPySequence_Concat",
     error_kind=ERR_MAGIC,
+)
+
+# int in tuple
+binary_op(
+    name="in",
+    arg_types=[int_rprimitive, tuple_rprimitive],
+    return_type=c_int_rprimitive,
+    c_function_name="CPySequence_ContainsInt",
+    error_kind=ERR_NEG_INT,
+    truncated_type=bool_rprimitive,
+    ordering=[1, 0],
+)
+
+# str in tuple
+binary_op(
+    name="in",
+    arg_types=[str_rprimitive, tuple_rprimitive],
+    return_type=c_int_rprimitive,
+    c_function_name="CPySequence_ContainsStr",
+    error_kind=ERR_NEG_INT,
+    truncated_type=bool_rprimitive,
+    ordering=[1, 0],
 )
 
 # tuple * int

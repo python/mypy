@@ -178,6 +178,37 @@ L2:
     return r3
 
 
+[case testVariableLengthTupleIn]
+from typing import Tuple
+def int_in(x: Tuple[int, ...], y: int) -> bool:
+    return y in x
+def str_not_in(x: Tuple[str, ...], y: str) -> bool:
+    return y not in x
+[out]
+def int_in(x, y):
+    x :: tuple
+    y :: int
+    r0 :: i32
+    r1 :: bit
+    r2 :: bool
+L0:
+    r0 = CPySequence_ContainsInt(x, y)
+    r1 = r0 >= 0 :: signed
+    r2 = truncate r0: i32 to builtins.bool
+    return r2
+def str_not_in(x, y):
+    x :: tuple
+    y :: str
+    r0 :: i32
+    r1 :: bit
+    r2, r3 :: bool
+L0:
+    r0 = CPySequence_ContainsStr(x, y)
+    r1 = r0 >= 0 :: signed
+    r2 = truncate r0: i32 to builtins.bool
+    r3 = r2 ^ 1
+    return r3
+
 [case testTupleOperatorIn]
 def f(i: int) -> bool:
     return i in [1, 2, 3]
