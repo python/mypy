@@ -208,26 +208,27 @@ def f(s: Union[str, NewStr], num: int) -> None:
 def f(s, num):
     s :: str
     num :: int
-    r0, r1, r2, r3, r4, s1, r5, s2, r6, s3, r7, r8, r9, r10, r11, r12, r13, s4 :: str
+    r0, r1, r2, r3, r4, r5, s1, r6, s2, r7, s3, r8, r9, r10, r11, r12, r13, r14, s4 :: str
 L0:
-    r0 = CPyTagged_Str(num)
-    r1 = "Hi! I'm "
-    r2 = ", and I'm "
-    r3 = ' years old.'
-    r4 = CPyStr_Build(5, r1, s, r2, r0, r3)
-    s1 = r4
-    r5 = ''
-    s2 = r5
-    r6 = 'abc'
-    s3 = r6
-    r7 = CPyTagged_Str(num)
+    r0 = CPyObject_Format(s)
+    r1 = CPyTagged_Str(num)
+    r2 = "Hi! I'm "
+    r3 = ", and I'm "
+    r4 = ' years old.'
+    r5 = CPyStr_Build(5, r2, r0, r3, r1, r4)
+    s1 = r5
+    r6 = ''
+    s2 = r6
+    r7 = 'abc'
+    s3 = r7
     r8 = CPyTagged_Str(num)
     r9 = CPyTagged_Str(num)
-    r10 = '}'
-    r11 = '{'
-    r12 = '}{'
-    r13 = CPyStr_Build(6, r10, r7, r11, r8, r12, r9)
-    s4 = r13
+    r10 = CPyTagged_Str(num)
+    r11 = '}'
+    r12 = '{'
+    r13 = '}{'
+    r14 = CPyStr_Build(6, r11, r8, r12, r9, r13, r10)
+    s4 = r14
     return 1
 
 [case testFStrings_64bit]
@@ -243,44 +244,45 @@ def f(var: Union[str, NewStr], num: int) -> None:
 def f(var, num):
     var :: str
     num :: int
-    r0, r1, r2, r3, r4, s1, r5, r6, r7, r8, r9, r10, r11 :: str
-    r12 :: object[3]
-    r13 :: object_ptr
-    r14 :: object
-    r15 :: str
-    r16 :: list
-    r17 :: ptr
-    r18, s2, r19, s3, r20, s4 :: str
+    r0, r1, r2, r3, r4, r5, s1, r6, r7, r8, r9, r10, r11, r12 :: str
+    r13 :: object[3]
+    r14 :: object_ptr
+    r15 :: object
+    r16 :: str
+    r17 :: list
+    r18 :: ptr
+    r19, s2, r20, s3, r21, s4 :: str
 L0:
     r0 = "Hi! I'm "
-    r1 = '. I am '
-    r2 = CPyTagged_Str(num)
-    r3 = ' years old.'
-    r4 = CPyStr_Build(5, r0, var, r1, r2, r3)
-    s1 = r4
-    r5 = ''
-    r6 = 'Hello '
-    r7 = '{:{}}'
-    r8 = '>'
-    r9 = CPyTagged_Str(num)
-    r10 = CPyStr_Build(2, r8, r9)
-    r11 = 'format'
-    r12 = [r7, var, r10]
-    r13 = load_address r12
-    r14 = PyObject_VectorcallMethod(r11, r13, 9223372036854775811, 0)
-    keep_alive r7, var, r10
-    r15 = cast(str, r14)
-    r16 = PyList_New(2)
-    r17 = list_items r16
-    buf_init_item r17, 0, r6
-    buf_init_item r17, 1, r15
-    keep_alive r16
-    r18 = PyUnicode_Join(r5, r16)
-    s2 = r18
-    r19 = ''
-    s3 = r19
-    r20 = 'abc'
-    s4 = r20
+    r1 = CPyObject_Format(var)
+    r2 = '. I am '
+    r3 = CPyTagged_Str(num)
+    r4 = ' years old.'
+    r5 = CPyStr_Build(5, r0, r1, r2, r3, r4)
+    s1 = r5
+    r6 = ''
+    r7 = 'Hello '
+    r8 = '{:{}}'
+    r9 = '>'
+    r10 = CPyTagged_Str(num)
+    r11 = CPyStr_Build(2, r9, r10)
+    r12 = 'format'
+    r13 = [r8, var, r11]
+    r14 = load_address r13
+    r15 = PyObject_VectorcallMethod(r12, r14, 9223372036854775811, 0)
+    keep_alive r8, var, r11
+    r16 = cast(str, r15)
+    r17 = PyList_New(2)
+    r18 = list_items r17
+    buf_init_item r18, 0, r7
+    buf_init_item r18, 1, r16
+    keep_alive r17
+    r19 = PyUnicode_Join(r6, r17)
+    s2 = r19
+    r20 = ''
+    s3 = r20
+    r21 = 'abc'
+    s4 = r21
     return 1
 
 [case testStringFormattingCStyle]
@@ -296,30 +298,32 @@ def f(var: Union[str, NewStr], num: int) -> None:
 def f(var, num):
     var :: str
     num :: int
-    r0, r1, r2, s1, r3, r4, r5, r6, s2, r7, r8, r9, r10, r11, s3, r12 :: str
-    r13, r14 :: object
-    r15, s4 :: str
+    r0, r1, r2, r3, s1, r4, r5, r6, r7, s2, r8, r9, r10, r11, r12, r13, s3, r14 :: str
+    r15, r16 :: object
+    r17, s4 :: str
 L0:
-    r0 = "Hi! I'm "
-    r1 = '.'
-    r2 = CPyStr_Build(3, r0, var, r1)
-    s1 = r2
-    r3 = CPyTagged_Str(num)
-    r4 = 'I am '
-    r5 = ' years old.'
-    r6 = CPyStr_Build(3, r4, r3, r5)
-    s2 = r6
-    r7 = CPyTagged_Str(num)
-    r8 = "Hi! I'm "
-    r9 = '. I am '
-    r10 = ' years old.'
-    r11 = CPyStr_Build(5, r8, var, r9, r7, r10)
-    s3 = r11
-    r12 = 'Float: %f'
-    r13 = box(int, num)
-    r14 = PyNumber_Remainder(r12, r13)
-    r15 = cast(str, r14)
-    s4 = r15
+    r0 = PyObject_Str(var)
+    r1 = "Hi! I'm "
+    r2 = '.'
+    r3 = CPyStr_Build(3, r1, r0, r2)
+    s1 = r3
+    r4 = CPyTagged_Str(num)
+    r5 = 'I am '
+    r6 = ' years old.'
+    r7 = CPyStr_Build(3, r5, r4, r6)
+    s2 = r7
+    r8 = PyObject_Str(var)
+    r9 = CPyTagged_Str(num)
+    r10 = "Hi! I'm "
+    r11 = '. I am '
+    r12 = ' years old.'
+    r13 = CPyStr_Build(5, r10, r8, r11, r9, r12)
+    s3 = r13
+    r14 = 'Float: %f'
+    r15 = box(int, num)
+    r16 = PyNumber_Remainder(r14, r15)
+    r17 = cast(str, r16)
+    s4 = r17
     return 1
 
 [case testDecode]
@@ -832,6 +836,32 @@ L3:
 L4:
     return r6
 
+[case testFStringNativeClass]
+class A:
+    pass
+
+class B:
+    def __format__(self, spec: str) -> str:
+        return spec
+
+def f(a: A, b: B) -> str:
+    return f'{a}{b}'
+[out]
+def B.__format__(self, spec):
+    self :: __main__.B
+    spec :: str
+L0:
+    return spec
+def f(a, b):
+    a :: __main__.A
+    b :: __main__.B
+    r0, r1, r2 :: str
+L0:
+    r0 = PyObject_Str(a)
+    r1 = CPyObject_Format(b)
+    r2 = CPyStr_Build(2, r0, r1)
+    return r2
+
 [case testFStringFromConstants]
 from typing import Final
 string: Final = "abc"
@@ -848,29 +878,38 @@ def test3(x: str) -> str:
 
 [out]
 def test(x):
-    x, r0, r1, r2, r3 :: str
+    x, r0, r1, r2, r3, r4, r5 :: str
 L0:
     r0 = 'abc1233.14True'
-    r1 = 'True3.14123abc'
-    r2 = 'abc1233.14True'
-    r3 = CPyStr_Build(5, r0, x, r1, x, r2)
-    return r3
+    r1 = CPyObject_Format(x)
+    r2 = 'True3.14123abc'
+    r3 = CPyObject_Format(x)
+    r4 = 'abc1233.14True'
+    r5 = CPyStr_Build(5, r0, r1, r2, r3, r4)
+    return r5
 def test2(x):
-    x, r0, r1, r2, r3 :: str
+    x, r0, r1, r2, r3, r4, r5, r6 :: str
 L0:
     r0 = 'abc1233.14True'
-    r1 = 'True3.14123abc'
-    r2 = 'abc1233.14True'
-    r3 = CPyStr_Build(6, r0, x, r1, x, r2, x)
-    return r3
+    r1 = CPyObject_Format(x)
+    r2 = 'True3.14123abc'
+    r3 = CPyObject_Format(x)
+    r4 = 'abc1233.14True'
+    r5 = CPyObject_Format(x)
+    r6 = CPyStr_Build(6, r0, r1, r2, r3, r4, r5)
+    return r6
 def test3(x):
-    x, r0, r1, r2, r3 :: str
+    x, r0, r1, r2, r3, r4, r5, r6, r7 :: str
 L0:
-    r0 = 'abc1233.14True'
-    r1 = 'True3.14123abc'
-    r2 = 'abc1233.14True'
-    r3 = CPyStr_Build(7, x, r0, x, r1, x, r2, x)
-    return r3
+    r0 = CPyObject_Format(x)
+    r1 = 'abc1233.14True'
+    r2 = CPyObject_Format(x)
+    r3 = 'True3.14123abc'
+    r4 = CPyObject_Format(x)
+    r5 = 'abc1233.14True'
+    r6 = CPyObject_Format(x)
+    r7 = CPyStr_Build(7, r0, r1, r2, r3, r4, r5, r6)
+    return r7
 
 [case testOptionalStrEquality1]
 from typing import Optional

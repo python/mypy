@@ -1067,7 +1067,9 @@ def translate_str_format(builder: IRBuilder, expr: CallExpr, callee: RefExpr) ->
                 return None
             literals, format_ops = tokens
             # Convert variables to strings
-            substitutions = convert_format_expr_to_str(builder, format_ops, expr.args, expr.line)
+            substitutions = convert_format_expr_to_str(
+                builder, format_ops, expr.args, expr.line, use_format=True
+            )
             if substitutions is None:
                 return None
             return join_formatted_strings(builder, literals, substitutions, expr.line)
@@ -1134,7 +1136,9 @@ def translate_fstring(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Va
                 exprs = [*exprs[:i], StrExpr(first + second), *exprs[i + 2 :]]
                 format_ops = [*format_ops[:i], FormatOp.STR, *format_ops[i + 2 :]]
 
-        substitutions = convert_format_expr_to_str(builder, format_ops, exprs, expr.line)
+        substitutions = convert_format_expr_to_str(
+            builder, format_ops, exprs, expr.line, use_format=True
+        )
         if substitutions is None:
             return None
 

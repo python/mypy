@@ -16,17 +16,18 @@ from mypy.nodes import Context, Expression
 from mypy.options import Options
 from mypyc.ir.ops import Integer, Value
 from mypyc.ir.rtypes import (
+    RInstance,
+    RType,
     c_pyssize_t_rprimitive,
     is_bytes_rprimitive,
     is_int_rprimitive,
     is_short_int_rprimitive,
-    is_str_rprimitive,
 )
 from mypyc.irbuild.builder import IRBuilder
 from mypyc.irbuild.constant_fold import constant_fold_expr
 from mypyc.primitives.bytes_ops import bytes_build_op
 from mypyc.primitives.int_ops import int_to_ascii_op, int_to_str_op
-from mypyc.primitives.str_ops import str_build_op, str_op
+from mypyc.primitives.str_ops import format_obj_op, str_build_op, str_op
 
 
 @unique
@@ -133,10 +134,19 @@ def tokenizer_format_call(format_str: str) -> tuple[list[str], list[FormatOp]] |
 
 
 def convert_format_expr_to_str(
-    builder: IRBuilder, format_ops: list[FormatOp], exprs: list[Expression], line: int
+    builder: IRBuilder,
+    format_ops: list[FormatOp],
+    exprs: list[Expression],
+    line: int,
+    *,
+    use_format: bool,
 ) -> list[Value] | None:
     """Convert expressions into string literal objects with the guidance
-    of FormatOps. Return None when fails."""
+    of FormatOps. Return None when fails.
+
+    If use_format is true, convert values like format(x) (str.format() and f-strings),
+    which calls __format__. Otherwise convert them like str(x) (printf-style formatting).
+    """
     if len(format_ops) != len(exprs):
         return None
 
@@ -146,10 +156,11 @@ def convert_format_expr_to_str(
         if format_op == FormatOp.STR:
             if isinstance(folded := constant_fold_expr(builder, x), str):
                 var_str = builder.load_literal_value(folded)
-            elif is_str_rprimitive(node_type):
-                var_str = builder.accept(x)
             elif is_int_rprimitive(node_type) or is_short_int_rprimitive(node_type):
                 var_str = builder.primitive_op(int_to_str_op, [builder.accept(x)], line)
+            elif use_format and not is_format_same_as_str(node_type):
+                # This also handles str subclasses, which may override __format__
+                var_str = builder.call_c(format_obj_op, [builder.accept(x)], line)
             else:
                 var_str = builder.primitive_op(str_op, [builder.accept(x)], line)
         elif format_op == FormatOp.INT:
@@ -163,6 +174,24 @@ def convert_format_expr_to_str(
             return None
         converted.append(var_str)
     return converted
+
+
+def is_format_same_as_str(typ: RType) -> bool:
+    """Is format(x) known to be the same as str(x) for all values of a type?
+
+    This is the case for instances of native classes that don't define __format__.
+    """
+    if not isinstance(typ, RInstance):
+        return False
+    subs = typ.class_ir.subclasses()
+    if subs is None:
+        return False
+    for cl in (typ.class_ir, *subs):
+        if not cl.is_ext_class or cl.inherits_python:
+            return False
+        if any("__format__" in base.methods for base in cl.mro):
+            return False
+    return True
 
 
 def join_formatted_strings(

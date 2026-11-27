@@ -42,6 +42,14 @@ str_op = function_op(
     error_kind=ERR_MAGIC,
 )
 
+# format(obj)
+format_obj_op = custom_op(
+    arg_types=[object_rprimitive],
+    return_type=str_rprimitive,
+    c_function_name="CPyObject_Format",
+    error_kind=ERR_MAGIC,
+)
+
 # repr(obj)
 function_op(
     name="builtins.repr",
