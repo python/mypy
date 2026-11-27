@@ -1005,12 +1005,23 @@ class ConstraintBuilderVisitor(TypeVisitor[list[Constraint]]):
                 and mypy.subtypes.is_protocol_implementation(erased, instance, skip=["__call__"])
             ):
                 instance.type.inferring.append(instance)
-                res.extend(
-                    self.infer_constraints_from_protocol_members(
-                        instance, template, template, instance
-                    )
+                member_constraints = self.infer_constraints_from_protocol_members(
+                    instance, template, template, instance
                 )
                 instance.type.inferring.pop()
+                # Binding the protocol's Self to the template can produce
+                # constraints such as T <: T. These give no contextual information
+                # about the inference variable T.
+                res.extend(
+                    c
+                    for c in member_constraints
+                    if not (
+                        isinstance(c.target, TypeVarType)
+                        and c.type_var.is_meta_var()
+                        and c.target == c.origin_type_var
+                        and not c.extra_tvars
+                    )
+                )
                 return res
         if res:
             return res

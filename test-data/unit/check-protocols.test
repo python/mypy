@@ -4760,6 +4760,43 @@ class A(Protocol):
 
 [builtins fixtures/tuple.pyi]
 
+[case testInlineListWithGenericSelfProtocolContext]
+from typing import Protocol, Self, TypeVar
+
+T_co = TypeVar("T_co", covariant=True)
+T = TypeVar("T")
+
+class Concatenable(Protocol[T_co]):
+    def __add__(self, other: Self) -> Self: ...
+
+def duplicate(seq: Concatenable[T]) -> Concatenable[T]:
+    return seq + seq
+
+items = [1, 2, 3]
+duplicate(items)
+duplicate([1, 2, 3])
+[builtins fixtures/list.pyi]
+
+[case testInlineListWithConstrainedSelfProtocolContext]
+from typing import Literal, Protocol, Self, TypeVar
+
+T_co = TypeVar("T_co", covariant=True)
+T = TypeVar("T")
+
+class Concatenable(Protocol[T_co]):
+    def __add__(self, other: Self) -> Self: ...
+    def __getitem__(self, index: int, /) -> T_co: ...
+
+def first(x: Concatenable[T]) -> T:
+    return x[0]
+
+def expect_one(x: Concatenable[Literal[1]]) -> None: ...
+
+reveal_type(first([1, 2]))  # N: Revealed type is "builtins.int"
+expect_one([1])
+expect_one([2])  # E: List item 0 has incompatible type "Literal[2]"; expected "Literal[1]"
+[builtins fixtures/list.pyi]
+
 [case testTupleTypeSelfTypeProto]
 from typing import Protocol, TypeVar
 
