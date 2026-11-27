@@ -1063,3 +1063,18 @@ A = list[T]
 a: A
 reveal_type(a)  # N: Revealed type is "builtins.list[builtins.list[Any]]"
 [builtins fixtures/tuple.pyi]
+
+[case testTypeVarDefaultUsedWhenInferringFromTypeObject]
+from typing import Generic
+from typing_extensions import TypeVar
+
+T = TypeVar("T", bound=int | None, default=int | None)
+
+class Box(Generic[T]): pass
+
+S = TypeVar("S")
+
+def f(x: type[S]) -> S: ...
+
+reveal_type(f(Box))  # N: Revealed type is "__main__.Box[builtins.int | None]"
+[builtins fixtures/tuple.pyi]
