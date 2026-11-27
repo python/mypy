@@ -337,3 +337,56 @@ for fn in (f, g):
 [out]
 RuntimeError boom
 RuntimeError boom
+
+[case testMatchAsPatternBindsSubject_python3_10]
+from typing import Any
+
+def seq(x: Any) -> object:
+    match x:
+        case [a, b] as z:
+            return z
+    return None
+
+def mapping(x: Any) -> object:
+    match x:
+        case {"k": a} as z:
+            return z
+    return None
+
+def nested(x: Any) -> object:
+    match x:
+        case [(1 as a), *_] as z:
+            return (a, z)
+    return None
+
+def value(x: Any) -> object:
+    match x:
+        case 1.0 as z:
+            return z
+    return None
+
+def or_pattern(x: Any) -> object:
+    match x:
+        case ([1, _] | {"k": 1} | None | 5) as z:
+            return ("or", z)
+    return None
+
+[file driver.py]
+from native import seq, mapping, nested, value, or_pattern
+
+assert seq([1, 2]) == [1, 2]
+assert seq((3, 4)) == (3, 4)
+assert seq([1]) is None
+assert mapping({"k": 1}) == {"k": 1}
+assert mapping({}) is None
+assert nested([1, 2]) == (1, [1, 2])
+assert nested([2, 2]) is None
+assert type(value(1)) is int
+assert value(True) is True
+assert type(value(1.0)) is float
+assert value(2) is None
+assert or_pattern([1, 9]) == ("or", [1, 9])
+assert or_pattern({"k": 1}) == ("or", {"k": 1})
+assert or_pattern(None) == ("or", None)
+assert type(or_pattern(5.0)[1]) is float
+assert or_pattern([2, 2]) is None
