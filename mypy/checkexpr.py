@@ -2953,6 +2953,30 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                 actuals, actual_types, actual_kinds, callee_arg_types, callee_arg_kinds
             ):
                 # Check that a *arg is valid as varargs.
+                if (
+                    actual_kind == ARG_STAR
+                    and not callee_arg_kind.is_star()
+                    and _is_variadic_item_iterable(actual_type)
+                ):
+                    # A starred argument with a variable-length iterable whose
+                    # items are themselves variadic (e.g. tuple[tuple[*Ts], ...])
+                    # cannot be safely expanded item-by-item against fixed
+                    # formals: the item count is unknown and each item absorbs a
+                    # variable number of positions, so no item-to-formal mapping
+                    # can be trusted. Check the iterable as a whole instead.
+                    check_arg(
+                        actual_type,
+                        actual_type,
+                        actual_kind,
+                        callee_arg_type,
+                        actual + 1,
+                        i + 1,
+                        callee,
+                        object_type,
+                        args[actual],
+                        context,
+                    )
+                    continue
                 expanded_actual = mapper.expand_actual_type(
                     actual_type,
                     actual_kind,
@@ -6896,6 +6920,34 @@ def is_async_def(t: Type) -> bool:
     ):
         t = get_proper_type(t.args[3])
     return isinstance(t, Instance) and t.type.fullname == "typing.Coroutine"
+
+
+def _contains_unpack(t: Type) -> bool:
+    """Return True if t contains a variadic type (TypeVarTuple or Unpack)."""
+    p = get_proper_type(t)
+    if isinstance(p, (TypeVarTupleType, UnpackType)):
+        return True
+    if isinstance(p, TupleType):
+        return any(_contains_unpack(item) for item in p.items)
+    if isinstance(p, Instance):
+        return any(_contains_unpack(a) for a in p.args)
+    return False
+
+
+def _is_variadic_item_iterable(t: Type) -> bool:
+    """Return True if t is a variable-length iterable with variadic items.
+
+    This covers types like tuple[tuple[*Ts], ...] (the type of a *args
+    parameter annotated with a variadic tuple type), where both the number
+    of items and the arity of each item are unknown until type variable
+    binding. Such an argument cannot be expanded item-by-item against fixed
+    call formals, since each item would absorb a variable number of
+    positions.
+    """
+    p = get_proper_type(t)
+    if isinstance(p, Instance) and p.args:
+        return _contains_unpack(p.args[0])
+    return False
 
 
 def is_non_empty_tuple(t: Type) -> bool:

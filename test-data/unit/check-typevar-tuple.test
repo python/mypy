@@ -3324,3 +3324,24 @@ x: tuple[A, B] = pack(A(), B())
 x = pack(C(), C())
 reveal_type(x)  # N: Revealed type is "tuple[__main__.C, __main__.C]"
 [builtins fixtures/tuple.pyi]
+
+[case testTypeVarTupleUnpackedStarArgIsCheckedIssue22567]
+# flags: --python-version 3.11
+from typing import Generic, Tuple, Unpack
+from typing_extensions import TypeVarTuple
+
+Ts = TypeVarTuple("Ts")
+
+class Example(Generic[*Ts]):
+    def func(self, composed: Tuple[Unpack[Ts]]) -> None: ...
+
+def mre(example: Example[Unpack[Ts]], *composed: Tuple[Unpack[Ts]]) -> None:
+    example.func(*composed)  # E: Argument 1 to "func" of "Example" has incompatible type "*tuple[tuple[*Ts], ...]"; expected "tuple[*Ts]"
+
+def fixed_lenient(example: Example[int, str], composed: Tuple[Tuple[int, str], ...]) -> None:
+    # Homogeneous tuple[X, ...] keeps its traditional lenient item mapping.
+    example.func(*composed)
+
+def ok(example: Example[int, str], composed: Tuple[int, str]) -> None:
+    example.func(composed)
+[builtins fixtures/tuple.pyi]
