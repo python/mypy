@@ -1471,8 +1471,8 @@ a: A
 b: B
 
 if int():
-    b = f([a]) # E: Incompatible types in assignment (expression has type "A", variable has type "B")
-    a = f([b]) # E: Incompatible types in assignment (expression has type "B", variable has type "A")
+    b = f([a]) # E: List item 0 has incompatible type "A"; expected "B"
+    a = f([b]) # E: List item 0 has incompatible type "B"; expected "A"
 if int():
     a = f(b)   # E: Incompatible types in assignment (expression has type "B", variable has type "A")
 

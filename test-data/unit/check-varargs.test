@@ -164,7 +164,7 @@ bar(args=1)  # E: Argument "args" to "bar" has incompatible type "int"; expected
 from typing import TypeVar
 T = TypeVar('T')
 
-def f( *a: T) -> T:
+def f(*a: T) -> T:
     pass
 
 class A: pass
@@ -177,11 +177,11 @@ c: C
 o: object
 
 if int():
-    a = f(o) # E: Incompatible types in assignment (expression has type "object", variable has type "A")
+    a = f(o) # E: Argument 1 to "f" has incompatible type "object"; expected "A"
 if int():
-    b = f(b, a) # E: Incompatible types in assignment (expression has type "A", variable has type "B")
+    b = f(b, a) # E: Argument 2 to "f" has incompatible type "A"; expected "B"
 if int():
-    b = f(a, b) # E: Incompatible types in assignment (expression has type "A", variable has type "B")
+    b = f(a, b) # E: Argument 1 to "f" has incompatible type "A"; expected "B"
 
 if int():
     o = f()
@@ -210,13 +210,13 @@ def f(a: T, b: T = None, *c: T) -> T:
 class A: pass
 
 if int():
-    a = f(o) # E: Incompatible types in assignment (expression has type "object", variable has type "A")
+    a = f(o) # E: Argument 1 to "f" has incompatible type "object"; expected "A"
 if int():
-    a = f(a, o) # E: Incompatible types in assignment (expression has type "object", variable has type "A")
+    a = f(a, o) # E: Argument 2 to "f" has incompatible type "object"; expected "A"
 if int():
-    a = f(a, a, o) # E: Incompatible types in assignment (expression has type "object", variable has type "A")
+    a = f(a, a, o) # E: Argument 3 to "f" has incompatible type "object"; expected "A"
 if int():
-    a = f(a, a, a, o) # E: Incompatible types in assignment (expression has type "object", variable has type "A")
+    a = f(a, a, a, o) # E: Argument 4 to "f" has incompatible type "object"; expected "A"
 
 if int():
     a = f(a)

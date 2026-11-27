@@ -36,7 +36,7 @@ f(B.copy(B()))
 # f(B.copy(A()))
 
 def g(a: B) -> None: pass
-g(A.copy(A()))  # E: Argument 1 to "g" has incompatible type "A"; expected "B"
+g(A.copy(A()))  # E: Argument 1 to "copy" of "A" has incompatible type "A"; expected "B"
 g(A.copy(B()))
 g(B.copy(B()))
 

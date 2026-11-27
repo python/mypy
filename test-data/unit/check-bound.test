@@ -24,7 +24,7 @@ b = B()
 if int():
     b = f(b)
 if int():
-    b = f(C()) # E: Incompatible types in assignment (expression has type "C", variable has type "B")
+    b = f(C()) # E: Argument 1 to "f" has incompatible type "C"; expected "B"
 
 
 [case testBoundOnGenericClass]

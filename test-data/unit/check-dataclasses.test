@@ -363,7 +363,7 @@ from dataclasses import dataclass, field
 @dataclass
 class Application:
     name: str = 'Unnamed'
-    rating: int = field(default_factory=str)  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+    rating: int = field(default_factory=str)  # E: Argument "default_factory" to "field" has incompatible type "type[str]"; expected "Callable[[], int]"
 
 [builtins fixtures/dataclasses.pyi]
 
@@ -2285,7 +2285,7 @@ TNone = TypeVar('TNone', bound=None)
 TUnion = TypeVar('TUnion', bound=Union[str, int])
 
 def f1(t: TInt) -> None:
-    _ = replace(t, x=42)  # E: Value of type variable "_DataclassT" of "replace" cannot be "TInt"
+    replace(t, x=42)  # E: Value of type variable "_DataclassT" of "replace" cannot be "TInt"
 
 def f2(t: TAny) -> TAny:
     return replace(t, x='spam')  # E: Value of type variable "_DataclassT" of "replace" cannot be "TAny"
@@ -2351,11 +2351,11 @@ replace(None)  # E: Value of type variable "_DataclassT" of "replace" cannot be 
 from dataclasses import is_dataclass, replace
 
 def f(x: object) -> None:
-  _ = replace(x)  # E: Value of type variable "_DataclassT" of "replace" cannot be "object"
-  if is_dataclass(x):
-    _ = replace(x)  # E: Value of type variable "_DataclassT" of "replace" cannot be "DataclassInstance | type[DataclassInstance]"
-    if not isinstance(x, type):
-      _ = replace(x)
+    replace(x)  # E: Value of type variable "_DataclassT" of "replace" cannot be "object"
+    if is_dataclass(x):
+        replace(x)  # E: Value of type variable "_DataclassT" of "replace" cannot be "DataclassInstance | type[DataclassInstance]"
+        if not isinstance(x, type):
+            replace(x)
 
 [builtins fixtures/tuple.pyi]
 

@@ -2729,7 +2729,6 @@ def NotTransformed.__new__(cls, val):
     r10 :: object[1]
     r11 :: object_ptr
     r12 :: object
-    r13 :: str
 L0:
     r0 = builtins :: module
     r1 = 'super'
@@ -2746,8 +2745,7 @@ L0:
     r11 = load_address r10
     r12 = PyObject_Vectorcall(r8, r11, 1, 0)
     keep_alive r9
-    r13 = cast(str, r12)
-    return r13
+    return r12
 def NotTransformed.factory(cls, val):
     cls :: object
     val :: int
@@ -2894,7 +2892,6 @@ def NotTransformed.__new__(cls, val):
     r5 :: object[2]
     r6 :: object_ptr
     r7 :: object
-    r8 :: str
 L0:
     r0 = builtins :: module
     r1 = 'object'
@@ -2905,8 +2902,7 @@ L0:
     r6 = load_address r5
     r7 = PyObject_VectorcallMethod(r4, r6, 9223372036854775810, 0)
     keep_alive r2, r3
-    r8 = cast(str, r7)
-    return r8
+    return r7
 def NotTransformed.factory(cls, val):
     cls :: object
     val :: int
@@ -3112,11 +3108,9 @@ def A.__new__(cls, x):
     cls :: object
     x :: int
     r0 :: object
-    r1 :: __main__.A
 L0:
     r0 = CPy_SetupObject(cls)
-    r1 = cast(__main__.A, r0)
-    return r1
+    return r0
 def A.__init__(self, x):
     self :: __main__.A
     x :: int
@@ -3208,20 +3202,16 @@ def StaticBase.__new__(cls, x):
     cls :: object
     x :: int
     r0 :: object
-    r1 :: __main__.StaticBase
 L0:
     r0 = CPy_SetupObject(cls)
-    r1 = cast(__main__.StaticBase, r0)
-    return r1
+    return r0
 def DecoratedBase.__new__(cls, x):
     cls :: object
     x :: int
     r0 :: object
-    r1 :: __main__.DecoratedBase
 L0:
     r0 = CPy_SetupObject(cls)
-    r1 = cast(__main__.DecoratedBase, r0)
-    return r1
+    return r0
 def f():
     r0 :: __main__.A
     r1 :: object
