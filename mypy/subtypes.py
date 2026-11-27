@@ -1504,6 +1504,68 @@ def find_member(
     return result
 
 
+def bind_descriptor_access_simple(member_type: Type, subtype: Type) -> Type | None:
+    """Bind a descriptor attribute access without a type checker.
+
+    find_member_simple() is used before type checking (e.g. by semanal_typeargs
+    when validating type variable bounds), so it cannot use the full descriptor
+    binding logic from checkmember.py, which needs a type checker. Without this,
+    a class attribute declared with a descriptor type (e.g. ``m: Desc``) is
+    treated as having the descriptor type itself, so protocol checks involving
+    such members fail, and the (wrong) negative result is cached and reused by
+    later, accurate checks. See https://github.com/python/mypy/issues/22549.
+
+    Return the type of the attribute after binding ``__get__`` for an instance
+    access, or None if the descriptor cannot be bound reliably, in which case
+    the caller should fall back to the unbound descriptor type.
+    """
+    proper = get_proper_type(member_type)
+    if isinstance(proper, UnionType):
+        bound_items = []
+        for item in proper.items:
+            bound = bind_descriptor_access_simple(item, subtype)
+            bound_items.append(bound if bound is not None else item)
+        return mypy.typeops.make_simplified_union(bound_items)
+    if not isinstance(proper, Instance):
+        return None
+    if not proper.type.has_readable_member("__get__"):
+        return None
+    dunder_get = proper.type.get_method("__get__")
+    if dunder_get is None:
+        return None
+    if isinstance(dunder_get, Decorator):
+        get_type = find_node_type(dunder_get.var, proper, proper)
+    else:
+        get_type = find_node_type(dunder_get, proper, proper)
+    get_type = get_proper_type(get_type)
+    if isinstance(get_type, Overloaded):
+        # Select the overload that applies to an instance access: the first
+        # argument is the instance being accessed. Overloads taking None
+        # apply to class accesses instead.
+        candidates = [
+            item
+            for item in get_type.items
+            if len(item.arg_types) >= 1
+            and not isinstance(get_proper_type(item.arg_types[0]), NoneType)
+        ]
+        if len(candidates) != 1:
+            return None
+        get_type = candidates[0]
+    if not isinstance(get_type, CallableType):
+        return None
+    if len(get_type.arg_types) < 1:
+        return None
+    if not is_subtype(subtype, get_type.arg_types[0]):
+        # The descriptor only accepts instances of some other type.
+        return None
+    ret = get_type.ret_type
+    # Expand Self in the return type to the descriptor instance.
+    self_ids = {tv.id for tv in mypy.typeops.get_all_type_vars(ret) if tv.id.is_self()}
+    if self_ids:
+        ret = expand_type(ret, {tv_id: proper for tv_id in self_ids})
+    return ret
+
+
 def find_member_simple(
     name: str,
     itype: Instance,
@@ -1537,7 +1599,15 @@ def find_member_simple(
         node = info.get(name)
         v = node.node if node else None
         if isinstance(v, Var):
-            return find_node_type(v, itype, subtype, class_obj=class_obj)
+            member_type = find_node_type(v, itype, subtype, class_obj=class_obj)
+            if not class_obj and not is_lvalue:
+                # Bind descriptors, so that protocol checks before type checking
+                # (e.g. in semanal_typeargs) see the bound member type, not the
+                # descriptor type itself. See #22549.
+                bound = bind_descriptor_access_simple(member_type, subtype)
+                if bound is not None:
+                    return bound
+            return member_type
         if (
             not v
             and name not in ["__getattr__", "__setattr__", "__getattribute__"]

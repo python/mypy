@@ -4615,6 +4615,73 @@ z: HasInt = C  # E: Incompatible types in assignment (expression has type "type[
                # N: Following member(s) of "C" have conflicts: \
                # N:     attr: expected "int", got "Desc"
 
+[case testProtocolDescriptorTypeArgumentBound22549]
+# A class attribute declared with a descriptor type implements a protocol
+# via the descriptor's __get__ return type. Checking a type argument bound
+# against such a protocol must use the bound member type, not the descriptor
+# type itself. See https://github.com/python/mypy/issues/22549
+from typing import Generic, Protocol, Self, TypeVar, overload
+
+T = TypeVar("T", bound="P")
+
+
+class Desc:
+    @overload
+    def __get__(self, obj: None, owner: type) -> Self: ...
+    @overload
+    def __get__(self, obj: object, owner: type) -> int: ...
+    def __get__(self, obj: object, owner: type) -> Self | int: ...
+
+
+class P(Protocol):
+    @property
+    def m(self) -> int: ...
+
+
+class Box(Generic[T]): ...
+
+
+class C:
+    m: Desc = Desc()
+
+
+A = Box[C]
+
+x: P = C()
+[builtins fixtures/property.pyi]
+
+[case testProtocolDescriptorTypeArgumentBoundBad22549]
+# The bound check must still fail when the descriptor's __get__ return type
+# is genuinely incompatible with the protocol.
+from typing import Generic, Protocol, TypeVar
+
+T = TypeVar("T", bound="P")
+
+
+class BadDesc:
+    def __get__(self, obj: object, owner: type) -> str: ...
+
+
+class P(Protocol):
+    @property
+    def m(self) -> int: ...
+
+
+class Box(Generic[T]): ...
+
+
+class D:
+    m: BadDesc = BadDesc()
+
+
+A = Box[D]  # E: Value of type variable "T" of "Box" cannot be "D" \
+            # E: Type argument "D" of "Box" must be a subtype of "P"
+
+x: P = D()  # E: Incompatible types in assignment (expression has type "D", variable has type "P") \
+            # N: Following member(s) of "D" have conflicts: \
+            # N:     m: expected "int", got "str"
+[builtins fixtures/property.pyi]
+
 [case testProtocolErrorReportingNoDuplicates]
 from typing import Callable, Protocol, TypeVar
 
