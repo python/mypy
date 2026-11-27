@@ -2,17 +2,22 @@
 
 from __future__ import annotations
 
+import os
+import shutil
 import sys
+import tempfile
 
+import pytest
 from pytest import skip
 
-from mypy import defaults
+from mypy import build, defaults
 from mypy.config_parser import parse_mypy_comments
 from mypy.errors import CompileError, Errors
+from mypy.modulefinder import BuildSource
 from mypy.options import Options
 from mypy.parse import parse
 from mypy.test.data import DataDrivenTestCase, DataSuite
-from mypy.test.helpers import assert_string_arrays_equal, find_test_files, parse_options
+from mypy.test.helpers import Suite, assert_string_arrays_equal, find_test_files, parse_options
 from mypy.test.update_data import update_testcase_output
 from mypy.util import get_mypy_comments
 
@@ -129,3 +134,66 @@ def test_parse_error(testcase: DataDrivenTestCase) -> None:
             e.messages,
             f"Invalid compiler output ({testcase.file}, line {testcase.line})",
         )
+
+
+class TransformSourceSuite(Suite):
+    """Tests for options.transform_source (see #21222).
+
+    transform_source is a Python callable, so it cannot be exercised via the
+    data-driven test cases; these are plain unit tests instead.
+    """
+
+    def parse_with_transform(self, native_parser: bool) -> int:
+        """Parse a trivial module with transform_source set.
+
+        Return the number of top-level definitions in the resulting AST.
+        """
+        options = Options()
+        options.native_parser = native_parser
+        options.transform_source = lambda source: source + "reveal_type(1)\n"
+        errors = Errors(options)
+        tree = parse(
+            "x = 1\n", fnam="main", module="__main__", errors=errors, options=options, eager=True
+        )
+        assert not errors.is_errors()
+        return len(tree.defs)
+
+    def test_transform_source_native_parser(self) -> None:
+        pytest.importorskip("ast_serialize")
+        assert Options().native_parser
+        # The transform appends a statement, so we expect two top-level definitions.
+        assert self.parse_with_transform(native_parser=True) == 2
+
+    def test_transform_source_old_parser(self) -> None:
+        # The transform appends a statement, so we expect two top-level definitions.
+        assert self.parse_with_transform(native_parser=False) == 2
+
+    def test_transform_source_parallel_build(self) -> None:
+        """transform_source must be honored with parallel (native parser) checking.
+
+        With more than one file the native parser parses in parallel threads, and
+        the source must be read (and transformed) instead of letting the parser
+        use the file on disk directly.
+        """
+        pytest.importorskip("ast_serialize")
+        assert Options().native_parser
+        tmpdir = tempfile.mkdtemp(prefix="mypy-test-transform-")
+        self.addCleanup(shutil.rmtree, tmpdir, ignore_errors=True)
+        for name in ("a.py", "b.py"):
+            with open(os.path.join(tmpdir, name), "w") as f:
+                f.write("x: int = 1\n")
+        options = Options()
+        # The transform introduces a type error on line 3 of each file.
+        options.transform_source = lambda source: source + "\nbad: str = 1\n"
+        options.incremental = False
+        options.cache_dir = os.devnull
+        options.show_traceback = True
+        sources = [
+            BuildSource(os.path.join(tmpdir, name), name[:-3], None) for name in ("a.py", "b.py")
+        ]
+        try:
+            result = build.build(sources=sources, options=options)
+            messages = result.errors
+        except CompileError as e:
+            messages = e.messages
+        assert len([m for m in messages if ":3: error" in m]) == 2
