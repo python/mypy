@@ -1873,3 +1873,29 @@ from typing_extensions import Concatenate
 def c(t: tuple[Concatenate[int, ...]]) -> None:  # E: Cannot use "[int, VarArg(Any), KwArg(Any)]" for tuple, only for ParamSpec
     reveal_type(t)  # N: Revealed type is "tuple[Any]"
 [builtins fixtures/tuple.pyi]
+
+[case testTupleUnionContextInSequence]
+from enum import Enum
+from typing import Literal, Sequence, Tuple, Union
+
+class Color(Enum):
+    RED = 1
+    BLUE = 2
+
+class Shape(Enum):
+    CIRCLE = 1
+    TRIANGLE = 2
+    SQUARE = 3
+
+Pair = Union[
+    Tuple[Literal[Color.RED], Literal[Shape.CIRCLE]],
+    Tuple[Literal[Color.BLUE], Literal[Shape.TRIANGLE]],
+]
+
+def consume(pairs: Sequence[Pair]) -> None:
+    pass
+
+consume([(Color.BLUE, Shape.TRIANGLE)])
+consume([(Color.RED, Shape.CIRCLE), (Color.BLUE, Shape.TRIANGLE)])
+consume([(Color.RED, Shape.SQUARE)])  # E: List item 0 has incompatible type "tuple[Literal[Color.RED], Literal[Shape.SQUARE]]"; expected "tuple[Literal[Color.RED], Literal[Shape.CIRCLE]] | tuple[Literal[Color.BLUE], Literal[Shape.TRIANGLE]]"
+[builtins fixtures/tuple.pyi]
