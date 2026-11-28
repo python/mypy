@@ -160,11 +160,11 @@ from typing import Callable
 
 class TypedDecorator:
     def __call__(self, c: Callable) -> Callable:
-        return function
+        return c
 
 class UntypedDecorator:
     def __call__(self, c):
-        return function
+        return c
 
 @TypedDecorator()
 def f() -> None: pass
@@ -200,29 +200,29 @@ def untyped_decorator(c):
 class TypedDecorator:
     @typed_decorator
     def __call__(self, c: Callable) -> Callable:
-        return function
+        return c
 
 class UntypedDecorator1:
     @untyped_decorator
     def __call__(self, c):
-        return function
+        return c
 
 class UntypedDecorator2:
     @untyped_decorator  # E: Untyped decorator makes function "__call__" untyped
     def __call__(self, c: Callable) -> Callable:
-        return function
+        return c
 
 class UntypedDecorator3:
     @typed_decorator
     @untyped_decorator  # E: Untyped decorator makes function "__call__" untyped
     def __call__(self, c: Callable) -> Callable:
-        return function
+        return c
 
 class UntypedDecorator4:
     @untyped_decorator  # E: Untyped decorator makes function "__call__" untyped
     @typed_decorator
     def __call__(self, c: Callable) -> Callable:
-        return function
+        return c
 
 @TypedDecorator()
 def f() -> None: pass

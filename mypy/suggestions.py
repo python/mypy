@@ -333,7 +333,7 @@ class SuggestionEngine:
             fdef.arg_kinds,
             fdef.arg_names,
             AnyType(TypeOfAny.suggestion_engine),
-            self.named_type("builtins.function"),
+            self.named_type("types.FunctionType"),
         )
 
     def get_starting_type(self, fdef: FuncDef) -> CallableType:

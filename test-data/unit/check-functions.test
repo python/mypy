@@ -2331,11 +2331,11 @@ T = TypeVar("T")
 def join(x: T, y: T) -> T: ...
 
 h2 = join(f, g)
-reveal_type(h2)  # N: Revealed type is "builtins.function"
+reveal_type(h2)  # N: Revealed type is "types.FunctionType"
 h2(7)  # E: Cannot call function of unknown type
 
 h3 = join(g, f)
-reveal_type(h3)  # N: Revealed type is "builtins.function"
+reveal_type(h3)  # N: Revealed type is "types.FunctionType"
 h3(7)  # E: Cannot call function of unknown type
 [builtins fixtures/bool.pyi]
 
@@ -3560,7 +3560,7 @@ def f3(i: str = "") -> None: ...
 
 reveal_type(join(f1, f2))  # N: Revealed type is "def ()"
 reveal_type(join(f1, f3))  # N: Revealed type is "def ()"
-reveal_type(join(f2, f3))  # N: Revealed type is "builtins.function"  # TODO: this could be better
+reveal_type(join(f2, f3))  # N: Revealed type is "types.FunctionType"  # TODO: this could be better
 [builtins fixtures/tuple.pyi]
 
 [case testCallableJoinWithDefaultsMultiple]

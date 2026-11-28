@@ -733,7 +733,7 @@ class PatternChecker(PatternVisitor[PatternType]):
             and o.class_ref.node.fullname == "typing.Callable"
         ):
             # Create a `Callable[..., Any]`
-            fallback = self.chk.named_type("builtins.function")
+            fallback = self.chk.named_type("types.FunctionType")
             any_type = AnyType(TypeOfAny.unannotated)
             typ = callable_with_ellipsis(any_type, ret_type=any_type, fallback=fallback)
             return [TypeRange(typ, is_upper_bound=False)]

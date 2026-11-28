@@ -270,7 +270,6 @@ class tuple(Generic[T_co], Sequence[T_co], Iterable[T_co]):
     def __mul__(self, value: int, /) -> Tuple[T_co, ...]: ...
     def __rmul__(self, value: int, /) -> Tuple[T_co, ...]: ...
 
-class function: pass
 
 class list(Generic[_T], Sequence[_T], Iterable[_T]):
     def __init__(self, i: Optional[Iterable[_T]] = None) -> None: pass

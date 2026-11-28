@@ -9,7 +9,6 @@ class type:
 
 class int: pass
 class str: pass
-class function: pass
 
 bytes = str
 

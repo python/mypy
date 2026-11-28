@@ -12,7 +12,6 @@ class object:
 class type: pass
 class tuple(Generic[t]):
     def __iter__(self) -> Iterator[t]: pass
-class function: pass
 class bool: pass
 class int: pass # for convenience
 class float: pass  # for convenience

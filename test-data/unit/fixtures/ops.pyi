@@ -23,8 +23,6 @@ class tuple(Sequence[Tco]):
     def __gt__(self, x: Tuple[Tco, ...]) -> bool: pass
     def __ge__(self, x: Tuple[Tco, ...]) -> bool: pass
 
-class function: pass
-
 class str:
     def __init__(self, x: 'int' = ...) -> None: pass
     def __add__(self, x: 'str') -> 'str': pass

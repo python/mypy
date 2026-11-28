@@ -384,7 +384,7 @@ def join(x: T, y: T) -> T: ...
 class C(Generic[P, P2]):
     def m(self, f: Callable[P, None], g: Callable[P2, None]) -> None:
         reveal_type(join(f, f))  # N: Revealed type is "def (*P.args, **P.kwargs)"
-        reveal_type(join(f, g))  # N: Revealed type is "builtins.function"
+        reveal_type(join(f, g))  # N: Revealed type is "types.FunctionType"
 
     def m2(self, *args: P.args, **kwargs: P.kwargs) -> None:
         reveal_type(join(args, args))  # N: Revealed type is "P.args`1"

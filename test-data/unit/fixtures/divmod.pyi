@@ -13,7 +13,6 @@ class float(SupportsInt):
 
 
 class tuple: pass
-class function: pass
 class str: pass
 class type: pass
 

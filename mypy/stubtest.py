@@ -2149,9 +2149,9 @@ def get_mypy_type_of_runtime_value(
         runtime,
         (types.FunctionType, types.BuiltinFunctionType, types.MethodType, types.BuiltinMethodType),
     ):
-        builtins = get_stub("builtins")
-        assert builtins is not None
-        type_info = builtins.names["function"].node
+        types_mod = get_stub("types")
+        assert types_mod is not None
+        type_info = types_mod.names["FunctionType"].node
         assert isinstance(type_info, nodes.TypeInfo)
         fallback = mypy.types.Instance(type_info, [anytype()])
         signature = safe_inspect_signature(runtime)

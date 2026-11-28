@@ -12,8 +12,6 @@ class type:
 
 class tuple(Generic[T]): pass
 
-class function: pass
-
 def isinstance(x: object, t: Union[Type[object], Tuple[Type[object], ...]]) -> bool: pass
 def issubclass(x: object, t: Union[Type[object], Tuple[Type[object], ...]]) -> bool: pass
 def hasattr(x: object, name: str) -> bool: pass

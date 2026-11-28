@@ -21,3 +21,6 @@ class UnionType:
 class NotImplementedType: ...
 
 class EllipsisType: pass
+
+class FunctionType:
+    __name__: str

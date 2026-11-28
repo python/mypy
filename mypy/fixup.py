@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any, Final
 
-from mypy.lookup import lookup_fully_qualified
+from mypy.lookup import lookup_core_types_class, lookup_fully_qualified
 from mypy.nodes import (
     Block,
     ClassDef,
@@ -374,6 +374,9 @@ class TypeFixer(TypeVisitor[None]):
 def lookup_fully_qualified_typeinfo(
     modules: dict[str, MypyFile], name: str, *, allow_missing: bool
 ) -> TypeInfo:
+    if (stnode := lookup_core_types_class(name, modules)) is not None:
+        assert isinstance(stnode.node, TypeInfo)
+        return stnode.node
     stnode = lookup_fully_qualified(name, modules, raise_on_missing=not allow_missing)
     node = stnode.node if stnode else None
     if isinstance(node, TypeInfo):

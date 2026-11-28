@@ -1,6 +1,7 @@
 # Builtins stub used in slicing test cases.
 import types
 from typing import Generic, TypeVar, Protocol
+
 T = TypeVar('T')
 _Tco = TypeVar('_Tco', covariant=True)
 
@@ -12,7 +13,6 @@ class object:
 
 class type: pass
 class tuple(Generic[T]): pass
-class function: pass
 
 class int: pass
 class str: pass

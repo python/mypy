@@ -61,6 +61,7 @@ from mypy.constant_fold import constant_fold_expr
 from mypy.errorcodes import PROPERTY_DECORATOR, ErrorCode
 from mypy.errors import Errors, report_internal_error
 from mypy.exprtotype import TypeTranslationError, expr_to_unanalyzed_type
+from mypy.lookup import lookup_core_types_class
 from mypy.message_registry import CANNOT_DECLARE_TYPE_OF_SPECIAL_FORM, ErrorMessage
 from mypy.messages import (
     SUGGESTED_TEST_FIXTURES,
@@ -346,7 +347,7 @@ FUTURE_IMPORTS: Final = {
 
 # Special cased built-in classes that are needed for basic functionality and need to be
 # available very early on.
-CORE_BUILTIN_CLASSES: Final = ["object", "bool", "function"]
+CORE_BUILTIN_CLASSES: Final = ["object", "bool"]
 
 
 # Python has several different scope/namespace kinds with subtly different semantics.
@@ -2581,12 +2582,8 @@ class SemanticAnalyzer(
             self.add_global_symbol(defn.name, defn, defn.info)
 
     def make_empty_type_info(self, defn: ClassDef) -> TypeInfo:
-        if (
-            self.is_module_scope()
-            and self.cur_mod_id == "builtins"
-            and defn.name in CORE_BUILTIN_CLASSES
-        ):
-            # Special case core built-in classes. A TypeInfo was already
+        if self.is_module_scope() and self.is_core_builtin_class(defn):
+            # Special case core classes. A TypeInfo was already
             # created for it before semantic analysis, but with a dummy
             # ClassDef. Patch the real ClassDef object.
             info = self.globals[defn.name].node
@@ -7061,7 +7058,8 @@ class SemanticAnalyzer(
         """
         # TODO: unify/clean-up/simplify lookup methods, see #4157.
         module, name = fullname.rsplit(".", maxsplit=1)
-
+        if (sym := lookup_core_types_class(fullname, self.modules)) is not None:
+            return sym
         if module in self.modules:
             # If the module exists, look up the name in the module.
             # This is the common case.
@@ -7113,7 +7111,7 @@ class SemanticAnalyzer(
 
     def function_type(self) -> Instance:
         if self._function_type is None:
-            self._function_type = self.named_type("builtins.function")
+            self._function_type = self.named_type("types.FunctionType")
         return self._function_type
 
     def named_type(self, fullname: str, args: list[Type] | None = None) -> Instance:

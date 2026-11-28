@@ -27,7 +27,6 @@ class list(Sequence[T]):
     def extend(self, x: Iterable[T]) -> None: pass
 
 class tuple(Generic[T]): pass
-class function: pass
 class int:
     def __bool__(self) -> bool: pass
 class float:

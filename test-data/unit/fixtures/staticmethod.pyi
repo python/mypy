@@ -7,8 +7,6 @@ class object:
 class type:
     def __init__(self, x) -> None: pass
 
-class function: pass
-
 staticmethod = object() # Dummy definition.
 property = object()  # Dummy definition
 

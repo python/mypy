@@ -966,8 +966,9 @@ class int: pass
 class str: pass
 class bool: pass
 class type: pass
-class function: pass
 class dict: pass
+[file types.py]
+class FunctionType: pass
 
 
 -- For loop over tuple

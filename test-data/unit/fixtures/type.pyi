@@ -22,7 +22,6 @@ class type:
 
 class tuple(Generic[T]): pass
 class dict(Generic[T, S]): pass
-class function: pass
 class bool: pass
 class int: pass
 class str: pass

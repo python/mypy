@@ -99,7 +99,7 @@ class TypeFixture:
         self.type_typei = self.make_type_info("builtins.type")  # class type
         self.bool_type_info = self.make_type_info("builtins.bool")
         self.str_type_info = self.make_type_info("builtins.str")
-        self.functioni = self.make_type_info("builtins.function")  # function TODO
+        self.functioni = self.make_type_info("types.FunctionType")  # function TODO
         self.ai = self.make_type_info("A", mro=[self.oi])  # class A
         self.bi = self.make_type_info("B", mro=[self.ai, self.oi])  # class B(A)
         self.ci = self.make_type_info("C", mro=[self.ai, self.oi])  # class C(A)

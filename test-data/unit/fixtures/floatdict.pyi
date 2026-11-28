@@ -19,7 +19,6 @@ class bytes: pass
 
 class tuple(Generic[T]): pass
 class slice: pass
-class function: pass
 
 
 class list(Iterable[T], Generic[T]):

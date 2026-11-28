@@ -1343,9 +1343,10 @@ class list(Iterable[T]):
 class int: pass
 class type: pass
 class tuple: pass
-class function: pass
 class str: pass
 class dict: pass
+[file types.py]
+class FunctionType: pass
 
 [case testMultipleAssignmentWithIterable]
 from typing import Iterable, TypeVar

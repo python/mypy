@@ -1756,7 +1756,7 @@ arr4 = [a, d]
 arr5 = [a, e]
 
 reveal_type(arr1)  # N: Revealed type is "builtins.list[def (Literal[1]) -> builtins.int]"
-reveal_type(arr2)  # N: Revealed type is "builtins.list[builtins.function]"
+reveal_type(arr2)  # N: Revealed type is "builtins.list[types.FunctionType]"
 reveal_type(arr3)  # N: Revealed type is "builtins.list[def (Literal[1]) -> builtins.object]"
 reveal_type(arr4)  # N: Revealed type is "builtins.list[def (Literal[1]) -> builtins.object]"
 reveal_type(arr5)  # N: Revealed type is "builtins.list[def (Literal[1]) -> builtins.object]"
@@ -1794,7 +1794,7 @@ b: Callable[[Literal[2]], str]
 lit: Literal[1]
 
 arr = [a, b]
-reveal_type(arr)  # N: Revealed type is "builtins.list[builtins.function]"
+reveal_type(arr)  # N: Revealed type is "builtins.list[types.FunctionType]"
 reveal_type(arr[0](lit))  # E: Cannot call function of unknown type \
                           # N: Revealed type is "Any"
 

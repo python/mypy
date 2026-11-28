@@ -214,7 +214,7 @@ def type_object_type(
                 any_type = AnyType(TypeOfAny.special_form)
                 if instance_cache.function_type is None:
                     function_typeinfo = lookup_stdlib_typeinfo(
-                        "builtins.function", modules_state.modules
+                        "types.FunctionType", modules_state.modules
                     )
                     instance_cache.function_type = Instance(function_typeinfo, [])
                 sig = CallableType(

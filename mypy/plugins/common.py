@@ -337,9 +337,9 @@ def _add_method_by_spec(
     ), "Can't add a new method that's both staticmethod and classmethod."
 
     if isinstance(api, SemanticAnalyzerPluginInterface):
-        function_type = api.named_type("builtins.function")
+        function_type = api.named_type("types.FunctionType")
     else:
-        function_type = api.named_generic_type("builtins.function", [])
+        function_type = api.named_generic_type("types.FunctionType", [])
 
     if is_classmethod:
         self_type = self_type or TypeType(fill_typevars(info))

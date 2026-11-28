@@ -5,9 +5,56 @@ functions that will find a semantic node by its name.
 
 from __future__ import annotations
 
-from mypy.nodes import MypyFile, SymbolTableNode, TypeInfo
+from collections.abc import Callable
+from typing import Final
+
+from mypy.mro import calculate_mro
+from mypy.nodes import GDEF, Block, ClassDef, MypyFile, SymbolTable, SymbolTableNode, TypeInfo
+from mypy.types import Instance
 
 # TODO: gradually move existing lookup functions to this module.
+
+# Special cased classes from the 'types' module that are needed for basic functionality.
+CORE_TYPES_CLASSES: Final = ["FunctionType"]
+
+
+def make_placeholder_types_info(
+    name: str, obj_type: Callable[[], Instance] | None = None
+) -> TypeInfo:
+    """Create a placeholder TypeInfo for a core class of the 'types' module.
+
+    The placeholders will be replaced by the real definitions if the 'types'
+    module is loaded, but they are needed to make the core classes resolvable
+    even when it isn't (e.g. in tests using minimal builtins fixtures).
+    """
+    cdef = ClassDef(name, Block([]))  # Dummy ClassDef, will be replaced later
+    info = TypeInfo(SymbolTable(), cdef, "types")
+    info._fullname = f"types.{name}"
+    calculate_mro(info, obj_type)
+    return info
+
+
+def lookup_core_types_class(fullname: str, modules: dict[str, MypyFile]) -> SymbolTableNode | None:
+    """Return a placeholder symbol for a missing core class of the 'types' module.
+
+    The 'types' module may not be loaded (e.g. in tests using minimal builtins
+    fixtures), but core classes such as 'types.FunctionType' must be resolvable
+    for basic functionality.
+    """
+    module, _, name = fullname.rpartition(".")
+    if module != "types" or name not in CORE_TYPES_CLASSES:
+        return None
+    mod = modules.get(module)
+    if mod is not None and name in mod.names:
+        return None
+    obj_type: Callable[[], Instance] | None = None
+    builtins = modules.get("builtins")
+    if builtins is not None:
+        sym = builtins.names.get("object")
+        if sym is not None and isinstance(sym.node, TypeInfo):
+            object_info = sym.node
+            obj_type = lambda: Instance(object_info, [])
+    return SymbolTableNode(GDEF, make_placeholder_types_info(name, obj_type))
 
 
 def lookup_fully_qualified(

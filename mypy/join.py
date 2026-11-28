@@ -836,11 +836,12 @@ def join_similar_callables(t: CallableType, s: CallableType) -> CallableType:
             arg_types.append(safe_meet(t.arg_types[i], s.arg_types[i]))
     # TODO Handle more kinds and different argument names.
     # TODO what should happen if one fallback is 'type' and the other is a custom metaclass?
-    # The fallback type can be either 'function', 'type', or some user-provided metaclass.
-    # The result should always use 'function' as a fallback if either operands are using it.
-    if t.fallback.type.fullname == "builtins.function":
+    # The fallback type can be either 'types.FunctionType', 'type', or some user-provided
+    # metaclass. The result should always use 'types.FunctionType' as a fallback if either
+    # operand is using it.
+    if t.fallback.type.fullname == "types.FunctionType":
         fallback = t.fallback
-    elif s.fallback.type.fullname == "builtins.function":
+    elif s.fallback.type.fullname == "types.FunctionType":
         fallback = s.fallback
     else:
         fallback = InstanceJoiner().join_instances(t.fallback, s.fallback)

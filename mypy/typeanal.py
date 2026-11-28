@@ -1277,7 +1277,9 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 ret_type=self.anal_type(t.ret_type, nested=nested),
                 # If the fallback isn't filled in yet,
                 # its type will be the falsey FakeInfo
-                fallback=(t.fallback if t.fallback.type else self.named_type("builtins.function")),
+                fallback=(
+                    t.fallback if t.fallback.type else self.named_type("types.FunctionType")
+                ),
                 variables=self.anal_var_defs(variables),
                 type_guard=type_guard,
                 type_is=type_is,
@@ -1635,7 +1637,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         )
 
     def analyze_callable_type(self, t: UnboundType) -> Type:
-        fallback = self.named_type("builtins.function")
+        fallback = self.named_type("types.FunctionType")
         if len(t.args) == 0:
             # Callable (bare). Treat as Callable[..., Any].
             any_type = self.get_omitted_any(t)

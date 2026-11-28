@@ -22,7 +22,6 @@ class list(Iterable[T], Generic[T]):
 
 class tuple(Generic[T]): pass
 
-class function: pass
 class int:
     def __add__(self, i: int) -> int: pass
 

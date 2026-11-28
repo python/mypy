@@ -13,7 +13,6 @@ class object:
 class type: pass
 class tuple(Generic[T]):
     def __getitem__(self, x: int) -> T: pass
-class function: pass
 
 # We need int for indexing tuples.
 class int: pass

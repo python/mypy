@@ -10,7 +10,6 @@ class object:
 
 class type: pass
 class bytes: pass
-class function: pass
 class float: pass
 class int:
     @overload
