@@ -2233,7 +2233,6 @@ def fix_instance(
 
     args: list[Type] = list(t.args)
     any_type: AnyType | None = None
-    env: dict[TypeVarId, Type] = {}
     tvt_no_default = False
 
     for tv, arg in itertools.zip_longest(t.type.defn.type_vars, t.args, fillvalue=None):
