@@ -1212,6 +1212,64 @@ class MeetSuite(Suite):
         for simple in self.fx.a, self.fx.o, self.fx.b:
             self.assert_meet(simple, simple, simple)
 
+    def test_narrow_large_union_of_instances(self) -> None:
+        fx = self.fx
+        items = [Instance(fx.make_type_info(f"T{i}", mro=[fx.oi]), []) for i in range(300)]
+        declared = UnionType(items)
+        # The instances may be distinct objects after expanding a type alias.
+        narrowed = UnionType([Instance(item.type, []) for item in items[1:]])
+        with state.strict_optional_set(True):
+            assert_equal(narrow_declared_type(declared, narrowed), narrowed)
+
+    def test_narrow_union_preserves_truthiness(self) -> None:
+        fx = self.fx
+        for strict_optional in (False, True):
+            with state.strict_optional_set(strict_optional):
+                truthy_a = true_only(fx.a)
+                declared = UnionType([fx.d, fx.o, truthy_a])
+                narrowed = UnionType([fx.d, truthy_a])
+                result = get_proper_type(narrow_declared_type(declared, narrowed))
+                assert isinstance(result, UnionType)
+                assert_equal(result, UnionType([fx.d, fx.a]))
+                result_a = next(item for item in result.items if item == fx.a)
+                assert result_a.can_be_true
+                assert not result_a.can_be_false
+
+    def test_narrow_union_with_shared_instance_and_subclass(self) -> None:
+        fx = self.fx
+        with state.strict_optional_set(True):
+            assert_equal(
+                narrow_declared_type(UnionType([fx.a, fx.b, fx.d]), UnionType([fx.b, fx.d])),
+                UnionType([fx.b, fx.d]),
+            )
+            assert_equal(
+                narrow_declared_type(UnionType([fx.a, fx.d]), UnionType([fx.b, fx.d])),
+                UnionType([fx.b, fx.d]),
+            )
+
+    def test_narrow_union_with_literal_instances(self) -> None:
+        fx = self.fx
+        declared = UnionType([fx.lit1_inst, fx.a, fx.lit2, fx.lit1])
+        narrowed = UnionType([fx.lit1_inst, fx.lit2])
+        for strict_optional in (False, True):
+            with state.strict_optional_set(strict_optional):
+                assert_equal(
+                    narrow_declared_type(declared, narrowed), UnionType([fx.a, fx.lit1, fx.lit2])
+                )
+
+    def test_narrow_union_preserves_new_generic_members(self) -> None:
+        fx = self.fx
+        info = fx.make_type_info("T", mro=[fx.oi], typevars=["S"], variances=[INVARIANT])
+        generic_any = Instance(info, [fx.anyt])
+        generic_a = Instance(info, [fx.a])
+        declared = UnionType([generic_any, fx.d])
+        with state.strict_optional_set(True):
+            for items in ([generic_any, generic_a, fx.d], [generic_a, generic_any, fx.d]):
+                narrowed = UnionType(items)
+                result = narrow_declared_type(declared, narrowed)
+                assert_equal(result, narrowed)
+                assert_equal(str(result), str(narrowed))
+
     def test_class_subtyping(self) -> None:
         self.assert_meet(self.fx.a, self.fx.o, self.fx.a)
         self.assert_meet(self.fx.a, self.fx.b, self.fx.b)
