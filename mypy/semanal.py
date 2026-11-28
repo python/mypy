@@ -61,6 +61,7 @@ from mypy.constant_fold import constant_fold_expr
 from mypy.errorcodes import PROPERTY_DECORATOR, ErrorCode
 from mypy.errors import Errors, report_internal_error
 from mypy.exprtotype import TypeTranslationError, expr_to_unanalyzed_type
+from mypy.lookup import lookup_core_types_class
 from mypy.message_registry import CANNOT_DECLARE_TYPE_OF_SPECIAL_FORM, ErrorMessage
 from mypy.messages import (
     SUGGESTED_TEST_FIXTURES,
@@ -347,23 +348,6 @@ FUTURE_IMPORTS: Final = {
 # Special cased built-in classes that are needed for basic functionality and need to be
 # available very early on.
 CORE_BUILTIN_CLASSES: Final = ["object", "bool"]
-CORE_TYPES_CLASSES: Final = ["FunctionType"]
-
-
-def make_placeholder_types_info(
-    name: str, obj_type: Callable[[], Instance] | None = None
-) -> TypeInfo:
-    """Create a placeholder TypeInfo for a core class of the 'types' module.
-
-    The placeholders will be replaced by the real definitions if the 'types'
-    module is loaded, but they are needed to make the core classes resolvable
-    even when it isn't (e.g. in tests using minimal builtins fixtures).
-    """
-    cdef = ClassDef(name, Block([]))  # Dummy ClassDef, will be replaced later
-    info = TypeInfo(SymbolTable(), cdef, "types")
-    info._fullname = f"types.{name}"
-    calculate_mro(info, obj_type)
-    return info
 
 
 # Python has several different scope/namespace kinds with subtly different semantics.
@@ -522,9 +506,6 @@ class SemanticAnalyzer(
         self.plugin = plugin
         self.recurse_into_functions = True
         self.scope = Scope()
-        # Cache of placeholder symbols for core 'types' classes that may not be
-        # available, so that repeated lookups return the same symbol.
-        self._placeholder_types_symbols: dict[str, SymbolTableNode] = {}
 
         # Trace line numbers for every file where deferral happened during analysis of
         # current SCC or top-level function.
@@ -637,8 +618,6 @@ class SemanticAnalyzer(
             file_node.names["__builtins__"] = SymbolTableNode(GDEF, self.modules["builtins"])
         if file_node.fullname == "builtins":
             self.prepare_builtins_namespace(file_node)
-        if file_node.fullname == "types":
-            self.prepare_types_namespace(file_node)
         if file_node.fullname == "typing":
             self.prepare_typing_namespace(file_node, type_aliases)
         if file_node.fullname == "typing_extensions":
@@ -712,33 +691,6 @@ class SemanticAnalyzer(
             v = Var(name, typ)
             v._fullname = f"builtins.{name}"
             file_node.names[name] = SymbolTableNode(GDEF, v)
-
-    def prepare_types_namespace(self, file_node: MypyFile) -> None:
-        """Add certain special-cased definitions to the types module.
-
-        Similar to special definitions from the builtins module.
-        """
-        # Add empty definition for core 'types' classes, since they are required for basic
-        # operation. These will be completed later on.
-        for name in CORE_TYPES_CLASSES:
-            file_node.names[name] = SymbolTableNode(
-                GDEF, make_placeholder_types_info(name, self.object_type)
-            )
-
-    def placeholder_types_symbol(self, name: str) -> SymbolTableNode:
-        """Return a placeholder symbol for a core class of the 'types' module.
-
-        The 'types' module may not be loaded (e.g. in tests using minimal
-        builtins fixtures), but core types classes such as 'types.FunctionType'
-        must be resolvable for basic functionality. The placeholders are not
-        added to the module table, so they don't interfere with incremental
-        caching.
-        """
-        if name not in self._placeholder_types_symbols:
-            self._placeholder_types_symbols[name] = SymbolTableNode(
-                GDEF, make_placeholder_types_info(name, self.object_type)
-            )
-        return self._placeholder_types_symbols[name]
 
     #
     # Analyzing a target
@@ -2040,7 +1992,7 @@ class SemanticAnalyzer(
 
     def analyze_class(self, defn: ClassDef) -> None:
         fullname = self.qualified_name(defn.name)
-        if not defn.info and not self.is_core_class(defn):
+        if not defn.info and not self.is_core_builtin_class(defn):
             # Add placeholder so that self-references in base classes can be
             # resolved.  We don't want this to cause a deferral, since if there
             # are no incomplete references, we'll replace this with a TypeInfo
@@ -2190,10 +2142,8 @@ class SemanticAnalyzer(
         else:
             assert False, f"Unexpected special alias type: {type(target)}"
 
-    def is_core_class(self, defn: ClassDef) -> bool:
-        return (self.cur_mod_id == "builtins" and defn.name in CORE_BUILTIN_CLASSES) or (
-            self.cur_mod_id == "types" and defn.name in CORE_TYPES_CLASSES
-        )
+    def is_core_builtin_class(self, defn: ClassDef) -> bool:
+        return self.cur_mod_id == "builtins" and defn.name in CORE_BUILTIN_CLASSES
 
     def analyze_class_body_common(self, defn: ClassDef) -> None:
         """Parts of class body analysis that are common to all kinds of class defs."""
@@ -2632,7 +2582,7 @@ class SemanticAnalyzer(
             self.add_global_symbol(defn.name, defn, defn.info)
 
     def make_empty_type_info(self, defn: ClassDef) -> TypeInfo:
-        if self.is_module_scope() and self.is_core_class(defn):
+        if self.is_module_scope() and self.is_core_builtin_class(defn):
             # Special case core classes. A TypeInfo was already
             # created for it before semantic analysis, but with a dummy
             # ClassDef. Patch the real ClassDef object.
@@ -7108,14 +7058,8 @@ class SemanticAnalyzer(
         """
         # TODO: unify/clean-up/simplify lookup methods, see #4157.
         module, name = fullname.rsplit(".", maxsplit=1)
-        if (
-            module == "types"
-            and name in CORE_TYPES_CLASSES
-            and (module not in self.modules or name not in self.modules[module].names)
-        ):
-            # The 'types' module may not be loaded (e.g. in tests using minimal
-            # builtins fixtures), but core types classes must be resolvable.
-            return self.placeholder_types_symbol(name)
+        if (sym := lookup_core_types_class(fullname, self.modules)) is not None:
+            return sym
         if module in self.modules:
             # If the module exists, look up the name in the module.
             # This is the common case.

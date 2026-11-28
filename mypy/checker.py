@@ -107,6 +107,7 @@ from mypy.errors import (
 )
 from mypy.expandtype import expand_type
 from mypy.literals import Key, extract_var_from_literal_hash, literal, literal_hash
+from mypy.lookup import lookup_core_types_class
 from mypy.maptype import map_instance_to_supertype
 from mypy.meet import is_overlapping_types, meet_types
 from mypy.message_registry import ErrorMessage
@@ -215,13 +216,7 @@ from mypy.patterns import AsPattern, StarredPattern
 from mypy.plugin import Plugin
 from mypy.plugins import dataclasses as dataclasses_plugin
 from mypy.scope import Scope
-from mypy.semanal import (
-    CORE_TYPES_CLASSES,
-    is_trivial_body,
-    make_placeholder_types_info,
-    refers_to_fullname,
-    set_callable_name,
-)
+from mypy.semanal import is_trivial_body, refers_to_fullname, set_callable_name
 from mypy.semanal_enum import ENUM_BASES, ENUM_SPECIAL_PROPS
 from mypy.semanal_shared import SemanticAnalyzerCoreInterface
 from mypy.sharedparse import BINARY_MAGIC_METHODS
@@ -8090,21 +8085,9 @@ class TypeChecker(NodeVisitor[None], TypeCheckerSharedApi, SplittingVisitor):
         if "." not in name:
             return self.lookup(name)
         else:
+            if (sym := lookup_core_types_class(name, self.modules)) is not None:
+                return sym
             parts = name.split(".")
-            if (
-                parts[0] == "types"
-                and parts[-1] in CORE_TYPES_CLASSES
-                and (parts[0] not in self.modules or parts[-1] not in self.modules[parts[0]].names)
-            ):
-                # The 'types' module may not be loaded (e.g. in tests using
-                # minimal builtins fixtures), but core types classes must be
-                # resolvable.
-                return SymbolTableNode(
-                    GDEF,
-                    make_placeholder_types_info(
-                        parts[-1], lambda: self.named_type("builtins.object")
-                    ),
-                )
             n = self.modules[parts[0]]
             for i in range(1, len(parts) - 1):
                 sym = n.names.get(parts[i])
