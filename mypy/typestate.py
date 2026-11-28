@@ -13,6 +13,7 @@ from mypy.server.trigger import make_trigger
 from mypy.types import (
     CallableType,
     Instance,
+    Parameters,
     Type,
     TypeVarId,
     TypeVarLikeType,
@@ -108,6 +109,8 @@ class TypeState:
     _assuming_proper: Final[list[tuple[Type, Type]]]
     # Ditto for inference of generic constraints against recursive type aliases.
     inferring: Final[list[tuple[Type, Type]]]
+    # Stack of ParamSpec argument hints from call sites to disambiguate overloaded callables.
+    param_spec_hints: Final[list[dict[TypeVarId, Parameters]]]
     # Whether to use joins or unions when solving constraints, see checkexpr.py for details.
     infer_unions: bool
     # Whether to use new type inference algorithm that can infer polymorphic types.
@@ -138,6 +141,7 @@ class TypeState:
         self._assuming = []
         self._assuming_proper = []
         self.inferring = []
+        self.param_spec_hints = []
         self.infer_unions = False
         self.infer_polymorphic = False
         self.keep_unions = False
