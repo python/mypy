@@ -323,6 +323,17 @@ def solve_one(lowers: Iterable[Type], uppers: Iterable[Type]) -> Type | None:
     elif top is None:
         candidate = bottom
     elif is_subtype(bottom, top):
+        # An invariant context can set the same union as both a lower and an
+        # upper bound. Keep it if it already accepts every lower bound: the join
+        # can add redundant members when compatibility depends on Any.
+        if (
+            isinstance(p_top, UnionType)
+            and isinstance(p_bottom, UnionType)
+            and p_top != p_bottom
+            and top in lowers
+            and all(is_subtype(lower, top) for lower in lowers)
+        ):
+            return top
         candidate = bottom
     else:
         candidate = None
