@@ -115,6 +115,28 @@ Py_ssize_t CPyTagged_AsSsize_t(CPyTagged x) {
     }
 }
 
+// Set the exception for a sequence index that isn't a short int. Like CPython,
+// raise IndexError("cannot fit 'int' into an index-sized integer") if it
+// doesn't fit in Py_ssize_t. Otherwise raise IndexError(msg), since an index
+// this large is always out of range (no list or tuple can be this long, and
+// neither can a str or bytes object on a 64-bit platform).
+void CPy_LargeIndexError(CPyTagged index, const char *msg) {
+    Py_ssize_t n = PyNumber_AsSsize_t(CPyTagged_LongAsObject(index), PyExc_IndexError);
+    if (n != -1 || !PyErr_Occurred()) {
+        PyErr_SetString(PyExc_IndexError, msg);
+    }
+}
+
+// Convert an int used as a sequence index to i64. Like CPython, raise
+// IndexError if the value doesn't fit in Py_ssize_t.
+int64_t CPyLong_AsIndex(PyObject *o) {
+    Py_ssize_t n = PyNumber_AsSsize_t(o, PyExc_IndexError);
+    if (n == -1 && PyErr_Occurred()) {
+        return CPY_LL_INT_ERROR;
+    }
+    return n;
+}
+
 CPy_NOINLINE
 void CPyTagged_IncRef(CPyTagged x) {
     if (unlikely(CPyTagged_CheckLong(x))) {

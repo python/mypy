@@ -119,6 +119,12 @@ is converted to the corresponding ``int`` value, which is ``1``.
 Note that integers still have an arbitrary precision in compiled code,
 similar to normal Python integers.
 
+:ref:`Native integer types <native-ints>` such as ``i64`` have a fixed
+range in compiled code, unlike ``int``. When interpreted, they behave
+like regular ``int`` values with arbitrary precision. Code that
+overflows a native integer type may thus produce different results
+when compiled and interpreted (see :ref:`native-ints-interpreted`).
+
 Fixed-length tuples are unboxed, similar to integers. The exact type
 and identity of fixed-length tuples is not preserved, and you can't
 reliably use ``is`` checks to compare tuples that are used in compiled

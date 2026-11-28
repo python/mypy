@@ -29,7 +29,8 @@ class DiffCacheIntegrationTests(unittest.TestCase):
         src_dir = tempfile.mkdtemp()
         output_file = os.path.join(tempfile.mkdtemp(), "diff.json")
         env = os.environ.copy()
-        env["PYTHONPATH"] = PREFIX
+        existing = env.get("PYTHONPATH")
+        env["PYTHONPATH"] = PREFIX + (os.pathsep + existing if existing else "")
         try:
             cache1 = os.path.join(src_dir, "cache1")
             cache2 = os.path.join(src_dir, "cache2")

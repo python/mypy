@@ -437,20 +437,16 @@ def f() -> None:
     y = i16(11)
     z = i16(-3)
     a = i16(32767)
-    b = i16(32768)  # Truncate
     c = i16(-32768)
-    d = i16(-32769)  # Truncate
 [out]
 def f():
-    x, y, z, a, b, c, d :: i16
+    x, y, z, a, c :: i16
 L0:
     x = 0
     y = 11
     z = -3
     a = 32767
-    b = -32768
     c = -32768
-    d = 32767
     return 1
 
 [case testI16ExplicitConversionFromVariousTypes]
@@ -579,3 +575,27 @@ L4:
     goto L1
 L5:
     return 1
+
+[case testI16DetectOutOfRangeLiterals]
+from mypy_extensions import i16
+
+def out_of_range() -> None:
+    a: i16 = 32768
+    b: i16 = -32769
+    f(32768)
+    c = i16(32768)
+    d = i16(-32769)
+    # The following are ok
+    e: i16 = 32767
+    g: i16 = -32768
+    f(-32768)
+    h = i16(32767)
+    i = i16(-32768)
+
+def f(x: i16) -> None: pass
+[out]
+main:4: error: Value 32768 is out of range for "i16"
+main:5: error: Value -32769 is out of range for "i16"
+main:6: error: Value 32768 is out of range for "i16"
+main:7: error: Value 32768 is out of range for "i16"
+main:8: error: Value -32769 is out of range for "i16"

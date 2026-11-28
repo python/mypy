@@ -234,7 +234,7 @@ def run_with_librt(
     librt_path = get_librt_path(experimental, opt_level=opt_level)
     # Prepend librt path to PYTHONPATH
     env = os.environ.copy()
-    existing = env.get("PYTHONPATH", "")
+    existing = env.get("PYTHONPATH")
     env["PYTHONPATH"] = librt_path + (os.pathsep + existing if existing else "")
 
     return subprocess.run(

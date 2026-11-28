@@ -10,6 +10,7 @@ from mypyc.ir.ops import (
     BasicBlock,
     Goto,
     Integer,
+    IntOp,
     LoadAddress,
     LoadLiteral,
     Op,
@@ -181,6 +182,33 @@ class TestIrcheck(unittest.TestCase):
             " \U0000274c goto L1",
             "    \U0001f446 ERROR: Invalid control operation target: 1",
         ]
+
+    def test_int_op_no_overflow(self) -> None:
+        one = Integer(1, int64_rprimitive)
+        add = IntOp(int64_rprimitive, one, one, IntOp.ADD, no_overflow=True)
+        fn = FuncIR(
+            decl=self.func_decl(name="func_1"),
+            arg_regs=[],
+            blocks=[self.basic_block([add, Return(value=NONE_VALUE)])],
+        )
+        assert_no_errors(fn)
+        assert format_func(fn) == [
+            "def func_1():",
+            "    r0 :: i64",
+            "L0:",
+            "    r0 = 1 + 1 :: no_overflow",
+            "    return 0",
+        ]
+
+    def test_int_op_no_overflow_not_supported(self) -> None:
+        one = Integer(1, int64_rprimitive)
+        xor = IntOp(int64_rprimitive, one, one, IntOp.XOR, no_overflow=True)
+        fn = FuncIR(
+            decl=self.func_decl(name="func_1"),
+            arg_regs=[],
+            blocks=[self.basic_block([xor, Return(value=NONE_VALUE)])],
+        )
+        assert_has_error(fn, FnError(source=xor, desc="no_overflow is not supported for '^'"))
 
     def test_load_address_declares_register(self) -> None:
         rx = Register(str_rprimitive, "x")

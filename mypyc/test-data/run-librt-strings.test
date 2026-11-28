@@ -7,7 +7,7 @@ import struct
 
 from librt.strings import BytesWriter, StringWriter, write_i16_le, write_i16_be, read_i16_le, read_i16_be, write_i32_le, write_i32_be, read_i32_le, read_i32_be, write_i64_le, write_i64_be, read_i64_le, read_i64_be, write_f64_le, read_f64_le, write_f64_be, read_f64_be, write_f32_le, write_f32_be, read_f32_le, read_f32_be
 
-from testutil import assertRaises
+from testutil import assertRaises, SSIZE_T_LONG, SSIZE_T_MAX
 
 # Test values for i16 write/read operations, organized by byte size
 I16_TEST_VALUES: list[int] = [
@@ -100,6 +100,14 @@ def test_bytes_writer_get_item() -> None:
         w[1 << 50]
     with assertRaises(IndexError):
         w[-(1 << 50)]
+    for n in (SSIZE_T_LONG, -SSIZE_T_LONG - 1):
+        with assertRaises(IndexError, "BytesWriter index out of range"):
+            w[n + int()]
+    for n in (1 << 63, -(1 << 63) - 1, 1 << 100):
+        with assertRaises(IndexError, "cannot fit 'int' into an index-sized integer"):
+            w[n + int()]
+    with assertRaises(IndexError, "cannot fit 'int' into an index-sized integer"):
+        w[1 << 63]
 
 def test_bytes_writer_set_item() -> None:
     w = BytesWriter()
@@ -118,6 +126,14 @@ def test_bytes_writer_set_item() -> None:
         w[1 << 50] = 0
     with assertRaises(IndexError):
         w[-(1 << 50)] = 0
+    for n in (SSIZE_T_LONG, -SSIZE_T_LONG - 1):
+        with assertRaises(IndexError, "BytesWriter index out of range"):
+            w[n + int()] = 0
+    for n in (1 << 63, -(1 << 63) - 1, 1 << 100):
+        with assertRaises(IndexError, "cannot fit 'int' into an index-sized integer"):
+            w[n + int()] = 0
+    with assertRaises(IndexError, "cannot fit 'int' into an index-sized integer"):
+        w[1 << 63] = 0
 
     with assertRaises(ValueError):
         w[0] = int() - 1
@@ -1146,6 +1162,12 @@ def test_string_writer_get_item() -> None:
         w[1 << 50]
     with assertRaises(IndexError):
         w[-(1 << 50)]
+    for n in (SSIZE_T_LONG, -SSIZE_T_LONG - 1):
+        with assertRaises(IndexError, "StringWriter index out of range"):
+            w[n + int()]
+    for n in (1 << 63, -(1 << 63) - 1, 1 << 100):
+        with assertRaises(IndexError, "cannot fit 'int' into an index-sized integer"):
+            w[n + int()]
 
     # Kind 2 (UCS-2)
     w2 = StringWriter()

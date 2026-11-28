@@ -133,7 +133,6 @@ from mypyc.ir.rtypes import (
     object_pointer_rprimitive,
     object_rprimitive,
     str_rprimitive,
-    wrap_unsigned_native_int,
 )
 from mypyc.irbuild.constant_fold import constant_fold_expr
 from mypyc.irbuild.context import FuncInfo, ImplicitClass
@@ -512,8 +511,10 @@ class IRBuilder:
     ) -> Value:
         return self.builder.primitive_op(desc, args, line, result_type)
 
-    def int_op(self, type: RType, lhs: Value, rhs: Value, op: int, line: int) -> Value:
-        return self.builder.int_op(type, lhs, rhs, op, line)
+    def int_op(
+        self, type: RType, lhs: Value, rhs: Value, op: int, line: int, *, no_overflow: bool = False
+    ) -> Value:
+        return self.builder.int_op(type, lhs, rhs, op, line, no_overflow=no_overflow)
 
     def compare_tuples(self, lhs: Value, rhs: Value, op: str, line: int) -> Value:
         return self.builder.compare_tuples(lhs, rhs, op, line)
@@ -1404,13 +1405,7 @@ class IRBuilder:
             is_local: whether the name is a local variable
         """
         if final_var.final_value is not None:  # this is safe even for non-native names
-            value = final_var.final_value
-            if isinstance(value, int) and not isinstance(value, bool):
-                # mypy evaluates Final initializers such as "-X" using int semantics,
-                # but unsigned native ints wrap around. (Skip bools, since the helper
-                # returns a plain int when compiled.)
-                value = wrap_unsigned_native_int(self.type_to_rtype(typ), value)
-            return self.load_literal_value(value, line)
+            return self.load_literal_value(final_var.final_value, line)
         elif is_native and not is_local and module_prefix(self.graph, fullname):
             # A local final variable isn't stored in a static (its fullname is just the
             # bare name, which could also be the name of a module), but a literal value

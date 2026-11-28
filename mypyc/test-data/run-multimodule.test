@@ -1806,12 +1806,18 @@ import native
 NT(x=4)
 {'x': 5}
 
-[case testIncrementalCompilationTogglingNonExtClass]
-# Mypy ignores mypyc_attr, so making C a non-native class (or a native class
-# again) doesn't change the interface of other.py. native.py must still be
-# recompiled, since it constructs C and accesses its attributes differently.
+[case testIncrementalCompilationTogglingMypycAttrs]
+# Mypy ignores mypyc_attr, so toggling it doesn't change the interface of
+# other.py, but native.py must still be recompiled:
+# - native_class=False (steps 2 and 4): native.py constructs C and accesses its
+#   attributes differently.
+# - weakrefs=True (step 5): adds a weak reference list to A, which changes the
+#   object layout of B.
+# - serializable=True (step 6): B inherits the flag, and then B.__new__ must not
+#   call __init__, since copy.copy() calls it without arguments.
+# - acyclic=True (step 7): a class can only be acyclic if its base classes are.
 # In step 3 other.py is unchanged, so it must stay fresh.
-from other import C
+from other import A, C
 
 def make(x: int) -> C:
     return C(x)
@@ -1819,12 +1825,26 @@ def make(x: int) -> C:
 def get(c: C) -> int:
     return c.x
 
+class B(A):
+    def __init__(self, y: int) -> None:
+        super().__init__()
+        self.y = y
+        self.t = "b"
+
 [file other.py]
 from mypy_extensions import mypyc_attr
 
 class C:
     def __init__(self, x: int) -> None:
         self.x = x
+
+class A:
+    def __init__(self) -> None:
+        self.x = 1
+        self.s = "a"
+
+def get_x(a: A) -> int:
+    return a.x
 
 [file other.py.2]
 from mypy_extensions import mypyc_attr
@@ -1834,14 +1854,28 @@ class C:
     def __init__(self, x: int) -> None:
         self.x = x
 
+class A:
+    def __init__(self) -> None:
+        self.x = 1
+        self.s = "a"
+
+def get_x(a: A) -> int:
+    return a.x
+
 [file native.py.3]
-from other import C
+from other import A, C
 
 def make(x: int) -> C:
     return C(x + 1)
 
 def get(c: C) -> int:
     return c.x
+
+class B(A):
+    def __init__(self, y: int) -> None:
+        super().__init__()
+        self.y = y
+        self.t = "b"
 
 [file other.py.4]
 from mypy_extensions import mypyc_attr
@@ -1850,23 +1884,103 @@ class C:
     def __init__(self, x: int) -> None:
         self.x = x
 
+class A:
+    def __init__(self) -> None:
+        self.x = 1
+        self.s = "a"
+
+def get_x(a: A) -> int:
+    return a.x
+
+[file other.py.5]
+from mypy_extensions import mypyc_attr
+
+class C:
+    def __init__(self, x: int) -> None:
+        self.x = x
+
+@mypyc_attr(weakrefs=True)
+class A:
+    def __init__(self) -> None:
+        self.x = 1
+        self.s = "a"
+
+def get_x(a: A) -> int:
+    return a.x
+
+[file other.py.6]
+from mypy_extensions import mypyc_attr
+
+class C:
+    def __init__(self, x: int) -> None:
+        self.x = x
+
+@mypyc_attr(weakrefs=True, serializable=True)
+class A:
+    def __init__(self) -> None:
+        self.x = 1
+        self.s = "a"
+
+def get_x(a: A) -> int:
+    return a.x
+
+[file other.py.7]
+from mypy_extensions import mypyc_attr
+
+class C:
+    def __init__(self, x: int) -> None:
+        self.x = x
+
+@mypyc_attr(weakrefs=True, serializable=True, acyclic=True)
+class A:
+    def __init__(self) -> None:
+        self.x = 1
+        self.s = "a"
+
+def get_x(a: A) -> int:
+    return a.x
+
 [file driver.py]
-from native import get, make
+import copy
+import gc
+import weakref
+from native import B, get, make
+from other import A, get_x
 
 c = make(3)
-print(get(c), hasattr(c, "__dict__"))
+b = B(2)
+try:
+    weak = weakref.ref(b)() is b
+except TypeError:
+    weak = False
+try:
+    b2 = copy.copy(b)
+except TypeError:
+    copied = False
+else:
+    copied = (b2.x, b2.s, b2.y, b2.t) == (1, "a", 2, "b")
+print(get(c), hasattr(c, "__dict__"), get_x(b), b.s, b.y, b.t, weak, copied, gc.is_tracked(A()))
 [out]
-3 False
+3 False 1 a 2 b False False True
 [out2]
-3 True
+3 True 1 a 2 b False False True
 [out3]
-4 True
+4 True 1 a 2 b False False True
 [out4]
-4 False
+4 False 1 a 2 b False False True
+[out5]
+4 False 1 a 2 b True False True
+[out6]
+4 False 1 a 2 b True True True
+[out7]
+4 False 1 a 2 b True True False
 
 [rechecked native, other]
 [rechecked2 native]
 [rechecked3 native, other]
+[rechecked4 native, other]
+[rechecked5 native, other]
+[rechecked6 native, other]
 
 [case testIncrementalCompilationTogglingTrait]
 # Mypy also ignores @trait. Making T a trait changes how other.py calls m(),
@@ -2027,6 +2141,39 @@ class Parent:
     config: Dict[str, str] = MY_DEFAULT
     total: int = VAL_1 + VAL_2 + VAL_3
     TAG: ClassVar[str] = "parent"
+
+[file driver.py]
+from native import test
+test()
+
+[case testCrossModuleOverriddenAttrDefaultIsReleased]
+import sys
+from other import BASE_X, Parent
+
+class Child(Parent):
+    x: object = None
+    y: object = None
+
+def test() -> None:
+    getrefcount = getattr(sys, "getrefcount")
+    c = Child()
+    assert c.x is None
+    assert c.y is None
+    assert Parent().x is BASE_X
+    rc = getrefcount(BASE_X)
+    for _ in range(10):
+        Child()
+    assert getrefcount(BASE_X) == rc
+
+[file other.py]
+from typing import Final, List
+
+BASE_X: Final[List[int]] = [1]
+
+class Parent:
+    x: object = BASE_X
+    y: object
+    z: int = 1
 
 [file driver.py]
 from native import test

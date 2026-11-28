@@ -102,26 +102,23 @@ from typing import Final
 from mypy_extensions import u8
 
 X: Final[u8] = 1
-Y: Final[u8] = -X
 
 def f() -> None:
     a = -X
     b = X - 2
     c = ~X
     d = (X - 2) // 2
-    e = Y
 def g() -> str:
     return "%d" % (-X,)
 [typing fixtures/typing-full.pyi]
 [out]
 def f():
-    a, b, c, d, e :: u8
+    a, b, c, d :: u8
 L0:
     a = 255
     b = 255
     c = 254
     d = 127
-    e = 255
     return 1
 def g():
     r0, r1 :: str
@@ -224,6 +221,8 @@ def out_of_range() -> None:
     a: u8 = 256
     b: u8 = -1
     f(256)
+    g = u8(256)
+    h = u8(-1)
     # The following are ok
     c: u8 = 0
     d: u8 = 255
@@ -235,6 +234,8 @@ def f(x: u8) -> None: pass
 main:4: error: Value 256 is out of range for "u8"
 main:5: error: Value -1 is out of range for "u8"
 main:6: error: Value 256 is out of range for "u8"
+main:7: error: Value 256 is out of range for "u8"
+main:8: error: Value -1 is out of range for "u8"
 
 [case testU8BoxAndUnbox]
 from typing import Any
@@ -514,17 +515,13 @@ from mypy_extensions import u8
 def f() -> None:
     x = u8(0)
     y = u8(11)
-    z = u8(-3)  # Truncate
-    zz = u8(258)  # Truncate
     a = u8(255)
 [out]
 def f():
-    x, y, z, zz, a :: u8
+    x, y, a :: u8
 L0:
     x = 0
     y = 11
-    z = 253
-    zz = 2
     a = 255
     return 1
 
@@ -742,3 +739,58 @@ L3:
     goto L1
 L4:
     return 1
+
+[case testU8ConstantFoldShiftByCountOutOfRange]
+from typing import Final
+from mypy_extensions import u8
+
+ONE: Final[u8] = 1
+
+def f() -> None:
+    a = ONE << -ONE
+    b = ONE << 8
+    c = ONE << 7
+    d = ONE >> 8
+[out]
+def f():
+    a, b, c, d :: u8
+L0:
+    a = 0
+    b = 0
+    c = 128
+    d = 0
+    return 1
+
+[case testU8DetectUnsupportedFinalValues]
+from typing import Final
+from mypy_extensions import u8
+
+ONE: Final[u8] = 1
+A: Final[u8] = 256  # E: Value 256 is out of range for "u8"
+
+# Uses get the value computed by mypy, which doesn't wrap around
+B: Final[u8] = -ONE  # E: Value -1 is out of range for "u8"
+C: Final = -ONE  # E: Value -1 is out of range for "u8"
+D: Final[u8] = ((0 - ONE) >> 4) + 1  # E: Unsupported value for final "D" (intermediate result overflows "u8")
+E: Final[u8] = (ONE << 8) >> 1  # E: Unsupported value for final "E" (intermediate result overflows "u8")
+F = -ONE  # Not a final, so this is ok
+
+# The following are ok, since mypy computes the same value
+G: Final[u8] = 255
+H: Final[u8] = (ONE << 8) - 1
+I: Final[u8] = ~ONE & 0xF0
+
+[case testU8FinalFromInterpretedModuleNotWrapped]
+from other import NEG_ONE, ONE
+from mypy_extensions import u8
+
+def f() -> None:
+    # The interpreted value is -1, which doesn't fit in u8
+    a = NEG_ONE  # E: Value -1 is out of range for "u8"
+    b = ONE
+[file other.py]
+from typing import Final
+from mypy_extensions import u8
+
+ONE: Final[u8] = 1
+NEG_ONE: Final[u8] = -ONE

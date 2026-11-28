@@ -69,6 +69,8 @@ def out_of_range() -> None:
     a: u64 = 18446744073709551616
     b: u64 = -1
     f(18446744073709551616)
+    g = u64(18446744073709551616)
+    h = u64(-1)
     # The following are ok
     c: u64 = 0
     d: u64 = 18446744073709551615
@@ -80,6 +82,8 @@ def f(x: u64) -> None: pass
 main:4: error: Value 18446744073709551616 is out of range for "u64"
 main:5: error: Value -1 is out of range for "u64"
 main:6: error: Value 18446744073709551616 is out of range for "u64"
+main:7: error: Value 18446744073709551616 is out of range for "u64"
+main:8: error: Value -1 is out of range for "u64"
 
 [case testU64BoxAndUnbox]
 from typing import Any
@@ -292,31 +296,19 @@ from mypy_extensions import u64
 def f() -> None:
     x = u64(0)
     y = u64(11)
-    z = u64(-3)  # Truncate
-    zz = u64(4294967298)  # Truncate
+    z = u64(4294967298)
     a = u64(18446744073709551615)
-    b = u64(18446744073709551621)  # Truncate
-    c = u64(-18446744073709551615)  # Truncate
 [out]
 def f():
-    x, y, z, zz :: u64
+    x, y, z :: u64
     r0 :: int
     a :: u64
-    r1 :: int
-    b :: u64
-    r2 :: int
-    c :: u64
 L0:
     x = 0
     y = 11
-    z = 18446744073709551613
-    zz = 4294967298
+    z = 4294967298
     r0 = object 18446744073709551615
     a = 18446744073709551615
-    r1 = object 18446744073709551621
-    b = 5
-    r2 = object -18446744073709551615
-    c = 1
     return 1
 
 [case testU64NegateLiteral]
@@ -359,14 +351,12 @@ from typing import Final
 from mypy_extensions import u64
 
 X: Final[u64] = 1
-Y: Final[u64] = -X
 
 def f() -> None:
     a = -X
     b = X - 2
     c = ~X
     d = (X - 2) // 2
-    e = Y
 def g() -> str:
     return "%d" % (-X,)
 [typing fixtures/typing-full.pyi]
@@ -380,8 +370,6 @@ def f():
     c :: u64
     r3 :: int
     d :: u64
-    r4 :: int
-    e :: u64
 L0:
     r0 = object 18446744073709551615
     a = 18446744073709551615
@@ -391,8 +379,6 @@ L0:
     c = 18446744073709551614
     r3 = object 9223372036854775807
     d = 9223372036854775807
-    r4 = object 18446744073709551615
-    e = 18446744073709551615
     return 1
 def g():
     r0, r1 :: str
@@ -573,4 +559,25 @@ L0:
     r0 = extend b: builtins.bool to i64
     r1 = box(int, x)
     r2 = CPyList_SetItemInt64(a, r0, r1)
+    return 1
+
+[case testU64ConstantFoldShiftByCountOutOfRange]
+from typing import Final
+from mypy_extensions import u64
+
+ONE: Final[u64] = 1
+
+def f() -> None:
+    a = ONE << -ONE
+    b = ONE << ~ONE
+    c = ONE << 64
+    d = ONE >> -ONE
+[out]
+def f():
+    a, b, c, d :: u64
+L0:
+    a = 0
+    b = 0
+    c = 0
+    d = 0
     return 1

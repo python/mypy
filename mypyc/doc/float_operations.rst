@@ -12,14 +12,11 @@ Construction
 
 * Float literal
 * ``float(x: int)``
-* ``float(x: i64)``
-* ``float(x: i32)``
-* ``float(x: i16)``
-* ``float(x: i8)``
-* ``float(x: u16)``
-* ``float(x: u8)``
 * ``float(x: str)``
 * ``float(x: float)`` (no-op)
+
+Native integer arguments, such as ``i64``, are implicitly converted to
+``int``, so ``float(x)`` is fast for them as well.
 
 Operators
 ---------
@@ -45,6 +42,8 @@ Functions
 * ``i32(f)`` (convert to 32-bit signed integer)
 * ``i16(f)`` (convert to 16-bit signed integer)
 * ``i8(f)`` (convert to 8-bit signed integer)
+* ``u64(f)`` (convert to 64-bit unsigned integer)
+* ``u32(f)`` (convert to 32-bit unsigned integer)
 * ``u16(f)`` (convert to 16-bit unsigned integer)
 * ``u8(f)`` (convert to 8-bit unsigned integer)
 * ``abs(f)``
