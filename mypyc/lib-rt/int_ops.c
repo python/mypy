@@ -107,6 +107,25 @@ PyObject *CPyTagged_StealAsObject(CPyTagged x) {
     return value;
 }
 
+// Like CPyTagged_AsObject, but always return an exact int object. A long tagged int
+// can refer to an instance of an int subclass, since unboxing doesn't copy the object.
+// The slow paths below use this so that the generic PyNumber_* and rich comparison
+// APIs don't call any dunder methods overridden in the subclass, which could return
+// arbitrary objects or raise exceptions that can't be propagated.
+static PyObject *CPyTagged_AsExactObject(CPyTagged x) {
+    PyObject *value = CPyTagged_AsObject(x);
+    if (unlikely(!PyLong_CheckExact(value))) {
+        // int.__int__ returns an exact copy without calling any overrides
+        PyObject *copy = PyLong_Type.tp_as_number->nb_int(value);
+        Py_DECREF(value);
+        if (copy == NULL) {
+            CPyError_OutOfMemory();
+        }
+        value = copy;
+    }
+    return value;
+}
+
 Py_ssize_t CPyTagged_AsSsize_t(CPyTagged x) {
     if (likely(CPyTagged_CheckShort(x))) {
         return CPyTagged_ShortAsSsize_t(x);
@@ -160,7 +179,7 @@ void CPyTagged_XDecRef(CPyTagged x) {
 
 // Tagged int negation slow path, where the result may be a long integer
 CPyTagged CPyTagged_Negate_(CPyTagged num) {
-    PyObject *num_obj = CPyTagged_AsObject(num);
+    PyObject *num_obj = CPyTagged_AsExactObject(num);
     PyObject *result = PyNumber_Negative(num_obj);
     if (result == NULL) {
         CPyError_OutOfMemory();
@@ -171,7 +190,7 @@ CPyTagged CPyTagged_Negate_(CPyTagged num) {
 
 // Tagged int absolute value slow path, where the result may be a long integer
 CPyTagged CPyTagged_Absolute_(CPyTagged num) {
-    PyObject *num_obj = CPyTagged_AsObject(num);
+    PyObject *num_obj = CPyTagged_AsExactObject(num);
     PyObject *result = PyNumber_Absolute(num_obj);
     if (result == NULL) {
         CPyError_OutOfMemory();
@@ -182,8 +201,8 @@ CPyTagged CPyTagged_Absolute_(CPyTagged num) {
 
 // Tagged int addition slow path, where the result may be a long integer
 CPyTagged CPyTagged_Add_(CPyTagged left, CPyTagged right) {
-    PyObject *left_obj = CPyTagged_AsObject(left);
-    PyObject *right_obj = CPyTagged_AsObject(right);
+    PyObject *left_obj = CPyTagged_AsExactObject(left);
+    PyObject *right_obj = CPyTagged_AsExactObject(right);
     PyObject *result = PyNumber_Add(left_obj, right_obj);
     if (result == NULL) {
         CPyError_OutOfMemory();
@@ -195,8 +214,8 @@ CPyTagged CPyTagged_Add_(CPyTagged left, CPyTagged right) {
 
 // Tagged int subtraction slow path, where the result may be a long integer
 CPyTagged CPyTagged_Subtract_(CPyTagged left, CPyTagged right) {
-    PyObject *left_obj = CPyTagged_AsObject(left);
-    PyObject *right_obj = CPyTagged_AsObject(right);
+    PyObject *left_obj = CPyTagged_AsExactObject(left);
+    PyObject *right_obj = CPyTagged_AsExactObject(right);
     PyObject *result = PyNumber_Subtract(left_obj, right_obj);
     if (result == NULL) {
         CPyError_OutOfMemory();
@@ -208,8 +227,8 @@ CPyTagged CPyTagged_Subtract_(CPyTagged left, CPyTagged right) {
 
 // Tagged int multiplication slow path, where the result may be a long integer
 CPyTagged CPyTagged_Multiply_(CPyTagged left, CPyTagged right) {
-    PyObject *left_obj = CPyTagged_AsObject(left);
-    PyObject *right_obj = CPyTagged_AsObject(right);
+    PyObject *left_obj = CPyTagged_AsExactObject(left);
+    PyObject *right_obj = CPyTagged_AsExactObject(right);
     PyObject *result = PyNumber_Multiply(left_obj, right_obj);
     if (result == NULL) {
         CPyError_OutOfMemory();
@@ -221,8 +240,8 @@ CPyTagged CPyTagged_Multiply_(CPyTagged left, CPyTagged right) {
 
 // Tagged int // slow path, where the result may be a long integer (or raise)
 CPyTagged CPyTagged_FloorDivide_(CPyTagged left, CPyTagged right) {
-    PyObject *left_obj = CPyTagged_AsObject(left);
-    PyObject *right_obj = CPyTagged_AsObject(right);
+    PyObject *left_obj = CPyTagged_AsExactObject(left);
+    PyObject *right_obj = CPyTagged_AsExactObject(right);
     PyObject *result = PyNumber_FloorDivide(left_obj, right_obj);
     Py_DECREF(left_obj);
     Py_DECREF(right_obj);
@@ -236,8 +255,8 @@ CPyTagged CPyTagged_FloorDivide_(CPyTagged left, CPyTagged right) {
 
 // Tagged int % slow path, where the result may be a long integer (or raise)
 CPyTagged CPyTagged_Remainder_(CPyTagged left, CPyTagged right) {
-    PyObject *left_obj = CPyTagged_AsObject(left);
-    PyObject *right_obj = CPyTagged_AsObject(right);
+    PyObject *left_obj = CPyTagged_AsExactObject(left);
+    PyObject *right_obj = CPyTagged_AsExactObject(right);
     PyObject *result = PyNumber_Remainder(left_obj, right_obj);
     Py_DECREF(left_obj);
     Py_DECREF(right_obj);
@@ -253,8 +272,8 @@ bool CPyTagged_IsEq_(CPyTagged left, CPyTagged right) {
     if (CPyTagged_CheckShort(right)) {
         return false;
     } else {
-        PyObject *left_obj = CPyTagged_AsObject(left);
-        PyObject *right_obj = CPyTagged_AsObject(right);
+        PyObject *left_obj = CPyTagged_AsExactObject(left);
+        PyObject *right_obj = CPyTagged_AsExactObject(right);
         int result = PyObject_RichCompareBool(left_obj, right_obj, Py_EQ);
         Py_DECREF(left_obj);
         Py_DECREF(right_obj);
@@ -266,8 +285,8 @@ bool CPyTagged_IsEq_(CPyTagged left, CPyTagged right) {
 }
 
 bool CPyTagged_IsLt_(CPyTagged left, CPyTagged right) {
-    PyObject *left_obj = CPyTagged_AsObject(left);
-    PyObject *right_obj = CPyTagged_AsObject(right);
+    PyObject *left_obj = CPyTagged_AsExactObject(left);
+    PyObject *right_obj = CPyTagged_AsExactObject(right);
     int result = PyObject_RichCompareBool(left_obj, right_obj, Py_LT);
     Py_DECREF(left_obj);
     Py_DECREF(right_obj);
@@ -306,8 +325,8 @@ PyObject *CPyBool_Str(bool b) {
 
 // Bitwise op '&', '|' or '^' using the generic (slow) API
 static CPyTagged GenericBitwiseOp(CPyTagged a, CPyTagged b, char op) {
-    PyObject *aobj = CPyTagged_AsObject(a);
-    PyObject *bobj = CPyTagged_AsObject(b);
+    PyObject *aobj = CPyTagged_AsExactObject(a);
+    PyObject *bobj = CPyTagged_AsExactObject(b);
     PyObject *r;
     if (op == '&') {
         r = PyNumber_And(aobj, bobj);
@@ -410,7 +429,7 @@ CPyTagged CPyTagged_BitwiseLongOp_(CPyTagged a, CPyTagged b, char op) {
 
 // Bitwise '~' slow path
 CPyTagged CPyTagged_Invert_(CPyTagged num) {
-    PyObject *obj = CPyTagged_AsObject(num);
+    PyObject *obj = CPyTagged_AsExactObject(num);
     PyObject *result = PyNumber_Invert(obj);
     if (unlikely(result == NULL)) {
         CPyError_OutOfMemory();
@@ -422,8 +441,8 @@ CPyTagged CPyTagged_Invert_(CPyTagged num) {
 // Bitwise '>>' slow path
 CPyTagged CPyTagged_Rshift_(CPyTagged left, CPyTagged right) {
     // Long integer or negative shift -- use generic op
-    PyObject *lobj = CPyTagged_AsObject(left);
-    PyObject *robj = CPyTagged_AsObject(right);
+    PyObject *lobj = CPyTagged_AsExactObject(left);
+    PyObject *robj = CPyTagged_AsExactObject(right);
     PyObject *result = PyNumber_Rshift(lobj, robj);
     Py_DECREF(lobj);
     Py_DECREF(robj);
@@ -437,8 +456,8 @@ CPyTagged CPyTagged_Rshift_(CPyTagged left, CPyTagged right) {
 // Bitwise '<<' slow path
 CPyTagged CPyTagged_Lshift_(CPyTagged left, CPyTagged right) {
     // Long integer or out of range shift -- use generic op
-    PyObject *lobj = CPyTagged_AsObject(left);
-    PyObject *robj = CPyTagged_AsObject(right);
+    PyObject *lobj = CPyTagged_AsExactObject(left);
+    PyObject *robj = CPyTagged_AsExactObject(right);
     PyObject *result = PyNumber_Lshift(lobj, robj);
     Py_DECREF(lobj);
     Py_DECREF(robj);
@@ -779,21 +798,24 @@ double CPyTagged_TrueDivide(CPyTagged x, CPyTagged y) {
         PyErr_SetString(PyExc_ZeroDivisionError, "division by zero");
         return CPY_FLOAT_ERROR;
     }
-    if (likely(!CPyTagged_CheckLong(x) && !CPyTagged_CheckLong(y))) {
+    // Dividing as doubles is only correctly rounded if both operands can be
+    // represented exactly as doubles (CPython uses the same fast path)
+    if (likely(CPyTagged_FitsInDouble(x) && CPyTagged_FitsInDouble(y))) {
         return (double)((Py_ssize_t)x >> 1) / (double)((Py_ssize_t)y >> 1);
     } else {
-        PyObject *xo = CPyTagged_AsObject(x);
-        PyObject *yo = CPyTagged_AsObject(y);
+        PyObject *xo = CPyTagged_AsExactObject(x);
+        PyObject *yo = CPyTagged_AsExactObject(y);
         PyObject *result = PyNumber_TrueDivide(xo, yo);
+        Py_DECREF(xo);
+        Py_DECREF(yo);
         if (result == NULL) {
-            Py_DECREF(xo);
-            Py_DECREF(yo);
             return CPY_FLOAT_ERROR;
         }
         double value = PyFloat_AsDouble(result);
-        Py_DECREF(xo);
-        Py_DECREF(yo);
         Py_DECREF(result);
+        if (unlikely(value == -1.0) && PyErr_Occurred()) {
+            return CPY_FLOAT_ERROR;
+        }
         return value;
     }
     return 1.0;

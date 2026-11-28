@@ -102,6 +102,33 @@ def test_mixed_comparisons() -> None:
     assert not (zf + 0.9) > (zn + 1)
     assert (zn + 1) < (zf + 1.1)
 
+def test_mixed_comparisons_are_exact() -> None:
+    ints = [0, 1, -1, 2**53 - 1, 2**53, 2**53 + 1, -(2**53) - 1, 2**62 - 1, -(2**62),
+            2**63 + 1, 2**1100, -(2**1100)]
+    floats = [0.0, -0.0, 1.0, -1.5, 2.0**53, 2.0**53 + 2, -(2.0**53), 2.0**63, 1e300, -1e300,
+              math.inf, -math.inf, math.nan]
+    for n in ints:
+        for x in floats:
+            assert (x == n) == getattr(x, "__eq__")(n), (x, n)
+            assert (x != n) == getattr(x, "__ne__")(n), (x, n)
+            assert (x < n) == getattr(x, "__lt__")(n), (x, n)
+            assert (x <= n) == getattr(x, "__le__")(n), (x, n)
+            assert (x > n) == getattr(x, "__gt__")(n), (x, n)
+            assert (x >= n) == getattr(x, "__ge__")(n), (x, n)
+            assert (n == x) == getattr(x, "__eq__")(n), (x, n)
+            assert (n != x) == getattr(x, "__ne__")(n), (x, n)
+            assert (n < x) == getattr(x, "__gt__")(n), (x, n)
+            assert (n <= x) == getattr(x, "__ge__")(n), (x, n)
+            assert (n > x) == getattr(x, "__lt__")(n), (x, n)
+            assert (n >= x) == getattr(x, "__le__")(n), (x, n)
+    x = 2.0**53 + float(0.0)
+    assert x != 9007199254740993
+    assert not (x == 9007199254740993)
+    assert x < 9007199254740993
+    assert 9007199254740993 > x
+    assert x == 9007199254740992
+    assert x <= 9007199254740992
+
 def test_boxing_and_unboxing() -> None:
     x = 1.5
     boxed: Any = x
