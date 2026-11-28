@@ -846,3 +846,30 @@ class A: ...
 [typing fixtures/typing-typeddict.pyi]
 [out]
 ==
+
+[case testFollowImportsPerModuleSkipNotAddedBack]
+# flags: --follow-imports=normal
+# cmd: mypy main.py
+
+[file mypy.ini]
+\[mypy]
+follow_imports = normal
+\[mypy-pkg.sub]
+follow_imports = skip
+
+[file main.py]
+import pkg.sub
+reveal_type(pkg.sub.x)
+
+[file pkg/__init__.py]
+
+[file pkg/sub.py]
+x = 1
+
+[file unrelated.py.2]
+# Trigger a second increment with no relevant changes.
+
+[out]
+main.py:2: note: Revealed type is "Any"
+==
+main.py:2: note: Revealed type is "Any"
