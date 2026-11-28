@@ -1691,3 +1691,19 @@ def run(x: list[T], fn: Callable[[T], S]) -> list[Optional[S]]: ...
 
 def worker(d: int) -> Optional[int]: ...
 res: list[Optional[int]] = run([1, 2, 3], worker)  # OK
+
+[case testInferenceContextOptionalDictOfCallableUnion]
+from typing import Any, Callable, TypeVar
+
+T = TypeVar("T")
+CallableOne = Callable[[T], None]
+CallableTwo = Callable[[T, bool], None]
+CallableUnion = CallableOne[T] | CallableTwo[T]
+CallableUnionDict = dict[str, CallableUnion[T]] | None
+
+def f(data: int, flag: bool) -> None:
+    pass
+
+test_dict: dict[type, CallableUnionDict[Any]] = {int: {"test": f}}
+[builtins fixtures/dict.pyi]
+[out]
