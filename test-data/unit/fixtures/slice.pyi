@@ -2,7 +2,9 @@
 import types
 from typing import Generic, TypeVar, Protocol
 T = TypeVar('T')
-_Tco = TypeVar('_Tco', covariant=True)
+_StartTco = TypeVar('_StartTco', covariant=True)
+_StopTco = TypeVar('_StopTco', covariant=True)
+_StepTco = TypeVar('_StepTco', covariant=True)
 
 class SupportsIndex(Protocol):
     def __index__(self) -> int: ...
@@ -14,10 +16,11 @@ class type: pass
 class tuple(Generic[T]): pass
 class function: pass
 
-class int: pass
+class int:
+    def __index__(self) -> int: ...
 class str: pass
 
-class slice(Generic[_Tco]): pass
+class slice(Generic[_StartTco, _StopTco, _StepTco]): pass
 class dict: pass
 class list(Generic[T]):
-    def __getitem__(self, x: slice[SupportsIndex | None]) -> list[T]: pass
+    def __getitem__(self, x: slice[SupportsIndex | None, SupportsIndex | None, SupportsIndex | None,]) -> list[T]: pass

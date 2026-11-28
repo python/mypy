@@ -2996,6 +2996,12 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         # Only non-abstract non-protocol class can be given where Type[...] is expected...
         elif self.has_abstract_type_part(caller_type, callee_type):
             self.msg.concrete_only_call(callee_type, context)
+        elif (
+            isinstance(context, SliceExpr)
+            and callable_name(callee) is not None
+            and self.check_slice_index_bounds(context, callee_type)
+        ):
+            return
         elif not is_subtype(caller_type, callee_type, options=self.chk.options):
             error = self.msg.incompatible_argument(
                 n,
@@ -3017,6 +3023,50 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
                 self.chk.check_possible_missing_await(
                     caller_type, callee_type, context, error.code
                 )
+
+    def check_slice_index_bounds(self, slice: SliceExpr, expected_type: ProperType) -> bool:
+        """Check that slice indexes have valid types for `__getitem__` or `__setitem__`
+
+        Validates start, stop, and step against the expected slice type from the method signature.
+        Reports an error for invalid index types.
+
+        Rejected examples,
+        x["foo":"bar"] # str indices when expecting int/SupportsIndex/None
+        x[:2:b] = y # if b doesn't match the expected step type
+        """
+        expected_types = (
+            get_proper_types(expected_type.items)
+            if isinstance(expected_type, UnionType)
+            else [expected_type]
+        )
+        slice_types = [
+            typ
+            for typ in expected_types
+            if isinstance(typ, Instance)
+            and typ.type.fullname == "builtins.slice"
+            and len(typ.args) == 3
+        ]
+        if len(slice_types) != 1:
+            return False
+
+        has_invalid_bounds = False
+        for index, expected_type in zip(
+            [slice.begin_index, slice.end_index, slice.stride], slice_types[0].args
+        ):
+            if index is None:
+                continue
+            actual = (
+                self.chk.lookup_type(index) if self.chk.has_type(index) else self.accept(index)
+            )
+            if not is_subtype(actual, expected_type, options=self.chk.options):
+                self.chk.fail(
+                    f"Slice index must be {format_type(expected_type, self.chk.options)}; "
+                    f"got {format_type(actual, self.chk.options)}",
+                    index,
+                    code=codes.INDEX,
+                )
+                has_invalid_bounds = True
+        return has_invalid_bounds
 
     def check_overload_call(
         self,

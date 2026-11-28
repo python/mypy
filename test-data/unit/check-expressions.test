@@ -1232,6 +1232,40 @@ a[o:]
 a[:o]
 [builtins fixtures/slice.pyi]
 
+[case testSliceBoundErrorReportsBoundType]
+a: list[int]
+s: str
+
+a[1:]  # Valid integer bounds should remain accepted.
+a[:2]
+a[::3]
+
+# Invalid start, stop, and step bounds must each be reported at the bound.
+a[s:]   # E: Slice index must be "SupportsIndex | None"; got "str"
+a[:s]   # E: Slice index must be "SupportsIndex | None"; got "str"
+a[::s]  # E: Slice index must be "SupportsIndex | None"; got "str"
+[builtins fixtures/slice.pyi]
+
+[case testSliceBoundErrorReportsCustomType]
+# Test that the error message respects actual types from the __getitem__ signature
+from typing import Generic, TypeVar
+
+T = TypeVar('T')
+
+class CustomSliceable(Generic[T]):
+    def __getitem__(self, x: slice[str, str, str]) -> T: ...
+
+c: CustomSliceable[int]
+i: int
+
+c["a":"b":"c"]  # Valid string bounds should be accepted.
+
+# Invalid bounds must report the expected type from the signature, not hardcoded types.
+c[i:]   # E: Slice index must be "str"; got "int"
+c[:i]   # E: Slice index must be "str"; got "int"
+c[::i]  # E: Slice index must be "str"; got "int"
+[builtins fixtures/slice.pyi]
+
 [case testSliceSupportsIndex]
 import typing_extensions
 class Index:
