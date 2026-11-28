@@ -1185,7 +1185,7 @@ class BuildManager:
             rel -= 1
         if rel != 0:
             file_id = ".".join(file_id.split(".")[:-rel])
-        new_id = file_id + "." + imp.id if imp.id else file_id
+        new_id = file_id + "." + imp.id if imp.id and file_id else file_id
 
         if not new_id:
             self.errors.set_file(file.path, file.name, self.options)
